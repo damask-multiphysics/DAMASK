@@ -14,15 +14,9 @@ module source_thermal_dissipation
   implicit none
   private
 
-  integer,           dimension(:),   allocatable,         public, protected :: &
+  integer,           dimension(:),   allocatable :: &
     source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
     source_thermal_dissipation_instance                                                             !< instance of thermal dissipation source mechanism
- 
-  integer,           dimension(:,:), allocatable, target, public :: &
-    source_thermal_dissipation_sizePostResult                                                       !< size of each post result output
- 
-  character(len=64), dimension(:,:), allocatable, target, public :: &
-    source_thermal_dissipation_output                                                               !< name of each post result output
  
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
@@ -45,10 +39,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_init
  
-  integer :: Ninstance,instance,source,sourceOffset
-  integer :: NofMyPhase,p   
+  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p   
  
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'; flush(6)
  
   
   Ninstance = count(phase_source == SOURCE_thermal_dissipation_ID)
@@ -68,10 +61,6 @@ subroutine source_thermal_dissipation_init
     enddo    
   enddo
     
-  allocate(source_thermal_dissipation_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
-  allocate(source_thermal_dissipation_output  (maxval(phase_Noutput),Ninstance))
-           source_thermal_dissipation_output = ''
- 
   do p=1, size(config_phase)
     if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle
     instance = source_thermal_dissipation_instance(p)

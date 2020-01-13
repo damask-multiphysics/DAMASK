@@ -9,7 +9,7 @@
 !--------------------------------------------------------------------------------------------------
 submodule(constitutive) plastic_dislotwin
 
- real(pReal), parameter :: &
+ real(pReal),                                    parameter :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
 
  enum, bind(c)
@@ -160,16 +160,12 @@ module subroutine plastic_dislotwin_init
    sizeState, sizeDotState, &
    startIndex, endIndex
 
- integer,               dimension(0), parameter :: emptyIntArray    = [integer::]
- real(pReal),           dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
- character(len=65536),  dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-
  integer(kind(undefined_ID)) :: &
    outputID
 
  character(len=pStringLen) :: &
    extmsg = ''
- character(len=65536), dimension(:), allocatable :: &
+ character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
@@ -490,8 +486,7 @@ module subroutine plastic_dislotwin_init
                 + size(['f_tr'])                           * prm%sum_N_tr
    sizeState = sizeDotState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
-                                      prm%sum_N_sl,prm%sum_N_tw,prm%sum_N_tr)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -561,9 +556,9 @@ module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
  real(pReal), dimension(6,6) :: &
    homogenizedC
  integer,     intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
+   ipc, &                                                                                          !< component-ID of integration point
+   ip, &                                                                                           !< integration point
+   el                                                                                              !< element
 
  integer :: i, &
             of
@@ -906,7 +901,6 @@ end subroutine plastic_dislotwin_dependentState
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_dislotwin_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -949,11 +943,6 @@ module subroutine plastic_dislotwin_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-  
-#else
-  integer, intent(in) :: instance
-  character(len=*) :: group
-#endif
 
 end subroutine plastic_dislotwin_results
 

@@ -3,7 +3,6 @@
 !> @brief material subroutine for isothermal temperature field
 !--------------------------------------------------------------------------------------------------
 module thermal_isothermal
-  use prec
   use config
   use material
 
@@ -20,27 +19,25 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_isothermal_init
  
-  integer :: &
-    homog, &
-    NofMyHomog
+  integer :: h,NofMyHomog
 
-  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'; flush(6)
 
-  initializeInstances: do homog = 1, material_Nhomogenization
-    
-    if (thermal_type(homog) /= THERMAL_isothermal_ID) cycle
-    NofMyHomog = count(material_homogenizationAt == homog)
-    thermalState(homog)%sizeState = 0
-    allocate(thermalState(homog)%state0   (0,NofMyHomog), source=0.0_pReal)
-    allocate(thermalState(homog)%subState0(0,NofMyHomog), source=0.0_pReal)
-    allocate(thermalState(homog)%state    (0,NofMyHomog), source=0.0_pReal)
+  do h = 1, size(config_homogenization)
+    if (thermal_type(h) /= THERMAL_isothermal_ID) cycle
+
+    NofMyHomog = count(material_homogenizationAt == h)
+    thermalState(h)%sizeState = 0
+    allocate(thermalState(h)%state0   (0,NofMyHomog))
+    allocate(thermalState(h)%subState0(0,NofMyHomog))
+    allocate(thermalState(h)%state    (0,NofMyHomog))
       
-    deallocate(temperature    (homog)%p)
-    allocate  (temperature    (homog)%p(1), source=thermal_initialT(homog))
-    deallocate(temperatureRate(homog)%p)
-    allocate  (temperatureRate(homog)%p(1), source=0.0_pReal)
+    deallocate(temperature    (h)%p)
+    allocate  (temperature    (h)%p(1), source=thermal_initialT(h))
+    deallocate(temperatureRate(h)%p)
+    allocate  (temperatureRate(h)%p(1))
 
-  enddo initializeInstances
+  enddo
 
 end subroutine thermal_isothermal_init
 

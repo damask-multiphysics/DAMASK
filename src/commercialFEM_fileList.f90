@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief all DAMASK files without solver
-!> @details List of files needed by MSC.Marc, Abaqus/Explicit, and Abaqus/Standard
+!> @details List of files needed by MSC.Marc and Abaqus/Standard
 !--------------------------------------------------------------------------------------------------
 #include "IO.f90"
 #include "numerics.f90"
@@ -15,7 +15,6 @@
 #include "rotations.f90"
 #include "FEsolving.f90"
 #include "element.f90"
-#include "mesh_base.f90"
 #include "HDF5_utilities.f90"
 #include "results.f90"
 #include "geometry_plastic_nonlocal.f90"

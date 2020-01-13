@@ -76,7 +76,7 @@ module crystallite
     crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
  
   type :: tOutput                                                                                   !< new requested output (per phase)
-    character(len=65536), allocatable, dimension(:) :: &
+    character(len=pStringLen), allocatable, dimension(:) :: &
       label
   end type tOutput
   type(tOutput), allocatable, dimension(:) :: output_constituent
@@ -107,7 +107,6 @@ module crystallite
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_postResults, &
     crystallite_results
 
 contains
@@ -118,8 +117,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
  
-  integer, parameter :: FILEUNIT=434
-  logical, dimension(:,:), allocatable :: devNull
+  logical, dimension(discretization_nIP,discretization_nElem) :: devNull
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
@@ -232,13 +230,6 @@ subroutine crystallite_init
 #endif
   enddo
 
-!--------------------------------------------------------------------------------------------------
-! write description file for crystallite output
-  if (worldrank == 0) then
-    call IO_write_jobFile(FILEUNIT,'outputCrystallite')
-    write(FILEUNIT,'(/,a,/)') '[not supported anymore]'
-    close(FILEUNIT)
-  endif
   call config_deallocate('material.config/phase')
 
 !--------------------------------------------------------------------------------------------------
@@ -732,42 +723,10 @@ end function crystallite_push33ToRef
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return results of particular grain
-!--------------------------------------------------------------------------------------------------
-function crystallite_postResults(ipc, ip, el)
-
-  integer, intent(in):: &
-    el, &                         !< element index
-    ip, &                         !< integration point index
-    ipc                           !< grain index
-
-  real(pReal), dimension(1+ &
-                         1+plasticState(material_phaseAt(ipc,el))%sizePostResults + &
-                           sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
-    crystallite_postResults
-  integer :: &
-    c
-
-
-  crystallite_postResults = 0.0_pReal
-  crystallite_postResults(1) = 0.0_pReal                      ! header-like information (length)
-  c = 1
-
-  crystallite_postResults(c+1) = real(plasticState(material_phaseAt(ipc,el))%sizePostResults,pReal)  ! size of constitutive results
-  c = c + 1
-  if (size(crystallite_postResults)-c > 0) &
-    crystallite_postResults(c+1:size(crystallite_postResults)) = &
-       constitutive_postResults(crystallite_S(1:3,1:3,ipc,ip,el), crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                ipc, ip, el)
-
-end function crystallite_postResults
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes crystallite results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_results
-#if defined(PETSc) || defined(DAMASK_HDF5)
+
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
@@ -888,7 +847,7 @@ subroutine crystallite_results
    enddo
    
  end function select_rotations
-#endif
+
 end subroutine crystallite_results
 
 

@@ -78,7 +78,7 @@ end subroutine discretization_init
 !> @brief write the displacements
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_results
-#if defined(PETSc) || defined(DAMASK_HDF5)
+
   real(pReal), dimension(:,:), allocatable :: u
   
   call results_closeGroup(results_addGroup(trim('current/geometry')))
@@ -90,7 +90,7 @@ subroutine discretization_results
   u = discretization_IPcoords &
     - discretization_IPcoords0
   call results_writeDataset('current/geometry',u,'u_c','cell center displacements','m')
-#endif
+
 end subroutine discretization_results
 
 

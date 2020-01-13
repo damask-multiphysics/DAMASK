@@ -13,13 +13,8 @@ submodule(constitutive) plastic_nonlocal
     IParea          => geometry_plastic_nonlocal_IParea0, &
     IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0
     
-
   real(pReal), parameter :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
-  
-  character(len=64), dimension(:,:), allocatable :: &
-    plastic_nonlocal_output                                                                         !< name of each post result output
- 
 
   ! storage order of dislocation types
   integer, dimension(8), parameter :: &
@@ -52,7 +47,7 @@ submodule(constitutive) plastic_nonlocal
   !END DEPRECATED
   
   real(pReal), dimension(:,:,:,:,:,:), allocatable :: &
-    compatibility                                                                                    !< slip system compatibility between me and my neighbors
+    compatibility                                                                                   !< slip system compatibility between me and my neighbors
   
   enum, bind(c) 
     enumerator :: &
@@ -138,7 +133,7 @@ submodule(constitutive) plastic_nonlocal
       nonSchmid_neg                                                                                 !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
     integer :: &
       totalNslip
-    integer, dimension(:) ,allocatable:: &
+    integer, dimension(:) ,allocatable :: &
       Nslip,&
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
  
@@ -192,10 +187,6 @@ submodule(constitutive) plastic_nonlocal
  
   type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
 
-  integer(kind(undefined_ID)), dimension(:,:), allocatable :: & 
-    plastic_nonlocal_outputID                                                                       !< ID of each post result output
-
-
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -203,10 +194,6 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_init
-
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-  integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
-  real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
 
   integer :: &
     sizeState, sizeDotState,sizeDependentState, sizeDeltaState, &
@@ -220,10 +207,10 @@ module subroutine plastic_nonlocal_init
 
   integer(kind(undefined_ID)) :: &
     outputID
-  character(len=512) :: &
+  character(len=pStringLen) :: &
     extmsg    = '', &
     structure
-  character(len=65536), dimension(:), allocatable :: outputs
+  character(len=pStringLen), dimension(:), allocatable :: outputs
   integer :: NofMyPhase 
  
   write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
@@ -243,10 +230,6 @@ module subroutine plastic_nonlocal_init
   allocate(dotState(maxNinstances))
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
-
-  allocate(plastic_nonlocal_output(maxval(phase_Noutput), maxNinstances))
-           plastic_nonlocal_output = ''
-  allocate(plastic_nonlocal_outputID(maxval(phase_Noutput), maxNinstances), source=undefined_ID)
   allocate(totalNslip(maxNinstances), source=0)
 
 
@@ -472,7 +455,6 @@ module subroutine plastic_nonlocal_init
       end select
 
       if (outputID /= undefined_ID) then
-        plastic_nonlocal_output(i,phase_plasticityInstance(p)) = outputs(i)
         prm%outputID = [prm%outputID , outputID]
       endif
 
@@ -494,8 +476,8 @@ module subroutine plastic_nonlocal_init
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%totalNslip   !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
     
-    call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                       prm%totalNslip,0,0)    
+    call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,sizeDeltaState)
+
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
     
@@ -1094,7 +1076,7 @@ end subroutine plastic_nonlocal_kinetics
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
-                                            Mp, Temperature, volume, ip, el)
+                                                   Mp, Temperature, volume, ip, el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -1954,11 +1936,8 @@ end function getRho
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
-  use results, only: &
-    results_writeDataset
 
-  integer, intent(in)         :: instance
+  integer,         intent(in) :: instance
   character(len=*),intent(in) :: group
   integer :: o
 
@@ -2019,10 +1998,6 @@ module subroutine plastic_nonlocal_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-#else
-  integer, intent(in) :: instance
-  character(len=*) :: group
-#endif
 
 end subroutine plastic_nonlocal_results
 

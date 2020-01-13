@@ -31,7 +31,6 @@ module constitutive
   
   integer, public, protected :: &
     constitutive_plasticity_maxSizeDotState, &
-    constitutive_source_maxSizePostResults, &
     constitutive_source_maxSizeDotState
  
   interface
@@ -321,7 +320,6 @@ module constitutive
     constitutive_SandItsTangents, &
     constitutive_collectDotState, &
     constitutive_collectDeltaState, &
-    constitutive_postResults, &
     constitutive_results
  
 contains
@@ -332,17 +330,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init
 
-  integer, parameter :: FILEUNIT = 204
   integer :: &
-    o, &                                                                                            !< counter in output loop
     ph, &                                                                                           !< counter in phase loop
-    s, &                                                                                            !< counter in source loop
-    ins                                                                                             !< instance of plasticity/source
- 
-  integer, dimension(:,:), pointer :: thisSize
-  character(len=64), dimension(:,:), pointer :: thisOutput
-  character(len=32) :: outputName                                                                   !< name of output, intermediate fix until HDF5 output is ready
-  logical :: knownSource
+    s                                                                                               !< counter in source loop
 
 !--------------------------------------------------------------------------------------------------
 ! initialized plasticity
@@ -372,58 +362,10 @@ subroutine constitutive_init
   if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
   if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
  
-  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
- 
-  mainProcess: if (worldrank == 0) then
-!--------------------------------------------------------------------------------------------------
-! write description file for constitutive output
-    call IO_write_jobFile(FILEUNIT,'outputConstitutive')
-    PhaseLoop: do ph = 1,material_Nphase
-      activePhase: if (any(material_phaseAt == ph)) then
-        write(FILEUNIT,'(/,a,/)') '['//trim(config_name_phase(ph))//']'
-        
-        SourceLoop: do s = 1, phase_Nsources(ph)
-          knownSource = .true.                                                                      ! assume valid
-          sourceType: select case (phase_source(s,ph))
-            case (SOURCE_damage_isoBrittle_ID) sourceType
-              ins = source_damage_isoBrittle_instance(ph)
-              outputName = SOURCE_damage_isoBrittle_label
-              thisOutput => source_damage_isoBrittle_output
-              thisSize   => source_damage_isoBrittle_sizePostResult
-            case (SOURCE_damage_isoDuctile_ID) sourceType
-              ins = source_damage_isoDuctile_instance(ph)
-              outputName = SOURCE_damage_isoDuctile_label
-              thisOutput => source_damage_isoDuctile_output
-              thisSize   => source_damage_isoDuctile_sizePostResult
-            case (SOURCE_damage_anisoBrittle_ID) sourceType
-              ins = source_damage_anisoBrittle_instance(ph)
-              outputName = SOURCE_damage_anisoBrittle_label
-              thisOutput => source_damage_anisoBrittle_output
-              thisSize   => source_damage_anisoBrittle_sizePostResult
-            case (SOURCE_damage_anisoDuctile_ID) sourceType
-              ins = source_damage_anisoDuctile_instance(ph)
-              outputName = SOURCE_damage_anisoDuctile_label
-              thisOutput => source_damage_anisoDuctile_output
-              thisSize   => source_damage_anisoDuctile_sizePostResult
-            case default sourceType
-              knownSource = .false.
-          end select sourceType
-          if (knownSource) then
-            write(FILEUNIT,'(a)') '(source)'//char(9)//trim(outputName)
-            OutputSourceLoop: do o = 1,size(thisOutput(:,ins))
-              if(len_trim(thisOutput(o,ins)) > 0) &
-                write(FILEUNIT,'(a,i4)') trim(thisOutput(o,ins))//char(9),thisSize(o,ins)
-            enddo OutputSourceLoop
-          endif
-        enddo SourceLoop
-      endif activePhase
-    enddo PhaseLoop
-    close(FILEUNIT)
-  endif mainProcess
+  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'; flush(6)
  
   constitutive_plasticity_maxSizeDotState = 0
   constitutive_source_maxSizeDotState = 0
-  constitutive_source_maxSizePostResults = 0
  
   PhaseLoop2:do ph = 1,material_Nphase
 !--------------------------------------------------------------------------------------------------
@@ -440,10 +382,7 @@ subroutine constitutive_init
                                                      plasticState(ph)%sizeDotState)
     constitutive_source_maxSizeDotState        = max(constitutive_source_maxSizeDotState, &
                                                      maxval(sourceState(ph)%p(:)%sizeDotState))
-    constitutive_source_maxSizePostResults     = max(constitutive_source_maxSizePostResults, &
-                                                     maxval(sourceState(ph)%p(:)%sizePostResults))
   enddo PhaseLoop2
-
 
 end subroutine constitutive_init
 
@@ -910,57 +849,12 @@ end subroutine constitutive_collectDeltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns array of constitutive results
-!--------------------------------------------------------------------------------------------------
-function constitutive_postResults(S, Fi, ipc, ip, el)
-
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-  real(pReal), dimension(sum(sourceState(material_phaseAt(ipc,el))%p(:)%sizePostResults)) :: &
-    constitutive_postResults
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    S                                                                                               !< 2nd Piola Kirchhoff stress
-  integer :: &
-    startPos, endPos
-  integer :: &
-    i, of, instance                                                                                 !< counter in source loop
-
-  constitutive_postResults = 0.0_pReal
-
-
-  endPos   = 0
-
-  SourceLoop: do i = 1, phase_Nsources(material_phaseAt(ipc,el))
-    startPos = endPos + 1
-    endPos = endPos + sourceState(material_phaseAt(ipc,el))%p(i)%sizePostResults
-    of = material_phasememberAt(ipc,ip,el)
-    sourceType: select case (phase_source(i,material_phaseAt(ipc,el)))
-      case (SOURCE_damage_isoBrittle_ID) sourceType
-        constitutive_postResults(startPos:endPos) = source_damage_isoBrittle_postResults(material_phaseAt(ipc,el),of)
-      case (SOURCE_damage_isoDuctile_ID) sourceType
-        constitutive_postResults(startPos:endPos) = source_damage_isoDuctile_postResults(material_phaseAt(ipc,el),of)
-      case (SOURCE_damage_anisoBrittle_ID) sourceType
-        constitutive_postResults(startPos:endPos) = source_damage_anisoBrittle_postResults(material_phaseAt(ipc,el),of)
-      case (SOURCE_damage_anisoDuctile_ID) sourceType
-        constitutive_postResults(startPos:endPos) = source_damage_anisoDuctile_postResults(material_phaseAt(ipc,el),of)
-    end select sourceType
-
-  enddo SourceLoop
-
-end function constitutive_postResults
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results
-#if defined(PETSc) || defined(DAMASK_HDF5)                                             
+
   integer :: p
-  character(len=256) :: group
+  character(len=pStringLen) :: group
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     call results_closeGroup(results_addGroup(group))
@@ -989,8 +883,8 @@ subroutine constitutive_results
         call plastic_nonlocal_results(phase_plasticityInstance(p),group) 
     end select
   
- enddo   
-#endif
+  enddo   
+
 end subroutine constitutive_results
 
 end module constitutive

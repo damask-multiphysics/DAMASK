@@ -14,18 +14,9 @@ module source_thermal_externalheat
   implicit none
   private
 
-  integer,           dimension(:),   allocatable,         public, protected :: &
-    source_thermal_externalheat_offset, &                                                                 !< which source is my current thermal dissipation mechanism?
-    source_thermal_externalheat_instance                                                                  !< instance of thermal dissipation source mechanism
-
-  integer,           dimension(:,:), allocatable, target, public :: &
-    source_thermal_externalheat_sizePostResult                                                            !< size of each post result output
-
-  character(len=64), dimension(:,:), allocatable, target, public :: &
-    source_thermal_externalheat_output                                                                    !< name of each post result output
-   
-  integer,                       dimension(:),   allocatable, target, public :: &
-    source_thermal_externalheat_Noutput                                                                   !< number of outputs per instance of this source 
+  integer,           dimension(:),   allocatable :: &
+    source_thermal_externalheat_offset, &                                                           !< which source is my current thermal dissipation mechanism?
+    source_thermal_externalheat_instance                                                            !< instance of thermal dissipation source mechanism
 
   type  :: tParameters                                                                              !< container type for internal constitutive parameters
     real(pReal), dimension(:), allocatable :: &
@@ -52,9 +43,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_init
  
-  integer :: maxNinstance,instance,source,sourceOffset,NofMyPhase,p   
+  integer :: maxNinstance,instance,source,sourceOffset,NofMyPhase,p
  
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'; flush(6)
  
   
   maxNinstance = count(phase_source == SOURCE_thermal_externalheat_ID)
@@ -73,11 +64,6 @@ subroutine source_thermal_externalheat_init
     enddo    
   enddo
     
-  allocate(source_thermal_externalheat_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0)
-  allocate(source_thermal_externalheat_output  (maxval(phase_Noutput),maxNinstance))
-           source_thermal_externalheat_output = ''
-  allocate(source_thermal_externalheat_Noutput(maxNinstance),                             source=0) 
- 
   allocate(param(maxNinstance))
  
   do p=1, size(config_phase)
@@ -116,6 +102,7 @@ subroutine source_thermal_externalheat_dotState(phase, of)
   sourceState(phase)%p(sourceOffset)%dotState(1,of) = 1.0_pReal                                     ! state is current time
 
 end subroutine source_thermal_externalheat_dotState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate 

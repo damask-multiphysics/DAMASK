@@ -15,13 +15,11 @@ module grid_mech_spectral_basic
   use HDF5_utilities
   use math
   use spectral_utilities
-  use IO
   use FEsolving
   use config
   use numerics
   use homogenization
   use mesh_grid
-  use CPFEM2
   use debug
 
   implicit none
@@ -57,7 +55,7 @@ module grid_mech_spectral_basic
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
 
-  character(len=1024), private :: incInfo                                                           !< time and increment information 
+  character(len=pStringLen), private :: incInfo                                                     !< time and increment information 
   real(pReal), private, dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
@@ -94,11 +92,11 @@ subroutine grid_mech_spectral_basic_init
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
   PetscInt, dimension(worldsize) :: localK  
-  integer(HID_T)      :: fileHandle, groupHandle
-  integer             :: fileUnit
-  character(len=1024) :: rankStr
+  integer(HID_T) :: fileHandle, groupHandle
+  integer        :: fileUnit
+  character(len=pStringLen) :: fileName
  
-  write(6,'(/,a)') ' <<<+-  grid_mech_spectral_basic init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(6)
  
   write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'
@@ -151,11 +149,10 @@ subroutine grid_mech_spectral_basic_init
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                   ! places pointer on PETSc data
  
   restartRead: if (interface_restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
-      ' reading values of increment ', interface_restartInc, ' from file'
+    write(6,'(/,a,i0,a)') ' reading restart data of increment ', interface_restartInc, ' from file'
 
-    write(rankStr,'(a1,i0)')'_',worldrank
-    fileHandle  = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5')
+    write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
+    fileHandle  = HDF5_openFile(fileName)
     groupHandle = HDF5_openGroup(fileHandle,'solver')
  
     call HDF5_read(groupHandle,F_aim,        'F_aim')
@@ -177,8 +174,7 @@ subroutine grid_mech_spectral_basic_init
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
  
   restartRead2: if (interface_restartInc > 0) then
-    write(6,'(/,a,'//IO_intOut(interface_restartInc)//',a)') &
-      'reading more values of increment ', interface_restartInc, ' from file'
+    write(6,'(/,a,i0,a)') ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
     
@@ -286,7 +282,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
-    !--------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                         ! calculate F_aimDot from given L and current F
       F_aimDot = &
@@ -320,7 +316,7 @@ end subroutine grid_mech_spectral_basic_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief Age
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_updateCoords()
+subroutine grid_mech_spectral_basic_updateCoords
 
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
@@ -335,19 +331,19 @@ end subroutine grid_mech_spectral_basic_updateCoords
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current solver and constitutive data for restart to file
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_restartWrite()
+subroutine grid_mech_spectral_basic_restartWrite
 
   PetscErrorCode :: ierr
+  integer(HID_T) :: fileHandle, groupHandle
   PetscScalar, dimension(:,:,:,:), pointer :: F
-  integer(HID_T)    :: fileHandle, groupHandle
-  character(len=32) :: rankStr
+  character(len=pStringLen) :: fileName
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-  write(6,'(a)') ' writing solver data required for restart to file';flush(6)
+  write(6,'(a)') ' writing solver data required for restart to file'; flush(6)
   
-  write(rankStr,'(a1,i0)')'_',worldrank
-  fileHandle = HDF5_openFile(trim(getSolverJobName())//trim(rankStr)//'.hdf5','w')
+  write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
+  fileHandle  = HDF5_openFile(fileName,'w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
   
   call HDF5_write(groupHandle,F_aim,        'F_aim')
@@ -366,7 +362,7 @@ subroutine grid_mech_spectral_basic_restartWrite()
   if (num%update_gamma) call utilities_saveReferenceStiffness
 
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
-  
+
 end subroutine grid_mech_spectral_basic_restartWrite
 
 
@@ -442,8 +438,7 @@ subroutine formResidual(in, F, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
-            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))

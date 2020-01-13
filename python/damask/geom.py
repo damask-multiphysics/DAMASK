@@ -205,6 +205,9 @@ class Geom():
             else:
                 self.homogenization = homogenization
 
+    @property
+    def grid(self):
+        return self.get_grid()
 
     def get_microstructure(self):
         """Return the microstructure representation."""
@@ -239,8 +242,8 @@ class Geom():
         header.append('homogenization {}'.format(self.get_homogenization()))
         return header
         
-    @classmethod
-    def from_file(cls,fname):
+    @staticmethod
+    def from_file(fname):
         """
         Reads a geom file.
 
@@ -300,7 +303,7 @@ class Geom():
         if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                   # no float present
             microstructure = microstructure.astype('int')
         
-        return cls(microstructure.reshape(grid),size,origin,homogenization,comments)
+        return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
     def to_file(self,fname,pack=None):
@@ -419,7 +422,7 @@ class Geom():
             ext = os.path.splitext(fname)[1]
             if ext == '':
                 name = fname + '.' + writer.GetDefaultFileExtension()
-            elif ext == writer.GetDefaultFileExtension():
+            elif ext[1:] == writer.GetDefaultFileExtension():
                 name = fname
             else:
                 raise ValueError("unknown extension {}".format(ext))

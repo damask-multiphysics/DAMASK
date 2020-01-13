@@ -29,8 +29,8 @@ module subroutine plastic_none_init
    if (phase_plasticity(p) /= PLASTICITY_NONE_ID) cycle
 
    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
-   call material_allocatePlasticState(p,NipcMyPhase,0,0,0, &
-                                      0,0,0)
+   call material_allocatePlasticState(p,NipcMyPhase,0,0,0)
+
  enddo
 
 end subroutine plastic_none_init

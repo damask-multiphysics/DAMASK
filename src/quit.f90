@@ -2,8 +2,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief quit subroutine
 !> @details exits the program and reports current time and duration. Exit code 0 signals
-!> everything is fine. Exit code 1 signals an error, message according to IO_error. Exit code
-!> 2 signals no severe problems, but some increments did not converge
+!> everything is fine. Exit code 1 signals an error, message according to IO_error.
 !--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
 #include <petsc/finclude/petscsys.h>
@@ -11,7 +10,7 @@ subroutine quit(stop_id)
 #ifdef _OPENMP
    use MPI
 #endif
-  use hdf5
+  use HDF5
 
   implicit none
   integer, intent(in) :: stop_id

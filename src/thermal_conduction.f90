@@ -7,28 +7,27 @@ module thermal_conduction
   use material
   use config
   use lattice
+  use results
   use crystallite
   use source_thermal_dissipation
   use source_thermal_externalheat
  
   implicit none
   private
- 
-  integer,                     dimension(:,:), allocatable, target, public :: &
-    thermal_conduction_sizePostResult                                                               !< size of each post result output
-  character(len=64),           dimension(:,:), allocatable, target, public :: &
-    thermal_conduction_output                                                                       !< name of each post result output
-    
-  integer,                     dimension(:),   allocatable, target, public :: &
-    thermal_conduction_Noutput                                                                      !< number of outputs per instance of this damage 
- 
+
   enum, bind(c) 
-    enumerator :: undefined_ID, &
-                  temperature_ID
+    enumerator :: &
+      undefined_ID, &
+      temperature_ID
   end enum
-  integer(kind(undefined_ID)), dimension(:,:),  allocatable,          private :: & 
-    thermal_conduction_outputID                                                                     !< ID of each post result output
- 
+  
+  type :: tParameters
+    integer(kind(undefined_ID)), dimension(:), allocatable :: &
+      outputID
+  end type tParameters
+  
+  type(tparameters),             dimension(:), allocatable :: &
+    param 
  
   public :: &
     thermal_conduction_init, &
@@ -37,7 +36,7 @@ module thermal_conduction
     thermal_conduction_getSpecificHeat, &
     thermal_conduction_getMassDensity, &
     thermal_conduction_putTemperatureAndItsRate, &
-    thermal_conduction_postResults
+    thermal_conduction_results
 
 contains
 
@@ -49,56 +48,45 @@ contains
 subroutine thermal_conduction_init
 
   
-  integer :: maxNinstance,section,instance,i
-  integer :: sizeState
-  integer :: NofMyHomog   
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-  character(len=65536), dimension(:), allocatable :: outputs
+  integer :: maxNinstance,o,NofMyHomog,h
+  character(len=pStringLen), dimension(:), allocatable :: outputs
  
-  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'; flush(6)
   
   maxNinstance = count(thermal_type == THERMAL_conduction_ID)
   if (maxNinstance == 0) return
   
-  allocate(thermal_conduction_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
-  allocate(thermal_conduction_output         (maxval(homogenization_Noutput),maxNinstance))
-           thermal_conduction_output = ''
-  allocate(thermal_conduction_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
-  allocate(thermal_conduction_Noutput        (maxNinstance),                               source=0) 
- 
+  allocate(param(maxNinstance))
   
-  initializeInstances: do section = 1, size(thermal_type)
-    if (thermal_type(section) /= THERMAL_conduction_ID) cycle
-    NofMyHomog=count(material_homogenizationAt==section)
-    instance = thermal_typeInstance(section)
-    outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
-    do i=1, size(outputs)
-      select case(outputs(i))
+  do h = 1, size(thermal_type)
+    if (thermal_type(h) /= THERMAL_conduction_ID) cycle
+    associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
+              
+    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
+    allocate(prm%outputID(0))
+
+    do o=1, size(outputs)
+      select case(outputs(o))
         case('temperature')
-              thermal_conduction_Noutput(instance) = thermal_conduction_Noutput(instance) + 1
-              thermal_conduction_outputID(thermal_conduction_Noutput(instance),instance) = temperature_ID
-              thermal_conduction_output(thermal_conduction_Noutput(instance),instance) = outputs(i)
-              thermal_conduction_sizePostResult(thermal_conduction_Noutput(instance),instance) = 1
+          prm%outputID = [prm%outputID, temperature_ID]
       end select
     enddo
+  
+    NofMyHomog=count(material_homogenizationAt==h)
+    thermalState(h)%sizeState = 0
+    allocate(thermalState(h)%state0   (0,NofMyHomog))
+    allocate(thermalState(h)%subState0(0,NofMyHomog))
+    allocate(thermalState(h)%state    (0,NofMyHomog))
  
- 
- ! allocate state arrays
-    sizeState = 0
-    thermalState(section)%sizeState = sizeState
-    thermalState(section)%sizePostResults = sum(thermal_conduction_sizePostResult(:,instance))
-    allocate(thermalState(section)%state0   (sizeState,NofMyHomog))
-    allocate(thermalState(section)%subState0(sizeState,NofMyHomog))
-    allocate(thermalState(section)%state    (sizeState,NofMyHomog))
- 
-    nullify(thermalMapping(section)%p)
-    thermalMapping(section)%p => mappingHomogenization(1,:,:)
-    deallocate(temperature    (section)%p)
-    allocate  (temperature    (section)%p(NofMyHomog), source=thermal_initialT(section))
-    deallocate(temperatureRate(section)%p)
-    allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
-      
-  enddo initializeInstances
+    nullify(thermalMapping(h)%p)
+    thermalMapping(h)%p => mappingHomogenization(1,:,:)
+    deallocate(temperature    (h)%p)
+    allocate  (temperature    (h)%p(NofMyHomog), source=thermal_initialT(h))
+    deallocate(temperatureRate(h)%p)
+    allocate  (temperatureRate(h)%p(NofMyHomog), source=0.0_pReal)
+    
+    end associate
+  enddo
  
 end subroutine thermal_conduction_init
 
@@ -213,7 +201,8 @@ function thermal_conduction_getSpecificHeat(ip,el)
     thermal_conduction_getSpecificHeat/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getSpecificHeat
- 
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized mass density
 !--------------------------------------------------------------------------------------------------
@@ -263,33 +252,28 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
 
 end subroutine thermal_conduction_putTemperatureAndItsRate
  
- 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of thermal results
+!> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-function thermal_conduction_postResults(homog,instance,of) result(postResults)
- 
-  integer,              intent(in) :: &
-    homog, &
-    instance, &
-    of
- 
-  real(pReal), dimension(sum(thermal_conduction_sizePostResult(:,instance))) :: &
-    postResults
- 
-  integer :: &
-    o, c
- 
-  c = 0
-  do o = 1,thermal_conduction_Noutput(instance)
-     select case(thermal_conduction_outputID(o,instance))
+subroutine thermal_conduction_results(homog,group)
+
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+  integer :: o
   
-       case (temperature_ID)
-         postResults(c+1) = temperature(homog)%p(of)
-         c = c + 1
-     end select
-  enddo
- 
-end function thermal_conduction_postResults
+  associate(prm => param(damage_typeInstance(homog)))
+
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+    
+      case (temperature_ID)
+        call results_writeDataset(group,temperature(homog)%p,'T',&
+                                  'temperature','K')
+    end select
+  enddo outputsLoop
+  end associate
+
+end subroutine thermal_conduction_results
 
 end module thermal_conduction

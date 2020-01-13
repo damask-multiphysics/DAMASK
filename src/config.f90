@@ -27,7 +27,7 @@ module config
     config_numerics, &
     config_debug
  
-  character(len=64), dimension(:), allocatable, public, protected :: &
+  character(len=pStringLen), dimension(:), allocatable, public, protected :: &
     config_name_phase, &                                                                            !< name of each phase
     config_name_homogenization, &                                                                   !< name of each homogenization
     config_name_crystallite, &                                                                      !< name of each crystallite setting
@@ -54,7 +54,7 @@ subroutine config_init
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   logical :: fileExists
 
-  write(6,'(/,a)') ' <<<+-  config init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  config init  -+>>>'; flush(6)
 
   verbose = iand(debug_level(debug_material),debug_levelBasic) /= 0
 
@@ -214,7 +214,7 @@ end function read_materialConfig
 subroutine parse_materialConfig(sectionNames,part,line, &
                                 fileContent)
 
-  character(len=64),            allocatable, dimension(:), intent(out)   :: sectionNames
+  character(len=pStringLen),    allocatable, dimension(:), intent(out)   :: sectionNames
   type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
   character(len=pStringLen),                               intent(inout) :: line
   character(len=pStringLen),                 dimension(:), intent(in)    :: fileContent
@@ -222,7 +222,7 @@ subroutine parse_materialConfig(sectionNames,part,line, &
   integer, allocatable, dimension(:) :: partPosition                                                !< position of [] tags + last line in section
   integer :: i, j
   logical :: echo
-  character(len=pStringLen) :: section_ID
+  character(len=pStringLen) :: sectionName
 
   echo = .false. 
 
@@ -246,8 +246,8 @@ subroutine parse_materialConfig(sectionNames,part,line, &
   partPosition = [partPosition, i]                                                                  ! needed when actually storing content
 
   do i = 1, size(partPosition) -1
-    write(section_ID,'('//IO_intOut(size(partPosition))//')') i
-    sectionNames(i) = trim(section_ID)//'_'//trim(adjustl(IO_getTag(fileContent(partPosition(i)),'[',']')))
+    write(sectionName,'(i0,a,a)') i,'_',trim(IO_getTag(fileContent(partPosition(i)),'[',']'))
+    sectionNames(i) = sectionName
     do j = partPosition(i) + 1,  partPosition(i+1) -1
       call part(i)%add(trim(adjustl(fileContent(j))))
     enddo

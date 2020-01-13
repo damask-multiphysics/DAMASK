@@ -2,8 +2,10 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
+from scipy import ndimage
 import numpy as np
 
 import damask
@@ -42,81 +44,29 @@ parser.set_defaults(pos  = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 options.packing = np.array(options.packing)
 prefix = 'blowUp{}x{}x{}_'.format(*options.packing)
 
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    outname = os.path.join(os.path.dirname(name),
-                                                           prefix+os.path.basename(name)) if name else name,
-                                    buffered = False)
-  except: continue
   damask.util.report(scriptName,name)
-
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
   
-  errors  = []
-  remarks = []
-  
-  if table.label_dimension(options.pos) != 3:  errors.append('coordinates "{}" are not a vector.'.format(options.pos))
-
-  colElem = table.label_index('elem')
-  
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# --------------- figure out size and grid ---------------------------------------------------------
-
-  table.data_readArray(options.pos)
-  table.data_rewind()
-
-  grid,size = damask.util.coordGridAndSize(table.data)
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
   
   packing = np.array(options.packing,'i')
   outSize = grid*packing
   
-# ------------------------------------------ assemble header --------------------------------------
+  data = table.data.values.reshape(tuple(grid)+(-1,))
+  blownUp = ndimage.interpolation.zoom(data,tuple(packing)+(1,),order=0,mode='nearest').reshape((outSize.prod(),-1))
 
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
+  table = damask.Table(blownUp,table.shapes,table.comments)
 
-# ------------------------------------------ process data -------------------------------------------
-
-  data = np.zeros(outSize.tolist()+[len(table.labels(raw = True))])
-  p = np.zeros(3,'i')
+  coords = damask.grid_filters.cell_coord0(outSize,size,origin)
+  table.set(options.pos,coords.reshape((-1,3)))
+  table.set('elem',np.arange(1,outSize.prod()+1))
   
-  for p[2] in range(grid[2]):
-    for p[1] in range(grid[1]):
-      for p[0] in range(grid[0]):
-        d = p*packing
-        table.data_read()
-        data[d[0]:d[0]+packing[0],
-             d[1]:d[1]+packing[1],
-             d[2]:d[2]+packing[2],
-             : ] = np.tile(np.array(table.data_asFloat(),'d'),packing.tolist()+[1])                 # tile to match blowUp voxel size
-  elementSize = size/grid/packing
-  elem = 1
-  for c in range(outSize[2]):
-    for b in range(outSize[1]):
-      for a in range(outSize[0]):
-        data[a,b,c,table.label_indexrange(options.pos)] = [a+0.5,b+0.5,c+0.5]*elementSize
-        if colElem != -1: data[a,b,c,colElem] = elem
-        table.data = data[a,b,c,:].tolist()
-        outputAlive = table.data_write()                                                            # output processed line
-        elem += 1
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+  outname = os.path.join(os.path.dirname(name),prefix+os.path.basename(name))
+  table.to_ASCII(sys.stdout if name is None else outname)

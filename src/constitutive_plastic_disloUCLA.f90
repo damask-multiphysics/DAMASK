@@ -28,7 +28,7 @@ submodule(constitutive) plastic_disloUCLA
       mu, &
       D_0, &                                                                                        !< prefactor for self-diffusion coefficient
       Q_cl                                                                                          !< activation energy for dislocation climb
-    real(pReal),                  dimension(:),    allocatable :: &
+    real(pReal),                 dimension(:),  allocatable :: &
       rho_mob_0, &                                                                                  !< initial dislocation density
       rho_dip_0, &                                                                                  !< initial dipole density
       b_sl, &                                                                                       !< magnitude of burgers vector [m]
@@ -46,18 +46,18 @@ submodule(constitutive) plastic_disloUCLA
       kink_height, &                                                                                !< height of the kink pair
       w, &                                                                                          !< width of the kink pair
       omega                                                                                         !< attempt frequency for kink pair nucleation
-    real(pReal),                  dimension(:,:),   allocatable :: &
+    real(pReal),                  dimension(:,:),  allocatable :: &
       h_sl_sl, &                                                                                    !< slip resistance from slip activity
       forestProjectionEdge
-    real(pReal),                  dimension(:,:,:), allocatable :: &
+    real(pReal),                  dimension(:,:,:),  allocatable :: &
       Schmid, &
       nonSchmid_pos, &
       nonSchmid_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
-    integer,                      dimension(:),     allocatable :: &
+    integer,                      dimension(:), allocatable :: &
       N_sl                                                                                          !< number of active slip systems for each family
-    integer(kind(undefined_ID)),  dimension(:),     allocatable :: &
+    integer(kind(undefined_ID)),  dimension(:),allocatable :: &
       outputID                                                                                      !< ID of each post result output
     logical :: &
       dipoleFormation                                                                               !< flag indicating consideration of dipole formation
@@ -100,16 +100,12 @@ module subroutine plastic_disloUCLA_init
     sizeState, sizeDotState, &
     startIndex, endIndex
  
-  integer,              dimension(0), parameter :: emptyIntArray    = [integer::]
-  real(pReal),          dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
-  character(len=65536), dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
- 
   integer(kind(undefined_ID)) :: &
     outputID
  
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
  
   write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'
@@ -269,8 +265,7 @@ module subroutine plastic_disloUCLA_init
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
  
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
-                                       prm%sum_N_sl,0,0)
+    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -442,7 +437,6 @@ end subroutine plastic_disloUCLA_dependentState
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_disloUCLA_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -470,11 +464,6 @@ module subroutine plastic_disloUCLA_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-  
-#else
-  integer,          intent(in) :: instance
-  character(len=*), intent(in) :: group
-#endif
 
 end subroutine plastic_disloUCLA_results
 

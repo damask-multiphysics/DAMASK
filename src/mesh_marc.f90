@@ -9,7 +9,6 @@ module mesh
   use IO
   use prec
   use math
-  use mesh_base
   use DAMASK_interface
   use IO
   use debug
@@ -36,12 +35,6 @@ module mesh
   integer, dimension(:,:), allocatable, target :: &
     mesh_mapFEtoCPelem, &                                                                           !< [sorted FEid, corresponding CPid]
     mesh_mapFEtoCPnode                                                                              !< [sorted FEid, corresponding CPid]
-
-!-------------------------------------------------------------------------------------------------- 
-! DEPRECATED
-  real(pReal), dimension(:,:,:), allocatable, public :: &
-    mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
-!--------------------------------------------------------------------------------------------------
 
  public :: &
    mesh_init, &
@@ -97,8 +90,6 @@ subroutine mesh_init(ip,el)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
  
 
-  allocate(mesh_ipCoordinates(3,elem%nIPs,nElems),source=0.0_pReal)                                 ! deprecated
-
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&
@@ -149,7 +140,6 @@ subroutine writeGeometry(elemType, &
   real(pReal), dimension(:,:), allocatable :: &
     coordinates_temp
 
-#if defined(DAMASK_HDF5)
   call results_openJobFile
   call results_closeGroup(results_addGroup('geometry'))
   
@@ -170,7 +160,6 @@ subroutine writeGeometry(elemType, &
                             'coordinates of the material points','m')
                       
   call results_closeJobFile
-#endif  
 
 end subroutine writeGeometry
 
@@ -499,8 +488,7 @@ subroutine inputRead_mapNodes(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i = 1,size(mesh_mapFEtoCPnode,2)
-        mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (fileContent(l+1+i),[0,10],1)
-        mesh_mapFEtoCPnode(2,i) = i
+        mesh_mapFEtoCPnode(1:2,i) = [IO_fixedIntValue (fileContent(l+1+i),[0,10],1),i]              ! ToDo: use IO_intValue
       enddo
       exit
     endif
@@ -531,9 +519,9 @@ subroutine inputRead_elemNodes(nodes, &
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i=1,nNode
-        m = mesh_FEasCP('node',IO_fixedIntValue(fileContent(l+1+i),node_ends,1))
+        m = mesh_FEasCP('node',IO_fixedIntValue(fileContent(l+1+i),node_ends,1))                    !ToDo: use IO_intValue
         do j = 1,3
-          nodes(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(fileContent(l+1+i),node_ends,j+1)
+          nodes(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(fileContent(l+1+i),node_ends,j+1)    !ToDo: use IO_floatValue
         enddo
       enddo
       exit

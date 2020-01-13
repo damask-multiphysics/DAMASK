@@ -2,9 +2,8 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
-
-import numpy as np
 
 import damask
 
@@ -23,7 +22,7 @@ Uniformly shift column values by given offset.
 """, version = scriptID)
 
 parser.add_option('-l','--label',
-                  dest = 'label',
+                  dest = 'labels',
                   action = 'extend', metavar = '<string LIST>',
                   help  ='column(s) to shift')
 parser.add_option('-o','--offset',
@@ -32,61 +31,21 @@ parser.add_option('-o','--offset',
                   help = 'offset(s) per column')
 
 parser.set_defaults(label  = [],
-                   )
+                    offset = [])
 
 (options,filenames) = parser.parse_args()
-
-if len(options.label) != len(options.offset):
-  parser.error('number of column labels and offsets do not match.')
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+if len(options.labels) != len(options.offset):
+    parser.error('number of column labels and offsets do not match.')
+
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    for i,label in enumerate(options.labels):
+        table.set(label,
+                  table.get(label)+float(options.offset[i]),
+                  scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.head_read()
-
-  errors  = []
-  remarks = []
-  columns  = []
-  dims     = []
-  offsets  = []
-
-  for what,offset in zip(options.label,options.offset):
-    col = table.label_index(what)
-    if col < 0: remarks.append('column {} not found...'.format(what,type))
-    else:
-      columns.append(col)
-      offsets.append(float(offset))
-      dims.append(table.label_dimension(what))
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-       
-# ------------------------------------------ assemble header ---------------------------------------  
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for col,dim,offset in zip(columns,dims,offsets):                                                # loop over items
-      table.data[col:col+dim] = offset + np.array(table.data[col:col+dim],'d')
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
+    table.to_ASCII(sys.stdout if name is None else name)

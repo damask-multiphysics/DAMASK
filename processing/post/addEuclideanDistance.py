@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 import itertools
 
@@ -121,13 +122,14 @@ parser.set_defaults(pos = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.type is None:
-  parser.error('no feature type selected.')
+    parser.error('no feature type selected.')
 if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
-  parser.error('type must be chosen from (%s).'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
+    parser.error('type must be chosen from (%s).'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
-  parser.error('only one from aliases "biplane" and "boundary" possible.')
+    parser.error('only one from aliases "biplane" and "boundary" possible.')
 
 feature_list = []
 for i,feature in enumerate(features):
@@ -137,104 +139,49 @@ for i,feature in enumerate(features):
         feature_list.append(i)                                                                      # remember valid features
         break
 
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name, buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
-  table.head_read()
+    neighborhood = neighborhoods[options.neighborhood]
+    diffToNeighbor = np.empty(list(grid+2)+[len(neighborhood)],'i')
+    microstructure = periodic_3Dpad(table.get(options.id).astype('i').reshape(grid,order='F'))
 
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  errors  = []
-  remarks = []
-  
-  if not 3 >= table.label_dimension(options.pos) >= 1:
-    errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
-  
-  if table.label_dimension(options.id) != 1: errors.append('grain identifier {} not found.'.format(options.id))
-  else: idCol = table.label_index(options.id)
-
-  if remarks != []:
-    damask.util.croak(remarks)
-    remarks = []
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header ---------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for feature in feature_list:
-    table.labels_append('ED_{}({})'.format(features[feature]['names'][0],options.id))               # extend ASCII header with new labels
-  table.head_write()
-
-# --------------- figure out size and grid ---------------------------------------------------------
-
-  table.data_readArray()
-
-  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
-  N = grid.prod()
-
-  if N != len(table.data): errors.append('data count {} does not match grid {}.'.format(N,'x'.join(map(str,grid))))
-  else:                   remarks.append('grid: {}x{}x{}'.format(*grid))
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ process value field -----------------------------------
-
-  stack = [table.data]
-
-  neighborhood = neighborhoods[options.neighborhood]
-  diffToNeighbor = np.empty(list(grid+2)+[len(neighborhood)],'i')
-  microstructure = periodic_3Dpad(table.data[:,idCol].astype('i').reshape(grid,order='F'))
-
-  for i,p in enumerate(neighborhood):
-    stencil = np.zeros((3,3,3),'i')
-    stencil[1,1,1] = -1
-    stencil[p[0]+1,
-            p[1]+1,
-            p[2]+1] = 1
-    diffToNeighbor[:,:,:,i] = ndimage.convolve(microstructure,stencil)                              # compare ID at each point...
+    for i,p in enumerate(neighborhood):
+        stencil = np.zeros((3,3,3),'i')
+        stencil[1,1,1] = -1
+        stencil[p[0]+1,
+                p[1]+1,
+                p[2]+1] = 1
+        diffToNeighbor[:,:,:,i] = ndimage.convolve(microstructure,stencil)                          # compare ID at each point...
                                                                                                     # ...to every one in the specified neighborhood
                                                                                                     # for same IDs at both locations ==> 0
   
-  diffToNeighbor = np.sort(diffToNeighbor)                                                          # sort diff such that number of changes in diff (steps)...
+    diffToNeighbor = np.sort(diffToNeighbor)                                                        # sort diff such that number of changes in diff (steps)...
                                                                                                     # ...reflects number of unique neighbors
-  uniques = np.where(diffToNeighbor[1:-1,1:-1,1:-1,0] != 0, 1,0)                                    # initialize unique value counter (exclude myself [= 0])
+    uniques = np.where(diffToNeighbor[1:-1,1:-1,1:-1,0] != 0, 1,0)                                  # initialize unique value counter (exclude myself [= 0])
 
-  for i in range(1,len(neighborhood)):                                                              # check remaining points in neighborhood
-    uniques += np.where(np.logical_and(
-                         diffToNeighbor[1:-1,1:-1,1:-1,i] != 0,                                     # not myself?
-                         diffToNeighbor[1:-1,1:-1,1:-1,i] != diffToNeighbor[1:-1,1:-1,1:-1,i-1],
-                         ),                                                                         # flip of ID difference detected?
-                        1,0)                                                                        # count that flip
+    for i in range(1,len(neighborhood)):                                                            # check remaining points in neighborhood
+      uniques += np.where(np.logical_and(
+                           diffToNeighbor[1:-1,1:-1,1:-1,i] != 0,                                   # not myself?
+                           diffToNeighbor[1:-1,1:-1,1:-1,i] != diffToNeighbor[1:-1,1:-1,1:-1,i-1],
+                           ),                                                                       # flip of ID difference detected?
+                          1,0)                                                                      # count that flip
 
-  distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
+    distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
 
-  for i,feature_id in enumerate(feature_list):
-    distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0)                 # seed with 0.0 when enough unique neighbor IDs are present
-    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
+    for i,feature_id in enumerate(feature_list):
+        distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0)             # seed with 0.0 when enough unique neighbor IDs are present
+        distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
 
-  distance = distance.reshape([len(feature_list),grid.prod(),1],order='F')
-  for i in range(len(feature_list)):
-    stack.append(distance[i,:])
+    distance = distance.reshape([len(feature_list),grid.prod(),1],order='F')
 
-# ------------------------------------------ output result -----------------------------------------
 
-  if len(stack) > 1: table.data = np.hstack(tuple(stack))
-  table.data_writeArray('%.12g')
+    for i,feature in enumerate(feature_list):
+        table.add('ED_{}({})'.format(features[feature]['names'][0],options.id),
+                  distance[i,:],
+                  scriptID+' '+' '.join(sys.argv[1:]))
 
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+    table.to_ASCII(sys.stdout if name is None else name)

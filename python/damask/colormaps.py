@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 
 class Color():
@@ -328,11 +326,11 @@ class Color():
     if self.model != 'CIELAB': return
 
     Msh = np.zeros(3,'d')
-    Msh[0] = math.sqrt(np.dot(self.color,self.color))
+    Msh[0] = np.sqrt(np.dot(self.color,self.color))
     if (Msh[0] > 0.001):
-      Msh[1] = math.acos(self.color[0]/Msh[0])
+      Msh[1] = np.arccos(self.color[0]/Msh[0])
       if (self.color[1] != 0.0):
-        Msh[2] = math.atan2(self.color[2],self.color[1])
+        Msh[2] = np.arctan2(self.color[2],self.color[1])
 
     converted = Color('MSH', Msh)
     self.model = converted.model
@@ -349,9 +347,9 @@ class Color():
     if self.model != 'MSH': return
 
     Lab = np.zeros(3,'d')
-    Lab[0] = self.color[0] * math.cos(self.color[1])
-    Lab[1] = self.color[0] * math.sin(self.color[1]) * math.cos(self.color[2])
-    Lab[2] = self.color[0] * math.sin(self.color[1]) * math.sin(self.color[2])
+    Lab[0] = self.color[0] * np.cos(self.color[1])
+    Lab[1] = self.color[0] * np.sin(self.color[1]) * np.cos(self.color[2])
+    Lab[2] = self.color[0] * np.sin(self.color[1]) * np.sin(self.color[2])
 
     converted = Color('CIELAB', Lab)
     self.model = converted.model
@@ -476,14 +474,14 @@ class Colormap():
         if Msh_sat[0] >= Msh_unsat[0]:
           return Msh_sat[2]
         else:
-          hSpin = Msh_sat[1]/math.sin(Msh_sat[1])*math.sqrt(Msh_unsat[0]**2.0-Msh_sat[0]**2)/Msh_sat[0]
-          if Msh_sat[2] < - math.pi/3.0: hSpin *= -1.0
+          hSpin = Msh_sat[1]/np.sin(Msh_sat[1])*np.sqrt(Msh_unsat[0]**2.0-Msh_sat[0]**2)/Msh_sat[0]
+          if Msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
           return Msh_sat[2] + hSpin
 
       Msh1 = np.array(lo[:])
       Msh2 = np.array(hi[:])
 
-      if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > math.pi/3.0):
+      if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > np.pi/3.0):
         M_mid = max(Msh1[0],Msh2[0],88.0)
         if frac < 0.5:
           Msh2 = np.array([M_mid,0.0,0.0],'d')
