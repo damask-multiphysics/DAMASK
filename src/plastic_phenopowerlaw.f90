@@ -113,16 +113,12 @@ subroutine plastic_phenopowerlaw_init
    sizeState, sizeDotState, &
    startIndex, endIndex
 
- integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
- real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
- character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-
  integer(kind(undefined_ID)) :: &
    outputID
 
  character(len=pStringLen) :: &
    extmsg = ''
- character(len=65536), dimension(:), allocatable :: &
+ character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
@@ -308,8 +304,7 @@ subroutine plastic_phenopowerlaw_init
                 + size(['tau_twin  ','gamma_twin']) * prm%totalNtwin
    sizeState = sizeDotState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
-                                      prm%totalNslip,prm%totalNtwin,0)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -464,7 +459,6 @@ end subroutine plastic_phenopowerlaw_dotState
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_phenopowerlaw_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -492,11 +486,6 @@ subroutine plastic_phenopowerlaw_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-  
-#else
-  integer,          intent(in) :: instance
-  character(len=*), intent(in) :: group
-#endif
 
 end subroutine plastic_phenopowerlaw_results
 

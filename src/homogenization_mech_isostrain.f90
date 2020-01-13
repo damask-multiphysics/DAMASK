@@ -33,7 +33,7 @@ module subroutine mech_isostrain_init
     Ninstance, &
     h, &
     NofMyHomog
-  character(len=65536) :: &
+  character(len=pStringLen) :: &
     tag  = ''
  
   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'

@@ -14,10 +14,10 @@ module CPFEM2
   use material
   use lattice
   use IO
-  use HDF5
   use DAMASK_interface
   use results
   use discretization
+  use HDF5
   use HDF5_utilities
   use homogenization
   use constitutive
@@ -65,7 +65,6 @@ subroutine CPFEM_initAll
   call constitutive_init
   call crystallite_init
   call homogenization_init
-  call materialpoint_postResults
   call CPFEM_init
 
 end subroutine CPFEM_initAll

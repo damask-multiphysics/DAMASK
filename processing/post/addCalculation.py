@@ -4,7 +4,7 @@ import os
 import sys
 from optparse import OptionParser
 import re
-import collections
+from collections.abc import Iterable
 import math                                                                                         # noqa
 
 import scipy                                                                                        # noqa
@@ -18,7 +18,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def listify(x):
-  return x if isinstance(x, collections.Iterable) else [x]
+  return x if isinstance(x, Iterable) else [x]
 
 
 # --------------------------------------------------------------------
@@ -65,9 +65,10 @@ for i in range(len(options.formulas)):
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
+  try: 
+    table = damask.ASCIItable(name = name, buffered = False)
+  except IOError: 
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header -------------------------------------------  

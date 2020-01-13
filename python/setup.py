@@ -1,8 +1,9 @@
 import setuptools
 import os
+import re
 
 with open(os.path.join(os.path.dirname(__file__),'damask/VERSION')) as f:
-  version = f.readline().strip()
+  version = re.sub(r'^v','',f.readline().strip())
 
 setuptools.setup(
     name="damask",
@@ -15,9 +16,8 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires = [
-        "numpy",
-        "scipy",
         "pandas",
+        "scipy",
         "h5py",
         "vtk",
     ],

@@ -1,29 +1,22 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for non-locally evolving damage field
-!> @details to be done
 !--------------------------------------------------------------------------------------------------
 module damage_nonlocal
   use prec
   use material
-  use numerics
   use config
+  use numerics
   use crystallite
   use lattice
   use source_damage_isoBrittle
   use source_damage_isoDuctile
   use source_damage_anisoBrittle
   use source_damage_anisoDuctile
+  use results
 
   implicit none
   private
-  
-  integer,                       dimension(:,:), allocatable, target, public :: &
-    damage_nonlocal_sizePostResult
-  character(len=64),             dimension(:,:), allocatable, target, public :: &
-    damage_nonlocal_output
-  integer,                       dimension(:),   allocatable, target, public :: &
-    damage_nonlocal_Noutput
 
   enum, bind(c) 
     enumerator :: &
@@ -45,7 +38,7 @@ module damage_nonlocal
     damage_nonlocal_getDiffusion33, &
     damage_nonlocal_getMobility, &
     damage_nonlocal_putNonLocalDamage, &
-    damage_nonlocal_postResults
+    damage_nonlocal_Results
 
 contains
 
@@ -55,70 +48,44 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_init
 
-  integer :: maxNinstance,homog,instance,o,i
-  integer :: sizeState
-  integer :: NofMyHomog, h
-  integer(kind(undefined_ID)) :: &
-    outputID
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-   character(len=65536), dimension(:), allocatable :: &
-    outputs
+  integer :: maxNinstance,o,NofMyHomog,h
+  character(len=pStringLen), dimension(:), allocatable :: outputs
 
-  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
   
   maxNinstance = count(damage_type == DAMAGE_nonlocal_ID)
   if (maxNinstance == 0) return
-  
-  allocate(damage_nonlocal_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
-  allocate(damage_nonlocal_output         (maxval(homogenization_Noutput),maxNinstance))
-           damage_nonlocal_output = ''
-  allocate(damage_nonlocal_Noutput        (maxNinstance),                               source=0) 
 
   allocate(param(maxNinstance))
    
   do h = 1, size(damage_type)
     if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
-    associate(prm => param(damage_typeInstance(h)), &
-              config => config_homogenization(h))
+    associate(prm => param(damage_typeInstance(h)),config => config_homogenization(h))
               
-    instance = damage_typeInstance(h)
     outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
     allocate(prm%outputID(0))
     
-    do i=1, size(outputs)
-      outputID = undefined_ID
-      select case(outputs(i))
-      
-            case ('damage')
-            damage_nonlocal_output(i,damage_typeInstance(h)) = outputs(i)
-              damage_nonlocal_Noutput(instance) = damage_nonlocal_Noutput(instance) + 1
-             damage_nonlocal_sizePostResult(i,damage_typeInstance(h)) = 1
-        prm%outputID = [prm%outputID , damage_ID]
-           end select
-      
+    do o=1, size(outputs)
+      select case(outputs(o))
+         case ('damage')
+           prm%outputID = [prm%outputID, damage_ID]
+      end select
     enddo
 
-    homog = h
+    NofMyHomog = count(material_homogenizationAt == h)
+    damageState(h)%sizeState = 1
+    allocate(damageState(h)%state0   (1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%subState0(1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
 
-      NofMyHomog = count(material_homogenizationAt == homog)
-      instance = damage_typeInstance(homog)
-
-
-!  allocate state arrays
-      sizeState = 1
-      damageState(homog)%sizeState = sizeState
-      damageState(homog)%sizePostResults = sum(damage_nonlocal_sizePostResult(:,instance))
-      allocate(damageState(homog)%state0   (sizeState,NofMyHomog), source=damage_initialPhi(homog))
-      allocate(damageState(homog)%subState0(sizeState,NofMyHomog), source=damage_initialPhi(homog))
-      allocate(damageState(homog)%state    (sizeState,NofMyHomog), source=damage_initialPhi(homog))
-
-      nullify(damageMapping(homog)%p)
-      damageMapping(homog)%p => mappingHomogenization(1,:,:)
-      deallocate(damage(homog)%p)
-      damage(homog)%p => damageState(homog)%state(1,:)
-      
+    nullify(damageMapping(h)%p)
+    damageMapping(h)%p => mappingHomogenization(1,:,:)
+    deallocate(damage(h)%p)
+    damage(h)%p => damageState(h)%state(1,:)
+    
     end associate
   enddo
+
 end subroutine damage_nonlocal_init
 
 
@@ -247,35 +214,26 @@ end subroutine damage_nonlocal_putNonLocalDamage
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of damage results
+!> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-function damage_nonlocal_postResults(ip,el)
+subroutine damage_nonlocal_results(homog,group)
 
-  integer,              intent(in) :: &
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-  real(pReal), dimension(sum(damage_nonlocal_sizePostResult(:,damage_typeInstance(material_homogenizationAt(el))))) :: &
-    damage_nonlocal_postResults
-
-  integer :: &
-    instance, homog, offset, o, c
-    
-  homog     = material_homogenizationAt(el)
-  offset    = damageMapping(homog)%p(ip,el)
-  instance  = damage_typeInstance(homog)
-  associate(prm => param(instance))
-  c = 0
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+  integer :: o
+  
+  associate(prm => param(damage_typeInstance(homog)))
 
   outputsLoop: do o = 1,size(prm%outputID)
     select case(prm%outputID(o))
-  
-       case (damage_ID)
-         damage_nonlocal_postResults(c+1) = damage(homog)%p(offset)
-         c = c + 1
-     end select
+    
+      case (damage_ID)
+        call results_writeDataset(group,damage(homog)%p,'phi',&
+                                  'damage indicator','-')
+    end select
   enddo outputsLoop
-
   end associate
-end function damage_nonlocal_postResults
+
+end subroutine damage_nonlocal_results
 
 end module damage_nonlocal

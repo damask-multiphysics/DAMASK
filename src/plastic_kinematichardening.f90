@@ -103,16 +103,12 @@ subroutine plastic_kinehardening_init
    sizeState, sizeDeltaState, sizeDotState, &
    startIndex, endIndex
 
- integer,                dimension(0), parameter :: emptyIntArray    = [integer::]
- real(pReal),            dimension(0), parameter :: emptyRealArray   = [real(pReal)::]
- character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-
  integer(kind(undefined_ID)) :: &
    outputID
 
  character(len=pStringLen) :: &
    extmsg = ''
- character(len=65536), dimension(:), allocatable :: &
+ character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
  write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_label//' init  -+>>>'
@@ -249,8 +245,7 @@ subroutine plastic_kinehardening_init
    sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%totalNslip
    sizeState = sizeDotState + sizeDeltaState
 
-   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState, &
-                                      prm%totalNslip,0,0)
+   call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -437,7 +432,6 @@ end subroutine plastic_kinehardening_deltaState
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_kinehardening_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer, intent(in) :: instance
   character(len=*) :: group
@@ -470,10 +464,6 @@ subroutine plastic_kinehardening_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-#else
-  integer, intent(in) :: instance
-  character(len=*) :: group
-#endif
 
 end subroutine plastic_kinehardening_results
 

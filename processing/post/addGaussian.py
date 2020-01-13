@@ -2,9 +2,9 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
-import numpy as np
 from scipy import ndimage
 
 import damask
@@ -30,7 +30,7 @@ parser.add_option('-p','--pos','--periodiccellcenter',
                   type = 'string', metavar = 'string',
                   help = 'label of coordinates [%default]')
 parser.add_option('-s','--scalar',
-                  dest = 'scalar',
+                  dest = 'labels',
                   action = 'extend', metavar = '<string LIST>',
                   help = 'label(s) of scalar field values')
 parser.add_option('-o','--order',
@@ -56,78 +56,21 @@ parser.set_defaults(pos = 'pos',
                    )
 
 (options,filenames) = parser.parse_args()
-
-if options.scalar is None:
-  parser.error('no data column specified.')
-
-# --- loop over input files ------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+if options.labels is None: parser.error('no data column specified.')
+
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    damask.grid_filters.coord0_check(table.get(options.pos))
 
-  table.head_read()
+    for label in options.labels:
+        table.add('Gauss{}({})'.format(options.sigma,label),
+                  ndimage.filters.gaussian_filter(table.get(label).reshape((-1)),
+                                                  options.sigma,options.order,
+                                                  mode = 'wrap' if options.periodic else 'nearest'),
+                  scriptID+' '+' '.join(sys.argv[1:]))
 
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  items = {
-            'scalar': {'dim': 1, 'shape': [1], 'labels':options.scalar, 'active':[], 'column': []},
-          }
-  errors  = []
-  remarks = []
-  column = {}
-  
-  if table.label_dimension(options.pos) != 3: errors.append('coordinates {} are not a vector.'.format(options.pos))
-  else: colCoord = table.label_index(options.pos)
-
-  for type, data in items.items():
-    for what in (data['labels'] if data['labels'] is not None else []):
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}.'.format(what,type))
-      else:
-        items[type]['active'].append(what)
-        items[type]['column'].append(table.label_index(what))
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for type, data in items.items():
-    for label in data['active']:
-      table.labels_append(['Gauss{}({})'.format(options.sigma,label)])                              # extend ASCII header with new labels
-  table.head_write()
-
-# --------------- figure out size and grid ---------------------------------------------------------
-
-  table.data_readArray()
-
-  grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
-
-# ------------------------------------------ process value field -----------------------------------
-
-  stack = [table.data]
-  for type, data in items.items():
-    for i,label in enumerate(data['active']):
-      stack.append(ndimage.filters.gaussian_filter(table.data[:,data['column'][i]],
-                                                   options.sigma,options.order,
-                                                   mode = 'wrap' if options.periodic else 'nearest'
-                                                   ).reshape([table.data.shape[0],1])
-                   )
-
-# ------------------------------------------ output result -----------------------------------------
-  if len(stack) > 1: table.data = np.hstack(tuple(stack))
-  table.data_writeArray('%.12g')
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+    table.to_ASCII(sys.stdout if name is None else name)

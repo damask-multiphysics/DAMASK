@@ -1,37 +1,9 @@
-! ###################################################################
-! Copyright (c) 2013-2015, Marc De Graef/Carnegie Mellon University
-! Modified      2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
-! All rights reserved.
-!
-! Redistribution and use in source and binary forms, with or without modification, are
-! permitted provided that the following conditions are met:
-!
-!     - Redistributions of source code must retain the above copyright notice, this list
-!        of conditions and the following disclaimer.
-!     - Redistributions in binary form must reproduce the above copyright notice, this
-!        list of conditions and the following disclaimer in the documentation and/or
-!        other materials provided with the distribution.
-!     - Neither the names of Marc De Graef, Carnegie Mellon University nor the names
-!        of its contributors may be used to endorse or promote products derived from
-!        this software without specific prior written permission.
-!
-! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-! ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-! LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-! DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-! SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-! OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
-! USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-! ###################################################################
-
 !---------------------------------------------------------------------------------------------------
-!> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Michigan State University
 !> @brief general quaternion math, not limited to unit quaternions
-!> @details  w is the real part, (x, y, z) are the imaginary parts.
+!> @details w is the real part, (x, y, z) are the imaginary parts.
+!> @details https://en.wikipedia.org/wiki/Quaternion
 !---------------------------------------------------------------------------------------------------
 module quaternions
   use prec
@@ -78,14 +50,15 @@ module quaternions
 
     procedure, public  :: abs__
     procedure, public  :: dot_product__
-    procedure, public  :: conjg__
     procedure, public  :: exp__
     procedure, public  :: log__
-
-    procedure, public  :: homomorphed => quat_homomorphed
-    procedure, public  :: asArray
+    procedure, public  :: conjg => conjg__
     procedure, public  :: real  => real__
     procedure, public  :: aimag => aimag__
+
+    procedure, public  :: homomorphed
+    procedure, public  :: asArray
+    procedure, public  :: inverse
 
   end type
 
@@ -117,6 +90,14 @@ module quaternions
   interface log
     module procedure log__
   end interface log
+
+  interface real
+    module procedure real__
+  end interface real
+
+  interface aimag
+    module procedure aimag__
+  end interface aimag
   
   private :: &
     unitTest
@@ -125,49 +106,46 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief doing self test
+!> @brief do self test
 !--------------------------------------------------------------------------------------------------
 subroutine quaternions_init
 
-  write(6,'(/,a)')   ' <<<+-  quaternions init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  quaternions init  -+>>>'; flush(6)
   call unitTest
 
 end subroutine quaternions_init
 
 
 !---------------------------------------------------------------------------------------------------
-!> constructor for a quaternion from a 4-vector
+!> construct a quaternion from a 4-vector
 !---------------------------------------------------------------------------------------------------
 type(quaternion) pure function init__(array)
 
   real(pReal), intent(in), dimension(4) :: array
 
-  init__%w=array(1)
-  init__%x=array(2)
-  init__%y=array(3)
-  init__%z=array(4)
+  init__%w = array(1)
+  init__%x = array(2)
+  init__%y = array(3)
+  init__%z = array(4)
 
 end function init__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assing a quaternion
+!> assign a quaternion
 !---------------------------------------------------------------------------------------------------
 elemental pure subroutine assign_quat__(self,other)
 
   type(quaternion), intent(out) :: self
   type(quaternion), intent(in)  :: other
 
-  self%w = other%w
-  self%x = other%x
-  self%y = other%y
-  self%z = other%z
-
+  self = [other%w,other%x,other%y,other%z]
+  
 end subroutine assign_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assing a 4-vector
+!> assign a 4-vector
 !---------------------------------------------------------------------------------------------------
 pure subroutine assign_vec__(self,other)
 
@@ -183,67 +161,57 @@ end subroutine assign_vec__
 
 
 !---------------------------------------------------------------------------------------------------
-!> addition of two quaternions
+!> add a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function add__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
-  add__%w = self%w + other%w
-  add__%x = self%x + other%x
-  add__%y = self%y + other%y
-  add__%z = self%z + other%z
-
+  add__ = [ self%w,  self%x,  self%y ,self%z] &
+        + [other%w, other%x, other%y,other%z]
+  
 end function add__
 
 
 !---------------------------------------------------------------------------------------------------
-!> unary positive operator
+!> return (unary positive operator)
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function pos__(self)
 
   class(quaternion), intent(in) :: self
 
-  pos__%w = self%w
-  pos__%x = self%x
-  pos__%y = self%y
-  pos__%z = self%z
-
+  pos__ = self * (+1.0_pReal)
+  
 end function pos__
 
 
 !---------------------------------------------------------------------------------------------------
-!> subtraction of two quaternions
+!> subtract a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function sub__(self,other)
 
   class(quaternion), intent(in) :: self,other
 
-  sub__%w = self%w - other%w
-  sub__%x = self%x - other%x
-  sub__%y = self%y - other%y
-  sub__%z = self%z - other%z
-
+  sub__ = [ self%w,  self%x,  self%y ,self%z] &
+        - [other%w, other%x, other%y,other%z]
+  
 end function sub__
 
 
 !---------------------------------------------------------------------------------------------------
-!> unary positive operator
+!> negate (unary negative operator)
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function neg__(self)
 
   class(quaternion), intent(in) :: self
 
-  neg__%w = -self%w
-  neg__%x = -self%x
-  neg__%y = -self%y
-  neg__%z = -self%z
-
+  neg__ = self * (-1.0_pReal)
+  
 end function neg__
 
 
 !---------------------------------------------------------------------------------------------------
-!> multiplication of two quaternions
+!> multiply with a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function mul_quat__(self,other)
 
@@ -258,23 +226,20 @@ end function mul_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> multiplication of quaternions with scalar
+!> multiply with a scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function mul_scal__(self,scal)
 
   class(quaternion), intent(in) :: self
-  real(pReal), intent(in) :: scal
+  real(pReal),       intent(in) :: scal
 
-  mul_scal__%w = self%w*scal
-  mul_scal__%x = self%x*scal
-  mul_scal__%y = self%y*scal
-  mul_scal__%z = self%z*scal
-
+  mul_scal__ = [self%w,self%x,self%y,self%z]*scal
+  
 end function mul_scal__
 
 
 !---------------------------------------------------------------------------------------------------
-!> division of two quaternions
+!> divide by a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function div_quat__(self,other)
 
@@ -286,12 +251,12 @@ end function div_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> divisiont of quaternions by scalar
+!> divide by a scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function div_scal__(self,scal)
 
   class(quaternion), intent(in) :: self
-  real(pReal), intent(in) :: scal
+  real(pReal),       intent(in) :: scal
 
   div_scal__ = [self%w,self%x,self%y,self%z]/scal
 
@@ -299,7 +264,7 @@ end function div_scal__
 
 
 !---------------------------------------------------------------------------------------------------
-!> equality of two quaternions
+!> test equality
 !---------------------------------------------------------------------------------------------------
 logical elemental pure function eq__(self,other)
 
@@ -312,7 +277,7 @@ end function eq__
 
 
 !---------------------------------------------------------------------------------------------------
-!> inequality of two quaternions
+!> test inequality
 !---------------------------------------------------------------------------------------------------
 logical elemental pure function neq__(self,other)
 
@@ -324,20 +289,7 @@ end function neq__
 
 
 !---------------------------------------------------------------------------------------------------
-!> quaternion to the power of a scalar
-!---------------------------------------------------------------------------------------------------
-type(quaternion) elemental pure function pow_scal__(self,expon)
-
-  class(quaternion), intent(in) :: self
-  real(pReal), intent(in) :: expon
-
-  pow_scal__ = exp(log(self)*expon)
-
-end function pow_scal__
-
-
-!---------------------------------------------------------------------------------------------------
-!> quaternion to the power of a quaternion
+!> raise to the power of a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function pow_quat__(self,expon)
 
@@ -350,45 +302,60 @@ end function pow_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> exponential of a quaternion
-!> ToDo: Lacks any check for invalid operations
+!> raise to the power of a scalar
+!---------------------------------------------------------------------------------------------------
+type(quaternion) elemental pure function pow_scal__(self,expon)
+
+  class(quaternion), intent(in) :: self
+  real(pReal),       intent(in) :: expon
+
+  pow_scal__ = exp(log(self)*expon)
+
+end function pow_scal__
+
+
+!---------------------------------------------------------------------------------------------------
+!> take exponential
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function exp__(self)
 
   class(quaternion), intent(in) :: self
   real(pReal)                   :: absImag
 
-  absImag = norm2([self%x, self%y, self%z])
+  absImag = norm2(aimag(self))
 
-  exp__ = exp(self%w) * [                 cos(absImag), &
-                         self%x/absImag * sin(absImag), &
-                         self%y/absImag * sin(absImag), &
-                         self%z/absImag * sin(absImag)]
+  exp__ = merge(exp(self%w) * [                 cos(absImag), &
+                               self%x/absImag * sin(absImag), &
+                               self%y/absImag * sin(absImag), &
+                               self%z/absImag * sin(absImag)], &
+                IEEE_value(1.0_pReal,IEEE_SIGNALING_NAN), &
+                dNeq0(absImag))
 
 end function exp__
 
 
 !---------------------------------------------------------------------------------------------------
-!> logarithm of a quaternion
-!> ToDo: Lacks any check for invalid operations
+!> take logarithm
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function log__(self)
 
   class(quaternion), intent(in) :: self
   real(pReal)                   :: absImag
 
-  absImag = norm2([self%x, self%y, self%z])
+  absImag = norm2(aimag(self))
 
-  log__ = [log(abs(self)), &
-           self%x/absImag * acos(self%w/abs(self)), &
-           self%y/absImag * acos(self%w/abs(self)), &
-           self%z/absImag * acos(self%w/abs(self))]
+  log__ = merge([log(abs(self)), &
+                 self%x/absImag * acos(self%w/abs(self)), &
+                 self%y/absImag * acos(self%w/abs(self)), &
+                 self%z/absImag * acos(self%w/abs(self))], &
+                IEEE_value(1.0_pReal,IEEE_SIGNALING_NAN), &
+                dNeq0(absImag))
 
 end function log__
 
 
 !---------------------------------------------------------------------------------------------------
-!> norm of a quaternion
+!> return norm
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental pure function abs__(a)
 
@@ -400,7 +367,7 @@ end function abs__
 
 
 !---------------------------------------------------------------------------------------------------
-!> dot product of two quaternions
+!> calculate dot product
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental pure function dot_product__(a,b)
 
@@ -412,31 +379,31 @@ end function dot_product__
 
 
 !---------------------------------------------------------------------------------------------------
-!> conjugate complex of a quaternion
+!> take conjugate complex
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function conjg__(a)
 
   class(quaternion), intent(in) :: a
 
-  conjg__ = quaternion([a%w, -a%x, -a%y, -a%z])
+  conjg__ = [a%w, -a%x, -a%y, -a%z]
 
 end function conjg__
 
 
 !---------------------------------------------------------------------------------------------------
-!> homomorphed quaternion of a quaternion
+!> homomorph
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental pure function quat_homomorphed(self)
+type(quaternion) elemental pure function homomorphed(self)
 
   class(quaternion), intent(in) :: self
 
-  quat_homomorphed = quaternion(-[self%w,self%x,self%y,self%z])
+  homomorphed = - self
 
-end function quat_homomorphed
+end function homomorphed
 
 
 !---------------------------------------------------------------------------------------------------
-!> quaternion as plain array
+!> return as plain array
 !---------------------------------------------------------------------------------------------------
 pure function asArray(self)
 
@@ -449,7 +416,7 @@ end function asArray
 
 
 !---------------------------------------------------------------------------------------------------
-!> real part of a quaternion
+!> real part (scalar)
 !---------------------------------------------------------------------------------------------------
 pure function real__(self)
 
@@ -462,7 +429,7 @@ end function real__
 
 
 !---------------------------------------------------------------------------------------------------
-!> imaginary part of a quaternion
+!> imaginary part (3-vector)
 !---------------------------------------------------------------------------------------------------
 pure function aimag__(self)
 
@@ -474,46 +441,87 @@ pure function aimag__(self)
 end function aimag__
 
 
+!---------------------------------------------------------------------------------------------------
+!> inverse
+!---------------------------------------------------------------------------------------------------
+type(quaternion) elemental pure function inverse(self)
+
+  class(quaternion), intent(in) :: self
+
+  inverse = conjg(self)/abs(self)**2.0_pReal
+
+end function inverse
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of (some) quaternions functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 
   real(pReal), dimension(4) :: qu
-
   type(quaternion)          :: q, q_2
 
   call random_number(qu)
-  q = qu
+  qu = (qu-0.5_pReal) * 2.0_pReal
+  q  = quaternion(qu)
   
-  q_2 = q + q
-  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='add__')
-  
-  q_2 = q - q
-  if(any(dNeq0(q_2%asArray())))                     call IO_error(401,ext_msg='sub__')
-     
-  q_2 = q * 5.0_preal
-  if(any(dNeq(q_2%asArray(),5.0_pReal*qu)))         call IO_error(401,ext_msg='mul__')
-  
-  q_2 = q / 0.5_preal
-  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))         call IO_error(401,ext_msg='div__')
-    
-  q_2 = q
-  if(q_2 /= q)                                      call IO_error(401,ext_msg='eq__')
+  q_2= qu
+  if(any(dNeq(q%asArray(),q_2%asArray())))             call IO_error(401,ext_msg='assign_vec__')
 
-  if(any(dNeq(q%asArray(),qu)))                     call IO_error(401,ext_msg='eq__')
-  if(dNeq(q%real(),       qu(1)))                   call IO_error(401,ext_msg='real()')
-  if(any(dNeq(q%aimag(),  qu(2:4))))                call IO_error(401,ext_msg='aimag()')
+  q_2 = q + q
+  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))            call IO_error(401,ext_msg='add__')
+
+  q_2 = q - q
+  if(any(dNeq0(q_2%asArray())))                        call IO_error(401,ext_msg='sub__')
+
+  q_2 = q * 5.0_pReal
+  if(any(dNeq(q_2%asArray(),5.0_pReal*qu)))            call IO_error(401,ext_msg='mul__')
+
+  q_2 = q / 0.5_pReal
+  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))            call IO_error(401,ext_msg='div__')
   
+  q_2 = q * 0.3_pReal
+  if(dNeq0(abs(q)) .and. q_2 == q)                     call IO_error(401,ext_msg='eq__')
+  
+  q_2 = q
+  if(q_2 /= q)                                         call IO_error(401,ext_msg='neq__')
+
+  if(dNeq(abs(q),norm2(qu)))                           call IO_error(401,ext_msg='abs__')
+  if(dNeq(abs(q)**2.0_pReal, real(q*q%conjg()),1.0e-14_pReal)) &
+                                                       call IO_error(401,ext_msg='abs__/*conjg')
+
+  if(any(dNeq(q%asArray(),qu)))                        call IO_error(401,ext_msg='eq__')
+  if(dNeq(q%real(),       qu(1)))                      call IO_error(401,ext_msg='real()')
+  if(any(dNeq(q%aimag(),  qu(2:4))))                   call IO_error(401,ext_msg='aimag()')
+
   q_2 = q%homomorphed()
-  if(q                 /= q_2*    (-1.0_pReal))     call IO_error(401,ext_msg='homomorphed')
-  if(dNeq(q_2%real(),     qu(1)*  (-1.0_pReal)))    call IO_error(401,ext_msg='homomorphed/real')
-  if(any(dNeq(q_2%aimag(),qu(2:4)*(-1.0_pReal))))   call IO_error(401,ext_msg='homomorphed/aimag')
-  
+  if(q                 /= q_2*    (-1.0_pReal))        call IO_error(401,ext_msg='homomorphed')
+  if(dNeq(q_2%real(),     qu(1)*  (-1.0_pReal)))       call IO_error(401,ext_msg='homomorphed/real')
+  if(any(dNeq(q_2%aimag(),qu(2:4)*(-1.0_pReal))))      call IO_error(401,ext_msg='homomorphed/aimag')
+
   q_2 = conjg(q)
-  if(dNeq(q_2%real(),     q%real()))                call IO_error(401,ext_msg='conjg/real')
-  if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal)))) call IO_error(401,ext_msg='conjg/aimag')
-      
+  if(dNeq(abs(q),abs(q_2)))                            call IO_error(401,ext_msg='conjg/abs')
+  if(q /= conjg(q_2))                                  call IO_error(401,ext_msg='conjg/involution')
+  if(dNeq(q_2%real(),     q%real()))                   call IO_error(401,ext_msg='conjg/real')
+  if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal))))    call IO_error(401,ext_msg='conjg/aimag')
+  
+  if(abs(q) > 0.0_pReal) then
+    q_2 = q * q%inverse()
+    if(     dNeq(real(q_2), 1.0_pReal,1.0e-15_pReal))  call IO_error(401,ext_msg='inverse/real')
+    if(any(dNeq0(aimag(q_2),          1.0e-15_pReal))) call IO_error(401,ext_msg='inverse/aimag')
+    
+    q_2 = q/abs(q)
+    q_2 = conjg(q_2) - inverse(q_2)
+    if(any(dNeq0(q_2%asArray(),1.0e-15_pReal)))        call IO_error(401,ext_msg='inverse/conjg')
+  endif
+
+#if !(defined(__GFORTRAN__) &&  __GNUC__ < 9)
+  if (norm2(aimag(q)) > 0.0_pReal) then
+    if (dNeq0(abs(q-exp(log(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='exp/log')
+    if (dNeq0(abs(q-log(exp(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='log/exp')
+  endif
+#endif
+
 end subroutine unitTest
 
 

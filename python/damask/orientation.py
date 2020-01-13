@@ -170,9 +170,18 @@ class Rotation:
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
-    def asQuaternion(self):
-      """Unit quaternion: (q, p_1, p_2, p_3)."""
-      return self.quaternion.asArray()
+    def asQuaternion(self,
+                     quaternion = False):
+      """
+      Unit quaternion [q, p_1, p_2, p_3] unless quaternion == True: damask.quaternion object.
+
+      Parameters
+      ----------
+      quaternion : bool, optional
+          return quaternion as DAMASK object.
+      
+      """
+      return self.quaternion if quaternion else self.quaternion.asArray()
       
     def asEulers(self,
                  degrees = False):
@@ -190,33 +199,36 @@ class Rotation:
       return eu
     
     def asAxisAngle(self,
-                    degrees = False):
+                    degrees = False,
+                    pair = False):
       """
-      Axis angle pair: ([n_1, n_2, n_3], ω).
+      Axis angle representation [n_1, n_2, n_3, ω] unless pair == True: ([n_1, n_2, n_3], ω).
 
       Parameters
       ----------
       degrees : bool, optional
           return rotation angle in degrees.
+      pair : bool, optional
+          return tuple of axis and angle.
       
       """
       ax = qu2ax(self.quaternion.asArray())
       if degrees: ax[3] = np.degrees(ax[3])
-      return ax
+      return (ax[:3],np.degrees(ax[3])) if pair else ax
       
     def asMatrix(self):
       """Rotation matrix."""
       return qu2om(self.quaternion.asArray())
 
     def asRodrigues(self,
-                    vector=False):
+                    vector = False):
       """
-      Rodrigues-Frank vector: ([n_1, n_2, n_3], tan(ω/2)).
+      Rodrigues-Frank vector representation [n_1, n_2, n_3, tan(ω/2)] unless vector == True: [n_1, n_2, n_3] * tan(ω/2).
 
       Parameters
       ----------
       vector : bool, optional
-          return as array of length 3, i.e. scale the unit vector giving the rotation axis.
+          return as actual Rodrigues--Frank vector, i.e. rotation axis scaled by tan(ω/2).
 
       """
       ro = qu2ro(self.quaternion.asArray())
@@ -252,8 +264,8 @@ class Rotation:
                        acceptHomomorph = False,
                        P = -1):
 
-      qu = quaternion if isinstance(quaternion, np.ndarray) and quaternion.dtype == np.dtype(float) \
-                      else np.array(quaternion,dtype=float)
+      qu =   quaternion if isinstance(quaternion, np.ndarray) and quaternion.dtype == np.dtype(float) \
+                        else np.array(quaternion,dtype=float)
       if P > 0: qu[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if qu[0] < 0.0:
         if acceptHomomorph:
@@ -701,14 +713,14 @@ class Symmetry:
 
     v = np.array(vector,dtype=float)
     if proper:                                                                                      # check both improper ...
-      theComponents = np.dot(basis['improper'],v)
+      theComponents = np.around(np.dot(basis['improper'],v),12)
       inSST = np.all(theComponents >= 0.0)
       if not inSST:                                                                                 # ... and proper SST
-        theComponents = np.dot(basis['proper'],v)
+        theComponents = np.around(np.dot(basis['proper'],v),12)
         inSST = np.all(theComponents >= 0.0)
     else:      
       v[2] = abs(v[2])                                                                              # z component projects identical 
-      theComponents = np.dot(basis['improper'],v)                                                   # for positive and negative values
+      theComponents = np.around(np.dot(basis['improper'],v),12)                                     # for positive and negative values
       inSST = np.all(theComponents >= 0.0)
 
     if color:                                                                                       # have to return color array
@@ -875,7 +887,7 @@ class Lattice:
       [[ 17, 12,  5],[ 17,  7, 17]],
       [[  5, 17, 12],[ 17, 17,  7]],
       [[ 12, -5,-17],[  7,-17,-17]],
-      [[-17,-12,  5],[-17,  7, 17]]],dtype='float')}
+      [[-17,-12,  5],[-17,-7, 17]]],dtype='float')}
  
   # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
   # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006 
@@ -901,7 +913,7 @@ class Lattice:
       [[-17,-17,  7],[-17, -5, 12]],
       [[  7,-17,-17],[ 12,-17, -5]],
       [[ 17, -7,-17],[ 5, -12,-17]],
-      [[ 17,-17,  7],[ 17, -5,-12]],
+      [[ 17,-17, -7],[ 17, -5,-12]],
       [[ -7, 17,-17],[-12, 17, -5]],
       [[-17,  7,-17],[ -5, 12,-17]],
       [[-17, 17, -7],[-17,  5,-12]]],dtype='float'),
@@ -957,7 +969,7 @@ class Lattice:
       [[  2,  1, -1],[  0, -1,  1]],
       [[ -1, -2, -1],[  0, -1,  1]],
       [[ -1,  1,  2],[  0, -1,  1]],
-      [[ -1,  2,  1],[  0, -1,  1]],
+      [[  2, -1,  1],[  0, -1,  1]], #It is wrong in the paper, but matrix is correct
       [[ -1,  2,  1],[  0, -1,  1]],
       [[ -1, -1, -2],[  0, -1,  1]]],dtype='float')}
                
@@ -1025,7 +1037,7 @@ class Lattice:
     https://doi.org/10.1016/j.actamat.2004.11.021
 
     """
-    models={'KS':self.KS, 'GT':self.GT, "GT'":self.GTprime, 
+    models={'KS':self.KS, 'GT':self.GT, 'GT_prime':self.GTprime, 
             'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
     try:
       relationship = models[model]
@@ -1046,13 +1058,13 @@ class Lattice:
     for miller in np.hstack((relationship['planes'],relationship['directions'])):
       myPlane     = miller[myPlane_id]/    np.linalg.norm(miller[myPlane_id])
       myDir       = miller[myDir_id]/      np.linalg.norm(miller[myDir_id])
-      myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane]).T
+      myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane])
 
       otherPlane  = miller[otherPlane_id]/ np.linalg.norm(miller[otherPlane_id])
       otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
-      otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane]).T
+      otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
 
-      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix,myMatrix.T)))
+      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix.T,myMatrix)))
 
     return r
 
@@ -1126,10 +1138,9 @@ class Orientation:
     return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else r                          # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
-
-
   def inFZ(self):
     return self.lattice.symmetry.inFZ(self.rotation.asRodrigues(vector=True))
+
   
   def equivalentOrientations(self,members=[]):
     """List of orientations which are symmetrically equivalent."""
@@ -1144,7 +1155,8 @@ class Orientation:
   def relatedOrientations(self,model):
     """List of orientations related by the given orientation relationship."""
     r = self.lattice.relationOperations(model)
-    return [self.__class__(self.rotation*o,r['lattice']) for o in r['rotations']]
+    return [self.__class__(o*self.rotation,r['lattice']) for o in r['rotations']]
+
     
   def reduced(self):
     """Transform orientation to fall into fundamental zone according to symmetry."""
@@ -1152,7 +1164,8 @@ class Orientation:
       if self.lattice.symmetry.inFZ(me.rotation.asRodrigues(vector=True)): break
 
     return self.__class__(me.rotation,self.lattice)
-    
+   
+ 
   def inversePole(self,
                   axis,
                   proper = False,
@@ -1192,9 +1205,9 @@ class Orientation:
     ref = orientations[0]
     for o in orientations:
       closest.append(o.equivalentOrientations(
-                    ref.disorientation(o,
-                                       SST = False,                                                 # select (o[ther]'s) sym orientation
-                                       symmetries = True)[2]).rotation)                             # with lowest misorientation
+                     ref.disorientation(o,
+                                        SST = False,                                                # select (o[ther]'s) sym orientation
+                                        symmetries = True)[2]).rotation)                            # with lowest misorientation
 
     return Orientation(Rotation.fromAverage(closest,weights),ref.lattice)
 

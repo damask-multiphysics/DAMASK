@@ -87,10 +87,8 @@ subroutine CPFEM_initAll(el,ip)
      call math_init
      call rotations_init
      call FE_init
-#ifdef DAMASK_HDF5
      call HDF5_utilities_init
      call results_init
-#endif
      call mesh_init(ip, el)
      call lattice_init
      call material_init
@@ -374,7 +372,6 @@ subroutine CPFEM_results(inc,time)
   integer(pInt), intent(in) :: inc
   real(pReal),   intent(in) :: time
 
-#ifdef DAMASK_HDF5
   call results_openJobFile
   call results_addIncrement(inc,time)
   call constitutive_results
@@ -382,7 +379,6 @@ subroutine CPFEM_results(inc,time)
   call homogenization_results
   call results_removeLink('current') ! ToDo: put this into closeJobFile
   call results_closeJobFile
-#endif
 
 end subroutine CPFEM_results
 

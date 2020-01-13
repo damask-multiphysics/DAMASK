@@ -3,6 +3,8 @@ import re
 import pandas as pd
 import numpy as np
 
+from . import version
+
 class Table():
     """Store spreadsheet-like data."""
   
@@ -20,7 +22,7 @@ class Table():
             Additional, human-readable information.
         
         """
-        self.comments = [] if comments is None else [c for c in comments]
+        self.comments = ['table.py v {}'.format(version)] if not comments else [c for c in comments]
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
         self.__label_condensed()
@@ -69,13 +71,16 @@ class Table():
             f = open(fname)
         except TypeError:
             f = fname
+            f.seek(0)
 
         header,keyword = f.readline().split()
         if keyword == 'header':
             header = int(header)
         else:
             raise Exception
-        comments = [f.readline()[:-1] for i in range(1,header)]
+        
+        comments = ['table.py:from_ASCII v {}'.format(version)]
+        comments+= [f.readline()[:-1] for i in range(1,header)]
         labels   = f.readline().split()
        
         shapes = {}
@@ -95,9 +100,49 @@ class Table():
 
         return Table(data,shapes,comments)
 
+    @staticmethod
+    def from_ang(fname):
+        """
+        Create table from TSL ang file.
+
+        A valid TSL ang file needs to contains the following columns:
+        * Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
+        * Spatial position in meters, 2 floats, label 'pos'.
+        * Image quality, 1 float, label 'IQ'.
+        * Confidence index, 1 float, label 'CI'.
+        * Phase ID, 1 int, label 'ID'.
+        * SEM signal, 1 float, label 'intensity'.
+        * Fit, 1 float, label 'fit'.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            Filename or file for reading.
+
+        """
+        shapes = {'eu':(3,), 'pos':(2,),
+                  'IQ':(1,), 'CI':(1,), 'ID':(1,), 'intensity':(1,), 'fit':(1,)}
+        try:
+            f = open(fname)
+        except TypeError:
+            f = fname
+            f.seek(0)
+        
+        content = f.readlines()
+
+        comments = ['table.py:from_ang v {}'.format(version)]
+        for line in content:
+            if line.startswith('#'):
+                comments.append(line.strip())
+            else:
+                break
+       
+        data = np.loadtxt(content)
+
+        return Table(data,shapes,comments)
+
     @property
     def labels(self):
-        """Return the labels of all columns."""
         return list(self.shapes.keys())
 
 
@@ -203,7 +248,7 @@ class Table():
                                                  '' if info is None else ': {}'.format(info),
                                                  ))
 
-        self.shapes[label_new] = self.shapes.pop(label_old)
+        self.shapes = {(label if label is not label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
     def sort_by(self,labels,ascending=True):
@@ -234,8 +279,9 @@ class Table():
             Filename or file for reading.
 
         """
+        seen = set()
         labels = []
-        for l in self.shapes:
+        for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
             if(self.shapes[l] == (1,)):
                 labels.append('{}'.format(l))
             elif(len(self.shapes[l]) == 1):

@@ -85,14 +85,12 @@ subroutine plastic_isotropic_init
     NipcMyPhase, &
     sizeState, sizeDotState
  
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
- 
   integer(kind(undefined_ID)) :: &
     outputID
  
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
  
   write(6,'(/,a)')   ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'
@@ -181,8 +179,7 @@ subroutine plastic_isotropic_init
     sizeDotState = size(['xi               ','accumulated_shear'])
     sizeState = sizeDotState
  
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0, &
-                                       1,0,0)
+    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
  
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and aTolState
@@ -373,7 +370,6 @@ end subroutine plastic_isotropic_dotState
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_isotropic_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer, intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -388,10 +384,6 @@ subroutine plastic_isotropic_results(instance,group)
     end select
   enddo outputsLoop
   end associate
-#else
-  integer, intent(in) :: instance
-  character(len=*) :: group
-#endif
 
 end subroutine plastic_isotropic_results
 

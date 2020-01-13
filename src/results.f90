@@ -16,7 +16,6 @@ module results
   implicit none
   private
   
-#if defined(PETSc) || defined(DAMASK_HDF5)
   integer(HID_T) :: resultsFile
 
   interface results_writeDataset
@@ -70,7 +69,7 @@ subroutine results_init
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
   call HDF5_addAttribute(resultsFile,'DADF5_version_major',0)
-  call HDF5_addAttribute(resultsFile,'DADF5_version_minor',4)
+  call HDF5_addAttribute(resultsFile,'DADF5_version_minor',5)
   call HDF5_addAttribute(resultsFile,'DAMASK_version',DAMASKVERSION)
   call get_command(commandLine)
   call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
@@ -978,5 +977,4 @@ end subroutine results_mapping_materialpoint
 
 !end subroutine HDF5_mappingCells
 
-#endif
 end module results

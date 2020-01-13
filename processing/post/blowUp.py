@@ -55,7 +55,8 @@ for name in filenames:
                                     outname = os.path.join(os.path.dirname(name),
                                                            prefix+os.path.basename(name)) if name else name,
                                     buffered = False)
-  except: continue
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
@@ -82,7 +83,7 @@ for name in filenames:
   table.data_readArray(options.pos)
   table.data_rewind()
 
-  grid,size = damask.util.coordGridAndSize(table.data)
+  grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.data)
   
   packing = np.array(options.packing,'i')
   outSize = grid*packing

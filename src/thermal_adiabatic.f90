@@ -7,6 +7,7 @@ module thermal_adiabatic
   use config
   use numerics
   use material
+  use results
   use source_thermal_dissipation
   use source_thermal_externalheat
   use crystallite
@@ -14,22 +15,19 @@ module thermal_adiabatic
 
   implicit none
   private
- 
-  integer,                       dimension(:,:),  allocatable, target, public :: &
-    thermal_adiabatic_sizePostResult                                                                !< size of each post result output
-  character(len=64),             dimension(:,:),  allocatable, target, public :: &
-    thermal_adiabatic_output                                                                        !< name of each post result output
-    
-  integer,                       dimension(:),    allocatable, target, public :: &
-    thermal_adiabatic_Noutput                                                                       !< number of outputs per instance of this thermal model 
- 
+
   enum, bind(c) 
     enumerator :: undefined_ID, &
                   temperature_ID
   end enum
-  integer(kind(undefined_ID)),   dimension(:,:),  allocatable :: & 
-    thermal_adiabatic_outputID                                                                      !< ID of each post result output
- 
+  
+  type :: tParameters
+    integer(kind(undefined_ID)), dimension(:), allocatable :: &
+      outputID
+  end type tParameters
+  
+  type(tparameters),             dimension(:), allocatable :: &
+    param
  
   public :: &
     thermal_adiabatic_init, &
@@ -37,7 +35,7 @@ module thermal_adiabatic
     thermal_adiabatic_getSourceAndItsTangent, &
     thermal_adiabatic_getSpecificHeat, &
     thermal_adiabatic_getMassDensity, &
-    thermal_adiabatic_postResults
+    thermal_adiabatic_results
  
 contains
 
@@ -48,53 +46,45 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
  
-  integer :: maxNinstance,section,instance,i,sizeState,NofMyHomog   
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-  character(len=65536), dimension(:), allocatable :: outputs
+  integer :: maxNinstance,o,h,NofMyHomog   
+  character(len=pStringLen), dimension(:), allocatable :: outputs
  
-  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'; flush(6)
   
   maxNinstance = count(thermal_type == THERMAL_adiabatic_ID)
   if (maxNinstance == 0) return
   
-  allocate(thermal_adiabatic_sizePostResult (maxval(homogenization_Noutput),maxNinstance),source=0)
-  allocate(thermal_adiabatic_output         (maxval(homogenization_Noutput),maxNinstance))
-           thermal_adiabatic_output = ''
-  allocate(thermal_adiabatic_outputID       (maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
-  allocate(thermal_adiabatic_Noutput        (maxNinstance),                               source=0) 
- 
+  allocate(param(maxNinstance))
   
-  initializeInstances: do section = 1, size(thermal_type)
-    if (thermal_type(section) /= THERMAL_adiabatic_ID) cycle
-    NofMyHomog=count(material_homogenizationAt==section)
-    instance = thermal_typeInstance(section)
-    outputs = config_homogenization(section)%getStrings('(output)',defaultVal=emptyStringArray)
-    do i=1, size(outputs)
-      select case(outputs(i))
+  do h = 1, size(thermal_type)
+    if (thermal_type(h) /= THERMAL_adiabatic_ID) cycle
+    associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
+              
+    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
+    allocate(prm%outputID(0))
+
+    do o=1, size(outputs)
+      select case(outputs(o))
         case('temperature')
-              thermal_adiabatic_Noutput(instance) = thermal_adiabatic_Noutput(instance) + 1
-              thermal_adiabatic_outputID(thermal_adiabatic_Noutput(instance),instance) = temperature_ID
-              thermal_adiabatic_output(thermal_adiabatic_Noutput(instance),instance) = outputs(i)
-              thermal_adiabatic_sizePostResult(thermal_adiabatic_Noutput(instance),instance) = 1
+          prm%outputID = [prm%outputID, temperature_ID]
       end select
     enddo
+
+    NofMyHomog=count(material_homogenizationAt==h)
+    thermalState(h)%sizeState = 1
+    allocate(thermalState(h)%state0   (1,NofMyHomog), source=thermal_initialT(h))
+    allocate(thermalState(h)%subState0(1,NofMyHomog), source=thermal_initialT(h))
+    allocate(thermalState(h)%state    (1,NofMyHomog), source=thermal_initialT(h))
  
- ! allocate state arrays
-    sizeState = 1
-    thermalState(section)%sizeState = sizeState
-    thermalState(section)%sizePostResults = sum(thermal_adiabatic_sizePostResult(:,instance))
-    allocate(thermalState(section)%state0   (sizeState,NofMyHomog), source=thermal_initialT(section))
-    allocate(thermalState(section)%subState0(sizeState,NofMyHomog), source=thermal_initialT(section))
-    allocate(thermalState(section)%state    (sizeState,NofMyHomog), source=thermal_initialT(section))
- 
-    nullify(thermalMapping(section)%p)
-    thermalMapping(section)%p => mappingHomogenization(1,:,:)
-    deallocate(temperature(section)%p)
-    temperature(section)%p => thermalState(section)%state(1,:)
-    deallocate(temperatureRate(section)%p)
-    allocate  (temperatureRate(section)%p(NofMyHomog), source=0.0_pReal)
-      
-  enddo initializeInstances
+    nullify(thermalMapping(h)%p)
+    thermalMapping(h)%p => mappingHomogenization(1,:,:)
+    deallocate(temperature(h)%p)
+    temperature(h)%p => thermalState(h)%state(1,:)
+    deallocate(temperatureRate(h)%p)
+    allocate  (temperatureRate(h)%p(NofMyHomog), source=0.0_pReal)
+  
+    end associate
+  enddo
  
 end subroutine thermal_adiabatic_init
 
@@ -252,32 +242,26 @@ end function thermal_adiabatic_getMassDensity
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of thermal results
+!> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-function thermal_adiabatic_postResults(homog,instance,of) result(postResults)
- 
-  integer, intent(in) :: &
-    homog, &
-    instance, &
-    of
- 
-  real(pReal), dimension(sum(thermal_adiabatic_sizePostResult(:,instance))) :: &
-    postResults
- 
-  integer :: &
-    o, c
- 
-  c = 0
- 
-  do o = 1,thermal_adiabatic_Noutput(instance)
-     select case(thermal_adiabatic_outputID(o,instance))
+subroutine thermal_adiabatic_results(homog,group)
+
+  integer,          intent(in) :: homog
+  character(len=*), intent(in) :: group
+  integer :: o
   
-       case (temperature_ID)
-         postResults(c+1) = temperature(homog)%p(of)
-         c = c + 1
-     end select
-  enddo
- 
-end function thermal_adiabatic_postResults
+  associate(prm => param(damage_typeInstance(homog)))
+
+  outputsLoop: do o = 1,size(prm%outputID)
+    select case(prm%outputID(o))
+    
+      case (temperature_ID)
+        call results_writeDataset(group,temperature(homog)%p,'T',&
+                                  'temperature','K')
+    end select
+  enddo outputsLoop
+  end associate
+
+end subroutine thermal_adiabatic_results
 
 end module thermal_adiabatic

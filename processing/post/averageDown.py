@@ -65,7 +65,8 @@ for name in filenames:
                                     outname = os.path.join(os.path.dirname(name),
                                                            prefix+os.path.basename(name)) if name else name,
                                     buffered = False)
-  except: continue
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
@@ -95,7 +96,7 @@ for name in filenames:
   table.data_readArray()
 
   if (options.grid is None or options.size is None):
-    grid,size = damask.util.coordGridAndSize(table.data[:,table.label_indexrange(options.pos)])
+    grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.data[:,table.label_indexrange(options.pos)])
   else:
     grid   = np.array(options.grid,'i')
     size   = np.array(options.size,'d')

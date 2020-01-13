@@ -492,7 +492,7 @@ contains
 subroutine lattice_init
  
   integer :: Nphases
-  character(len=65536) :: &
+  character(len=pStringLen) :: &
     tag  = ''
   integer :: i,p
   real(pReal),  dimension(:), allocatable :: &

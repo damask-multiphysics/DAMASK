@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import vtk
@@ -40,48 +41,14 @@ parser.set_defaults(mode   = 'cell',
                    )
 
 (options, filenames) = parser.parse_args()
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    labeled  = True,
-                                    readonly = True,
-                                   )
-  except: continue
   damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
-
-  remarks = []
-  errors  = []
-  coordDim = table.label_dimension(options.pos)
-  if not 3 >= coordDim >= 1: errors.append('coordinates "{}" need to have one, two, or three dimensions.'.format(options.pos))
-  elif coordDim < 3:        remarks.append('appending {} dimension{} to coordinates "{}"...'.format(3-coordDim,
-                                                                                                    's' if coordDim < 2 else '',
-                                                                                                    options.pos))
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss=True)
-    continue
-
-# --------------- figure out size and grid ---------------------------------------------------------
-
-  table.data_readArray(options.pos)
-  if table.data.shape[1] < 3:
-    table.data = np.hstack((table.data,
-                            np.zeros((table.data.shape[0],
-                                      3-table.data.shape[1]),dtype='f')))                           # fill coords up to 3D with zeros
-
-  coords = [np.unique(table.data[:,i]) for i in range(3)]
-
+  coords = [np.unique(table.get(options.pos)[:,i]) for i in range(3)]
   if options.mode == 'cell':
     coords = [0.5 * np.array([3.0 * coords[i][0] - coords[i][0 + int(len(coords[i]) > 1)]] + \
                              [coords[i][j-1] + coords[i][j] for j in range(1,len(coords[i]))] + \
@@ -89,13 +56,6 @@ for name in filenames:
 
   grid = np.array(list(map(len,coords)),'i')
   N = grid.prod() if options.mode == 'point' else (grid-1).prod()
-
-  if N != len(table.data):
-    errors.append('data count {} does not match grid {}x{}x{}.'.format(N,*(grid - (options.mode == 'cell')) ))
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
 
 # ------------------------------------------ process data ---------------------------------------
 
@@ -135,5 +95,3 @@ for name in filenames:
   writer.Write()
 
   if name is None: sys.stdout.write(writer.GetOutputString())
-
-  table.close()
