@@ -181,7 +181,7 @@ def cell_coord(size,F,origin=np.zeros(3)):
     """
     return cell_coord0(F.shape[:3][::-1],size,origin) + cell_displacement(size,F)
 
-def cell_coord0_2_DNA(coord0,ordered=True):
+def cell_coord0_gridSizeOrigin(coord0,ordered=True):
     """
     Return grid 'DNA', i.e. grid, size, and origin from array of cell positions.
 
@@ -231,7 +231,7 @@ def coord0_check(coord0):
         array of undeformed cell coordinates.
 
     """
-    cell_coord0_2_DNA(coord0,ordered=True)
+    cell_coord0_gridSizeOrigin(coord0,ordered=True)
 
 
 
@@ -331,7 +331,7 @@ def node_2_cell(node_data):
   
     return c[:-1,:-1,:-1]
 
-def node_coord0_2_DNA(coord0,ordered=False):
+def node_coord0_gridSizeOrigin(coord0,ordered=False):
     """
     Return grid 'DNA', i.e. grid, size, and origin from array of nodal positions.
 
