@@ -13,6 +13,8 @@ module IO
   private
   character(len=*), parameter, public :: &
     IO_EOF = '#EOF#'                                                                                !< end of file string
+  character, parameter, public :: &
+    IO_EOL = new_line(' ')                                                                          !< end of line str
   character(len=*), parameter, private :: &
     IO_DIVIDER = '───────────────────'//&
                  '───────────────────'//&
@@ -21,9 +23,8 @@ module IO
   public :: &
     IO_init, &
     IO_read_ASCII, &
-    IO_open_file, &
+    IO_open_file, &                                                                                 ! deprecated, use IO_read_ASCII
     IO_open_jobFile_binary, &
-    IO_write_jobFile, &
     IO_isBlank, &
     IO_getTag, &
     IO_stringPos, &
@@ -43,14 +44,9 @@ module IO
     IO_countDataLines
 #elif defined(Marc4DAMASK)
     IO_fixedNoEFloatValue, &
-    IO_fixedIntValue, &
-    IO_countNumericalDataLines
+    IO_fixedIntValue
 #endif
 #endif
-
- private :: &
-   IO_verifyFloatValue, &
-   IO_verifyIntValue
 
 contains
 
@@ -103,7 +99,7 @@ function IO_read_ASCII(fileName) result(fileContent)
 ! count lines to allocate string array
   myTotalLines = 1
   do l=1, len(rawData)
-    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+    if (rawData(l:l) == IO_EOL) myTotalLines = myTotalLines+1
   enddo
   allocate(fileContent(myTotalLines))
 
@@ -113,7 +109,7 @@ function IO_read_ASCII(fileName) result(fileContent)
   startPos = 1
   l = 1
   do while (l <= myTotalLines)
-    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2,len(rawData),l /= myTotalLines)
+    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= myTotalLines)
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
@@ -248,7 +244,7 @@ subroutine IO_open_inputFile(fileUnit)
    
    
     do
-      read(unit2,'(A256)',END=220) line
+      read(unit2,'(A)',END=220) line
       chunkPos = IO_stringPos(line)
    
       if (IO_lc(IO_StringValue(line,chunkPos,1))=='*include') then
@@ -287,25 +283,6 @@ subroutine IO_open_inputFile(fileUnit)
 
 end subroutine IO_open_inputFile
 #endif
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens ASCII file to given unit for writing. File is named after solver job name plus
-!!        given extension and located in current working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_write_jobFile(fileUnit,ext)
-
-  integer,          intent(in) :: fileUnit                                                          !< file unit
-  character(len=*), intent(in) :: ext                                                               !< extension of file
-
-  integer                      :: myStat
-  character(len=1024)          :: path
-
-  path = trim(getSolverJobName())//'.'//ext
-  open(fileUnit,status='replace',iostat=myStat,file=path)
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-
-end subroutine IO_write_jobFile
 
 
 !--------------------------------------------------------------------------------------------------
@@ -406,7 +383,7 @@ function IO_stringValue(string,chunkPos,myChunk,silent)
   logical                                            :: warn
 
   if (present(silent)) then
-    warn = silent
+    warn = .not. silent
   else
     warn = .false.
   endif
@@ -436,11 +413,10 @@ real(pReal) function IO_floatValue (string,chunkPos,myChunk)
 
   valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
-  else  valuePresent
-    IO_floatValue = &
-                IO_verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
-                                        VALIDCHARACTERS,MYNAME)
-  endif  valuePresent
+  else valuePresent
+    IO_floatValue = verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+                                     VALIDCHARACTERS,MYNAME)
+  endif valuePresent
 
 end function IO_floatValue
 
@@ -461,7 +437,7 @@ integer function IO_intValue(string,chunkPos,myChunk)
   valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
   else valuePresent
-    IO_intValue = IO_verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
+    IO_intValue = verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
                                     VALIDCHARACTERS,MYNAME)
   endif valuePresent
 
@@ -487,13 +463,13 @@ real(pReal) function IO_fixedNoEFloatValue (string,ends,myChunk)
  
   pos_exp = scan(string(ends(myChunk)+1:ends(myChunk+1)),'+-',back=.true.)
   hasExponent: if (pos_exp > 1) then
-    base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk)+pos_exp-1))),&
-                                VALIDBASE,MYNAME//'(base): ')
-    expon = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1)))),&
-                                VALIDEXP,MYNAME//'(exp): ')
+    base  = verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk)+pos_exp-1))),&
+                             VALIDBASE,MYNAME//'(base): ')
+    expon = verifyIntValue(trim(adjustl(string(ends(myChunk)+pos_exp:ends(myChunk+1)))),&
+                           VALIDEXP,MYNAME//'(exp): ')
   else hasExponent
-    base  = IO_verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
-                                VALIDBASE,MYNAME//'(base): ')
+    base  = verifyFloatValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
+                             VALIDBASE,MYNAME//'(base): ')
     expon = 0
   endif hasExponent
   IO_fixedNoEFloatValue = base*10.0_pReal**real(expon,pReal)
@@ -512,7 +488,7 @@ integer function IO_fixedIntValue(string,ends,myChunk)
   character(len=*),      parameter  :: MYNAME = 'IO_fixedIntValue: '
   character(len=*),      parameter  :: VALIDCHARACTERS = '0123456789+-'
  
-  IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
+  IO_fixedIntValue = verifyIntValue(trim(adjustl(string(ends(myChunk)+1:ends(myChunk+1)))),&
                                        VALIDCHARACTERS,MYNAME)
 
 end function IO_fixedIntValue
@@ -552,8 +528,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   character(len=*), optional, intent(in) :: ext_msg
 
   external                               :: quit
-  character(len=1024)                    :: msg
-  character(len=1024)                    :: formatString
+  character(len=pStringLen)              :: msg
+  character(len=pStringLen)              :: formatString
 
   select case (error_ID)
 
@@ -572,14 +548,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'could not read file:'
     case (103)
       msg = 'could not assemble input files'
-    case (104)
-      msg = '{input} recursion limit reached'
-    case (105)
-      msg = 'unknown output:'
     case (106)
       msg = 'working directory does not exist:'
-    case (107)
-      msg = 'line length exceeds limit of 256'
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
@@ -799,8 +769,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   integer,          optional, intent(in) :: el,ip,g
   character(len=*), optional, intent(in) :: ext_msg
  
-  character(len=1024)                    :: msg
-  character(len=1024)                    :: formatString
+  character(len=pStringLen)              :: msg
+  character(len=pStringLen)              :: formatString
  
   select case (warning_ID)
     case (1)
@@ -946,38 +916,6 @@ end function IO_countDataLines
 #endif
 
 
-#ifdef Marc4DAMASK
-!--------------------------------------------------------------------------------------------------
-!> @brief count lines containig data up to next *keyword
-!--------------------------------------------------------------------------------------------------
-integer function IO_countNumericalDataLines(fileUnit)
-
-  integer, intent(in)                :: fileUnit                                                    !< file handle
- 
- 
-  integer, allocatable, dimension(:) :: chunkPos
-  character(len=pStringLen)          :: line, &
-                                        tmp
- 
-  IO_countNumericalDataLines = 0
-  line = ''
- 
-  do while (trim(line) /= IO_EOF)
-    line = IO_read(fileUnit)
-    chunkPos = IO_stringPos(line)
-    tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-    if (verify(trim(tmp),'0123456789') == 0) then                                                   ! numerical values
-      IO_countNumericalDataLines = IO_countNumericalDataLines + 1
-    else
-      exit
-    endif
-  enddo
-  backspace(fileUnit)
-
-end function IO_countNumericalDataLines
-#endif
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief count items in consecutive lines depending on lines
 !> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
@@ -1062,7 +1000,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
 #if defined(Marc4DAMASK)
  do
-   read(fileUnit,'(A256)',end=100) line
+   read(fileUnit,'(A)',end=100) line
    chunkPos = IO_stringPos(line)
    if (chunkPos(1) < 1) then                                                                        ! empty line
      exit
@@ -1103,14 +1041,14 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 ! check if the element values in the elset are auto generated
  backspace(fileUnit)
- read(fileUnit,'(A256)',end=100) line
+ read(fileUnit,'(A)',end=100) line
  chunkPos = IO_stringPos(line)
  do i = 1,chunkPos(1)
    if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
  enddo
 
  do l = 1,c
-   read(fileUnit,'(A256)',end=100) line
+   read(fileUnit,'(A)',end=100) line
    chunkPos = IO_stringPos(line)
    if (verify(IO_stringValue(line,chunkPos,1),'0123456789') > 0) then                               ! a non-int, i.e. set names follow on this line
      do i = 1,chunkPos(1)                                                                           ! loop over set names in line
@@ -1148,34 +1086,34 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
-integer function IO_verifyIntValue (string,validChars,myName)
+integer function verifyIntValue (string,validChars,myName)
  
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
                                   myName                                                            !< name of caller function (for debugging)
   integer                      :: readStatus, invalidWhere
  
-  IO_verifyIntValue = 0
+  verifyIntValue = 0
  
   invalidWhere = verify(string,validChars)
   if (invalidWhere == 0) then
-    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                     ! no offending chars found
+    read(UNIT=string,iostat=readStatus,FMT=*) verifyIntValue                                        ! no offending chars found
     if (readStatus /= 0) &                                                                          ! error during string to integer conversion
       call IO_warning(203,ext_msg=myName//'"'//string//'"')
   else
     call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyIntValue                   ! interpret remaining string
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) verifyIntValue                      ! interpret remaining string
     if (readStatus /= 0) &                                                                          ! error during string to integer conversion
       call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
   endif
  
-end function IO_verifyIntValue
+end function verifyIntValue
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_verifyFloatValue (string,validChars,myName)
+real(pReal) function verifyFloatValue (string,validChars,myName)
  
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
@@ -1183,20 +1121,20 @@ real(pReal) function IO_verifyFloatValue (string,validChars,myName)
  
   integer                      :: readStatus, invalidWhere
  
-  IO_verifyFloatValue = 0.0_pReal
+  verifyFloatValue = 0.0_pReal
  
   invalidWhere = verify(string,validChars)
   if (invalidWhere == 0) then
-    read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                   ! no offending chars found
+    read(UNIT=string,iostat=readStatus,FMT=*) verifyFloatValue                                      ! no offending chars found
     if (readStatus /= 0) &                                                                          ! error during string to float conversion
       call IO_warning(203,ext_msg=myName//'"'//string//'"')
   else
     call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) IO_verifyFloatValue                 ! interpret remaining string
+    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) verifyFloatValue                    ! interpret remaining string
     if (readStatus /= 0) &                                                                          ! error during string to float conversion
       call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
   endif
  
-end function IO_verifyFloatValue
+end function verifyFloatValue
 
 end module IO

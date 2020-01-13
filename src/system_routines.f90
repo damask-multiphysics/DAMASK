@@ -93,21 +93,24 @@ end function isDirectory
 !--------------------------------------------------------------------------------------------------
 !> @brief gets the current working directory
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function getCWD()
+function getCWD()
 
   character(kind=C_CHAR), dimension(1024) :: charArray                                              ! C string is an array
+  character(len=:),       allocatable     :: getCWD
   integer(C_INT) :: stat
   integer :: i
  
   call getCurrentWorkDir_C(charArray,stat)
+  
   if (stat /= 0_C_INT) then
     getCWD = 'Error occured when getting currend working directory'
   else
-    getCWD = repeat('',len(getCWD))
+    allocate(character(len=1024)::getCWD)
     arrayToString: do i=1,len(getCWD)
       if (charArray(i) /= C_NULL_CHAR) then
         getCWD(i:i)=charArray(i)
       else
+        getCWD = getCWD(:i-1)
         exit
       endif
     enddo arrayToString
@@ -119,21 +122,24 @@ end function getCWD
 !--------------------------------------------------------------------------------------------------
 !> @brief gets the current host name
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function getHostName()
+function getHostName()
 
   character(kind=C_CHAR), dimension(1024) :: charArray                                              ! C string is an array
+  character(len=:),       allocatable     :: getHostName
   integer(C_INT) :: stat
   integer :: i
  
   call getHostName_C(charArray,stat)
+
   if (stat /= 0_C_INT) then
     getHostName = 'Error occured when getting host name'
   else
-    getHostName = repeat('',len(getHostName))
+    allocate(character(len=1024)::getHostName)
     arrayToString: do i=1,len(getHostName)
       if (charArray(i) /= C_NULL_CHAR) then
         getHostName(i:i)=charArray(i)
       else
+        getHostName = getHostName(:i-1)
         exit
       endif
     enddo arrayToString

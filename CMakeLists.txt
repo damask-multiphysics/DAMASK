@@ -113,13 +113,11 @@ if (DAMASK_SOLVER STREQUAL "grid")
 elseif (DAMASK_SOLVER STREQUAL "fem" OR DAMASK_SOLVER STREQUAL "mesh")
     project (damask-mesh Fortran C)
     add_definitions (-DFEM)
-    message ("Building FEM Solver\n")
+    message ("Building Mesh Solver\n")
 else ()
     message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
-
-# set linker commands (needs to be done after defining the project)
-set (CMAKE_LINKER           "${PETSC_LINKER}")
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
   set (CMAKE_BUILD_TYPE "RELEASE")
@@ -168,9 +166,6 @@ add_definitions (-DDAMASKVERSION="${DAMASK_V}")
 # definition of other macros
 add_definitions (-DPETSc)
 
-set (DAMASK_INCLUDE_FLAGS "${DAMASK_INCLUDE_FLAGS} ${PETSC_INCLUDES}")
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   include(Compiler-Intel)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
@@ -183,14 +178,14 @@ endif ()
 
 
 set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
-set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
+set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${PETSC_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS}")
   set (CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif ()
 
-set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}   "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DAMASK_INCLUDE_FLAGS} ${BUILDCMD_POST}")
+set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}   "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
 set (CMAKE_Fortran_LINK_EXECUTABLE             "${CMAKE_Fortran_LINK_EXECUTABLE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${PETSC_EXTERNAL_LIB} ${BUILDCMD_POST}")
 
 message ("Fortran Compiler Flags:\n${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}}\n")

@@ -65,7 +65,7 @@ subroutine kinematics_cleavage_opening_init
 
   integer :: maxNinstance,p,instance
 
-  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'; flush(6)
 
   maxNinstance = count(phase_kinematics == KINEMATICS_cleavage_opening_ID)
   if (maxNinstance == 0) return

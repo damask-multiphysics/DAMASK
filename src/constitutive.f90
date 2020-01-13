@@ -11,7 +11,6 @@ module constitutive
   use config
   use material
   use results
-  use HDF5_utilities
   use lattice
   use discretization
   use plastic_none
@@ -587,11 +586,11 @@ subroutine constitutive_results
   character(len=pStringLen) :: group
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
-    call HDF5_closeGroup(results_addGroup(group))
+    call results_closeGroup(results_addGroup(group))
     
     group = trim(group)//'/plastic'
     
-    call HDF5_closeGroup(results_addGroup(group))  
+    call results_closeGroup(results_addGroup(group))  
     select case(phase_plasticity(p))
     
       case(PLASTICITY_ISOTROPIC_ID)

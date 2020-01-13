@@ -26,12 +26,12 @@ class TestGridFilters:
 
     @pytest.mark.parametrize('mode',[('cell'),('node')])
     def test_grid_DNA(self,mode):
-         """Ensure that xx_coord0_2_DNA is the inverse of xx_coord0."""
+         """Ensure that xx_coord0_gridSizeOrigin is the inverse of xx_coord0."""
          grid   = np.random.randint(8,32,(3))
          size   = np.random.random(3)
          origin = np.random.random(3)
          coord0 = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))                     # noqa
-         _grid,_size,_origin = eval('grid_filters.{}_coord0_2_DNA(coord0.reshape((-1,3)))'.format(mode))
+         _grid,_size,_origin = eval('grid_filters.{}_coord0_gridSizeOrigin(coord0.reshape((-1,3)))'.format(mode))
          assert np.allclose(grid,_grid) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
     def test_displacement_fluct_equivalence(self):

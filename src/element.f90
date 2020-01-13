@@ -39,7 +39,7 @@ module element
   integer, parameter, private :: &
     NELEMTYPE = 13
  
-  integer, dimension(NelemType), parameter, private :: NNODE = &
+  integer, dimension(NELEMTYPE), parameter, private :: NNODE = &
     [ &
         3, & ! 2D 3node 1ip
         6, & ! 2D 6node 3ip
@@ -57,7 +57,7 @@ module element
        20  & ! 3D 20node 27ip
     ]                                                                                               !< number of nodes that constitute a specific type of element
  
-  integer, dimension(NelemType), parameter, public :: GEOMTYPE = &
+  integer, dimension(NELEMTYPE), parameter, public :: GEOMTYPE = &
     [ &
         1, & 
         2, & 
@@ -74,8 +74,7 @@ module element
        10  & 
     ]                                                                                               !< geometry type of particular element type
  
-  !integer, dimension(maxval(geomType)), parameter, private :: NCELLNODE = &                        ! Intel 16.0 complains
-  integer, dimension(10), parameter, private :: NCELLNODE = &
+  integer, dimension(maxval(GEOMTYPE)), parameter, private :: NCELLNODE = &
     [ &
         3, &
         7, &
@@ -89,8 +88,7 @@ module element
        64  &
     ]                                                                                               !< number of cell nodes in a specific geometry type
  
-  !integer, dimension(maxval(geomType)), parameter, private :: NIP = &                              ! Intel 16.0 complains
-  integer, dimension(10), parameter, private :: NIP = &
+  integer, dimension(maxval(GEOMTYPE)), parameter, private :: NIP = &
     [ &
         1, & 
         3, & 
@@ -104,8 +102,7 @@ module element
        27  & 
     ]                                                                                               !< number of IPs in a specific geometry type
  
-  !integer, dimension(maxval(geomType)), parameter, private  :: CELLTYPE = &                        ! Intel 16.0 complains
-  integer, dimension(10), parameter, private  :: CELLTYPE = &
+  integer, dimension(maxval(GEOMTYPE)), parameter, private  :: CELLTYPE = &
     [ &
        1, & ! 2D 3node
        2, & ! 2D 4node
@@ -119,8 +116,7 @@ module element
        4  & ! 3D 8node
     ]                                                                                               !< cell type that is used by each geometry type
 
-  !integer, dimension(maxval(cellType)), parameter, private :: nIPNeighbor = &                      ! Intel 16.0 complains
-  integer, dimension(4), parameter, private :: NIPNEIGHBOR = &
+  integer, dimension(maxval(CELLTYPE)), parameter, private :: NIPNEIGHBOR = &
     [ &
        3, & ! 2D 3node
        4, & ! 2D 4node
@@ -128,8 +124,7 @@ module element
        6  & ! 3D 8node
     ]                                                                                               !< number of ip neighbors / cell faces in a specific cell type 
 
-  !integer, dimension(maxval(cellType)), parameter, private :: NCELLNODESPERCELLFACE = &            ! Intel 16.0 complains
-  integer, dimension(4), parameter, private :: NCELLNODEPERCELLFACE = &
+  integer, dimension(maxval(CELLTYPE)), parameter, private :: NCELLNODEPERCELLFACE = &
     [ &
        2, & ! 2D 3node
        2, & ! 2D 4node
@@ -137,8 +132,7 @@ module element
        4  & ! 3D 8node
     ]                                                                                               !< number of cell nodes in a specific cell type 
 
-  !integer, dimension(maxval(CELLTYPE)), parameter, private  :: NCELLNODEPERCELL = &                ! Intel 16.0 complains
-  integer, dimension(4), parameter, private :: NCELLNODEPERCELL = &
+  integer, dimension(maxval(CELLTYPE)), parameter, private  :: NCELLNODEPERCELL = &
     [ &
        3, & ! 2D 3node
        4, & ! 2D 4node

@@ -20,7 +20,6 @@ module mesh
  use FEsolving
  use FEM_Zoo
  use prec
- use mesh_base
  
  implicit none
  private
@@ -53,42 +52,12 @@ module mesh
  PetscInt, dimension(:), allocatable, public, protected :: &
    mesh_boundaries
 
-                       
-  type, public, extends(tMesh) :: tMesh_FEM
-
-   
-   contains
-   procedure, pass(self) :: tMesh_FEM_init
-   generic, public :: init => tMesh_FEM_init
- end type tMesh_FEM
- 
- type(tMesh_FEM), public, protected :: theMesh
- 
-
  public :: &
    mesh_init, &
    mesh_FEM_build_ipVolumes, &
    mesh_FEM_build_ipCoordinates
 
 contains
-
-subroutine tMesh_FEM_init(self,dimen,order,nodes)
- 
- integer, intent(in) :: dimen
- integer, intent(in) :: order
- real(pReal), intent(in), dimension(:,:) :: nodes
- class(tMesh_FEM) :: self
- 
- if (dimen == 2) then
-   if (order == 1) call  self%tMesh%init('mesh',1,nodes)
-   if (order == 2) call  self%tMesh%init('mesh',2,nodes)
- elseif(dimen == 3) then
-   if (order == 1) call self%tMesh%init('mesh',6,nodes)
-   if (order == 2) call self%tMesh%init('mesh',8,nodes)
- endif
-
- end subroutine tMesh_FEM_init
-
 
 
 !--------------------------------------------------------------------------------------------------
@@ -217,8 +186,6 @@ subroutine mesh_init
  forall (j = 1:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
  
  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
- call theMesh%init(dimplex,integrationOrder,mesh_node0)
- call theMesh%setNelems(mesh_NcpElems)
 
    call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &

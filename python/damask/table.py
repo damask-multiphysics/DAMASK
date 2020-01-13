@@ -22,7 +22,7 @@ class Table():
             Additional, human-readable information.
         
         """
-        self.comments = ['table.py v {}'.format(version)] if not comments else [c for c in comments]
+        self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
         self.__label_condensed()
@@ -77,10 +77,9 @@ class Table():
         if keyword == 'header':
             header = int(header)
         else:
-            raise Exception
-        
-        comments = ['table.py:from_ASCII v {}'.format(version)]
-        comments+= [f.readline()[:-1] for i in range(1,header)]
+            raise TypeError
+
+        comments = [f.readline()[:-1] for i in range(1,header)]
         labels   = f.readline().split()
        
         shapes = {}
@@ -138,8 +137,11 @@ class Table():
                 break
        
         data = np.loadtxt(content)
+        for c in range(data.shape[1]-10):
+            shapes['n/a_{}'.format(c+1)] = (1,)
 
         return Table(data,shapes,comments)
+
 
     @property
     def labels(self):
@@ -248,17 +250,17 @@ class Table():
                                                  '' if info is None else ': {}'.format(info),
                                                  ))
 
-        self.shapes = {(label if label is not label_old else label_new):self.shapes[label] for label in self.shapes}
+        self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
     def sort_by(self,labels,ascending=True):
         """
-        Get column data.
+        Sort table by values of given labels.
 
         Parameters
         ----------
         label : str or list
-            Column labels.
+            Column labels for sorting.
         ascending : bool or list, optional
             Set sort order.
 
@@ -267,6 +269,44 @@ class Table():
         self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
         self.__label_condensed()
         self.comments.append('sorted by [{}]'.format(', '.join(labels)))
+
+
+    def append(self,other):
+        """
+        Append other table vertically (similar to numpy.vstack).
+
+        Requires matching labels/shapes and order.
+
+        Parameters
+        ----------
+        other : Table
+            Table to append
+
+        """
+        if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
+            raise KeyError('Labels or shapes or order do not match')
+        else:
+            self.data = self.data.append(other.data,ignore_index=True)
+
+
+    def join(self,other):
+        """
+        Append other table horizontally (similar to numpy.hstack).
+
+        Requires matching number of rows and no common labels.
+
+        Parameters
+        ----------
+        other : Table
+            Table to join
+
+        """
+        if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
+            raise KeyError('Dublicated keys or row count mismatch')
+        else:
+            self.data = self.data.join(other.data)
+            for key in other.shapes:
+                self.shapes[key] = other.shapes[key]
 
 
     def to_ASCII(self,fname):
