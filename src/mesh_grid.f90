@@ -296,7 +296,7 @@ end subroutine readGeom
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Calculate undeformed position of IPs/cell centres (pretend to be an element)
+!> @brief Calculate undeformed position of IPs/cell centers (pretend to be an element)
 !---------------------------------------------------------------------------------------------------
 function IPcoordinates0(grid,geomSize,grid3Offset)
 

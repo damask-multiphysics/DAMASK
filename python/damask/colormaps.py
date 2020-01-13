@@ -328,9 +328,9 @@ class Color():
     Msh = np.zeros(3,'d')
     Msh[0] = np.sqrt(np.dot(self.color,self.color))
     if (Msh[0] > 0.001):
-      Msh[1] = np.acos(self.color[0]/Msh[0])
+      Msh[1] = np.arccos(self.color[0]/Msh[0])
       if (self.color[1] != 0.0):
-        Msh[2] = np.atan2(self.color[2],self.color[1])
+        Msh[2] = np.arctan2(self.color[2],self.color[1])
 
     converted = Color('MSH', Msh)
     self.model = converted.model

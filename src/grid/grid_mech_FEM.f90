@@ -53,7 +53,7 @@ module grid_mech_FEM
     F_aim_lastInc  = math_I3, &                                                                     !< previous average deformation gradient
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
  
-  character(len=1024), private :: incInfo                                                           !< time and increment information
+  character(len=pStringLen), private :: incInfo                                                     !< time and increment information
  
   real(pReal), private, dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 
@@ -81,7 +81,7 @@ contains
 subroutine grid_mech_FEM_init
     
   real(pReal) :: HGCoeff = 0.0e-2_pReal
-  PetscInt, dimension(worldsize) :: localK
+  PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   real(pReal), dimension(4,8) :: &
@@ -94,7 +94,6 @@ subroutine grid_mech_FEM_init
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   PetscErrorCode :: ierr
-  integer        :: rank
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName
   real(pReal), dimension(3,3,3,3) :: devNull
@@ -121,8 +120,8 @@ subroutine grid_mech_FEM_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,mech_snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(mech_snes,'mech_',ierr);CHKERRQ(ierr) 
-  localK              = 0
-  localK(worldrank+1) = grid3
+  localK            = 0
+  localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &

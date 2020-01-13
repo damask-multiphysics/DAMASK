@@ -880,7 +880,7 @@ class DADF5():
       else:
         
         nodes = vtk.vtkPoints()
-        with h5py.File(self.fname) as f:
+        with h5py.File(self.fname,'r') as f:
           nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
           
           vtk_geom = vtk.vtkUnstructuredGrid()

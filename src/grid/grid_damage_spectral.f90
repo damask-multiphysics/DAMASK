@@ -54,7 +54,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine grid_damage_spectral_init
     
-  PetscInt, dimension(worldsize) :: localK  
+  PetscInt, dimension(0:worldsize-1) :: localK  
   integer :: i, j, k, cell
   DM :: damage_grid
   Vec :: uBound, lBound
@@ -78,8 +78,8 @@ subroutine grid_damage_spectral_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,damage_snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(damage_snes,'damage_',ierr);CHKERRQ(ierr) 
-  localK              = 0
-  localK(worldrank+1) = grid3
+  localK            = 0
+  localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3D(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
