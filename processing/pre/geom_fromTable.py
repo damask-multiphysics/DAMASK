@@ -86,7 +86,7 @@ for name in filenames:
   if options.phase is None:
     table.data = np.column_stack((table.data,np.ones(len(table.data))))                             # add single phase if no phase column given
 
-  grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.data[:,0:3])
+  grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.data[:,0:3])
 
   indices  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # indices of position when sorting x fast, z slow
   microstructure = np.empty(grid,dtype = int)                                                       # initialize empty microstructure

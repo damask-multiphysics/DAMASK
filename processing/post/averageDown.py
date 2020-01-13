@@ -65,7 +65,7 @@ for name in filenames:
   table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   if (options.grid is None or options.size is None):
-    grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.get(options.pos))
+    grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
   else:
     grid   = np.array(options.grid,'i')
     size   = np.array(options.size,'d')

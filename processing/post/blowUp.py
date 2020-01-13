@@ -54,7 +54,7 @@ for name in filenames:
   damask.util.report(scriptName,name)
   
   table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  grid,size,origin = damask.grid_filters.cell_coord0_2_DNA(table.get(options.pos))
+  grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
   
   packing = np.array(options.packing,'i')
   outSize = grid*packing
