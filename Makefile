@@ -4,7 +4,7 @@ SHELL = /bin/sh
 ########################################################################################
 DAMASK_ROOT = $(shell python -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser('$(pwd)'))))")
 .PHONY: all
-all: grid mesh python processing
+all: grid mesh processing
 
 .PHONY: grid
 grid: build/grid
@@ -35,8 +35,3 @@ clean:
 .PHONY: processing
 processing:
 	@./installation/symlink_Processing.py ${MAKEFLAGS}
-
-.PHONY: python
-python:
-	@pip install --user ./python
-

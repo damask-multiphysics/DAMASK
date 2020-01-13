@@ -3,7 +3,7 @@ import os
 import re
 
 with open(os.path.join(os.path.dirname(__file__),'damask/VERSION')) as f:
-  version = re.sub(r'^v','',f.readline().strip())
+  version = re.sub(r'(-([^-]*)).*$',r'.\2',re.sub(r'^v(\d+\.\d+(\.\d+)?)',r'\1',f.readline().strip()))
 
 setuptools.setup(
     name="damask",
