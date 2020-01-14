@@ -26,7 +26,8 @@ class Rotation:
     Convention 4: Euler angle triplets are implemented using the Bunge convention,
                   with the angular ranges as [0, 2π],[0, π],[0, 2π].
     Convention 5: The rotation angle ω is limited to the interval [0, π].
-    Convention 6: P = -1 (as default).
+    Convention 6: the real part of a quaternion is positive, Re(q) > 0
+    Convention 7: P = -1 (as default).
     
     Usage
     -----
