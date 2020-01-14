@@ -3,7 +3,6 @@ import math
 import numpy as np
 
 from . import Lambert
-from .quaternion import Quaternion
 from .quaternion import P
 
 
@@ -49,10 +48,7 @@ class Rotation:
           Unit quaternion that follows the conventions. Use .fromQuaternion to perform a sanity check.
 
       """
-      if isinstance(quaternion,Quaternion):
-        self.quaternion = quaternion.copy()
-      else:
-        self.quaternion = Quaternion(q=quaternion[0],p=quaternion[1:4])
+      self.quaternion = quaternion.copy()
         
     def __copy__(self):
       """Copy."""
@@ -64,7 +60,7 @@ class Rotation:
     def __repr__(self):
       """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
       return '\n'.join([
-             '{}'.format(self.quaternion),
+             'Quaternion: (real={q:+.6f}, imag=<{p[0]:+.6f}, {p[1]:+.6f}, {p[2]:+.6f}>)'.format(*(self.quaternion)),
              'Matrix:\n{}'.format( '\n'.join(['\t'.join(list(map(str,self.asMatrix()[i,:]))) for i in range(3)]) ),
              'Bunge Eulers / deg: {}'.format('\t'.join(list(map(str,self.asEulers(degrees=True)))) ),
               ])
@@ -85,14 +81,20 @@ class Rotation:
 
       """
       if isinstance(other, Rotation):                                                               # rotate a rotation
-        return self.__class__(self.quaternion * other.quaternion).standardize()
+        self_q  = self.quaternion[0]
+        self_p  = self.quaternion[1:]
+        other_q = other.quaternion[0]
+        other_p = other.quaternion[1:]
+        r = np.append(self_q*other_q - np.dot(self_p,other_p),
+                      self_q*other_p + other_q*self_p + P * np.cross(self_p,other_p))
+        return __class__.fromQuaternion(r,acceptHomomorph=True)
       elif isinstance(other, np.ndarray):
         if other.shape == (3,):                                                                     # rotate a single (3)-vector
-          ( x, y, z) = self.quaternion.p
+          ( x, y, z) = self.quaternion[1:]
           (Vx,Vy,Vz) = other[0:3]
-          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
+          A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
           B = 2.0 * (x*Vx + y*Vy + z*Vz)
-          C = 2.0 * P*self.quaternion.q
+          C = 2.0 * P*self.quaternion[0]
 
           return np.array([
             A*Vx + B*x + C*(y*Vz - z*Vy),
@@ -106,11 +108,12 @@ class Rotation:
         else:
           return NotImplemented
       elif isinstance(other, tuple):                                                                # used to rotate a meshgrid-tuple
-          ( x, y, z) = self.quaternion.p
+          ( x, y, z) = self.quaternion[1:]
           (Vx,Vy,Vz) = other[0:3]
-          A = self.quaternion.q*self.quaternion.q - np.dot(self.quaternion.p,self.quaternion.p)
+          A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
           B = 2.0 * (x*Vx + y*Vy + z*Vz)
-          C = 2.0 * P*self.quaternion.q
+          C = 2.0 * P*self.quaternion[0]
+
 
           return np.array([
             A*Vx + B*x + C*(y*Vz - z*Vy),
@@ -123,7 +126,7 @@ class Rotation:
     
     def inverse(self):
       """In-place inverse rotation/backward rotation."""
-      self.quaternion.conjugate()
+      self.quaternion[1:] *= -1
       return self
       
     def inversed(self):
@@ -133,7 +136,7 @@ class Rotation:
 
     def standardize(self):
       """In-place quaternion representation with positive q."""
-      if self.quaternion.q < 0.0: self.quaternion.homomorph()
+      if self.quaternion[0] < 0.0: self.quaternion*=-1
       return self
 
     def standardized(self):
@@ -170,8 +173,7 @@ class Rotation:
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
-    def asQuaternion(self,
-                     quaternion = False):
+    def asQuaternion(self):
       """
       Unit quaternion [q, p_1, p_2, p_3] unless quaternion == True: damask.quaternion object.
 
@@ -181,7 +183,7 @@ class Rotation:
           return quaternion as DAMASK object.
       
       """
-      return self.quaternion if quaternion else self.quaternion.asArray()
+      return self.quaternion
       
     def asEulers(self,
                  degrees = False):
@@ -194,7 +196,7 @@ class Rotation:
           return angles in degrees.
 
       """
-      eu = qu2eu(self.quaternion.asArray())
+      eu = qu2eu(self.quaternion)
       if degrees: eu = np.degrees(eu)
       return eu
     
@@ -212,13 +214,13 @@ class Rotation:
           return tuple of axis and angle.
       
       """
-      ax = qu2ax(self.quaternion.asArray())
+      ax = qu2ax(self.quaternion)
       if degrees: ax[3] = np.degrees(ax[3])
       return (ax[:3],np.degrees(ax[3])) if pair else ax
       
     def asMatrix(self):
       """Rotation matrix."""
-      return qu2om(self.quaternion.asArray())
+      return qu2om(self.quaternion)
 
     def asRodrigues(self,
                     vector = False):
@@ -231,16 +233,16 @@ class Rotation:
           return as actual Rodrigues--Frank vector, i.e. rotation axis scaled by tan(ω/2).
 
       """
-      ro = qu2ro(self.quaternion.asArray())
+      ro = qu2ro(self.quaternion)
       return ro[:3]*ro[3] if vector else ro
   
     def asHomochoric(self):
       """Homochoric vector: (h_1, h_2, h_3)."""
-      return qu2ho(self.quaternion.asArray())
+      return qu2ho(self.quaternion)
          
     def asCubochoric(self):
       """Cubochoric vector: (c_1, c_2, c_3)."""
-      return qu2cu(self.quaternion.asArray())
+      return qu2cu(self.quaternion)
       
     def asM(self):
       """
@@ -252,7 +254,7 @@ class Rotation:
       https://doi.org/10.2514/1.28949
 
       """
-      return self.quaternion.asM()
+      return np.outer(self.quaternion,self.quaternion)
       
 
     ################################################################################################
@@ -264,7 +266,7 @@ class Rotation:
                        acceptHomomorph = False,
                        P = -1):
 
-      qu =   quaternion if isinstance(quaternion, np.ndarray) and quaternion.dtype == np.dtype(float) \
+      qu =   quaternion if isinstance(quaternion,np.ndarray) and quaternion.dtype == np.dtype(float) \
                         else np.array(quaternion,dtype=float)
       if P > 0: qu[1:4] *= -1                                                                       # convert from P=1 to P=-1
       if qu[0] < 0.0:
