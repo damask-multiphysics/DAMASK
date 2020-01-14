@@ -7,6 +7,7 @@ import numpy as np
 import damask
 from damask import Rotation
 from damask import Orientation
+from damask import Lattice
    
 n = 1000
 
@@ -68,6 +69,14 @@ class TestRotation:
         for direction in set(permutations(np.array(color['direction']))):
             assert np.allclose(cube.IPFcolor(direction),np.array(color['RGB']))
 
+    @pytest.mark.parametrize('lattice',Lattice.lattices)
+    def test_IPF(self,lattice):
+        direction = np.random.random(3)*2.0-1
+        for rot in [Rotation.fromRandom() for r in range(n//100)]:
+            R = damask.Orientation(rot,lattice)
+            color = R.IPFcolor(direction)
+            for equivalent in R.equivalentOrientations():
+                assert np.allclose(color,R.IPFcolor(direction))
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['fcc','bcc'])
