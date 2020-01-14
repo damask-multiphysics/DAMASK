@@ -85,21 +85,20 @@ class Rotation:
         self_p  = self.quaternion[1:]
         other_q = other.quaternion[0]
         other_p = other.quaternion[1:]
-        r = np.append(self_q*other_q - np.dot(self_p,other_p),
-                      self_q*other_p + other_q*self_p + P * np.cross(self_p,other_p))
-        return __class__.fromQuaternion(r,acceptHomomorph=True)
-      elif isinstance(other, np.ndarray):
-        if other.shape == (3,):                                                                     # rotate a single (3)-vector
-          ( x, y, z) = self.quaternion[1:]
-          (Vx,Vy,Vz) = other[0:3]
+        return __class__(np.append(self_q*other_q - np.dot(self_p,other_p),
+                                   self_q*other_p + other_q*self_p + P * np.cross(self_p,other_p))).standardize()
+      elif isinstance(other, (tuple,np.ndarray)):
+        if isinstance(other,tuple) or other.shape == (3,):                                          # rotate a single (3)-vector or meshgrid
           A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
-          B = 2.0 * (x*Vx + y*Vy + z*Vz)
+          B = 2.0 * (  self.quaternion[1]*other[0]
+                     + self.quaternion[2]*other[1]
+                     + self.quaternion[3]*other[2])
           C = 2.0 * P*self.quaternion[0]
 
           return np.array([
-            A*Vx + B*x + C*(y*Vz - z*Vy),
-            A*Vy + B*y + C*(z*Vx - x*Vz),
-            A*Vz + B*z + C*(x*Vy - y*Vx),
+            A*Vx + B*x + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
+            A*Vy + B*y + C*(self.quaternion[3]*other[0] - self.quaternion[1]*other[2]),
+            A*Vz + B*z + C*(self.quaternion[1]*other[1] - self.quaternion[2]*other[0]),
             ])
         elif other.shape == (3,3,):                                                                 # rotate a single (3x3)-matrix
            return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
@@ -107,19 +106,6 @@ class Rotation:
           raise NotImplementedError
         else:
           return NotImplemented
-      elif isinstance(other, tuple):                                                                # used to rotate a meshgrid-tuple
-          ( x, y, z) = self.quaternion[1:]
-          (Vx,Vy,Vz) = other[0:3]
-          A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
-          B = 2.0 * (x*Vx + y*Vy + z*Vz)
-          C = 2.0 * P*self.quaternion[0]
-
-
-          return np.array([
-            A*Vx + B*x + C*(y*Vz - z*Vy),
-            A*Vy + B*y + C*(z*Vx - x*Vz),
-            A*Vz + B*z + C*(x*Vy - y*Vx),
-            ])
       else:
         return NotImplemented
         
