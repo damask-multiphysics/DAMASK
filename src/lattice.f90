@@ -371,7 +371,7 @@ module lattice
        1,-1, 1,     -2,-1, 1, &
       -1, 1, 1,     -1,-2, 1, &
        1, 1, 1,      1,-2, 1  &
-       ],pReal),[ 3 + 3,LATTICE_BCT_NSLIP])                                                         !< slip systems for bct sorted by Bieler
+       ],pReal),shape(LATTICE_BCT_SYSTEMSLIP))                                                      !< slip systems for bct sorted by Bieler
   
 !--------------------------------------------------------------------------------------------------
 ! isotropic
@@ -387,7 +387,7 @@ module lattice
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),[ 3 + 3,LATTICE_ISO_NCLEAVAGE])
+      ],pReal),shape(LATTICE_ISO_SYSTEMCLEAVAGE))
  
  
 !--------------------------------------------------------------------------------------------------
@@ -404,7 +404,7 @@ module lattice
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
        1, 0, 0,     0, 0, 1  &
-      ],pReal),[ 3 + 3,LATTICE_ORT_NCLEAVAGE])
+      ],pReal),shape(LATTICE_ORT_SYSTEMCLEAVAGE))
  
  
  
@@ -483,21 +483,22 @@ module lattice
     lattice_slip_normal, &
     lattice_slip_direction, &
     lattice_slip_transverse, &
-    lattice_labels_slip
+    lattice_labels_slip, &
+    lattice_labels_twin
  
 contains
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
  
-  integer :: Nphases
-  character(len=65536) :: &
+  integer :: Nphases, p
+  character(len=pStringLen) :: &
     tag  = ''
-  integer :: i,p
+  real(pReal) :: CoverA
   real(pReal),  dimension(:), allocatable :: &
-    temp, &
-    CoverA                                                                                          !< c/a ratio for low symmetry type lattice
+    temp
  
   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
  
@@ -515,14 +516,12 @@ subroutine lattice_init
   allocate(lattice_specificHeat           (    Nphases), source=0.0_pReal)
   allocate(lattice_referenceTemperature   (    Nphases), source=300.0_pReal)
  
-  allocate(lattice_mu(Nphases),       source=0.0_pReal)
-  allocate(lattice_nu(Nphases),       source=0.0_pReal)
+  allocate(lattice_mu(Nphases), source=0.0_pReal)
+  allocate(lattice_nu(Nphases), source=0.0_pReal)
  
  
   allocate(lattice_Scleavage(3,3,3,lattice_maxNcleavage,Nphases),source=0.0_pReal)
   allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0)
- 
-  allocate(CoverA(Nphases),source=0.0_pReal)
  
   do p = 1, size(config_phase)
     tag = config_phase(p)%getString('lattice_structure')
@@ -553,7 +552,7 @@ subroutine lattice_init
     lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
  
  
-    CoverA(p) = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
+    CoverA = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
  
     lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
     lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
@@ -573,14 +572,12 @@ subroutine lattice_init
     lattice_DamageDiffusion33(2,2,p) = config_phase(p)%getFloat( 'damage_diffusion22',defaultVal=0.0_pReal)
     lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
-  enddo
  
-  do i = 1,Nphases
-    if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
-        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131,el=i)                       ! checking physical significance of c/a
-    if ((CoverA(i) > 2.0_pReal) &
-        .and. lattice_structure(i) == LATTICE_bct_ID) call IO_error(131,el=i)                       ! checking physical significance of c/a
-    call lattice_initializeStructure(i, CoverA(i))
+    if ((CoverA < 1.0_pReal .or. CoverA > 2.0_pReal) &
+        .and. lattice_structure(p) == LATTICE_hex_ID) call IO_error(131,el=p)                       ! checking physical significance of c/a
+    if ((CoverA > 2.0_pReal) &
+        .and. lattice_structure(p) == LATTICE_bct_ID) call IO_error(131,el=p)                       ! checking physical significance of c/a
+    call lattice_initializeStructure(p, CoverA)
   enddo
  
 end subroutine lattice_init
@@ -1955,7 +1952,7 @@ function lattice_labels_slip(Nslip,structure) result(labels)
   if (any(Nslip < 0)) &
     call IO_error(144,ext_msg='Nslip '//trim(structure))
  
-  labels = getLabels(Nslip,NslipMax,slipSystems,structure)
+  labels = getLabels(Nslip,NslipMax,slipSystems)
  
 end function lattice_labels_slip
 
@@ -1996,7 +1993,7 @@ function lattice_labels_twin(Ntwin,structure) result(labels)
   if (any(Ntwin < 0)) &
     call IO_error(144,ext_msg='Ntwin '//trim(structure))
  
-  labels = getLabels(Ntwin,NtwinMax,twinSystems,structure)
+  labels = getLabels(Ntwin,NtwinMax,twinSystems)
  
 end function lattice_labels_twin
 
@@ -2119,8 +2116,8 @@ end function buildInteraction
 function buildCoordinateSystem(active,potential,system,structure,cOverA)
  
   integer, dimension(:), intent(in) :: &
-    active, &
-    potential
+    active, &                                                                                       !< # of active systems per family
+    potential                                                                                       !< # of potential systems per family
   real(pReal), dimension(:,:), intent(in) :: &
     system
   character(len=*),            intent(in) :: &
@@ -2311,14 +2308,13 @@ end subroutine buildTransformationSystem
 !--------------------------------------------------------------------------------------------------
 !> @brief select active systems as strings
 !--------------------------------------------------------------------------------------------------
-function getlabels(active,potential,system,structure) result(labels)
+function getlabels(active,potential,system) result(labels)
  
-  integer,     dimension(:),   intent(in) :: &
-    active, &
-    potential
-  real(pReal), dimension(:,:), intent(in) :: &
+  integer,          dimension(:),   intent(in) :: &
+    active, &                                                                                       !< # of active systems per family
+    potential                                                                                       !< # of potential systems per family
+  real(pReal),      dimension(:,:), intent(in) :: &
     system
-  character(len=*),            intent(in) :: structure                                              !< lattice structure
 
   character(len=:), dimension(:), allocatable :: labels
   character(len=:),               allocatable :: label
@@ -2340,15 +2336,16 @@ function getlabels(active,potential,system,structure) result(labels)
       p = sum(potential(1:f-1))+s
       
       i = 1
-      label(i:i) = merge('[','<',structure(1:3) /= 'bct')
+      label(i:i) = '['
       direction: do j = 1, size(system,1)/2
         write(label(i+1:i+2),"(I2.1)") int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
       enddo direction
       label(i:i) = ']'
+      
       i = i +1
-      label(i:i) = merge('(','{',structure(1:3) /= 'bct')
+      label(i:i) = '('
       normal: do j = size(system,1)/2+1, size(system,1)
         write(label(i+1:i+2),"(I2.1)") int(system(j,p))
         label(i+3:i+3) = ' '

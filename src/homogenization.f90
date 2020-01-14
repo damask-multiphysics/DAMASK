@@ -23,7 +23,6 @@ module homogenization
   use damage_local
   use damage_nonlocal
   use results
-  use HDF5_utilities
  
   implicit none
   private
@@ -36,12 +35,6 @@ module homogenization
     materialpoint_P                                                                                 !< first P--K stress of IP
   real(pReal),   dimension(:,:,:,:,:,:), allocatable, public ::  &
     materialpoint_dPdF                                                                              !< tangent of first P--K stress at IP
-  real(pReal),   dimension(:,:,:),       allocatable, public :: &
-    materialpoint_results                                                                           !< results array of material point
-  integer,                                            public, protected  :: &
-    materialpoint_sizeResults, &
-    thermal_maxSizePostResults, &
-    damage_maxSizePostResults
 
   real(pReal),   dimension(:,:,:,:),     allocatable :: &
     materialpoint_subF0, &                                                                          !< def grad of IP at beginning of homogenization increment
@@ -126,7 +119,6 @@ module homogenization
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
-    materialpoint_postResults, &
     homogenization_results
 
 contains
@@ -136,14 +128,6 @@ contains
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
-
-  integer, parameter :: FILEUNIT = 200
-  integer :: e,i,p
-  integer, dimension(:,:), pointer :: thisSize
-  integer, dimension(:)  , pointer :: thisNoutput
-  character(len=64), dimension(:,:), pointer :: thisOutput
-  character(len=32) :: outputName                                                                   !< name of output, intermediate fix until HDF5 output is ready
-  logical :: valid
 
   if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
   if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call mech_isostrain_init
@@ -156,80 +140,6 @@ subroutine homogenization_init
   if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
   if (any(damage_type == DAMAGE_local_ID))     call damage_local_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
-
-!--------------------------------------------------------------------------------------------------
-! write description file for homogenization output
-  mainProcess: if (worldrank == 0) then
-    call IO_write_jobFile(FILEUNIT,'outputHomogenization')
-    do p = 1,size(config_homogenization)
-      if (any(material_homogenizationAt == p)) then
-        write(FILEUNIT,'(/,a,/)')  '['//trim(config_name_homogenization(p))//']'
-        write(FILEUNIT,'(a)') '(type) n/a'
-        write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-        
-        i = thermal_typeInstance(p)                                                                 ! which instance of this thermal type
-        valid = .true.                                                                              ! assume valid
-        select case(thermal_type(p))                                                                ! split per thermal type
-          case (THERMAL_isothermal_ID)
-            outputName = THERMAL_isothermal_label
-            thisNoutput => null()
-            thisOutput => null()
-            thisSize   => null()
-          case (THERMAL_adiabatic_ID)
-            outputName = THERMAL_adiabatic_label
-            thisNoutput => thermal_adiabatic_Noutput
-            thisOutput => thermal_adiabatic_output
-            thisSize   => thermal_adiabatic_sizePostResult
-          case (THERMAL_conduction_ID)
-            outputName = THERMAL_conduction_label
-            thisNoutput => thermal_conduction_Noutput
-            thisOutput => thermal_conduction_output
-            thisSize   => thermal_conduction_sizePostResult
-          case default
-            valid = .false.
-        end select
-        if (valid) then
-          write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
-          if (thermal_type(p) /= THERMAL_isothermal_ID) then
-            do e = 1,thisNoutput(i)
-              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-            enddo
-          endif
-        endif
-        
-        i = damage_typeInstance(p)                                                                  ! which instance of this damage type
-        valid = .true.                                                                              ! assume valid
-        select case(damage_type(p))                                                                 ! split per damage type
-          case (DAMAGE_none_ID)
-            outputName = DAMAGE_none_label
-            thisNoutput => null()
-            thisOutput => null()
-            thisSize   => null()
-          case (DAMAGE_local_ID)
-            outputName = DAMAGE_local_label
-            thisNoutput => damage_local_Noutput
-            thisOutput => damage_local_output
-            thisSize   => damage_local_sizePostResult
-          case (DAMAGE_nonlocal_ID)
-            outputName = DAMAGE_nonlocal_label
-            thisNoutput => damage_nonlocal_Noutput
-            thisOutput => damage_nonlocal_output
-            thisSize   => damage_nonlocal_sizePostResult
-          case default
-            valid = .false.
-        end select
-        if (valid) then
-          write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
-          if (damage_type(p) /= DAMAGE_none_ID) then
-            do e = 1,thisNoutput(i)
-              write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-            enddo
-          endif
-        endif
-      endif
-    enddo
-    close(FILEUNIT)
-  endif mainProcess
 
   call config_deallocate('material.config/homogenization')
 
@@ -250,23 +160,7 @@ subroutine homogenization_init
   allocate(materialpoint_converged(discretization_nIP,discretization_nElem),          source=.true.)
   allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
 
-!--------------------------------------------------------------------------------------------------
-! allocate and initialize global state and postresutls variables
-  thermal_maxSizePostResults        = 0
-  damage_maxSizePostResults         = 0
-  do p = 1,size(config_homogenization)
-    thermal_maxSizePostResults      = max(thermal_maxSizePostResults, thermalState(p)%sizePostResults)
-    damage_maxSizePostResults       = max(damage_maxSizePostResults,  damageState (p)%sizePostResults)
-  enddo
-
-  materialpoint_sizeResults = 1 &                                                                   ! grain count
-                            + 1 + thermal_maxSizePostResults        &
-                                + damage_maxSizePostResults         &
-                            + homogenization_maxNgrains * (  1 &     ! crystallite size
-                                                           + 1 + constitutive_source_maxSizePostResults)
-  allocate(materialpoint_results(materialpoint_sizeResults,discretization_nIP,discretization_nElem))
-
-  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'; flush(6)
 
   if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
     write(6,'(a32,1x,7(i8,1x))')   'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
@@ -583,52 +477,6 @@ end subroutine materialpoint_stressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief parallelized calculation of result array at material points
-!--------------------------------------------------------------------------------------------------
-subroutine materialpoint_postResults
-
-  integer :: &
-    thePos, &
-    theSize, &
-    myNgrains, &
-    g, &                                                                                            !< grain number
-    i, &                                                                                            !< integration point number
-    e                                                                                               !< element number
-
-  !$OMP PARALLEL DO PRIVATE(myNgrains,thePos,theSize)
-  elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
-    IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-      thePos = 0
-
-      theSize = thermalState     (material_homogenizationAt(e))%sizePostResults &
-              + damageState      (material_homogenizationAt(e))%sizePostResults
-      materialpoint_results(thePos+1,i,e) = real(theSize,pReal)                                    ! tell size of homogenization results
-      thePos = thePos + 1
-
-      if (theSize > 0) then                                                                         ! any homogenization results to mention?
-        materialpoint_results(thePos+1:thePos+theSize,i,e) = postResults(i,e)
-        thePos = thePos + theSize
-      endif
-
-      materialpoint_results(thePos+1,i,e) = real(myNgrains,pReal)                                   ! tell number of grains at materialpoint
-      thePos = thePos + 1
-
-      grainLooping :do g = 1,myNgrains
-        theSize = 1 + &
-                  1 + &
-                  sum(sourceState(material_phaseAt(g,e))%p(:)%sizePostResults)
-        materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
-        thePos = thePos + theSize
-      enddo grainLooping
-    enddo IpLooping
-  enddo elementLooping
- !$OMP END PARALLEL DO
-
-end subroutine materialpoint_postResults
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief  partition material point def grad onto constituents
 !--------------------------------------------------------------------------------------------------
 subroutine partitionDeformation(ip,el)
@@ -740,89 +588,57 @@ end subroutine averageStressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of homogenization results for post file inclusion. call only,
-!> if homogenization_sizePostResults(i,e) > 0 !!
-!--------------------------------------------------------------------------------------------------
-function postResults(ip,el)
-
- integer, intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
- real(pReal), dimension(  thermalState     (material_homogenizationAt(el))%sizePostResults &
-                        + damageState      (material_homogenizationAt(el))%sizePostResults) :: &
-   postResults
- integer :: &
-   startPos, endPos ,&
-   homog
-
-
- postResults = 0.0_pReal
- startPos = 1
- endPos   = thermalState(material_homogenizationAt(el))%sizePostResults
- chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
-
-   case (THERMAL_adiabatic_ID) chosenThermal
-     homog = material_homogenizationAt(el)
-     postResults(startPos:endPos) = &
-       thermal_adiabatic_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
-   case (THERMAL_conduction_ID) chosenThermal
-     homog = material_homogenizationAt(el)
-     postResults(startPos:endPos) = &
-       thermal_conduction_postResults(homog,thermal_typeInstance(homog),thermalMapping(homog)%p(ip,el))
-
- end select chosenThermal
-
- startPos = endPos + 1
- endPos   = endPos + damageState(material_homogenizationAt(el))%sizePostResults
- chosenDamage: select case (damage_type(material_homogenizationAt(el)))
-
-   case (DAMAGE_local_ID) chosenDamage
-     postResults(startPos:endPos) = damage_local_postResults(ip, el)
-   case (DAMAGE_nonlocal_ID) chosenDamage
-     postResults(startPos:endPos) = damage_nonlocal_postResults(ip, el)
-     
- end select chosenDamage
-
-end function postResults
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_results
-#if defined(PETSc) || defined(DAMASK_HDF5)
   use material, only: &
     material_homogenization_type => homogenization_type
     
   integer :: p
-  character(len=256) :: group
+  character(len=pStringLen) :: group_base,group
   
   !real(pReal), dimension(:,:,:), allocatable :: temp
                                              
   do p=1,size(config_name_homogenization)
-    group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))
-    call HDF5_closeGroup(results_addGroup(group))
+    group_base = 'current/materialpoint/'//trim(config_name_homogenization(p))
+    call results_closeGroup(results_addGroup(group_base))
     
-    group = trim(group)//'/mech'
-    
-    call HDF5_closeGroup(results_addGroup(group))  
-    select case(material_homogenization_type(p))
-      case(HOMOGENIZATION_rgc_ID)
-        call mech_RGC_results(homogenization_typeInstance(p),group)
-    end select
-    
-    group = trim('current/materialpoint')//'/'//trim(config_name_homogenization(p))//'/generic'
-    call HDF5_closeGroup(results_addGroup(group))
-    
+    group = trim(group_base)//'/generic'
+    call results_closeGroup(results_addGroup(group))
     !temp = reshape(materialpoint_F,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'F',&
     !                          'deformation gradient','1')  
     !temp = reshape(materialpoint_P,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'P',&
     !                          '1st Piola-Kirchoff stress','Pa')  
+    
+    group = trim(group_base)//'/mech'
+    call results_closeGroup(results_addGroup(group))
+    select case(material_homogenization_type(p))
+      case(HOMOGENIZATION_rgc_ID)
+        call mech_RGC_results(homogenization_typeInstance(p),group)
+    end select
 
- enddo   
-#endif
+    group = trim(group_base)//'/damage'
+    call results_closeGroup(results_addGroup(group))
+    select case(damage_type(p))
+      case(DAMAGE_LOCAL_ID)
+        call damage_local_results(p,group)
+      case(DAMAGE_NONLOCAL_ID)
+        call damage_nonlocal_results(p,group)
+    end select
+    
+    group = trim(group_base)//'/thermal'
+    call results_closeGroup(results_addGroup(group))
+    select case(thermal_type(p))
+      case(THERMAL_ADIABATIC_ID)
+        call thermal_adiabatic_results(p,group)
+      case(THERMAL_CONDUCTION_ID)
+        call thermal_conduction_results(p,group)
+    end select
+    
+ enddo
+
 end subroutine homogenization_results
 
 end module homogenization

@@ -7,22 +7,20 @@
 module grid_mech_FEM
 #include <petsc/finclude/petscsnes.h>
 #include <petsc/finclude/petscdmda.h>
-  use DAMASK_interface
-  use HDF5_utilities
   use PETScdmda
   use PETScsnes
+
   use prec
-  use CPFEM2
-  use IO
-  use debug
+  use DAMASK_interface
+  use HDF5_utilities
+  use math
+  use spectral_utilities
   use FEsolving
   use numerics
   use homogenization
-  use DAMASK_interface
-  use spectral_utilities
   use discretization
   use mesh_grid
-  use math
+  use debug
  
   implicit none
   private
@@ -52,10 +50,10 @@ module grid_mech_FEM
     F_aimDot = 0.0_pReal, &                                                                         !< assumed rate of average deformation gradient
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastIter = math_I3, &
-    F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
+    F_aim_lastInc  = math_I3, &                                                                     !< previous average deformation gradient
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
  
-  character(len=1024), private :: incInfo                                                           !< time and increment information
+  character(len=pStringLen), private :: incInfo                                                     !< time and increment information
  
   real(pReal), private, dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 
@@ -82,8 +80,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_FEM_init
     
-  real(pReal) :: HGCoeff = 0e-2_pReal
-  PetscInt, dimension(:), allocatable :: localK
+  real(pReal) :: HGCoeff = 0.0e-2_pReal
+  PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   real(pReal), dimension(4,8) :: &
@@ -96,7 +94,6 @@ subroutine grid_mech_FEM_init
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   PetscErrorCode :: ierr
-  integer        :: rank
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName
   real(pReal), dimension(3,3,3,3) :: devNull
@@ -123,10 +120,9 @@ subroutine grid_mech_FEM_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,mech_snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(mech_snes,'mech_',ierr);CHKERRQ(ierr) 
-  allocate(localK(worldsize), source = 0); localK(worldrank+1) = grid3
-  do rank = 1, worldsize
-    call MPI_Bcast(localK(rank),1,MPI_INTEGER,rank-1,PETSC_COMM_WORLD,ierr)
-  enddo  
+  localK            = 0
+  localK(worldrank) = grid3
+  call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, &
          DMDA_STENCIL_BOX, &
@@ -476,8 +472,7 @@ subroutine formResidual(da_local,x_local, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
-            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
+    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))

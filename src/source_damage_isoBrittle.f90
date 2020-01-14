@@ -12,16 +12,13 @@ module source_damage_isoBrittle
   use discretization
   use material
   use config
+  use results
 
   implicit none
   private
-  integer,                       dimension(:),           allocatable,         public, protected :: &
+  integer,                       dimension(:),           allocatable :: &
     source_damage_isoBrittle_offset, &
     source_damage_isoBrittle_instance
-  integer,                       dimension(:,:),         allocatable, target, public :: &
-    source_damage_isoBrittle_sizePostResult
-  character(len=64),             dimension(:,:),         allocatable, target, public :: &
-    source_damage_isoBrittle_output
 
   enum, bind(c) 
     enumerator :: &
@@ -46,7 +43,7 @@ module source_damage_isoBrittle
     source_damage_isoBrittle_init, &
     source_damage_isoBrittle_deltaState, &
     source_damage_isoBrittle_getRateAndItsTangent, &
-    source_damage_isoBrittle_postResults
+    source_damage_isoBrittle_Results
 
 contains
 
@@ -59,16 +56,15 @@ subroutine source_damage_isoBrittle_init
 
   integer :: Ninstance,phase,instance,source,sourceOffset
   integer :: NofMyPhase,p,i   
-  character(len=65536), dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer(kind(undefined_ID)) :: &
     outputID
  
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
   
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
  
   Ninstance = count(phase_source == SOURCE_damage_isoBrittle_ID)
   if (Ninstance == 0) return
@@ -85,10 +81,6 @@ subroutine source_damage_isoBrittle_init
         source_damage_isoBrittle_offset(phase) = source
     enddo    
   enddo
-    
-  allocate(source_damage_isoBrittle_sizePostResult(maxval(phase_Noutput),Ninstance),source=0)
-  allocate(source_damage_isoBrittle_output(maxval(phase_Noutput),Ninstance))
-           source_damage_isoBrittle_output = ''
  
   allocate(param(Ninstance))
   
@@ -122,8 +114,6 @@ subroutine source_damage_isoBrittle_init
       select case(outputs(i))
       
         case ('isobrittle_drivingforce')
-          source_damage_isoBrittle_sizePostResult(i,source_damage_isoBrittle_instance(p)) = 1
-          source_damage_isoBrittle_output(i,source_damage_isoBrittle_instance(p)) = outputs(i)
           prm%outputID = [prm%outputID, damage_drivingforce_ID]
             
       end select
@@ -139,7 +129,6 @@ subroutine source_damage_isoBrittle_init
    sourceOffset = source_damage_isoBrittle_offset(phase)
       
    call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1,1,1)
-   sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_isoBrittle_sizePostResult(:,instance))
    sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
   
   enddo
@@ -214,35 +203,29 @@ subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiD
                       - sourceState(phase)%p(sourceOffset)%state(1,constituent)
   
 end subroutine source_damage_isoBrittle_getRateAndItsTangent
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief return array of local damage results
-!--------------------------------------------------------------------------------------------------
-function source_damage_isoBrittle_postResults(phase, constituent)
 
-  integer, intent(in) :: &
-    phase, &
-    constituent
-  real(pReal), dimension(sum(source_damage_isoBrittle_sizePostResult(:, &
-                          source_damage_isoBrittle_instance(phase)))) :: &
-    source_damage_isoBrittle_postResults
 
-  integer :: &
-    instance, sourceOffset, o, c
-    
-  instance = source_damage_isoBrittle_instance(phase)
+!--------------------------------------------------------------------------------------------------
+!> @brief writes results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine source_damage_isoBrittle_results(phase,group)
+
+  integer, intent(in) :: phase
+  character(len=*), intent(in) :: group 
+  integer :: sourceOffset, o, instance
+   
+  instance     = source_damage_isoBrittle_instance(phase)
   sourceOffset = source_damage_isoBrittle_offset(phase)
 
-  c = 0
-
-  do o = 1,size(param(instance)%outputID)
-     select case(param(instance)%outputID(o))
+   associate(prm => param(instance), stt => sourceState(phase)%p(sourceOffset)%state)
+   outputsLoop: do o = 1,size(prm%outputID)
+     select case(prm%outputID(o))
        case (damage_drivingforce_ID)
-         source_damage_isoBrittle_postResults(c+1) = sourceState(phase)%p(sourceOffset)%state(1,constituent)
-         c = c + 1
-
+         call results_writeDataset(group,stt,'tbd','driving force','tbd')
      end select
-  enddo
-end function source_damage_isoBrittle_postResults
+   enddo outputsLoop
+   end associate
+
+end subroutine source_damage_isoBrittle_results
 
 end module source_damage_isoBrittle

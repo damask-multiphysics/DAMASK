@@ -10,32 +10,24 @@ module geometry_plastic_nonlocal
   use results
 
   implicit none
-  private
+  public
   
-  integer, public, protected :: &
+  integer, protected :: &
     geometry_plastic_nonlocal_nIPneighbors
   
-  integer,     dimension(:,:,:,:), allocatable, public, protected :: &
+  integer,     dimension(:,:,:,:), allocatable, protected :: &
     geometry_plastic_nonlocal_IPneighborhood                                                        !< 6 or less neighboring IPs as [element ID, IP ID, face ID that point to me]
 
-  real(pReal), dimension(:,:),     allocatable, public, protected :: &
+  real(pReal), dimension(:,:),     allocatable, protected :: &
     geometry_plastic_nonlocal_IPvolume0                                                             !< volume associated with IP (initially!)
  
-  real(pReal), dimension(:,:,:),   allocatable, public, protected :: &
+  real(pReal), dimension(:,:,:),   allocatable, protected :: &
     geometry_plastic_nonlocal_IParea0                                                               !< area of interface to neighboring IP (initially!)
   
-  real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
+  real(pReal), dimension(:,:,:,:), allocatable, protected :: &
     geometry_plastic_nonlocal_IPareaNormal0                                                         !< area normal of interface to neighboring IP (initially!)
   
 
-  public :: &
-    geometry_plastic_nonlocal_setIPneighborhood, &
-    geometry_plastic_nonlocal_setIPvolume, &
-    geometry_plastic_nonlocal_setIParea, &
-    geometry_plastic_nonlocal_setIPareaNormal, &
-    geometry_plastic_nonlocal_results, &
-    geometry_plastic_nonlocal_disable
-    
 contains
 
 !---------------------------------------------------------------------------------------------------
@@ -96,7 +88,7 @@ end subroutine geometry_plastic_nonlocal_setIPareaNormal
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Frees memory used by variables only needed by plastic_nonlocal
+!> @brief Free memory used by variables only needed by plastic_nonlocal
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_disable
 
@@ -116,13 +108,12 @@ end subroutine geometry_plastic_nonlocal_disable
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Writes geometry data to results file
+!> @brief Write geometry data to results file
 !---------------------------------------------------------------------------------------------------
 subroutine geometry_plastic_nonlocal_results
   
   integer,     dimension(:),   allocatable :: shp
 
-#if defined(PETSc) || defined(DAMASK_HDF5)
   call results_openJobFile
 
   writeVolume: block
@@ -151,7 +142,6 @@ subroutine geometry_plastic_nonlocal_results
 
 
   call results_closeJobFile
-#endif
   
 end subroutine geometry_plastic_nonlocal_results
 

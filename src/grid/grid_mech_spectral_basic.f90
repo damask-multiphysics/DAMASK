@@ -15,13 +15,11 @@ module grid_mech_spectral_basic
   use HDF5_utilities
   use math
   use spectral_utilities
-  use IO
   use FEsolving
   use config
   use numerics
   use homogenization
   use mesh_grid
-  use CPFEM2
   use debug
 
   implicit none
@@ -57,7 +55,7 @@ module grid_mech_spectral_basic
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
 
-  character(len=1024), private :: incInfo                                                           !< time and increment information 
+  character(len=pStringLen), private :: incInfo                                                     !< time and increment information 
   real(pReal), private, dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
@@ -284,7 +282,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
-    !--------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                         ! calculate F_aimDot from given L and current F
       F_aimDot = &
@@ -364,7 +362,7 @@ subroutine grid_mech_spectral_basic_restartWrite
   if (num%update_gamma) call utilities_saveReferenceStiffness
 
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
-  
+
 end subroutine grid_mech_spectral_basic_restartWrite
 
 
@@ -440,8 +438,7 @@ subroutine formResidual(in, F, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') &
-            trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))

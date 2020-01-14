@@ -398,22 +398,22 @@ pure function math_exp33(A,n)
   real(pReal), dimension(3,3), intent(in) :: A
   real(pReal), dimension(3,3) :: B, math_exp33
   real(pReal) :: invFac
-  integer     :: order
-
-  B = math_I3                                                                                       ! init
-  invFac = 1.0_pReal                                                                                ! 0!
-  math_exp33 = B                                                                                    ! A^0 = eye2
+  integer     :: n_
 
   if (present(n)) then
-    order = n
+    n_ = n
   else
-    order = 5
+    n_ = 5
   endif
-  
-  do i = 1, order
-    invFac = invFac/real(i,pReal)                                                                   ! invfac = 1/i!
+
+  invFac     = 1.0_pReal                                                                            ! 0!
+  B          = math_I3
+  math_exp33 = math_I3                                                                              ! A^0 = I
+
+  do i = 1, n_
+    invFac = invFac/real(i,pReal)                                                                   ! invfac = 1/(i!)
     B = matmul(B,A)
-    math_exp33 = math_exp33 + invFac*B                                                              ! exp = SUM (A^i)/i!
+    math_exp33 = math_exp33 + invFac*B                                                              ! exp = SUM (A^i)/(i!)
   enddo
 
 end function math_exp33
@@ -489,8 +489,8 @@ function math_invSym3333(A)
   real(pReal), dimension(6*(64+2)) :: work
   logical                          :: error
   external :: &
-   dgetrf, &
-   dgetri
+    dgetrf, &
+    dgetri
 
   temp66 = math_sym3333to66(A)
   call dgetrf(6,6,temp66,6,ipiv6,ierr)
@@ -519,8 +519,8 @@ subroutine math_invert(InvA, error, A)
   real(pReal), dimension(size(A,1)*(64+2)) :: work
   integer                                  :: ierr
   external :: &
-   dgetrf, &
-   dgetri
+    dgetrf, &
+    dgetri
 
   invA = A 
   call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
@@ -882,16 +882,20 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
   real(pReal), intent(in), optional ::  width                                                       ! width of considered values as multiples of standard deviation
   real(pReal), dimension(2) ::          rnd                                                         ! random numbers
   real(pReal) ::                        scatter, &                                                  ! normalized scatter around meanvalue
-                                        myWidth
+                                        width_
 
   if (abs(stddev) < tol_math_check) then
     math_sampleGaussVar = meanvalue
   else
-    myWidth = merge(width,3.0_pReal,present(width))                                                 ! use +-3*sigma as default value for scatter if not given
-   
+    if (present(width)) then
+      width_ = width
+    else
+      width_ = 3.0_pReal                                                                            ! use +-3*sigma as default scatter
+    endif
+
     do
       call random_number(rnd)
-      scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
+      scatter = width_ * (2.0_pReal * rnd(1) - 1.0_pReal)
       if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) exit                                    ! test if scattered value is drawn
     enddo
 

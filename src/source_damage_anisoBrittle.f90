@@ -13,19 +13,14 @@ module source_damage_anisoBrittle
   use discretization
   use config
   use lattice
+  use results
 
   implicit none
   private
 
-  integer,                       dimension(:),           allocatable,         public, protected :: &
+  integer,                       dimension(:),           allocatable :: &
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
     source_damage_anisoBrittle_instance                                                             !< instance of source mechanism
-
-  integer,                       dimension(:,:),         allocatable, target, public  :: &
-    source_damage_anisoBrittle_sizePostResult                                                       !< size of each post result output
-
-  character(len=64),             dimension(:,:),         allocatable, target, public  :: &
-    source_damage_anisoBrittle_output                                                               !< name of each post result output
     
   integer,                       dimension(:,:),         allocatable :: &
     source_damage_anisoBrittle_Ncleavage                                                            !< number of cleavage systems per family
@@ -61,7 +56,7 @@ module source_damage_anisoBrittle
     source_damage_anisoBrittle_init, &
     source_damage_anisoBrittle_dotState, &
     source_damage_anisobrittle_getRateAndItsTangent, &
-    source_damage_anisoBrittle_postResults
+    source_damage_anisoBrittle_results
 
 contains
 
@@ -74,17 +69,15 @@ subroutine source_damage_anisoBrittle_init
 
   integer :: Ninstance,phase,instance,source,sourceOffset
   integer :: NofMyPhase,p   ,i
-  integer,              dimension(0), parameter :: emptyIntArray    = [integer::]
-  character(len=65536), dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
   integer(kind(undefined_ID)) :: &
     outputID
 
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
 
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_source == SOURCE_damage_anisoBrittle_ID)
   if (Ninstance == 0) return
@@ -102,10 +95,6 @@ subroutine source_damage_anisoBrittle_init
     enddo    
   enddo
   
-  allocate(source_damage_anisoBrittle_sizePostResult(maxval(phase_Noutput),Ninstance), source=0)
-  allocate(source_damage_anisoBrittle_output(maxval(phase_Noutput),Ninstance))
-           source_damage_anisoBrittle_output = ''
-
   allocate(source_damage_anisoBrittle_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0)
 
   allocate(param(Ninstance))
@@ -154,8 +143,6 @@ subroutine source_damage_anisoBrittle_init
       select case(outputs(i))
       
         case ('anisobrittle_drivingforce')
-          source_damage_anisoBrittle_sizePostResult(i,source_damage_anisoBrittle_instance(p)) = 1
-          source_damage_anisoBrittle_output(i,source_damage_anisoBrittle_instance(p)) = outputs(i)
           prm%outputID = [prm%outputID, damage_drivingforce_ID]
 
       end select
@@ -171,7 +158,6 @@ subroutine source_damage_anisoBrittle_init
 
 
     call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1,1,0)
-    sourceState(phase)%p(sourceOffset)%sizePostResults = sum(source_damage_anisoBrittle_sizePostResult(:,instance))
     sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
 
 
@@ -262,39 +248,30 @@ subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalph
   
   dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
  
-end subroutine source_damage_anisobrittle_getRateAndItsTangent
+end subroutine source_damage_anisoBrittle_getRateAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return array of local damage results
+!> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-function source_damage_anisoBrittle_postResults(phase, constituent)
+subroutine source_damage_anisoBrittle_results(phase,group)
 
-  integer, intent(in) :: &
-    phase, &
-    constituent
-
-  real(pReal), dimension(sum(source_damage_anisoBrittle_sizePostResult(:, &
-                           source_damage_anisoBrittle_instance(phase)))) :: &
-    source_damage_anisoBrittle_postResults
-
-  integer :: &
-    instance, sourceOffset, o, c
-    
-  instance = source_damage_anisoBrittle_instance(phase)
+  integer, intent(in) :: phase
+  character(len=*), intent(in) :: group 
+  integer :: sourceOffset, o, instance
+   
+  instance     = source_damage_anisoBrittle_instance(phase)
   sourceOffset = source_damage_anisoBrittle_offset(phase)
 
-  c = 0
-
-  do o = 1,size(param(instance)%outputID)
-     select case(param(instance)%outputID(o))
+   associate(prm => param(instance), stt => sourceState(phase)%p(sourceOffset)%state)
+   outputsLoop: do o = 1,size(prm%outputID)
+     select case(prm%outputID(o))
        case (damage_drivingforce_ID)
-         source_damage_anisoBrittle_postResults(c+1) = &
-           sourceState(phase)%p(sourceOffset)%state(1,constituent)
-         c = c + 1
-
+         call results_writeDataset(group,stt,'tbd','driving force','tbd')
      end select
-  enddo
-end function source_damage_anisoBrittle_postResults
+   enddo outputsLoop
+   end associate
+
+end subroutine source_damage_anisoBrittle_results
 
 end module source_damage_anisoBrittle

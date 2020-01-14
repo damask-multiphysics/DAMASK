@@ -3,6 +3,8 @@ import re
 import pandas as pd
 import numpy as np
 
+from . import version
+
 class Table():
     """Store spreadsheet-like data."""
   
@@ -69,12 +71,14 @@ class Table():
             f = open(fname)
         except TypeError:
             f = fname
+            f.seek(0)
 
         header,keyword = f.readline().split()
         if keyword == 'header':
             header = int(header)
         else:
-            raise Exception
+            raise TypeError
+
         comments = [f.readline()[:-1] for i in range(1,header)]
         labels   = f.readline().split()
        
@@ -95,9 +99,52 @@ class Table():
 
         return Table(data,shapes,comments)
 
+    @staticmethod
+    def from_ang(fname):
+        """
+        Create table from TSL ang file.
+
+        A valid TSL ang file needs to contains the following columns:
+        * Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
+        * Spatial position in meters, 2 floats, label 'pos'.
+        * Image quality, 1 float, label 'IQ'.
+        * Confidence index, 1 float, label 'CI'.
+        * Phase ID, 1 int, label 'ID'.
+        * SEM signal, 1 float, label 'intensity'.
+        * Fit, 1 float, label 'fit'.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            Filename or file for reading.
+
+        """
+        shapes = {'eu':(3,), 'pos':(2,),
+                  'IQ':(1,), 'CI':(1,), 'ID':(1,), 'intensity':(1,), 'fit':(1,)}
+        try:
+            f = open(fname)
+        except TypeError:
+            f = fname
+            f.seek(0)
+        
+        content = f.readlines()
+
+        comments = ['table.py:from_ang v {}'.format(version)]
+        for line in content:
+            if line.startswith('#'):
+                comments.append(line.strip())
+            else:
+                break
+       
+        data = np.loadtxt(content)
+        for c in range(data.shape[1]-10):
+            shapes['n/a_{}'.format(c+1)] = (1,)
+
+        return Table(data,shapes,comments)
+
+
     @property
     def labels(self):
-        """Return the labels of all columns."""
         return list(self.shapes.keys())
 
 
@@ -203,17 +250,17 @@ class Table():
                                                  '' if info is None else ': {}'.format(info),
                                                  ))
 
-        self.shapes[label_new] = self.shapes.pop(label_old)
+        self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
     def sort_by(self,labels,ascending=True):
         """
-        Get column data.
+        Sort table by values of given labels.
 
         Parameters
         ----------
         label : str or list
-            Column labels.
+            Column labels for sorting.
         ascending : bool or list, optional
             Set sort order.
 
@@ -222,6 +269,44 @@ class Table():
         self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
         self.__label_condensed()
         self.comments.append('sorted by [{}]'.format(', '.join(labels)))
+
+
+    def append(self,other):
+        """
+        Append other table vertically (similar to numpy.vstack).
+
+        Requires matching labels/shapes and order.
+
+        Parameters
+        ----------
+        other : Table
+            Table to append
+
+        """
+        if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
+            raise KeyError('Labels or shapes or order do not match')
+        else:
+            self.data = self.data.append(other.data,ignore_index=True)
+
+
+    def join(self,other):
+        """
+        Append other table horizontally (similar to numpy.hstack).
+
+        Requires matching number of rows and no common labels.
+
+        Parameters
+        ----------
+        other : Table
+            Table to join
+
+        """
+        if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
+            raise KeyError('Dublicated keys or row count mismatch')
+        else:
+            self.data = self.data.join(other.data)
+            for key in other.shapes:
+                self.shapes[key] = other.shapes[key]
 
 
     def to_ASCII(self,fname):
@@ -234,8 +319,9 @@ class Table():
             Filename or file for reading.
 
         """
+        seen = set()
         labels = []
-        for l in self.shapes:
+        for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
             if(self.shapes[l] == (1,)):
                 labels.append('{}'.format(l))
             elif(len(self.shapes[l]) == 1):

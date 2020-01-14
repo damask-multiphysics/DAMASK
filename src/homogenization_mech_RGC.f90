@@ -74,12 +74,10 @@ module subroutine mech_RGC_init
     NofMyHomog, &
     sizeState, nIntFaceTot
  
-  character(len=65536),   dimension(0), parameter :: emptyStringArray = [character(len=65536)::]
-  
   integer(kind(undefined_ID)) :: &
     outputID
     
-  character(len=65536), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     outputs
   
   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
@@ -928,7 +926,6 @@ end subroutine mech_RGC_averageStressAndItsTangent
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_RGC_results(instance,group)
-#if defined(PETSc) || defined(DAMASK_HDF5)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -962,11 +959,6 @@ module subroutine mech_RGC_results(instance,group)
   enddo outputsLoop
   end associate
   
-#else
-  integer,          intent(in) :: instance
-  character(len=*), intent(in) :: group
-#endif
-
 end subroutine mech_RGC_results
 
 

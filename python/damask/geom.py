@@ -205,6 +205,9 @@ class Geom():
             else:
                 self.homogenization = homogenization
 
+    @property
+    def grid(self):
+        return self.get_grid()
 
     def get_microstructure(self):
         """Return the microstructure representation."""
@@ -419,7 +422,7 @@ class Geom():
             ext = os.path.splitext(fname)[1]
             if ext == '':
                 name = fname + '.' + writer.GetDefaultFileExtension()
-            elif ext == writer.GetDefaultFileExtension():
+            elif ext[1:] == writer.GetDefaultFileExtension():
                 name = fname
             else:
                 raise ValueError("unknown extension {}".format(ext))

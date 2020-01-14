@@ -42,8 +42,7 @@ module prec
       sizeState        = 0, &                                                                       !< size of state
       sizeDotState     = 0, &                                                                       !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
       offsetDeltaState = 0, &                                                                       !< index offset of delta state
-      sizeDeltaState   = 0, &                                                                       !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
-      sizePostResults  = 0                                                                          !< size of output data
+      sizeDeltaState   = 0                                                                          !< size of delta state, i.e. state(offset+1:offset+sizeDelta) follows time evolution by deltaState increments
     real(pReal), pointer,     dimension(:), contiguous :: &
       atolState
     real(pReal), pointer,     dimension(:,:), contiguous :: &                                       ! a pointer is needed here because we might point to state/doState. However, they will never point to something, but are rather allocated and, hence, contiguous
@@ -79,6 +78,13 @@ module prec
 
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
   real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
+
+  integer,                   dimension(0), parameter, public :: &
+    emptyIntArray    = [integer::]
+  real(pReal),               dimension(0), parameter, public :: &
+    emptyRealArray   = [real(pReal)::]
+  character(len=pStringLen), dimension(0), parameter, public :: &
+    emptyStringArray = [character(len=pStringLen)::]
 
   private :: &
     unitTest
