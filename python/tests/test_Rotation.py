@@ -7,7 +7,7 @@ import damask
 from damask import Rotation
 from damask import Orientation
    
-n = 1000
+n = 100000
 
 @pytest.fixture
 def default():
@@ -45,17 +45,17 @@ class TestRotation:
     def test_Homochoric(self,default):
         for rot in default:
             assert np.allclose(rot.asRodrigues(),
-                               Rotation.fromHomochoric(rot.asHomochoric()).asRodrigues(),rtol=5.e-5)
+                               Rotation.fromHomochoric(rot.asHomochoric()).asRodrigues(),rtol=1.e-4)
 
     def test_Cubochoric(self,default):
         for rot in default:
             assert np.allclose(rot.asHomochoric(),
-                               Rotation.fromCubochoric(rot.asCubochoric()).asHomochoric(),rtol=5.e-5)
+                               Rotation.fromCubochoric(rot.asCubochoric()).asHomochoric())
 
     def test_Quaternion(self,default):
         for rot in default:
             assert np.allclose(rot.asCubochoric(),
-                               Rotation.fromQuaternion(rot.asQuaternion()).asCubochoric(),rtol=5.e-5)
+                               Rotation.fromQuaternion(rot.asQuaternion()).asCubochoric())
 
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
