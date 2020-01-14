@@ -102,7 +102,7 @@ class DADF5():
     elif datasets is False:
       datasets = []
     choice = [datasets] if isinstance(datasets,str) else datasets
-    
+   
     valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
     existing = set(self.visible[what])
 
@@ -339,8 +339,8 @@ class DADF5():
     """Return information on all active datasets in the file."""
     message = ''
     with h5py.File(self.fname,'r') as f:
-      for s,i in enumerate(self.iter_visible('increments')):
-        message+='\n{} ({}s)\n'.format(i,self.times[s])
+      for i in self.iter_visible('increments'):
+        message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
           for oo in self.iter_visible(o):
             message+='  {}\n'.format(oo)
@@ -855,7 +855,7 @@ class DADF5():
     
     Parameters
     ----------
-    labels : list of str
+    labels : str or list of
       Labels of the datasets to be exported.
     mode : str, either 'Cell' or 'Point'
       Export in cell format or point format.
@@ -880,7 +880,7 @@ class DADF5():
       else:
         
         nodes = vtk.vtkPoints()
-        with h5py.File(self.fname) as f:
+        with h5py.File(self.fname,'r') as f:
           nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
           
           vtk_geom = vtk.vtkUnstructuredGrid()
@@ -908,7 +908,7 @@ class DADF5():
       
       materialpoints_backup = self.visible['materialpoints'].copy()
       self.set_visible('materialpoints',False)
-      for label in labels:
+      for label in (labels if isinstance(labels,list) else [labels]):
         for p in self.iter_visible('con_physics'):
           if p != 'generic':
             for c in self.iter_visible('constituents'):
@@ -939,7 +939,7 @@ class DADF5():
   
       constituents_backup = self.visible['constituents'].copy()
       self.set_visible('constituents',False)
-      for label in labels:
+      for label in (labels if isinstance(labels,list) else [labels]):
         for p in self.iter_visible('mat_physics'):
           if p != 'generic':
             for m in self.iter_visible('materialpoints'):

@@ -10,7 +10,7 @@
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
 #define GCC_MIN 6
-#define INTEL_MIN 1600
+#define INTEL_MIN 1700
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 10
 #define PETSC_MINOR_MAX 12
@@ -269,10 +269,10 @@ subroutine DAMASK_interface_init
     write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
   write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
   write(6,'(a,a)')      ' Load case argument:     ', trim(loadcaseArg)
-  write(6,'(a,a)')      ' Working directory:      ', trim(getCWD())
+  write(6,'(a,a)')      ' Working directory:      ', getCWD()
   write(6,'(a,a)')      ' Geometry file:          ', trim(geometryFile)
   write(6,'(a,a)')      ' Loadcase file:          ', trim(loadCaseFile)
-  write(6,'(a,a)')      ' Solver job name:        ', trim(getSolverJobName())
+  write(6,'(a,a)')      ' Solver job name:        ', getSolverJobName()
   if (interface_restartInc > 0) &
     write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
 
@@ -308,7 +308,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   workingDirectory = trim(rectifyPath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if(error) then
-    write(6,'(/,a)') ' ERROR: Working directory "'//trim(workingDirectory)//'" does not exist'
+    write(6,'(/,a)') ' ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
   endif
 
@@ -318,8 +318,9 @@ end subroutine setWorkingDirectory
 !--------------------------------------------------------------------------------------------------
 !> @brief solver job name (no extension) as combination of geometry and load case name
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function getSolverJobName()
+function getSolverJobName()
 
+  character(len=:), allocatable :: getSolverJobName
   integer :: posExt,posSep
 
   posExt = scan(geometryFile,'.',back=.true.)
@@ -330,7 +331,7 @@ character(len=1024) function getSolverJobName()
   posExt = scan(loadCaseFile,'.',back=.true.)
   posSep = scan(loadCaseFile,'/',back=.true.)
 
-  getSolverJobName = trim(getSolverJobName)//'_'//loadCaseFile(posSep+1:posExt-1)
+  getSolverJobName = getSolverJobName//'_'//loadCaseFile(posSep+1:posExt-1)
 
 end function getSolverJobName
 
@@ -338,15 +339,16 @@ end function getSolverJobName
 !--------------------------------------------------------------------------------------------------
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function getGeometryFile(geometryParameter)
+function getGeometryFile(geometryParameter)
 
-  character(len=1024), intent(in) :: geometryParameter
-  logical                         :: file_exists
-  external                        :: quit
+  character(len=:), allocatable :: getGeometryFile
+  character(len=*),  intent(in) :: geometryParameter
+  logical                       :: file_exists
+  external                      :: quit
 
   getGeometryFile = trim(geometryParameter)
-  if (scan(getGeometryFile,'/') /= 1) getGeometryFile = trim(getCWD())//'/'//trim(getGeometryFile)
-  getGeometryFile = makeRelativePath(trim(getCWD()), getGeometryFile)
+  if (scan(getGeometryFile,'/') /= 1) getGeometryFile = getCWD()//'/'//trim(getGeometryFile)
+  getGeometryFile = makeRelativePath(getCWD(), getGeometryFile)
 
   inquire(file=trim(getGeometryFile), exist=file_exists)
   if (.not. file_exists) then
@@ -360,15 +362,16 @@ end function getGeometryFile
 !--------------------------------------------------------------------------------------------------
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function getLoadCaseFile(loadCaseParameter)
+function getLoadCaseFile(loadCaseParameter)
 
-  character(len=1024), intent(in) :: loadCaseParameter
-  logical                         :: file_exists
-  external                        :: quit
+  character(len=:), allocatable :: getLoadCaseFile
+  character(len=*),  intent(in) :: loadCaseParameter
+  logical                       :: file_exists
+  external                      :: quit
 
   getLoadCaseFile = trim(loadCaseParameter)
-  if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = trim(getCWD())//'/'//trim(getLoadCaseFile)
-  getLoadCaseFile = makeRelativePath(trim(getCWD()), getLoadCaseFile)
+  if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = getCWD()//'/'//trim(getLoadCaseFile)
+  getLoadCaseFile = makeRelativePath(getCWD(), getLoadCaseFile)
 
   inquire(file=trim(getLoadCaseFile), exist=file_exists)
   if (.not. file_exists) then

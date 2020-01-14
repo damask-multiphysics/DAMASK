@@ -58,10 +58,10 @@ def strain_tensor(F,t,m):
 
     """
     F_ = F.reshape((1,3,3)) if F.shape == (3,3) else F
-    if   t == 'U':
+    if   t == 'V':
         B   = np.matmul(F_,transpose(F_))
         w,n = np.linalg.eigh(B)
-    elif t == 'V':
+    elif t == 'U':
         C   = np.matmul(transpose(F_),F_)
         w,n = np.linalg.eigh(C)
     
@@ -92,21 +92,27 @@ def deviatoric_part(x):
            x - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[x.shape[0],3,3]),spherical_part(x)) 
 
 
-def spherical_part(x):
+def spherical_part(x,tensor=False):
     """
     Return spherical (hydrostatic) part of a tensor.
     
-    A single scalar is returned, i.e. the hydrostatic part is not mapped on the 3rd order identity
-    matrix. 
-      
     Parameters
     ----------
     x : numpy.array of shape (:,3,3) or (3,3)
       Tensor of which the hydrostatic part is computed.
+    tensor : bool, optional
+      Map spherical part onto identity tensor. Default is false
 
     """
-    return np.trace(x)/3.0 if np.shape(x) == (3,3) else \
-           np.trace(x,axis1=1,axis2=2)/3.0
+    if x.shape == (3,3):
+        sph = np.trace(x)/3.0
+        return sph if not tensor else np.eye(3)*sph
+    else:
+        sph = np.trace(x,axis1=1,axis2=2)/3.0
+        if not tensor:
+            return sph
+        else:
+            return np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),(x.shape[0],3,3)),sph)
     
     
 def Mises_stress(sigma):

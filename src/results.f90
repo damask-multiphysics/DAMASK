@@ -47,6 +47,7 @@ module results
     results_openJobFile, &
     results_closeJobFile, &
     results_addIncrement, &
+    results_finalizeIncrement, &
     results_addGroup, &
     results_openGroup, &
     results_closeGroup, &
@@ -68,14 +69,14 @@ subroutine results_init
   write(6,'(a)')   ' https://doi.org/10.1007/s40192-017-0084-5'
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
-  call HDF5_addAttribute(resultsFile,'DADF5_version_major',0)
-  call HDF5_addAttribute(resultsFile,'DADF5_version_minor',5)
-  call HDF5_addAttribute(resultsFile,'DAMASK_version',DAMASKVERSION)
+  call results_addAttribute('DADF5_version_major',0)
+  call results_addAttribute('DADF5_version_minor',5)
+  call results_addAttribute('DAMASK_version',DAMASKVERSION)
   call get_command(commandLine)
-  call HDF5_addAttribute(resultsFile,'call',trim(commandLine))
-  call HDF5_closeGroup(results_addGroup('mapping'))
-  call HDF5_closeGroup(results_addGroup('mapping/cellResults'))
-  call HDF5_closeFile(resultsFile)
+  call results_addAttribute('call',trim(commandLine))
+  call results_closeGroup(results_addGroup('mapping'))
+  call results_closeGroup(results_addGroup('mapping/cellResults'))
+  call results_closeJobFile
 
 end subroutine results_init
 
@@ -110,14 +111,24 @@ subroutine results_addIncrement(inc,time)
   character(len=pStringLen) :: incChar
 
   write(incChar,'(i10)') inc
-  call HDF5_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
+  call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
-  call HDF5_addAttribute(resultsFile,'time/s',time,trim('inc'//trim(adjustl(incChar))))
-  
-  call HDF5_closeGroup(results_addGroup('current/constituent'))
-  call HDF5_closeGroup(results_addGroup('current/materialpoint'))
+  call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
+  call results_closeGroup(results_addGroup('current/constituent'))
+  call results_closeGroup(results_addGroup('current/materialpoint'))
 
 end subroutine results_addIncrement
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief finalize increment
+!> @details remove soft link
+!--------------------------------------------------------------------------------------------------
+subroutine results_finalizeIncrement
+
+  call results_removeLink('current')
+
+end subroutine results_finalizeIncrement
 
 
 !--------------------------------------------------------------------------------------------------
@@ -173,9 +184,14 @@ end subroutine results_setLink
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_str(attrLabel,attrValue,path)
 
-  character(len=*), intent(in) :: attrLabel, attrValue, path
+  character(len=*), intent(in)           :: attrLabel, attrValue
+  character(len=*), intent(in), optional :: path
 
-  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  if (present(path)) then
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  else
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+  endif
 
 end subroutine results_addAttribute_str
 
@@ -185,10 +201,15 @@ end subroutine results_addAttribute_str
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_int(attrLabel,attrValue,path)
 
-  character(len=*), intent(in) :: attrLabel, path
-  integer,          intent(in) :: attrValue
+  character(len=*), intent(in)           :: attrLabel
+  integer,          intent(in)           :: attrValue
+  character(len=*), intent(in), optional :: path
 
-  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  if (present(path)) then
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  else
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+  endif
 
 end subroutine results_addAttribute_int
 
@@ -198,10 +219,15 @@ end subroutine results_addAttribute_int
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_real(attrLabel,attrValue,path)
 
-  character(len=*), intent(in) :: attrLabel, path
-  real(pReal),      intent(in) :: attrValue
+  character(len=*), intent(in)           :: attrLabel
+  real(pReal),      intent(in)           :: attrValue
+  character(len=*), intent(in), optional :: path
 
-  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  if (present(path)) then
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  else
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+  endif
 
 end subroutine results_addAttribute_real
 
@@ -211,10 +237,15 @@ end subroutine results_addAttribute_real
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_int_array(attrLabel,attrValue,path)
 
-  character(len=*), intent(in)               :: attrLabel, path
+  character(len=*), intent(in)               :: attrLabel
   integer,          intent(in), dimension(:) :: attrValue
+  character(len=*), intent(in), optional     :: path
 
-  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  if (present(path)) then
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  else
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+  endif
 
 end subroutine results_addAttribute_int_array
 
@@ -224,10 +255,15 @@ end subroutine results_addAttribute_int_array
 !--------------------------------------------------------------------------------------------------
 subroutine results_addAttribute_real_array(attrLabel,attrValue,path)
 
-  character(len=*), intent(in)               :: attrLabel, path
+  character(len=*), intent(in)               :: attrLabel
   real(pReal),      intent(in), dimension(:) :: attrValue
+  character(len=*), intent(in), optional     :: path
 
-  call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  if (present(path)) then
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue, path)
+  else
+    call HDF5_addAttribute(resultsFile,attrLabel, attrValue)
+  endif
 
 end subroutine results_addAttribute_real_array
 
@@ -720,7 +756,6 @@ end subroutine results_mapping_materialpoint
 !!> @brief adds the backward mapping from spatial position and constituent ID to results
 !!--------------------------------------------------------------------------------------------------
 !subroutine HDF5_backwardMappingPhase(material_phase,phasememberat,phase_name,dataspace_size,mpiOffset,mpiOffset_phase)
-! use hdf5
 
 ! integer(pInt),    intent(in), dimension(:,:,:) :: material_phase, phasememberat
 ! character(len=*), intent(in), dimension(:)     :: phase_name
@@ -834,7 +869,6 @@ end subroutine results_mapping_materialpoint
 !!> @brief adds the backward mapping from spatial position and constituent ID to results
 !!--------------------------------------------------------------------------------------------------
 !subroutine HDF5_backwardMappingHomog(material_homog,homogmemberat,homogenization_name,dataspace_size,mpiOffset,mpiOffset_homog)
-! use hdf5
 
 ! integer(pInt),    intent(in), dimension(:,:) :: material_homog, homogmemberat
 ! character(len=*), intent(in), dimension(:)   :: homogenization_name
@@ -941,7 +975,6 @@ end subroutine results_mapping_materialpoint
 !!> @brief adds the unique cell to node mapping
 !!--------------------------------------------------------------------------------------------------
 !subroutine HDF5_mappingCells(mapping)
-! use hdf5
 
 ! integer(pInt), intent(in), dimension(:) :: mapping
 

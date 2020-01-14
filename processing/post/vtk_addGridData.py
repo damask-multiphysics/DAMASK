@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+from io import StringIO
 from optparse import OptionParser
-from collections import defaultdict
 
 import vtk
 from vtk.util import numpy_support
@@ -18,11 +19,10 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-msg = "Add scalars, vectors, and/or an RGB tuple from"
-msg += "an ASCIItable to existing VTK grid (.vtr/.vtk/.vtu)."
 parser = OptionParser(option_class=damask.extendableOption,
                       usage='%prog options [ASCIItable(s)]',
-                      description = msg,
+                      description = "Add scalars, vectors, tensors, and/or an RGB tuple from ASCIItable "
+                                  + "to existing VTK grid (.vtr/.vtk/.vtu).",
                       version = scriptID)
 
 parser.add_option(      '--vtk',
@@ -49,10 +49,10 @@ parser.add_option('-c', '--color',
 parser.set_defaults(data = [],
                     tensor = [],
                     color = [],
-                    render = False,
 )
 
 (options, filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if not options.vtk:                 parser.error('No VTK file specified.')
 if not os.path.exists(options.vtk): parser.error('VTK file does not exist.')
@@ -87,65 +87,28 @@ Ncells  = rGrid.GetNumberOfCells()
 
 damask.util.croak('{}: {} points and {} cells...'.format(options.vtk,Npoints,Ncells))
 
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False,
-                                    readonly = True)
-  except: continue
-  damask.util.report(scriptName, name)
+  damask.util.report(scriptName,name)
 
-# --- interpret header ----------------------------------------------------------------------------
-
-  table.head_read()
-
-  remarks = []
-  errors  = []
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  
   VTKarray = {}
-  active = defaultdict(list)
+  for data in options.data:
+    VTKarray[data] = numpy_support.numpy_to_vtk(table.get(data).copy(),
+                                                deep=True,array_type=vtk.VTK_DOUBLE)
+    VTKarray[data].SetName(data)
+  
+  for color in options.color:
+    VTKarray[color] = numpy_support.numpy_to_vtk((table.get(color)*255).astype(int).copy(),
+                                                deep=True,array_type=vtk.VTK_UNSIGNED_CHAR)
+    VTKarray[color].SetName(color)
 
-  for datatype,dimension,label in [['data',99,options.data],
-                                   ['tensor',9,options.tensor],
-                                   ['color' ,3,options.color],
-                                   ]:
-    for i,dim in enumerate(table.label_dimension(label)):
-      me = label[i]
-      if dim == -1:         remarks.append('{} "{}" not found...'.format(datatype,me))
-      elif dim > dimension: remarks.append('"{}" not of dimension {}...'.format(me,dimension))
-      else:
-        remarks.append('adding {} "{}"...'.format(datatype,me))
-        active[datatype].append(me)
+  for tensor in options.tensor:
+    data = damask.mechanics.symmetric(table.get(tensor).reshape((-1,3,3))).reshape((-1,9))
+    VTKarray[tensor] = numpy_support.numpy_to_vtk(data.copy(),
+                                                deep=True,array_type=vtk.VTK_DOUBLE)
+    VTKarray[tensor].SetName(tensor)
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ process data ---------------------------------------
-
-  table.data_readArray([item for sublist in active.values() for item in sublist])                 # read all requested data
-
-  for datatype,labels in active.items():                                                          # loop over scalar,color
-    for me in labels:                                                                             # loop over all requested items
-      VTKtype = vtk.VTK_DOUBLE
-      VTKdata = table.data[:, table.label_indexrange(me)].copy()                                  # copy to force contiguous layout
-
-      if datatype == 'color':
-        VTKtype = vtk.VTK_UNSIGNED_CHAR
-        VTKdata = (VTKdata*255).astype(int)                                                       # translate to 0..255 UCHAR
-      elif datatype == 'tensor':
-        VTKdata[:,1] = VTKdata[:,3] = 0.5*(VTKdata[:,1]+VTKdata[:,3])
-        VTKdata[:,2] = VTKdata[:,6] = 0.5*(VTKdata[:,2]+VTKdata[:,6])
-        VTKdata[:,5] = VTKdata[:,7] = 0.5*(VTKdata[:,5]+VTKdata[:,7])
-
-      VTKarray[me] = numpy_support.numpy_to_vtk(num_array=VTKdata,deep=True,array_type=VTKtype)
-      VTKarray[me].SetName(me)
-
-  table.close()                                                                                     # close input ASCII table
 
 # ------------------------------------------ add data ---------------------------------------
 
@@ -157,16 +120,10 @@ for name in filenames:
 
   damask.util.croak('{} mode...'.format(mode))
 
-  for datatype,labels in active.items():                                                            # loop over scalar,color
-    if datatype == 'color':
-      if   mode == 'cell':  rGrid.GetCellData().SetScalars(VTKarray[active['color'][0]])
-      elif mode == 'point': rGrid.GetPointData().SetScalars(VTKarray[active['color'][0]])
-    for me in labels:                                                                               # loop over all requested items
-      if   mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[me])
-      elif mode == 'point': rGrid.GetPointData().AddArray(VTKarray[me])
-
+  for data in VTKarray:
+    if   mode == 'cell':  rGrid.GetCellData().AddArray(VTKarray[data])
+    elif mode == 'point': rGrid.GetPointData().AddArray(VTKarray[data])
   rGrid.Modified()
-  if vtk.VTK_MAJOR_VERSION <= 5: rGrid.Update()
 
 # ------------------------------------------ output result ---------------------------------------
 
@@ -184,7 +141,7 @@ if options.render:
   actor.SetMapper(mapper)
 
 # Create the graphics structure. The renderer renders into the
-# render window. The render window interactor captures mouse events
+# render window. The render window interactively captures mouse events
 # and will perform appropriate camera or actor manipulation
 # depending on the nature of the events.
 

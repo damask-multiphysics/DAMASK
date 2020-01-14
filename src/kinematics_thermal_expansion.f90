@@ -42,7 +42,7 @@ subroutine kinematics_thermal_expansion_init
   real(pReal),  dimension(:), allocatable :: &
     temp
   
-  write(6,'(/,a)')   ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'; flush(6)
  
   Ninstance = count(phase_kinematics == KINEMATICS_thermal_expansion_ID)
   

@@ -7,7 +7,6 @@
 !--------------------------------------------------------------------------------------------------
 module mesh
  use prec
- use mesh_base
  use geometry_plastic_nonlocal
  use discretization
  use math
