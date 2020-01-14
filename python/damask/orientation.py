@@ -85,8 +85,9 @@ class Rotation:
         self_p  = self.quaternion[1:]
         other_q = other.quaternion[0]
         other_p = other.quaternion[1:]
-        return __class__(np.append(self_q*other_q - np.dot(self_p,other_p),
-                                   self_q*other_p + other_q*self_p + P * np.cross(self_p,other_p))).standardize()
+        R = self.__class__(np.append(self_q*other_q - np.dot(self_p,other_p),
+                                     self_q*other_p + other_q*self_p + P * np.cross(self_p,other_p)))
+        return R.standardize()
       elif isinstance(other, (tuple,np.ndarray)):
         if isinstance(other,tuple) or other.shape == (3,):                                          # rotate a single (3)-vector or meshgrid
           A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
@@ -96,9 +97,9 @@ class Rotation:
           C = 2.0 * P*self.quaternion[0]
 
           return np.array([
-            A*Vx + B*x + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
-            A*Vy + B*y + C*(self.quaternion[3]*other[0] - self.quaternion[1]*other[2]),
-            A*Vz + B*z + C*(self.quaternion[1]*other[1] - self.quaternion[2]*other[0]),
+            A*self.quaternion[1] + B*other[0] + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
+            A*self.quaternion[2] + B*other[1] + C*(self.quaternion[3]*other[0] - self.quaternion[1]*other[2]),
+            A*self.quaternion[3] + B*other[2] + C*(self.quaternion[1]*other[1] - self.quaternion[2]*other[0]),
             ])
         elif other.shape == (3,3,):                                                                 # rotate a single (3x3)-matrix
            return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
