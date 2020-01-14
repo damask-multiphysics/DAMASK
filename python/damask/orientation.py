@@ -399,11 +399,10 @@ class Rotation:
       r = np.random.random(3) 
       A = np.sqrt(r[2]) 
       B = np.sqrt(1.0-r[2]) 
-      w = np.cos(2.0*np.pi*r[0])*A 
-      x = np.sin(2.0*np.pi*r[1])*B 
-      y = np.cos(2.0*np.pi*r[1])*B 
-      z = np.sin(2.0*np.pi*r[0])*A 
-      return Rotation.fromQuaternion([w,x,y,z],acceptHomomorph=True) 
+      return Rotation(np.array([np.cos(2.0*np.pi*r[0])*A,
+                                np.sin(2.0*np.pi*r[1])*B,
+                                np.cos(2.0*np.pi*r[1])*B,
+                                np.sin(2.0*np.pi*r[0])*A])).standardize()
 
 
 
