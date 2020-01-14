@@ -23,10 +23,7 @@ class Marc(Solver):
         try:
             self.version = int(version)
         except TypeError:
-            try:
-                self.version = int(damask.Environment().options['MARC_VERSION'])
-            except TypeError:
-                self.version = -1
+            self.version = -1
 
 
 #--------------------------
