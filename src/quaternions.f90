@@ -48,10 +48,7 @@ module quaternions
     procedure, private :: pow_scal__
     generic,   public  :: operator(**) => pow_quat__, pow_scal__
 
-    procedure, public  :: abs__
-    procedure, public  :: dot_product__
-    procedure, public  :: exp__
-    procedure, public  :: log__
+    procedure, public  :: abs   => abs__
     procedure, public  :: conjg => conjg__
     procedure, public  :: real  => real__
     procedure, public  :: aimag => aimag__
@@ -317,17 +314,17 @@ end function pow_scal__
 !---------------------------------------------------------------------------------------------------
 !> take exponential
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental pure function exp__(self)
+type(quaternion) elemental pure function exp__(a)
 
-  class(quaternion), intent(in) :: self
+  class(quaternion), intent(in) :: a
   real(pReal)                   :: absImag
 
-  absImag = norm2(aimag(self))
+  absImag = norm2(aimag(a))
 
-  exp__ = merge(exp(self%w) * [                 cos(absImag), &
-                               self%x/absImag * sin(absImag), &
-                               self%y/absImag * sin(absImag), &
-                               self%z/absImag * sin(absImag)], &
+  exp__ = merge(exp(a%w) * [               cos(absImag), &
+                             a%x/absImag * sin(absImag), &
+                             a%y/absImag * sin(absImag), &
+                             a%z/absImag * sin(absImag)], &
                 IEEE_value(1.0_pReal,IEEE_SIGNALING_NAN), &
                 dNeq0(absImag))
 
@@ -337,17 +334,17 @@ end function exp__
 !---------------------------------------------------------------------------------------------------
 !> take logarithm
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental pure function log__(self)
+type(quaternion) elemental pure function log__(a)
 
-  class(quaternion), intent(in) :: self
+  class(quaternion), intent(in) :: a
   real(pReal)                   :: absImag
 
-  absImag = norm2(aimag(self))
+  absImag = norm2(aimag(a))
 
-  log__ = merge([log(abs(self)), &
-                 self%x/absImag * acos(self%w/abs(self)), &
-                 self%y/absImag * acos(self%w/abs(self)), &
-                 self%z/absImag * acos(self%w/abs(self))], &
+  log__ = merge([log(abs(a)), &
+                 a%x/absImag * acos(a%w/abs(a)), &
+                 a%y/absImag * acos(a%w/abs(a)), &
+                 a%z/absImag * acos(a%w/abs(a))], &
                 IEEE_value(1.0_pReal,IEEE_SIGNALING_NAN), &
                 dNeq0(absImag))
 
@@ -357,11 +354,11 @@ end function log__
 !---------------------------------------------------------------------------------------------------
 !> return norm
 !---------------------------------------------------------------------------------------------------
-real(pReal) elemental pure function abs__(a)
+real(pReal) elemental pure function abs__(self)
 
-  class(quaternion), intent(in) :: a
+  class(quaternion), intent(in) :: self
 
-  abs__ = norm2([a%w,a%x,a%y,a%z])
+  abs__ = norm2([self%w,self%x,self%y,self%z])
 
 end function abs__
 
@@ -381,11 +378,11 @@ end function dot_product__
 !---------------------------------------------------------------------------------------------------
 !> take conjugate complex
 !---------------------------------------------------------------------------------------------------
-type(quaternion) elemental pure function conjg__(a)
+type(quaternion) elemental pure function conjg__(self)
 
-  class(quaternion), intent(in) :: a
+  class(quaternion), intent(in) :: self
 
-  conjg__ = [a%w, -a%x, -a%y, -a%z]
+  conjg__ = [self%w,-self%x,-self%y,-self%z]
 
 end function conjg__
 
@@ -464,7 +461,7 @@ subroutine unitTest
   call random_number(qu)
   qu = (qu-0.5_pReal) * 2.0_pReal
   q  = quaternion(qu)
-  
+
   q_2= qu
   if(any(dNeq(q%asArray(),q_2%asArray())))             call IO_error(401,ext_msg='assign_vec__')
 
@@ -479,10 +476,10 @@ subroutine unitTest
 
   q_2 = q / 0.5_pReal
   if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))            call IO_error(401,ext_msg='div__')
-  
+
   q_2 = q * 0.3_pReal
   if(dNeq0(abs(q)) .and. q_2 == q)                     call IO_error(401,ext_msg='eq__')
-  
+
   q_2 = q
   if(q_2 /= q)                                         call IO_error(401,ext_msg='neq__')
 
@@ -504,12 +501,12 @@ subroutine unitTest
   if(q /= conjg(q_2))                                  call IO_error(401,ext_msg='conjg/involution')
   if(dNeq(q_2%real(),     q%real()))                   call IO_error(401,ext_msg='conjg/real')
   if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal))))    call IO_error(401,ext_msg='conjg/aimag')
-  
+
   if(abs(q) > 0.0_pReal) then
     q_2 = q * q%inverse()
     if(     dNeq(real(q_2), 1.0_pReal,1.0e-15_pReal))  call IO_error(401,ext_msg='inverse/real')
     if(any(dNeq0(aimag(q_2),          1.0e-15_pReal))) call IO_error(401,ext_msg='inverse/aimag')
-    
+
     q_2 = q/abs(q)
     q_2 = conjg(q_2) - inverse(q_2)
     if(any(dNeq0(q_2%asArray(),1.0e-15_pReal)))        call IO_error(401,ext_msg='inverse/conjg')
