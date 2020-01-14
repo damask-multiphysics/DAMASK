@@ -3,8 +3,8 @@ import math
 import numpy as np
 
 from . import Lambert
-from .quaternion import P
 
+P = -1
 
 ####################################################################################################
 class Rotation:
