@@ -1,4 +1,5 @@
 import os
+from itertools import permutations
 
 import pytest
 import numpy as np
@@ -56,6 +57,16 @@ class TestRotation:
         for rot in default:
             assert np.allclose(rot.asCubochoric(),
                                Rotation.fromQuaternion(rot.asQuaternion()).asCubochoric())
+
+
+    @pytest.mark.parametrize('color',[{'label':'red',  'RGB':[1,0,0],'direction':[0,0,1]},
+                                      {'label':'green','RGB':[0,1,0],'direction':[0,1,1]},
+                                      {'label':'blue', 'RGB':[0,0,1],'direction':[1,1,1]}])
+    @pytest.mark.parametrize('lattice',['fcc','bcc'])
+    def test_IPF_cubic(self,default,color,lattice):
+        cube = damask.Orientation(damask.Rotation(),lattice)
+        for direction in set(permutations(np.array(color['direction']))):
+            assert np.allclose(cube.IPFcolor(direction),np.array(color['RGB']))
 
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
