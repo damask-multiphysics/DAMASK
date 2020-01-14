@@ -97,9 +97,9 @@ class Rotation:
           C = 2.0 * P*self.quaternion[0]
 
           return np.array([
-            A*self.quaternion[1] + B*other[0] + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
-            A*self.quaternion[2] + B*other[1] + C*(self.quaternion[3]*other[0] - self.quaternion[1]*other[2]),
-            A*self.quaternion[3] + B*other[2] + C*(self.quaternion[1]*other[1] - self.quaternion[2]*other[0]),
+            A*other[0] + B*self.quaternion[1] + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
+            A*other[1] + B*self.quaternion[2] + C*(self.quaternion[3]*other[0] - self.quaternion[1]*other[2]),
+            A*other[2] + B*self.quaternion[3] + C*(self.quaternion[1]*other[1] - self.quaternion[2]*other[0]),
             ])
         elif other.shape == (3,3,):                                                                 # rotate a single (3x3)-matrix
            return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))

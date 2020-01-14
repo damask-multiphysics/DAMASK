@@ -7,7 +7,7 @@ import damask
 from damask import Rotation
 from damask import Orientation
    
-n = 100000
+n = 1000
 
 @pytest.fixture
 def default():
