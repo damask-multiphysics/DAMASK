@@ -14,8 +14,8 @@ class Table():
         
         Parameters
         ----------
-        data : numpy.ndarray
-            Data.
+        data : numpy.ndarray or pandas.DataFrame
+            Data. Column labels from a pandas.DataFrame will be replaced.
         shapes : dict with str:tuple pairs
             Shapes of the columns. Example 'F':(3,3) for a deformation gradient. 
         comments : iterable of str, optional
@@ -23,6 +23,10 @@ class Table():
         
         """
         self.comments = [] if comments is None else [c for c in comments]
+        try:
+            self.data = data
+            self.data.columns = [''] * len(self.data.columns)
+        except:
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
         self.__label_condensed()
@@ -95,7 +99,7 @@ class Table():
                 else:
                     shapes[label] = (1,)
         
-        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+').to_numpy()
+        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
 
         return Table(data,shapes,comments)
 
