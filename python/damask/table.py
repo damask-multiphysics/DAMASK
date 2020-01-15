@@ -77,14 +77,21 @@ class Table():
             f = fname
             f.seek(0)
 
-        header,keyword = f.readline().split()
-        if keyword == 'header':
-            header = int(header)
+        try:
+            N_comment_lines,keyword = f.readline().split()
+            if keyword != 'header':
+                raise TypeError
         else:
-            raise TypeError
-
-        comments = [f.readline()[:-1] for i in range(1,header)]
+                comments = [f.readline().strip() for i in range(1,int(N_comment_lines))]
         labels   = f.readline().split()
+        except TypeError:
+            f.seek(0)
+            comments = []
+            line = f.readline().strip()
+            while line.startswith('#'):
+                comments.append(line.lstrip('#').lstrip())
+                line = f.readline().strip()
+            labels = line.split()
        
         shapes = {}
         for label in labels:
@@ -313,7 +320,7 @@ class Table():
                 self.shapes[key] = other.shapes[key]
 
 
-    def to_ASCII(self,fname):
+    def to_ASCII(self,fname,new=False):
         """
         Store as plain text file.
 
@@ -335,13 +342,16 @@ class Table():
                 labels += ['{}:{}_{}'.format('x'.join([str(d) for d in self.shapes[l]]),i+1,l) \
                           for i in range(np.prod(self.shapes[l]))]
 
-        header = ['{} header'.format(len(self.comments)+1)] \
-               + self.comments \
-               + [' '.join(labels)]
+        if new:
+            header = ['# {}'.format(comment) for comment in self.comments]
+        else:
+            header = ['{} header'.format(len(self.comments)+1)] \
+                   + self.comments \
 
         try:
             f = open(fname,'w')
         except TypeError:
             f = fname
-        for line in header: f.write(line+'\n')
+
+        for line in header + [' '.join(labels)]: f.write(line+'\n')
         self.data.to_csv(f,sep=' ',index=False,header=False)
