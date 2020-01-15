@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -43,71 +44,21 @@ parser.set_defaults(offset = 0,
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.label is None:
   parser.error('no data columns specified.')
 if options.index is None:
   parser.error('no index column given.')
 
-# ------------------------------------------ process indexed ASCIItable ---------------------------
-
-if options.asciitable is not None and os.path.isfile(options.asciitable):
-
-  indexedTable = damask.ASCIItable(name = options.asciitable,
-                                   buffered = False,
-                                   readonly = True) 
-  indexedTable.head_read()                                                                          # read ASCII header info of indexed table
-  missing_labels = indexedTable.data_readArray(options.label)
-  indexedTable.close()                                                                              # close input ASCII table
-
-  if len(missing_labels) > 0:
-    damask.util.croak('column{} {} not found...'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
-
-else:
-  parser.error('no indexed ASCIItable given.')
-
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table        = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    indexedTable = damask.Table.from_ASCII(options.asciitable)
+    idx = np.reshape(table.get(options.index).astype(int) + options.offset,(-1))-1
+    
+    for data in options.label:
+        table.add(data+'addIndexed',indexedTable.get(data)[idx],scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  errors = []
-
-  indexColumn = table.label_index(options.index)  
-  if indexColumn <  0: errors.append('index column {} not found.'.format(options.index))
-
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(indexedTable.labels(raw = True))                                              # extend ASCII header with new labels
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    try:
-      table.data_append(indexedTable.data[int(round(float(table.data[indexColumn])))+options.offset-1]) # add all mapped data types
-    except IndexError:
-      table.data_append(np.nan*np.ones_like(indexedTable.data[0]))
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
+    table.to_ASCII(sys.stdout if name is None else name)
