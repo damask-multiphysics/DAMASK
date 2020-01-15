@@ -48,7 +48,7 @@ class Table():
     def __add_comment(self,label,shape,info):
         if info is not None:
             self.comments.append('{}{}: {}'.format(label,
-                                                   ' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',
+                                                   ' '+str(shape) if np.prod(shape) > 1 else '',
                                                    info))
 
     
@@ -208,7 +208,7 @@ class Table():
         self.__add_comment(label,data.shape[1:],info)
 
         self.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
-        size = np.prod(data.shape[1:],dtype=int)
+        size = np.prod(data.shape[1:])
         new = pd.DataFrame(data=data.reshape(-1,size),
                            columns=[label]*size,
                           )
@@ -329,7 +329,7 @@ class Table():
                           for i in range(self.shapes[l][0])]
             else:
                 labels += ['{}:{}_{}'.format('x'.join([str(d) for d in self.shapes[l]]),i+1,l) \
-                          for i in range(np.prod(self.shapes[l],dtype=int))]
+                          for i in range(np.prod(self.shapes[l]))]
 
         header = ['{} header'.format(len(self.comments)+1)] \
                + self.comments \
