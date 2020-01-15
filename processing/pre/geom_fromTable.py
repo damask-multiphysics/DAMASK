@@ -54,80 +54,54 @@ parser.set_defaults(homogenization = 1,
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
-input = [options.quaternion     is not None,
-         options.microstructure is not None,
-        ]
-
-if np.sum(input) != 1:
+if np.sum([options.quaternion     is not None,
+           options.microstructure is not None]) != 1:
   parser.error('need either microstructure or quaternion (and optionally phase) as input.')
 if options.microstructure is not None and options.phase is not None:
   parser.error('need either microstructure or phase (and mandatory quaternion) as input.')
 if options.axes is not None and not set(options.axes).issubset(set(['x','+x','-x','y','+y','-y','z','+z','-z'])):
   parser.error('invalid axes {} {} {}.'.format(*options.axes))
 
-(label,dim,inputtype) = [(options.quaternion,4,'quaternion'),
-                         (options.microstructure,1,'microstructure'),
-                        ][np.where(input)[0][0]]                                                    # select input label that was requested
-
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  damask.util.report(scriptName,name)
-  table = damask.ASCIItable(name = name,readonly=True)
-  table.head_read()                                                                                 # read ASCII header info
+    damask.util.report(scriptName,name)
 
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table.sort_by(['{}_{}'.format(i,options.pos) for i in range(3,0,-1)])                           # x fast, y slow
+    grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
-  table.data_readArray([options.pos] \
-                       + (label if isinstance(label, list) else [label]) \
-                       + ([options.phase] if options.phase else []))
+    config_header  = table.comments
 
-  if options.phase is None:
-    table.data = np.column_stack((table.data,np.ones(len(table.data))))                             # add single phase if no phase column given
+    if   options.microstructure:
+        microstructure = table.get(options.microstructure).reshape(grid,order='F')
 
-  grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.data[:,0:3])
+    elif options.quaternion:
+        q     = table.get(options.quaternion)
+        phase = table.get(options.phase).astype(int) if options.phase else \
+                np.ones((table.data.shape[0],1),dtype=int)
 
-  indices  = np.lexsort((table.data[:,0],table.data[:,1],table.data[:,2]))                          # indices of position when sorting x fast, z slow
-  microstructure = np.empty(grid,dtype = int)                                                       # initialize empty microstructure
-  i = 0
+        unique,unique_inverse = np.unique(np.hstack((q,phase)),return_inverse=True,axis=0)
+        microstructure = unique_inverse.reshape(grid,order='F') + 1
 
-  if inputtype == 'microstructure':
-    for z in range(grid[2]):
-      for y in range(grid[1]):
-        for x in range(grid[0]):
-          microstructure[x,y,z] = table.data[indices[i],3]
-          i+=1
+        config_header = ['<texture>']
+        for i,data in enumerate(unique):
+            ori = damask.Rotation(data[0:4])
+            config_header += ['[Grain{}]'.format(i+1),
+                              '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*ori.asEulers(degrees = True)),
+                             ]
+            if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
 
-    config_header = []
+        config_header += ['<microstructure>']
+        for i,data in enumerate(unique):
+            config_header += ['[Grain{}]'.format(i+1),
+                              '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(int(data[4]),i+1),
+                             ]
 
-  elif inputtype == 'quaternion':
-    unique,unique_inverse = np.unique(table.data[:,3:8],return_inverse=True,axis=0)
+    header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
+           + config_header
+    geom = damask.Geom(microstructure,size,origin,
+                       homogenization=options.homogenization,comments=header)
+    damask.util.croak(geom)
 
-    for z in range(grid[2]):
-      for y in range(grid[1]):
-        for x in range(grid[0]):
-          microstructure[x,y,z] = unique_inverse[indices[i]]+1
-          i+=1
-
-    config_header = ['<texture>']
-    for i,data in enumerate(unique):
-      ori = damask.Rotation(data[0:4])
-      config_header += ['[Grain{}]'.format(i+1),
-                        '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*ori.asEulers(degrees = True)),
-                       ]
-      if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
-
-    config_header += ['<microstructure>']
-    for i,data in enumerate(unique):
-      config_header += ['[Grain{}]'.format(i+1),
-                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(int(data[4]),i+1),
-                       ]
-
-  header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
-         + config_header
-  geom = damask.Geom(microstructure,size,origin,
-                     homogenization=options.homogenization,comments=header)
-  damask.util.croak(geom)
-
-  geom.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',pack=False)
+    geom.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',pack=False)
