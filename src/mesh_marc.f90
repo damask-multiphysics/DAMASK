@@ -72,7 +72,7 @@ subroutine mesh_init(ip,el)
   real(pReal), dimension(:,:,:,:),allocatable :: &
     unscaledNormals
 
-  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  mesh init  -+>>>'; flush(6)
  
   mesh_unitlength = numerics_unitlength                                                             ! set physical extent of a length unit in mesh
 
@@ -82,9 +82,8 @@ subroutine mesh_init(ip,el)
   if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
   if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
  
-  FEsolving_execElem = [ 1,nElems ]                                                                 ! parallel loop bounds set to comprise all DAMASK elements
-  allocate(FEsolving_execIP(2,nElems), source=1)                                                    ! parallel loop bounds set to comprise from first IP...
-  FEsolving_execIP(2,:) = elem%nIPs
+  FEsolving_execElem =        [1,nElems]
+  FEsolving_execIP   = spread([1,elem%nIPs],2,nElems)
  
   allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
@@ -103,9 +102,9 @@ subroutine mesh_init(ip,el)
 
   call discretization_init(microstructureAt,homogenizationAt,&
                            ip_reshaped,&
-                           node0_elem)
+                           node0_cell)
                            
-  call writeGeometry(0,connectivity_elem,&
+  call writeGeometry(elem,connectivity_elem,&
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
                      node0_cell,ip_reshaped)
 
@@ -121,13 +120,14 @@ end subroutine mesh_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Writes all information needed for the DADF5 geometry
+!> @brief Write all information needed for the DADF5 geometry
 !--------------------------------------------------------------------------------------------------
-subroutine writeGeometry(elemType, &
+subroutine writeGeometry(elem, &
                          connectivity_elem,connectivity_cell, &
                          coordinates_nodes,coordinates_points)
 
-  integer,                     intent(in) :: elemType
+  type(tElement),              intent(in) :: &
+    elem
   integer, dimension(:,:),     intent(in) :: &
     connectivity_elem, &
     connectivity_cell
@@ -150,28 +150,31 @@ subroutine writeGeometry(elemType, &
   connectivity_temp = connectivity_cell
   call results_writeDataset('geometry',connectivity_temp,'T_c', &
                             'connectivity of the cells','-')
+  call results_addAttribute('VTK_TYPE',elem%vtkType,'geometry/T_c')
                             
   coordinates_temp = coordinates_nodes
   call results_writeDataset('geometry',coordinates_temp,'x_n', &
-                            'coordinates of the nodes','m')
+                            'initial coordinates of the nodes','m')
                             
   coordinates_temp = coordinates_points
   call results_writeDataset('geometry',coordinates_temp,'x_p', &
-                            'coordinates of the material points','m')
+                            'initial coordinates of the materialpoints','m')
                       
   call results_closeJobFile
 
 end subroutine writeGeometry
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Read mesh from marc input file
+!--------------------------------------------------------------------------------------------------
 subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
 
   type(tElement), intent(out) :: elem
   real(pReal), dimension(:,:), allocatable, intent(out) :: &
    node0_elem                                                                                       !< node x,y,z coordinates (initially!)
-  integer, dimension(:,:), allocatable, intent(out) :: &
+  integer, dimension(:,:),     allocatable, intent(out) :: &
     connectivity_elem
-
   integer,     dimension(:),   allocatable, intent(out) :: &
     microstructureAt, &
     homogenizationAt
@@ -207,16 +210,18 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call IO_open_inputFile(FILEUNIT)                                                                  ! ToDo: It would be better to use fileContent
   
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
-                             FILEUNIT)
+                             FILEUNIT,inputFile)
+
+  call inputRead_elemType(elem, &
+                          nElems,inputFile)
 
   allocate (mesh_mapFEtoCPelem(2,nElems), source=0)
-  call inputRead_mapElems(hypoelasticTableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,FILEUNIT)
+  call inputRead_mapElems(elem%nNodes,nElems,&
+                          inputFile)
 
   allocate (mesh_mapFEtoCPnode(2,Nnodes), source=0)
   call inputRead_mapNodes(inputFile)
 
-  call inputRead_elemType(elem, &
-                          nElems,inputFile)
   call inputRead_elemNodes(node0_elem, &
                            Nnodes,inputFile)
 
@@ -347,47 +352,63 @@ end subroutine inputRead_NnodesAndElements
 !> @brief Count overall number of element sets in mesh.
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
-                               fileUnit)
+                               fileContent)
  
-  integer, intent(out) :: nElemSets, maxNelemInSet
-  integer, intent(in)  :: fileUnit
+  integer,                                 intent(out) :: nElemSets, maxNelemInSet
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line
+  integer :: i,l,elemInCurrentSet
 
   nElemSets     = 0
   maxNelemInSet = 0
 
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-
-    if ( IO_lc(IO_StringValue(line,chunkPos,1)) == 'define' .and. &
-         IO_lc(IO_StringValue(line,chunkPos,2)) == 'element' ) then
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if ( IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+         IO_lc(IO_StringValue(fileContent(l),chunkPos,2)) == 'element' ) then
       nElemSets = nElemSets + 1
-      maxNelemInSet = max(maxNelemInSet, IO_countContinuousIntValues(fileUnit))
+
+      chunkPos = IO_stringPos(fileContent(l+1))
+      if(IO_lc(IO_StringValue(fileContent(l+1),chunkPos,2)) == 'to' ) then
+        elemInCurrentSet = 1 + abs( IO_intValue(fileContent(l+1),chunkPos,3) &
+                                   -IO_intValue(fileContent(l+1),chunkPos,1))
+      else
+        elemInCurrentSet = 0
+        i = 0
+        do while (.true.)
+          i = i + 1
+          chunkPos = IO_stringPos(fileContent(l+i))
+          elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                       ! add line's count when assuming 'c'
+          if(IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                ! line finished, read last value
+            elemInCurrentSet = elemInCurrentSet + 1                                                   ! data ended
+            exit
+          endif
+        enddo
+      endif
+      maxNelemInSet = max(maxNelemInSet, elemInCurrentSet)
     endif
   enddo
 
-620 end subroutine inputRead_NelemSets
+end subroutine inputRead_NelemSets
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief map element sets
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
+subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
  
   character(len=64), dimension(:),   allocatable, intent(out) :: nameElemSet
   integer,           dimension(:,:), allocatable, intent(out) :: mapElemSet
   integer,                                        intent(in)  :: fileUnit
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
   integer :: elemSet, NelemSets, maxNelemInSet
 
 
-  call inputRead_NelemSets(NelemSets,maxNelemInSet,fileUnit) 
+  call inputRead_NelemSets(NelemSets,maxNelemInSet,fileContent)
   allocate(nameElemSet(NelemSets)); nameElemSet = 'n/a'
   allocate(mapElemSet(1+maxNelemInSet,NelemSets),source=0)
   elemSet = 0
@@ -411,65 +432,35 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit)
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElems(tableStyle,nameElemSet,mapElemSet,fileFormatVersion,matNumber,fileUnit)
+subroutine inputRead_mapElems(nNodes,nElem,fileContent)
  
-  integer, intent(in) :: fileUnit,tableStyle,fileFormatVersion
-  integer, dimension(:), intent(in) :: matNumber
-  character(len=64), intent(in), dimension(:) :: nameElemSet
-  integer, dimension(:,:), intent(in) :: &
-    mapElemSet
- 
+  integer, intent(in) :: &
+    nElem, &
+    nNodes                                                                                          !< number of nodes per element
+  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line, &
-                        tmp
- 
-  integer, dimension(:), allocatable :: contInts
-  integer :: i,cpElem 
- 
-  allocate(contInts(size(mesh_mapFEtoCPelem,2)+1))
- 
-  cpElem = 0
-  contInts = 0
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(A300)',END=620) line
-    chunkPos = IO_stringPos(line)
-    Marc2016andEarlier: if (fileFormatVersion < 13) then
-      if( IO_lc(IO_stringValue(line,chunkPos,1)) == 'hypoelastic' ) then
-        skipLines: do i=1,3+TableStyle
-          read (fileUnit,'(A300)') line
-        enddo skipLines
-        contInts = IO_continuousIntValues(fileUnit,size(mesh_mapFEtoCPelem,2),nameElemSet,&
-                                          mapElemSet,size(nameElemSet))
-        exit
-      endif  
-    else Marc2016andEarlier
-      if ( IO_lc(IO_stringValue(line,chunkPos,1)) == 'connectivity') then
-        read (fileUnit,'(A300)',END=620) line
-        chunkPos = IO_stringPos(line)
-        if(any(matNumber==IO_intValue(line,chunkPos,6))) then
-          do 
-            read (fileUnit,'(A300)',END=620) line
-            chunkPos = IO_stringPos(line)
-            tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-            if (verify(trim(tmp),"0123456789")/=0) then                                             ! found keyword
-              exit
-            else
-              contInts(1) = contInts(1) + 1  
-              read (tmp,*) contInts(contInts(1)+1)     
-            endif
-          enddo
-        endif  
-      endif
-    endif Marc2016andEarlier
-  enddo    
-620 do i = 1,contInts(1)
-    cpElem = cpElem+1
-    mesh_mapFEtoCPelem(1,cpElem) = contInts(1+i)
-    mesh_mapFEtoCPelem(2,cpElem) = cpElem
+  integer :: i,j,l,nNodesAlreadyRead
+
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity' ) then
+      j = 0
+      do i = 1,nElem
+        chunkPos = IO_stringPos(fileContent(l+1+i+j))
+        mesh_mapFEtoCPelem(:,i) = [IO_intValue(fileContent(l+1+i+j),chunkPos,1),i]
+        nNodesAlreadyRead = chunkPos(1) - 2
+        do while(nNodesAlreadyRead < nNodes)                                                        ! read on if not all nodes in one line
+          j = j + 1
+          chunkPos = IO_stringPos(fileContent(l+1+i+j))
+          nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
+        enddo
+      enddo
+      exit
+    endif
   enddo
- 
-call math_sort(mesh_mapFEtoCPelem)
+
+  call math_sort(mesh_mapFEtoCPelem)
 
 end subroutine inputRead_mapElems
 
@@ -488,7 +479,8 @@ subroutine inputRead_mapNodes(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i = 1,size(mesh_mapFEtoCPnode,2)
-        mesh_mapFEtoCPnode(1:2,i) = [IO_fixedIntValue (fileContent(l+1+i),[0,10],1),i]              ! ToDo: use IO_intValue
+        chunkPos = IO_stringPos(fileContent(l+1+i))
+        mesh_mapFEtoCPnode(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
       enddo
       exit
     endif
@@ -509,7 +501,6 @@ subroutine inputRead_elemNodes(nodes, &
   integer,                                   intent(in)  :: nNode
   character(len=pStringLen), dimension(:),   intent(in)  :: fileContent                             !< file content, separated per lines
   
-  integer, dimension(5), parameter   :: node_ends = [0,10,30,50,70]
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,m,l
 
@@ -519,9 +510,10 @@ subroutine inputRead_elemNodes(nodes, &
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates' ) then
       do i=1,nNode
-        m = mesh_FEasCP('node',IO_fixedIntValue(fileContent(l+1+i),node_ends,1))                    !ToDo: use IO_intValue
+        chunkPos = IO_stringPos(fileContent(l+1+i))
+        m = mesh_FEasCP('node',IO_intValue(fileContent(l+1+i),chunkPos,1))
         do j = 1,3
-          nodes(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(fileContent(l+1+i),node_ends,j+1)    !ToDo: use IO_floatValue
+          nodes(j,m) = mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1)
         enddo
       enddo
       exit
@@ -709,7 +701,7 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
         read (fileUnit,'(A300)',END=630) line                                                       ! read line with value of state var
         chunkPos = IO_stringPos(line)
         do while (scan(IO_stringValue(line,chunkPos,1),'+-',back=.true.)>1)                         ! is noEfloat value?
-          myVal = nint(IO_fixedNoEFloatValue(line,[0,20],1),pInt)                                   ! state var's value
+          myVal = nint(IO_floatValue(line,chunkPos,1))
           if (initialcondTableStyle == 2) then
             read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
             read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
