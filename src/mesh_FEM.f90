@@ -179,7 +179,7 @@ subroutine mesh_init
     call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
   
   FEsolving_execElem = [ 1,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
-  FEsolving_execIP   = spread([1,FE_Nips(FE_geomtype(mesh_element(2,1))),2,nElems)
+  FEsolving_execIP   = spread([1,FE_Nips(FE_geomtype(mesh_element(2,1)))],2,mesh_NcpElems)
   
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 
