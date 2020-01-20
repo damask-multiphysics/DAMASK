@@ -23,11 +23,11 @@ class Table():
         
         """
         self.comments = [] if comments is None else [c for c in comments]
-        try:
+        if hasattr(data,'columns'):
             self.data = data
             self.data.columns = [''] * len(self.data.columns)
-        except:
-        self.data = pd.DataFrame(data=data)
+        else:
+            self.data = pd.DataFrame(data=data)
         self.shapes = shapes
         self.__label_condensed()
 
@@ -81,15 +81,15 @@ class Table():
             N_comment_lines,keyword = f.readline().split()
             if keyword != 'header':
                 raise TypeError
-        else:
+            else:
                 comments = [f.readline().strip() for i in range(1,int(N_comment_lines))]
-        labels   = f.readline().split()
+                labels   = f.readline().split()
         except TypeError:
             f.seek(0)
             comments = []
             line = f.readline().strip()
             while line.startswith('#'):
-                comments.append(line.lstrip('#').lstrip())
+                comments.append(line.lstrip('#').strip())
                 line = f.readline().strip()
             labels = line.split()
        
