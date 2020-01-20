@@ -67,7 +67,7 @@ contains
 subroutine mesh_init
 
   integer, dimension(1), parameter:: FE_geomtype = [1]                      !< geometry type of particular element type
-  integer, dimension(1) :: FE_Nips                         !< number of IPs in a specific type of element
+  integer, dimension(1) :: FE_Nips                                          !< number of IPs in a specific type of element
   
   integer, parameter :: FILEUNIT = 222
   integer :: j
@@ -81,7 +81,7 @@ subroutine mesh_init
   logical :: flag
   PetscSF :: sf
   DM :: globalMesh
-  PetscInt :: face, nFaceSets
+  PetscInt :: nFaceSets
   PetscInt, pointer :: pFaceSets(:)
   IS :: faceSetIS 
   PetscErrorCode :: ierr
@@ -112,9 +112,7 @@ subroutine mesh_init
   call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,ierr)
   CHKERRQ(ierr)
   if (nFaceSets > 0) call ISGetIndicesF90(faceSetIS,pFaceSets,ierr)
-  do face = 1, nFaceSets
-    mesh_boundaries(face) = pFaceSets(face)
-  enddo  
+  mesh_boundaries(1:nFaceSets) = pFaceSets(1:nFaceSets)
   if (nFaceSets > 0) call ISRestoreIndicesF90(faceSetIS,pFaceSets,ierr)
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
