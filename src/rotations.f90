@@ -42,7 +42,8 @@
 !    Convention 4: Euler angle triplets are implemented using the Bunge convention,
 !                  with the angular ranges as [0, 2π],[0, π],[0, 2π]
 !    Convention 5: the rotation angle ω is limited to the interval [0, π]
-!    Convention 6: P = -1
+!    Convention 6: the real part of a quaternion is positive, Re(q) > 0
+!    Convention 7: P = -1
 !---------------------------------------------------------------------------------------------------
 
 module rotations
@@ -77,6 +78,7 @@ module rotations
       procedure, public  :: rotTensor4
       procedure, public  :: rotTensor4sym
       procedure, public  :: misorientation
+      procedure, public  :: standardize
   end type rotation
   
   public :: &
@@ -92,7 +94,7 @@ contains
 subroutine rotations_init
 
   call quaternions_init
-  write(6,'(/,a)')   ' <<<+-  rotations init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  rotations init  -+>>>'; flush(6)
   call unitTest
 
 end subroutine rotations_init
@@ -237,7 +239,6 @@ end subroutine fromMatrix
 
 !---------------------------------------------------------------------------------------------------
 !> @brief: Rotate a rotation
-!> ToDo: completly untested
 !---------------------------------------------------------------------------------------------------
 pure elemental function rotRot__(self,R) result(rRot)
     
@@ -245,8 +246,21 @@ pure elemental function rotRot__(self,R) result(rRot)
   class(rotation), intent(in) :: self,R
   
   rRot = rotation(self%q*R%q)
+  call rRot%standardize()
 
 end function rotRot__
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief quaternion representation with positive q 
+!---------------------------------------------------------------------------------------------------
+pure elemental subroutine standardize(self)
+
+  class(rotation), intent(inout) :: self
+  
+  if (real(self%q) < 0.0_pReal) self%q = self%q%homomorphed()
+
+end subroutine standardize
 
 
 !---------------------------------------------------------------------------------------------------
@@ -375,7 +389,7 @@ pure elemental function misorientation(self,other)
   type(rotation)              :: misorientation
   class(rotation), intent(in) :: self, other
   
-  misorientation%q = conjg(self%q) * other%q                                                        !ToDo: this is the convention used in math
+  misorientation%q = other%q * conjg(self%q)
 
 end function misorientation
 
