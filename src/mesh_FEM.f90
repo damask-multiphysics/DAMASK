@@ -197,21 +197,17 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
  
-  PetscInt           :: dimPlex
+  PetscInt,intent(in):: dimPlex
   PetscReal          :: vol
-  PetscReal,  target :: cent(dimPlex), norm(dimPlex)
-  PetscReal, pointer :: pCent(:), pNorm(:)
+  PetscReal, pointer,dimension(:) :: pCent, pNorm
   PetscInt           :: cellStart, cellEnd, cell
   PetscErrorCode     :: ierr
  
-  if (.not. allocated(mesh_ipVolume)) then
-    allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
-    mesh_ipVolume = 0.0_pReal 
-  endif
+  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
-  pCent => cent
-  pNorm => norm
+  allocate(pCent(dimPlex))
+  allocate(pNorm(dimPlex))
   do cell = cellStart, cellEnd-1
     call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,ierr) 
     CHKERRQ(ierr)
@@ -229,8 +225,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   PetscInt,      intent(in) :: dimPlex
   PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
   
-  PetscReal,         target :: v0(dimPlex), cellJ(dimPlex*dimPlex), invcellJ(dimPlex*dimPlex)
-  PetscReal,        pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
+  PetscReal,        pointer,dimension(:) :: pV0, pCellJ, pInvcellJ
   PetscReal                 :: detJ
   PetscInt                  :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
   PetscErrorCode            :: ierr
@@ -238,9 +233,9 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
  
   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
-  pV0 => v0
-  pCellJ => cellJ
-  pInvcellJ => invcellJ
+  allocate(pV0(dimPlex))
+  allocatE(pCellJ(dimPlex**2))
+  allocatE(pinvCellJ(dimPlex**2))
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
   do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)
