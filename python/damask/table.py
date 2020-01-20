@@ -219,7 +219,7 @@ class Table():
         self.__add_comment(label,data.shape[1:],info)
 
         self.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
-        size = np.prod(data.shape[1:])
+        size = np.prod(data.shape[1:],dtype=int)
         new = pd.DataFrame(data=data.reshape(-1,size),
                            columns=[label]*size,
                           )
