@@ -26,8 +26,10 @@ module mesh
  
  integer, public, protected :: &
    mesh_Nboundaries, &
-   mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal
+
+ integer :: &
+   mesh_NcpElems                                                                                     !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
  integer, public, protected :: &
@@ -44,7 +46,7 @@ module mesh
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
  
- real(pReal), dimension(:,:,:), allocatable, public :: &
+ real(pReal), dimension(:,:,:), allocatable :: &
    mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
 
  DM, public :: geomMesh
