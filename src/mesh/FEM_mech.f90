@@ -131,11 +131,13 @@ subroutine FEM_mech_init(fieldBC)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
   call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   allocate(pnumComp(1), source=dimPlex)
-  allocate(pnumDof(dimPlex+1), source = 0)
+  allocate(pnumDof(0:dimPlex), source = 0)
   do topologDim = 0, dimPlex
     call DMPlexGetDepthStratum(mech_mesh,topologDim,cellStart,cellEnd,ierr)
     CHKERRQ(ierr)
-    call PetscSectionGetDof(section,cellStart,pnumDof(topologDim+1),ierr)
+    call PetscSectionGetDof(section,cellStart,pnumDof(topologDim),ierr)
+    write(6,*) 'start',cellStart,'end',cellEnd
+    write(6,*) 'topologDim',topologDim,'numDOF',pNumDOF(topologDim)
     CHKERRQ(ierr)
   enddo
   numBC = 0
