@@ -37,7 +37,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_Zoo_init
   
-  write(6,'(/,a)')   ' <<<+-  FEM_Zoo init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  FEM_Zoo init  -+>>>'; flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! 2D linear
@@ -53,7 +53,7 @@ subroutine FEM_Zoo_init
 ! 2D quadratic
   FEM_Zoo_nQuadrature(2,2) = 3
  
- allocate(FEM_Zoo_QuadratureWeights(2,2)%p(3))
+  allocate(FEM_Zoo_QuadratureWeights(2,2)%p(3))
   FEM_Zoo_QuadratureWeights(2,2)%p(1:3) = 1.0_pReal/3.0_pReal
 
   allocate(FEM_Zoo_QuadraturePoints (2,2)%p(6))

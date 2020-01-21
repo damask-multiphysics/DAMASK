@@ -26,8 +26,10 @@ module mesh
  
  integer, public, protected :: &
    mesh_Nboundaries, &
-   mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal
+
+ integer :: &
+   mesh_NcpElems                                                                                     !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
  integer, public, protected :: &
@@ -44,7 +46,7 @@ module mesh
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
  
- real(pReal), dimension(:,:,:), allocatable, public :: &
+ real(pReal), dimension(:,:,:), allocatable :: &
    mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
 
  DM, public :: geomMesh
@@ -177,7 +179,7 @@ subroutine mesh_init
     call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
   
   FEsolving_execElem = [ 1,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
-  FEsolving_execIP   = spread([1,FE_Nips(FE_geomtype(mesh_element(2,1))),2,nElems)
+  FEsolving_execIP   = spread([1,FE_Nips(FE_geomtype(mesh_element(2,1)))],2,mesh_NcpElems)
   
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 
@@ -193,21 +195,17 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
  
-  PetscInt           :: dimPlex
+  PetscInt,intent(in):: dimPlex
   PetscReal          :: vol
-  PetscReal,  target :: cent(dimPlex), norm(dimPlex)
-  PetscReal, pointer :: pCent(:), pNorm(:)
+  PetscReal, pointer,dimension(:) :: pCent, pNorm
   PetscInt           :: cellStart, cellEnd, cell
   PetscErrorCode     :: ierr
  
-  if (.not. allocated(mesh_ipVolume)) then
-    allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
-    mesh_ipVolume = 0.0_pReal 
-  endif
+  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
-  pCent => cent
-  pNorm => norm
+  allocate(pCent(dimPlex))
+  allocate(pNorm(dimPlex))
   do cell = cellStart, cellEnd-1
     call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,ierr) 
     CHKERRQ(ierr)
@@ -225,8 +223,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   PetscInt,      intent(in) :: dimPlex
   PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
   
-  PetscReal,         target :: v0(dimPlex), cellJ(dimPlex*dimPlex), invcellJ(dimPlex*dimPlex)
-  PetscReal,        pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
+  PetscReal,        pointer,dimension(:) :: pV0, pCellJ, pInvcellJ
   PetscReal                 :: detJ
   PetscInt                  :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
   PetscErrorCode            :: ierr
@@ -234,9 +231,9 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
  
   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
-  pV0 => v0
-  pCellJ => cellJ
-  pInvcellJ => invcellJ
+  allocate(pV0(dimPlex))
+  allocatE(pCellJ(dimPlex**2))
+  allocatE(pinvCellJ(dimPlex**2))
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
   do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)

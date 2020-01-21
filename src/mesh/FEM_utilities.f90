@@ -23,7 +23,7 @@ module FEM_utilities
   private
 
 !--------------------------------------------------------------------------------------------------
-  logical,       public       :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+  logical, public             :: cutBack = .false.                                                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
   integer, public, parameter  :: maxFields = 6
   integer, public             :: nActiveFields = 0
  
@@ -56,15 +56,15 @@ module FEM_utilities
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type, public :: tSolutionState                                                                    !< return type of solution from FEM solver variants
-    logical       :: converged         = .true.   
-    logical       :: stagConverged     = .true.   
-    integer :: iterationsNeeded  = 0
+    logical :: converged        = .true.   
+    logical :: stagConverged    = .true.   
+    integer :: iterationsNeeded = 0
   end type tSolutionState
  
   type, public :: tComponentBC
     integer(kind(COMPONENT_UNDEFINED_ID))          :: ID
-    real(pReal),                       allocatable :: Value(:)
-    logical,                           allocatable :: Mask(:)   
+    real(pReal),                       allocatable, dimension(:) :: Value
+    logical,                           allocatable, dimension(:) :: Mask 
   end type tComponentBC
  
   type, public :: tFieldBC
@@ -79,8 +79,8 @@ module FEM_utilities
                     outputfrequency        = 1, &                                                   !< frequency of result writes
                     logscale               = 0                                                      !< linear/logarithmic time inc flag
     logical      :: followFormerTrajectory = .true.                                                 !< follow trajectory of former loadcase
-    integer,        allocatable :: faceID(:)
-    type(tFieldBC),       allocatable :: fieldBC(:)
+    integer,        allocatable, dimension(:) :: faceID
+    type(tFieldBC), allocatable, dimension(:) :: fieldBC
   end type tLoadCase
   
   public :: &
@@ -88,6 +88,7 @@ module FEM_utilities
     utilities_constitutiveResponse, &
     utilities_projectBCValues, &
     FIELD_MECH_ID, &
+    COMPONENT_UNDEFINED_ID, &
     COMPONENT_MECH_X_ID, &
     COMPONENT_MECH_Y_ID, &
     COMPONENT_MECH_Z_ID

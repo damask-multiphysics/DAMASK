@@ -67,28 +67,33 @@ contains
 subroutine FEM_mech_init(fieldBC)
 
   type(tFieldBC),             intent(in) :: fieldBC
+
   DM                                     :: mech_mesh
   PetscFE                                :: mechFE
   PetscQuadrature                        :: mechQuad, functional
   PetscDS                                :: mechDS
   PetscDualSpace                         :: mechDualSpace
+  DMLabel, dimension(:),pointer          :: pBCLabel
   DMLabel                                :: BCLabel
+  
   PetscInt,  dimension(:),       pointer :: pNumComp, pNumDof, pBcField, pBcPoint
-  PetscInt                               :: numBC, bcSize, nc
+  PetscInt                               :: numBC, bcSize, nc, &
+                                            field, faceSet, topologDim, nNodalPoints, &
+                                            cellStart, cellEnd, cell, basis 
+  
   IS                                     :: bcPoint
-  IS,                            pointer :: pBcComps(:), pBcPoints(:)
+  IS,        dimension(:),       pointer :: pBcComps, pBcPoints
   PetscSection                           :: section
-  PetscInt                               :: field, faceSet, topologDim, nNodalPoints
+
   PetscReal,      dimension(:),  pointer :: qPointsP, qWeightsP, &
-                                            nodalPointsP, nodalWeightsP
-  PetscReal,         allocatable, target :: nodalPoints(:), nodalWeights(:)
-  PetscScalar,                   pointer :: px_scal(:)
-  PetscScalar,       allocatable, target ::  x_scal(:)
+                                            nodalPointsP, nodalWeightsP,pV0, pCellJ, pInvcellJ
   PetscReal                              :: detJ
   PetscReal,         allocatable, target :: cellJMat(:,:)
-  PetscReal,                     pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
-  PetscInt                               :: cellStart, cellEnd, cell, basis 
-  character(len=7), parameter            :: prefix = 'mechFE_'
+  
+  PetscScalar,                   pointer :: px_scal(:)
+  PetscScalar,       allocatable, target ::  x_scal(:)
+
+  character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: ierr
  
   write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
@@ -125,13 +130,19 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
+#if (PETSC_VERSION_MINOR < 11)
   call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+#else
+  call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+#endif
   allocate(pnumComp(1), source=dimPlex)
-  allocate(pnumDof(dimPlex+1), source = 0)
+  allocate(pnumDof(0:dimPlex), source = 0)
   do topologDim = 0, dimPlex
     call DMPlexGetDepthStratum(mech_mesh,topologDim,cellStart,cellEnd,ierr)
     CHKERRQ(ierr)
-    call PetscSectionGetDof(section,cellStart,pnumDof(topologDim+1),ierr)
+    call PetscSectionGetDof(section,cellStart,pnumDof(topologDim),ierr)
+    write(6,*) 'start',cellStart,'end',cellEnd
+    write(6,*) 'topologDim',topologDim,'numDOF',pNumDOF(topologDim)
     CHKERRQ(ierr)
   enddo
   numBC = 0
@@ -163,9 +174,15 @@ subroutine FEM_mech_init(fieldBC)
       endif  
     endif  
   enddo; enddo
+#if (PETSC_VERSION_MINOR < 11)
   call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
-                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS, &
-                           section,ierr)
+                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
+#else
+  allocate(pBClabel(1),source=BClabel)
+  call DMPlexCreateSection(mech_mesh,pBClabel,pNumComp,pNumDof, &
+                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
+
+#endif
   CHKERRQ(ierr)
   call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   do faceSet = 1, numBC
@@ -196,13 +213,11 @@ subroutine FEM_mech_init(fieldBC)
   call VecSet(solution        ,0.0,ierr); CHKERRQ(ierr)
   call VecSet(solution_rate   ,0.0,ierr); CHKERRQ(ierr)
   allocate(x_scal(cellDof))
-  allocate(nodalPoints (dimPlex))
-  allocate(nodalWeights(1))
-  nodalPointsP  => nodalPoints
-  nodalWeightsP => nodalWeights
+  allocate(nodalWeightsP(1))
+  allocate(nodalPointsP(dimPlex))
   allocate(pv0(dimPlex))
-  allocate(pcellJ(dimPlex*dimPlex))
-  allocate(pinvcellJ(dimPlex*dimPlex))
+  allocate(pcellJ(dimPlex**2))
+  allocate(pinvcellJ(dimPlex**2))
   allocate(cellJMat(dimPlex,dimPlex))
   call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
@@ -212,7 +227,7 @@ subroutine FEM_mech_init(fieldBC)
   call DMPlexGetHeightStratum(mech_mesh,0,cellStart,cellEnd,ierr)
   CHKERRQ(ierr)
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements 
-    x_scal = 0.0
+    x_scal = 0.0_pReal
     call  DMPlexComputeCellGeometryAffineFEM(mech_mesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr) 
     CHKERRQ(ierr)
     cellJMat = reshape(pCellJ,shape=[dimPlex,dimPlex])
@@ -221,7 +236,7 @@ subroutine FEM_mech_init(fieldBC)
       CHKERRQ(ierr)
       call PetscQuadratureGetData(functional,dimPlex,nc,nNodalPoints,nodalPointsP,nodalWeightsP,ierr)
       CHKERRQ(ierr)
-      x_scal(basis+1:basis+dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0)
+      x_scal(basis+1:basis+dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0_pReal)
     enddo
     px_scal => x_scal
     call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,INSERT_ALL_VALUES,ierr)
@@ -283,6 +298,9 @@ end function FEM_mech_solution
 subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
 
   DM                                 :: dm_local
+  PetscObject,intent(in)             :: dummy
+  PetscErrorCode                     :: ierr
+  
   PetscDS                            :: prob
   Vec                                :: x_local, f_local, xx_local
   PetscSection                       :: section
@@ -294,10 +312,10 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
                                         qPt, basis, comp, cidx
   PetscReal                          :: detFAvg
   PetscReal                          :: BMat(dimPlex*dimPlex,cellDof)
-  PetscObject,intent(in)             :: dummy
+
   PetscInt                           :: bcSize
   IS                                 :: bcPoints
-  PetscErrorCode                     :: ierr
+
   
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
@@ -316,7 +334,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,ierr)
         CHKERRQ(ierr)
         call utilities_projectBCValues(x_local,section,0,field-1,bcPoints, &
-                                       0.0,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
+                                       0.0_pReal,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
         call ISDestroy(bcPoints,ierr); CHKERRQ(ierr)
       endif
     endif
@@ -403,29 +421,35 @@ end subroutine FEM_mech_formResidual
 !--------------------------------------------------------------------------------------------------
 subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
 
-  DM                                   :: dm_local
+
+  DM                      :: dm_local
+  Mat                     :: Jac_pre, Jac
+  PetscObject, intent(in) :: dummy
+  PetscErrorCode          :: ierr
+  
   PetscDS                              :: prob
   Vec                                  :: x_local, xx_local
-  Mat                                  :: Jac_pre, Jac
+
   PetscSection                         :: section, gSection
+  
+  PetscReal, dimension(1,         cellDof)  :: MatB
+  PetscReal, dimension(dimPlex**2,cellDof)  :: BMat, BMatAvg, MatA
+  PetscReal,   dimension(3,3)          :: F, FAvg, FInv
   PetscReal                            :: detJ
   PetscReal,   dimension(:),   pointer :: basisField, basisFieldDer, &
                                           pV0, pCellJ, pInvcellJ
+
+  PetscScalar, dimension(:),   pointer :: pK_e, x_scal
+
+  PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e
+  PetscScalar,dimension(cellDOF,cellDOF)  :: K_eA  , &  
+                                          K_eB  
+
   PetscInt                             :: cellStart, cellEnd, cell, field, face, &
                                           qPt, basis, comp, cidx,bcSize
-  PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e, &
-                                          K_eA  , &  
-                                          K_eB  
-  PetscScalar,                  target :: K_eVec(cellDof*cellDof)
-  PetscReal                            :: BMat   (dimPlex*dimPlex,cellDof), &
-                                          BMatAvg(dimPlex*dimPlex,cellDof), &
-                                          MatA   (dimPlex*dimPlex,cellDof), &
-                                          MatB   (1              ,cellDof)
-  PetscScalar, dimension(:),   pointer :: pK_e, x_scal
-  PetscReal,   dimension(3,3)          :: F, FAvg, FInv
-  PetscObject, intent(in)                          :: dummy
+
   IS                                   :: bcPoints
-  PetscErrorCode                       :: ierr
+
   
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
@@ -440,7 +464,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   call DMGetGlobalSection(dm_local,gSection,ierr); CHKERRQ(ierr)
   
   call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
-  call VecWAXPY(x_local,1.0,xx_local,solution_local,ierr); CHKERRQ(ierr)
+  call VecWAXPY(x_local,1.0_pReal,xx_local,solution_local,ierr); CHKERRQ(ierr)
   do field = 1, dimPlex; do face = 1, mesh_Nboundaries
     if (params%fieldBC%componentBC(field)%Mask(face)) then
       call DMGetStratumSize(dm_local,'Face Sets',mesh_boundaries(face),bcSize,ierr)
@@ -448,7 +472,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
         call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,ierr)
         CHKERRQ(ierr)
         call utilities_projectBCValues(x_local,section,0,field-1,bcPoints, &
-                                       0.0,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
+                                       0.0_pReal,params%fieldBC%componentBC(field)%Value(face),params%timeinc)
         call ISDestroy(bcPoints,ierr); CHKERRQ(ierr)
       endif
     endif
@@ -501,13 +525,16 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
             (matmul(matmul(transpose(BMatAvg), &
                            reshape(FInv(1:dimPlex,1:dimPlex),shape=[dimPlex*dimPlex,1],order=[2,1])),MatB) + &
              K_eB)/real(dimPlex)              
-      
     else
       K_e = K_eA
     endif  
-    K_e = K_e + eps*math_identity2nd(cellDof)
-    K_eVec = reshape(K_e, [cellDof*cellDof])*abs(detJ) 
-    pK_e => K_eVec      
+    K_e = (K_e + eps*math_identity2nd(cellDof)) * abs(detJ)
+#ifndef __INTEL_COMPILER
+    pK_e(1:cellDOF**2) => K_e
+#else
+    ! https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/782230 (bug)
+    allocate(pK_e(cellDOF**2),source = reshape(K_e,[cellDOF**2]))
+#endif
     call DMPlexMatSetClosure(dm_local,section,gSection,Jac,cell,pK_e,ADD_VALUES,ierr)
     CHKERRQ(ierr)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,ierr)
@@ -536,18 +563,18 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
 
   type(tFieldBC), intent(in) :: &
     fieldBC
-  real(pReal), intent(in) :: &
+  real(pReal),    intent(in) :: &
     timeinc_old, &
     timeinc 
-  logical, intent(in) :: &
+  logical,        intent(in) :: &
     guess
-  PetscInt                :: field, face
-  DM                      :: dm_local
-  Vec                     :: x_local
-  PetscSection            :: section
-  PetscInt                :: bcSize
-  IS                      :: bcPoints
-  PetscErrorCode          :: ierr   
+
+  PetscInt       :: field, face, bcSize
+  DM             :: dm_local
+  Vec            :: x_local
+  PetscSection   :: section
+  IS             :: bcPoints
+  PetscErrorCode :: ierr   
 
 !--------------------------------------------------------------------------------------------------
 ! forward last inc
@@ -557,7 +584,7 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
     call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                          !< retrieve mesh info from mech_snes into dm_local
     call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
     call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
-    call VecSet(x_local,0.0,ierr); CHKERRQ(ierr)
+    call VecSet(x_local,0.0_pReal,ierr); CHKERRQ(ierr)
     call DMGlobalToLocalBegin(dm_local,solution,INSERT_VALUES,x_local,ierr)                         !< retrieve my partition of global solution vector
     CHKERRQ(ierr)
     call DMGlobalToLocalEnd(dm_local,solution,INSERT_VALUES,x_local,ierr)
@@ -570,7 +597,7 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
           call DMGetStratumIS(dm_local,'Face Sets',mesh_boundaries(face),bcPoints,ierr)
           CHKERRQ(ierr)
           call utilities_projectBCValues(solution_local,section,0,field-1,bcPoints, &
-                                         0.0,fieldBC%componentBC(field)%Value(face),timeinc_old)
+                                         0.0_pReal,fieldBC%componentBC(field)%Value(face),timeinc_old)
           call ISDestroy(bcPoints,ierr); CHKERRQ(ierr)
         endif
       endif

@@ -23,11 +23,7 @@ class Table():
         
         """
         self.comments = [] if comments is None else [c for c in comments]
-        if hasattr(data,'columns'):
-            self.data = data
-            self.data.columns = [''] * len(self.data.columns)
-        else:
-            self.data = pd.DataFrame(data=data)
+        self.data = pd.DataFrame(data=data)
         self.shapes = shapes
         self.__label_condensed()
 
