@@ -906,7 +906,7 @@ class DADF5():
               n_nodes = 8
 
           for i in f['/geometry/T_c']:
-            vtk_geom.InsertNextCell(n_nodes,vtk_type,i-1)
+            vtk_geom.InsertNextCell(vtk_type,n_nodes,i-1)
 
     elif mode == 'Point':
       Points   = vtk.vtkPoints()
