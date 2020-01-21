@@ -516,7 +516,12 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
       K_e = K_eA
     endif  
     K_e = (K_e + eps*math_identity2nd(cellDof)) * abs(detJ)
+#ifndef __INTEL_COMPILER
     pK_e(1:cellDOF**2) => K_e
+#else
+    ! https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/782230 (bug)
+    allocate(pK_e(cellDOF**2),source = reshape(K_e,[cellDOF**2]))
+#endif
     call DMPlexMatSetClosure(dm_local,section,gSection,Jac,cell,pK_e,ADD_VALUES,ierr)
     CHKERRQ(ierr)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,ierr)
