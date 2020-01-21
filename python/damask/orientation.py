@@ -1078,12 +1078,12 @@ class Orientation:
     if isinstance(lattice, Lattice):
       self.lattice = lattice
     else:
-      self.lattice = Lattice(lattice)      # assume string
+      self.lattice = Lattice(lattice)                                                               # assume string
       
     if isinstance(rotation, Rotation):
       self.rotation = rotation
     else:
-      self.rotation = Rotation(rotation)   # assume quaternion
+      self.rotation = Rotation.fromQuaternion(rotation)                                             # assume quaternion
       
   def disorientation(self,
                      other,
