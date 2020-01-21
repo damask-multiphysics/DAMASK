@@ -73,6 +73,7 @@ subroutine FEM_mech_init(fieldBC)
   PetscQuadrature                        :: mechQuad, functional
   PetscDS                                :: mechDS
   PetscDualSpace                         :: mechDualSpace
+  DMLabel, dimension(:),pointer          :: pBCLabel
   DMLabel                                :: BCLabel
   
   PetscInt,  dimension(:),       pointer :: pNumComp, pNumDof, pBcField, pBcPoint
@@ -129,7 +130,7 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
-  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+  call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   allocate(pnumComp(1), source=dimPlex)
   allocate(pnumDof(0:dimPlex), source = 0)
   do topologDim = 0, dimPlex
@@ -169,9 +170,15 @@ subroutine FEM_mech_init(fieldBC)
       endif  
     endif  
   enddo; enddo
+#if (PETSC_VERSION_MINOR < 11)
   call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
-                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS, &
-                           section,ierr)
+                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
+#else
+  allocate(pBClabel(1),source=BClabel)
+  call DMPlexCreateSection(mech_mesh,pBClabel,pNumComp,pNumDof, &
+                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
+
+#endif
   CHKERRQ(ierr)
   call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   do faceSet = 1, numBC
