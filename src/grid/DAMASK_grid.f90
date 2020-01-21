@@ -140,11 +140,12 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
- allocate (loadCases(0))                                                                            ! array of load cases
  fileContent = IO_read_ASCII(trim(loadCaseFile))
 
+ allocate (loadCases(0))                                                                            ! array of load cases
  do currentLoadCase = 1, size(fileContent)
    line = fileContent(currentLoadCase)
+   if (IO_isBlank(line)) cycle
    chunkPos = IO_stringPos(line)
 
    do i = 1, chunkPos(1)                                                                            ! reading compulsory parameters for loadcase
