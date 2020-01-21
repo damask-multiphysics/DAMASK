@@ -130,7 +130,11 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
+#if (PETSC_VERSION_MINOR < 11)
+  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+#else
   call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
+#endif
   allocate(pnumComp(1), source=dimPlex)
   allocate(pnumDof(0:dimPlex), source = 0)
   do topologDim = 0, dimPlex
