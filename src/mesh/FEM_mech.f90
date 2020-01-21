@@ -431,7 +431,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e, &
                                           K_eA  , &  
                                           K_eB  
-  PetscScalar,(cellDof**2) ,target :: K_eVec
+  PetscScalar,dimension(cellDof**2) ,target :: K_eVec
 
   PetscInt                             :: cellStart, cellEnd, cell, field, face, &
                                           qPt, basis, comp, cidx,bcSize
