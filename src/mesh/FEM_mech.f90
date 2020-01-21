@@ -428,10 +428,9 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
 
   PetscScalar, dimension(:),   pointer :: pK_e, x_scal
 
-  PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e, &
-                                          K_eA  , &  
+  PetscScalar,dimension(cellDOF,cellDOF),  target :: K_e
+  PetscScalar,dimension(cellDOF,cellDOF)  :: K_eA  , &  
                                           K_eB  
-  PetscScalar,dimension(cellDof**2) ,target :: K_eVec
 
   PetscInt                             :: cellStart, cellEnd, cell, field, face, &
                                           qPt, basis, comp, cidx,bcSize
@@ -516,9 +515,8 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
     else
       K_e = K_eA
     endif  
-    K_e = K_e + eps*math_identity2nd(cellDof)
-    K_eVec = reshape(K_e, [cellDof*cellDof])*abs(detJ) 
-    pK_e => K_eVec      
+    K_e = (K_e + eps*math_identity2nd(cellDof)) * abs(detJ)
+    pK_e(1:cellDOF**2) => K_e
     call DMPlexMatSetClosure(dm_local,section,gSection,Jac,cell,pK_e,ADD_VALUES,ierr)
     CHKERRQ(ierr)
     call DMPlexVecRestoreClosure(dm_local,section,x_local,cell,x_scal,ierr)
@@ -568,7 +566,7 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
     call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                          !< retrieve mesh info from mech_snes into dm_local
     call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
     call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
-    call VecSet(x_local,0.00_pReal,ierr); CHKERRQ(ierr)
+    call VecSet(x_local,0.0_pReal,ierr); CHKERRQ(ierr)
     call DMGlobalToLocalBegin(dm_local,solution,INSERT_VALUES,x_local,ierr)                         !< retrieve my partition of global solution vector
     CHKERRQ(ierr)
     call DMGlobalToLocalEnd(dm_local,solution,INSERT_VALUES,x_local,ierr)
