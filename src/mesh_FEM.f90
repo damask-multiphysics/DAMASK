@@ -113,9 +113,13 @@ subroutine mesh_init
   CHKERRQ(ierr)
   call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,ierr)
   CHKERRQ(ierr)
-  if (nFaceSets > 0) call ISGetIndicesF90(faceSetIS,pFaceSets,ierr)
-  mesh_boundaries(1:nFaceSets) = pFaceSets(1:nFaceSets)
-  if (nFaceSets > 0) call ISRestoreIndicesF90(faceSetIS,pFaceSets,ierr)
+  if (nFaceSets > 0) then
+    call ISGetIndicesF90(faceSetIS,pFaceSets,ierr)
+    CHKERRQ(ierr)
+    mesh_boundaries(1:nFaceSets) = pFaceSets
+    CHKERRQ(ierr)
+    call ISRestoreIndicesF90(faceSetIS,pFaceSets,ierr)
+  endif
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
   ! this read in function should ignore C and C++ style comments
