@@ -88,6 +88,7 @@ module FEM_utilities
     utilities_constitutiveResponse, &
     utilities_projectBCValues, &
     FIELD_MECH_ID, &
+    COMPONENT_UNDEFINED_ID, &
     COMPONENT_MECH_X_ID, &
     COMPONENT_MECH_Y_ID, &
     COMPONENT_MECH_Z_ID

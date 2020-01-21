@@ -66,7 +66,7 @@ program DAMASK_FEM
   PetscInt :: faceSet, currentFaceSet
   PetscInt :: field, dimPlex
   PetscErrorCode :: ierr
- 
+  integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
   external :: &
     quit
 
@@ -166,45 +166,28 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! boundary condition information
-        case('x')                                                                                   ! X displacement field  
-          do field = 1, nActiveFields
-            if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_MECH_ID) then
-              do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-                if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_MECH_X_ID) then
-                  loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                      .true.
-                  loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                      IO_floatValue(line,chunkPos,i+1)
-                endif
-              enddo
-            endif
-          enddo  
-        case('y')                                                                                   ! Y displacement field                                                                            
-          do field = 1, nActiveFields
-            if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_MECH_ID) then
-              do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-                if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_MECH_Y_ID) then
-                  loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                      .true.
-                  loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                      IO_floatValue(line,chunkPos,i+1)
-                endif
-              enddo
-            endif
-          enddo  
-        case('z')                                                                                   ! Z displacement field                                                                       
-          do field = 1, nActiveFields
-            if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_MECH_ID) then
-              do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
-                if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == COMPONENT_MECH_Z_ID) then
-                  loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
-                      .true.
-                  loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
-                      IO_floatValue(line,chunkPos,i+1)
-                endif
-              enddo
-            endif
-          enddo  
+        case('x','y','z')
+          select case(IO_lc(IO_stringValue(line,chunkPos,i)))
+            case('x')
+              ID = COMPONENT_MECH_X_ID
+            case('y')
+              ID = COMPONENT_MECH_Y_ID
+            case('z')
+              ID = COMPONENT_MECH_Z_ID
+           end select
+          
+           do field = 1, nActiveFields
+             if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_MECH_ID) then
+               do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
+                 if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%ID == ID) then
+                   loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask (currentFaceSet) = &
+                       .true.
+                   loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Value(currentFaceSet) = &
+                       IO_floatValue(line,chunkPos,i+1)
+                 endif
+               enddo
+             endif
+           enddo  
       end select
   enddo; enddo
   close(fileUnit)
