@@ -40,21 +40,21 @@ subroutine FE_init
   
 #if defined(Marc4DAMASK)
   block
-    integer, parameter :: FILEUNIT = 222
     character(len=pStringLen) :: line
+    integer :: myStat,fileUnit
     integer, allocatable, dimension(:) :: chunkPos
-    call IO_open_inputFile(FILEUNIT)
-    rewind(FILEUNIT)
+    open(newunit=fileUnit, file=trim(getSolverJobName()//INPUTFILEEXTENSION), &
+         status='old', position='rewind', action='read',iostat=myStat)
     do
-      read (FILEUNIT,'(A)',END=100) line
+      read (fileUnit,'(A)',END=100) line
       chunkPos = IO_stringPos(line)
       if(IO_lc(IO_stringValue(line,chunkPos,1)) == 'solver') then
-        read (FILEUNIT,'(A)',END=100) line                                                          ! next line
+        read (fileUnit,'(A)',END=100) line                                                          ! next line
         chunkPos = IO_stringPos(line)
         symmetricSolver = (IO_intValue(line,chunkPos,2) /= 1)
       endif
     enddo
-100 close(FILEUNIT)
+100 close(fileUnit)
   end block
 #endif
 
