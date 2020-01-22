@@ -119,7 +119,6 @@ subroutine CPFEM_init
     write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
     write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
     write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
-    write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
     flush(6)
   endif
 
