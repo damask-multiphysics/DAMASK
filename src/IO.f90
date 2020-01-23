@@ -452,10 +452,10 @@ pure function IO_lc(string)
   character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
   character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-  integer                      :: i,n
+  integer                  :: i,n
 
-  IO_lc = string
   do i=1,len(string)
+    IO_lc(i:i) = string(i:i)
     n = index(UPPER,IO_lc(i:i))
     if (n/=0) IO_lc(i:i) = LOWER(n:n)
   enddo
