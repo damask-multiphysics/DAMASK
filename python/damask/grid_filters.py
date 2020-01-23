@@ -338,7 +338,7 @@ def node_coord0_gridSizeOrigin(coord0,ordered=False):
     Parameters
     ----------
     coord0 : numpy.ndarray
-        array of undeformed nodal coordinates
+        array of undeformed nodal coordinates.
     ordered : bool, optional
         expect coord0 data to be ordered (x fast, z slow).
 
@@ -365,7 +365,19 @@ def node_coord0_gridSizeOrigin(coord0,ordered=False):
 
 
 def regrid(size,F,new_grid):
-    """tbd."""
+    """
+    Return mapping from coordinates in deformed configuration to a regular grid
+
+    Parameters
+    ----------
+    size : numpy.ndarray
+        physical size
+    F : numpy.ndarray
+        deformation gradient field
+    new_grid : numpy.ndarray
+        new grid for undeformed coordinates
+
+    """
     c = cell_coord0(F.shape[:3][::-1],size) \
       + cell_displacement_avg(size,F) \
       + cell_displacement_fluct(size,F)
@@ -376,4 +388,4 @@ def regrid(size,F,new_grid):
         c[np.where(c[:,:,:,d]>outer[d])] -= outer[d]
 
     tree = spatial.cKDTree(c.reshape((-1,3)),boxsize=outer)
-    return tree.query(cell_coord0(new_grid,outer))[1]
+    return tree.query(cell_coord0(new_grid,outer))[1].flatten()
