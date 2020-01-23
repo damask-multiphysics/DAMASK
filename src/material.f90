@@ -113,11 +113,9 @@ module material
     phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
     phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
     phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
-    phase_Noutput, &                                                                                !< number of '(output)' items per phase
     phase_elasticityInstance, &                                                                     !< instance of particular elasticity of each phase
     phase_plasticityInstance, &                                                                     !< instance of particular plasticity of each phase
     homogenization_Ngrains, &                                                                       !< number of grains in each homogenization
-    homogenization_Noutput, &                                                                       !< number of '(output)' items per homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
@@ -129,7 +127,7 @@ module material
 ! NEW MAPPINGS 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt                                                                       !< homogenization ID of each element (copy of discretization_homogenizationAt)
-  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (ip,elem)
+  integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
@@ -177,7 +175,6 @@ module material
     homogenization_active
 
 ! BEGIN DEPRECATED
-  integer, dimension(:,:,:), allocatable, public, target :: mappingHomogenization                   !< mapping from material points to offset in heterogenous state/field
   integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst             !< mapping from material points to offset in constant state/field
 ! END DEPRECATED
 
@@ -362,18 +359,8 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
-  allocate(mappingHomogenization     (2,discretization_nIP,discretization_nElem),source=0)
   allocate(mappingHomogenizationConst(  discretization_nIP,discretization_nElem),source=1)
-  
-  CounterHomogenization=0
-  do e = 1,discretization_nElem
-    myHomog = discretization_homogenizationAt(e)
-    do i = 1, discretization_nIP
-      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1
-      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
-    enddo
-  enddo
- 
+
 ! hack needed to initialize field values used during constitutive and crystallite initializations
   do myHomog = 1,size(config_homogenization)
     thermalMapping     (myHomog)%p => mappingHomogenizationConst
@@ -401,7 +388,6 @@ subroutine material_parseHomogenization
   allocate(thermal_typeInstance(size(config_homogenization)),          source=0)
   allocate(damage_typeInstance(size(config_homogenization)),           source=0)
   allocate(homogenization_Ngrains(size(config_homogenization)),        source=0)
-  allocate(homogenization_Noutput(size(config_homogenization)),        source=0)
   allocate(homogenization_active(size(config_homogenization)),         source=.false.)  !!!!!!!!!!!!!!!
   allocate(thermal_initialT(size(config_homogenization)),              source=300.0_pReal)
   allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
@@ -411,7 +397,6 @@ subroutine material_parseHomogenization
  
  
   do h=1, size(config_homogenization)
-    homogenization_Noutput(h) = config_homogenization(h)%countKeys('(output)')
  
     tag = config_homogenization(h)%getString('mech')
     select case (trim(tag))
@@ -548,11 +533,9 @@ subroutine material_parsePhase
   allocate(phase_Nsources(size(config_phase)),              source=0)
   allocate(phase_Nkinematics(size(config_phase)),           source=0)
   allocate(phase_NstiffnessDegradations(size(config_phase)),source=0)
-  allocate(phase_Noutput(size(config_phase)),               source=0)
   allocate(phase_localPlasticity(size(config_phase)),       source=.false.)
  
   do p=1, size(config_phase)
-    phase_Noutput(p) =                 config_phase(p)%countKeys('(output)')
     phase_Nsources(p) =                config_phase(p)%countKeys('(source)')
     phase_Nkinematics(p) =             config_phase(p)%countKeys('(kinematics)')
     phase_NstiffnessDegradations(p) =  config_phase(p)%countKeys('(stiffness_degradation)')
