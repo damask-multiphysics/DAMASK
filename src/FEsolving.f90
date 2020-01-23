@@ -43,7 +43,7 @@ subroutine FE_init
     character(len=pStringLen) :: line
     integer :: myStat,fileUnit
     integer, allocatable, dimension(:) :: chunkPos
-    open(newunit=fileUnit, file=trim(getSolverJobName()//INPUTFILEEXTENSION), &
+    open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
          status='old', position='rewind', action='read',iostat=myStat)
     do
       read (fileUnit,'(A)',END=100) line

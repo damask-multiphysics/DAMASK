@@ -95,13 +95,13 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solver job name (no extension) as combination of geometry and load case name
 !--------------------------------------------------------------------------------------------------
-function getSolverJobName()
+function getSolverJobName
 
- character(1024) :: getSolverJobName, inputName
+ character(len=:), allocatable :: getSolverJobName
+ character(1024)               :: inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92)                                      ! forward and backward slash
  integer :: extPos
 
- getSolverJobName=''
  inputName=''
  inquire(5, name=inputName)                                                                         ! determine inputfile
  extPos = len_trim(inputName)-4
