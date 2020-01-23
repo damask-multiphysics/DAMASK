@@ -17,6 +17,7 @@
 
 module DAMASK_interface
   use, intrinsic :: iso_fortran_env
+
   use PETScSys
 
   use prec
@@ -24,15 +25,15 @@ module DAMASK_interface
   
   implicit none
   private
-  logical, public, protected :: &
+  logical,                       public, protected :: &
     SIGTERM, &                                                                                      !< termination signal 
     SIGUSR1, &                                                                                      !< 1. user-defined signal
     SIGUSR2                                                                                         !< 2. user-defined signal
-  integer, public, protected :: &
+  integer,                       public, protected :: &
     interface_restartInc = 0                                                                        !< Increment at which calculation starts
-  character(len=1024), public, protected :: &
-    geometryFile = '', &                                                                            !< parameter given for geometry file
-    loadCaseFile = ''                                                                               !< parameter given for load case file
+  character(len=:), allocatable, public, protected :: &
+    geometryFile, &                                                                                 !< parameter given for geometry file
+    loadCaseFile                                                                                    !< parameter given for load case file
 
   public :: &
     getSolverJobName, &
@@ -146,7 +147,7 @@ subroutine DAMASK_interface_init
 
   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 
-  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK
+ ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK
   write(6,*) achar(27)//'[94m'
   write(6,*) '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/'
   write(6,*) '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/'
@@ -160,7 +161,7 @@ subroutine DAMASK_interface_init
 
   write(6,'(/,a)') ' Version: '//DAMASKVERSION
 
- ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
+  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
   write(6,'(/,a)') ' Compiled with: '//compiler_version()
   write(6,'(a)')   ' Compiler options: '//compiler_options()
@@ -270,8 +271,8 @@ subroutine DAMASK_interface_init
   write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
   write(6,'(a,a)')      ' Load case argument:     ', trim(loadcaseArg)
   write(6,'(a,a)')      ' Working directory:      ', getCWD()
-  write(6,'(a,a)')      ' Geometry file:          ', trim(geometryFile)
-  write(6,'(a,a)')      ' Loadcase file:          ', trim(loadCaseFile)
+  write(6,'(a,a)')      ' Geometry file:          ', geometryFile
+  write(6,'(a,a)')      ' Loadcase file:          ', loadCaseFile
   write(6,'(a,a)')      ' Solver job name:        ', getSolverJobName()
   if (interface_restartInc > 0) &
     write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
@@ -348,9 +349,9 @@ function getGeometryFile(geometryParameter)
 
   getGeometryFile = trim(geometryParameter)
   if (scan(getGeometryFile,'/') /= 1) getGeometryFile = getCWD()//'/'//trim(getGeometryFile)
-  getGeometryFile = makeRelativePath(getCWD(), getGeometryFile)
+  getGeometryFile = trim(makeRelativePath(getCWD(), getGeometryFile))
 
-  inquire(file=trim(getGeometryFile), exist=file_exists)
+  inquire(file=getGeometryFile, exist=file_exists)
   if (.not. file_exists) then
     write(6,'(/,a)') ' ERROR: Geometry file does not exists ('//trim(getGeometryFile)//')'
     call quit(1)
@@ -371,9 +372,9 @@ function getLoadCaseFile(loadCaseParameter)
 
   getLoadCaseFile = trim(loadCaseParameter)
   if (scan(getLoadCaseFile,'/') /= 1) getLoadCaseFile = getCWD()//'/'//trim(getLoadCaseFile)
-  getLoadCaseFile = makeRelativePath(getCWD(), getLoadCaseFile)
+  getLoadCaseFile = trim(makeRelativePath(getCWD(), getLoadCaseFile))
 
-  inquire(file=trim(getLoadCaseFile), exist=file_exists)
+  inquire(file=getLoadCaseFile, exist=file_exists)
   if (.not. file_exists) then
     write(6,'(/,a)') ' ERROR: Load case file does not exists ('//trim(getLoadCaseFile)//')'
     call quit(1)
