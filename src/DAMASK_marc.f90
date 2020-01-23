@@ -41,7 +41,7 @@ module DAMASK_interface
  implicit none
  private
  
- character(len=4), parameter, public :: INPUTFILEEXTENSION = '.dat'
+ character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
  
  public :: &
   DAMASK_interface_init, &
