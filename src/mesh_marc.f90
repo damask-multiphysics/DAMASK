@@ -241,8 +241,8 @@ end subroutine inputRead
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_fileFormat(fileFormat,fileContent)
  
-  integer,                                 intent(out) :: fileFormat
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                                !< file content, separated per lines
+  integer,                        intent(out) :: fileFormat
+  character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
   
   integer, allocatable, dimension(:) :: chunkPos
   integer :: l
@@ -263,8 +263,8 @@ end subroutine inputRead_fileFormat
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_tableStyles(initialcond,hypoelastic,fileContent)
  
-  integer,                                 intent(out) :: initialcond, hypoelastic
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+  integer,                        intent(out) :: initialcond, hypoelastic
+  character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: l
@@ -290,10 +290,9 @@ end subroutine inputRead_tableStyles
 subroutine inputRead_matNumber(matNumber, &
                                tableStyle,fileContent)
  
-  integer, allocatable,      dimension(:), intent(out) :: matNumber
-  integer,                                 intent(in)  :: tableStyle
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
-
+  integer, allocatable, dimension(:), intent(out) :: matNumber
+  integer,                            intent(in)  :: tableStyle
+  character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, j, data_blocks, l
@@ -326,8 +325,8 @@ end subroutine inputRead_matNumber
 subroutine inputRead_NnodesAndElements(nNodes,nElems,&
                                        fileContent)
   
-  integer,                                 intent(out) :: nNodes, nElems
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+  integer,                        intent(out) :: nNodes, nElems
+  character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: l
@@ -354,11 +353,11 @@ end subroutine inputRead_NnodesAndElements
 subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
                                fileContent)
  
-  integer,                                 intent(out) :: nElemSets, maxNelemInSet
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+  integer,                            intent(out) :: nElemSets, maxNelemInSet
+  character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  integer :: i,l,elemInCurrentSet
+  integer                            :: i,l,elemInCurrentSet
 
   nElemSets     = 0
   maxNelemInSet = 0
@@ -401,7 +400,7 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
   character(len=64), dimension(:),   allocatable, intent(out) :: nameElemSet
   integer,           dimension(:,:), allocatable, intent(out) :: mapElemSet
   integer,                                        intent(in)  :: fileUnit
-  character(len=pStringLen), dimension(:),        intent(in)  :: fileContent                        !< file content, separated per lines
+  character(len=*),  dimension(:),                intent(in)  :: fileContent                                    !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
@@ -428,7 +427,6 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
 620 end subroutine inputRead_mapElemSets
 
 
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
@@ -437,7 +435,7 @@ subroutine inputRead_mapElems(nNodes,nElem,fileContent)
   integer, intent(in) :: &
     nElem, &
     nNodes                                                                                          !< number of nodes per element
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+  character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,l,nNodesAlreadyRead
@@ -470,7 +468,7 @@ end subroutine inputRead_mapElems
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_mapNodes(fileContent)
 
-  character(len=pStringLen), dimension(:), intent(in) :: fileContent                                !< file content, separated per lines
+  character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, l
@@ -499,7 +497,7 @@ subroutine inputRead_elemNodes(nodes, &
 
   real(pReal), allocatable,  dimension(:,:), intent(out) :: nodes 
   integer,                                   intent(in)  :: nNode
-  character(len=pStringLen), dimension(:),   intent(in)  :: fileContent                             !< file content, separated per lines
+  character(len=*),            dimension(:), intent(in)  :: fileContent                             !< file content, separated per lines
   
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,m,l
@@ -529,9 +527,9 @@ end subroutine inputRead_elemNodes
 subroutine inputRead_elemType(elem, &
                               nElem,fileContent)
 
-  type(tElement),                          intent(out) :: elem
-  integer,                                 intent(in)  :: nElem
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+  type(tElement),                 intent(out) :: elem
+  integer,                        intent(in)  :: nElem
+  character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,t,l,remainingChunks
@@ -617,7 +615,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
   integer, intent(in) :: &
     nElem, &
     nNodes                                                                                          !< number of nodes per element
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+  character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
     
   integer, dimension(nNodes,nElem) :: &
     inputRead_connectivityElem
@@ -1091,5 +1089,63 @@ integer function mesh_FEasCP(what,myID)
   enddo binarySearch
 
 end function mesh_FEasCP
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return integer list corresponding to items in consecutive lines.
+!! First integer in array is counter
+!> @details ints concatenated by "c" as last char, range of a "to" b, or named set
+!--------------------------------------------------------------------------------------------------
+function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
+
+  character(len=*), dimension(:),   intent(in) :: fileContent                                       !< file content, separated per lines
+  integer,                          intent(in) :: maxN
+  integer,                          intent(in) :: lookupMaxN
+  integer,          dimension(:,:), intent(in) :: lookupMap
+  character(len=*), dimension(:),   intent(in) :: lookupName
+
+  integer,           dimension(1+maxN)         :: continuousIntValues
+
+  integer :: l,i,first,last
+  integer, allocatable, dimension(:) :: chunkPos
+  logical :: rangeGeneration
+
+  continuousIntValues = 0
+  rangeGeneration = .false.
+
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if (chunkPos(1) < 1) then                                                                       ! empty line
+      exit
+    elseif (verify(IO_stringValue(fileContent(l),chunkPos,1),'0123456789') > 0) then                ! a non-int, i.e. set name
+      do i = 1, lookupMaxN                                                                          ! loop over known set names
+        if (IO_stringValue(fileContent(l),chunkPos,1) == lookupName(i)) then                                  ! found matching name
+          continuousIntValues = lookupMap(:,i)                                                      ! return resp. entity list
+          exit
+        endif
+      enddo
+      exit
+    else if (chunkPos(1) > 2 .and. IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'to' ) then  ! found range indicator
+      first = IO_intValue(fileContent(l),chunkPos,1)
+      last  = IO_intValue(fileContent(l),chunkPos,3)
+      do i = first, last, sign(1,last-first)
+        continuousIntValues(1) = continuousIntValues(1) + 1
+        continuousIntValues(1+continuousIntValues(1)) = i
+      enddo
+      exit
+    else
+      do i = 1,chunkPos(1)-1                                                                        ! interpret up to second to last value
+        continuousIntValues(1) = continuousIntValues(1) + 1
+        continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,i)
+      enddo
+      if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,chunkPos(1))) /= 'c' ) then                 ! line finished, read last value
+        continuousIntValues(1) = continuousIntValues(1) + 1
+        continuousIntValues(1+continuousIntValues(1)) = IO_intValue(fileContent(l),chunkPos,chunkPos(1))
+        exit
+      endif
+    endif
+  enddo
+
+end function continuousIntValues
 
 end module mesh
