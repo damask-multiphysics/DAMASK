@@ -805,7 +805,7 @@ function IO_read(fileUnit) result(line)
   character(len=pStringLen) :: line
  
  
-  read(fileUnit,'(a256)',END=100) line
+  read(fileUnit,'(A)',END=100) line
  
 100 end function IO_read
 

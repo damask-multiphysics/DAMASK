@@ -415,7 +415,7 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
 
   rewind(fileUnit)
   do
-    read (fileUnit,'(A300)',END=620) line
+    read (fileUnit,'(a)',END=620) line
     chunkPos = IO_stringPos(line)
     if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'define' ) .and. &
         (IO_lc(IO_stringValue(line,chunkPos,2)) == 'element' ) ) then
