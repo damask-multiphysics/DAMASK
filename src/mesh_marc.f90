@@ -401,7 +401,7 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
   character(len=64), dimension(:),   allocatable, intent(out) :: nameElemSet
   integer,           dimension(:,:), allocatable, intent(out) :: mapElemSet
   integer,                                        intent(in)  :: fileUnit
-  character(len=pStringLen), dimension(:), intent(in)  :: fileContent                               !< file content, separated per lines
+  character(len=pStringLen), dimension(:),        intent(in)  :: fileContent                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   character(len=300) :: line
@@ -688,23 +688,23 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
   allocate(homogenizationAt(nElem),source=0)
 
   rewind(fileUnit)
-  read (fileUnit,'(A300)',END=630) line
+  read (fileUnit,'(A)',END=630) line
   do
     chunkPos = IO_stringPos(line)
     if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'initial') .and. &
         (IO_lc(IO_stringValue(line,chunkPos,2)) == 'state') ) then
-      if (initialcondTableStyle == 2) read (fileUnit,'(A300)',END=630) line                         ! read extra line for new style
-      read (fileUnit,'(A300)',END=630) line                                                         ! read line with index of state var
+      if (initialcondTableStyle == 2) read (fileUnit,'(A)',END=630) line                            ! read extra line for new style
+      read (fileUnit,'(A)',END=630) line                                                            ! read line with index of state var
       chunkPos = IO_stringPos(line)
       sv = IO_IntValue(line,chunkPos,1)                                                             ! figure state variable index
       if( (sv == 2).or.(sv == 3) ) then                                                             ! only state vars 2 and 3 of interest
-        read (fileUnit,'(A300)',END=630) line                                                       ! read line with value of state var
+        read (fileUnit,'(A)',END=630) line                                                          ! read line with value of state var
         chunkPos = IO_stringPos(line)
         do while (scan(IO_stringValue(line,chunkPos,1),'+-',back=.true.)>1)                         ! is noEfloat value?
           myVal = nint(IO_floatValue(line,chunkPos,1))
           if (initialcondTableStyle == 2) then
-            read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
-            read (fileUnit,'(A300)',END=630) line                                                   ! read extra line
+            read (fileUnit,'(A)',END=630) line                                                      ! read extra line
+            read (fileUnit,'(A)',END=630) line                                                      ! read extra line
           endif
           contInts = IO_continuousIntValues&                                                        ! get affected elements
                     (fileUnit,nElem,nameElemSet,mapElemSet,size(nameElemSet))
@@ -713,13 +713,13 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
             if (sv == 2) microstructureAt(e) = myVal
             if (sv == 3) homogenizationAt(e) = myVal
           enddo
-          if (initialcondTableStyle == 0) read (fileUnit,'(A300)',END=630) line                     ! ignore IP range for old table style
-          read (fileUnit,'(A300)',END=630) line
+          if (initialcondTableStyle == 0) read (fileUnit,'(A)',END=630) line                        ! ignore IP range for old table style
+          read (fileUnit,'(A)',END=630) line
           chunkPos = IO_stringPos(line)
         enddo
       endif
     else
-      read (fileUnit,'(A300)',END=630) line
+      read (fileUnit,'(A)',END=630) line
     endif
   enddo
  
