@@ -151,11 +151,7 @@ module material
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
  
   logical, dimension(:), allocatable, public, protected :: &
-    microstructure_active, &
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
- 
-  integer, private :: &
-    microstructure_maxNconstituents                                                                 !< max number of constituents in any phase
  
   integer, dimension(:), allocatable, private :: &
     microstructure_Nconstituents                                                                    !< number of constituents in each microstructure
@@ -168,11 +164,7 @@ module material
     material_Eulers
   type(Rotation), dimension(:), allocatable, private :: &
     texture_orientation                                                                             !< Euler angles in material.config (possibly rotated for alignment)
-  real(pReal), dimension(:,:), allocatable, private :: &
-    microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
  
-  logical, dimension(:), allocatable, private :: &
-    homogenization_active
 
 ! BEGIN DEPRECATED
   integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst             !< mapping from material points to offset in constant state/field
@@ -291,9 +283,8 @@ subroutine material_init
                                   microstructure_Nconstituents(m)
       if (microstructure_Nconstituents(m) > 0) then
         do c = 1,microstructure_Nconstituents(m)
-          write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',config_name_phase(microstructure_phase(c,m)),&
-                                                    config_name_texture(microstructure_texture(c,m)),&
-                                                    microstructure_fraction(c,m)
+          write(6,'(a1,1x,a32,1x,a32)') '>',config_name_phase(microstructure_phase(c,m)),&
+                                            config_name_texture(microstructure_texture(c,m))
         enddo
         write(6,*)
       endif
@@ -380,6 +371,8 @@ subroutine material_parseHomogenization
 
   integer :: h
   character(len=pStringLen) :: tag
+
+  logical, dimension(:), allocatable :: homogenization_active
  
   allocate(homogenization_type(size(config_homogenization)),           source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(size(config_homogenization)),                  source=THERMAL_isothermal_ID)
@@ -473,15 +466,15 @@ subroutine material_parseMicrostructure
   integer :: e, m, c, i
   character(len=pStringLen) :: &
     tag
+  real(pReal), dimension(:,:), allocatable :: &
+    microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
+  integer :: &
+    microstructure_maxNconstituents                                                                 !< max number of constituents in any phase
  
   allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
-  allocate(microstructure_active(size(config_microstructure)),        source=.false.)
  
   if(any(discretization_microstructureAt > size(config_microstructure))) &
    call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
- 
-  forall (e = 1:discretization_nElem) &
-    microstructure_active(discretization_microstructureAt(e)) = .true.                                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
  
   do m=1, size(config_microstructure)
     microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
