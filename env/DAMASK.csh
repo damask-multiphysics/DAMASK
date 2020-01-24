@@ -2,15 +2,14 @@
 # usage:  source DAMASK_env.csh
 
 set CALLED=($_)
-set DIRNAME=`dirname $CALLED[2]`
-set DAMASK_ROOT=`python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $DIRNAME"/../"`
+set ENV_ROOT=`dirname $CALLED[2]`
+set DAMASK_ROOT=`python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $ENV_ROOT"/../"`
 
-source $DAMASK_ROOT/CONFIG
+source $ENV_ROOT/CONFIG
 
 set path = ($DAMASK_ROOT/bin $path)
 
 set SOLVER=`which DAMASK_spectral`                                                          
-set PROCESSING=`which postResults`                                                          
 if ( "x$DAMASK_NUM_THREADS" == "x" ) then                                                                  
   set DAMASK_NUM_THREADS=1
 endif
@@ -32,7 +31,6 @@ if ( $?prompt ) then
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT"
   echo "Grid Solver        $SOLVER" 
-  echo "Post Processing    $PROCESSING"
   if ( $?PETSC_DIR) then
     echo "PETSc location     $PETSC_DIR"
   endif
@@ -52,3 +50,6 @@ if ( ! $?PYTHONPATH ) then
 else
   setenv PYTHONPATH $DAMASK_ROOT/python:$PYTHONPATH
 endif
+setenv MSC_ROOT
+setenv ABAQUS_VERSION
+setenv MARC_VERSION

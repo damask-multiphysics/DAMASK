@@ -2,8 +2,6 @@ import os
 
 import pytest
 
-import damask
-
 def pytest_addoption(parser):
     parser.addoption("--update",
                      action="store_true",
@@ -17,5 +15,4 @@ def update(request):
 @pytest.fixture
 def reference_dir_base():
     """Directory containing reference results."""
-    env = damask.Environment()
-    return os.path.join(env.rootDir(),'python','tests','reference')
+    return os.path.join(os.path.dirname(__file__),'reference')

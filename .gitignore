@@ -3,6 +3,7 @@
 *.xdmf
 *.bak
 *~
+.DS_Store
 bin
 PRIVATE
 build

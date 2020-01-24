@@ -103,9 +103,9 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffpe-summary=all")
 # print summary of floating point exeptions (invalid,zero,overflow,underflow,inexact,denormal)
 
 # Additional options
-# -Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):
+# -Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?)
 # -Wimplicit-interface:          no interfaces for lapack/MPI routines
-# -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
+# -Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions
 
 #------------------------------------------------------------------------------------------------
 # Runtime debugging
@@ -122,6 +122,7 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -fcheck=all")
 
 # Additional options
 # -ffpe-trap=precision,denormal,underflow
+
 #------------------------------------------------------------------------------------------------
 #  precision settings
 set (PRECISION_FLAGS "${PRECISION_FLAGS} -fdefault-real-8")

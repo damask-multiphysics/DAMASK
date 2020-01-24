@@ -1,8 +1,9 @@
 import setuptools
 import os
+import re
 
 with open(os.path.join(os.path.dirname(__file__),'damask/VERSION')) as f:
-  version = f.readline()[1:-1]
+  version = re.sub(r'(-([^-]*)).*$',r'.\2',re.sub(r'^v(\d+\.\d+(\.\d+)?)',r'\1',f.readline().strip()))
 
 setuptools.setup(
     name="damask",
@@ -18,12 +19,13 @@ setuptools.setup(
         "pandas",
         "scipy",
         "h5py",
-        "vtk"
+        "vtk",
     ],
-    license = 'GPL3',
     classifiers = [
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering",
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: GPL3",
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: OS Independent",
     ],
 )

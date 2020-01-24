@@ -10,14 +10,14 @@ function blink {
 }
 
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
-  DAMASK_ROOT=$(dirname $BASH_SOURCE)
+  ENV_ROOT=$(dirname $BASH_SOURCE)
 else
   [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="$(pwd)/"
   STAT=$(stat "$(dirname $BASE$BASH_SOURCE)")
-  DAMASK_ROOT=${STAT##* }
+  ENV_ROOT=${STAT##* }
 fi
 
-DAMASK_ROOT=$(canonicalPath "$DAMASK_ROOT/../")
+DAMASK_ROOT=$(canonicalPath "$ENV_ROOT/../")
 
 
 # shorthand command to change to DAMASK_ROOT directory
@@ -27,7 +27,7 @@ eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
 set() {
     export $1$2$3
  }
-source $DAMASK_ROOT/CONFIG
+source $ENV_ROOT/CONFIG
 unset -f set
 
 # add BRANCH if DAMASK_ROOT is a git repository
@@ -37,9 +37,6 @@ PATH=${DAMASK_ROOT}/bin:$PATH
 
 SOLVER=$(type -p DAMASK_spectral || true 2>/dev/null)
 [ "x$SOLVER" == "x" ] && SOLVER=$(blink 'Not found!')
-
-PROCESSING=$(type -p postResults || true 2>/dev/null)
-[ "x$PROCESSING" == "x" ] && PROCESSING=$(blink 'Not found!')
 
 [ "x$DAMASK_NUM_THREADS" == "x" ] && DAMASK_NUM_THREADS=1
 
@@ -60,7 +57,6 @@ if [ ! -z "$PS1" ]; then
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Grid Solver        $SOLVER" 
-  echo "Post Processing    $PROCESSING"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
@@ -93,12 +89,8 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 
-for var in BASE STAT SOLVER PROCESSING BRANCH; do
+for var in BASE STAT SOLVER BRANCH; do
   unset "${var}"
 done
-for var in DAMASK MSC; do
-  unset "${var}_ROOT"
-done
-for var in ABAQUS MARC; do
-  unset "${var}_VERSION"
-done
+unset "ENV_ROOT"
+unset "DAMASK_ROOT"

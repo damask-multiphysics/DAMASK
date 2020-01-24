@@ -2,11 +2,6 @@
 
 SCRIPTLOCATION="$( cd "$( dirname "$0" )" && pwd )"
 DAMASK_ROOT=$SCRIPTLOCATION/../../
-# defining set() allows to source the same file for tcsh and bash, with and without space around =
-set() {
-    export $1$2$3
- }
-source $DAMASK_ROOT/CONFIG
 
 if [ "x$MSC_ROOT" != "x" ]; then
  DEFAULT_DIR=$MSC_ROOT
@@ -15,7 +10,7 @@ if [ "x$MARC_VERSION" != "x" ]; then
  DEFAULT_VERSION=$MARC_VERSION
 fi
 if [ "x$DAMASK_BIN" != "x" ]; then
- BIN_DIR=$DAMASK_BIN
+ BIN_DIR=$DAMASK_ROOT/bin
 fi
 
 while [ ! -d "$SCRIPTLOCATION/$VERSION" ] || [ -z "$VERSION" ]

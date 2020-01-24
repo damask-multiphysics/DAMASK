@@ -9,6 +9,7 @@ function blink {
   echo -e "\033[2;5m$1\033[0m"
 }
 
+ENV_ROOT=$(canonicalPath "${0:a:h}")
 DAMASK_ROOT=$(canonicalPath "${0:a:h}'/..")
 
 # shorthand command to change to DAMASK_ROOT directory
@@ -18,7 +19,7 @@ eval "function DAMASK_root() { cd $DAMASK_ROOT; }"
 set() {
     export $1$2$3
  }
-source $DAMASK_ROOT/CONFIG
+source $ENV_ROOT/CONFIG
 unset -f set
 
 # add BRANCH if DAMASK_ROOT is a git repository
@@ -28,9 +29,6 @@ PATH=${DAMASK_ROOT}/bin:$PATH
 
 SOLVER=$(which DAMASK_spectral || true 2>/dev/null)
 [[ "x$SOLVER" == "x" ]] && SOLVER=$(blink 'Not found!')
-
-PROCESSING=$(which postResults || true 2>/dev/null)
-[[ "x$PROCESSING" == "x" ]] && PROCESSING=$(blink 'Not found!')
 
 [[ "x$DAMASK_NUM_THREADS" == "x" ]] && DAMASK_NUM_THREADS=1
 
@@ -51,7 +49,6 @@ if [ ! -z "$PS1" ]; then
   echo "Using environment with ..."
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
   echo "Grid Solver        $SOLVER" 
-  echo "Post Processing    $PROCESSING"
   if [ "x$PETSC_DIR" != "x" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
@@ -86,12 +83,8 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 
-for var in SOLVER PROCESSING BRANCH; do
+for var in SOLVER BRANCH; do
   unset "${var}"
 done
-for var in DAMASK MSC; do
-  unset "${var}_ROOT"
-done
-for var in ABAQUS MARC; do
-  unset "${var}_VERSION"
-done
+unset "ENV_ROOT"
+unset "DAMASK_ROOT"

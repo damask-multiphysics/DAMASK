@@ -610,7 +610,7 @@ function om2ax(om) result(ax)
   else
     call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
     if (ierr /= 0) call IO_error(0,ext_msg='Error in om2ax: DGEEV return not zero')
-#if defined(__GFORTRAN__) &&  __GNUC__<9 || defined(__INTEL_COMPILER) && INTEL_COMPILER<1800
+#if defined(__GFORTRAN__) &&  __GNUC__<9 || defined(__INTEL_COMPILER) && INTEL_COMPILER<1800 || defined(__PGI)
     i = maxloc(merge(1,0,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1)
 #else
     i = findloc(cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal),.true.,dim=1) !find eigenvalue (1,0)
@@ -1266,39 +1266,50 @@ subroutine unitTest
             sin(2.0_pReal*PI*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
-
+#ifndef __PGI
     if(dNeq0(norm2(om2qu(qu2om(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'om2qu/qu2om,'
     if(dNeq0(norm2(eu2qu(qu2eu(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2qu/qu2eu,'
     if(dNeq0(norm2(ax2qu(qu2ax(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2qu/qu2ax,'
     if(dNeq0(norm2(ro2qu(qu2ro(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2qu/qu2ro,'
     if(dNeq0(norm2(ho2qu(qu2ho(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2qu/qu2ho,'
     if(dNeq0(norm2(cu2qu(qu2cu(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2qu/qu2cu,'
-    
+#endif
+
     om = qu2om(qu)
+#ifndef __PGI
     if(dNeq0(norm2(om2qu(eu2om(om2eu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'eu2om/om2eu,'
     if(dNeq0(norm2(om2qu(ax2om(om2ax(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ax2om/om2ax,'
     if(dNeq0(norm2(om2qu(ro2om(om2ro(om)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2om/om2ro,'
     if(dNeq0(norm2(om2qu(ho2om(om2ho(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2om/om2ho,'
     if(dNeq0(norm2(om2qu(cu2om(om2cu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2om/om2cu,'
-    
+#endif
+
     eu = qu2eu(qu)
+#ifndef __PGI
     if(dNeq0(norm2(eu2qu(ax2eu(eu2ax(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2eu/eu2ax,'
     if(dNeq0(norm2(eu2qu(ro2eu(eu2ro(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2eu/eu2ro,'
     if(dNeq0(norm2(eu2qu(ho2eu(eu2ho(eu)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2eu/eu2ho,'
     if(dNeq0(norm2(eu2qu(cu2eu(eu2cu(eu)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2eu/eu2cu,'
-    
+#endif
+
     ax = qu2ax(qu)
+#ifndef __PGI
     if(dNeq0(norm2(ax2qu(ro2ax(ax2ro(ax)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2ax/ax2ro,'
     if(dNeq0(norm2(ax2qu(ho2ax(ax2ho(ax)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2ax/ax2ho,'
     if(dNeq0(norm2(ax2qu(cu2ax(ax2cu(ax)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ax/ax2cu,'
-    
+#endif
+
     ro = qu2ro(qu)
+#ifndef __PGI
     if(dNeq0(norm2(ro2qu(ho2ro(ro2ho(ro)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2ro/ro2ho,'
     if(dNeq0(norm2(ro2qu(cu2ro(ro2cu(ro)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ro/ro2cu,'
-    
+#endif
+
     ho = qu2ho(qu)
+#ifndef __PGI
     if(dNeq0(norm2(ho2qu(cu2ho(ho2cu(ho)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ho/ho2cu,'
-    
+#endif
+
     call R%fromMatrix(om)
     
     call random_number(v3)
