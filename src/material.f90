@@ -113,11 +113,9 @@ module material
     phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
     phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
     phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
-    phase_Noutput, &                                                                                !< number of '(output)' items per phase
     phase_elasticityInstance, &                                                                     !< instance of particular elasticity of each phase
     phase_plasticityInstance, &                                                                     !< instance of particular plasticity of each phase
     homogenization_Ngrains, &                                                                       !< number of grains in each homogenization
-    homogenization_Noutput, &                                                                       !< number of '(output)' items per homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
@@ -129,7 +127,7 @@ module material
 ! NEW MAPPINGS 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt                                                                       !< homogenization ID of each element (copy of discretization_homogenizationAt)
-  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (ip,elem)
+  integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
@@ -153,11 +151,7 @@ module material
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
  
   logical, dimension(:), allocatable, public, protected :: &
-    microstructure_active, &
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
- 
-  integer, private :: &
-    microstructure_maxNconstituents                                                                 !< max number of constituents in any phase
  
   integer, dimension(:), allocatable, private :: &
     microstructure_Nconstituents                                                                    !< number of constituents in each microstructure
@@ -170,14 +164,9 @@ module material
     material_Eulers
   type(Rotation), dimension(:), allocatable, private :: &
     texture_orientation                                                                             !< Euler angles in material.config (possibly rotated for alignment)
-  real(pReal), dimension(:,:), allocatable, private :: &
-    microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
  
-  logical, dimension(:), allocatable, private :: &
-    homogenization_active
 
 ! BEGIN DEPRECATED
-  integer, dimension(:,:,:), allocatable, public, target :: mappingHomogenization                   !< mapping from material points to offset in heterogenous state/field
   integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst             !< mapping from material points to offset in constant state/field
 ! END DEPRECATED
 
@@ -294,9 +283,8 @@ subroutine material_init
                                   microstructure_Nconstituents(m)
       if (microstructure_Nconstituents(m) > 0) then
         do c = 1,microstructure_Nconstituents(m)
-          write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',config_name_phase(microstructure_phase(c,m)),&
-                                                    config_name_texture(microstructure_texture(c,m)),&
-                                                    microstructure_fraction(c,m)
+          write(6,'(a1,1x,a32,1x,a32)') '>',config_name_phase(microstructure_phase(c,m)),&
+                                            config_name_texture(microstructure_texture(c,m))
         enddo
         write(6,*)
       endif
@@ -362,18 +350,8 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
-  allocate(mappingHomogenization     (2,discretization_nIP,discretization_nElem),source=0)
   allocate(mappingHomogenizationConst(  discretization_nIP,discretization_nElem),source=1)
-  
-  CounterHomogenization=0
-  do e = 1,discretization_nElem
-    myHomog = discretization_homogenizationAt(e)
-    do i = 1, discretization_nIP
-      CounterHomogenization(myHomog) = CounterHomogenization(myHomog) + 1
-      mappingHomogenization(1:2,i,e) = [CounterHomogenization(myHomog),huge(1)]
-    enddo
-  enddo
- 
+
 ! hack needed to initialize field values used during constitutive and crystallite initializations
   do myHomog = 1,size(config_homogenization)
     thermalMapping     (myHomog)%p => mappingHomogenizationConst
@@ -393,6 +371,8 @@ subroutine material_parseHomogenization
 
   integer :: h
   character(len=pStringLen) :: tag
+
+  logical, dimension(:), allocatable :: homogenization_active
  
   allocate(homogenization_type(size(config_homogenization)),           source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(size(config_homogenization)),                  source=THERMAL_isothermal_ID)
@@ -401,7 +381,6 @@ subroutine material_parseHomogenization
   allocate(thermal_typeInstance(size(config_homogenization)),          source=0)
   allocate(damage_typeInstance(size(config_homogenization)),           source=0)
   allocate(homogenization_Ngrains(size(config_homogenization)),        source=0)
-  allocate(homogenization_Noutput(size(config_homogenization)),        source=0)
   allocate(homogenization_active(size(config_homogenization)),         source=.false.)  !!!!!!!!!!!!!!!
   allocate(thermal_initialT(size(config_homogenization)),              source=300.0_pReal)
   allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
@@ -411,7 +390,6 @@ subroutine material_parseHomogenization
  
  
   do h=1, size(config_homogenization)
-    homogenization_Noutput(h) = config_homogenization(h)%countKeys('(output)')
  
     tag = config_homogenization(h)%getString('mech')
     select case (trim(tag))
@@ -488,15 +466,15 @@ subroutine material_parseMicrostructure
   integer :: e, m, c, i
   character(len=pStringLen) :: &
     tag
+  real(pReal), dimension(:,:), allocatable :: &
+    microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
+  integer :: &
+    microstructure_maxNconstituents                                                                 !< max number of constituents in any phase
  
   allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
-  allocate(microstructure_active(size(config_microstructure)),        source=.false.)
  
   if(any(discretization_microstructureAt > size(config_microstructure))) &
    call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
- 
-  forall (e = 1:discretization_nElem) &
-    microstructure_active(discretization_microstructureAt(e)) = .true.                                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
  
   do m=1, size(config_microstructure)
     microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
@@ -548,11 +526,9 @@ subroutine material_parsePhase
   allocate(phase_Nsources(size(config_phase)),              source=0)
   allocate(phase_Nkinematics(size(config_phase)),           source=0)
   allocate(phase_NstiffnessDegradations(size(config_phase)),source=0)
-  allocate(phase_Noutput(size(config_phase)),               source=0)
   allocate(phase_localPlasticity(size(config_phase)),       source=.false.)
  
   do p=1, size(config_phase)
-    phase_Noutput(p) =                 config_phase(p)%countKeys('(output)')
     phase_Nsources(p) =                config_phase(p)%countKeys('(source)')
     phase_Nkinematics(p) =             config_phase(p)%countKeys('(kinematics)')
     phase_NstiffnessDegradations(p) =  config_phase(p)%countKeys('(stiffness_degradation)')

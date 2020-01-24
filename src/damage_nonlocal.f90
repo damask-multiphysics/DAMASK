@@ -79,7 +79,7 @@ subroutine damage_nonlocal_init
     allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
 
     nullify(damageMapping(h)%p)
-    damageMapping(h)%p => mappingHomogenization(1,:,:)
+    damageMapping(h)%p => material_homogenizationMemberAt
     deallocate(damage(h)%p)
     damage(h)%p => damageState(h)%state(1,:)
     

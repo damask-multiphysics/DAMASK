@@ -43,12 +43,11 @@ subroutine FE_init
     character(len=pStringLen) :: line
     integer :: myStat,fileUnit
     integer, allocatable, dimension(:) :: chunkPos
-    open(newunit=fileUnit, file=trim(getSolverJobName()//INPUTFILEEXTENSION), &
+    open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
          status='old', position='rewind', action='read',iostat=myStat)
     do
       read (fileUnit,'(A)',END=100) line
-      chunkPos = IO_stringPos(line)
-      if(IO_lc(IO_stringValue(line,chunkPos,1)) == 'solver') then
+      if(index(trim(lc(line)),'solver') == 1) then
         read (fileUnit,'(A)',END=100) line                                                          ! next line
         chunkPos = IO_stringPos(line)
         symmetricSolver = (IO_intValue(line,chunkPos,2) /= 1)
@@ -56,6 +55,29 @@ subroutine FE_init
     enddo
 100 close(fileUnit)
   end block
+  contains
+
+  !--------------------------------------------------------------------------------------------------
+  !> @brief changes characters in string to lower case
+  !> @details copied from IO_lc
+  !--------------------------------------------------------------------------------------------------
+  function lc(string)
+
+    character(len=*), intent(in) :: string                                                            !< string to convert
+    character(len=len(string))   :: lc
+
+    character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
+    character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    integer                  :: i,n
+
+    do i=1,len(string)
+      lc(i:i) = string(i:i)
+      n = index(UPPER,lc(i:i))
+      if (n/=0) lc(i:i) = LOWER(n:n)
+    enddo
+  end function lc
+
 #endif
 
 end subroutine FE_init

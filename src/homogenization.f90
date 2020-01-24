@@ -242,16 +242,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
       materialpoint_requested(i,e) = .true.                                                         ! everybody requires calculation
     
       if (homogState(material_homogenizationAt(e))%sizeState > 0) &
-          homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-          homogState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))        ! ...internal homogenization state
+          homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+          homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))        ! ...internal homogenization state
 
       if (thermalState(material_homogenizationAt(e))%sizeState > 0) &
-          thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-          thermalState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))      ! ...internal thermal state
+          thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+          thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))      ! ...internal thermal state
         
       if (damageState(material_homogenizationAt(e))%sizeState > 0) &
-          damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-          damageState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))       ! ...internal damage state
+          damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+          damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))       ! ...internal damage state
     enddo
   enddo
   
@@ -313,14 +313,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             enddo
 
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
-                homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-                homogState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+                homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+                homogState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
             if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
-                thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-                thermalState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+                thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+                thermalState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
             if(damageState(material_homogenizationAt(e))%sizeState > 0) &
-                damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-                damageState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+                damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+                damageState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
                 
             materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)
 
@@ -375,14 +375,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
               enddo
             enddo
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
-                homogState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-                homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+                homogState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
+                homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
             if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
-                thermalState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-                thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+                thermalState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
+                thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
             if(damageState(material_homogenizationAt(e))%sizeState > 0) &
-                damageState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-                damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+                damageState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
+                damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
           endif
         endif converged
 
