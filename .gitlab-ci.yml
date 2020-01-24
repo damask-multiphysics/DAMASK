@@ -433,6 +433,15 @@ J2_plasticBehavior:
     - master
     - release
 
+Marc_elementLib:
+  stage: marc
+  script:
+    - module load $IntelMarc $HDF5Marc $MSC
+    - Marc_elementLib/test.py
+  except:
+    - master
+    - release
+
 ###################################################################################################
 grid_all_example:
   stage: example

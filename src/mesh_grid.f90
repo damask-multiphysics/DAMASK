@@ -61,7 +61,7 @@ subroutine mesh_init(ip,el)
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
-  write(6,'(/,a)')   ' <<<+-  mesh_grid init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  mesh_grid init  -+>>>'; flush(6)
 
   call readGeom(grid,geomSize,origin,microstructureAt,homogenizationAt)
 

@@ -70,7 +70,7 @@ subroutine results_init
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
   call results_addAttribute('DADF5_version_major',0)
-  call results_addAttribute('DADF5_version_minor',5)
+  call results_addAttribute('DADF5_version_minor',6)
   call results_addAttribute('DAMASK_version',DAMASKVERSION)
   call get_command(commandLine)
   call results_addAttribute('call',trim(commandLine))

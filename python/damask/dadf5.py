@@ -40,8 +40,9 @@ class DADF5():
         self.version_major = f.attrs['DADF5-major']
         self.version_minor = f.attrs['DADF5-minor']
 
-      if self.version_major != 0 or not 2 <= self.version_minor <= 5:
-        raise TypeError('Unsupported DADF5 version {} '.format(f.attrs['DADF5-version']))
+      if self.version_major != 0 or not 2 <= self.version_minor <= 6:
+        raise TypeError('Unsupported DADF5 version {}.{} '.format(f.attrs['DADF5_version_major'],
+                                                                  f.attrs['DADF5_version_minor']))
     
       self.structured = 'grid' in f['geometry'].attrs.keys()
     
@@ -886,8 +887,27 @@ class DADF5():
           vtk_geom = vtk.vtkUnstructuredGrid()
           vtk_geom.SetPoints(nodes)
           vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
+
+          if self.version_major == 0 and self.version_minor <= 5:
+            vtk_type = vtk.VTK_HEXAHEDRON
+            n_nodes = 8
+          else:
+            if   f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TRIANGLE':
+              vtk_type = vtk.VTK_TRIANGLE
+              n_nodes = 3
+            elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'QUAD':
+              vtk_type = vtk.VTK_QUAD
+              n_nodes = 4
+            elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TETRA':                                  # not tested
+              vtk_type = vtk.VTK_TETRA
+              n_nodes = 4
+            elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'HEXAHEDRON':
+              vtk_type = vtk.VTK_HEXAHEDRON
+              n_nodes = 8
+
           for i in f['/geometry/T_c']:
-            vtk_geom.InsertNextCell(vtk.VTK_HEXAHEDRON,8,i-1) # not for all elements!
+            vtk_geom.InsertNextCell(n_nodes,vtk_type,i-1)
+
     elif mode == 'Point':
       Points   = vtk.vtkPoints()
       Vertices = vtk.vtkCellArray()  
@@ -936,7 +956,7 @@ class DADF5():
             vtk_geom.GetCellData().AddArray(vtk_data[-1])
 
       self.set_visible('materialpoints',materialpoints_backup)
-  
+
       constituents_backup = self.visible['constituents'].copy()
       self.set_visible('constituents',False)
       for label in (labels if isinstance(labels,list) else [labels]):
