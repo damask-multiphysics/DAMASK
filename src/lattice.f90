@@ -43,11 +43,18 @@ module lattice
     LATTICE_FCC_NCLEAVAGESYSTEM = [3, 4]                                                            !< # of cleavage systems per family for fcc
  
   integer, parameter  :: &
+#ifndef __PGI
     LATTICE_FCC_NSLIP     = sum(LATTICE_FCC_NSLIPSYSTEM), &                                         !< total # of slip systems for fcc
     LATTICE_FCC_NTWIN     = sum(LATTICE_FCC_NTWINSYSTEM), &                                         !< total # of twin systems for fcc
     LATTICE_FCC_NTRANS    = sum(LATTICE_FCC_NTRANSSYSTEM), &                                        !< total # of transformation systems for fcc
     LATTICE_FCC_NCLEAVAGE = sum(LATTICE_FCC_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for fcc
- 
+#else
+    LATTICE_FCC_NSLIP     = 18, &
+    LATTICE_FCC_NTWIN     = 12, &
+    LATTICE_FCC_NTRANS    = 12, &
+    LATTICE_FCC_NCLEAVAGE = 7
+#endif
+
   real(pReal), dimension(3+3,LATTICE_FCC_NSLIP), parameter :: &
     LATTICE_FCC_SYSTEMSLIP = reshape(real([&
      ! Slip direction     Plane normal                                                              ! SCHMID-BOAS notation
@@ -128,10 +135,16 @@ module lattice
     LATTICE_BCC_NCLEAVAGESYSTEM = [3, 6]                                                            !< # of cleavage systems per family for bcc
  
   integer, parameter  :: &
+#ifndef __PGI
     LATTICE_BCC_NSLIP     = sum(LATTICE_BCC_NSLIPSYSTEM), &                                         !< total # of slip systems for bcc
     LATTICE_BCC_NTWIN     = sum(LATTICE_BCC_NTWINSYSTEM), &                                         !< total # of twin systems for bcc
     LATTICE_BCC_NCLEAVAGE = sum(LATTICE_BCC_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for bcc
- 
+#else
+    LATTICE_BCC_NSLIP     = 24, &
+    LATTICE_BCC_NTWIN     = 12, &
+    LATTICE_BCC_NCLEAVAGE = 9
+#endif
+
   real(pReal), dimension(3+3,LATTICE_BCC_NSLIP), parameter :: &
     LATTICE_BCC_SYSTEMSLIP = reshape(real([&
      ! Slip direction     Plane normal
@@ -206,10 +219,16 @@ module lattice
     LATTICE_HEX_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for hex
  
   integer, parameter  :: &
+#ifndef __PGI
     LATTICE_HEX_NSLIP     = sum(LATTICE_HEX_NSLIPSYSTEM), &                                         !< total # of slip systems for hex
     LATTICE_HEX_NTWIN     = sum(LATTICE_HEX_NTWINSYSTEM), &                                         !< total # of twin systems for hex
     LATTICE_HEX_NCLEAVAGE = sum(LATTICE_HEX_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for hex
- 
+#else
+    LATTICE_HEX_NSLIP     = 33, &
+    LATTICE_HEX_NTWIN     = 24, &
+    LATTICE_HEX_NCLEAVAGE = 3
+#endif
+
   real(pReal), dimension(4+4,LATTICE_HEX_NSLIP), parameter :: &
     LATTICE_HEX_SYSTEMSLIP = reshape(real([&
      ! Slip direction     Plane normal
@@ -301,7 +320,11 @@ module lattice
     LATTICE_BCT_NSLIPSYSTEM = [2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ]                              !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
  
   integer, parameter :: &
+#ifndef __PGI
     LATTICE_BCT_NSLIP = sum(LATTICE_BCT_NSLIPSYSTEM)                                                !< total # of slip systems for bct
+#else
+    LATTICE_BCT_NSLIP = 52
+#endif
  
   real(pReal), dimension(3+3,LATTICE_BCT_NSLIP), parameter :: &
     LATTICE_BCT_SYSTEMSLIP = reshape(real([&
@@ -379,8 +402,12 @@ module lattice
     LATTICE_ISO_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for iso
  
   integer, parameter  :: &
+#ifndef __PGI
     LATTICE_ISO_NCLEAVAGE = sum(LATTICE_ISO_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for iso
- 
+#else
+    LATTICE_ISO_NCLEAVAGE = 3
+#endif
+
   real(pReal), dimension(3+3,LATTICE_ISO_NCLEAVAGE), parameter :: &
     LATTICE_ISO_SYSTEMCLEAVAGE= reshape(real([&
      ! Cleavage direction     Plane normal
@@ -396,8 +423,12 @@ module lattice
     LATTICE_ORT_NCLEAVAGESYSTEM = [1, 1, 1]                                                         !< # of cleavage systems per family for ortho
  
   integer, parameter  :: &
+#ifndef __PGI
     LATTICE_ORT_NCLEAVAGE = sum(LATTICE_ORT_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for ortho
- 
+#else
+    LATTICE_ORT_NCLEAVAGE = 3
+#endif
+
   real(pReal), dimension(3+3,LATTICE_ORT_NCLEAVAGE), parameter :: &
     LATTICE_ORT_SYSTEMCLEAVAGE = reshape(real([&
      ! Cleavage direction     Plane normal
