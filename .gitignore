@@ -2,6 +2,7 @@
 *.hdf5
 *.bak
 *~
+.DS_Store
 bin
 PRIVATE
 build
