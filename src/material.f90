@@ -18,7 +18,7 @@ module material
   implicit none
   private
  
-  character(len=*),                         parameter,            public :: &
+  character(len=*), parameter, public :: &
     ELASTICITY_hooke_label               = 'hooke', &
     PLASTICITY_none_label                = 'none', &
     PLASTICITY_isotropic_label           = 'isotropic', &
@@ -93,6 +93,8 @@ module material
     thermal_type                                                                                    !< thermal transport model
   integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
     damage_type                                                                                     !< nonlocal damage model
+  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
+    homogenization_type                                                                             !< type of each homogenization
  
   integer, public, protected :: &
     material_Nphase, &                                                                              !< number of phases
@@ -102,9 +104,6 @@ module material
     phase_source, &                                                                                 !< active sources mechanisms of each phase
     phase_kinematics, &                                                                             !< active kinematic mechanisms of each phase
     phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
- 
-  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
-    homogenization_type                                                                             !< type of each homogenization
  
   integer, public, protected :: &
     homogenization_maxNgrains                                                                       !< max number of grains in any USED homogenization
@@ -212,6 +211,7 @@ module material
     HOMOGENIZATION_RGC_ID
 
 contains
+
 !--------------------------------------------------------------------------------------------------
 !> @brief parses material configuration file
 !--------------------------------------------------------------------------------------------------
@@ -224,7 +224,7 @@ subroutine material_init
  
   myDebug = debug_level(debug_material)
  
-  write(6,'(/,a)') ' <<<+-  material init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  material init  -+>>>'; flush(6)
  
   call material_parsePhase()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Phase          parsed'; flush(6)

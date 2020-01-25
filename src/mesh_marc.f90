@@ -82,8 +82,8 @@ subroutine mesh_init(ip,el)
   if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
   if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
  
-  FEsolving_execElem =        [1,nElems]
-  FEsolving_execIP   = spread([1,elem%nIPs],2,nElems)
+  FEsolving_execElem = [1,nElems]
+  FEsolving_execIP   = [1,elem%nIPs]
  
   allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
   calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
