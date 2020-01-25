@@ -40,7 +40,6 @@ module mesh
    mesh_init, &
    mesh_FEasCP
  
- 
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -207,10 +206,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call inputRead_NnodesAndElements(nNodes,nElems,&
                                    inputFile)
   
-  call IO_open_inputFile(FILEUNIT)                                                                  ! ToDo: It would be better to use fileContent
   
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
-                             FILEUNIT,inputFile)
+                             inputFile)
 
   call inputRead_elemType(elem, &
                           nElems,inputFile)
@@ -227,6 +225,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
 
   connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,inputFile)
 
+  call IO_open_inputFile(FILEUNIT)                                                                  ! ToDo: It would be better to use fileContent
   call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
                                                  nElems,elem%nNodes,nameElemSet,mapElemSet,&
                                                  initialcondTableStyle,FILEUNIT)
@@ -395,16 +394,15 @@ end subroutine inputRead_NelemSets
 !--------------------------------------------------------------------------------------------------
 !> @brief map element sets
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
+subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
+                                 fileContent)
  
   character(len=64), dimension(:),   allocatable, intent(out) :: nameElemSet
   integer,           dimension(:,:), allocatable, intent(out) :: mapElemSet
-  integer,                                        intent(in)  :: fileUnit
-  character(len=*),  dimension(:),                intent(in)  :: fileContent                                    !< file content, separated per lines
+  character(len=*),  dimension(:),                intent(in)  :: fileContent                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) :: line
-  integer :: elemSet, NelemSets, maxNelemInSet
+  integer :: elemSet, NelemSets, maxNelemInSet,l
 
 
   call inputRead_NelemSets(NelemSets,maxNelemInSet,fileContent)
@@ -412,19 +410,17 @@ subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,fileUnit,fileContent)
   allocate(mapElemSet(1+maxNelemInSet,NelemSets),source=0)
   elemSet = 0
 
-  rewind(fileUnit)
-  do
-    read (fileUnit,'(a)',END=620) line
-    chunkPos = IO_stringPos(line)
-    if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'define' ) .and. &
-        (IO_lc(IO_stringValue(line,chunkPos,2)) == 'element' ) ) then
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'define' ) .and. &
+        (IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'element' ) ) then
        elemSet = elemSet+1
-       nameElemSet(elemSet)  = trim(IO_stringValue(line,chunkPos,4))
-       mapElemSet(:,elemSet) = IO_continuousIntValues(fileUnit,size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
+       nameElemSet(elemSet)  = trim(IO_stringValue(fileContent(l),chunkPos,4))
+       mapElemSet(:,elemSet) = continuousIntValues(fileContent(l+1:),size(mapElemSet,1)-1,nameElemSet,mapElemSet,size(nameElemSet))
     endif
   enddo
 
-620 end subroutine inputRead_mapElemSets
+end subroutine inputRead_mapElemSets
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1095,7 +1091,6 @@ end function mesh_FEasCP
 !> @brief return integer list corresponding to items in consecutive lines.
 !! First integer in array is counter
 !> @details ints concatenated by "c" as last char, range of a "to" b, or named set
-! TODO: needs to report the numer of lines read
 ! REMARK: should replace IO_continuousIntValues
 !--------------------------------------------------------------------------------------------------
 function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
@@ -1121,7 +1116,7 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
       exit
     elseif (verify(IO_stringValue(fileContent(l),chunkPos,1),'0123456789') > 0) then                ! a non-int, i.e. set name
       do i = 1, lookupMaxN                                                                          ! loop over known set names
-        if (IO_stringValue(fileContent(l),chunkPos,1) == lookupName(i)) then                                  ! found matching name
+        if (IO_stringValue(fileContent(l),chunkPos,1) == lookupName(i)) then                        ! found matching name
           continuousIntValues = lookupMap(:,i)                                                      ! return resp. entity list
           exit
         endif
