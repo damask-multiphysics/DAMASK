@@ -36,13 +36,13 @@ module IO
     IO_warning
 #if defined(Marc4DAMASK) || defined(Abaqus)
   public :: &
-    IO_open_inputFile, &
-    IO_continuousIntValues
-#endif
+    IO_open_inputFile
 #if defined(Abaqus)
   public :: &
+    IO_continuousIntValues, &
     IO_extractValue, &
     IO_countDataLines
+#endif
 #endif
 
 contains
@@ -120,7 +120,6 @@ function IO_read_ASCII(fileName) result(fileContent)
 
     fileContent(l) = line
     l = l + 1
-
   enddo
 
 end function IO_read_ASCII
@@ -398,7 +397,7 @@ end function IO_stringValue
 !--------------------------------------------------------------------------------------------------
 !> @brief reads float value at myChunk from string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function IO_floatValue (string,chunkPos,myChunk)
+real(pReal) function IO_floatValue(string,chunkPos,myChunk)
 
   integer,   dimension(:),        intent(in) :: chunkPos                                            !< positions of start and end of each tag/chunk in given string
   integer,                        intent(in) :: myChunk                                             !< position number of desired chunk
@@ -792,24 +791,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 end subroutine IO_warning
 
 
-#if defined(Abaqus) || defined(Marc4DAMASK)
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads a line from a text file.
-!--------------------------------------------------------------------------------------------------
-function IO_read(fileUnit) result(line)
- 
-  integer, intent(in)       :: fileUnit                                                             !< file unit
- 
-  character(len=pStringLen) :: line
- 
- 
-  read(fileUnit,'(A)',END=100) line
- 
-100 end function IO_read
-
-
 #ifdef Abaqus
 !--------------------------------------------------------------------------------------------------
 !> @brief extracts string value from key=value pair and check whether key matches
@@ -847,7 +828,7 @@ integer function IO_countDataLines(fileUnit)
   line = ''
  
   do while (trim(line) /= IO_EOF)
-    line = IO_read(fileUnit)
+    read(fileUnit,'(A)') line
     chunkPos = IO_stringPos(line)
     tmp = IO_lc(IO_stringValue(line,chunkPos,1))
     if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                 ! found keyword
@@ -859,14 +840,12 @@ integer function IO_countDataLines(fileUnit)
   backspace(fileUnit)
 
 end function IO_countDataLines
-#endif
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return integer list corresponding to items in consecutive lines.
 !! First integer in array is counter
-!> @details Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
-!! Abaqus:    triplet of start,stop,inc or named set
+!> @details Abaqus: triplet of start,stop,inc or named set
 !--------------------------------------------------------------------------------------------------
 function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
@@ -878,9 +857,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
  integer,           dimension(:,:), intent(in) :: lookupMap
  character(len=*),  dimension(:),   intent(in) :: lookupName
  integer :: i,first,last
-#ifdef Abaqus
  integer :: j,l,c
-#endif
  integer, allocatable, dimension(:) :: chunkPos
  character(len=pStringLen)          :: line
  logical :: rangeGeneration
@@ -888,41 +865,6 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
  IO_continuousIntValues = 0
  rangeGeneration = .false.
 
-#if defined(Marc4DAMASK)
- do
-   read(fileUnit,'(A)',end=100) line
-   chunkPos = IO_stringPos(line)
-   if (chunkPos(1) < 1) then                                                                        ! empty line
-     exit
-   elseif (verify(IO_stringValue(line,chunkPos,1),'0123456789') > 0) then                           ! a non-int, i.e. set name
-     do i = 1, lookupMaxN                                                                           ! loop over known set names
-       if (IO_stringValue(line,chunkPos,1) == lookupName(i)) then                                   ! found matching name
-         IO_continuousIntValues = lookupMap(:,i)                                                    ! return resp. entity list
-         exit
-       endif
-     enddo
-     exit
-   else if (chunkPos(1) > 2 .and. IO_lc(IO_stringValue(line,chunkPos,2)) == 'to' ) then             ! found range indicator
-     first = IO_intValue(line,chunkPos,1)
-     last  = IO_intValue(line,chunkPos,3)
-     do i = first, last, sign(1,last-first)
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
-     enddo
-     exit
-   else
-     do i = 1,chunkPos(1)-1                                                                         ! interpret up to second to last value
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
-     enddo
-     if ( IO_lc(IO_stringValue(line,chunkPos,chunkPos(1))) /= 'c' ) then                            ! line finished, read last value
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,chunkPos(1))
-       exit
-     endif
-   endif
- enddo
-#elif defined(Abaqus)
  c = IO_countDataLines(fileUnit)
  do l = 1,c
    backspace(fileUnit)
@@ -965,7 +907,6 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
      enddo
    endif
  enddo
-#endif
 
 100 end function IO_continuousIntValues
 #endif
@@ -976,7 +917,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
-integer function verifyIntValue (string,validChars,myName)
+integer function verifyIntValue(string,validChars,myName)
  
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
@@ -987,12 +928,12 @@ integer function verifyIntValue (string,validChars,myName)
  
   invalidWhere = verify(string,validChars)
   if (invalidWhere == 0) then
-    read(UNIT=string,iostat=readStatus,FMT=*) verifyIntValue                                        ! no offending chars found
+    read(string,*,iostat=readStatus) verifyIntValue                                                ! no offending chars found
     if (readStatus /= 0) &                                                                          ! error during string to integer conversion
       call IO_warning(203,ext_msg=myName//'"'//string//'"')
   else
     call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) verifyIntValue                      ! interpret remaining string
+    read(string(1:invalidWhere-1),*,iostat=readStatus) verifyIntValue                               ! interpret remaining string
     if (readStatus /= 0) &                                                                          ! error during string to integer conversion
       call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
   endif
@@ -1003,7 +944,7 @@ end function verifyIntValue
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function verifyFloatValue (string,validChars,myName)
+real(pReal) function verifyFloatValue(string,validChars,myName)
  
   character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
                                   validChars, &                                                     !< valid characters in string
@@ -1015,12 +956,12 @@ real(pReal) function verifyFloatValue (string,validChars,myName)
  
   invalidWhere = verify(string,validChars)
   if (invalidWhere == 0) then
-    read(UNIT=string,iostat=readStatus,FMT=*) verifyFloatValue                                      ! no offending chars found
+    read(string,*,iostat=readStatus) verifyFloatValue                                               ! no offending chars found
     if (readStatus /= 0) &                                                                          ! error during string to float conversion
       call IO_warning(203,ext_msg=myName//'"'//string//'"')
   else
     call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(UNIT=string(1:invalidWhere-1),iostat=readStatus,FMT=*) verifyFloatValue                    ! interpret remaining string
+    read(string(1:invalidWhere-1),*,iostat=readStatus) verifyFloatValue                             ! interpret remaining string
     if (readStatus /= 0) &                                                                          ! error during string to float conversion
       call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
   endif

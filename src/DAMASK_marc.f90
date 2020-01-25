@@ -119,7 +119,6 @@ logical function solverIsSymmetric()
 
   character(len=pStringLen) :: line
   integer :: myStat,fileUnit,s,e
-  integer, allocatable, dimension(:) :: chunkPos
 
   open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
        status='old', position='rewind', action='read',iostat=myStat)

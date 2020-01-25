@@ -184,8 +184,6 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
     initialcondTableStyle, &
     nNodes, &
     nElems
-  integer, parameter :: &
-    FILEUNIT = 222
   integer, dimension(:), allocatable :: &
     matNumber                                                                                       !< material numbers for hypoelastic material
   character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
@@ -225,12 +223,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
 
   connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,inputFile)
 
-  call IO_open_inputFile(FILEUNIT)                                                                  ! ToDo: It would be better to use fileContent
   call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
                                                  nElems,elem%nNodes,nameElemSet,mapElemSet,&
-                                                 initialcondTableStyle,FILEUNIT)
-  close(FILEUNIT)
-   
+                                                 initialcondTableStyle,inputFile)
 end subroutine inputRead
 
 
@@ -656,7 +651,7 @@ end function inputRead_connectivityElem
 !> @brief Stores homogenization and microstructure ID
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
-                                    nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileUnit)
+                                    nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileContent)
 
   integer, dimension(:), allocatable, intent(out) :: &
     microstructureAt, &
@@ -664,60 +659,46 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
   integer, intent(in) :: &
     nElem, &
     nNodes, &                                                                                       !< number of nodes per element
-    initialcondTableStyle, &
-    fileUnit
-  character(len=64), dimension(:), intent(in) :: &
-    nameElemSet
-  integer, dimension(:,:), intent(in) :: &
-    mapElemSet                                                                                      !< list of elements in elementSet
+    initialcondTableStyle
+  character(len=*), dimension(:), intent(in) :: nameElemSet
+  integer, dimension(:,:),        intent(in) :: mapElemSet                                         !< list of elements in elementSet
+  character(len=*), dimension(:), intent(in) :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
-  character(len=300) line
  
   integer, dimension(1+nElem) :: contInts
-  integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead
+  integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead,l,k,m
 
 
   allocate(microstructureAt(nElem),source=0)
   allocate(homogenizationAt(nElem),source=0)
 
-  rewind(fileUnit)
-  read (fileUnit,'(A)',END=630) line
-  do
-    chunkPos = IO_stringPos(line)
-    if( (IO_lc(IO_stringValue(line,chunkPos,1)) == 'initial') .and. &
-        (IO_lc(IO_stringValue(line,chunkPos,2)) == 'state') ) then
-      if (initialcondTableStyle == 2) read (fileUnit,'(A)',END=630) line                            ! read extra line for new style
-      read (fileUnit,'(A)',END=630) line                                                            ! read line with index of state var
-      chunkPos = IO_stringPos(line)
-      sv = IO_IntValue(line,chunkPos,1)                                                             ! figure state variable index
-      if( (sv == 2).or.(sv == 3) ) then                                                             ! only state vars 2 and 3 of interest
-        read (fileUnit,'(A)',END=630) line                                                          ! read line with value of state var
-        chunkPos = IO_stringPos(line)
-        do while (scan(IO_stringValue(line,chunkPos,1),'+-',back=.true.)>1)                         ! is noEfloat value?
-          myVal = nint(IO_floatValue(line,chunkPos,1))
-          if (initialcondTableStyle == 2) then
-            read (fileUnit,'(A)',END=630) line                                                      ! read extra line
-            read (fileUnit,'(A)',END=630) line                                                      ! read extra line
-          endif
-          contInts = IO_continuousIntValues&                                                        ! get affected elements
-                    (fileUnit,nElem,nameElemSet,mapElemSet,size(nameElemSet))
+  do l = 1, size(fileContent)
+    chunkPos = IO_stringPos(fileContent(l))
+    if( (IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'initial') .and. &
+        (IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'state') ) then
+      k = merge(2,1,initialcondTableStyle == 2)
+      chunkPos = IO_stringPos(fileContent(l+k))
+      sv = IO_IntValue(fileContent(l+k),chunkPos,1)                                                 ! figure state variable index
+      if( (sv == 2) .or. (sv == 3) ) then                                                           ! only state vars 2 and 3 of interest
+        m = 1
+        chunkPos = IO_stringPos(fileContent(l+k+m))
+        do while (scan(IO_stringValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)           ! is noEfloat value?
+          myVal = nint(IO_floatValue(fileContent(l+k+m),chunkPos,1))
+          if (initialcondTableStyle == 2) m = m + 2
+          contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
             e = mesh_FEasCP('elem',contInts(1+i))
             if (sv == 2) microstructureAt(e) = myVal
             if (sv == 3) homogenizationAt(e) = myVal
           enddo
-          if (initialcondTableStyle == 0) read (fileUnit,'(A)',END=630) line                        ! ignore IP range for old table style
-          read (fileUnit,'(A)',END=630) line
-          chunkPos = IO_stringPos(line)
+          if (initialcondTableStyle == 0) m = m + 1
         enddo
       endif
-    else
-      read (fileUnit,'(A)',END=630) line
     endif
   enddo
  
-630 end subroutine inputRead_microstructureAndHomogenization
+end subroutine inputRead_microstructureAndHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
