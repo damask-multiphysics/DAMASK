@@ -86,7 +86,6 @@ subroutine CPFEM_initAll(el,ip)
      call config_init
      call math_init
      call rotations_init
-     call FE_init
      call HDF5_utilities_init
      call results_init
      call mesh_init(ip, el)
