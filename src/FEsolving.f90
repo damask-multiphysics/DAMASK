@@ -5,7 +5,6 @@
 !--------------------------------------------------------------------------------------------------
 module FEsolving
   use prec
-  use IO
   use DAMASK_interface
    
   implicit none
@@ -41,7 +40,7 @@ subroutine FE_init
 #if defined(Marc4DAMASK)
   block
     character(len=pStringLen) :: line
-    integer :: myStat,fileUnit
+    integer :: myStat,fileUnit,s,e
     integer, allocatable, dimension(:) :: chunkPos
     open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
          status='old', position='rewind', action='read',iostat=myStat)
@@ -49,8 +48,10 @@ subroutine FE_init
       read (fileUnit,'(A)',END=100) line
       if(index(trim(lc(line)),'solver') == 1) then
         read (fileUnit,'(A)',END=100) line                                                          ! next line
-        chunkPos = IO_stringPos(line)
-        symmetricSolver = (IO_intValue(line,chunkPos,2) /= 1)
+          s =     verify(line,      ' ')                                                            ! start of first chunk
+          s = s + verify(line(s+1:),' ')                                                            ! start of second chunk
+          e = s + scan  (line(s+1:),' ')                                                            ! end of second chunk           
+        symmetricSolver = line(s:e) /= '1'
       endif
     enddo
 100 close(fileUnit)

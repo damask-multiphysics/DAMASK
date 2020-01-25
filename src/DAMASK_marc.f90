@@ -95,7 +95,7 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solver job name (no extension) as combination of geometry and load case name
 !--------------------------------------------------------------------------------------------------
-function getSolverJobName
+function getSolverJobName()
 
  character(len=:), allocatable :: getSolverJobName
  character(1024)               :: inputName
