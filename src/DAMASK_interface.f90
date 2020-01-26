@@ -391,8 +391,8 @@ end function getLoadCaseFile
 !--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
 
-  character(len=*)    :: path
-  character(len=1024) :: rectifyPath
+  character(len=*), intent(in)  :: path
+  character(len=:), allocatable :: rectifyPath
   integer :: i,j,k,l
 
 !--------------------------------------------------------------------------------------------------
@@ -427,16 +427,19 @@ function rectifyPath(path)
   enddo
   if(len_trim(rectifyPath) == 0) rectifyPath = '/'
 
+  rectifyPath = trim(rectifyPath)
+
 end function rectifyPath
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief relative path from absolute a to absolute b
 !--------------------------------------------------------------------------------------------------
-character(len=1024) function makeRelativePath(a,b)
+function makeRelativePath(a,b)
 
   character (len=*), intent(in) :: a,b
-  character (len=1024)          :: a_cleaned,b_cleaned
+  character (len=pPathLen)      :: a_cleaned,b_cleaned
+  character(len=:), allocatable :: makeRelativePath
   integer :: i,posLastCommonSlash,remainingSlashes
 
   posLastCommonSlash = 0
