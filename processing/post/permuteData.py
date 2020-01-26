@@ -36,7 +36,7 @@ parser.add_option('-r', '--rnd',
                   help = 'seed of random number generator [%default]')
 
 parser.set_defaults(label = [],
-                    unnique = False,
+                    unique = False,
                     randomSeed = None,
                    )
 
