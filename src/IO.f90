@@ -305,17 +305,13 @@ end function IO_isBlank
 !--------------------------------------------------------------------------------------------------
 pure function IO_getTag(string,openChar,closeChar)
 
+  character(len=:), allocatable :: IO_getTag
   character(len=*), intent(in)  :: string                                                           !< string to check for tag
-  character(len=len_trim(string)) :: IO_getTag
- 
-  character, intent(in)  :: openChar, &                                                             !< indicates beginning of tag
-                            closeChar                                                               !< indicates end of tag
+  character,        intent(in)  :: openChar, &                                                      !< indicates beginning of tag
+                                   closeChar                                                        !< indicates end of tag
  
   character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                    ! whitespaces
   integer :: left,right
- 
-  IO_getTag = ''
- 
  
   if (openChar /= closeChar) then
     left  = scan(string,openChar)
@@ -325,8 +321,11 @@ pure function IO_getTag(string,openChar,closeChar)
     right = left + merge(scan(string(left+1:),openChar),0,len(string) > left)
   endif
  
-  if (left == verify(string,SEP) .and. right > left) &                                              ! openChar is first and closeChar occurs
+  foundTag: if (left == verify(string,SEP) .and. right > left) then
     IO_getTag = string(left+1:right-1)
+  else foundTag
+    IO_getTag = ''
+  endif foundTag
 
 end function IO_getTag
 
@@ -366,55 +365,21 @@ end function IO_stringPos
 !--------------------------------------------------------------------------------------------------
 !> @brief reads string value at myChunk from string
 !--------------------------------------------------------------------------------------------------
-function IO_stringValue(string,chunkPos,myChunk,silent)
+function IO_stringValue(string,chunkPos,myChunk)
 
+  character(len=*),                       intent(in) :: string                                      !< raw input with known start and end of each chunk
   integer,   dimension(:),                intent(in) :: chunkPos                                    !< positions of start and end of each tag/chunk in given string
   integer,                                intent(in) :: myChunk                                     !< position number of desired chunk
-  character(len=*),                       intent(in) :: string                                      !< raw input with known start and end of each chunk
   character(len=:), allocatable                      :: IO_stringValue
 
-  logical,                       optional,intent(in) :: silent                                      !< switch to trigger verbosity
-  character(len=*),  parameter                       :: MYNAME = 'IO_stringValue: '
-
-  logical                                            :: warn
-
-  if (present(silent)) then
-    warn = .not. silent
-  else
-    warn = .false.
-  endif
-
-  IO_stringValue = ''
-  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-    if (warn) call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
-  else valuePresent
+  validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
+    IO_stringValue = ''
+    call IO_error(110,el=myChunk,ext_msg='IO_stringValue '//trim(string))
+  else validChunk
     IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
-  endif valuePresent
+  endif validChunk
 
 end function IO_stringValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads float value at myChunk from string
-!--------------------------------------------------------------------------------------------------
-real(pReal) function IO_floatValue(string,chunkPos,myChunk)
-
-  integer,   dimension(:),        intent(in) :: chunkPos                                            !< positions of start and end of each tag/chunk in given string
-  integer,                        intent(in) :: myChunk                                             !< position number of desired chunk
-  character(len=*),               intent(in) :: string                                              !< raw input with known start and end of each chunk
-  character(len=*),               parameter  :: MYNAME = 'IO_floatValue: '
-  character(len=*),               parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
-
-  IO_floatValue = 0.0_pReal
-
-  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-    call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
-  else valuePresent
-    IO_floatValue = verifyFloatValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
-                                     VALIDCHARACTERS,MYNAME)
-  endif valuePresent
-
-end function IO_floatValue
 
 
 !--------------------------------------------------------------------------------------------------
@@ -423,21 +388,26 @@ end function IO_floatValue
 integer function IO_intValue(string,chunkPos,myChunk)
 
   character(len=*),      intent(in) :: string                                                       !< raw input with known start and end of each chunk
-  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
   integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
-  character(len=*),      parameter  :: MYNAME = 'IO_intValue: '
-  character(len=*),      parameter  :: VALIDCHARACTERS = '0123456789+-'
+  integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
 
-  IO_intValue = 0
-
-  valuePresent: if (myChunk > chunkPos(1) .or. myChunk < 1) then
-    call IO_warning(201,el=myChunk,ext_msg=MYNAME//trim(string))
-  else valuePresent
-    IO_intValue = verifyIntValue(trim(adjustl(string(chunkPos(myChunk*2):chunkPos(myChunk*2+1)))),&
-                                    VALIDCHARACTERS,MYNAME)
-  endif valuePresent
+  IO_intValue = verifyIntValue(IO_stringValue(string,chunkPos,myChunk))
 
 end function IO_intValue
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads float value at myChunk from string
+!--------------------------------------------------------------------------------------------------
+real(pReal) function IO_floatValue(string,chunkPos,myChunk)
+
+  character(len=*),               intent(in) :: string                                              !< raw input with known start and end of each chunk
+  integer,   dimension(:),        intent(in) :: chunkPos                                            !< positions of start and end of each tag/chunk in given string
+  integer,                        intent(in) :: myChunk                                             !< position number of desired chunk
+
+  IO_floatValue = verifyFloatValue(IO_stringValue(string,chunkPos,myChunk))
+
+end function IO_floatValue
 
 
 !--------------------------------------------------------------------------------------------------
@@ -495,6 +465,15 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'could not assemble input files'
     case (106)
       msg = 'working directory does not exist:'
+
+!--------------------------------------------------------------------------------------------------
+! file parsing errors
+    case (110)
+      msg = 'invalid chunk selected'
+    case (111)
+      msg = 'invalid character for int:'
+    case (112)
+      msg = 'invalid character for float:'
 
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
@@ -744,10 +723,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'crystallite debugging off'
     case (201)
       msg = 'position not found when parsing line'
-    case (202)
-      msg = 'invalid character in string chunk'
-    case (203)
-      msg = 'interpretation of string chunk failed'
     case (207)
       msg = 'line truncated'
     case (600)
@@ -917,26 +892,21 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
-integer function verifyIntValue(string,validChars,myName)
+integer function verifyIntValue(string)
  
-  character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
-                                  validChars, &                                                     !< valid characters in string
-                                  myName                                                            !< name of caller function (for debugging)
+  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
+
   integer                      :: readStatus, invalidWhere
+  character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
  
-  verifyIntValue = 0
- 
-  invalidWhere = verify(string,validChars)
-  if (invalidWhere == 0) then
-    read(string,*,iostat=readStatus) verifyIntValue                                                ! no offending chars found
-    if (readStatus /= 0) &                                                                          ! error during string to integer conversion
-      call IO_warning(203,ext_msg=myName//'"'//string//'"')
-  else
-    call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(string(1:invalidWhere-1),*,iostat=readStatus) verifyIntValue                               ! interpret remaining string
-    if (readStatus /= 0) &                                                                          ! error during string to integer conversion
-      call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
-  endif
+  invalidWhere = verify(string,VALIDCHARS)
+  valid: if (invalidWhere == 0) then
+    read(string,*,iostat=readStatus) verifyIntValue
+    if (readStatus /= 0) call IO_error(111,ext_msg=string)
+  else valid
+    verifyIntValue = 0
+    call IO_error(111,ext_msg=string)
+  endif valid
  
 end function verifyIntValue
 
@@ -944,27 +914,21 @@ end function verifyIntValue
 !--------------------------------------------------------------------------------------------------
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function verifyFloatValue(string,validChars,myName)
+real(pReal) function verifyFloatValue(string)
  
-  character(len=*), intent(in) :: string, &                                                         !< string for conversion to int value. Must not contain spaces!
-                                  validChars, &                                                     !< valid characters in string
-                                  myName                                                            !< name of caller function (for debugging)
- 
+  character(len=*), intent(in) :: string                                                            !< string for conversion to float value
+  
   integer                      :: readStatus, invalidWhere
+  character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
  
-  verifyFloatValue = 0.0_pReal
- 
-  invalidWhere = verify(string,validChars)
-  if (invalidWhere == 0) then
-    read(string,*,iostat=readStatus) verifyFloatValue                                               ! no offending chars found
-    if (readStatus /= 0) &                                                                          ! error during string to float conversion
-      call IO_warning(203,ext_msg=myName//'"'//string//'"')
-  else
-    call IO_warning(202,ext_msg=myName//'"'//string//'"')                                           ! complain about offending characters
-    read(string(1:invalidWhere-1),*,iostat=readStatus) verifyFloatValue                             ! interpret remaining string
-    if (readStatus /= 0) &                                                                          ! error during string to float conversion
-      call IO_warning(203,ext_msg=myName//'"'//string(1:invalidWhere-1)//'"')
-  endif
+  invalidWhere = verify(string,VALIDCHARS)
+  valid: if (invalidWhere == 0) then
+    read(string,*,iostat=readStatus) verifyFloatValue
+    if (readStatus /= 0) call IO_error(112,ext_msg=string)
+  else valid
+    verifyFloatValue = 0.0_pReal
+    call IO_error(112,ext_msg=string)
+  endif valid
  
 end function verifyFloatValue
 

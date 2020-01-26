@@ -659,7 +659,7 @@ subroutine material_parseTexture
     
     strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
     chunkPos = IO_stringPos(strings(1))
-    do j = 1,9,2
+    do j = 1,6,2
       select case (IO_stringValue(strings(1),chunkPos,j))
         case('phi1')
           Eulers(1) = IO_floatValue(strings(1),chunkPos,j+1)

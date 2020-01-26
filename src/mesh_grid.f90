@@ -197,7 +197,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
     chunkPos = IO_stringPos(trim(line))
     if (chunkPos(1) < 2) cycle                                                                      ! need at least one keyword value pair
     
-    select case ( IO_lc(IO_StringValue(trim(line),chunkPos,1,.true.)) )
+    select case (IO_lc(IO_StringValue(trim(line),chunkPos,1)) )
       case ('grid')
         if (chunkPos(1) > 6) then
           do j = 2,6,2
