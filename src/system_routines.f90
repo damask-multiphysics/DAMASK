@@ -4,7 +4,9 @@
 !--------------------------------------------------------------------------------------------------
 module system_routines
   use, intrinsic :: ISO_C_Binding
- 
+  
+  use prec 
+  
   implicit none
   
   public :: &
@@ -22,49 +24,64 @@ module system_routines
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
+
+    use prec
+    
     integer(C_INT) :: isDirectory_C
-    character(kind=C_CHAR), dimension(1024), intent(in) :: path                                     ! C string is an array
+    character(kind=C_CHAR), dimension(pPathLen), intent(in) :: path                                 ! C string is an array
    end function isDirectory_C
  
-  subroutine getCurrentWorkDir_C(str, stat) bind(C)
+  subroutine getCurrentWorkDir_C(path, stat) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
-    character(kind=C_CHAR), dimension(1024), intent(out) :: str                                     ! C string is an array
-    integer(C_INT),intent(out)         :: stat
+
+    use prec
+    
+    character(kind=C_CHAR), dimension(pPathLen), intent(out) :: path                                ! C string is an array
+    integer(C_INT),                              intent(out) :: stat
    end subroutine getCurrentWorkDir_C
  
   subroutine getHostName_C(str, stat) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
-    character(kind=C_CHAR), dimension(1024), intent(out) :: str                                     ! C string is an array
-    integer(C_INT),intent(out)         :: stat
+
+    use prec
+    
+    character(kind=C_CHAR), dimension(pStringLen), intent(out) :: str                               ! C string is an array
+    integer(C_INT),                                intent(out) :: stat
    end subroutine getHostName_C
  
   function chdir_C(path) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
+
+    use prec
+    
     integer(C_INT) :: chdir_C
-    character(kind=C_CHAR), dimension(1024), intent(in) :: path                                     ! C string is an array
+    character(kind=C_CHAR), dimension(pPathLen), intent(in) :: path                                 ! C string is an array
   end function chdir_C
   
   subroutine signalterm_C(handler) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_FUNPTR
+    
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalterm_C
  
   subroutine signalusr1_C(handler) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_FUNPTR
+   
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalusr1_C
   
   subroutine signalusr2_C(handler) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_FUNPTR
+    
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalusr2_C
  
@@ -78,7 +95,7 @@ contains
 logical function isDirectory(path)
 
   character(len=*), intent(in) :: path
-  character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string as array
+  character(kind=C_CHAR), dimension(pPathLen) :: strFixedLength                                     ! C string as array
   integer :: i 
  
   strFixedLength = repeat(C_NULL_CHAR,len(strFixedLength))
@@ -95,8 +112,8 @@ end function isDirectory
 !--------------------------------------------------------------------------------------------------
 function getCWD()
 
-  character(kind=C_CHAR), dimension(1024) :: charArray                                              ! C string is an array
-  character(len=:),       allocatable     :: getCWD
+  character(kind=C_CHAR), dimension(pPathLen) :: charArray                                          ! C string is an array
+  character(len=:),       allocatable         :: getCWD
   integer(C_INT) :: stat
   integer :: i
  
@@ -105,7 +122,7 @@ function getCWD()
   if (stat /= 0_C_INT) then
     getCWD = 'Error occured when getting currend working directory'
   else
-    allocate(character(len=1024)::getCWD)
+    allocate(character(len=pPathLen)::getCWD)
     arrayToString: do i=1,len(getCWD)
       if (charArray(i) /= C_NULL_CHAR) then
         getCWD(i:i)=charArray(i)
@@ -124,8 +141,8 @@ end function getCWD
 !--------------------------------------------------------------------------------------------------
 function getHostName()
 
-  character(kind=C_CHAR), dimension(1024) :: charArray                                              ! C string is an array
-  character(len=:),       allocatable     :: getHostName
+  character(kind=C_CHAR), dimension(pPathLen) :: charArray                                          ! C string is an array
+  character(len=:),       allocatable         :: getHostName
   integer(C_INT) :: stat
   integer :: i
  
@@ -134,7 +151,7 @@ function getHostName()
   if (stat /= 0_C_INT) then
     getHostName = 'Error occured when getting host name'
   else
-    allocate(character(len=1024)::getHostName)
+    allocate(character(len=pPathLen)::getHostName)
     arrayToString: do i=1,len(getHostName)
       if (charArray(i) /= C_NULL_CHAR) then
         getHostName(i:i)=charArray(i)
@@ -154,7 +171,7 @@ end function getHostName
 logical function setCWD(path)
 
   character(len=*), intent(in) :: path
-  character(kind=C_CHAR), dimension(1024) :: strFixedLength                                         ! C string is an array
+  character(kind=C_CHAR), dimension(pPathLen) :: strFixedLength                                     ! C string is an array
   integer :: i
  
   strFixedLength = repeat(C_NULL_CHAR,len(strFixedLength))

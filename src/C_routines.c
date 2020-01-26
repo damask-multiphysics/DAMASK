@@ -20,7 +20,7 @@ int isdirectory_c(const char *dir){
 
 
 void getcurrentworkdir_c(char cwd[], int *stat ){
-  char cwd_tmp[1024];
+  char cwd_tmp[4096];
   if(getcwd(cwd_tmp, sizeof(cwd_tmp)) == cwd_tmp){
     strcpy(cwd,cwd_tmp);
     *stat = 0;
@@ -32,7 +32,7 @@ void getcurrentworkdir_c(char cwd[], int *stat ){
 
 
 void gethostname_c(char hostname[], int *stat){
-  char hostname_tmp[1024];
+  char hostname_tmp[4096];
   if(gethostname(hostname_tmp, sizeof(hostname_tmp)) == 0){
     strcpy(hostname,hostname_tmp);
     *stat = 0;
