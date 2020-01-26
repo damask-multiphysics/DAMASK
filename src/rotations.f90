@@ -1324,7 +1324,7 @@ subroutine unitTest
     if(all(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
       msg = trim(msg)//'rotTensor4,'
 
-    if(len_trim(msg) /= 0) call IO_error(401,ext_msg=msg)  
+    if(len_trim(msg) /= 0) call IO_error(0,ext_msg=msg)
 
   enddo
 

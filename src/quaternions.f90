@@ -463,59 +463,59 @@ subroutine unitTest
   q  = quaternion(qu)
 
   q_2= qu
-  if(any(dNeq(q%asArray(),q_2%asArray())))             call IO_error(401,ext_msg='assign_vec__')
+  if(any(dNeq(q%asArray(),q_2%asArray())))             call IO_error(0,ext_msg='assign_vec__')
 
   q_2 = q + q
-  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))            call IO_error(401,ext_msg='add__')
+  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))            call IO_error(0,ext_msg='add__')
 
   q_2 = q - q
-  if(any(dNeq0(q_2%asArray())))                        call IO_error(401,ext_msg='sub__')
+  if(any(dNeq0(q_2%asArray())))                        call IO_error(0,ext_msg='sub__')
 
   q_2 = q * 5.0_pReal
-  if(any(dNeq(q_2%asArray(),5.0_pReal*qu)))            call IO_error(401,ext_msg='mul__')
+  if(any(dNeq(q_2%asArray(),5.0_pReal*qu)))            call IO_error(0,ext_msg='mul__')
 
   q_2 = q / 0.5_pReal
-  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))            call IO_error(401,ext_msg='div__')
+  if(any(dNeq(q_2%asArray(),2.0_pReal*qu)))            call IO_error(0,ext_msg='div__')
 
   q_2 = q * 0.3_pReal
-  if(dNeq0(abs(q)) .and. q_2 == q)                     call IO_error(401,ext_msg='eq__')
+  if(dNeq0(abs(q)) .and. q_2 == q)                     call IO_error(0,ext_msg='eq__')
 
   q_2 = q
-  if(q_2 /= q)                                         call IO_error(401,ext_msg='neq__')
+  if(q_2 /= q)                                         call IO_error(0,ext_msg='neq__')
 
-  if(dNeq(abs(q),norm2(qu)))                           call IO_error(401,ext_msg='abs__')
+  if(dNeq(abs(q),norm2(qu)))                           call IO_error(0,ext_msg='abs__')
   if(dNeq(abs(q)**2.0_pReal, real(q*q%conjg()),1.0e-14_pReal)) &
-                                                       call IO_error(401,ext_msg='abs__/*conjg')
+                                                       call IO_error(0,ext_msg='abs__/*conjg')
 
-  if(any(dNeq(q%asArray(),qu)))                        call IO_error(401,ext_msg='eq__')
-  if(dNeq(q%real(),       qu(1)))                      call IO_error(401,ext_msg='real()')
-  if(any(dNeq(q%aimag(),  qu(2:4))))                   call IO_error(401,ext_msg='aimag()')
+  if(any(dNeq(q%asArray(),qu)))                        call IO_error(0,ext_msg='eq__')
+  if(dNeq(q%real(),       qu(1)))                      call IO_error(0,ext_msg='real()')
+  if(any(dNeq(q%aimag(),  qu(2:4))))                   call IO_error(0,ext_msg='aimag()')
 
   q_2 = q%homomorphed()
-  if(q                 /= q_2*    (-1.0_pReal))        call IO_error(401,ext_msg='homomorphed')
-  if(dNeq(q_2%real(),     qu(1)*  (-1.0_pReal)))       call IO_error(401,ext_msg='homomorphed/real')
-  if(any(dNeq(q_2%aimag(),qu(2:4)*(-1.0_pReal))))      call IO_error(401,ext_msg='homomorphed/aimag')
+  if(q                 /= q_2*    (-1.0_pReal))        call IO_error(0,ext_msg='homomorphed')
+  if(dNeq(q_2%real(),     qu(1)*  (-1.0_pReal)))       call IO_error(0,ext_msg='homomorphed/real')
+  if(any(dNeq(q_2%aimag(),qu(2:4)*(-1.0_pReal))))      call IO_error(0,ext_msg='homomorphed/aimag')
 
   q_2 = conjg(q)
-  if(dNeq(abs(q),abs(q_2)))                            call IO_error(401,ext_msg='conjg/abs')
-  if(q /= conjg(q_2))                                  call IO_error(401,ext_msg='conjg/involution')
-  if(dNeq(q_2%real(),     q%real()))                   call IO_error(401,ext_msg='conjg/real')
-  if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal))))    call IO_error(401,ext_msg='conjg/aimag')
+  if(dNeq(abs(q),abs(q_2)))                            call IO_error(0,ext_msg='conjg/abs')
+  if(q /= conjg(q_2))                                  call IO_error(0,ext_msg='conjg/involution')
+  if(dNeq(q_2%real(),     q%real()))                   call IO_error(0,ext_msg='conjg/real')
+  if(any(dNeq(q_2%aimag(),q%aimag()*(-1.0_pReal))))    call IO_error(0,ext_msg='conjg/aimag')
 
   if(abs(q) > 0.0_pReal) then
     q_2 = q * q%inverse()
-    if(     dNeq(real(q_2), 1.0_pReal,1.0e-15_pReal))  call IO_error(401,ext_msg='inverse/real')
-    if(any(dNeq0(aimag(q_2),          1.0e-15_pReal))) call IO_error(401,ext_msg='inverse/aimag')
+    if(     dNeq(real(q_2), 1.0_pReal,1.0e-15_pReal))  call IO_error(0,ext_msg='inverse/real')
+    if(any(dNeq0(aimag(q_2),          1.0e-15_pReal))) call IO_error(0,ext_msg='inverse/aimag')
 
     q_2 = q/abs(q)
     q_2 = conjg(q_2) - inverse(q_2)
-    if(any(dNeq0(q_2%asArray(),1.0e-15_pReal)))        call IO_error(401,ext_msg='inverse/conjg')
+    if(any(dNeq0(q_2%asArray(),1.0e-15_pReal)))        call IO_error(0,ext_msg='inverse/conjg')
   endif
 
 #if !(defined(__GFORTRAN__) &&  __GNUC__ < 9)
   if (norm2(aimag(q)) > 0.0_pReal) then
-    if (dNeq0(abs(q-exp(log(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='exp/log')
-    if (dNeq0(abs(q-log(exp(q))),1.0e-13_pReal))       call IO_error(401,ext_msg='log/exp')
+    if (dNeq0(abs(q-exp(log(q))),1.0e-13_pReal))       call IO_error(0,ext_msg='exp/log')
+    if (dNeq0(abs(q-log(exp(q))),1.0e-13_pReal))       call IO_error(0,ext_msg='log/exp')
   endif
 #endif
 

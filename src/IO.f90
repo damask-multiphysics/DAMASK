@@ -549,8 +549,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! math errors
     case (400)
       msg = 'matrix inversion error'
-    case (401)
-      msg = 'math_check failed'
     case (402)
       msg = 'invalid orientation specified'
 
@@ -920,16 +918,28 @@ end function verifyFloatValue
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 
-  if(dNeq(1.0_pReal, verifyFloatValue('1.0')))    call IO_error(401,ext_msg='verifyFloatValue')
-  if(dNeq(1.0_pReal, verifyFloatValue('1e0')))    call IO_error(401,ext_msg='verifyFloatValue')
-  if(dNeq(0.1_pReal, verifyFloatValue('1e-1')))   call IO_error(401,ext_msg='verifyFloatValue')
+  integer, dimension(:), allocatable :: chunkPos
+  character(len=:),      allocatable :: str
 
-  if(3112019  /= verifyIntValue( '3112019'))      call IO_error(401,ext_msg='verifyIntValue')
-  if(3112019  /= verifyIntValue(' 3112019'))      call IO_error(401,ext_msg='verifyIntValue')
-  if(-3112019 /= verifyIntValue('-3112019'))      call IO_error(401,ext_msg='verifyIntValue')
-  if(3112019  /= verifyIntValue('+3112019 '))     call IO_error(401,ext_msg='verifyIntValue')
+  if(dNeq(1.0_pReal, verifyFloatValue('1.0')))   call IO_error(0,ext_msg='verifyFloatValue')
+  if(dNeq(1.0_pReal, verifyFloatValue('1e0')))   call IO_error(0,ext_msg='verifyFloatValue')
+  if(dNeq(0.1_pReal, verifyFloatValue('1e-1')))  call IO_error(0,ext_msg='verifyFloatValue')
 
-  if(any([2,1,2,4,4] /= IO_stringPos('aa b')))    call IO_error(401,ext_msg='IO_stringPos')
+  if(3112019  /= verifyIntValue( '3112019'))     call IO_error(0,ext_msg='verifyIntValue')
+  if(3112019  /= verifyIntValue(' 3112019'))     call IO_error(0,ext_msg='verifyIntValue')
+  if(-3112019 /= verifyIntValue('-3112019'))     call IO_error(0,ext_msg='verifyIntValue')
+  if(3112019  /= verifyIntValue('+3112019 '))    call IO_error(0,ext_msg='verifyIntValue')
+
+  if(any([1,1,1]     /= IO_stringPos('a')))      call IO_error(0,ext_msg='IO_stringPos')
+  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))  call IO_error(0,ext_msg='IO_stringPos')
+
+  str=' 1.0 xxx'
+  chunkPos = IO_stringPos(str)
+  if(dNeq(1.0,IO_floatValue(str,chunkPos,1)))    call IO_error(0,ext_msg='IO_floatValue')
+
+  str='M 3112019 F'
+  chunkPos = IO_stringPos(str)
+  if(3112019 /= IO_intValue(str,chunkPos,2))     call IO_error(0,ext_msg='IO_intValue')
 
 end subroutine unitTest
 
