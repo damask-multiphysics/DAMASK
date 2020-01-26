@@ -29,13 +29,7 @@ module CPFEM2
 #endif
 
   implicit none
-  private
-
-  public :: &
-    CPFEM_forward, &
-    CPFEM_initAll, &
-    CPFEM_results, &
-    CPFEM_restartWrite
+  public
 
 contains
 

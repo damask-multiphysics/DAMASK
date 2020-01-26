@@ -20,8 +20,8 @@ module discretization
 
   real(pReal), public, protected, dimension(:,:), allocatable :: & 
     discretization_IPcoords0, &
-    discretization_NodeCoords0, &
     discretization_IPcoords, &
+    discretization_NodeCoords0, &
     discretization_NodeCoords
     
   integer :: &

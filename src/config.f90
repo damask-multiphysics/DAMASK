@@ -170,7 +170,7 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
 ! count lines to allocate string array
   myTotalLines = 1
   do l=1, len(rawData)
-    if (rawData(l:l) == new_line('')) myTotalLines = myTotalLines+1
+    if (rawData(l:l) == IO_EOL) myTotalLines = myTotalLines+1
   enddo
   allocate(fileContent(myTotalLines))
 
@@ -180,7 +180,7 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
   startPos = 1
   l = 1
   do while (l <= myTotalLines)
-    endPos = merge(startPos + scan(rawData(startPos:),new_line('')) - 2,len(rawData),l /= myTotalLines)
+    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= myTotalLines)
     if (endPos - startPos > pStringLen -1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then

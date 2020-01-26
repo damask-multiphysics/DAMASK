@@ -172,7 +172,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
   
 !--------------------------------------------------------------------------------------------------
 ! get header length
-  endPos = index(rawData,new_line(''))
+  endPos = index(rawData,IO_EOL)
   if(endPos <= index(rawData,'head')) then                                                          ! ToDo: Should be 'header'
     startPos = len(rawData)
     call IO_error(error_ID=841, ext_msg='readGeom')
@@ -188,7 +188,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
   origin = 0.0_pReal
   l = 0
   do while (l < headerLength .and. startPos < len(rawData))
-    endPos = startPos + index(rawData(startPos:),new_line('')) - 1
+    endPos = startPos + index(rawData(startPos:),IO_EOL) - 1
     if (endPos < startPos) endPos = len(rawData)                                                    ! end of file without new line
     line = rawData(startPos:endPos)
     startPos = endPos + 1
@@ -263,7 +263,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
 ! read and interpret content
   e = 1
   do while (startPos < len(rawData))
-    endPos = startPos + index(rawData(startPos:),new_line('')) - 1
+    endPos = startPos + index(rawData(startPos:),IO_EOL) - 1
     if (endPos < startPos) endPos = len(rawData)                                                    ! end of file without new line
     line = rawData(startPos:endPos)
     startPos = endPos + 1
@@ -420,12 +420,12 @@ pure function IPneighborhood(grid)
                             + x &
                             + 1
     IPneighborhood(2,1:6,1,e) = 1
-    IPneighborhood(3,1,1,e) = 2
-    IPneighborhood(3,2,1,e) = 1
-    IPneighborhood(3,3,1,e) = 4
-    IPneighborhood(3,4,1,e) = 3
-    IPneighborhood(3,5,1,e) = 6
-    IPneighborhood(3,6,1,e) = 5
+    IPneighborhood(3,1,  1,e) = 2
+    IPneighborhood(3,2,  1,e) = 1
+    IPneighborhood(3,3,  1,e) = 4
+    IPneighborhood(3,4,  1,e) = 3
+    IPneighborhood(3,5,  1,e) = 6
+    IPneighborhood(3,6,  1,e) = 5
   enddo; enddo; enddo
  
 end function IPneighborhood
