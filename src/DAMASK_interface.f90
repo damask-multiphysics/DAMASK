@@ -86,12 +86,14 @@ subroutine DAMASK_interface_init
 ===================================================================================================
 #endif
 
-  character(len=1024) :: &
-    commandLine, &                                                                                  !< command line call as string
+  character(len=pPathLen*3+pStringLen) :: &
+    commandLine                                                                                     !< command line call as string
+  character(len=pPathLen) :: &
     arg, &                                                                                          !< individual argument
     loadCaseArg   = '', &                                                                           !< -l argument given to the executable
     geometryArg   = '', &                                                                           !< -g argument given to the executable
-    workingDirArg = '', &                                                                           !< -w argument given to the executable
+    workingDirArg = ''                                                                              !< -w argument given to the executable
+  character(len=pStringLen) :: &
     userName                                                                                        !< name of user calling the executable
   integer :: &
     stat, &
@@ -295,7 +297,7 @@ end subroutine DAMASK_interface_init
 subroutine setWorkingDirectory(workingDirectoryArg)
 
   character(len=*),  intent(in) :: workingDirectoryArg                                              !< working directory argument
-  character(len=1024)           :: workingDirectory                                                 !< working directory argument
+  character(len=pPathLen)       :: workingDirectory
   logical                       :: error
   external                      :: quit
 

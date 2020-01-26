@@ -89,7 +89,7 @@ module numerics
    structOrder                =  2                                                                 !< order of displacement shape functions
  logical, protected, public :: & 
    BBarStabilisation          = .false.                                                  
- character(len=4096), protected, public :: &
+ character(len=*), parameter, public :: &
    petsc_defaultOptions    = '-mech_snes_type newtonls &
                              &-mech_snes_linesearch_type cp &
                              &-mech_snes_ksp_ew &
@@ -100,7 +100,8 @@ module numerics
                              &-mech_pc_type ml &
                              &-mech_mg_levels_ksp_type chebyshev &
                              &-mech_mg_levels_pc_type sor &
-                             &-mech_pc_ml_nullspace user ',&
+                             &-mech_pc_ml_nullspace user'
+ character(len=pStringLen), protected, public :: &
    petsc_options           = ''
 #endif
 
