@@ -87,7 +87,7 @@ module spectral_utilities
     real(pReal), dimension(3,3) :: values      = 0.0_pReal, &
                                    maskFloat   = 0.0_pReal
     logical,     dimension(3,3) :: maskLogical = .false.
-    character(len=64)           :: myType      = 'None'
+    character(len=pStringLen)   :: myType      = 'None'
   end type tBoundaryCondition
 
   type, public :: tLoadCase

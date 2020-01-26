@@ -55,10 +55,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
 
-  integer, dimension(8) :: &
-    dateAndTime
-  integer :: ierr
-  character(len=1024) :: wd
+  integer, dimension(8)   :: dateAndTime
+  integer                 :: ierr
+  character(len=pPathLen) :: wd
  
   write(6,'(/,a)') ' <<<+-  DAMASK_marc init -+>>>'
  

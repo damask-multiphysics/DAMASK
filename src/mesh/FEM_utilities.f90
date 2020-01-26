@@ -100,8 +100,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_init
    
-  character(len=1024)                :: petsc_optionsPhysics
-  PetscErrorCode                     :: ierr
+  character(len=pStringLen) :: petsc_optionsOrder
+  PetscErrorCode            :: ierr
 
   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
  
@@ -120,8 +120,8 @@ subroutine utilities_init
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
   CHKERRQ(ierr)
-  write(petsc_optionsPhysics,'(a,i0)') '-mechFE_petscspace_degree '   , structOrder
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsPhysics),ierr)
+  write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),ierr)
   CHKERRQ(ierr)
   
   wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
