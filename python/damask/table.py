@@ -76,11 +76,11 @@ class Table():
         try:
             N_comment_lines,keyword = f.readline().strip().split(maxsplit=1)
             if keyword != 'header':
-                raise TypeError
+                raise ValueError
             else:
                 comments = [f.readline().strip() for i in range(1,int(N_comment_lines))]
                 labels   = f.readline().split()
-        except TypeError:
+        except ValueError:
             f.seek(0)
             comments = []
             line = f.readline().strip()
