@@ -16,9 +16,7 @@ set (petsc_conf_rules     "${PETSC_DIR}/lib/petsc/conf/rules"    )
 # https://github.com/jedbrown/cmake-modules/blob/master/FindPETSc.cmake
 
 # Generate a temporary makefile to probe the PETSc configuration
-# This file will be deleted
-# once the settings from PETSc are parsed into CMake
-
+# This file will be deleted once the settings from PETSc are parsed into CMake
 exec_program (mktemp ARGS -d OUTPUT_VARIABLE TEMPDIR)
 set (petsc_config_makefile "${TEMPDIR}/Makefile.petsc")
 file (WRITE
@@ -69,7 +67,7 @@ execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_conf
                  RESULT_VARIABLE PETSC_MPICC_RETURN
                  OUTPUT_VARIABLE PETSC_MPICC
                  OUTPUT_STRIP_TRAILING_WHITESPACE)
-# PETSc specified linker (MPIF90 + PETSc linking flags)
+# PETSc specified linker (Fortran compiler + PETSc linking flags)
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "linker"
                  RESULT_VARIABLE PETSC_LINKER_RETURN
                  OUTPUT_VARIABLE PETSC_LINKER
@@ -166,7 +164,7 @@ add_definitions (-DDAMASKVERSION="${DAMASK_V}")
 # definition of other macros
 add_definitions (-DPETSc)
 
-if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+if    (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   include(Compiler-Intel)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   include(Compiler-GNU)
