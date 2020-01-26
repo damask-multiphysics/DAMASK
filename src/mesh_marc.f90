@@ -561,26 +561,23 @@ subroutine inputRead_elemType(elem, &
    select case (IO_lc(what))
       case (   '6')
         mapElemtype = 1            ! Two-dimensional Plane Strain Triangle
-      case ( '155', &
-             '125', &
-             '128')
+      case ( '125')                ! 155, 128 (need test)
         mapElemtype = 2            ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
-      case ( '11')
-        mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
+      !case ( '11')                ! need test
+      !  mapElemtype = 3           ! Arbitrary Quadrilateral Plane-strain
       case ( '27')
         mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
       case ( '54')
         mapElemtype = 5            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
-      case ( '134')
-        mapElemtype = 6            ! Three-dimensional Four-node Tetrahedron
-      case ( '157')
-        mapElemtype = 7            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
-      case ( '127')
-        mapElemtype = 8            ! Three-dimensional Ten-node Tetrahedron
-      case ( '136')
-        mapElemtype = 9            ! Three-dimensional Arbitrarily Distorted Pentahedral
-      case ( '117', &
-             '123')
+      !case ( '134')               ! need test
+      !  mapElemtype = 6           ! Three-dimensional Four-node Tetrahedron
+      !case ( '157')               ! need test
+      !  mapElemtype = 7           ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
+      !case ( '127')               ! need test
+      !  mapElemtype = 8           ! Three-dimensional Ten-node Tetrahedron
+      !case ( '136')               ! need test
+      !  mapElemtype = 9           ! Three-dimensional Arbitrarily Distorted Pentahedral
+      case ( '117')                ! 123 (need test)
         mapElemtype = 10           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
       case ( '7')
         mapElemtype = 11           ! Three-dimensional Arbitrarily Distorted Brick
