@@ -39,9 +39,6 @@ module mesh
  integer, dimension(:,:), allocatable :: &
    mesh_element !DEPRECATED
 
- real(pReal), dimension(:,:), allocatable  :: &
-   mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
- 
  real(pReal), dimension(:,:), allocatable :: &
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
@@ -71,20 +68,18 @@ subroutine mesh_init
   integer, dimension(1), parameter:: FE_geomtype = [1]                                              !< geometry type of particular element type
   integer, dimension(1) :: FE_Nips                                                                  !< number of IPs in a specific type of element
   
-  integer, parameter :: FILEUNIT = 222
-  integer :: j
+  integer :: j, l
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes                                                                                     !< total number of nodes in mesh
   integer, parameter :: &
     mesh_ElemType=1                                                                                 !< Element type of the mesh (only support homogeneous meshes)
-  character(len=pStringLen) :: &
-    line
-  logical :: flag
+  logical :: found
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets
-  PetscInt, pointer :: pFaceSets(:)
+  PetscInt, pointer, dimension(:) :: pFaceSets
+  character(len=pStringLen), dimension(:), allocatable :: fileContent
   IS :: faceSetIS 
   PetscErrorCode :: ierr
 
@@ -122,31 +117,25 @@ subroutine mesh_init
   endif
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
-  ! this read in function should ignore C and C++ style comments
-  ! it is used for BC only?
   if (worldrank == 0) then
+    fileContent = IO_read_ASCII(geometryFile)
     j = 0
-    flag = .false.
-    call IO_open_file(FILEUNIT,trim(geometryFile))
+    l = 0
+    found = .false.
     do
-      read(FILEUNIT,'(a)') line
-      if (trim(line) == IO_EOF) exit                                                                    ! skip empty lines
-      if (trim(line) == '$Elements') then
-        read(FILEUNIT,'(A)') line ! number of elements (ignore)
-        read(FILEUNIT,'(A)') line 
-        flag = .true.  
-      endif
-      if (trim(line) == '$EndElements') exit
-      if (flag) then
-        chunkPos = IO_stringPos(line)
-        if (chunkPos(1) == 3+IO_intValue(line,chunkPos,3)+dimPlex+1) then
-          call DMSetLabelValue(globalMesh,'material',j,IO_intValue(line,chunkPos,4),ierr)
+      l = l + 1
+      if (IO_isBlank(fileContent(l))) cycle ! need also to ignore C and C++ style comments?
+      if (trim(fileContent(l)) == '$EndElements') exit
+      if (trim(fileContent(l)) == '$Elements')    found = .true.  
+      if (found) then
+        chunkPos = IO_stringPos(fileContent(l))
+        if (chunkPos(1) == 3+IO_intValue(fileContent(l),chunkPos,3)+dimPlex+1) then
+          call DMSetLabelValue(globalMesh,'material',j,IO_intValue(fileContent(l),chunkPos,4),ierr)
           CHKERRQ(ierr)
           j = j + 1  
-        endif                                                                                           ! count all identifiers to allocate memory and do sanity check
+        endif                                                                                       ! count all identifiers to allocate memory and do sanity check
       endif
     enddo
-    close (FILEUNIT)
     call DMClone(globalMesh,geomMesh,ierr)
     CHKERRQ(ierr)
   else 

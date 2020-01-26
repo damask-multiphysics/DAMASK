@@ -1,4 +1,4 @@
-!-------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Reads in the material configuration from file
 !> @details Reads the material configuration file, where solverJobName.materialConfig takes

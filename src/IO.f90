@@ -23,7 +23,6 @@ module IO
   public :: &
     IO_init, &
     IO_read_ASCII, &
-    IO_open_file, &                                                                                 ! deprecated, use IO_read_ASCII
     IO_open_jobFile_binary, &
     IO_isBlank, &
     IO_getTag, &
@@ -123,23 +122,6 @@ function IO_read_ASCII(fileName) result(fileContent)
   enddo
 
 end function IO_read_ASCII
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief   opens existing file for reading to given unit. Path to file is relative to working
-!!          directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_open_file(fileUnit,path)
- 
-  integer,            intent(in) :: fileUnit                                                        !< file unit
-  character(len=*),   intent(in) :: path                                                            !< relative path from working directory
- 
-  integer                        :: myStat
- 
-  open(fileUnit,status='old',iostat=myStat,file=path,action='read',position='rewind')
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
- 
-end subroutine IO_open_file
 
 
 !--------------------------------------------------------------------------------------------------
