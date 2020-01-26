@@ -7,11 +7,8 @@ module damage_none
   use material
 
   implicit none
-  private
+  public
   
-  public :: &
-    damage_none_init
-
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -21,7 +18,7 @@ subroutine damage_none_init
 
   integer :: h,NofMyHomog
 
-  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_NONE_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_NONE_LABEL//' init  -+>>>'; flush(6)
 
   do h = 1, size(config_homogenization)
     if (damage_type(h) /= DAMAGE_NONE_ID) cycle
