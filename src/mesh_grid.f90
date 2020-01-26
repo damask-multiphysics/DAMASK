@@ -395,6 +395,7 @@ pure function IPneighborhood(grid)
   e = 0
   do z = 0,grid(3)-1; do y = 0,grid(2)-1; do x = 0,grid(1)-1
     e = e + 1
+    ! element ID
     IPneighborhood(1,1,1,e) = z * grid(1) * grid(2) &
                             + y * grid(1) &
                             + modulo(x+1,grid(1)) &
@@ -419,13 +420,17 @@ pure function IPneighborhood(grid)
                             + y * grid(1) &
                             + x &
                             + 1
-    IPneighborhood(2,1:6,1,e) = 1
-    IPneighborhood(3,1,  1,e) = 2
-    IPneighborhood(3,2,  1,e) = 1
-    IPneighborhood(3,3,  1,e) = 4
-    IPneighborhood(3,4,  1,e) = 3
-    IPneighborhood(3,5,  1,e) = 6
-    IPneighborhood(3,6,  1,e) = 5
+    ! IP ID
+    IPneighborhood(2,:,1,e) = 1
+
+    ! face ID
+    IPneighborhood(3,1,1,e) = 2
+    IPneighborhood(3,2,1,e) = 1
+    IPneighborhood(3,3,1,e) = 4
+    IPneighborhood(3,4,1,e) = 3
+    IPneighborhood(3,5,1,e) = 6
+    IPneighborhood(3,6,1,e) = 5
+
   enddo; enddo; enddo
  
 end function IPneighborhood

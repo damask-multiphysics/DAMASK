@@ -51,7 +51,7 @@ subroutine mesh_init(ip,el)
   integer, intent(in) :: el, ip
    
   real(pReal), dimension(:,:), allocatable :: &
-   node0_elem, &                                                                                       !< node x,y,z coordinates (initially!)
+   node0_elem, &                                                                                    !< node x,y,z coordinates (initially!)
    node0_cell
   type(tElement) :: elem
 
@@ -65,7 +65,7 @@ subroutine mesh_init(ip,el)
   real(pReal), dimension(:,:), allocatable :: &
     ip_reshaped
   integer,dimension(:,:,:), allocatable :: &
-    connectivity_cell                                                                                !< cell connectivity for each element,ip/cell
+    connectivity_cell                                                                               !< cell connectivity for each element,ip/cell
   integer, dimension(:,:), allocatable :: &
     connectivity_elem
   real(pReal), dimension(:,:,:,:),allocatable :: &
@@ -372,9 +372,9 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
         do while (.true.)
           i = i + 1
           chunkPos = IO_stringPos(fileContent(l+i))
-          elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                       ! add line's count when assuming 'c'
-          if(IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then                ! line finished, read last value
-            elemInCurrentSet = elemInCurrentSet + 1                                                   ! data ended
+          elemInCurrentSet = elemInCurrentSet + chunkPos(1) - 1                                     ! add line's count when assuming 'c'
+          if(IO_lc(IO_stringValue(fileContent(l+i),chunkPos,chunkPos(1))) /= 'c') then              ! line finished, read last value
+            elemInCurrentSet = elemInCurrentSet + 1                                                 ! data ended
             exit
           endif
         enddo
@@ -1046,7 +1046,7 @@ integer function mesh_FEasCP(what,myID)
   lower = 1
   upper = int(size(lookupMap,2),pInt)
  
-  if (lookupMap(1,lower) == myID) then                                                               ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
+  if (lookupMap(1,lower) == myID) then                                                              ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
     mesh_FEasCP = lookupMap(2,lower)
     return
   elseif (lookupMap(1,upper) == myID) then
