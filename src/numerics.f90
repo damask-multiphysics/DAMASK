@@ -77,10 +77,6 @@ module numerics
    rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
    polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
    polarBeta                  =  1.0_pReal                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme 
- character(len=1024), protected, public :: &
-   petsc_defaultOptions       = '-mech_snes_type ngmres &
-                                &-damage_snes_type ngmres &
-                                &-thermal_snes_type ngmres ', &
    petsc_options              = ''
 #endif
 
@@ -357,7 +353,7 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
  write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
  write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
- write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
+ write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
 
 !--------------------------------------------------------------------------------------------------
