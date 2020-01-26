@@ -47,6 +47,13 @@ class TestTable:
             new = Table.from_ASCII(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
+    def test_write_read_new_style(self,default,tmpdir):
+        with open(tmpdir.join('new_style.txt'),'w') as f:
+            default.to_ASCII(f,new=True)
+        with open(tmpdir.join('new_style.txt')) as f:
+            new = Table.from_ASCII(f)
+        assert all(default.data==new.data) and default.shapes == new.shapes
+
     def test_read_ang_str(self,reference_dir):
         new = Table.from_ang(os.path.join(reference_dir,'simple.ang'))
         assert new.data.shape == (4,10) and \

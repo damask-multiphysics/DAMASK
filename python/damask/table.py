@@ -74,7 +74,7 @@ class Table():
             f.seek(0)
 
         try:
-            N_comment_lines,keyword = f.readline().split()
+            N_comment_lines,keyword = f.readline().strip().split(maxsplit=1)
             if keyword != 'header':
                 raise TypeError
             else:
