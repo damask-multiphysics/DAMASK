@@ -37,10 +37,9 @@ module debug
     debug_HOMOGENIZATION          =  9, &
     debug_CPFEM                   = 10, &
     debug_SPECTRAL                = 11, &
-    debug_MARC                    = 12, &
-    debug_ABAQUS                  = 13
+    debug_MARC                    = 12
   integer, parameter, private :: &
-    debug_MAXNTYPE                = debug_ABAQUS                                                    !< must be set to the maximum defined debug type
+    debug_MAXNTYPE                = debug_MARC                                                      !< must be set to the maximum defined debug type
 
   integer,protected, dimension(debug_maxNtype+2),  public :: &                                      ! specific ones, and 2 for "all" and "other"
     debug_level                    = 0
@@ -136,8 +135,6 @@ subroutine debug_init
           what = debug_SPECTRAL
         case ('marc')
           what = debug_MARC
-        case ('abaqus')
-          what = debug_ABAQUS
         case ('all')
           what = debug_MAXNTYPE + 1
         case ('other')
@@ -210,8 +207,6 @@ subroutine debug_init
            tag = ' Spectral solver'
          case (debug_MARC)
            tag = ' MSC.MARC FEM solver'
-         case (debug_ABAQUS)
-           tag = ' ABAQUS FEM solver'
        end select
 
        if(debug_level(i) /= 0) then

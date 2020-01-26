@@ -75,7 +75,6 @@ variables:
   # ------------ Defaults ----------------------------------------------
   MSC:                             "$MSC2019"
   IntelMarc:                       "$IntelCompiler17_8"
-  IntelAbaqus:                     "$IntelCompiler16_4"
   HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
   # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   Doxygen1_8_15:                   "Documentation/Doxygen/1.8.15"
@@ -476,15 +475,6 @@ createTar:
     - release
 
 ###################################################################################################
-AbaqusStd:
-  stage: createDocumentation
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT abaqus
-  except:
-    - master
-    - release
-
 Marc:
   stage: createDocumentation
   script:

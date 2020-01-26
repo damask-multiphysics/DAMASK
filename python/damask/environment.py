@@ -20,6 +20,5 @@ class Environment():
         for item in ['DAMASK_NUM_THREADS',
                      'MSC_ROOT',
                      'MARC_VERSION',
-                     'ABAQUS_VERSION',
                      ]:
             self.options[item] = os.environ[item] if item in os.environ else None

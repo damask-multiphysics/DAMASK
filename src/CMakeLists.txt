@@ -6,11 +6,10 @@ endif()
 
 file(GLOB damask-sources *.f90 *.c)
 
-# probably we should have subfolders for abaqus and MSC.Marc
+# probably we should have a subfolder for MSC.Marc
 list(FILTER damask-sources EXCLUDE REGEX ".*CPFEM.f90")
 list(FILTER damask-sources EXCLUDE REGEX ".*DAMASK_marc.*.f90")
 list(FILTER damask-sources EXCLUDE REGEX ".*mesh_marc.*.f90")
-list(FILTER damask-sources EXCLUDE REGEX ".*mesh_abaqus.*.f90")
 list(FILTER damask-sources EXCLUDE REGEX ".*commercialFEM_fileList.*.f90")
 
 
