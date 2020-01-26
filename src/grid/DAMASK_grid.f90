@@ -68,10 +68,10 @@ program DAMASK_spectral
    statUnit = 0, &                                                                                  !< file unit for statistics output
    stagIter, &
    nActiveFields = 0
- character(len=6)  :: loadcase_string
  character(len=pStringLen), dimension(:), allocatable :: fileContent
- character(len=1024) :: &
-   incInfo
+ character(len=pStringLen) :: &
+   incInfo, &
+   loadcase_string
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tLoadCase) :: newLoadCase
  type(tSolutionState), allocatable, dimension(:) :: solres
@@ -242,7 +242,7 @@ program DAMASK_spectral
    newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1)                   ! by default, guess from previous load case
 
    reportAndCheck: if (worldrank == 0) then
-     write (loadcase_string, '(i6)' ) currentLoadCase
+     write (loadcase_string, '(i0)' ) currentLoadCase
      write(6,'(/,1x,a,i0)') 'load case: ', currentLoadCase
      if (.not. newLoadCase%followFormerTrajectory) write(6,'(2x,a)') 'drop guessing along trajectory'
      if (newLoadCase%deformation%myType == 'l') then

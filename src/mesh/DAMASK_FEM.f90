@@ -58,9 +58,9 @@ program DAMASK_FEM
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
     component  
-  character(len=6)  :: loadcase_string
-  character(len=1024) :: &
-    incInfo
+  character(len=pStringLen) :: &
+    incInfo, &
+    loadcase_string
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
   PetscInt :: faceSet, currentFaceSet
@@ -197,33 +197,33 @@ program DAMASK_FEM
   loadCases(1)%followFormerTrajectory = .false.                                                      ! cannot guess along trajectory for first inc of first currentLoadCase
   errorID = 0
   checkLoadcases: do currentLoadCase = 1, size(loadCases)
-      write (loadcase_string, '(i6)' ) currentLoadCase
-      write(6,'(1x,a,i6)') 'load case: ', currentLoadCase
-      if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
-        write(6,'(2x,a)') 'drop guessing along trajectory'
-      do field = 1, nActiveFields
-        select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
-          case(FIELD_MECH_ID)
-            write(6,'(2x,a)') 'Field '//trim(FIELD_MECH_label)
-        
-        end select
-        do faceSet = 1, mesh_Nboundaries
-           do component = 1, loadCases(currentLoadCase)%fieldBC(field)%nComponents
-             if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask(faceSet)) &
-               write(6,'(4x,a,i2,a,i2,a,f12.7)') 'Face  ', mesh_boundaries(faceSet), &
-                                                 ' Component ', component, & 
-                                                 ' Value ', loadCases(currentLoadCase)%fieldBC(field)% &
-                                                              componentBC(component)%Value(faceSet)
-           enddo
-         enddo       
-      enddo
-      write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
-      if (loadCases(currentLoadCase)%incs < 1)             errorID = 835                            ! non-positive incs count
-      write(6,'(2x,a,i5)')    'increments: ', loadCases(currentLoadCase)%incs
-      if (loadCases(currentLoadCase)%outputfrequency < 1)  errorID = 836                            ! non-positive result frequency
-      write(6,'(2x,a,i5)')    'output  frequency:  ', &
-                 loadCases(currentLoadCase)%outputfrequency
-      if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
+    write (loadcase_string, '(i0)' ) currentLoadCase
+    write(6,'(1x,a,i6)') 'load case: ', currentLoadCase
+    if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
+      write(6,'(2x,a)') 'drop guessing along trajectory'
+    do field = 1, nActiveFields
+      select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
+        case(FIELD_MECH_ID)
+          write(6,'(2x,a)') 'Field '//trim(FIELD_MECH_label)
+      
+      end select
+      do faceSet = 1, mesh_Nboundaries
+         do component = 1, loadCases(currentLoadCase)%fieldBC(field)%nComponents
+           if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask(faceSet)) &
+             write(6,'(4x,a,i2,a,i2,a,f12.7)') 'Face  ', mesh_boundaries(faceSet), &
+                                               ' Component ', component, & 
+                                               ' Value ', loadCases(currentLoadCase)%fieldBC(field)% &
+                                                            componentBC(component)%Value(faceSet)
+         enddo
+       enddo       
+    enddo
+    write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
+    if (loadCases(currentLoadCase)%incs < 1)             errorID = 835                            ! non-positive incs count
+    write(6,'(2x,a,i5)')    'increments: ', loadCases(currentLoadCase)%incs
+    if (loadCases(currentLoadCase)%outputfrequency < 1)  errorID = 836                            ! non-positive result frequency
+    write(6,'(2x,a,i5)')    'output  frequency:  ', &
+               loadCases(currentLoadCase)%outputfrequency
+    if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
   enddo checkLoadcases
 
 !--------------------------------------------------------------------------------------------------

@@ -59,7 +59,7 @@ subroutine grid_damage_spectral_init
   DM :: damage_grid
   Vec :: uBound, lBound
   PetscErrorCode :: ierr
-  character(len=100) :: snes_type
+  character(len=pStringLen) :: snes_type
  
   write(6,'(/,a)') ' <<<+-  grid_spectral_damage init  -+>>>'
 

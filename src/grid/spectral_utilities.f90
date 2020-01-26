@@ -120,7 +120,6 @@ module spectral_utilities
     character(len=pStringLen) :: &
       spectral_derivative, &                                                                        !< approximation used for derivatives in Fourier space
       FFTW_plan_mode, &                                                                             !< FFTW plan mode, see www.fftw.org
-      PETSc_defaultOptions, &
       PETSc_options
   end type tNumerics
   
@@ -219,8 +218,6 @@ subroutine utilities_init
   call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
   if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
-  CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
   CHKERRQ(ierr)
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
   CHKERRQ(ierr)

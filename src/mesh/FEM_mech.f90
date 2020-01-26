@@ -48,7 +48,7 @@ module FEM_mech
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
-  character(len=1024) :: incInfo   
+  character(len=pStringLen) :: incInfo
   real(pReal), dimension(3,3) :: &
     P_av = 0.0_pReal
   logical :: ForwardData

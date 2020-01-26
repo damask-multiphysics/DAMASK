@@ -68,17 +68,17 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init
 
-  integer, dimension(1), parameter:: FE_geomtype = [1]                      !< geometry type of particular element type
-  integer, dimension(1) :: FE_Nips                                          !< number of IPs in a specific type of element
+  integer, dimension(1), parameter:: FE_geomtype = [1]                                              !< geometry type of particular element type
+  integer, dimension(1) :: FE_Nips                                                                  !< number of IPs in a specific type of element
   
   integer, parameter :: FILEUNIT = 222
   integer :: j
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
-    mesh_Nnodes                                                                                      !< total number of nodes in mesh
+    mesh_Nnodes                                                                                     !< total number of nodes in mesh
   integer, parameter :: &
-    mesh_ElemType=1                                                                             !< Element type of the mesh (only support homogeneous meshes)
-  character(len=512) :: &
+    mesh_ElemType=1                                                                                 !< Element type of the mesh (only support homogeneous meshes)
+  character(len=pStringLen) :: &
     line
   logical :: flag
   PetscSF :: sf
@@ -129,7 +129,7 @@ subroutine mesh_init
     flag = .false.
     call IO_open_file(FILEUNIT,trim(geometryFile))
     do
-      read(FILEUNIT,'(A)') line
+      read(FILEUNIT,'(a)') line
       if (trim(line) == IO_EOF) exit                                                                    ! skip empty lines
       if (trim(line) == '$Elements') then
         read(FILEUNIT,'(A)') line ! number of elements (ignore)

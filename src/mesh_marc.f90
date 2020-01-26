@@ -171,7 +171,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
 
   type(tElement), intent(out) :: elem
   real(pReal), dimension(:,:), allocatable, intent(out) :: &
-   node0_elem                                                                                       !< node x,y,z coordinates (initially!)
+    node0_elem                                                                                      !< node x,y,z coordinates (initially!)
   integer, dimension(:,:),     allocatable, intent(out) :: &
     connectivity_elem
   integer,     dimension(:),   allocatable, intent(out) :: &
@@ -188,7 +188,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
     matNumber                                                                                       !< material numbers for hypoelastic material
   character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
   
-  character(len=64), dimension(:), allocatable :: &
+  character(len=pStringLen), dimension(:), allocatable :: &
     nameElemSet
   integer, dimension(:,:), allocatable :: &
     mapElemSet                                                                                      !< list of elements in elementSet
@@ -392,9 +392,9 @@ end subroutine inputRead_NelemSets
 subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
                                  fileContent)
  
-  character(len=64), dimension(:),   allocatable, intent(out) :: nameElemSet
-  integer,           dimension(:,:), allocatable, intent(out) :: mapElemSet
-  character(len=*),  dimension(:),                intent(in)  :: fileContent                        !< file content, separated per lines
+  character(len=pStringLen), dimension(:),   allocatable, intent(out) :: nameElemSet
+  integer,                   dimension(:,:), allocatable, intent(out) :: mapElemSet
+  character(len=*),          dimension(:),                intent(in)  :: fileContent                !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: elemSet, NelemSets, maxNelemInSet,l

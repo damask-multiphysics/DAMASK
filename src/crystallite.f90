@@ -731,7 +731,7 @@ subroutine crystallite_results
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
-  character(len=256) :: group,lattice_label
+  character(len=pStringLen)                     :: group,lattice_label
                                              
   do p=1,size(config_name_phase)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))//'/generic'
