@@ -24,6 +24,7 @@ module prec
 #endif
   integer,     parameter, public :: pLongInt   = selected_int_kind(18)                              !< number with at least up to +-1e18 (typically 64 bit)
   integer,     parameter, public :: pStringLen = 256                                                !< default string length
+  integer,     parameter, public :: pPathLen   = 4096                                               !< maximum length of a path name on linux
 
   real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                   !< tolerance for internal math self-checks (rotation)
 
