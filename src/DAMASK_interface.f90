@@ -268,7 +268,7 @@ subroutine DAMASK_interface_init
   write(6,'(a,a)')      ' User name: ', trim(userName)
 
   write(6,'(/a,a)')     ' Command line call:      ', trim(commandLine)
-  if (len(trim(workingDirArg)) > 0) &
+  if (len_trim(workingDirArg) > 0) &
     write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
   write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
   write(6,'(a,a)')      ' Load case argument:     ', trim(loadcaseArg)

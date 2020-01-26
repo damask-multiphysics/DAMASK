@@ -294,7 +294,7 @@ subroutine inputRead_matNumber(matNumber, &
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if ( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'hypoelastic') then
-      if (len(trim(fileContent(l+1)))/=0) then
+      if (len)trim(fileContent(l+1))/=0) then
         chunkPos = IO_stringPos(fileContent(l+1))
         data_blocks = IO_intValue(fileContent(l+1),chunkPos,1)
       else

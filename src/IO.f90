@@ -367,10 +367,10 @@ end function IO_stringPos
 !--------------------------------------------------------------------------------------------------
 function IO_stringValue(string,chunkPos,myChunk)
 
-  character(len=*),                       intent(in) :: string                                      !< raw input with known start and end of each chunk
-  integer,   dimension(:),                intent(in) :: chunkPos                                    !< positions of start and end of each tag/chunk in given string
-  integer,                                intent(in) :: myChunk                                     !< position number of desired chunk
-  character(len=:), allocatable                      :: IO_stringValue
+  character(len=*),             intent(in) :: string                                                !< raw input with known start and end of each chunk
+  integer,   dimension(:),      intent(in) :: chunkPos                                              !< positions of start and end of each tag/chunk in given string
+  integer,                      intent(in) :: myChunk                                               !< position number of desired chunk
+  character(len=:), allocatable            :: IO_stringValue
 
   validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     IO_stringValue = ''
@@ -401,9 +401,9 @@ end function IO_intValue
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_floatValue(string,chunkPos,myChunk)
 
-  character(len=*),               intent(in) :: string                                              !< raw input with known start and end of each chunk
-  integer,   dimension(:),        intent(in) :: chunkPos                                            !< positions of start and end of each tag/chunk in given string
-  integer,                        intent(in) :: myChunk                                             !< position number of desired chunk
+  character(len=*),        intent(in) :: string                                                     !< raw input with known start and end of each chunk
+  integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
+  integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
 
   IO_floatValue = verifyFloatValue(IO_stringValue(string,chunkPos,myChunk))
 
@@ -659,12 +659,12 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
   write(0,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
   write(0,'(a)')                  ' ├'//IO_DIVIDER//'┤'
-  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
-                                                     max(1,72-len(trim(msg))-4),'x,a)'
+  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
+                                                     max(1,72-len_trim(msg)-4),'x,a)'
   write(0,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
-                                                       max(1,72-len(trim(ext_msg))-4),'x,a)'
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
+                                                       max(1,72-len_trim(ext_msg)-4),'x,a)'
     write(0,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
@@ -744,12 +744,12 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
   write(6,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
   write(6,'(a)')                  ' ├'//IO_DIVIDER//'┤'
-  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(msg))),',',&
-                                                     max(1,72-len(trim(msg))-4),'x,a)'
+  write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
+                                                     max(1,72-len_trim(msg)-4),'x,a)'
   write(6,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
-    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len(trim(ext_msg))),',',&
-                                                       max(1,72-len(trim(ext_msg))-4),'x,a)'
+    write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
+                                                       max(1,72-len_trim(ext_msg)-4),'x,a)'
     write(6,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
