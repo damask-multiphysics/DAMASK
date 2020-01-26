@@ -49,11 +49,11 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief does nothing.
-! ToDo: needed?
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
  
   write(6,'(/,a)') ' <<<+-  IO init  -+>>>'; flush(6)
+  call unitTest
  
 end subroutine IO_init
 
@@ -913,5 +913,24 @@ real(pReal) function verifyFloatValue(string)
   endif valid
  
 end function verifyFloatValue
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of IO functions
+!--------------------------------------------------------------------------------------------------
+subroutine unitTest
+
+  if(dNeq(1.0_pReal, verifyFloatValue('1.0')))    call IO_error(401,ext_msg='verifyFloatValue')
+  if(dNeq(1.0_pReal, verifyFloatValue('1e0')))    call IO_error(401,ext_msg='verifyFloatValue')
+  if(dNeq(0.1_pReal, verifyFloatValue('1e-1')))   call IO_error(401,ext_msg='verifyFloatValue')
+
+  if(3112019  /= verifyIntValue( '3112019'))      call IO_error(401,ext_msg='verifyIntValue')
+  if(3112019  /= verifyIntValue(' 3112019'))      call IO_error(401,ext_msg='verifyIntValue')
+  if(-3112019 /= verifyIntValue('-3112019'))      call IO_error(401,ext_msg='verifyIntValue')
+  if(3112019  /= verifyIntValue('+3112019 '))     call IO_error(401,ext_msg='verifyIntValue')
+
+  if(any([2,1,2,4,4] /= IO_stringPos('aa b')))    call IO_error(401,ext_msg='IO_stringPos')
+
+end subroutine unitTest
 
 end module IO
