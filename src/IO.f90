@@ -34,10 +34,6 @@ module IO
     IO_lc, &
     IO_error, &
     IO_warning
-#if defined(Marc4DAMASK)
-  public :: &
-    IO_open_inputFile
-#endif
 
 contains
 
