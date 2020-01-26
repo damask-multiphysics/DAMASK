@@ -33,8 +33,12 @@ module mesh
     mesh_unitlength                                                                                 !< physical length of one unit in mesh
  
   integer, dimension(:,:), allocatable, target :: &
-    mesh_mapFEtoCPelem, &                                                                           !< [sorted FEid, corresponding CPid]
-    mesh_mapFEtoCPnode                                                                              !< [sorted FEid, corresponding CPid]
+    mesh_mapFEtoCPelem, &                                                                           !< [sorted FEid,   corresponding CPid]
+    mesh_mapFEtoCPnode                                                                              !< [sorted FEnode, corresponding CPnode]
+
+  integer, dimension(:),   allocatable :: &
+    mapMarc2DAMASK_elem, &                                                                          !< DAMASK element ID for Marc element ID
+    mapMarc2DAMASK_node, &                                                                          !< DAMASK node ID for Marc node ID
 
   public :: &
     mesh_init, &
@@ -212,11 +216,12 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
                           nElems,inputFile)
 
   allocate (mesh_mapFEtoCPelem(2,nElems), source=0)
-  call inputRead_mapElems(elem%nNodes,&
-                          inputFile)
+  call inputRead_mapElems(mapMarc2DAMASK_elem,&
+                          elem%nNodes,inputFile)
 
   allocate (mesh_mapFEtoCPnode(2,Nnodes), source=0)
-  call inputRead_mapNodes(inputFile)
+  call inputRead_mapNodes(mapMarc2DAMASK_node,&
+                          inputFile)
 
   call inputRead_elemNodes(node0_elem, &
                            Nnodes,inputFile)
@@ -421,12 +426,15 @@ end subroutine inputRead_mapElemSets
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElems(nNodes,fileContent)
+subroutine inputRead_mapElems(map, &
+                              nNodes,fileContent)
  
-  integer,                        intent(in) :: nNodes                                              !< number of nodes per element
-  character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
+  integer, allocatable, dimension(:), intent(out) :: map
 
-  integer, allocatable, dimension(:) :: chunkPos
+  integer,                            intent(in)  :: nNodes                                         !< number of nodes per element
+  character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
+
+  integer, allocatable, dimension(:) :: chunkPos, map
   integer :: i,j,l,nNodesAlreadyRead
 
   do l = 1, size(fileContent)
@@ -448,6 +456,10 @@ subroutine inputRead_mapElems(nNodes,fileContent)
   enddo
 
   call math_sort(mesh_mapFEtoCPelem)
+  allocate(map(minval(mesh_mapFEtoCPelem(1,:)):maxval(mesh_mapFEtoCPelem(1,:))),source=-1)
+  do i = 1,size(mesh_mapFEtoCPelem,2)
+     map(mesh_mapFEtoCPelem(1,i)) = mesh_mapFEtoCPelem(2,i)
+  enddo
 
 end subroutine inputRead_mapElems
 
@@ -455,9 +467,12 @@ end subroutine inputRead_mapElems
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps node from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapNodes(fileContent)
+subroutine inputRead_mapNodes(map, &
+                              fileContent)
 
-  character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
+  integer, allocatable, dimension(:), intent(out) :: map
+
+  character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, l
@@ -474,6 +489,10 @@ subroutine inputRead_mapNodes(fileContent)
   enddo
 
   call math_sort(mesh_mapFEtoCPnode)
+  allocate(map(minval(mesh_mapFEtoCPnode(1,:)):maxval(mesh_mapFEtoCPnode(1,:))),source=-1)
+  do i = 1,size(mesh_mapFEtoCPnode,2)
+     map(mesh_mapFEtoCPnode(1,i)) = mesh_mapFEtoCPnode(2,i)
+  enddo
 
 end subroutine inputRead_mapNodes
 
