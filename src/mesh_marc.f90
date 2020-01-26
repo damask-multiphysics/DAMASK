@@ -36,9 +36,9 @@ module mesh
     mesh_mapFEtoCPelem, &                                                                           !< [sorted FEid, corresponding CPid]
     mesh_mapFEtoCPnode                                                                              !< [sorted FEid, corresponding CPid]
 
- public :: &
-   mesh_init, &
-   mesh_FEasCP
+  public :: &
+    mesh_init, &
+    mesh_FEasCP
  
 contains
 
@@ -63,7 +63,7 @@ subroutine mesh_init(ip,el)
     Nnodes                                                                                          !< total number of nodes in mesh
    
   real(pReal), dimension(:,:), allocatable :: &
-    ip_reshaped
+    IP_reshaped
   integer,dimension(:,:,:), allocatable :: &
     connectivity_cell                                                                               !< cell connectivity for each element,ip/cell
   integer, dimension(:,:), allocatable :: &
@@ -95,17 +95,17 @@ subroutine mesh_init(ip,el)
   allocate(node0_cell(3,maxval(connectivity_cell)))
   call buildCellNodes(node0_cell,&
                       cellNodeDefinition,node0_elem)
-  allocate(ip_reshaped(3,elem%nIPs*nElems),source=0.0_pReal)
-  call buildIPcoordinates(ip_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
+  allocate(IP_reshaped(3,elem%nIPs*nElems),source=0.0_pReal)
+  call buildIPcoordinates(IP_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
                           elem%nIPs*nElems]),node0_cell)
 
   call discretization_init(microstructureAt,homogenizationAt,&
-                           ip_reshaped,&
+                           IP_reshaped,&
                            node0_cell)
                            
   call writeGeometry(elem,connectivity_elem,&
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
-                     node0_cell,ip_reshaped)
+                     node0_cell,IP_reshaped)
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
@@ -212,7 +212,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
                           nElems,inputFile)
 
   allocate (mesh_mapFEtoCPelem(2,nElems), source=0)
-  call inputRead_mapElems(elem%nNodes,nElems,&
+  call inputRead_mapElems(elem%nNodes,&
                           inputFile)
 
   allocate (mesh_mapFEtoCPnode(2,Nnodes), source=0)
@@ -421,11 +421,9 @@ end subroutine inputRead_mapElemSets
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElems(nNodes,nElem,fileContent)
+subroutine inputRead_mapElems(nNodes,fileContent)
  
-  integer, intent(in) :: &
-    nElem, &
-    nNodes                                                                                          !< number of nodes per element
+  integer,                        intent(in) :: nNodes                                              !< number of nodes per element
   character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
@@ -435,7 +433,7 @@ subroutine inputRead_mapElems(nNodes,nElem,fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if( IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity' ) then
       j = 0
-      do i = 1,nElem
+      do i = 1,size(mesh_mapFEtoCPelem,2)
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
         mesh_mapFEtoCPelem(:,i) = [IO_intValue(fileContent(l+1+i+j),chunkPos,1),i]
         nNodesAlreadyRead = chunkPos(1) - 2
