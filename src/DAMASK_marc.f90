@@ -29,23 +29,24 @@
 #include "prec.f90"
 
 module DAMASK_interface
- use prec
+  use prec
 #if __INTEL_COMPILER >= 1800
- use, intrinsic :: iso_fortran_env, only: &
-   compiler_version, &
-   compiler_options
+  use, intrinsic :: iso_fortran_env, only: &
+    compiler_version, &
+    compiler_options
 #endif
- use ifport, only: &
-   CHDIR
+  use ifport, only: &
+    CHDIR
 
- implicit none
- private
- 
- character(len=4), parameter, public :: INPUTFILEEXTENSION = '.dat'
- 
- public :: &
-  DAMASK_interface_init, &
-  getSolverJobName
+  implicit none
+  private
+
+  logical,                     public :: symmetricSolver 
+  character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
+  
+  public :: &
+    DAMASK_interface_init, &
+    getSolverJobName
 
 contains
 
@@ -54,40 +55,41 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
 
- integer, dimension(8) :: &
-   dateAndTime
- integer :: ierr
- character(len=1024) :: wd
-
- write(6,'(/,a)') ' <<<+-  DAMASK_marc init -+>>>'
-
- write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
- write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
-
- write(6,'(/,a)') ' Version: '//DAMASKVERSION
-
- ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
+  integer, dimension(8) :: &
+    dateAndTime
+  integer :: ierr
+  character(len=1024) :: wd
+ 
+  write(6,'(/,a)') ' <<<+-  DAMASK_marc init -+>>>'
+ 
+  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
+  write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+ 
+  write(6,'(/,a)') ' Version: '//DAMASKVERSION
+ 
+  ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if __INTEL_COMPILER >= 1800
-  write(6,'(/,a)') ' Compiled with: '//compiler_version()
-  write(6,'(a)')   ' Compiler options: '//compiler_options()
+   write(6,'(/,a)') ' Compiled with: '//compiler_version()
+   write(6,'(a)')   ' Compiler options: '//compiler_options()
 #else
-  write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
-                                                       ', build date :', __INTEL_COMPILER_BUILD_DATE
+   write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
+                                                        ', build date :', __INTEL_COMPILER_BUILD_DATE
 #endif
-
- write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
-
- call date_and_time(values = dateAndTime)
- write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
- write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
-
- inquire(5, name=wd)
- wd = wd(1:scan(wd,'/',back=.true.))
- ierr = CHDIR(wd)
- if (ierr /= 0) then
-   write(6,'(a20,a,a16)') ' working directory "',trim(wd),'" does not exist'
-   call quit(1)
- endif
+ 
+  write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
+ 
+  call date_and_time(values = dateAndTime)
+  write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+  write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+ 
+  inquire(5, name=wd)
+  wd = wd(1:scan(wd,'/',back=.true.))
+  ierr = CHDIR(wd)
+  if (ierr /= 0) then
+    write(6,'(a20,a,a16)') ' working directory "',trim(wd),'" does not exist'
+    call quit(1)
+  endif
+  symmetricSolver = solverIsSymmetric()
 
 end subroutine DAMASK_interface_init
 
@@ -97,18 +99,64 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 function getSolverJobName()
 
- character(1024) :: getSolverJobName, inputName
- character(len=*), parameter :: pathSep = achar(47)//achar(92)                                      ! forward and backward slash
- integer :: extPos
+  character(len=:), allocatable :: getSolverJobName
+  character(1024)               :: inputName
+  character(len=*), parameter   :: pathSep = achar(47)//achar(92)                                   ! forward and backward slash
+  integer :: extPos
 
- getSolverJobName=''
- inputName=''
- inquire(5, name=inputName)                                                                         ! determine inputfile
- extPos = len_trim(inputName)-4
- getSolverJobName=inputName(scan(inputName,pathSep,back=.true.)+1:extPos)
+  inputName=''
+  inquire(5, name=inputName)                                                                        ! determine inputfile
+  extPos = len_trim(inputName)-4
+  getSolverJobName=inputName(scan(inputName,pathSep,back=.true.)+1:extPos)
 
 end function getSolverJobName
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief determines whether a symmetric solver is used
+!--------------------------------------------------------------------------------------------------
+logical function solverIsSymmetric()
+
+  character(len=pStringLen) :: line
+  integer :: myStat,fileUnit,s,e
+
+  open(newunit=fileUnit, file=getSolverJobName()//INPUTFILEEXTENSION, &
+       status='old', position='rewind', action='read',iostat=myStat)
+  do
+    read (fileUnit,'(A)',END=100) line
+    if(index(trim(lc(line)),'solver') == 1) then
+      read (fileUnit,'(A)',END=100) line                                                            ! next line
+        s =     verify(line,      ' ')                                                              ! start of first chunk
+        s = s + verify(line(s+1:),' ')                                                              ! start of second chunk
+        e = s + scan  (line(s+1:),' ')                                                              ! end of second chunk
+      solverIsSymmetric = line(s:e) /= '1'
+    endif
+  enddo
+100 close(fileUnit)
+  contains
+
+  !--------------------------------------------------------------------------------------------------
+  !> @brief changes characters in string to lower case
+  !> @details copied from IO_lc
+  !--------------------------------------------------------------------------------------------------
+  function lc(string)
+
+    character(len=*), intent(in) :: string                                                            !< string to convert
+    character(len=len(string))   :: lc
+
+    character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
+    character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    integer                  :: i,n
+
+    do i=1,len(string)
+      lc(i:i) = string(i:i)
+      n = index(UPPER,lc(i:i))
+      if (n/=0) lc(i:i) = LOWER(n:n)
+    enddo
+  end function lc
+
+end function solverIsSymmetric
 
 end module DAMASK_interface
 
@@ -128,6 +176,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                    strechn1,eigvn1,ncrd,itel,ndeg,ndm,nnode, &
                    jtype,lclass,ifr,ifu)
  use prec
+ use DAMASK_interface
  use numerics
  use FEsolving
  use debug
@@ -329,21 +378,21 @@ end subroutine hypela2
 !> @brief calculate internal heat generated due to inelastic energy dissipation
 !--------------------------------------------------------------------------------------------------
 subroutine flux(f,ts,n,time)
- use prec
- use thermal_conduction
- use mesh
+  use prec
+  use thermal_conduction
+  use mesh
 
- implicit none
- real(pReal), dimension(6),           intent(in) :: &
-   ts
- integer,     dimension(10),          intent(in) :: &
-   n
- real(pReal),                         intent(in) :: &
-   time
- real(pReal), dimension(2),           intent(out) :: &
-   f
+  implicit none
+  real(pReal), dimension(6),           intent(in) :: &
+    ts
+  integer,     dimension(10),          intent(in) :: &
+    n
+  real(pReal),                         intent(in) :: &
+    time
+  real(pReal), dimension(2),           intent(out) :: &
+    f
 
- call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEasCP('elem',n(1)))
+  call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEasCP('elem',n(1)))
 
  end subroutine flux
 

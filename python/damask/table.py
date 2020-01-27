@@ -14,8 +14,8 @@ class Table():
         
         Parameters
         ----------
-        data : numpy.ndarray
-            Data.
+        data : numpy.ndarray or pandas.DataFrame
+            Data. Column labels from a pandas.DataFrame will be replaced.
         shapes : dict with str:tuple pairs
             Shapes of the columns. Example 'F':(3,3) for a deformation gradient. 
         comments : iterable of str, optional
@@ -48,7 +48,7 @@ class Table():
     def __add_comment(self,label,shape,info):
         if info is not None:
             self.comments.append('{}{}: {}'.format(label,
-                                                   ' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',
+                                                   ' '+str(shape) if np.prod(shape) > 1 else '',
                                                    info))
 
     
@@ -73,14 +73,21 @@ class Table():
             f = fname
             f.seek(0)
 
-        header,keyword = f.readline().split()
-        if keyword == 'header':
-            header = int(header)
-        else:
-            raise TypeError
-
-        comments = [f.readline()[:-1] for i in range(1,header)]
-        labels   = f.readline().split()
+        try:
+            N_comment_lines,keyword = f.readline().strip().split(maxsplit=1)
+            if keyword != 'header':
+                raise ValueError
+            else:
+                comments = [f.readline().strip() for i in range(1,int(N_comment_lines))]
+                labels   = f.readline().split()
+        except ValueError:
+            f.seek(0)
+            comments = []
+            line = f.readline().strip()
+            while line.startswith('#'):
+                comments.append(line.lstrip('#').strip())
+                line = f.readline().strip()
+            labels = line.split()
        
         shapes = {}
         for label in labels:
@@ -95,7 +102,7 @@ class Table():
                 else:
                     shapes[label] = (1,)
         
-        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+').to_numpy()
+        data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
 
         return Table(data,shapes,comments)
 
@@ -309,7 +316,7 @@ class Table():
                 self.shapes[key] = other.shapes[key]
 
 
-    def to_ASCII(self,fname):
+    def to_ASCII(self,fname,new=False):
         """
         Store as plain text file.
 
@@ -329,15 +336,18 @@ class Table():
                           for i in range(self.shapes[l][0])]
             else:
                 labels += ['{}:{}_{}'.format('x'.join([str(d) for d in self.shapes[l]]),i+1,l) \
-                          for i in range(np.prod(self.shapes[l],dtype=int))]
+                          for i in range(np.prod(self.shapes[l]))]
 
-        header = ['{} header'.format(len(self.comments)+1)] \
-               + self.comments \
-               + [' '.join(labels)]
+        if new:
+            header = ['# {}'.format(comment) for comment in self.comments]
+        else:
+            header = ['{} header'.format(len(self.comments)+1)] \
+                   + self.comments \
 
         try:
             f = open(fname,'w')
         except TypeError:
             f = fname
-        for line in header: f.write(line+'\n')
+
+        for line in header + [' '.join(labels)]: f.write(line+'\n')
         self.data.to_csv(f,sep=' ',index=False,header=False)

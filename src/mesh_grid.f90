@@ -98,7 +98,7 @@ subroutine mesh_init(ip,el)
                                  worldrank<1))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
-  allocate(FEsolving_execIP(2,product(myGrid)),source=1)                                            ! parallel loop bounds set to comprise the only IP
+  FEsolving_execIP   = [1,1]                                                                        ! parallel loop bounds set to comprise the only IP
 
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing

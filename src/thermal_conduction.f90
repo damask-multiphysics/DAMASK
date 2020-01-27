@@ -79,7 +79,7 @@ subroutine thermal_conduction_init
     allocate(thermalState(h)%state    (0,NofMyHomog))
  
     nullify(thermalMapping(h)%p)
-    thermalMapping(h)%p => mappingHomogenization(1,:,:)
+    thermalMapping(h)%p => material_homogenizationMemberAt
     deallocate(temperature    (h)%p)
     allocate  (temperature    (h)%p(NofMyHomog), source=thermal_initialT(h))
     deallocate(temperatureRate(h)%p)
@@ -114,7 +114,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
     constituent
     
   homog  = material_homogenizationAt(el)
-  offset = mappingHomogenization(1,ip,el)
+  offset = material_homogenizationMemberAt(ip,el)
   instance = thermal_typeInstance(homog)
    
   Tdot = 0.0_pReal

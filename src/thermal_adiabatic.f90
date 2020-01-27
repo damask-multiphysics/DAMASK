@@ -77,7 +77,7 @@ subroutine thermal_adiabatic_init
     allocate(thermalState(h)%state    (1,NofMyHomog), source=thermal_initialT(h))
  
     nullify(thermalMapping(h)%p)
-    thermalMapping(h)%p => mappingHomogenization(1,:,:)
+    thermalMapping(h)%p => material_homogenizationMemberAt
     deallocate(temperature(h)%p)
     temperature(h)%p => thermalState(h)%state(1,:)
     deallocate(temperatureRate(h)%p)
@@ -109,7 +109,7 @@ function thermal_adiabatic_updateState(subdt, ip, el)
     T, Tdot, dTdot_dT  
  
   homog  = material_homogenizationAt(el)
-  offset = mappingHomogenization(1,ip,el)
+  offset = material_homogenizationMemberAt(ip,el)
   
   T = thermalState(homog)%subState0(1,offset)
   call thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)

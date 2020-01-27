@@ -215,7 +215,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! initialize restoration points of ...
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e);
+    do i = FEsolving_execIP(1),FEsolving_execIP(2);
       do g = 1,myNgrains
 
         plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e)) = &
@@ -242,16 +242,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
       materialpoint_requested(i,e) = .true.                                                         ! everybody requires calculation
     
       if (homogState(material_homogenizationAt(e))%sizeState > 0) &
-          homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-          homogState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))        ! ...internal homogenization state
+          homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+          homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))        ! ...internal homogenization state
 
       if (thermalState(material_homogenizationAt(e))%sizeState > 0) &
-          thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-          thermalState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))      ! ...internal thermal state
+          thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+          thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))      ! ...internal thermal state
         
       if (damageState(material_homogenizationAt(e))%sizeState > 0) &
-          damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-          damageState(material_homogenizationAt(e))%State0(   :,mappingHomogenization(1,i,e))       ! ...internal damage state
+          damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+          damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))       ! ...internal damage state
     enddo
   enddo
   
@@ -263,7 +263,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     !$OMP PARALLEL DO PRIVATE(myNgrains)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
-      IpLooping1: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
 
         converged: if (materialpoint_converged(i,e)) then
 #ifdef DEBUG
@@ -313,14 +313,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             enddo
 
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
-                homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-                homogState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+                homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+                homogState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
             if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
-                thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-                thermalState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+                thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+                thermalState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
             if(damageState(material_homogenizationAt(e))%sizeState > 0) &
-                damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e)) = &
-                damageState(material_homogenizationAt(e))%State    (:,mappingHomogenization(1,i,e))
+                damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
+                damageState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
                 
             materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)
 
@@ -375,14 +375,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
               enddo
             enddo
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
-                homogState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-                homogState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+                homogState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
+                homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
             if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
-                thermalState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-                thermalState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+                thermalState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
+                thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
             if(damageState(material_homogenizationAt(e))%sizeState > 0) &
-                damageState(material_homogenizationAt(e))%State(    :,mappingHomogenization(1,i,e)) = &
-                damageState(material_homogenizationAt(e))%subState0(:,mappingHomogenization(1,i,e))
+                damageState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
+                damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
           endif
         endif converged
 
@@ -414,7 +414,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
       !$OMP PARALLEL DO PRIVATE(myNgrains)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
-        IpLooping2: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+        IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (      materialpoint_requested(i,e) .and. &                                            ! process requested but...
               .not. materialpoint_doneAndHappy(1,i,e)) then                                         ! ...not yet done material points
             call partitionDeformation(i,e)                                                          ! partition deformation onto constituents
@@ -438,7 +438,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! state update
      !$OMP PARALLEL DO
       elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-        IpLooping3: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+        IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (      materialpoint_requested(i,e) .and. &
               .not. materialpoint_doneAndHappy(1,i,e)) then
             if (.not. materialpoint_converged(i,e)) then
@@ -464,7 +464,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     call crystallite_orientations()                                                                 ! calculate crystal orientations
     !$OMP PARALLEL DO
     elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      IpLooping4: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      IpLooping4: do i = FEsolving_execIP(1),FEsolving_execIP(2)
         call averageStressAndItsTangent(i,e)
       enddo IpLooping4
     enddo elementLooping4

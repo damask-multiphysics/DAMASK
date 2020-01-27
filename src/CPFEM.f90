@@ -86,7 +86,6 @@ subroutine CPFEM_initAll(el,ip)
      call config_init
      call math_init
      call rotations_init
-     call FE_init
      call HDF5_utilities_init
      call results_init
      call mesh_init(ip, el)
@@ -119,7 +118,6 @@ subroutine CPFEM_init
     write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
     write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
     write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
-    write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
     flush(6)
   endif
 
@@ -266,10 +264,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
      !* no parallel computation, so we use just one single elFE and ip for computation
 
      if (.not. parallelExecution) then
-       FEsolving_execElem(1)     = elCP
-       FEsolving_execElem(2)     = elCP
-       FEsolving_execIP(1,elCP) = ip
-       FEsolving_execIP(2,elCP) = ip
+       FEsolving_execElem = elCP
+       FEsolving_execIP   = ip
        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
          write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
        call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent

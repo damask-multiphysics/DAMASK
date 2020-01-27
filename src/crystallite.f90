@@ -238,7 +238,7 @@ subroutine crystallite_init
  !$OMP PARALLEL DO PRIVATE(myNcomponents,i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNcomponents = homogenization_Ngrains(material_homogenizationAt(e))
-    do i = FEsolving_execIP(1,e), FEsolving_execIP(2,e); do c = 1, myNcomponents
+    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, myNcomponents
       crystallite_Fp0(1:3,1:3,c,i,e) = math_EulerToR(material_Eulers(1:3,c,i,e))                    ! plastic def gradient reflects init orientation
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
@@ -263,7 +263,7 @@ subroutine crystallite_init
  
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
         call constitutive_microstructure(crystallite_Fe(1:3,1:3,c,i,e), &
                                          crystallite_Fp(1:3,1:3,c,i,e), &
@@ -336,7 +336,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
   crystallite_subStep = 0.0_pReal
   !$OMP PARALLEL DO
   elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e); do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+    do i = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
       homogenizationRequestsCalculation: if (crystallite_requested(c,i,e)) then
         plasticState    (material_phaseAt(c,e))%subState0(      :,material_phaseMemberAt(c,i,e)) = &
         plasticState    (material_phaseAt(c,e))%partionedState0(:,material_phaseMemberAt(c,i,e))
@@ -361,12 +361,12 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
   !$OMP END PARALLEL DO
 
   singleRun: if (FEsolving_execELem(1) == FEsolving_execElem(2) .and. &
-      FEsolving_execIP(1,FEsolving_execELem(1))==FEsolving_execIP(2,FEsolving_execELem(1))) then
-    startIP = FEsolving_execIP(1,FEsolving_execELem(1))
+                 FEsolving_execIP  (1) == FEsolving_execIP  (2)) then
+    startIP = FEsolving_execIP(1)
     endIP   = startIP
   else singleRun
     startIP = 1
-    endIP = discretization_nIP
+    endIP   = discretization_nIP
   endif singleRun
 
   NiterationCrystallite = 0
@@ -379,7 +379,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 #endif
     !$OMP PARALLEL DO PRIVATE(formerSubStep)
     elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      do i = FEsolving_execIP(1),FEsolving_execIP(2)
         do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
 !--------------------------------------------------------------------------------------------------
 !  wind forward
@@ -494,14 +494,14 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 ! return whether converged or not
   crystallite_stress = .false.
   elementLooping5: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
       crystallite_stress(i,e) = all(crystallite_converged(:,i,e)) 
     enddo
   enddo elementLooping5
 
 #ifdef DEBUG
   elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
         if (.not. crystallite_converged(c,i,e)) then
           if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0) &
@@ -563,7 +563,7 @@ subroutine crystallite_stressTangent
   !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFi,dLpdS,dLpdFi,dFpinvdF,dLidS,dLidFi,dFidS,invSubFi0,o,p, &
   !$OMP                     rhs_3333,lhs_3333,temp_99,temp_33_1,temp_33_2,temp_33_3,temp_33_4,temp_3333,error)
   elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
 
         call constitutive_SandItsTangents(devNull,dSdFe,dSdFi, &
@@ -684,7 +684,7 @@ subroutine crystallite_orientations
  
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
         call crystallite_orientation(c,i,e)%fromMatrix(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
   enddo; enddo; enddo
@@ -693,7 +693,7 @@ subroutine crystallite_orientations
   nonlocalPresent: if (any(plasticState%nonLocal)) then
     !$OMP PARALLEL DO
     do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      do i = FEsolving_execIP(1),FEsolving_execIP(2)
         if (plasticState(material_phaseAt(1,e))%nonLocal) &                                         ! if nonlocal model
           call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
     enddo; enddo
@@ -1306,7 +1306,7 @@ subroutine integrateStateFPI
    
    !$OMP PARALLEL DO PRIVATE(p,c)
      do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+       do i = FEsolving_execIP(1),FEsolving_execIP(2)
          do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
            if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
              p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
@@ -1334,7 +1334,7 @@ subroutine integrateStateFPI
    !$OMP PARALLEL
    !$OMP DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
            p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
@@ -1389,7 +1389,7 @@ subroutine integrateStateFPI
 
    !$OMP DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                  ! converged and still alive...
@@ -1415,7 +1415,7 @@ subroutine integrateStateFPI
    ! --- CHECK IF DONE WITH INTEGRATION ---
    doneWithIntegration = .true.
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          doneWithIntegration = .false.
@@ -1497,7 +1497,7 @@ subroutine integrateStateAdaptiveEuler
 
  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+   do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
@@ -1526,7 +1526,7 @@ subroutine integrateStateAdaptiveEuler
 
  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+   do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
@@ -1586,7 +1586,7 @@ subroutine integrateStateRK4
 
    !$OMP PARALLEL DO PRIVATE(p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
@@ -1677,7 +1677,7 @@ subroutine integrateStateRKCK45
 
    !$OMP PARALLEL DO PRIVATE(p,cc)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
          p = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
@@ -1717,7 +1717,7 @@ subroutine integrateStateRKCK45
 
  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,cc)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
      if (crystallite_todo(g,i,e)) then
        p = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
@@ -1756,7 +1756,7 @@ subroutine integrateStateRKCK45
 
  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,cc)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+   do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
          p  = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
@@ -1814,7 +1814,7 @@ subroutine setConvergenceFlag
  
  !OMP DO PARALLEL PRIVATE
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+   do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)     ! if still "to do" then converged per definition
  enddo; enddo; enddo
@@ -1854,7 +1854,7 @@ subroutine update_stress(timeFraction)
 
  !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
@@ -1884,7 +1884,7 @@ subroutine update_dependentState
 
  !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
@@ -1914,7 +1914,7 @@ subroutine update_state(timeFraction)
 
  !$OMP PARALLEL DO PRIVATE(mySize,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
        p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
@@ -1959,7 +1959,7 @@ subroutine update_dotState(timeFraction)
 
    !$OMP PARALLEL DO PRIVATE (p,c,NaN)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          !$OMP FLUSH(nonlocalStop)
         if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
@@ -2005,7 +2005,7 @@ subroutine update_deltaState
 
    !$OMP PARALLEL DO PRIVATE(p,c,myOffset,mySize,NaN)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          !$OMP FLUSH(nonlocalStop)
          if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then

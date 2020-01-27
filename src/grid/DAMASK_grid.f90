@@ -65,12 +65,11 @@ program DAMASK_spectral
    currentLoadcase = 0, &                                                                           !< current load case
    inc, &                                                                                           !< current increment in current load case
    totalIncsCounter = 0, &                                                                          !< total # of increments
-   fileUnit = 0, &                                                                                  !< file unit for reading load case and writing results
-   myStat, &
    statUnit = 0, &                                                                                  !< file unit for statistics output
    stagIter, &
    nActiveFields = 0
  character(len=6)  :: loadcase_string
+ character(len=pStringLen), dimension(:), allocatable :: fileContent
  character(len=1024) :: &
    incInfo
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
@@ -141,17 +140,14 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
+ fileContent = IO_read_ASCII(trim(loadCaseFile))
+
  allocate (loadCases(0))                                                                            ! array of load cases
- open(newunit=fileunit,iostat=myStat,file=trim(loadCaseFile),action='read')
- if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=trim(loadCaseFile))
- do
-   read(fileUnit, '(A)', iostat=myStat) line
-   if ( myStat /= 0) exit
-   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-
-   currentLoadCase = currentLoadCase + 1
-
+ do currentLoadCase = 1, size(fileContent)
+   line = fileContent(currentLoadCase)
+   if (IO_isBlank(line)) cycle
    chunkPos = IO_stringPos(line)
+
    do i = 1, chunkPos(1)                                                                            ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
        case('l','fdot','dotf','f')
@@ -300,7 +296,7 @@ program DAMASK_spectral
    endif reportAndCheck
    loadCases = [loadCases,newLoadCase]                                                              ! load case is ok, append it
  enddo
- close(fileUnit)
+
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers

@@ -74,7 +74,7 @@ subroutine damage_local_init
     allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
  
     nullify(damageMapping(h)%p)
-    damageMapping(h)%p => mappingHomogenization(1,:,:)
+    damageMapping(h)%p => material_homogenizationMemberAt
     deallocate(damage(h)%p)
     damage(h)%p => damageState(h)%state(1,:)
     
@@ -103,7 +103,7 @@ function damage_local_updateState(subdt, ip, el)
     phi, phiDot, dPhiDot_dPhi  
   
   homog  = material_homogenizationAt(el)
-  offset = mappingHomogenization(1,ip,el)
+  offset = material_homogenizationMemberAt(ip,el)
   phi = damageState(homog)%subState0(1,offset)
   call damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
   phi = max(residualStiffness,min(1.0_pReal,phi + subdt*phiDot))

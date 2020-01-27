@@ -26,8 +26,10 @@ module mesh
  
  integer, public, protected :: &
    mesh_Nboundaries, &
-   mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NcpElemsGlobal
+
+ integer :: &
+   mesh_NcpElems                                                                                     !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
  integer, public, protected :: &
@@ -44,7 +46,7 @@ module mesh
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
    mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
  
- real(pReal), dimension(:,:,:), allocatable, public :: &
+ real(pReal), dimension(:,:,:), allocatable :: &
    mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
 
  DM, public :: geomMesh
@@ -66,128 +68,126 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init
 
- integer, dimension(1), parameter:: FE_geomtype = [1]                      !< geometry type of particular element type
+  integer, dimension(1), parameter:: FE_geomtype = [1]                      !< geometry type of particular element type
+  integer, dimension(1) :: FE_Nips                                          !< number of IPs in a specific type of element
+  
+  integer, parameter :: FILEUNIT = 222
+  integer :: j
+  integer, allocatable, dimension(:) :: chunkPos
+  integer :: dimPlex, &
+    mesh_Nnodes                                                                                      !< total number of nodes in mesh
+  integer, parameter :: &
+    mesh_ElemType=1                                                                             !< Element type of the mesh (only support homogeneous meshes)
+  character(len=512) :: &
+    line
+  logical :: flag
+  PetscSF :: sf
+  DM :: globalMesh
+  PetscInt :: nFaceSets
+  PetscInt, pointer :: pFaceSets(:)
+  IS :: faceSetIS 
+  PetscErrorCode :: ierr
 
- integer, dimension(1) :: FE_Nips                         !< number of IPs in a specific type of element
+  
+  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
 
- 
- integer, parameter :: FILEUNIT = 222
- integer :: j
- integer, allocatable, dimension(:) :: chunkPos
- integer :: dimPlex, &
-   mesh_Nnodes                                                                                      !< total number of nodes in mesh
- integer, parameter :: &
-   mesh_ElemType=1                                                                             !< Element type of the mesh (only support homogeneous meshes)
- character(len=512) :: &
-   line
- logical :: flag
- PetscSF :: sf
- DM :: globalMesh
- PetscInt :: face, nFaceSets
- PetscInt, pointer :: pFaceSets(:)
- IS :: faceSetIS 
- PetscErrorCode :: ierr
+  ! read in file
+  call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
+  CHKERRQ(ierr)
+  ! get spatial dimension (2 or 3?)
+  call DMGetDimension(globalMesh,dimPlex,ierr)
+  CHKERRQ(ierr)
+  write(6,*) 'dimension',dimPlex;flush(6)
+  call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_NcpElemsGlobal,ierr)
+  CHKERRQ(ierr)
+  ! get number of IDs in face sets (for boundary conditions?)
+  call DMGetLabelSize(globalMesh,'Face Sets',mesh_Nboundaries,ierr)
+  CHKERRQ(ierr)
+  write(6,*) 'number of "Face Sets"',mesh_Nboundaries;flush(6)
+  call MPI_Bcast(mesh_Nboundaries,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
- 
- write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+  allocate(mesh_boundaries(mesh_Nboundaries), source = 0)
+  call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,ierr)
+  CHKERRQ(ierr)
+  call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,ierr)
+  CHKERRQ(ierr)
+  if (nFaceSets > 0) then
+    call ISGetIndicesF90(faceSetIS,pFaceSets,ierr)
+    CHKERRQ(ierr)
+    mesh_boundaries(1:nFaceSets) = pFaceSets
+    CHKERRQ(ierr)
+    call ISRestoreIndicesF90(faceSetIS,pFaceSets,ierr)
+  endif
+  call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
- ! read in file
- call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
- CHKERRQ(ierr)
- ! get spatial dimension (2 or 3?)
- call DMGetDimension(globalMesh,dimPlex,ierr)
- CHKERRQ(ierr)
- write(6,*) 'dimension',dimPlex;flush(6)
- call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_NcpElemsGlobal,ierr)
- CHKERRQ(ierr)
- ! get number of IDs in face sets (for boundary conditions?)
- call DMGetLabelSize(globalMesh,'Face Sets',mesh_Nboundaries,ierr)
- CHKERRQ(ierr)
- write(6,*) 'number of "Face Sets"',mesh_Nboundaries;flush(6)
- call MPI_Bcast(mesh_Nboundaries,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
- call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
- call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  ! this read in function should ignore C and C++ style comments
+  ! it is used for BC only?
+  if (worldrank == 0) then
+    j = 0
+    flag = .false.
+    call IO_open_file(FILEUNIT,trim(geometryFile))
+    do
+      read(FILEUNIT,'(A)') line
+      if (trim(line) == IO_EOF) exit                                                                    ! skip empty lines
+      if (trim(line) == '$Elements') then
+        read(FILEUNIT,'(A)') line ! number of elements (ignore)
+        read(FILEUNIT,'(A)') line 
+        flag = .true.  
+      endif
+      if (trim(line) == '$EndElements') exit
+      if (flag) then
+        chunkPos = IO_stringPos(line)
+        if (chunkPos(1) == 3+IO_intValue(line,chunkPos,3)+dimPlex+1) then
+          call DMSetLabelValue(globalMesh,'material',j,IO_intValue(line,chunkPos,4),ierr)
+          CHKERRQ(ierr)
+          j = j + 1  
+        endif                                                                                           ! count all identifiers to allocate memory and do sanity check
+      endif
+    enddo
+    close (FILEUNIT)
+    call DMClone(globalMesh,geomMesh,ierr)
+    CHKERRQ(ierr)
+  else 
+    call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
+    CHKERRQ(ierr)
+  endif  
 
- allocate(mesh_boundaries(mesh_Nboundaries), source = 0)
- call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,ierr)
- CHKERRQ(ierr)
- call DMGetLabelIdIS(globalMesh,'Face Sets',faceSetIS,ierr)
- CHKERRQ(ierr)
- if (nFaceSets > 0) call ISGetIndicesF90(faceSetIS,pFaceSets,ierr)
- do face = 1, nFaceSets
-   mesh_boundaries(face) = pFaceSets(face)
- enddo  
- if (nFaceSets > 0) call ISRestoreIndicesF90(faceSetIS,pFaceSets,ierr)
- call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  call DMDestroy(globalMesh,ierr); CHKERRQ(ierr)
+  
+  call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,ierr)
+  CHKERRQ(ierr)
+  call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
+  CHKERRQ(ierr)
 
- ! this read in function should ignore C and C++ style comments
- ! it is used for BC only?
- if (worldrank == 0) then
-   j = 0
-   flag = .false.
-   call IO_open_file(FILEUNIT,trim(geometryFile))
-   do
-     read(FILEUNIT,'(a512)') line
-     if (trim(line) == IO_EOF) exit                                                                    ! skip empty lines
-     if (trim(line) == '$Elements') then
-       read(FILEUNIT,'(a512)') line ! number of elements (ignore)
-       read(FILEUNIT,'(a512)') line 
-       flag = .true.  
-     endif
-     if (trim(line) == '$EndElements') exit
-     if (flag) then
-       chunkPos = IO_stringPos(line)
-       if (chunkPos(1) == 3+IO_intValue(line,chunkPos,3)+dimPlex+1) then
-         call DMSetLabelValue(globalMesh,'material',j,IO_intValue(line,chunkPos,4),ierr)
-         CHKERRQ(ierr)
-         j = j + 1  
-       endif                                                                                           ! count all identifiers to allocate memory and do sanity check
-     endif
-   enddo
-   close (FILEUNIT)
-   call DMClone(globalMesh,geomMesh,ierr)
-   CHKERRQ(ierr)
- else 
-   call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
-   CHKERRQ(ierr)
- endif  
+  FE_Nips(FE_geomtype(1)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
+  mesh_maxNips = FE_Nips(1)
+  
+  write(6,*) 'mesh_maxNips',mesh_maxNips
+  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
+  call mesh_FEM_build_ipVolumes(dimPlex)
+  
+  allocate (mesh_element (4,mesh_NcpElems)); mesh_element = 0
+  do j = 1, mesh_NcpElems
+    mesh_element( 1,j) = -1                                                                     ! DEPRECATED
+    mesh_element( 2,j) = mesh_elemType                                                               ! elem type
+    mesh_element( 3,j) = 1                                                                      ! homogenization
+    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
+    CHKERRQ(ierr)
+  end do 
 
- call DMDestroy(globalMesh,ierr); CHKERRQ(ierr)
- 
- call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,ierr)
- CHKERRQ(ierr)
- call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
- CHKERRQ(ierr)
+  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
+    call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
+  if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2,debug_e)))) &
+    call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
+  
+  FEsolving_execElem = [ 1,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
+  FEsolving_execIP   = [1,FE_Nips(FE_geomtype(mesh_element(2,1)))]
+  
+  allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 
- FE_Nips(FE_geomtype(1)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
- mesh_maxNips = FE_Nips(1)
- 
- write(6,*) 'mesh_maxNips',mesh_maxNips
- call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
- call mesh_FEM_build_ipVolumes(dimPlex)
- 
- allocate (mesh_element (4,mesh_NcpElems)); mesh_element = 0
- do j = 1, mesh_NcpElems
-   mesh_element( 1,j) = -1                                                                     ! DEPRECATED
-   mesh_element( 2,j) = mesh_elemType                                                               ! elem type
-   mesh_element( 3,j) = 1                                                                      ! homogenization
-   call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
-   CHKERRQ(ierr)
- end do 
-
- if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
-   call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
- if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2,debug_e)))) &
-   call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
- 
- FEsolving_execElem = [ 1,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
- if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
- allocate(FEsolving_execIP(2,mesh_NcpElems)); FEsolving_execIP = 1                        ! parallel loop bounds set to comprise from first IP...
- forall (j = 1:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
- 
- allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
-
-   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+  call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
  
@@ -199,21 +199,17 @@ end subroutine mesh_init
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
  
-  PetscInt           :: dimPlex
+  PetscInt,intent(in):: dimPlex
   PetscReal          :: vol
-  PetscReal,  target :: cent(dimPlex), norm(dimPlex)
-  PetscReal, pointer :: pCent(:), pNorm(:)
+  PetscReal, pointer,dimension(:) :: pCent, pNorm
   PetscInt           :: cellStart, cellEnd, cell
   PetscErrorCode     :: ierr
  
-  if (.not. allocated(mesh_ipVolume)) then
-    allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
-    mesh_ipVolume = 0.0_pReal 
-  endif
+  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
-  pCent => cent
-  pNorm => norm
+  allocate(pCent(dimPlex))
+  allocate(pNorm(dimPlex))
   do cell = cellStart, cellEnd-1
     call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,ierr) 
     CHKERRQ(ierr)
@@ -231,8 +227,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
   PetscInt,      intent(in) :: dimPlex
   PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
   
-  PetscReal,         target :: v0(dimPlex), cellJ(dimPlex*dimPlex), invcellJ(dimPlex*dimPlex)
-  PetscReal,        pointer :: pV0(:), pCellJ(:), pInvcellJ(:)
+  PetscReal,        pointer,dimension(:) :: pV0, pCellJ, pInvcellJ
   PetscReal                 :: detJ
   PetscInt                  :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
   PetscErrorCode            :: ierr
@@ -240,9 +235,9 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
  
   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
-  pV0 => v0
-  pCellJ => cellJ
-  pInvcellJ => invcellJ
+  allocate(pV0(dimPlex))
+  allocatE(pCellJ(dimPlex**2))
+  allocatE(pinvCellJ(dimPlex**2))
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
   do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)

@@ -108,7 +108,7 @@ module subroutine mech_RGC_init
               
 #ifdef DEBUG
     if  (h==material_homogenizationAt(debug_e)) then
-      prm%of_debug = mappingHomogenization(1,debug_i,debug_e)
+      prm%of_debug = material_homogenizationMemberAt(debug_i,debug_e)
     endif
 #endif
 
@@ -261,7 +261,7 @@ module procedure mech_RGC_updateState
   endif zeroTimeStep
 
   instance  = homogenization_typeInstance(material_homogenizationAt(el))
-  of = mappingHomogenization(1,ip,el)
+  of = material_homogenizationMemberAt(ip,el)
   
   associate(stt => state(instance), st0 => state0(instance), dst => dependentState(instance), prm => param(instance))
  
