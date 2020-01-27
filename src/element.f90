@@ -43,38 +43,39 @@ module element
  
   integer, dimension(NELEMTYPE), parameter :: NNODE = &
     [ &
-        3, & ! 2D 3node 1ip
-        6, & ! 2D 6node 3ip
-        4, & ! 2D 4node 4ip
-        8, & ! 2D 8node 9ip
-        8, & ! 2D 8node 4ip
-        !--------------------
-        4, & ! 3D 4node 1ip
-        5, & ! 3D 5node 4ip
-       10, & ! 3D 10node 4ip
-        6, & ! 3D 6node 6ip
-        8, & ! 3D 8node 1ip
-        8, & ! 3D 8node 8ip
-       20, & ! 3D 20node 8ip
-       20  & ! 3D 20node 27ip
+        3, & ! 2D, 1 IP
+        6, & ! 2D, 3 IP
+        4, & ! 2D, 4 IP
+        8, & ! 2D, 9 IP
+        8, & ! 2D, 4 IP
+        !----------------------
+        4, & ! 3D, 1 IP
+        5, & ! 3D, 4 IP
+       10, & ! 3D, 4 IP
+        6, & ! 3D, 6 IP
+        8, & ! 3D, 1 IP
+        8, & ! 3D, 8 IP
+       20, & ! 3D, 8 IP
+       20  & ! 3D, 27 IP
     ]                                                                                               !< number of nodes that constitute a specific type of element
  
   integer, dimension(NELEMTYPE), parameter :: GEOMTYPE = &
     [ &
-        1, & 
-        2, & 
-        3, & 
-        4, & 
-        3, & 
-        5, & 
-        6, & 
-        6, & 
-        7, & 
-        8, & 
-        9, & 
-        9, & 
-       10  & 
-    ]                                                                                               !< geometry type of particular element type
+        1, & ! 1 triangle
+        2, & ! 3 quadrilaterals
+        3, & ! 4 quadrilaterals
+        4, & ! 9 quadrilaterals
+        3, & ! 4 quadrilaterals
+        !----------------------
+        5, & ! 1 tetrahedron
+        6, & ! 4 hexahedrons
+        6, & ! 4 hexahedrons
+        7, & ! 6 hexahedrons
+        8, & ! 1 hexahedron
+        9, & ! 8 hexahedrons
+        9, & ! 8 hexahedrons
+       10  & ! 27 hexahedrons
+    ]                                                                                               !< geometry type (same number of cell nodes and IPs)
  
   integer, dimension(maxval(GEOMTYPE)), parameter :: NCELLNODE = &
     [ &
@@ -88,7 +89,7 @@ module element
         8, &
        27, &
        64  &
-    ]                                                                                               !< number of cell nodes in a specific geometry type
+    ]                                                                                               !< number of cell nodes
  
   integer, dimension(maxval(GEOMTYPE)), parameter :: NIP = &
     [ &
@@ -102,45 +103,45 @@ module element
         1, & 
         8, & 
        27  & 
-    ]                                                                                               !< number of IPs in a specific geometry type
+    ]                                                                                               !< number of IPs
  
   integer, dimension(maxval(GEOMTYPE)), parameter :: CELLTYPE = &
     [ &
-       1, & ! 2D 3node
-       2, & ! 2D 4node
-       2, & ! 2D 4node
-       2, & ! 2D 4node
-       3, & ! 3D 4node
-       4, & ! 3D 8node
-       4, & ! 3D 8node
-       4, & ! 3D 8node
-       4, & ! 3D 8node
-       4  & ! 3D 8node
-    ]                                                                                               !< cell type that is used by each geometry type
+       1, & ! 2D, 3 node (Triangle)
+       2, & ! 2D, 4 node (Quadrilateral)
+       2, & !   - " -
+       2, & !   - " -
+       3, & ! 3D, 4 node (Tetrahedron)
+       4, & ! 3D, 4 node (Hexahedron)
+       4, & !   - " -
+       4, & !   - " -
+       4, & !   - " -
+       4  & !   - " -
+    ]                                                                                               !< cell type
 
   integer, dimension(maxval(CELLTYPE)), parameter :: NIPNEIGHBOR = &
     [ &
-       3, & ! 2D 3node
-       4, & ! 2D 4node
-       4, & ! 3D 4node
-       6  & ! 3D 8node
-    ]                                                                                               !< number of ip neighbors / cell faces in a specific cell type 
+       3, &
+       4, &
+       4, &
+       6  &
+    ]                                                                                               !< number of ip neighbors / cell faces
 
   integer, dimension(maxval(CELLTYPE)), parameter :: NCELLNODEPERCELLFACE = &
     [ &
-       2, & ! 2D 3node
-       2, & ! 2D 4node
-       3, & ! 3D 4node
-       4  & ! 3D 8node
-    ]                                                                                               !< number of cell nodes in a specific cell type 
+       2, &
+       2, &
+       3, &
+       4  &
+    ]                                                                                               !< number of cell nodes per face
 
   integer, dimension(maxval(CELLTYPE)), parameter  :: NCELLNODEPERCELL = &
     [ &
-       3, & ! 2D 3node
-       4, & ! 2D 4node
-       4, & ! 3D 4node
-       8  & ! 3D 8node
-    ]                                                                                               !< number of cell nodes in a specific cell type
+       3, &
+       4, &
+       4, &
+       8  &
+    ]                                                                                               !< number of total cell nodes
 
   ! *** IPneighbor ***
   ! list of the neighborhood of each IP.
@@ -494,14 +495,14 @@ module element
       0, 1, 1, 0,  0, 0, 0, 0, &   ! 10
       0, 0, 1, 1,  0, 0, 0, 0, &   !
       1, 0, 0, 1,  0, 0, 0, 0, &   !
-      1, 0, 0, 0,  1, 0, 0, 0, &   !
-      0, 1, 0, 0,  0, 1, 0, 0, &   !
-      0, 0, 1, 0,  0, 0, 1, 0, &   ! 15
-      0, 0, 0, 1,  0, 0, 0, 1, &   !
       0, 0, 0, 0,  1, 1, 0, 0, &   !
       0, 0, 0, 0,  0, 1, 1, 0, &   !
-      0, 0, 0, 0,  0, 0, 1, 1, &   !
-      0, 0, 0, 0,  1, 0, 0, 1, &   ! 20
+      0, 0, 0, 0,  0, 0, 1, 1, &   ! 15
+      0, 0, 0, 0,  1, 0, 0, 1, &   !
+      1, 0, 0, 0,  1, 0, 0, 0, &   !
+      0, 1, 0, 0,  0, 1, 0, 0, &   !
+      0, 0, 1, 0,  0, 0, 1, 0, &   !
+      0, 0, 0, 1,  0, 0, 0, 1, &   ! 20
       1, 1, 1, 1,  0, 0, 0, 0, &   !
       1, 1, 0, 0,  1, 1, 0, 0, &   !
       0, 1, 1, 0,  0, 1, 1, 0, &   !
@@ -718,14 +719,14 @@ module element
  
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)),   parameter :: CELL9 = &
     reshape([&
-       1, 9,21,12,13,22,27,25, &
-       9, 2,10,21,22,14,23,27, &
-      12,21,11, 4,25,27,24,16, &
-      21,10, 3,11,27,23,15,24, &
-      13,22,27,25, 5,17,26,20, &
-      22,14,23,27,17, 6,18,26, &
-      25,27,24,16,20,26,19, 8, &
-      27,23,15,24,26,18, 7,19  &
+       1, 9,21,12,17,22,27,25, &
+       9, 2,10,21,22,18,23,27, &
+      12,21,11, 4,25,27,24,20, &
+      21,10, 3,11,27,23,19,24, &
+      17,22,27,25, 5,13,26,16, &
+      22,18,23,27,13, 6,14,26, &
+      25,27,24,20,16,26,15, 8, &
+      27,23,19,24,26,14, 7,15  &
 #if !defined(__GFORTRAN__)
     ],shape(CELL9))
 #else

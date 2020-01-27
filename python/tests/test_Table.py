@@ -38,14 +38,21 @@ class TestTable:
     def test_write_read_str(self,default,tmpdir):
         default.to_ASCII(str(tmpdir.join('default.txt')))
         new = Table.from_ASCII(str(tmpdir.join('default.txt')))
-        assert all(default.data==new.data)
+        assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmpdir):
         with open(tmpdir.join('default.txt'),'w') as f:
             default.to_ASCII(f)
         with open(tmpdir.join('default.txt')) as f:
             new = Table.from_ASCII(f)
-        assert all(default.data==new.data)
+        assert all(default.data==new.data) and default.shapes == new.shapes
+
+    def test_write_read_new_style(self,default,tmpdir):
+        with open(tmpdir.join('new_style.txt'),'w') as f:
+            default.to_ASCII(f,new=True)
+        with open(tmpdir.join('new_style.txt')) as f:
+            new = Table.from_ASCII(f)
+        assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_read_ang_str(self,reference_dir):
         new = Table.from_ang(os.path.join(reference_dir,'simple.ang'))
