@@ -1069,7 +1069,6 @@ end function mesh_FEasCP
 !> @brief return integer list corresponding to items in consecutive lines.
 !! First integer in array is counter
 !> @details ints concatenated by "c" as last char, range of a "to" b, or named set
-! REMARK: should replace IO_continuousIntValues
 !--------------------------------------------------------------------------------------------------
 function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
 
