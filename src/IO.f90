@@ -320,26 +320,26 @@ end function IO_getTag
 !--------------------------------------------------------------------------------------------------
 pure function IO_stringPos(string)
 
- integer, dimension(:), allocatable            :: IO_stringPos
- character(len=*),                  intent(in) :: string                                            !< string in which chunk positions are searched for
-
- character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
- integer                      :: left, right
-
- allocate(IO_stringPos(1), source=0)
- right = 0
-
- do while (verify(string(right+1:),SEP)>0)
-   left  = right + verify(string(right+1:),SEP)
-   right = left + scan(string(left:),SEP) - 2
-   if ( string(left:left) == '#' ) exit
-   IO_stringPos = [IO_stringPos,left,right]
-   IO_stringPos(1) = IO_stringPos(1)+1
-   endOfString: if (right < left) then
-     IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
-     exit
-   endif endOfString
- enddo
+  integer, dimension(:), allocatable            :: IO_stringPos
+  character(len=*),                  intent(in) :: string                                           !< string in which chunk positions are searched for
+ 
+  character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)          ! comma and whitespaces
+  integer                      :: left, right
+ 
+  allocate(IO_stringPos(1), source=0)
+  right = 0
+ 
+  do while (verify(string(right+1:),SEP)>0)
+    left  = right + verify(string(right+1:),SEP)
+    right = left + scan(string(left:),SEP) - 2
+    if ( string(left:left) == '#' ) exit
+    IO_stringPos = [IO_stringPos,left,right]
+    IO_stringPos(1) = IO_stringPos(1)+1
+    endOfString: if (right < left) then
+      IO_stringPos(IO_stringPos(1)*2+1) = len_trim(string)
+      exit
+    endif endOfString
+  enddo
 
 end function IO_stringPos
 
@@ -921,25 +921,25 @@ subroutine unitTest
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
 
-  if(dNeq(1.0_pReal, verifyFloatValue('1.0')))   call IO_error(0,ext_msg='verifyFloatValue')
-  if(dNeq(1.0_pReal, verifyFloatValue('1e0')))   call IO_error(0,ext_msg='verifyFloatValue')
-  if(dNeq(0.1_pReal, verifyFloatValue('1e-1')))  call IO_error(0,ext_msg='verifyFloatValue')
+  if(dNeq(1.0_pReal, verifyFloatValue('1.0')))      call IO_error(0,ext_msg='verifyFloatValue')
+  if(dNeq(1.0_pReal, verifyFloatValue('1e0')))      call IO_error(0,ext_msg='verifyFloatValue')
+  if(dNeq(0.1_pReal, verifyFloatValue('1e-1')))     call IO_error(0,ext_msg='verifyFloatValue')
 
-  if(3112019  /= verifyIntValue( '3112019'))     call IO_error(0,ext_msg='verifyIntValue')
-  if(3112019  /= verifyIntValue(' 3112019'))     call IO_error(0,ext_msg='verifyIntValue')
-  if(-3112019 /= verifyIntValue('-3112019'))     call IO_error(0,ext_msg='verifyIntValue')
-  if(3112019  /= verifyIntValue('+3112019 '))    call IO_error(0,ext_msg='verifyIntValue')
+  if(3112019  /= verifyIntValue( '3112019'))        call IO_error(0,ext_msg='verifyIntValue')
+  if(3112019  /= verifyIntValue(' 3112019'))        call IO_error(0,ext_msg='verifyIntValue')
+  if(-3112019 /= verifyIntValue('-3112019'))        call IO_error(0,ext_msg='verifyIntValue')
+  if(3112019  /= verifyIntValue('+3112019 '))       call IO_error(0,ext_msg='verifyIntValue')
 
-  if(any([1,1,1]     /= IO_stringPos('a')))      call IO_error(0,ext_msg='IO_stringPos')
-  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))  call IO_error(0,ext_msg='IO_stringPos')
+  if(any([1,1,1]     /= IO_stringPos('a')))         call IO_error(0,ext_msg='IO_stringPos')
+  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     call IO_error(0,ext_msg='IO_stringPos')
 
   str=' 1.0 xxx'
   chunkPos = IO_stringPos(str)
-  if(dNeq(1.0,IO_floatValue(str,chunkPos,1)))    call IO_error(0,ext_msg='IO_floatValue')
+  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) call IO_error(0,ext_msg='IO_floatValue')
 
   str='M 3112019 F'
   chunkPos = IO_stringPos(str)
-  if(3112019 /= IO_intValue(str,chunkPos,2))     call IO_error(0,ext_msg='IO_intValue')
+  if(3112019 /= IO_intValue(str,chunkPos,2))        call IO_error(0,ext_msg='IO_intValue')
 
 end subroutine unitTest
 

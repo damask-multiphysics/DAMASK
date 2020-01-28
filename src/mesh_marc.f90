@@ -38,7 +38,7 @@ module mesh
 
   integer, dimension(:),   allocatable :: &
     mapMarc2DAMASK_elem, &                                                                          !< DAMASK element ID for Marc element ID
-    mapMarc2DAMASK_node, &                                                                          !< DAMASK node ID for Marc node ID
+    mapMarc2DAMASK_node                                                                             !< DAMASK node ID for Marc node ID
 
   public :: &
     mesh_init, &
@@ -434,7 +434,7 @@ subroutine inputRead_mapElems(map, &
   integer,                            intent(in)  :: nNodes                                         !< number of nodes per element
   character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
 
-  integer, allocatable, dimension(:) :: chunkPos, map
+  integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,l,nNodesAlreadyRead
 
   do l = 1, size(fileContent)
