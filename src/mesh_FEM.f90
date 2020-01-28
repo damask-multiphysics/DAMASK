@@ -119,21 +119,24 @@ subroutine mesh_init
 
   if (worldrank == 0) then
     fileContent = IO_read_ASCII(geometryFile)
-    j = 0
     l = 0
-    found = .false.
     do
       l = l + 1
-      if (IO_isBlank(fileContent(l))) cycle ! need also to ignore C and C++ style comments?
-      if (trim(fileContent(l)) == '$EndElements') exit
-      if (trim(fileContent(l)) == '$Elements')    found = .true.  
-      if (found) then
-        chunkPos = IO_stringPos(fileContent(l))
-        if (chunkPos(1) == 3+IO_intValue(fileContent(l),chunkPos,3)+dimPlex+1) then
-          call DMSetLabelValue(globalMesh,'material',j,IO_intValue(fileContent(l),chunkPos,4),ierr)
-          CHKERRQ(ierr)
-          j = j + 1  
-        endif                                                                                       ! count all identifiers to allocate memory and do sanity check
+      if (IO_isBlank(fileContent(l))) cycle         ! need also to ignore C and C++ style comments?
+      if (trim(fileContent(l)) == '$Elements') then
+        j = 0
+        l = l + 1
+        do
+          l = l + 1
+          if (trim(fileContent(l)) == '$EndElements') exit
+          chunkPos = IO_stringPos(fileContent(l))
+          if (chunkPos(1) == 3+IO_intValue(fileContent(l),chunkPos,3)+dimPlex+1) then
+            call DMSetLabelValue(globalMesh,'material',j,IO_intValue(fileContent(l),chunkPos,4),ierr)
+            CHKERRQ(ierr)
+            j = j + 1
+          endif
+        enddo
+        exit
       endif
     enddo
     call DMClone(globalMesh,geomMesh,ierr)
