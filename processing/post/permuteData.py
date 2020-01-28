@@ -53,7 +53,8 @@ for name in filenames:
   try:
     table = damask.ASCIItable(name = name,
                               buffered = False)
-  except: continue
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
