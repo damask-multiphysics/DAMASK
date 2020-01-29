@@ -174,8 +174,8 @@ module subroutine mech_RGC_init
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
-    dependentState(homogenization_typeInstance(h))%orientation = spread(math_EulerToR(prm%angles*inRad),3,NofMyHomog)
-    !dst%orientation = spread(math_EulerToR(prm%angles*inRad),3,NofMyHomog) ifort version 18.0.1 crashes (for whatever reason)
+    dependentState(homogenization_typeInstance(h))%orientation = spread(eu2om(prm%angles*inRad),3,NofMyHomog)
+    !dst%orientation = spread(eu2om(prm%angles*inRad),3,NofMyHomog) ifort version 18.0.1 crashes (for whatever reason)
  
     end associate
     

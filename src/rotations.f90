@@ -1,6 +1,6 @@
 ! ###################################################################
 ! Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
-! Modified      2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
+! Modified      2017-2020, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 ! All rights reserved.
 !
 ! Redistribution and use in source and binary forms, with or without modification, are 
@@ -82,11 +82,10 @@ module rotations
   end type rotation
   
   public :: &
-    rotations_init
-
+    rotations_init, &
+    eu2om
 
 contains
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief doing self test

@@ -839,40 +839,6 @@ end function math_Voigt66to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotation matrix from Bunge-Euler (3-1-3) angles (in radians)
-!> @details deprecated
-!--------------------------------------------------------------------------------------------------
-pure function math_EulerToR(Euler)
-
-  real(pReal), dimension(3), intent(in) :: Euler
-  real(pReal), dimension(3,3) :: math_EulerToR
-  real(pReal) :: c1, C, c2, s1, S, s2
-
-  c1 = cos(Euler(1))
-  C  = cos(Euler(2))
-  c2 = cos(Euler(3))
-  s1 = sin(Euler(1))
-  S  = sin(Euler(2))
-  s2 = sin(Euler(3))
-
-  math_EulerToR(1,1) =  c1*c2 -s1*C*s2
-  math_EulerToR(1,2) = -c1*s2 -s1*C*c2
-  math_EulerToR(1,3) =  s1*S
-
-  math_EulerToR(2,1) =  s1*c2 +c1*C*s2
-  math_EulerToR(2,2) = -s1*s2 +c1*C*c2
-  math_EulerToR(2,3) = -c1*S
-
-  math_EulerToR(3,1) =  S*s2
-  math_EulerToR(3,2) =  S*c2
-  math_EulerToR(3,3) =  C
-  
-  math_EulerToR = transpose(math_EulerToR)  ! convert to passive rotation
-
-end function math_EulerToR
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief draw a random sample from Gauss variable
 !--------------------------------------------------------------------------------------------------
 real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
