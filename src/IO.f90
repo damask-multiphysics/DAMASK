@@ -356,7 +356,7 @@ function IO_stringValue(string,chunkPos,myChunk)
 
   validChunk: if (myChunk > chunkPos(1) .or. myChunk < 1) then
     IO_stringValue = ''
-    call IO_error(110,el=myChunk,ext_msg='IO_stringValue '//trim(string))
+    call IO_error(110,el=myChunk,ext_msg='IO_stringValue: "'//trim(string)//'"')
   else validChunk
     IO_stringValue = string(chunkPos(myChunk*2):chunkPos(myChunk*2+1))
   endif validChunk
