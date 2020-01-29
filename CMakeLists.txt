@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 3.10.0 FATAL_ERROR)
 # Find PETSc from system environment
 set(PETSC_DIR $ENV{PETSC_DIR})
 if (PETSC_DIR STREQUAL "")
-  message (FATAL_ERROR "PETSc location (PETSC_DIR) is not defined")
+    message (FATAL_ERROR "PETSc location (PETSC_DIR) is not defined")
 endif ()
 
 set (petsc_conf_variables "${PETSC_DIR}/lib/petsc/conf/variables")
@@ -118,7 +118,7 @@ endif ()
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
-  set (CMAKE_BUILD_TYPE "RELEASE")
+    set (CMAKE_BUILD_TYPE "RELEASE")
 endif ()
 
 # Predefined sets for OPTIMIZATION/OPENMP based on BUILD_TYPE
@@ -165,13 +165,13 @@ add_definitions (-DDAMASKVERSION="${DAMASK_V}")
 add_definitions (-DPETSc)
 
 if    (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-  include(Compiler-Intel)
+    include (Compiler-Intel)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-  include(Compiler-GNU)
+    include (Compiler-GNU)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "PGI")
-  include(Compiler-PGI)
+    include (Compiler-PGI)
 else ()
-  message (FATAL_ERROR "Compiler type (CMAKE_Fortran_COMPILER_ID) not recognized")
+    message (FATAL_ERROR "Compiler type (CMAKE_Fortran_COMPILER_ID) not recognized")
 endif ()
 
 
@@ -179,8 +179,8 @@ set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${
 set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${PETSC_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-  set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS}")
-  set (CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
+    set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS}")
+    set (CMAKE_Fortran_LINK_EXECUTABLE           "${CMAKE_Fortran_LINK_EXECUTABLE} ${DEBUG_FLAGS}")
 endif ()
 
 set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}   "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${PETSC_INCLUDES} ${BUILDCMD_POST}")
