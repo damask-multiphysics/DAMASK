@@ -608,13 +608,13 @@ function om2ax(om) result(ax)
     ax(1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal ]
   else
     call dgeev('N','V',3,om_,3,Wr,Wi,devNull,3,VR,3,work,size(work,1),ierr)
-    if (ierr /= 0) call IO_error(0,ext_msg='Error in om2ax: DGEEV return not zero')
+    if (ierr /= 0) call IO_error(401,ext_msg='Error in om2ax: DGEEV return not zero')
 #if defined(__GFORTRAN__) &&  __GNUC__<9 || defined(__INTEL_COMPILER) && INTEL_COMPILER<1800 || defined(__PGI)
     i = maxloc(merge(1,0,cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal)),dim=1)
 #else
     i = findloc(cEq(cmplx(Wr,Wi,pReal),cmplx(1.0_pReal,0.0_pReal,pReal),tol=1.0e-14_pReal),.true.,dim=1) !find eigenvalue (1,0)
 #endif
-    if (i == 0) call IO_error(0,ext_msg='Error in om2ax Real: eigenvalue not found')
+    if (i == 0) call IO_error(401,ext_msg='Error in om2ax Real: eigenvalue not found')
     ax(1:3) = VR(1:3,i)
     where (                dNeq0([om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])) &
       ax(1:3) = sign(ax(1:3),-P *[om(2,3)-om(3,2), om(3,1)-om(1,3), om(1,2)-om(2,1)])
