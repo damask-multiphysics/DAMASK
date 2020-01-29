@@ -406,7 +406,7 @@ pure function IO_lc(string)
   integer :: i,n
 
   do i=1,len(string)
-    n = index(UPPER,IO_lc(i:i))
+    n = index(UPPER,string(i:i))
     IO_lc(i:i) = merge(LOWER(n:n),string(i:i),n/=0)
   enddo
 
