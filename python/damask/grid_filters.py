@@ -366,7 +366,7 @@ def node_coord0_gridSizeOrigin(coord0,ordered=False):
 
 def regrid(size,F,new_grid):
     """
-    Return mapping from coordinates in deformed configuration to a regular grid
+    Return mapping from coordinates in deformed configuration to a regular grid.
 
     Parameters
     ----------
