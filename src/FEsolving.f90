@@ -4,10 +4,10 @@
 !> @brief global variables for flow control
 !--------------------------------------------------------------------------------------------------
 module FEsolving
-  use prec
    
   implicit none
- 
+  public
+
   logical :: &
     terminallyIll = .false.                                                                         !< at least one material point is terminally ill
 
