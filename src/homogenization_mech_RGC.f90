@@ -7,6 +7,7 @@
 !> Nconstituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_RGC
+  use rotations
 
   enum, bind(c) 
     enumerator :: &

@@ -552,15 +552,15 @@ fi
 
 
 # DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
-DFORTLOWMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTLOWMP="$FCOMP -c -O0 -qno-offload -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2019 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
-DFORTRANMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTRANMP="$FCOMP -c -O1 -qno-offload -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2019 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
-DFORTHIGHMP="$FCOMP -c -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
+DFORTHIGHMP="$FCOMP -c -O3 -qno-offload -implicitnone -stand f08 -standard-semantics -assume nostd_mod_proc_name -safe_cray_ptr $PROFILE -zero -mp1 -WB $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2019 -DDAMASKVERSION=$DAMASKVERSION \
  -qopenmp -qopenmp-threadprivate=compat\
   $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
