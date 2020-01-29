@@ -407,7 +407,11 @@ pure function IO_lc(string)
 
   do i=1,len(string)
     n = index(UPPER,string(i:i))
-    IO_lc(i:i) = merge(LOWER(n:n),string(i:i),n/=0)
+    if(n/=0) then
+      IO_lc(i:i) = LOWER(n:n)
+    else
+      IO_lc(i:i) = string(i:i)
+    endif
   enddo
 
 end function IO_lc
