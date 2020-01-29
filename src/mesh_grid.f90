@@ -386,7 +386,7 @@ pure function IPneighborhood(grid)
 
   integer, dimension(3), intent(in) :: grid                                                         ! grid (for this process!)
 
-  integer, dimension(3,6,1,product(grid)) :: IPneighborhood                                         !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
+  integer, dimension(3,6,1,product(grid)) :: IPneighborhood                                         !< 6 neighboring IPs as [element ID, IP ID, face ID]
 
   integer :: &
    x,y,z, &
