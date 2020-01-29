@@ -18,10 +18,10 @@ module mesh_grid
   use discretization
   use geometry_plastic_nonlocal
   use FEsolving
- 
+
   implicit none
   private
-  
+
   integer,     dimension(3), public, protected :: &
     grid                                                                                            !< (global) grid
   integer,                   public, protected :: &
@@ -32,10 +32,10 @@ module mesh_grid
   real(pReal),               public, protected :: &
     size3, &                                                                                        !< (local) size in 3rd direction
     size3offset                                                                                     !< (local) size offset in 3rd direction
- 
+
   public :: &
     mesh_init
- 
+
 contains
 
 
@@ -45,7 +45,7 @@ contains
 subroutine mesh_init(ip,el)
 
   integer, intent(in), optional :: el, ip                                                           ! for compatibility reasons
-  
+
   include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
     mySize, &                                                                                       !< domain size of this process
@@ -93,7 +93,7 @@ subroutine mesh_init(ip,el)
   call discretization_init(homogenizationAt,microstructureAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
                            Nodes0(myGrid,mySize,grid3Offset),&
-                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer 
+                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer
                                  (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! do not write bottom layer (is top of rank-1)
                                  worldrank<1))
 
@@ -113,8 +113,8 @@ subroutine mesh_init(ip,el)
 ! geometry information required by the nonlocal CP model
   call geometry_plastic_nonlocal_setIPvolume(reshape([(product(mySize/real(myGrid,pReal)),j=1,product(myGrid))], &
                                                      [1,product(myGrid)]))
-  call geometry_plastic_nonlocal_setIParea        (cellEdgeArea(mySize,myGrid))
-  call geometry_plastic_nonlocal_setIPareaNormal  (cellEdgeNormal(product(myGrid)))
+  call geometry_plastic_nonlocal_setIParea        (cellSurfaceArea(mySize,myGrid))
+  call geometry_plastic_nonlocal_setIPareaNormal  (cellSurfaceNormal(product(myGrid)))
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(myGrid))
 
 !--------------------------------------------------------------------------------------------------
@@ -127,7 +127,7 @@ end subroutine mesh_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Parses geometry file
-!> @details important variables have an implicit "save" attribute. Therefore, this function is 
+!> @details important variables have an implicit "save" attribute. Therefore, this function is
 ! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
 subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
@@ -140,7 +140,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
   integer,     dimension(:), intent(out), allocatable :: &
     microstructure, &
     homogenization
-   
+
   character(len=:),      allocatable :: rawData
   character(len=65536)               :: line
   integer, allocatable, dimension(:) :: chunkPos
@@ -154,9 +154,9 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
     l, &                                                                                            !< line counter
     c, &                                                                                            !< counter for # microstructures in line
     o, &                                                                                            !< order of "to" packing
-    e, &                                                                                            !< "element", i.e. spectral collocation point 
+    e, &                                                                                            !< "element", i.e. spectral collocation point
     i, j
-    
+
   grid = -1
   geomSize = -1.0_pReal
 
@@ -169,7 +169,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
   allocate(character(len=fileLength)::rawData)
   read(fileUnit) rawData
   close(fileUnit)
-  
+
 !--------------------------------------------------------------------------------------------------
 ! get header length
   endPos = index(rawData,IO_EOL)
@@ -196,7 +196,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
 
     chunkPos = IO_stringPos(trim(line))
     if (chunkPos(1) < 2) cycle                                                                      ! need at least one keyword value pair
-    
+
     select case (IO_lc(IO_StringValue(trim(line),chunkPos,1)) )
       case ('grid')
         if (chunkPos(1) > 6) then
@@ -211,7 +211,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
             end select
           enddo
         endif
-        
+
       case ('size')
         if (chunkPos(1) > 6) then
           do j = 2,6,2
@@ -225,7 +225,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
             end select
           enddo
         endif
-        
+
       case ('origin')
         if (chunkPos(1) > 6) then
           do j = 2,6,2
@@ -258,7 +258,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
 
   allocate(microstructure(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
   allocate(homogenization(product(grid)), source = h)                                               ! too large in case of MPI (shrink later, not very elegant)
-     
+
 !--------------------------------------------------------------------------------------------------
 ! read and interpret content
   e = 1
@@ -269,7 +269,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
     startPos = endPos + 1
     l = l + 1
     chunkPos = IO_stringPos(trim(line))
-    
+
     noCompression: if (chunkPos(1) /= 3) then
       c = chunkPos(1)
       microstructure(e:e+c-1) =  [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
@@ -309,7 +309,7 @@ function IPcoordinates0(grid,geomSize,grid3Offset)
   integer :: &
     a,b,c, &
     i
- 
+
   i = 0
   do c = 1, grid(3); do b = 1, grid(2); do a = 1, grid(1)
     i = i + 1
@@ -346,37 +346,37 @@ end function nodes0
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate IP interface areas
 !--------------------------------------------------------------------------------------------------
-pure function cellEdgeArea(geomSize,grid)
-  
+pure function cellSurfaceArea(geomSize,grid)
+
   real(pReal), dimension(3), intent(in) :: geomSize                                                 ! size (for this process!)
   integer,     dimension(3), intent(in) :: grid                                                     ! grid (for this process!)
-  
-  real(pReal), dimension(6,1,product(grid)) :: cellEdgeArea
 
-  cellEdgeArea(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
-  cellEdgeArea(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
-  cellEdgeArea(5:6,1,:) = geomSize(1)/real(grid(1)) * geomSize(2)/real(grid(2))
-  
-end function cellEdgeArea
+  real(pReal), dimension(6,1,product(grid)) :: cellSurfaceArea
+
+  cellSurfaceArea(1:2,1,:) = geomSize(2)/real(grid(2)) * geomSize(3)/real(grid(3))
+  cellSurfaceArea(3:4,1,:) = geomSize(3)/real(grid(3)) * geomSize(1)/real(grid(1))
+  cellSurfaceArea(5:6,1,:) = geomSize(1)/real(grid(1)) * geomSize(2)/real(grid(2))
+
+end function cellSurfaceArea
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate IP interface areas normals
 !--------------------------------------------------------------------------------------------------
-pure function cellEdgeNormal(nElems)
+pure function cellSurfaceNormal(nElems)
 
   integer, intent(in) :: nElems
-  
-  real(pReal), dimension(3,6,1,nElems) :: cellEdgeNormal
 
-  cellEdgeNormal(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
-  cellEdgeNormal(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
-  cellEdgeNormal(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,nElems)
-  cellEdgeNormal(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,nElems)
-  cellEdgeNormal(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,nElems)
-  cellEdgeNormal(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,nElems)
-  
-end function cellEdgeNormal
+  real(pReal), dimension(3,6,1,nElems) :: cellSurfaceNormal
+
+  cellSurfaceNormal(1:3,1,1,:) = spread([+1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
+  cellSurfaceNormal(1:3,2,1,:) = spread([-1.0_pReal, 0.0_pReal, 0.0_pReal],2,nElems)
+  cellSurfaceNormal(1:3,3,1,:) = spread([ 0.0_pReal,+1.0_pReal, 0.0_pReal],2,nElems)
+  cellSurfaceNormal(1:3,4,1,:) = spread([ 0.0_pReal,-1.0_pReal, 0.0_pReal],2,nElems)
+  cellSurfaceNormal(1:3,5,1,:) = spread([ 0.0_pReal, 0.0_pReal,+1.0_pReal],2,nElems)
+  cellSurfaceNormal(1:3,6,1,:) = spread([ 0.0_pReal, 0.0_pReal,-1.0_pReal],2,nElems)
+
+end function cellSurfaceNormal
 
 
 !--------------------------------------------------------------------------------------------------
@@ -385,9 +385,9 @@ end function cellEdgeNormal
 pure function IPneighborhood(grid)
 
   integer, dimension(3), intent(in) :: grid                                                         ! grid (for this process!)
-  
+
   integer, dimension(3,6,1,product(grid)) :: IPneighborhood                                         !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
-  
+
   integer :: &
    x,y,z, &
    e
@@ -432,7 +432,7 @@ pure function IPneighborhood(grid)
     IPneighborhood(3,6,1,e) = 5
 
   enddo; enddo; enddo
- 
+
 end function IPneighborhood
 
 
