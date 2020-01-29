@@ -368,12 +368,12 @@ subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 2) cycle
-    if(IO_lc(IO_StringValue(fileContent(l),chunkPos,1))  == 'define' .and. &
-        IO_lc(IO_StringValue(fileContent(l),chunkPos,2)) == 'element') then
+    if(IO_lc(IO_StringValue(fileContent(l),chunkPos,1)) == 'define' .and. &
+       IO_lc(IO_StringValue(fileContent(l),chunkPos,2)) == 'element') then
       nElemSets = nElemSets + 1
 
       chunkPos = IO_stringPos(fileContent(l+1))
-      if(IO_lc(IO_StringValue(fileContent(l+1),chunkPos,2)) == 'to' ) then
+      if(containsRange(fileContent(l+1),chunkPos)) then
         elemInCurrentSet = 1 + abs( IO_intValue(fileContent(l+1),chunkPos,3) &
                                    -IO_intValue(fileContent(l+1),chunkPos,1))
       else
@@ -1131,7 +1131,7 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
         endif
       enddo
       exit
-    else if (chunkPos(1) > 2 .and. IO_lc(IO_stringValue(fileContent(l),chunkPos,2)) == 'to' ) then  ! found range indicator
+    elseif(containsRange(fileContent(l),chunkPos)) then
       first = IO_intValue(fileContent(l),chunkPos,1)
       last  = IO_intValue(fileContent(l),chunkPos,3)
       do i = first, last, sign(1,last-first)
@@ -1153,5 +1153,22 @@ function continuousIntValues(fileContent,maxN,lookupName,lookupMap,lookupMaxN)
   enddo
 
 end function continuousIntValues
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return whether a line contains a range ('X to Y')
+!--------------------------------------------------------------------------------------------------
+logical function containsRange(str,chunkPos)
+
+  character(len=*),      intent(in) :: str
+  integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
+
+  containsRange = .False.
+  if(chunkPos(1) == 3) then
+     if(IO_lc(IO_stringValue(str,chunkPos,2)) == 'to') containsRange = .True.
+  endif
+
+end function containsRange
+
 
 end module mesh
