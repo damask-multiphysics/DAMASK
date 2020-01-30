@@ -400,15 +400,18 @@ pure function IO_lc(string)
   character(len=*), intent(in) :: string                                                            !< string to convert
   character(len=len(string))   :: IO_lc
 
-  character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
-  character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  character(len=*),          parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
+  character(len=len(LOWER)), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-  integer                  :: i,n
+  integer :: i,n
 
   do i=1,len(string)
-    IO_lc(i:i) = string(i:i)
-    n = index(UPPER,IO_lc(i:i))
-    if (n/=0) IO_lc(i:i) = LOWER(n:n)
+    n = index(UPPER,string(i:i))
+    if(n/=0) then
+      IO_lc(i:i) = LOWER(n:n)
+    else
+      IO_lc(i:i) = string(i:i)
+    endif
   enddo
 
 end function IO_lc
@@ -549,6 +552,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! math errors
     case (400)
       msg = 'matrix inversion error'
+    case (401)
+      msg = 'error in Eigenvalue calculation'
     case (402)
       msg = 'invalid orientation specified'
 
@@ -876,11 +881,10 @@ integer function verifyIntValue(string)
  
   character(len=*), intent(in) :: string                                                            !< string for conversion to int value
 
-  integer                      :: readStatus, invalidWhere
+  integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
  
-  invalidWhere = verify(string,VALIDCHARS)
-  valid: if (invalidWhere == 0) then
+  valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) verifyIntValue
     if (readStatus /= 0) call IO_error(111,ext_msg=string)
   else valid
@@ -898,11 +902,10 @@ real(pReal) function verifyFloatValue(string)
  
   character(len=*), intent(in) :: string                                                            !< string for conversion to float value
   
-  integer                      :: readStatus, invalidWhere
+  integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
  
-  invalidWhere = verify(string,VALIDCHARS)
-  valid: if (invalidWhere == 0) then
+  valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) verifyFloatValue
     if (readStatus /= 0) call IO_error(112,ext_msg=string)
   else valid

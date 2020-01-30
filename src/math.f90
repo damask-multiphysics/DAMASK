@@ -8,14 +8,16 @@
 module math
   use prec
   use IO
-  use debug
   use numerics
+
   implicit none
   public
 #if __INTEL_COMPILER >= 1900
   ! do not make use associated entities available to other modules
   private :: &
-    prec
+    prec, &
+    IO, &
+    numerics
 #endif
 
   real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
@@ -24,24 +26,24 @@ module math
   complex(pReal), parameter :: TWOPIIMG = cmplx(0.0_pReal,2.0_pReal*PI)                             !< Re(0.0), Im(2xPi)
 
   real(pReal), dimension(3,3), parameter :: &
-    MATH_I3 = reshape([&
+    math_I3 = reshape([&
       1.0_pReal,0.0_pReal,0.0_pReal, &
       0.0_pReal,1.0_pReal,0.0_pReal, &
       0.0_pReal,0.0_pReal,1.0_pReal  &
       ],[3,3])                                                                                      !< 3x3 Identity
 
   real(pReal), dimension(6), parameter, private :: &
-    nrmMandel = [&
+    NRMMANDEL = [&
       1.0_pReal,       1.0_pReal,       1.0_pReal, &
       sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                           !< weighting for Mandel notation (forward)
 
   real(pReal), dimension(6), parameter , private :: &
-    invnrmMandel = [&
+    INVNRMMANDEL = [&
       1.0_pReal,                 1.0_pReal,                 1.0_pReal, &
       1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal) ]             !< weighting for Mandel notation (backward)
 
   integer, dimension (2,6), parameter, private :: &
-    mapNye = reshape([&
+    MAPNYE = reshape([&
       1,1, &
       2,2, &
       3,3, &
@@ -51,7 +53,7 @@ module math
       ],[2,6])                                                                                      !< arrangement in Nye notation.
 
   integer, dimension (2,6), parameter, private :: &
-    mapVoigt = reshape([&
+    MAPVOIGT = reshape([&
       1,1, &
       2,2, &
       3,3, &
@@ -61,7 +63,7 @@ module math
       ],[2,6])                                                                                      !< arrangement in Voigt notation
 
   integer, dimension (2,9), parameter, private :: &
-    mapPlain = reshape([&
+    MAPPLAIN = reshape([&
       1,1, &
       1,2, &
       1,3, &
@@ -129,13 +131,13 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   integer, dimension(:,:), intent(inout) :: a
   integer, intent(in),optional :: istart,iend, sortDim
   integer :: ipivot,s,e,d
-  
+
   if(present(istart)) then
     s = istart
   else
     s = lbound(a,2)
   endif
-  
+
   if(present(iend)) then
     e = iend
   else
@@ -147,7 +149,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   else
     d = 1
   endif
-   
+
   if (s < e) then
     ipivot = qsort_partition(a,s, e, d)
     call math_sort(a, s, ipivot-1, d)
@@ -232,14 +234,14 @@ end function math_range
 !--------------------------------------------------------------------------------------------------
 !> @brief second rank identity tensor of specified dimension
 !--------------------------------------------------------------------------------------------------
-pure function math_identity2nd(dimen)
+pure function math_identity2nd(d)
 
-  integer, intent(in) :: dimen                                                                      !< tensor dimension
+  integer, intent(in) :: d                                                                          !< tensor dimension
   integer :: i
-  real(pReal), dimension(dimen,dimen) :: math_identity2nd
+  real(pReal), dimension(d,d) :: math_identity2nd
 
   math_identity2nd = 0.0_pReal
-  do i=1, dimen
+  do i=1,d
     math_identity2nd(i,i) = 1.0_pReal
   enddo
 
@@ -250,16 +252,17 @@ end function math_identity2nd
 !> @brief symmetric fourth rank identity tensor of specified dimension
 !  from http://en.wikipedia.org/wiki/Tensor_derivative_(continuum_mechanics)#Derivative_of_a_second-order_tensor_with_respect_to_itself
 !--------------------------------------------------------------------------------------------------
-pure function math_identity4th(dimen)
+pure function math_identity4th(d)
 
-  integer, intent(in) :: dimen                                                                      !< tensor dimension
+  integer, intent(in) :: d                                                                          !< tensor dimension
   integer :: i,j,k,l
-  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
-  real(pReal), dimension(dimen,dimen)             ::  identity2nd
+  real(pReal), dimension(d,d,d,d) :: math_identity4th
+  real(pReal), dimension(d,d)     :: identity2nd
 
-  identity2nd = math_identity2nd(dimen)
-  forall(i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) &
+  identity2nd = math_identity2nd(d)
+  do i=1,d; do j=1,d; do k=1,d; do l=1,d
     math_identity4th(i,j,k,l) = 0.5_pReal*(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
+  enddo; enddo; enddo; enddo
 
 end function math_identity4th
 
@@ -324,7 +327,9 @@ pure function math_outer(A,B)
   real(pReal), dimension(size(A,1),size(B,1)) ::  math_outer
   integer :: i,j
 
-  forall(i=1:size(A,1),j=1:size(B,1)) math_outer(i,j) = A(i)*B(j)
+  do i=1,size(A,1); do j=1,size(B,1)
+    math_outer(i,j) = A(i)*B(j)
+  enddo; enddo
 
 end function math_outer
 
@@ -347,11 +352,13 @@ end function math_inner
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_mul33xx33(A,B)
 
-  real(pReal), dimension(3,3), intent(in) ::  A,B
+  real(pReal), dimension(3,3), intent(in) :: A,B
   integer :: i,j
-  real(pReal), dimension(3,3) ::              C
+  real(pReal), dimension(3,3) ::             C
 
-  forall(i=1:3,j=1:3) C(i,j) = A(i,j) * B(i,j)
+  do i=1,3; do j=1,3
+    C(i,j) = A(i,j) * B(i,j)
+  enddo; enddo
   math_mul33xx33 = sum(C)
 
 end function math_mul33xx33
@@ -362,12 +369,14 @@ end function math_mul33xx33
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx33(A,B)
 
+  real(pReal), dimension(3,3,3,3), intent(in) :: A
+  real(pReal), dimension(3,3),     intent(in) :: B
   real(pReal), dimension(3,3) :: math_mul3333xx33
-  real(pReal), dimension(3,3,3,3), intent(in) ::  A
-  real(pReal), dimension(3,3), intent(in) ::  B
   integer :: i,j 
 
-  forall(i = 1:3,j = 1:3) math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
+  do i=1,3; do j=1,3
+    math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
+  enddo; enddo
 
 end function math_mul3333xx33
 
@@ -378,12 +387,13 @@ end function math_mul3333xx33
 pure function math_mul3333xx3333(A,B)
 
   integer :: i,j,k,l
-  real(pReal), dimension(3,3,3,3), intent(in) ::  A
-  real(pReal), dimension(3,3,3,3), intent(in) ::  B
+  real(pReal), dimension(3,3,3,3), intent(in) :: A
+  real(pReal), dimension(3,3,3,3), intent(in) :: B
   real(pReal), dimension(3,3,3,3) :: math_mul3333xx3333
 
-  forall(i = 1:3,j = 1:3, k = 1:3, l= 1:3) &
+  do i=1,3; do j=1,3; do k=1,3; do l=1,3
     math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
+  enddo; enddo; enddo; enddo
 
 end function math_mul3333xx3333
 
@@ -393,12 +403,11 @@ end function math_mul3333xx3333
 !--------------------------------------------------------------------------------------------------
 pure function math_exp33(A,n)
 
-  integer :: i
-  integer, intent(in), optional :: n
   real(pReal), dimension(3,3), intent(in) :: A
+  integer, intent(in), optional :: n
   real(pReal), dimension(3,3) :: B, math_exp33
   real(pReal) :: invFac
-  integer     :: n_
+  integer     :: n_,i
 
   if (present(n)) then
     n_ = n
@@ -646,7 +655,7 @@ pure function math_33to9(m33)
   integer :: i
   
   do i = 1, 9
-    math_33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
+    math_33to9(i) = m33(MAPPLAIN(1,i),MAPPLAIN(2,i))
   enddo
 
 end function math_33to9
@@ -663,7 +672,7 @@ pure function math_9to33(v9)
   integer :: i
 
   do i = 1, 9
-    math_9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
+    math_9to33(MAPPLAIN(1,i),MAPPLAIN(2,i)) = v9(i)
   enddo
 
 end function math_9to33
@@ -685,13 +694,13 @@ pure function math_sym33to6(m33,weighted)
   integer :: i
   
   if(present(weighted)) then
-    w = merge(nrmMandel,1.0_pReal,weighted)
+    w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
-    w = nrmMandel
+    w = NRMMANDEL
   endif
 
   do i = 1, 6
-    math_sym33to6(i) = w(i)*m33(mapNye(1,i),mapNye(2,i))
+    math_sym33to6(i) = w(i)*m33(MAPNYE(1,i),MAPNYE(2,i))
   enddo 
 
 end function math_sym33to6
@@ -713,14 +722,14 @@ pure function math_6toSym33(v6,weighted)
   integer :: i
   
   if(present(weighted)) then
-    w = merge(invnrmMandel,1.0_pReal,weighted)
+    w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
-    w = invnrmMandel
+    w = INVNRMMANDEL
   endif
 
   do i=1,6
-    math_6toSym33(mapNye(1,i),mapNye(2,i)) = w(i)*v6(i)
-    math_6toSym33(mapNye(2,i),mapNye(1,i)) = w(i)*v6(i)
+    math_6toSym33(MAPNYE(1,i),MAPNYE(2,i)) = w(i)*v6(i)
+    math_6toSym33(MAPNYE(2,i),MAPNYE(1,i)) = w(i)*v6(i)
   enddo
 
 end function math_6toSym33
@@ -737,7 +746,7 @@ pure function math_3333to99(m3333)
   integer :: i,j
 
   do i=1,9; do j=1,9
-    math_3333to99(i,j) = m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
+    math_3333to99(i,j) = m3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j))
   enddo; enddo
 
 end function math_3333to99
@@ -754,7 +763,7 @@ pure function math_99to3333(m99)
   integer :: i,j
 
   do i=1,9; do j=1,9
-    math_99to3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
+    math_99to3333(MAPPLAIN(1,i),MAPPLAIN(2,i),MAPPLAIN(1,j),MAPPLAIN(2,j)) = m99(i,j)
   enddo; enddo
 
 end function math_99to3333
@@ -776,13 +785,13 @@ pure function math_sym3333to66(m3333,weighted)
   integer :: i,j
   
   if(present(weighted)) then
-    w = merge(nrmMandel,1.0_pReal,weighted)
+    w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
-    w = nrmMandel
+    w = NRMMANDEL
   endif
 
   do i=1,6; do j=1,6
-    math_sym3333to66(i,j) = w(i)*w(j)*m3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j))
+    math_sym3333to66(i,j) = w(i)*w(j)*m3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j))
   enddo; enddo
 
 end function math_sym3333to66
@@ -804,16 +813,16 @@ pure function math_66toSym3333(m66,weighted)
   integer :: i,j
   
   if(present(weighted)) then
-    w = merge(invnrmMandel,1.0_pReal,weighted)
+    w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
-    w = invnrmMandel
+    w = INVNRMMANDEL
   endif
 
   do i=1,6; do j=1,6
-    math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(mapNye(2,i),mapNye(1,i),mapNye(1,j),mapNye(2,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(mapNye(1,i),mapNye(2,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
-    math_66toSym3333(mapNye(2,i),mapNye(1,i),mapNye(2,j),mapNye(1,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(1,j),MAPNYE(2,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPNYE(2,i),MAPNYE(1,i),MAPNYE(1,j),MAPNYE(2,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPNYE(1,i),MAPNYE(2,i),MAPNYE(2,j),MAPNYE(1,j)) = w(i)*w(j)*m66(i,j)
+    math_66toSym3333(MAPNYE(2,i),MAPNYE(1,i),MAPNYE(2,j),MAPNYE(1,j)) = w(i)*w(j)*m66(i,j)
   enddo; enddo
 
 end function math_66toSym3333
@@ -829,10 +838,10 @@ pure function math_Voigt66to3333(m66)
   integer :: i,j
 
   do i=1,6; do j=1, 6
-    math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) = m66(i,j)
-    math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = m66(i,j)
-    math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = m66(i,j)
-    math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = m66(i,j)
+    math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
+    math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(1,j),MAPVOIGT(2,j)) = m66(i,j)
+    math_Voigt66to3333(MAPVOIGT(1,i),MAPVOIGT(2,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
+    math_Voigt66to3333(MAPVOIGT(2,i),MAPVOIGT(1,i),MAPVOIGT(2,j),MAPVOIGT(1,j)) = m66(i,j)
   enddo; enddo
 
 end function math_Voigt66to3333
@@ -1201,7 +1210,7 @@ end function math_invariantsSym33
 integer pure function math_factorial(n)
 
   integer, intent(in) :: n
-  
+
   math_factorial = product(math_range(n))
 
 end function math_factorial
@@ -1233,7 +1242,7 @@ integer pure function math_multinomial(alpha)
 
   integer, intent(in), dimension(:) :: alpha
   integer :: i
- 
+
   math_multinomial = 1
   do i = 1, size(alpha)
     math_multinomial = math_multinomial*math_binomial(sum(alpha(1:i)),alpha(i))
@@ -1293,12 +1302,12 @@ end function math_clip
 !> @brief check correctness of (some) math functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
- 
+
   integer, dimension(2,4) :: &
     sort_in_   = reshape([+1,+5,  +5,+6,  -1,-1,  +3,-2],[2,4])
   integer, dimension(2,4), parameter :: &
     sort_out_  = reshape([-1,-1,  +1,+5,  +5,+6,  +3,-2],[2,4])
-    
+
   integer,     dimension(5) :: range_out_ = [1,2,3,4,5]
 
   real(pReal)                 :: det
@@ -1308,8 +1317,12 @@ subroutine unitTest
   real(pReal), dimension(3,3) :: t33,t33_2
   real(pReal), dimension(6,6) :: t66
   real(pReal), dimension(9,9) :: t99,t99_2
+  real(pReal), dimension(:,:), &
+               allocatable    :: txx,txx_2
+  real(pReal)                 :: r
+  integer                     :: d
   logical                     :: e
-  
+
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) &
     call IO_error(0,ext_msg='math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]')
@@ -1322,15 +1335,19 @@ subroutine unitTest
               math_expand([1.0_pReal,2.0_pReal],[1,2,3])) > tol_math_check)) &
     call IO_error(0,ext_msg='math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]')
 
-
   call math_sort(sort_in_,1,3,2)
   if(any(sort_in_ /= sort_out_)) &
     call IO_error(0,ext_msg='math_sort')
-  
+
   if(any(math_range(5) /= range_out_)) &
     call IO_error(0,ext_msg='math_range')
- 
- 
+
+   if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
+    call IO_error(0,ext_msg='math_exp33(math_I3,1)')
+
+  if(any(dNeq(math_exp33(math_I3,256),exp(1.0_pReal)*math_I3))) &
+    call IO_error(0,ext_msg='math_exp33(math_I3,256)')
+
   call random_number(v9)
   if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
     call IO_error(0,ext_msg='math_33to9/math_9to33')
@@ -1338,56 +1355,66 @@ subroutine unitTest
   call random_number(t99)
   if(any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
     call IO_error(0,ext_msg='math_3333to99/math_99to3333')
-  
+
   call random_number(v6)
   if(any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &
     call IO_error(0,ext_msg='math_sym33to6/math_6toSym33')
-  
+
   call random_number(t66)
   if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66))) &
     call IO_error(0,ext_msg='math_sym3333to66/math_66toSym3333')
-    
+
   call random_number(v6)
   if(any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
     call IO_error(0,ext_msg='math_symmetric33')
- 
+
   call random_number(v3_1)
   call random_number(v3_2)
   call random_number(v3_3)
   call random_number(v3_4)
-  
+
   if(dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
           math_volTetrahedron(v3_1,v3_2,v3_3,v3_4),tol=1.0e-12_pReal)) &
   call IO_error(0,ext_msg='math_volTetrahedron')
-    
+
   call random_number(t33)
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     call IO_error(0,ext_msg='math_det33/math_detSym33')
   
+  if(any(dNeq0(math_identity2nd(3),math_inv33(math_I3)))) &
+    call IO_error(0,ext_msg='math_inv33(math_I3)')
+
   do while(abs(math_det33(t33))<1.0e-9_pReal)
     call random_number(t33)
   enddo
   if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_identity2nd(3),tol=1.0e-9_pReal))) &
     call IO_error(0,ext_msg='math_inv33')
-    
+
   call math_invert33(t33_2,det,e,t33)
   if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert33: T:T^-1 != I')
   if(dNeq(det,math_det33(t33),tol=1.0e-12_pReal)) &
     call IO_error(0,ext_msg='math_invert33 (determinant)')
-    
+
   call math_invert(t33_2,e,t33)
   if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert t33')
-    
+
   t33_2 = transpose(math_rotationalPart33(t33))
   if(any(dNeq0(math_rotationalPart33(matmul(t33_2,t33)) - MATH_I3,tol=5.0e-4_pReal))) &
     call IO_error(0,ext_msg='math_rotationalPart33')
 
+  call random_number(r)
+  d = int(r*5.0_pReal) + 1
+  txx = math_identity2nd(d)
+  allocate(txx_2(d,d))
+  call math_invert(txx_2,e,txx)
+  if(any(dNeq0(txx_2,txx) .or. e)) &
+    call IO_error(0,ext_msg='math_invert(txx)/math_identity2nd')
 
   call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix 
   if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
-    call IO_error(0,ext_msg='math_invert t99')
+    call IO_error(0,ext_msg='math_invert(t99)')
 
   if(any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &
      call IO_error(0,ext_msg='math_clip')

@@ -27,7 +27,7 @@ module config
     config_numerics, &
     config_debug
  
-  character(len=pStringLen), dimension(:), allocatable, public, protected :: &
+  character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
     config_name_phase, &                                                                            !< name of each phase
     config_name_homogenization, &                                                                   !< name of each homogenization
     config_name_crystallite, &                                                                      !< name of each crystallite setting

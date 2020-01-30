@@ -77,3 +77,9 @@ class TestGridFilters:
          grid = np.random.randint(8,32,(3))
          F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3))                         # noqa
          assert np.allclose(eval('grid_filters.{}_displacement_fluct(size,F)'.format(mode)),0.0)
+
+    def test_regrid(self):
+         size = np.random.random(3)
+         grid = np.random.randint(8,32,(3))
+         F    = np.broadcast_to(np.eye(3), tuple(grid[::-1])+(3,3))
+         assert all(grid_filters.regrid(size,F,grid) == np.arange(grid.prod()))

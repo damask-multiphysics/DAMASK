@@ -3,7 +3,6 @@
 !> @author Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
 module element
-  use prec
   use IO
  
   implicit none
