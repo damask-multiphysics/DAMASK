@@ -29,15 +29,15 @@ module grid_damage_spectral
   Vec,  private :: solution_vec
   PetscInt, private :: xstart, xend, ystart, yend, zstart, zend
   real(pReal), private, dimension(:,:,:), allocatable :: &
-    damage_current, &                                                                               !< field of current damage
-    damage_lastInc, &                                                                               !< field of previous damage
-    damage_stagInc                                                                                  !< field of staggered damage
+    phi_current, &                                                                                  !< field of current damage
+    phi_lastInc, &                                                                                  !< field of previous damage
+    phi_stagInc                                                                                     !< field of staggered damage
  
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc. 
   integer,                     private :: totalIter = 0                                             !< total iteration in current increment
-  real(pReal), dimension(3,3), private :: D_ref
-  real(pReal), private                 :: mobility_ref
+  real(pReal), dimension(3,3), private :: K_ref
+  real(pReal), private                 :: mu_ref
   
   public :: &
     grid_damage_spectral_init, &
@@ -55,7 +55,6 @@ contains
 subroutine grid_damage_spectral_init
     
   PetscInt, dimension(0:worldsize-1) :: localK  
-  integer :: i, j, k, cell
   DM :: damage_grid
   Vec :: uBound, lBound
   PetscErrorCode :: ierr
@@ -116,25 +115,14 @@ subroutine grid_damage_spectral_init
   xend = xstart + xend - 1
   yend = ystart + yend - 1
   zend = zstart + zend - 1 
-  allocate(damage_current(grid(1),grid(2),grid3), source=1.0_pReal)
-  allocate(damage_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
-  allocate(damage_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
+  allocate(phi_current(grid(1),grid(2),grid3), source=1.0_pReal)
+  allocate(phi_lastInc(grid(1),grid(2),grid3), source=1.0_pReal)
+  allocate(phi_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
   call VecSet(solution_vec,1.0_pReal,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! damage reference diffusion update
-  cell = 0
-  D_ref = 0.0_pReal
-  mobility_ref = 0.0_pReal
-  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-    cell = cell + 1
-    D_ref = D_ref + damage_nonlocal_getDiffusion33(1,cell)
-    mobility_ref = mobility_ref + damage_nonlocal_getMobility(1,cell)
-  enddo; enddo; enddo
-  D_ref = D_ref*wgt
-  call MPI_Allreduce(MPI_IN_PLACE,D_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  mobility_ref = mobility_ref*wgt
-  call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call updateReference
 
 end subroutine grid_damage_spectral_init
 
@@ -150,7 +138,7 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   integer :: i, j, k, cell
   type(tSolutionState) :: solution
   PetscInt  :: devNull
-  PetscReal :: minDamage, maxDamage, stagNorm, solnNorm
+  PetscReal :: phi_min, phi_max, stagNorm, solnNorm
   
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
@@ -172,11 +160,11 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
   endif
-  stagNorm = maxval(abs(damage_current - damage_stagInc))
-  solnNorm = maxval(abs(damage_current))
+  stagNorm = maxval(abs(phi_current - phi_stagInc))
+  solnNorm = maxval(abs(phi_current))
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
-  damage_stagInc = damage_current
+  phi_stagInc = phi_current
   solution%stagConverged = stagNorm < max(err_damage_tolAbs, err_damage_tolRel*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
@@ -184,15 +172,15 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
+    call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),1,cell)
   enddo; enddo; enddo
  
-  call VecMin(solution_vec,devNull,minDamage,ierr); CHKERRQ(ierr)
-  call VecMax(solution_vec,devNull,maxDamage,ierr); CHKERRQ(ierr)
+  call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
+  call VecMax(solution_vec,devNull,phi_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
     write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
   write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
-                                                        minDamage, maxDamage, stagNorm
+                                                        phi_min, phi_max, stagNorm
   write(6,'(/,a)') ' ==========================================================================='
   flush(6) 
 
@@ -211,35 +199,22 @@ subroutine grid_damage_spectral_forward(cutBack)
   PetscErrorCode                              :: ierr
 
   if (cutBack) then 
-    damage_current = damage_lastInc
-    damage_stagInc = damage_lastInc
+    phi_current = phi_lastInc
+    phi_stagInc = phi_lastInc
 !--------------------------------------------------------------------------------------------------
 ! reverting damage field state 
     cell = 0
     call SNESGetDM(damage_snes,dm_local,ierr); CHKERRQ(ierr)
     call DMDAVecGetArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)                       !< get the data out of PETSc to work with
-    x_scal(xstart:xend,ystart:yend,zstart:zend) = damage_current
+    x_scal(xstart:xend,ystart:yend,zstart:zend) = phi_current
     call DMDAVecRestoreArrayF90(dm_local,solution_vec,x_scal,ierr); CHKERRQ(ierr)
     do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
       cell = cell + 1                                                                           
-      call damage_nonlocal_putNonLocalDamage(damage_current(i,j,k),1,cell)
+      call damage_nonlocal_putNonLocalDamage(phi_current(i,j,k),1,cell)
     enddo; enddo; enddo
   else
-!--------------------------------------------------------------------------------------------------
-! update rate and forward last inc
-    damage_lastInc = damage_current
-    cell = 0
-    D_ref = 0.0_pReal
-    mobility_ref = 0.0_pReal
-    do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
-      cell = cell + 1
-      D_ref = D_ref + damage_nonlocal_getDiffusion33(1,cell)
-      mobility_ref = mobility_ref + damage_nonlocal_getMobility(1,cell)
-    enddo; enddo; enddo
-    D_ref = D_ref*wgt
-    call MPI_Allreduce(MPI_IN_PLACE,D_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-    mobility_ref = mobility_ref*wgt
-    call MPI_Allreduce(MPI_IN_PLACE,mobility_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+    phi_lastInc = phi_current
+    call updateReference
   endif  
 
 end subroutine grid_damage_spectral_forward
@@ -263,18 +238,18 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   integer :: i, j, k, cell
   real(pReal)   :: phiDot, dPhiDot_dPhi, mobility
  
-  damage_current = x_scal 
+  phi_current = x_scal 
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field
   scalarField_real = 0.0_pReal
-  scalarField_real(1:grid(1),1:grid(2),1:grid3) = damage_current 
+  scalarField_real(1:grid(1),1:grid(2),1:grid3) = phi_current 
   call utilities_FFTscalarForward
   call utilities_fourierScalarGradient                                                              !< calculate gradient of damage field
   call utilities_FFTvectorBackward
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion33(1,cell) - D_ref, &
+    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion33(1,cell) - K_ref, &
                                                vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
@@ -283,29 +258,51 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    call damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, damage_current(i,j,k), 1, cell)
+    call damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi_current(i,j,k), 1, cell)
     mobility = damage_nonlocal_getMobility(1,cell)
-    scalarField_real(i,j,k) = params%timeinc*scalarField_real(i,j,k) + &
-                              params%timeinc*phiDot + &
-                              mobility*damage_lastInc(i,j,k) - &
-                              mobility*damage_current(i,j,k) + &
-                              mobility_ref*damage_current(i,j,k)
+    scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + phiDot) &
+                            + mobility*(phi_lastInc(i,j,k) - phi_current(i,j,k)) &
+                            + mu_ref*phi_current(i,j,k)
   enddo; enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! convolution of damage field with green operator
   call utilities_FFTscalarForward
-  call utilities_fourierGreenConvolution(D_ref, mobility_ref, params%timeinc)
+  call utilities_fourierGreenConvolution(K_ref, mu_ref, params%timeinc)
   call utilities_FFTscalarBackward
-  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > damage_lastInc) &
-        scalarField_real(1:grid(1),1:grid(2),1:grid3) = damage_lastInc
+  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > phi_lastInc) &
+        scalarField_real(1:grid(1),1:grid(2),1:grid3) = phi_lastInc
   where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < residualStiffness) &
         scalarField_real(1:grid(1),1:grid(2),1:grid3) = residualStiffness
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  f_scal = scalarField_real(1:grid(1),1:grid(2),1:grid3) - damage_current
+  f_scal = scalarField_real(1:grid(1),1:grid(2),1:grid3) - phi_current
 
 end subroutine formResidual
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief update reference viscosity and conductivity
+!--------------------------------------------------------------------------------------------------
+subroutine updateReference
+
+  integer :: i,j,k,cell,ierr
+  
+  cell = 0
+  K_ref = 0.0_pReal
+  mu_ref = 0.0_pReal
+  do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
+    cell = cell + 1
+    K_ref  = K_ref  + damage_nonlocal_getDiffusion33(1,cell)
+    mu_ref = mu_ref + damage_nonlocal_getMobility(1,cell)
+  enddo; enddo; enddo
+  K_ref = K_ref*wgt
+  call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  mu_ref = mu_ref*wgt
+  call MPI_Allreduce(MPI_IN_PLACE,mu_ref,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+
+end subroutine updateReference
+
 
 end module grid_damage_spectral
