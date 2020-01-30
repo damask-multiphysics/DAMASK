@@ -32,17 +32,12 @@ module mesh
   real(pReal), public, protected :: &
     mesh_unitlength                                                                                 !< physical length of one unit in mesh
  
-  integer, dimension(:,:), allocatable, target :: &
-    mesh_mapFEtoCPelem, &                                                                           !< [sorted FEid,   corresponding CPid]
-    mesh_mapFEtoCPnode                                                                              !< [sorted FEnode, corresponding CPnode]
-
-  integer, dimension(:),   allocatable :: &
-    mapMarc2DAMASK_elem, &                                                                          !< DAMASK element ID for Marc element ID
-    mapMarc2DAMASK_node                                                                             !< DAMASK node ID for Marc node ID
+  integer, dimension(:),   allocatable, public :: &
+    mesh_FEM2DAMASK_elem, &                                                                          !< DAMASK element ID for Marc element ID
+    mesh_FEM2DAMASK_node                                                                             !< DAMASK node ID for Marc node ID
 
   public :: &
-    mesh_init, &
-    mesh_FEasCP
+    mesh_init
  
 contains
 
@@ -89,7 +84,7 @@ subroutine mesh_init(ip,el)
   FEsolving_execIP   = [1,elem%nIPs]
  
   allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
-  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                      ! first ip,el needs to be already pingponged to "calc"
+  calcMode(ip,mesh_FEM2DAMASK_elem(el)) = .true.                                                    ! first ip,el needs to be already pingponged to "calc"
  
 
   allocate(cellNodeDefinition(elem%nNodes-1))
@@ -215,13 +210,11 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   call inputRead_elemType(elem, &
                           nElems,inputFile)
 
-  allocate (mesh_mapFEtoCPelem(2,nElems), source=0)
-  call inputRead_mapElems(mapMarc2DAMASK_elem,&
-                          elem%nNodes,inputFile)
+  call inputRead_mapElems(mesh_FEM2DAMASK_elem,&
+                          nElems,elem%nNodes,inputFile)
 
-  allocate (mesh_mapFEtoCPnode(2,Nnodes), source=0)
-  call inputRead_mapNodes(mapMarc2DAMASK_node,&
-                          inputFile)
+  call inputRead_mapNodes(mesh_FEM2DAMASK_node,&
+                          nNodes,inputFile)
 
   call inputRead_elemNodes(node0_elem, &
                            Nnodes,inputFile)
@@ -432,14 +425,16 @@ end subroutine inputRead_mapElemSets
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps elements from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapElems(map, &
-                              nNodes,fileContent)
+subroutine inputRead_mapElems(FEM2DAMASK, &
+                              nElems,nNodesPerElem,fileContent)
  
-  integer, allocatable, dimension(:), intent(out) :: map
+  integer, allocatable, dimension(:), intent(out) :: FEM2DAMASK
 
-  integer,                            intent(in)  :: nNodes                                         !< number of nodes per element
+  integer,                            intent(in)  :: nElems, &                                      !< number of elements
+                                                     nNodesPerElem                                  !< number of nodes per element
   character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
 
+  integer, dimension(2,nElems)       :: map_unsorted
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,l,nNodesAlreadyRead
 
@@ -448,11 +443,11 @@ subroutine inputRead_mapElems(map, &
     if(chunkPos(1) < 1) cycle
     if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'connectivity') then
       j = 0
-      do i = 1,size(mesh_mapFEtoCPelem,2)
+      do i = 1,nElems
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
-        mesh_mapFEtoCPelem(:,i) = [IO_intValue(fileContent(l+1+i+j),chunkPos,1),i]
+        map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i+j),chunkPos,1),i]
         nNodesAlreadyRead = chunkPos(1) - 2
-        do while(nNodesAlreadyRead < nNodes)                                                        ! read on if not all nodes in one line
+        do while(nNodesAlreadyRead < nNodesPerElem)                                                 ! read on if not all nodes in one line
           j = j + 1
           chunkPos = IO_stringPos(fileContent(l+1+i+j))
           nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
@@ -462,10 +457,10 @@ subroutine inputRead_mapElems(map, &
     endif
   enddo
 
-  call math_sort(mesh_mapFEtoCPelem)
-  allocate(map(minval(mesh_mapFEtoCPelem(1,:)):maxval(mesh_mapFEtoCPelem(1,:))),source=-1)
-  do i = 1,size(mesh_mapFEtoCPelem,2)
-     map(mesh_mapFEtoCPelem(1,i)) = mesh_mapFEtoCPelem(2,i)
+  call math_sort(map_unsorted)
+  allocate(FEM2DAMASK(minval(map_unsorted(1,:)):maxval(map_unsorted(1,:))),source=-1)
+  do i = 1, nElems
+    FEM2DAMASK(map_unsorted(1,i)) = map_unsorted(2,i)
   enddo
 
 end subroutine inputRead_mapElems
@@ -474,13 +469,15 @@ end subroutine inputRead_mapElems
 !--------------------------------------------------------------------------------------------------
 !> @brief Maps node from FE ID to internal (consecutive) representation.
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_mapNodes(map, &
-                              fileContent)
+subroutine inputRead_mapNodes(FEM2DAMASK, &
+                              nNodes,fileContent)
 
-  integer, allocatable, dimension(:), intent(out) :: map
+  integer, allocatable, dimension(:), intent(out) :: FEM2DAMASK
 
+  integer,                            intent(in)  :: nNodes                                         !< number of nodes
   character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
 
+  integer, dimension(2,nNodes)       :: map_unsorted
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i, l
 
@@ -488,18 +485,18 @@ subroutine inputRead_mapNodes(map, &
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
     if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
-      do i = 1,size(mesh_mapFEtoCPnode,2)
+      do i = 1,nNodes
         chunkPos = IO_stringPos(fileContent(l+1+i))
-        mesh_mapFEtoCPnode(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
+        map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
       enddo
       exit
     endif
   enddo
 
-  call math_sort(mesh_mapFEtoCPnode)
-  allocate(map(minval(mesh_mapFEtoCPnode(1,:)):maxval(mesh_mapFEtoCPnode(1,:))),source=-1)
-  do i = 1,size(mesh_mapFEtoCPnode,2)
-     map(mesh_mapFEtoCPnode(1,i)) = mesh_mapFEtoCPnode(2,i)
+  call math_sort(map_unsorted)
+  allocate(FEM2DAMASK(minval(map_unsorted(1,:)):maxval(map_unsorted(1,:))),source=-1)
+  do i = 1, nNodes
+    FEM2DAMASK(map_unsorted(1,i)) = map_unsorted(2,i)
   enddo
 
 end subroutine inputRead_mapNodes
@@ -526,7 +523,7 @@ subroutine inputRead_elemNodes(nodes, &
     if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
       do i=1,nNode
         chunkPos = IO_stringPos(fileContent(l+1+i))
-        m = mesh_FEasCP('node',IO_intValue(fileContent(l+1+i),chunkPos,1))
+        m = mesh_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
         do j = 1,3
           nodes(j,m) = mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1)
         enddo
@@ -650,11 +647,11 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
       j = 0
       do i = 1,nElem
         chunkPos = IO_stringPos(fileContent(l+1+i+j))
-        e = mesh_FEasCP('elem',IO_intValue(fileContent(l+1+i+j),chunkPos,1))
+        e = mesh_FEM2DAMASK_elem(IO_intValue(fileContent(l+1+i+j),chunkPos,1))
         if (e /= 0) then                                                                            ! disregard non CP elems
           do k = 1,chunkPos(1)-2
             inputRead_connectivityElem(k,e) = &
-              mesh_FEasCP('node',IO_IntValue(fileContent(l+1+i+j),chunkPos,k+2))
+              mesh_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k+2))
           enddo
           nNodesAlreadyRead = chunkPos(1) - 2
           do while(nNodesAlreadyRead < nNodes)                                                      ! read on if not all nodes in one line
@@ -662,7 +659,7 @@ function inputRead_connectivityElem(nElem,nNodes,fileContent)
             chunkPos = IO_stringPos(fileContent(l+1+i+j))
             do k = 1,chunkPos(1)
               inputRead_connectivityElem(nNodesAlreadyRead+k,e) = &
-                mesh_FEasCP('node',IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
+                mesh_FEM2DAMASK_node(IO_IntValue(fileContent(l+1+i+j),chunkPos,k))
             enddo
             nNodesAlreadyRead = nNodesAlreadyRead + chunkPos(1)
           enddo
@@ -717,7 +714,7 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
           if (initialcondTableStyle == 2) m = m + 2
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
-            e = mesh_FEasCP('elem',contInts(1+i))
+            e = mesh_FEM2DAMASK_elem(contInts(1+i))
             if (sv == 2) microstructureAt(e) = myVal
             if (sv == 3) homogenizationAt(e) = myVal
           enddo
@@ -1048,53 +1045,6 @@ function IPareaNormal(elem,nElem,connectivity,node)
   enddo
 
 end function IPareaNormal
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Gives the FE to CP ID mapping by binary search through lookup array
-!! valid questions (what) are 'elem', 'node'
-!--------------------------------------------------------------------------------------------------
-integer function mesh_FEasCP(what,myID)
-
-  character(len=*), intent(in) :: what
-  integer,          intent(in) :: myID
- 
-  integer, dimension(:,:), pointer :: lookupMap
-  integer :: lower,upper,center
- 
-  mesh_FEasCP = 0
-  select case(IO_lc(what(1:4)))
-    case('elem')
-      lookupMap => mesh_mapFEtoCPelem
-    case('node')
-      lookupMap => mesh_mapFEtoCPnode
-    case default
-      return
-  endselect
- 
-  lower = 1
-  upper = int(size(lookupMap,2),pInt)
- 
-  if (lookupMap(1,lower) == myID) then                                                              ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
-    mesh_FEasCP = lookupMap(2,lower)
-    return
-  elseif (lookupMap(1,upper) == myID) then
-    mesh_FEasCP = lookupMap(2,upper)
-    return
-  endif
-  binarySearch: do while (upper-lower > 1)
-    center = (lower+upper)/2
-    if (lookupMap(1,center) < myID) then
-      lower = center
-    elseif (lookupMap(1,center) > myID) then
-      upper = center
-    else
-      mesh_FEasCP = lookupMap(2,center)
-      exit
-    endif
-  enddo binarySearch
-
-end function mesh_FEasCP
 
 
 !--------------------------------------------------------------------------------------------------

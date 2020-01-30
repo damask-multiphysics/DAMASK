@@ -152,7 +152,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
                                                      i, j, k, l, m, n, ph, homog, mySource
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
 
- elCP = mesh_FEasCP('elem',elFE)
+ elCP = mesh_FEM2DAMASK_elem(elFE)
 
  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt &
      .and. elCP == debug_e .and. ip == debug_i) then

@@ -269,7 +269,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    if (timinc < theDelta .and. theInc == inc .and. lastLovl /= lovl) &                              ! first after cutback
      computationMode = CPFEM_RESTOREJACOBIAN
  elseif (lovl == 6) then                                                                            ! stress requested by marc
-   cp_en = mesh_FEasCP('elem',m(1))
+   cp_en = mesh_FEM2DAMASK_elem(m(1))
    if (cptim > theTime .or. inc /= theInc) then                                                     ! reached "convergence"
      terminallyIll = .false.
      cycleCounter = -1                                                                              ! first calc step increments this to cycle = 0
@@ -391,7 +391,7 @@ subroutine flux(f,ts,n,time)
   real(pReal), dimension(2),           intent(out) :: &
     f
 
-  call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEasCP('elem',n(1)))
+  call thermal_conduction_getSourceAndItsTangent(f(1), f(2), ts(3), n(3),mesh_FEM2DAMASK_elem(n(1)))
 
  end subroutine flux
 
