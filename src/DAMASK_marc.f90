@@ -15,7 +15,6 @@
 !> @details   - in case of ddm (domain decomposition) a SYMMETRIC solver has to be used, i.e uncheck "non-symmetric"
 !> @details  Marc subroutines used:
 !> @details   - hypela2
-!> @details   - plotv
 !> @details   - uedinc
 !> @details   - flux
 !> @details   - quit
