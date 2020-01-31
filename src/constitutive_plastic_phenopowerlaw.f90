@@ -26,10 +26,10 @@ submodule(constitutive) plastic_phenopowerlaw
       n_slip, &                                                                                     !< stress exponent for slip
       n_twin, &                                                                                     !< stress exponent for twin
       spr, &                                                                                        !< push-up factor for slip saturation due to twinning
-      twinB, &
-      twinC, &
-      twinD, &
-      twinE, &
+      c_2, &
+      c_1, &
+      c_4, &
+      c_3, &
       h0_SlipSlip, &                                                                                !< reference hardening slip - slip
       h0_TwinSlip, &                                                                                !< reference hardening twin - slip
       h0_TwinTwin, &                                                                                !< reference hardening twin - twin
@@ -122,10 +122,10 @@ module subroutine plastic_phenopowerlaw_init
  
 !--------------------------------------------------------------------------------------------------
 !  optional parameters that need to be defined
-    prm%twinB          = config%getFloat('twin_b',defaultVal=1.0_pReal)
-    prm%twinC          = config%getFloat('twin_c',defaultVal=0.0_pReal)
-    prm%twinD          = config%getFloat('twin_d',defaultVal=0.0_pReal)
-    prm%twinE          = config%getFloat('twin_e',defaultVal=0.0_pReal)
+    prm%c_2          = config%getFloat('twin_b',defaultVal=1.0_pReal)
+    prm%c_1          = config%getFloat('twin_c',defaultVal=0.0_pReal)
+    prm%c_4          = config%getFloat('twin_d',defaultVal=0.0_pReal)
+    prm%c_3          = config%getFloat('twin_e',defaultVal=0.0_pReal)
  
     prm%aTolResistance = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
     prm%aTolShear      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
@@ -407,9 +407,9 @@ module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
 
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
-  c_SlipSlip = prm%h0_slipslip * (1.0_pReal + prm%twinC*sumF** prm%twinB)
-  c_TwinSlip = prm%h0_TwinSlip * sumGamma**prm%twinE
-  c_TwinTwin = prm%h0_TwinTwin * sumF**prm%twinD
+  c_SlipSlip = prm%h0_slipslip * (1.0_pReal + prm%c_1*sumF** prm%c_2)
+  c_TwinSlip = prm%h0_TwinSlip * sumGamma**prm%c_3
+  c_TwinTwin = prm%h0_TwinTwin * sumF**prm%c_4
  
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors
