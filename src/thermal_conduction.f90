@@ -90,6 +90,7 @@ subroutine thermal_conduction_init
  
 end subroutine thermal_conduction_init
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns heat generation rate
 !--------------------------------------------------------------------------------------------------
@@ -125,15 +126,14 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
     do source = 1, phase_Nsources(phase)
       select case(phase_source(source,phase))                                                   
         case (SOURCE_thermal_dissipation_ID)
-         call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                              crystallite_S(1:3,1:3,grain,ip,el), &
-                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
-                                                              phase)
+          call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
+                                                               crystallite_S(1:3,1:3,grain,ip,el), &
+                                                               crystallite_Lp(1:3,1:3,grain,ip,el), &
+                                                               phase)
  
         case (SOURCE_thermal_externalheat_ID)
-         call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                               phase, constituent)
- 
+          call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
+                                                                phase, constituent)
         case default
          my_Tdot = 0.0_pReal
          my_dTdot_dT = 0.0_pReal
@@ -170,8 +170,8 @@ function thermal_conduction_getConductivity33(ip,el)
      crystallite_push33ToRef(grain,ip,el,lattice_thermalConductivity33(:,:,material_phaseAt(grain,el)))
   enddo
  
-  thermal_conduction_getConductivity33 = &
-    thermal_conduction_getConductivity33/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  thermal_conduction_getConductivity33 = thermal_conduction_getConductivity33 &
+                                       / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getConductivity33
 
@@ -191,14 +191,13 @@ function thermal_conduction_getSpecificHeat(ip,el)
    
   thermal_conduction_getSpecificHeat = 0.0_pReal
   
-   
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
-    thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat + &
-     lattice_specificHeat(material_phaseAt(grain,el))
+    thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
+                                       + lattice_specificHeat(material_phaseAt(grain,el))
   enddo
  
-  thermal_conduction_getSpecificHeat = &
-    thermal_conduction_getSpecificHeat/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
+                                     / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getSpecificHeat
 
@@ -224,8 +223,8 @@ function thermal_conduction_getMassDensity(ip,el)
                                       + lattice_massDensity(material_phaseAt(grain,el))
   enddo
  
-  thermal_conduction_getMassDensity = &
-    thermal_conduction_getMassDensity/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
+                                    / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
 end function thermal_conduction_getMassDensity
 
