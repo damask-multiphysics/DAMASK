@@ -26,10 +26,10 @@ submodule(constitutive) plastic_phenopowerlaw
       n_slip, &                                                                                     !< stress exponent for slip
       n_twin, &                                                                                     !< stress exponent for twin
       spr, &                                                                                        !< push-up factor for slip saturation due to twinning
-      c_2, &
       c_1, &
-      c_4, &
+      c_2, &
       c_3, &
+      c_4, &
       h0_SlipSlip, &                                                                                !< reference hardening slip - slip
       h0_TwinSlip, &                                                                                !< reference hardening twin - slip
       h0_TwinTwin, &                                                                                !< reference hardening twin - twin
@@ -122,10 +122,10 @@ module subroutine plastic_phenopowerlaw_init
  
 !--------------------------------------------------------------------------------------------------
 !  optional parameters that need to be defined
-    prm%c_2          = config%getFloat('twin_b',defaultVal=1.0_pReal)
-    prm%c_1          = config%getFloat('twin_c',defaultVal=0.0_pReal)
-    prm%c_4          = config%getFloat('twin_d',defaultVal=0.0_pReal)
-    prm%c_3          = config%getFloat('twin_e',defaultVal=0.0_pReal)
+    prm%c_1            = config%getFloat('twin_c',defaultVal=0.0_pReal)
+    prm%c_2            = config%getFloat('twin_b',defaultVal=1.0_pReal)
+    prm%c_3            = config%getFloat('twin_e',defaultVal=0.0_pReal)
+    prm%c_4            = config%getFloat('twin_d',defaultVal=0.0_pReal)
  
     prm%aTolResistance = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
     prm%aTolShear      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
