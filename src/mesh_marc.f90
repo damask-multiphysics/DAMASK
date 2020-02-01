@@ -54,12 +54,12 @@ subroutine mesh_init(ip,el)
    node0_cell
   type(tElement) :: elem
 
-  integer :: nElems
   integer,     dimension(:),   allocatable :: &
     microstructureAt, &
     homogenizationAt
   integer:: &
-    Nnodes                                                                                          !< total number of nodes in mesh
+    Nnodes, &                                                                                       !< total number of nodes in the mesh
+    Nelems                                                                                          !< total number of elements in the mesh
    
   real(pReal), dimension(:,:), allocatable :: &
     IP_reshaped

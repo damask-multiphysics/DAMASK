@@ -91,28 +91,26 @@ subroutine math_init
   integer :: randSize
   integer, dimension(:), allocatable :: randInit
   
-  write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  math init  -+>>>'; flush(6)
 
   call random_seed(size=randSize)
   allocate(randInit(randSize))
   if (randomSeed > 0) then
     randInit = randomSeed
-    call random_seed(put=randInit)
   else
     call random_seed()
     call random_seed(get = randInit)
     randInit(2:randSize) = randInit(1)
-    call random_seed(put = randInit)
   endif
+
+  call random_seed(put=randInit)
 
   do i = 1, 4
     call random_number(randTest(i))
   enddo
 
-  write(6,'(a,I2)') ' size  of random seed:    ', randSize
-  do i = 1,randSize
-    write(6,'(a,I2,I14)') ' value of random seed:    ', i, randInit(i)
-  enddo
+  write(6,'(a,i2)')                ' size  of random seed:     ', randSize
+  write(6,'(a,i0)')                ' value of random seed:     ', randInit(1)
   write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
 
   call random_seed(put = randInit)
