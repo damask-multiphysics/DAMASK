@@ -491,7 +491,7 @@ class DADF5():
       Indicate whether the formula is written in vectorized form. Default is ‘True’.
 
     """
-    if vectorized is not True:
+    if vectorized is False:
       raise NotImplementedError
     
     def __add_calculation(**kwargs):

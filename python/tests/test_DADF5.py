@@ -39,6 +39,14 @@ class TestDADF5:
         in_file   = default.read_dataset(loc['|Fe|'],0)
         assert np.allclose(in_memory,in_file)
 
+    def test_add_calculation(self,default):
+        default.add_calculation('2.0*np.abs(#F#)-1.0','x','-','test')
+        loc = {'F':    default.get_dataset_location('F'),
+               'x':    default.get_dataset_location('x')}
+        in_memory = 2.0*np.abs(default.read_dataset(loc['F'],0))-1.0
+        in_file   = default.read_dataset(loc['x'],0)
+        assert np.allclose(in_memory,in_file)
+
     def test_add_Cauchy(self,default):
         default.add_Cauchy('P','F')
         loc = {'F':    default.get_dataset_location('F'),
