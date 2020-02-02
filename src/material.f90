@@ -277,10 +277,9 @@ subroutine material_init
     do h = 1,size(config_homogenization)
       write(6,'(1x,a32,1x,a16,1x,i6)') config_name_homogenization(h),homogenization_type(h),homogenization_Ngrains(h)
     enddo
-    write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','crystallite','constituents'
+    write(6,'(/,a14,18x,1x,a11,1x,a12,1x,a13)') 'microstructure','constituents'
     do m = 1,size(config_microstructure)
-      write(6,'(1x,a32,1x,i12)') config_name_microstructure(m), &
-                                  microstructure_Nconstituents(m)
+      write(6,'(1x,a32,1x,i12)') config_name_microstructure(m), microstructure_Nconstituents(m)
       if (microstructure_Nconstituents(m) > 0) then
         do c = 1,microstructure_Nconstituents(m)
           write(6,'(a1,1x,a32,1x,a32)') '>',config_name_phase(microstructure_phase(c,m)),&
@@ -352,7 +351,7 @@ subroutine material_init
 ! BEGIN DEPRECATED
   allocate(mappingHomogenizationConst(  discretization_nIP,discretization_nElem),source=1)
 
-! hack needed to initialize field values used during constitutive and crystallite initializations
+! hack needed to initialize field values used during constitutive initialization
   do myHomog = 1,size(config_homogenization)
     thermalMapping     (myHomog)%p => mappingHomogenizationConst
     damageMapping      (myHomog)%p => mappingHomogenizationConst
