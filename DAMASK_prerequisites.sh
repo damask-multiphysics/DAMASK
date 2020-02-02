@@ -64,7 +64,7 @@ secondLevel "Version"
 cat  VERSION
 echo
 secondLevel "Settings in CONFIG"
-cat  CONFIG
+cat  env/CONFIG
 
 firstLevel "System"
 uname -a
@@ -84,7 +84,7 @@ for executable in python python3; do
 done
 secondLevel "Details on $DEFAULT_PYTHON:"
 echo $(ls -la $(which $DEFAULT_PYTHON))
-for module in numpy scipy;do
+for module in numpy scipy pandas;do
   thirdLevel $module
   $DEFAULT_PYTHON -c "import $module; \
                       print('Version: {}'.format($module.__version__)); \
