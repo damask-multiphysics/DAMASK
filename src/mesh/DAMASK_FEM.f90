@@ -230,8 +230,10 @@ program DAMASK_FEM
     end select
   enddo   
 
-  open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
-  write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
+  if (worldrank == 0) then
+    open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
+    write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                  ! statistics file
+  endif
 
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
@@ -334,10 +336,9 @@ program DAMASK_FEM
           guess = .true.                                                                            ! start guessing after first converged (sub)inc
           timeIncOld = timeinc
         endif
-        if (.not. cutBack) then
-          if (worldrank == 0)  write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
+        if (.not. cutBack .and. worldrank == 0) &
+          write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                             solres%converged, solres%iterationsNeeded                               ! write statistics about accepted solution
-        endif
       enddo subStepLooping
 
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
@@ -362,7 +363,7 @@ program DAMASK_FEM
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
   write(6,'(/,a)') ' ###########################################################################'
-  close(statUnit)
+  if (worldrank == 0) close(statUnit)
 
   call quit(0)                                                                                      ! no complains ;)
 

@@ -458,7 +458,7 @@ program DAMASK_spectral
            write(6,'(/,a)') ' cutting back '
          else                                                                                       ! no more options to continue
            call IO_warning(850)
-           close(statUnit)
+           if (worldrank == 0) close(statUnit)
            call quit(0)                                                                             ! quit
          endif
 
@@ -491,7 +491,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
  write(6,'(/,a)') ' ###########################################################################'
- close(statUnit)
+ if (worldrank == 0) close(statUnit)
 
  call quit(0)                                                                                       ! no complains ;)
 
