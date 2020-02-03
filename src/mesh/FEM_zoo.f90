@@ -86,7 +86,7 @@ subroutine FEM_Zoo_init
   FEM_Zoo_QuadraturePoints (2,4)%p(13:24)= FEM_Zoo_permutationStar111([0.31035245103378_pReal, 0.63650249912140_pReal])
 
 !--------------------------------------------------------------------------------------------------
-! 2D order 5
+! 2D quintic
   FEM_Zoo_nQuadrature(2,5) = 16
 
   allocate(FEM_Zoo_QuadratureWeights(2,5)%p(16))
