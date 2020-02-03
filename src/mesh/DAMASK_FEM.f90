@@ -35,15 +35,16 @@ program DAMASK_FEM
   integer, parameter :: &
     subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
   real(pReal) :: &
-    time = 0.0_pReal, &                                                                              !< elapsed time
-    time0 = 0.0_pReal, &                                                                             !< begin of interval
-    timeinc = 0.0_pReal, &                                                                           !< current time interval
-    timeIncOld = 0.0_pReal, &                                                                        !< previous time interval
-    remainingLoadCaseTime = 0.0_pReal                                                                !< remaining time of current load case
+    time = 0.0_pReal, &                                                                             !< elapsed time
+    time0 = 0.0_pReal, &                                                                            !< begin of interval
+    timeinc = 0.0_pReal, &                                                                          !< current time interval
+    timeIncOld = 0.0_pReal, &                                                                       !< previous time interval
+    remainingLoadCaseTime = 0.0_pReal                                                               !< remaining time of current load case
   logical :: &
-    guess, &                                                                                         !< guess along former trajectory
+    guess, &                                                                                        !< guess along former trajectory
     stagIterate
   integer :: &
+    l, &
     i, &
     errorID, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
@@ -52,15 +53,14 @@ program DAMASK_FEM
     currentFace = 0, &
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
-    fileUnit = 0, &                                                                                 !< file unit for reading load case and writing results
-    myStat, &
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
     component  
+  character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
-  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
+  type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
   PetscInt :: faceSet, currentFaceSet, field, dimPlex
   PetscErrorCode :: ierr
@@ -80,11 +80,9 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
-  open(newunit=fileunit,iostat=myStat,file=trim(loadCaseFile),action='read')
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=trim(loadCaseFile))
-  do
-    read(fileUnit, '(A)', iostat=myStat) line
-    if ( myStat /= 0) exit
+  fileContent = IO_read_ASCII(trim(loadCaseFile))
+  do l = 1, size(fileContent)
+    line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
  
     chunkPos = IO_stringPos(line)
@@ -130,10 +128,8 @@ program DAMASK_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
-  rewind(fileUnit)
-  do
-    read(fileUnit, '(A)', iostat=myStat) line
-    if ( myStat /= 0) exit
+  do l = 1, size(fileContent)
+    line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
  
     chunkPos = IO_stringPos(line)
@@ -187,8 +183,8 @@ program DAMASK_FEM
              endif
            enddo  
       end select
-  enddo; enddo
-  close(fileUnit)
+    enddo
+  enddo
  
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
