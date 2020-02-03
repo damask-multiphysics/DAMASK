@@ -35,12 +35,10 @@ module math
   real(pReal), dimension(6), parameter, private :: &
     NRMMANDEL = [&
       1.0_pReal,       1.0_pReal,       1.0_pReal, &
-      sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                           !< weighting for Mandel notation (forward)
+      sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                           !< forward weighting for Mandel notation
 
-  real(pReal), dimension(6), parameter , private :: &
-    INVNRMMANDEL = [&
-      1.0_pReal,                 1.0_pReal,                 1.0_pReal, &
-      1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal), 1.0_pReal/sqrt(2.0_pReal) ]             !< weighting for Mandel notation (backward)
+  real(pReal), dimension(6), parameter, private :: &
+    INVNRMMANDEL = 1.0_pReal/NRMMANDEL                                                              !< backward weighting for Mandel notation
 
   integer, dimension (2,6), parameter, private :: &
     MAPNYE = reshape([&
@@ -114,6 +112,7 @@ subroutine math_init
   write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
 
   call random_seed(put = randInit)
+
   call unitTest
 
 end subroutine math_init
@@ -1399,7 +1398,7 @@ subroutine unitTest
     call IO_error(0,ext_msg='math_invert t33')
 
   t33_2 = transpose(math_rotationalPart33(t33))
-  if(any(dNeq0(math_rotationalPart33(matmul(t33_2,t33)) - MATH_I3,tol=5.0e-4_pReal))) &
+  if(any(dNeq0(matmul(t33_2,math_rotationalPart33(t33)) - MATH_I3,tol=5.0e-4_pReal))) &
     call IO_error(0,ext_msg='math_rotationalPart33')
 
   call random_number(r)
