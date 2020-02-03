@@ -90,16 +90,13 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def close(self,
             dismiss = False):
-    self.input_close()
+    if self.__IO__['in'] != sys.stdin: self.__IO__['in'].close()
     self.output_flush()
-    self.output_close(dismiss)
-
-# ------------------------------------------------------------------
-  def input_close(self):
-#    try:
-      if self.__IO__['in'] != sys.stdin: self.__IO__['in'].close()
-#    except:
-#      pass
+    if self.__IO__['out'] != sys.stdout: self.__IO__['out'].close()
+    if dismiss and os.path.isfile(self.__IO__['out'].name):
+      os.remove(self.__IO__['out'].name)
+    elif self.__IO__['inPlace']:
+      os.rename(self.__IO__['out'].name, self.__IO__['out'].name[:-len(self.tmpext)])
 
 # ------------------------------------------------------------------
   def output_write(self,
@@ -128,18 +125,6 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def output_clear(self):
     self.__IO__['output'] = []
-
-# ------------------------------------------------------------------
-  def output_close(self,
-                   dismiss = False):
-#    try:
-    if self.__IO__['out'] != sys.stdout: self.__IO__['out'].close()
-#    except:
-#      pass
-    if dismiss and os.path.isfile(self.__IO__['out'].name):
-      os.remove(self.__IO__['out'].name)
-    elif self.__IO__['inPlace']:
-      os.rename(self.__IO__['out'].name, self.__IO__['out'].name[:-len(self.tmpext)])
 
 # ------------------------------------------------------------------
   def head_read(self):
@@ -519,29 +504,8 @@ class ASCIItable():
         self.data += [str(what)]
 
 # ------------------------------------------------------------------
-  def data_set(self,
-               what, where):
-    """Update data entry in column "where". grows data array if needed."""
-    idx = -1
-    try:
-      idx = self.label_index(where)
-      if len(self.data) <= idx:
-        self.data_append(['n/a' for i in range(idx+1-len(self.data))])                              # grow data if too short
-      self.data[idx] = str(what)
-    except(ValueError):
-      pass
-
-    return idx
-
-# ------------------------------------------------------------------
   def data_clear(self):
     self.data = []
-
-# ------------------------------------------------------------------
-  def data_asFloat(self):
-    return list(map(self._transliterateToFloat,self.data))
-
-
 
 # ------------------------------------------------------------------
   def microstructure_read(self,
