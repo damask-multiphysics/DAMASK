@@ -7,13 +7,6 @@ from collections.abc import Iterable
 import numpy as np
 
 # ------------------------------------------------------------------
-# python 3 has no unicode object, this ensures that the code works on Python 2&3
-try:
-  test = isinstance('test', unicode)
-except NameError:
-  unicode = str
-
-# ------------------------------------------------------------------
 class ASCIItable():
   """Read and write to ASCII tables."""
 
@@ -29,10 +22,8 @@ class ASCIItable():
               ):
     """Read and write to ASCII tables."""
     self.__IO__ = {'output': [],
-                   'buffered': buffered,
                    'labeled':  labeled,                                                             # header contains labels
                    'tags': [],                                                                      # labels according to file info
-                   'readBuffer': [],                                                                # buffer to hold non-advancing reads
                    'dataStart': 0,
                   }
 
@@ -54,21 +45,14 @@ class ASCIItable():
     except TypeError:
       self.__IO__['out'] = outname
 
-    self.info   = []
+    self.info  = []
     self.tags  = []
-    self.data   = []
-    self.line   = ''
+    self.data  = []
+    self.line  = ''
 
     if   self.__IO__['in']  is None \
       or self.__IO__['out'] is None: raise IOError                                                 # complain if any required file access not possible
      
-# ------------------------------------------------------------------
-  def _transliterateToFloat(self,
-                            x):
-    try:
-      return float(x)
-    except ValueError:
-      return 0.0
 
 # ------------------------------------------------------------------
   def _removeCRLF(self,
@@ -102,7 +86,7 @@ class ASCIItable():
   def output_write(self,
                    what):
     """Aggregate a single row (string) or list of (possibly containing further lists of) rows into output."""
-    if isinstance(what, (str, unicode)):
+    if isinstance(what, str):
       self.__IO__['output'] += [what]
     else:
       try:
@@ -110,7 +94,7 @@ class ASCIItable():
       except TypeError:
         self.__IO__['output'] += [str(what)]
 
-    return self.__IO__['buffered'] or self.output_flush()
+    return self.output_flush()
 
 # ------------------------------------------------------------------
   def output_flush(self,
@@ -119,12 +103,8 @@ class ASCIItable():
       self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
     except IOError:
       return False
-    if clear: self.output_clear()
+    if clear: self.__IO__['output'] = []
     return True
-
-# ------------------------------------------------------------------
-  def output_clear(self):
-    self.__IO__['output'] = []
 
 # ------------------------------------------------------------------
   def head_read(self):
@@ -154,10 +134,7 @@ class ASCIItable():
         self.info    = [self.__IO__['in'].readline().strip() for i in range(0,int(m.group(1)))]     # all header is info ...
 
     else:                                                                                           # other table format
-      try:
-        self.__IO__['in'].seek(0)                                                                   # try to rewind
-      except IOError:
-        self.__IO__['readBuffer'] = [firstline]                                                     # or at least save data in buffer
+      self.__IO__['in'].seek(0)
 
       while self.data_read(advance = False, respectLabels = False):
         if self.line[0] in ['#','!','%','/','|','*','$']:                                           # "typical" comment indicators
@@ -234,7 +211,7 @@ class ASCIItable():
                     what,
                     reset = False):
     """Add item or list to existing set of labels (and switch on labeling)."""
-    if isinstance(what, (str, unicode)):
+    if isinstance(what, str):
       self.tags += [self._removeCRLF(what)]
     else:
       try:
@@ -379,7 +356,7 @@ class ASCIItable():
   def info_append(self,
                   what):
     """Add item or list to existing set of infos."""
-    if isinstance(what, (str, unicode)):
+    if isinstance(what, str):
       self.info += [self._removeCRLF(what)]
     else:
       try:
@@ -395,7 +372,6 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_rewind(self):
     self.__IO__['in'].seek(self.__IO__['dataStart'])                                                # position file to start of data section
-    self.__IO__['readBuffer'] = []                                                                  # delete any non-advancing data reads
     self.tags = list(self.__IO__['tags'])                                                           # restore label info found in header (as COPY, not link)
     self.__IO__['labeled'] = len(self.tags) > 0
 
@@ -412,12 +388,8 @@ class ASCIItable():
   def data_read(self,
                 advance = True,
                 respectLabels = True):
-    """Read next line (possibly buffered) and parse it into data array."""
-    self.line = self.__IO__['readBuffer'].pop(0) if len(self.__IO__['readBuffer']) > 0 \
-           else self.__IO__['in'].readline().strip()                                                # take buffered content or get next data row from file
-
-    if not advance:
-      self.__IO__['readBuffer'].append(self.line)                                                   # keep line just read in buffer
+    """Read next line and parse it into data array."""
+    self.line = self.__IO__['in'].readline().strip()
 
     self.line = self.line.rstrip('\n')
 
@@ -461,7 +433,6 @@ class ASCIItable():
       self.tags = list(np.array(self.__IO__['tags'])[use])                                         # update labels with valid subset
 
     self.data = np.loadtxt(self.__IO__['in'],usecols=use,ndmin=2)
-#    self.data = np.genfromtxt(self.__IO__['in'],dtype=None,names=self.tags,usecols=use)
 
     return labels_missing
 
@@ -495,17 +466,13 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_append(self,
                   what):
-    if isinstance(what, (str, unicode)):
+    if isinstance(what, str):
       self.data += [what]
     else:
       try:
         for item in what: self.data_append(item)
       except TypeError:
         self.data += [str(what)]
-
-# ------------------------------------------------------------------
-  def data_clear(self):
-    self.data = []
 
 # ------------------------------------------------------------------
   def microstructure_read(self,
