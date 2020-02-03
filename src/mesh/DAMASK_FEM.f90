@@ -47,8 +47,7 @@ program DAMASK_FEM
     i, &
     errorID, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
-    stepFraction = 0                                                                                !< fraction of current time interval
-  integer :: &
+    stepFraction = 0, &                                                                             !< fraction of current time interval
     currentLoadcase = 0, &                                                                          !< current load case
     currentFace = 0, &
     inc, &                                                                                          !< current increment in current load case
@@ -63,8 +62,7 @@ program DAMASK_FEM
     loadcase_string
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
-  PetscInt :: faceSet, currentFaceSet
-  PetscInt :: field, dimPlex
+  PetscInt :: faceSet, currentFaceSet, field, dimPlex
   PetscErrorCode :: ierr
   integer(kind(COMPONENT_UNDEFINED_ID)) :: ID
   external :: &
@@ -73,7 +71,7 @@ program DAMASK_FEM
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
   call CPFEM_initAll
-  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  DAMASK_FEM init  -+>>>'; flush(6)
  
 ! reading basic information from load case file and allocate data structure containing load cases
   call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                         !< dimension of mesh (2D or 3D)
