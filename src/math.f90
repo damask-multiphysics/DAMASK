@@ -175,13 +175,13 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
       do i = istart, iend
         if (a(sort,i) > a(sort,istart)) exit
       enddo
-      cross: if (i >= j) then ! if the indices cross, exchange left value with pivot and return with the partition index
+      cross: if (i >= j) then ! exchange left value with pivot and return with the partition index
         tmp         = a(:,istart)
         a(:,istart) = a(:,j)
         a(:,j)      = tmp
         qsort_partition = j
         return
-      else cross ! if they do not cross, exchange values
+      else cross              ! exchange values
         tmp    = a(:,i)
         a(:,i) = a(:,j)
         a(:,j) = tmp
@@ -201,7 +201,7 @@ end subroutine math_sort
 pure function math_expand(what,how)
 
   real(pReal),   dimension(:), intent(in) :: what
-  integer, dimension(:), intent(in) :: how
+  integer,       dimension(:), intent(in) :: how
   real(pReal), dimension(sum(how)) ::  math_expand
   integer :: i
  
@@ -258,7 +258,8 @@ pure function math_identity4th(d)
 
   identity2nd = math_identity2nd(d)
   do i=1,d; do j=1,d; do k=1,d; do l=1,d
-    math_identity4th(i,j,k,l) = 0.5_pReal*(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
+    math_identity4th(i,j,k,l) = 0.5_pReal &
+                              *(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
   enddo; enddo; enddo; enddo
 
 end function math_identity4th
