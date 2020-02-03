@@ -38,23 +38,7 @@ module list
       procedure :: getInts        => getInts
       procedure :: getStrings     => getStrings
  
- 
   end type tPartitionedStringList
-  
-  private :: &
-    add, &
-    show, &
-    free, &
-    finalize, &
-    finalizeArray, &
-    keyExists, &
-    countKeys, &
-    getFloat, &
-    getInt, &
-    getString, &
-    getFloats, &
-    getInts, &
-    getStrings
 
 contains
 
