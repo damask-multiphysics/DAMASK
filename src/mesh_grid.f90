@@ -42,9 +42,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief reads the geometry file to obtain information on discretization
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init(ip,el)
-
-  integer, intent(in), optional :: el, ip                                                           ! for compatibility reasons
+subroutine mesh_init
 
   include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
