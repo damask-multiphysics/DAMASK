@@ -68,13 +68,12 @@ subroutine mesh_init
   integer, dimension(1), parameter:: FE_geomtype = [1]                                              !< geometry type of particular element type
   integer, dimension(1) :: FE_Nips                                                                  !< number of IPs in a specific type of element
   
-  integer :: j, l
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
-    mesh_Nnodes                                                                                     !< total number of nodes in mesh
+    mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
+    j, l
   integer, parameter :: &
     mesh_ElemType=1                                                                                 !< Element type of the mesh (only support homogeneous meshes)
-  logical :: found
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets
