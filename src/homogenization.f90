@@ -160,7 +160,7 @@ subroutine homogenization_init
   allocate(materialpoint_converged(discretization_nIP,discretization_nElem),          source=.true.)
   allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
 
-  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'; flush(6)
 
   if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
     write(6,'(a32,1x,7(i8,1x))')   'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
