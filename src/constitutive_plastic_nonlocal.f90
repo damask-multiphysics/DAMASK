@@ -1324,7 +1324,7 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
+module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
                                             timestep,ip,el)
 
   integer, intent(in) :: &
@@ -1336,7 +1336,7 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
   real(pReal), dimension(3,3), intent(in) ::&
     Mp                                                                                              !< MandelStress
   real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
-    Fe, &                                                                                           !< elastic deformation gradient
+    F, &                                                                                           !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
 
   integer ::  &
@@ -1370,7 +1370,7 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     rhoDotThermalAnnihilation                                                                       !< density evolution by thermal annihilation
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),8) :: &
     rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
-    neighbor_rhoSgl, &                                                                              !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
+    neighbor_rhoSgl0, &                                                                              !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
     my_rhoSgl                                                                                       !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),4) :: &
     v, &                                                                                            !< current dislocation glide velocity
@@ -1529,8 +1529,8 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     m(1:3,1:ns,3) = -prm%slip_transverse
     m(1:3,1:ns,4) =  prm%slip_transverse
 
-    my_Fe = Fe(1:3,1:3,1,ip,el)
-    my_F = matmul(my_Fe, Fp(1:3,1:3,1,ip,el))
+    my_F = F(1:3,1:3,1,ip,el)
+    my_Fe = matmul(my_F, math_inv33(Fp(1:3,1:3,1,ip,el)))
 
     neighbors: do n = 1,nIPneighbors
 
@@ -1547,8 +1547,8 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
         neighbor_instance = phase_plasticityInstance(material_phaseAt(1,neighbor_el))
-        neighbor_Fe = Fe(1:3,1:3,1,neighbor_ip,neighbor_el)
-        neighbor_F = matmul(neighbor_Fe, Fp(1:3,1:3,1,neighbor_ip,neighbor_el))
+        neighbor_F = F(1:3,1:3,1,neighbor_ip,neighbor_el)
+        neighbor_Fe = matmul(neighbor_F, math_inv33(Fp(1:3,1:3,1,neighbor_ip,neighbor_el)))
         Favg = 0.5_pReal * (my_F + neighbor_F)
       else                                                                                          ! if no neighbor, take my value as average
         Favg = my_F
@@ -1566,7 +1566,6 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 
       considerEnteringFlux = .false.
       neighbor_v0 = 0.0_pReal        ! needed for check of sign change in flux density below
-      neighbor_rhoSgl = 0.0_pReal
       if (neighbor_n > 0) then
         if (phase_plasticity(material_phaseAt(1,neighbor_el)) == PLASTICITY_NONLOCAL_ID &
             .and. any(compatibility(:,:,:,n,ip,el) > 0.0_pReal)) &
@@ -1576,13 +1575,13 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
       enteringFlux: if (considerEnteringFlux) then
         forall (s = 1:ns, t = 1:4)
           neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,neighbor_instance),no)
-          neighbor_rhoSgl(s,t) = max(plasticState(np)%state(iRhoU(s,t,neighbor_instance),no), &
+          neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,neighbor_instance),no), &
                                                                                             0.0_pReal)
         endforall
 
-        where (neighbor_rhoSgl * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
-          .or. neighbor_rhoSgl < prm%significantRho) &
-          neighbor_rhoSgl = 0.0_pReal
+        where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
+          .or. neighbor_rhoSgl0 < prm%significantRho) &
+          neighbor_rhoSgl0 = 0.0_pReal
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
                                      IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
         normal_neighbor2me = matmul(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
@@ -1595,7 +1594,7 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
             topp = t + mod(t,2) - mod(t+1,2)
             if (neighbor_v0(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &         ! flux from my neighbor to me == entering flux for me
                 .and. v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal ) then                                ! ... only if no sign change in flux density
-              lineLength = neighbor_rhoSgl(s,t) * neighbor_v0(s,t) &
+              lineLength = neighbor_rhoSgl0(s,t) * neighbor_v0(s,t) &
                          * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
               where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                                 ! positive compatibility...
                 rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
