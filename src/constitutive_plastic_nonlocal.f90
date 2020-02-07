@@ -4,18 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for plasticity including dislocation flux
 !--------------------------------------------------------------------------------------------------
-module plastic_nonlocal
-  use prec
-  use IO
-  use math
-  use debug
-  use material
-  use lattice
-  use rotations
-  use results
-  use config
-  use lattice
-  use discretization
+submodule(constitutive) plastic_nonlocal
   use geometry_plastic_nonlocal, only: &
     nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
@@ -23,11 +12,9 @@ module plastic_nonlocal
     IParea          => geometry_plastic_nonlocal_IParea0, &
     IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0
     
-  implicit none
-  private
   real(pReal), parameter :: &
     KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
-  
+
   ! storage order of dislocation types
   integer, dimension(8), parameter :: &
     sgl = [1,2,3,4,5,6,7,8]                                                                         !< signed (single)
@@ -199,25 +186,13 @@ module plastic_nonlocal
  
   type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
 
-  public :: &
-    plastic_nonlocal_init, &
-    plastic_nonlocal_dependentState, &
-    plastic_nonlocal_LpAndItsTangent, &
-    plastic_nonlocal_dotState, &
-    plastic_nonlocal_deltaState, &
-    plastic_nonlocal_updateCompatibility, &
-    plastic_nonlocal_results
-  
-  private :: &
-    plastic_nonlocal_kinetics
-
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_init
+module subroutine plastic_nonlocal_init
 
   integer :: &
     sizeState, sizeDotState,sizeDependentState, sizeDeltaState, &
@@ -254,7 +229,6 @@ subroutine plastic_nonlocal_init
   allocate(dotState(maxNinstances))
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
-
   allocate(totalNslip(maxNinstances), source=0)
 
 
@@ -738,7 +712,7 @@ end subroutine plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
+module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
   
   integer, intent(in) :: &
     ip, &
@@ -1100,8 +1074,8 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
-                                            Mp, Temperature, volume, ip, el)
+module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
+                                                   Mp, Temperature, volume, ip, el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -1230,7 +1204,7 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_deltaState(Mp,ip,el)
+module subroutine plastic_nonlocal_deltaState(Mp,ip,el)
   
   integer, intent(in) :: &
     ip, &
@@ -1346,8 +1320,8 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
-                                     timestep,ip,el)
+module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
+                                            timestep,ip,el)
   
   integer, intent(in) :: &
     ip, &                                                                                           !< current integration point
@@ -1795,13 +1769,13 @@ end subroutine plastic_nonlocal_dotState
 ! plane normals and signed cosine of the angle between the slip directions. Only the largest values
 ! that sum up to a total of 1 are considered, all others are set to zero.
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
+module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e) 
   
   integer, intent(in) :: &
     i, &
     e
   type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
-    orientation                                                                                     ! crystal orientation in quaternions
+    orientation                                                                                     ! crystal orientation
                                               
   integer :: &
     Nneighbors, &                                                                                   ! number of neighbors
@@ -1960,10 +1934,10 @@ end function getRho
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_results(instance,group)
+module subroutine plastic_nonlocal_results(instance,group)
 
-  integer, intent(in) :: instance
-  character(len=*) :: group
+  integer,         intent(in) :: instance
+  character(len=*),intent(in) :: group
   integer :: o
 
   associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance))
@@ -2026,4 +2000,4 @@ subroutine plastic_nonlocal_results(instance,group)
 
 end subroutine plastic_nonlocal_results
 
-end module plastic_nonlocal
+end submodule plastic_nonlocal

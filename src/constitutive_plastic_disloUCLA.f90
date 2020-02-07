@@ -5,21 +5,9 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief crystal plasticity model for bcc metals, especially Tungsten
 !--------------------------------------------------------------------------------------------------
-module plastic_disloUCLA
-  use prec
-  use debug
-  use math
-  use IO
-  use material
-  use config
-  use lattice
-  use discretization
-  use results
+submodule(constitutive) plastic_disloUCLA
  
-  implicit none
-  private
- 
-  real(pReal),                                                 parameter,           private :: &
+  real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
  
   enum, bind(c)
@@ -33,7 +21,7 @@ module plastic_disloUCLA
       tau_pass_ID
   end enum
  
-  type, private :: tParameters
+  type :: tParameters
     real(pReal) :: &
       aTol_rho, &
       D, &                                                                                          !< grain size
@@ -75,14 +63,14 @@ module plastic_disloUCLA
       dipoleFormation                                                                               !< flag indicating consideration of dipole formation
   end type                                                                                          !< container type for internal constitutive parameters
  
-  type, private :: tDisloUCLAState
+  type :: tDisloUCLAState
     real(pReal), dimension(:,:), pointer :: &
       rho_mob, &
       rho_dip, &
       gamma_sl
   end type tDisloUCLAState
  
-  type, private :: tDisloUCLAdependentState
+  type :: tDisloUCLAdependentState
     real(pReal), dimension(:,:), allocatable :: &
       Lambda_sl, &
       threshold_stress
@@ -90,20 +78,11 @@ module plastic_disloUCLA
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
-  type(tParameters),              allocatable, dimension(:), private :: param
-  type(tDisloUCLAState),          allocatable, dimension(:), private :: &
+  type(tParameters),              allocatable, dimension(:) :: param
+  type(tDisloUCLAState),          allocatable, dimension(:) :: &
     dotState, &
     state
-  type(tDisloUCLAdependentState), allocatable, dimension(:), private :: dependentState
- 
-  public :: &
-    plastic_disloUCLA_init, &
-    plastic_disloUCLA_dependentState, &
-    plastic_disloUCLA_LpAndItsTangent, &
-    plastic_disloUCLA_dotState, &
-    plastic_disloUCLA_results
-  private :: &
-    kinetics
+  type(tDisloUCLAdependentState), allocatable, dimension(:) :: dependentState
 
 contains
 
@@ -112,7 +91,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_init()
+module subroutine plastic_disloUCLA_init
  
   integer :: &
     Ninstance, &
@@ -328,7 +307,7 @@ end subroutine plastic_disloUCLA_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp, &
+pure module subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp, &
                                                   Mp,T,instance,of)
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -371,7 +350,7 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
+module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
  
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                               !< Mandel stress
@@ -431,7 +410,7 @@ end subroutine plastic_disloUCLA_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_dependentState(instance,of)
+module subroutine plastic_disloUCLA_dependentState(instance,of)
  
   integer,      intent(in) :: &
     instance, &
@@ -457,7 +436,7 @@ end subroutine plastic_disloUCLA_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_results(instance,group)
+module subroutine plastic_disloUCLA_results(instance,group)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -604,4 +583,4 @@ pure subroutine kinetics(Mp,T,instance,of, &
 
 end subroutine kinetics
 
-end module plastic_disloUCLA
+end submodule plastic_disloUCLA

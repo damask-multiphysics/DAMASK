@@ -21,7 +21,6 @@ module crystallite
   use constitutive
   use discretization
   use lattice
-  use plastic_nonlocal
   use results
  
   implicit none 
