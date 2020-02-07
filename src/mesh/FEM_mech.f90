@@ -126,7 +126,6 @@ subroutine FEM_mech_init(fieldBC)
 #endif
   call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
 #if (PETSC_VERSION_MINOR < 11)
-  call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
   call PetscDSAddDiscretization(mechDS,mechFE,ierr); CHKERRQ(ierr)
 #endif
   call PetscDSGetTotalDimension(mechDS,cellDof,ierr); CHKERRQ(ierr)
@@ -191,7 +190,6 @@ subroutine FEM_mech_init(fieldBC)
 
 #endif
   CHKERRQ(ierr)
-  call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   do faceSet = 1, numBC
     call ISDestroy(pbcPoints(faceSet),ierr); CHKERRQ(ierr)
   enddo
@@ -226,8 +224,6 @@ subroutine FEM_mech_init(fieldBC)
   allocate(pcellJ(dimPlex**2))
   allocate(pinvcellJ(dimPlex**2))
   allocate(cellJMat(dimPlex,dimPlex))
-  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
-  call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
   call PetscDSGetDiscretization(mechDS,0,mechFE,ierr)
   CHKERRQ(ierr)
   call PetscFEGetDualSpace(mechFE,mechDualSpace,ierr); CHKERRQ(ierr)
@@ -251,6 +247,7 @@ subroutine FEM_mech_init(fieldBC)
   enddo
 
 end subroutine FEM_mech_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the FEM load step
