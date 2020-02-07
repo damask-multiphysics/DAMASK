@@ -232,12 +232,12 @@ module constitutive
         of
     end subroutine plastic_disloUCLA_dependentState
 
-    module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
+    module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
       integer, intent(in) :: &
         ip, &
         el
       real(pReal), dimension(3,3), intent(in) :: &
-        Fe, &
+        F, &
         Fp
     end subroutine plastic_nonlocal_dependentState
 
@@ -412,14 +412,14 @@ end function constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_microstructure(Fe, Fp, ipc, ip, el)
+subroutine constitutive_microstructure(F, Fp, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
   real(pReal),   intent(in), dimension(3,3) :: &
-    Fe, &                                                                                           !< elastic deformation gradient
+    F, &                                                                                           !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   integer :: &
     ho, &                                                                                           !< homogenization
@@ -439,7 +439,7 @@ subroutine constitutive_microstructure(Fe, Fp, ipc, ip, el)
       instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_disloUCLA_dependentState(instance,of)
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dependentState (Fe,Fp,ip,el)
+      call plastic_nonlocal_dependentState (F,Fp,ip,el)
   end select plasticityType
 
 end subroutine constitutive_microstructure

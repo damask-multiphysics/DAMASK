@@ -716,13 +716,13 @@ end subroutine plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
+module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
 
   integer, intent(in) :: &
     ip, &
     el
   real(pReal), dimension(3,3), intent(in) :: &
-    Fe, &
+    F, &
     Fp
 
   integer :: &
@@ -765,7 +765,8 @@ module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
     rho_scr_delta
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),10) :: &
     rho, &
-    rho_neighbor
+    rho0, &
+    rho_neighbor0
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))), &
                          totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
     myInteractionMatrix                                                                             ! corrected slip interaction matrix
@@ -795,7 +796,7 @@ module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
 
   ! coefficients are corrected for the line tension effect
   ! (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
-  if (lattice_structure(ph) ==  LATTICE_bcc_ID .or. lattice_structure(ph) == LATTICE_fcc_ID) then     ! only fcc and bcc
+  if (lattice_structure(ph) == LATTICE_bcc_ID .or. lattice_structure(ph) == LATTICE_fcc_ID) then
     do s = 1,ns
       correction = (  1.0_pReal - prm%linetensionEffect &
                     + prm%linetensionEffect &
@@ -819,13 +820,13 @@ module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
   ! ToDo: MD: this is most likely only correct for F_i = I
   !#################################################################################################
 
-
+  rho0 = getRho0(instance,of,ip,el)
   if (.not. phase_localPlasticity(ph) .and. prm%shortRangeStressCorrection) then
-    invFe = math_inv33(Fe)
     invFp = math_inv33(Fp)
+    invFe = matmul(Fp,math_inv33(F))
 
-    rho_edg_delta = rho(:,mob_edg_pos) - rho(:,mob_edg_neg)
-    rho_scr_delta = rho(:,mob_scr_pos) - rho(:,mob_scr_neg)
+    rho_edg_delta = rho0(:,mob_edg_pos) - rho0(:,mob_edg_neg)
+    rho_scr_delta = rho0(:,mob_scr_pos) - rho0(:,mob_scr_neg)
 
     rhoExcess(1,1:ns) = rho_edg_delta
     rhoExcess(2,1:ns) = rho_scr_delta
@@ -845,13 +846,13 @@ module subroutine plastic_nonlocal_dependentState(Fe, Fp, ip, el)
         if (neighbor_instance == instance) then
 
             nRealNeighbors = nRealNeighbors + 1.0_pReal
-            rho_neighbor = getRho(instance,no,neighbor_ip,neighbor_el)
+            rho_neighbor0 = getRho0(instance,no,neighbor_ip,neighbor_el)
 
-            rho_edg_delta_neighbor(:,n) = rho_neighbor(:,mob_edg_pos) - rho_neighbor(:,mob_edg_neg)
-            rho_scr_delta_neighbor(:,n) = rho_neighbor(:,mob_scr_pos) - rho_neighbor(:,mob_scr_neg)
+            rho_edg_delta_neighbor(:,n) = rho_neighbor0(:,mob_edg_pos) - rho_neighbor0(:,mob_edg_neg)
+            rho_scr_delta_neighbor(:,n) = rho_neighbor0(:,mob_scr_pos) - rho_neighbor0(:,mob_scr_neg)
 
-            neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor(:,edg)),2)
-            neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor(:,scr)),2)
+            neighbor_rhoTotal(1,:,n) = sum(abs(rho_neighbor0(:,edg)),2)
+            neighbor_rhoTotal(2,:,n) = sum(abs(rho_neighbor0(:,scr)),2)
 
             connection_latticeConf(1:3,n) = matmul(invFe, discretization_IPcoords(1:3,neighbor_el+neighbor_ip-1) &
                                           - discretization_IPcoords(1:3,el+neighbor_ip-1))

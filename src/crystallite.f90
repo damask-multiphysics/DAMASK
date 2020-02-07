@@ -264,8 +264,8 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        call constitutive_microstructure(crystallite_Fe(1:3,1:3,c,i,e), &
-                                         crystallite_Fp(1:3,1:3,c,i,e), &
+        call constitutive_microstructure(crystallite_partionedF0(1:3,1:3,c,i,e), &
+                                         crystallite_partionedFp0(1:3,1:3,c,i,e), &
                                          c,i,e)                                                     ! update dependent state variables to be consistent with basic states
      enddo
     enddo
