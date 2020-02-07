@@ -227,6 +227,7 @@ module subroutine plastic_nonlocal_init
 
   allocate(param(maxNinstances))
   allocate(state(maxNinstances))
+  allocate(state0(maxNinstances))
   allocate(dotState(maxNinstances))
   allocate(deltaState(maxNinstances))
   allocate(microstructure(maxNinstances))
@@ -1373,8 +1374,8 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
     my_rhoSgl                                                                                       !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),4) :: &
     v, &                                                                                            !< current dislocation glide velocity
-    my_v, &                                                                                         !< dislocation glide velocity of central ip
-    neighbor_v, &                                                                                   !< dislocation glide velocity of enighboring ip
+    v0, &
+    neighbor_v0, &                                                                                  !< dislocation glide velocity of enighboring ip
     gdot                                                                                            !< shear rates
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
     tau, &                                                                                          !< current resolved shear stress
@@ -1491,6 +1492,9 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
         * sqrt(stt%rho_forest(:,o)) / prm%lambda0 / prm%burgers(1:ns), 2, 4)
   endif isBCC
 
+  forall (s = 1:ns, t = 1:4)
+    v0(s,t) = plasticState(p)%state0(iV(s,t,instance),o)
+  endforall
 
   !****************************************************************************
   !*** calculate dislocation fluxes (only for nonlocal plasticity)
@@ -1499,14 +1503,14 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
-            .and. prm%CFLfactor * abs(v) * timestep &
+            .and. prm%CFLfactor * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
-        maxval(abs(v), abs(gdot) > 0.0_pReal &
-                       .and.  prm%CFLfactor * abs(v) * timestep &
+        maxval(abs(v0), abs(gdot) > 0.0_pReal &
+                       .and.  prm%CFLfactor * abs(v0) * timestep &
                              > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
@@ -1561,7 +1565,7 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
       !* compatibility
 
       considerEnteringFlux = .false.
-      neighbor_v = 0.0_pReal        ! needed for check of sign change in flux density below
+      neighbor_v0 = 0.0_pReal        ! needed for check of sign change in flux density below
       neighbor_rhoSgl = 0.0_pReal
       if (neighbor_n > 0) then
         if (phase_plasticity(material_phaseAt(1,neighbor_el)) == PLASTICITY_NONLOCAL_ID &
@@ -1571,7 +1575,7 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 
       enteringFlux: if (considerEnteringFlux) then
         forall (s = 1:ns, t = 1:4)
-          neighbor_v(s,t) =          plasticState(np)%state(iV   (s,t,neighbor_instance),no)
+          neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,neighbor_instance),no)
           neighbor_rhoSgl(s,t) = max(plasticState(np)%state(iRhoU(s,t,neighbor_instance),no), &
                                                                                             0.0_pReal)
         endforall
@@ -1589,9 +1593,9 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
           do t = 1,4
             c = (t + 1) / 2
             topp = t + mod(t,2) - mod(t+1,2)
-            if (neighbor_v(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &          ! flux from my neighbor to me == entering flux for me
-                .and. v(s,t) * neighbor_v(s,t) >= 0.0_pReal ) then                                  ! ... only if no sign change in flux density
-              lineLength = neighbor_rhoSgl(s,t) * neighbor_v(s,t) &
+            if (neighbor_v0(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &         ! flux from my neighbor to me == entering flux for me
+                .and. v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal ) then                                ! ... only if no sign change in flux density
+              lineLength = neighbor_rhoSgl(s,t) * neighbor_v0(s,t) &
                          * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
               where (compatibility(c,1:ns,s,n,ip,el) > 0.0_pReal) &                                 ! positive compatibility...
                 rhoDotFlux(1:ns,t) = rhoDotFlux(1:ns,t) &
@@ -1623,7 +1627,6 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
 
       leavingFlux: if (considerLeavingFlux) then
         my_rhoSgl = rhoSgl
-        my_v = v
 
         normal_me2neighbor_defConf = math_det33(Favg) &
                                    * matmul(math_inv33(transpose(Favg)), &
@@ -1635,18 +1638,18 @@ module subroutine plastic_nonlocal_dotState(Mp, Fe, Fp, Temperature, &
         do s = 1,ns
           do t = 1,4
             c = (t + 1) / 2
-            if (my_v(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then           ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
-              if (my_v(s,t) * neighbor_v(s,t) >= 0.0_pReal) then                                    ! no sign change in flux density
+            if (v0(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then           ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
+              if (v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal) then                                    ! no sign change in flux density
                 transmissivity = sum(compatibility(c,1:ns,s,n,ip,el)**2.0_pReal)                    ! overall transmissivity from this slip system to my neighbor
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
                 transmissivity = 0.0_pReal
               endif
-              lineLength = my_rhoSgl(s,t) * my_v(s,t) &
+              lineLength = my_rhoSgl(s,t) * v0(s,t) &
                          * math_inner(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of mobiles that wants to leave through this interface
               rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                     ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
                                 + lineLength / IPvolume(ip,el) * (1.0_pReal - transmissivity) &
-                                * sign(1.0_pReal, my_v(s,t))                                       ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
+                                * sign(1.0_pReal, v0(s,t))                                       ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
             endif
           enddo
         enddo
