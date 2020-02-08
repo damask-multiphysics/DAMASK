@@ -471,7 +471,11 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
+#if (PETSC_VERSION_MINOR < 11)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
+#else
+  call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
+#endif
   call DMGetGlobalSection(dm_local,gSection,ierr); CHKERRQ(ierr)
 
   call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
