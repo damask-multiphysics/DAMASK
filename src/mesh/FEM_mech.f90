@@ -96,7 +96,7 @@ subroutine FEM_mech_init(fieldBC)
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: ierr
 
-  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'; flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -147,8 +147,6 @@ subroutine FEM_mech_init(fieldBC)
     call DMPlexGetDepthStratum(mech_mesh,topologDim,cellStart,cellEnd,ierr)
     CHKERRQ(ierr)
     call PetscSectionGetDof(section,cellStart,pnumDof(topologDim),ierr)
-    write(6,*) 'start',cellStart,'end',cellEnd
-    write(6,*) 'topologDim',topologDim,'numDOF',pNumDOF(topologDim)
     CHKERRQ(ierr)
   enddo
   numBC = 0
@@ -329,7 +327,11 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
   allocate(pinvcellJ(dimPlex**2))
+#if (PETSC_VERSION_MINOR < 11)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
+#else
+  call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
+#endif
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
   CHKERRQ(ierr)
