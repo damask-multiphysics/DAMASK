@@ -243,7 +243,11 @@ subroutine FEM_mech_init(fieldBC)
       x_scal(basis+1:basis+dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0_pReal)
     enddo
     px_scal => x_scal
+#if (PETSC_VERSION_MINOR < 11)
     call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,INSERT_ALL_VALUES,ierr)
+#else
+    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,5,ierr)                  ! PETSc: cbee0a90b60958e5c50c89b1e41f4451dfa6008c
+#endif
     CHKERRQ(ierr)
   enddo
 
