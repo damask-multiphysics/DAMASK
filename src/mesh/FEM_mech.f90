@@ -190,6 +190,7 @@ subroutine FEM_mech_init(fieldBC)
 
 #endif
   CHKERRQ(ierr)
+  call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   do faceSet = 1, numBC
     call ISDestroy(pbcPoints(faceSet),ierr); CHKERRQ(ierr)
   enddo
