@@ -39,8 +39,7 @@ module CPFEM
   integer(pInt),                                 public :: &
     cycleCounter =  0_pInt, &                                                                       !< needs description
     theInc       = -1_pInt, &                                                                       !< needs description
-    lastLovl     =  0_pInt, &                                                                       !< lovl in previous call to marc hypela2
-    lastStep     =  0_pInt                                                                          !< kstep in previous call to abaqus umat
+    lastLovl     =  0_pInt                                                                          !< lovl in previous call to marc hypela2
   real(pReal),                                   public :: &
     theTime      = 0.0_pReal, &                                                                     !< needs description
     theDelta     = 0.0_pReal    

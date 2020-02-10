@@ -34,16 +34,6 @@ module IO
     IO_lc, &
     IO_error, &
     IO_warning
-#if defined(Marc4DAMASK) || defined(Abaqus)
-  public :: &
-    IO_open_inputFile
-#if defined(Abaqus)
-  public :: &
-    IO_continuousIntValues, &
-    IO_extractValue, &
-    IO_countDataLines
-#endif
-#endif
 
 contains
 
@@ -191,94 +181,6 @@ integer function IO_open_binary(fileName,mode)
   endif
 
 end function IO_open_binary
-
-
-#if defined(Marc4DAMASK) || defined(Abaqus)
-!--------------------------------------------------------------------------------------------------
-!> @brief opens FEM input file for reading located in current working directory to given unit
-!--------------------------------------------------------------------------------------------------
-subroutine IO_open_inputFile(fileUnit)
-
-  integer,          intent(in) :: fileUnit                                                          !< file unit
- 
-  integer                  :: myStat
-  character(len=1024)      :: path
-#if defined(Abaqus)
-  integer                  :: fileType
-
-  fileType = 1                                                                                      ! assume .pes
-  path = trim(getSolverJobName())//inputFileExtension(fileType)                                     ! attempt .pes, if it exists: it should be used
-  open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
-  if(myStat /= 0) then                                                                              ! if .pes does not work / exist; use conventional extension, i.e.".inp"
-     fileType = 2
-     path = trim(getSolverJobName())//inputFileExtension(fileType)
-     open(fileUnit+1,status='old',iostat=myStat,file=path,action='read',position='rewind')
-  endif
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
- 
-  path = trim(getSolverJobName())//inputFileExtension(fileType)//'_assembly'
-  open(fileUnit,iostat=myStat,file=path)
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-     if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1)) call IO_error(103)                     ! strip comments and concatenate any "include"s
-  close(fileUnit+1)
-  
-  contains
-  
-  !--------------------------------------------------------------------------------------------------
-  !> @brief create a new input file for abaqus simulations by removing all comment lines and
-  !> including "include"s
-  !--------------------------------------------------------------------------------------------------
-  recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
-  
-    integer, intent(in)                :: unit1, &
-                                          unit2
-   
-   
-    integer, allocatable, dimension(:) :: chunkPos
-    character(len=pStringLen           :: line,fname
-    logical                            :: createSuccess,fexist
-   
-   
-    do
-      read(unit2,'(A)',END=220) line
-      chunkPos = IO_stringPos(line)
-   
-      if (IO_lc(IO_StringValue(line,chunkPos,1))=='*include') then
-        fname = trim(line(9+scan(line(9:),'='):))
-        inquire(file=fname, exist=fexist)
-        if (.not.(fexist)) then
-          write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
-          write(6,*)'filename: ', trim(fname)
-          createSuccess = .false.
-          return
-        endif
-        open(unit2+1,err=200,status='old',file=fname)
-        if (abaqus_assembleInputFile(unit1,unit2+1)) then
-          createSuccess=.true.
-          close(unit2+1)
-        else
-          createSuccess=.false.
-          return
-        endif
-      else if (line(1:2) /= '**' .OR. line(1:8)=='**damask') then
-        write(unit1,'(A)') trim(line)
-      endif
-    enddo
-  
-220 createSuccess = .true.
-    return
-  
-200 createSuccess =.false.
-  
-  end function abaqus_assembleInputFile
-#elif defined(Marc4DAMASK)
-  path = trim(getSolverJobName())//inputFileExtension
-  open(fileUnit,status='old',iostat=myStat,file=path)
-  if (myStat /= 0) call IO_error(100,el=myStat,ext_msg=path)
-#endif
-
-end subroutine IO_open_inputFile
-#endif
 
 
 !--------------------------------------------------------------------------------------------------
@@ -464,7 +366,6 @@ end function IO_lc
 
 !--------------------------------------------------------------------------------------------------
 !> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
-!> in ABAQUS either time step is reduced or execution terminated
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
@@ -644,29 +545,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (894)
       msg = 'MPI error'
 
-!-------------------------------------------------------------------------------------------------
-! error messages related to parsing of Abaqus input file
-    case (900)
-      msg = 'improper definition of nodes in input file (Nnodes < 2)'
-    case (901)
-      msg = 'no elements defined in input file (Nelems = 0)'
-    case (902)
-      msg = 'no element sets defined in input file (No *Elset exists)'
-    case (903)
-      msg = 'no materials defined in input file (Look into section assigments)'
-    case (904)
-      msg = 'no elements could be assigned for Elset: '
-    case (905)
-      msg = 'error in mesh_abaqus_map_materials'
-    case (906)
-      msg = 'error in mesh_abaqus_count_cpElements'
-    case (907)
-      msg = 'size of mesh_mapFEtoCPelem in mesh_abaqus_map_elements'
-    case (908)
-      msg = 'size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes'
-    case (909)
-      msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes'
-
 
 !-------------------------------------------------------------------------------------------------
 ! general error messages
@@ -790,126 +668,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 
 end subroutine IO_warning
 
-
-#ifdef Abaqus
-!--------------------------------------------------------------------------------------------------
-!> @brief extracts string value from key=value pair and check whether key matches
-!--------------------------------------------------------------------------------------------------
-character(len=300) pure function IO_extractValue(pair,key)
-
-  character(len=*), intent(in) :: pair, &                                                           !< key=value pair
-                                  key                                                               !< key to be expected
- 
-  character(len=*), parameter  :: SEP = achar(61)                                                   ! '='
- 
-  integer                      :: myChunk                                                           !< position number of desired chunk
- 
-  IO_extractValue = ''
- 
-  myChunk = scan(pair,SEP)
-  if (myChunk > 0 .and. pair(:myChunk-1) == key) IO_extractValue = pair(myChunk+1:)                 ! extract value if key matches
-
-end function IO_extractValue
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief count lines containig data up to next *keyword
-!--------------------------------------------------------------------------------------------------
-integer function IO_countDataLines(fileUnit)
-
-  integer, intent(in)                :: fileUnit                                                    !< file handle
- 
- 
-  integer, allocatable, dimension(:) :: chunkPos
-  character(len=pStringLen)          :: line, &
-                                        tmp
- 
-  IO_countDataLines = 0
-  line = ''
- 
-  do while (trim(line) /= IO_EOF)
-    read(fileUnit,'(A)') line
-    chunkPos = IO_stringPos(line)
-    tmp = IO_lc(IO_stringValue(line,chunkPos,1))
-    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                 ! found keyword
-      exit
-    else
-      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1
-    endif
-  enddo
-  backspace(fileUnit)
-
-end function IO_countDataLines
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return integer list corresponding to items in consecutive lines.
-!! First integer in array is counter
-!> @details Abaqus: triplet of start,stop,inc or named set
-!--------------------------------------------------------------------------------------------------
-function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
-
- integer,                           intent(in) :: maxN
- integer,           dimension(1+maxN)          :: IO_continuousIntValues
-
- integer,                           intent(in) :: fileUnit, &
-                                                  lookupMaxN
- integer,           dimension(:,:), intent(in) :: lookupMap
- character(len=*),  dimension(:),   intent(in) :: lookupName
- integer :: i,first,last
- integer :: j,l,c
- integer, allocatable, dimension(:) :: chunkPos
- character(len=pStringLen)          :: line
- logical :: rangeGeneration
-
- IO_continuousIntValues = 0
- rangeGeneration = .false.
-
- c = IO_countDataLines(fileUnit)
- do l = 1,c
-   backspace(fileUnit)
- enddo
-
-!--------------------------------------------------------------------------------------------------
-! check if the element values in the elset are auto generated
- backspace(fileUnit)
- read(fileUnit,'(A)',end=100) line
- chunkPos = IO_stringPos(line)
- do i = 1,chunkPos(1)
-   if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'generate') rangeGeneration = .true.
- enddo
-
- do l = 1,c
-   read(fileUnit,'(A)',end=100) line
-   chunkPos = IO_stringPos(line)
-   if (verify(IO_stringValue(line,chunkPos,1),'0123456789') > 0) then                               ! a non-int, i.e. set names follow on this line
-     do i = 1,chunkPos(1)                                                                           ! loop over set names in line
-       do j = 1,lookupMaxN                                                                          ! look through known set names
-         if (IO_stringValue(line,chunkPos,i) == lookupName(j)) then                                 ! found matching name
-           first = 2 + IO_continuousIntValues(1)                                                    ! where to start appending data
-           last  = first + lookupMap(1,j) - 1                                                       ! up to where to append data
-           IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)                     ! add resp. entity list
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)                   ! count them
-         endif
-       enddo
-     enddo
-   else if (rangeGeneration) then                                                                   ! range generation
-     do i = IO_intValue(line,chunkPos,1),&
-            IO_intValue(line,chunkPos,2),&
-            max(1,IO_intValue(line,chunkPos,3))
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
-     enddo
-   else                                                                                             ! read individual elem nums
-     do i = 1,chunkPos(1)
-       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1
-       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,chunkPos,i)
-     enddo
-   endif
- enddo
-
-100 end function IO_continuousIntValues
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! internal helper functions

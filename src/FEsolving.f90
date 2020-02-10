@@ -15,7 +15,7 @@ module FEsolving
     FEsolving_execElem, &                                                                           !< for ping-pong scheme always whole range, otherwise one specific element
     FEsolving_execIP                                                                                !< for ping-pong scheme always range to max IP, otherwise one specific IP
     
-#if defined(Marc4DAMASK) || defined(Abaqus)
+#if defined(Marc4DAMASK)
   logical, dimension(:,:), allocatable :: &
     calcMode                                                                                        !< do calculation or simply collect when using ping pong scheme
 #endif
