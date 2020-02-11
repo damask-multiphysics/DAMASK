@@ -1363,6 +1363,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
     s                                                                                               !< index of my current slip system
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),10) :: &
     rho, &
+    rho0, &                                                                                         !< dislocation density at beginning of time step
     rhoDot, &                                                                                       !< density evolution
     rhoDotMultiplication, &                                                                         !< density evolution by multiplication
     rhoDotFlux, &                                                                                   !< density evolution by flux
@@ -1371,8 +1372,8 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
     rhoDotThermalAnnihilation                                                                       !< density evolution by thermal annihilation
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),8) :: &
     rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
-    neighbor_rhoSgl0, &                                                                              !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
-    my_rhoSgl                                                                                       !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
+    neighbor_rhoSgl0, &                                                                             !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
+    my_rhoSgl0                                                                                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),4) :: &
     v, &                                                                                            !< current dislocation glide velocity
     v0, &
@@ -1428,9 +1429,11 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
   tau = 0.0_pReal
   gdot = 0.0_pReal
 
-  rho = getRho(instance,o,ip,el)
+  rho  = getRho(instance,o,ip,el)
   rhoSgl = rho(:,sgl)
   rhoDip = rho(:,dip)
+  rho0 = getRho0(instance,o,ip,el)
+  my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4)
     v(s,t) = plasticState(p)%state(iV   (s,t,instance),o)
@@ -1626,8 +1629,6 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
       endif
 
       leavingFlux: if (considerLeavingFlux) then
-        my_rhoSgl = rhoSgl
-
         normal_me2neighbor_defConf = math_det33(Favg) &
                                    * matmul(math_inv33(transpose(Favg)), &
                                                              IPareaNormal(1:3,n,ip,el))             ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
@@ -1644,7 +1645,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
               else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
                 transmissivity = 0.0_pReal
               endif
-              lineLength = my_rhoSgl(s,t) * v0(s,t) &
+              lineLength = my_rhoSgl0(s,t) * v0(s,t) &
                          * math_inner(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of mobiles that wants to leave through this interface
               rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                     ! subtract dislocation flux from current type
               rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
