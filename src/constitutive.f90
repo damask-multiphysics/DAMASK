@@ -313,7 +313,7 @@ module constitutive
     plastic_nonlocal_updateCompatibility, &
     constitutive_init, &
     constitutive_homogenizedC, &
-    constitutive_microstructure, &
+    constitutive_dependentState, &
     constitutive_LpAndItsTangents, &
     constitutive_LiAndItsTangents, &
     constitutive_initialFi, &
@@ -412,7 +412,7 @@ end function constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_microstructure(F, Fp, ipc, ip, el)
+subroutine constitutive_dependentState(F, Fp, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -442,7 +442,7 @@ subroutine constitutive_microstructure(F, Fp, ipc, ip, el)
       call plastic_nonlocal_dependentState (F,Fp,ip,el)
   end select plasticityType
 
-end subroutine constitutive_microstructure
+end subroutine constitutive_dependentState
 
 
 !--------------------------------------------------------------------------------------------------

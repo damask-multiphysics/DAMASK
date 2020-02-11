@@ -175,7 +175,6 @@ module subroutine plastic_isotropic_init
     plasticState(p)%aTolState(2) = prm%aTol_gamma
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state   (2:2,:)
  
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
  

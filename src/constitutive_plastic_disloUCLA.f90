@@ -290,7 +290,6 @@ module subroutine plastic_disloUCLA_init
     plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal                                    ! Don't use for convergence check
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
  
     allocate(dst%Lambda_sl(prm%sum_N_sl,NipcMyPhase),         source=0.0_pReal)
     allocate(dst%threshold_stress(prm%sum_N_sl,NipcMyPhase),  source=0.0_pReal)

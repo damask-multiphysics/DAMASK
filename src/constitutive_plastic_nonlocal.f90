@@ -552,7 +552,6 @@ module subroutine plastic_nonlocal_init
     del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     plasticState(p)%aTolState(10*prm%totalNslip + 1:11*prm%totalNslip )  = prm%aTolShear
     plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state(10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
 
     stt%rho_forest => plasticState(p)%state                 (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)
     stt%v          => plasticState(p)%state                 (12*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)

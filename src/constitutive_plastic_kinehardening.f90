@@ -250,7 +250,6 @@ module subroutine plastic_kinehardening_init
     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
  
     o = plasticState(p)%offsetDeltaState
     startIndex = endIndex + 1

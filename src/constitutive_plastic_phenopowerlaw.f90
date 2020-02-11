@@ -311,8 +311,7 @@ module subroutine plastic_phenopowerlaw_init
     plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
- 
+
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%totalNtwin
     stt%gamma_twin => plasticState(p)%state   (startIndex:endIndex,:)

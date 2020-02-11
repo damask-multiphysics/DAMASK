@@ -511,7 +511,6 @@ module subroutine plastic_dislotwin_init
     plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%accumulatedSlip => plasticState(p)%state(startIndex:endIndex,:)
     
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
