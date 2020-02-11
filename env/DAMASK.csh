@@ -51,5 +51,4 @@ else
   setenv PYTHONPATH $DAMASK_ROOT/python:$PYTHONPATH
 endif
 setenv MSC_ROOT
-setenv ABAQUS_VERSION
 setenv MARC_VERSION
