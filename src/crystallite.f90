@@ -792,7 +792,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
                                       ipc                                                           ! grain index
   real(pReal), optional, intent(in) :: timeFraction                                                 ! fraction of timestep
  
-  real(pReal), dimension(3,3)::       Fg_new, &                                                     ! deformation gradient at end of timestep
+  real(pReal), dimension(3,3)::       F, &                                                          ! deformation gradient at end of timestep
                                       Fp_new, &                                                     ! plastic deformation gradient at end of timestep
                                       Fe_new, &                                                     ! elastic deformation gradient at end of timestep
                                       invFp_new, &                                                  ! inverse of Fp_new
@@ -849,16 +849,15 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   external :: &
     dgesv
  
-  !* be pessimistic
   integrateStress = .false.
 
   if (present(timeFraction)) then
     dt = crystallite_subdt(ipc,ip,el) * timeFraction
-    Fg_new = crystallite_subF0(1:3,1:3,ipc,ip,el) &
-           + (crystallite_subF(1:3,1:3,ipc,ip,el) - crystallite_subF0(1:3,1:3,ipc,ip,el)) * timeFraction
+    F  = crystallite_subF0(1:3,1:3,ipc,ip,el) &
+       + (crystallite_subF(1:3,1:3,ipc,ip,el) - crystallite_subF0(1:3,1:3,ipc,ip,el)) * timeFraction
   else
     dt = crystallite_subdt(ipc,ip,el)
-    Fg_new = crystallite_subF(1:3,1:3,ipc,ip,el)
+    F  = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
   Lpguess     =   crystallite_Lp(1:3,1:3,ipc,ip,el)                                                 ! take as first guess
@@ -869,7 +868,8 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   call math_invert33(invFi_current,devNull,error,crystallite_subFi0(1:3,1:3,ipc,ip,el))
   if (error) return
 
-  A = matmul(Fg_new,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
+  A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
+
 
   !* start Li loop with normal step length
   jacoCounterLi      = 0
@@ -989,12 +989,12 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                              ! regularize
   call math_invert33(Fp_new,devNull,error,invFp_new)
   if (error) return
-  Fe_new = matmul(matmul(Fg_new,invFp_new),invFi_new)
+  Fe_new = matmul(matmul(F,invFp_new),invFi_new)
 
 !--------------------------------------------------------------------------------------------------
 ! stress integration was successful
   integrateStress = .true.
-  crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(Fg_new,invFp_new),matmul(S,transpose(invFp_new)))
+  crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new))) ! ToDo: We propably do not need to store P!
   crystallite_S    (1:3,1:3,ipc,ip,el) = S
   crystallite_Lp   (1:3,1:3,ipc,ip,el) = Lpguess
   crystallite_Li   (1:3,1:3,ipc,ip,el) = Liguess
