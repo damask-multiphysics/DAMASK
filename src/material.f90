@@ -159,8 +159,6 @@ module material
     microstructure_phase, &                                                                         !< phase IDs of each microstructure
     microstructure_texture                                                                          !< texture IDs of each microstructure
  
-  real(pReal),    dimension(:,:,:,:), allocatable, public,protected :: &
-    material_Eulers
   type(Rotation), dimension(:), allocatable, private :: &
     texture_orientation                                                                             !< Euler angles in material.config (possibly rotated for alignment)
  
@@ -295,7 +293,6 @@ subroutine material_init
   allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),                   source=0)
   allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)   !this is only needed by plasticity nonlocal
   allocate(material_orientation0(homogenization_maxNgrains,discretization_nIP,discretization_nElem))
-  allocate(material_Eulers(3,homogenization_maxNgrains,discretization_nIP,discretization_nElem))
 
   do e = 1, discretization_nElem
      do i = 1, discretization_nIP
@@ -304,7 +301,6 @@ subroutine material_init
          material_phaseAt(c,e)        = microstructure_phase(c,myMicro)
          material_texture(c,i,e)      = microstructure_texture(c,myMicro)
          material_orientation0(c,i,e) = texture_orientation(material_texture(c,i,e))
-         material_Eulers(1:3,c,i,e)   = texture_orientation(material_texture(c,i,e))%asEulers()
        enddo
      enddo
    enddo
