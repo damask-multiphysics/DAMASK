@@ -817,8 +817,8 @@ logical function integrateStress(ipc,ip,el,timeFraction)
                                       B, &
                                       Fe, &                                                         ! elastic deformation gradient
                                       temp_33
-  real(pReal), dimension(9) ::        work                                                          ! needed for matrix inversion by LAPACK
-  integer,    dimension(9) ::         devNull_9                                                       ! needed for matrix inversion by LAPACK
+  real(pReal), dimension(9) ::        temp_9                                                        ! needed for matrix inversion by LAPACK
+  integer,     dimension(9) ::        devNull_9                                                     ! needed for matrix inversion by LAPACK
   real(pReal), dimension(9,9) ::      dRLp_dLp, &                                                   ! partial derivative of residuum (Jacobian for Newton-Raphson scheme)
                                       dRLp_dLp2, &                                                  ! working copy of dRdLp
                                       dRLi_dLi                                                      ! partial derivative of residuumI (Jacobian for Newton-Raphson scheme)
@@ -860,13 +860,13 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     F  = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
-  Lpguess     =   crystallite_Lp(1:3,1:3,ipc,ip,el)                                                 ! take as first guess
-  Liguess     =   crystallite_Li(1:3,1:3,ipc,ip,el)                                                 ! take as first guess
+  Lpguess = crystallite_Lp(1:3,1:3,ipc,ip,el)                                                       ! take as first guess
+  Liguess = crystallite_Li(1:3,1:3,ipc,ip,el)                                                       ! take as first guess
  
   call math_invert33(invFp_current,devNull,error,crystallite_subFp0(1:3,1:3,ipc,ip,el))
-  if (error) return
+  if (error) return ! error
   call math_invert33(invFi_current,devNull,error,crystallite_subFi0(1:3,1:3,ipc,ip,el))
-  if (error) return
+  if (error) return ! error
 
   A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
 
@@ -878,7 +878,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   NiterationStressLi = 0
   LiLoop: do
     NiterationStressLi = NiterationStressLi + 1
-    if (NiterationStressLi>num%nStress) return
+    if (NiterationStressLi>num%nStress) return ! error
 
     invFi_new = matmul(invFi_current,math_I3 - dt*Liguess)
     Fi_new    = math_inv33(invFi_new)
@@ -892,7 +892,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     NiterationStressLp = 0
     LpLoop: do
       NiterationStressLp = NiterationStressLp + 1
-      if (NiterationStressLp>num%nStress) return
+      if (NiterationStressLp>num%nStress) return ! error
        
       B  = math_I3 - dt*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
@@ -908,21 +908,24 @@ logical function integrateStress(ipc,ip,el,timeFraction)
       residuumLp = Lpguess - Lp_constitutive
  
       if (any(IEEE_is_NaN(residuumLp))) then
-        return                                                                                      ! ...me = .false. to inform integrator about problem
+        return ! error
       elseif (norm2(residuumLp) < aTolLp) then                                                      ! converged if below absolute tolerance
-        exit LpLoop                                                                                 ! ...leave iteration loop
+        exit LpLoop
       elseif (NiterationStressLp == 1 .or. norm2(residuumLp) < norm2(residuumLp_old)) then          ! not converged, but improved norm of residuum (always proceed in first iteration)...
         residuumLp_old = residuumLp                                                                 ! ...remember old values and...
         Lpguess_old    = Lpguess
         steplengthLp   = 1.0_pReal                                                                  ! ...proceed with normal step length (calculate new search direction)
       else                                                                                          ! not converged and residuum not improved...
         steplengthLp = num%subStepSizeLp * steplengthLp                                             ! ...try with smaller step length in same direction
-        Lpguess      = Lpguess_old + steplengthLp * deltaLp
+        Lpguess      = Lpguess_old &
+                     + deltaLp * stepLengthLp
         cycle LpLoop
       endif
 
      !* calculate Jacobian for correction term
       if (mod(jacoCounterLp, num%iJacoLpresiduum) == 0) then
+        jacoCounterLp = jacoCounterLp + 1
+
         do o=1,3; do p=1,3
           dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                        ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
         enddo; enddo
@@ -930,15 +933,14 @@ logical function integrateStress(ipc,ip,el,timeFraction)
         dRLp_dLp = math_identity2nd(9) &
                  - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
         dRLp_dLp2 = dRLp_dLp                                                                        ! will be overwritten in first call to LAPACK routine
-        work = math_33to9(residuumLp)
-        call dgesv(9,1,dRLp_dLp2,9,devNull_9,work,9,ierr)                                           ! solve dRLp/dLp * delta Lp = -res for delta Lp
-        if (ierr /= 0) return
-        deltaLp = - math_9to33(work)
+        temp_9 = math_33to9(residuumLp)
+        call dgesv(9,1,dRLp_dLp2,9,devNull_9,temp_9,9,ierr)                                         ! solve dRLp/dLp * delta Lp = -res for delta Lp
+        if (ierr /= 0) return ! error
+        deltaLp = - math_9to33(temp_9)
       endif
-      jacoCounterLp = jacoCounterLp + 1
 
-      Lpguess = Lpguess + steplengthLp * deltaLp
-
+      Lpguess = Lpguess &
+              + deltaLp * steplengthLp
     enddo LpLoop
 
     call constitutive_LiAndItsTangents(Li_constitutive, dLi_dS, dLi_dFi, &
@@ -948,23 +950,26 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     aTolLi = max(num%rTol_crystalliteStress * max(norm2(Liguess),norm2(Li_constitutive)), &         ! absolute tolerance from largest acceptable relative error
                  num%aTol_crystalliteStress)                                                        ! minimum lower cutoff
     residuumLi = Liguess - Li_constitutive
-    if (any(IEEE_is_NaN(residuumLi))) then                                                          ! NaN in residuum...
-      return                                                                                        ! ...me = .false. to inform integrator about problem
+    if (any(IEEE_is_NaN(residuumLi))) then
+      return ! error
     elseif (norm2(residuumLi) < aTolLi) then                                                        ! converged if below absolute tolerance
-      exit LiLoop                                                                                   ! ...leave iteration loop
+      exit LiLoop
     elseif (NiterationStressLi == 1 .or. norm2(residuumLi) < norm2(residuumLi_old)) then            ! not converged, but improved norm of residuum (always proceed in first iteration)...
       residuumLi_old = residuumLi                                                                   ! ...remember old values and...
       Liguess_old    = Liguess
       steplengthLi   = 1.0_pReal                                                                    ! ...proceed with normal step length (calculate new search direction)
     else                                                                                            ! not converged and residuum not improved...
-      steplengthLi   = num%subStepSizeLi * steplengthLi                                             ! ...try with smaller step length in same direction
-      Liguess        = Liguess_old + steplengthLi * deltaLi
+      steplengthLi = num%subStepSizeLi * steplengthLi                                               ! ...try with smaller step length in same direction
+      Liguess      = Liguess_old &
+                   + deltaLi * steplengthLi
       cycle LiLoop
     endif
  
     !* calculate Jacobian for correction term
     if (mod(jacoCounterLi, num%iJacoLpresiduum) == 0) then
-      temp_33     = matmul(matmul(A,B),invFi_current)
+      jacoCounterLi = jacoCounterLi + 1
+      
+      temp_33 = matmul(matmul(A,B),invFi_current)
       do o=1,3; do p=1,3
         dFe_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                             ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
         dFi_dLi(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
@@ -976,26 +981,22 @@ logical function integrateStress(ipc,ip,el,timeFraction)
                 - math_3333to99(math_mul3333xx3333(dLi_dS,  math_mul3333xx3333(dS_dFe, dFe_dLi) &
                                                           + math_mul3333xx3333(dS_dFi, dFi_dLi)))  &
                 - math_3333to99(math_mul3333xx3333(dLi_dFi, dFi_dLi))
-      work = math_33to9(residuumLi)
-      call dgesv(9,1,dRLi_dLi,9,devNull_9,work,9,ierr)                                              ! solve dRLi/dLp * delta Li = -res for delta Li
-      if (ierr /= 0) return
- 
-      deltaLi = - math_9to33(work)
+      temp_9 = math_33to9(residuumLi)
+      call dgesv(9,1,dRLi_dLi,9,devNull_9,temp_9,9,ierr)                                            ! solve dRLi/dLp * delta Li = -res for delta Li
+      if (ierr /= 0) return ! error
+      deltaLi = - math_9to33(temp_9)
     endif
-    jacoCounterLi = jacoCounterLi + 1
  
-    Liguess = Liguess + steplengthLi * deltaLi
+    Liguess = Liguess &
+            + deltaLi * steplengthLi
   enddo LiLoop
  
-  !* calculate new plastic and elastic deformation gradient
   invFp_new = matmul(invFp_current,B)
   invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                              ! regularize
   call math_invert33(Fp_new,devNull,error,invFp_new)
-  if (error) return
+  if (error) return ! error
   Fe_new = matmul(matmul(F,invFp_new),invFi_new)
 
-!--------------------------------------------------------------------------------------------------
-! stress integration was successful
   integrateStress = .true.
   crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new))) ! ToDo: We propably do not need to store P!
   crystallite_S    (1:3,1:3,ipc,ip,el) = S
@@ -1006,6 +1007,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   crystallite_Fe   (1:3,1:3,ipc,ip,el) = Fe_new
   crystallite_invFp(1:3,1:3,ipc,ip,el) = invFp_new
   crystallite_invFi(1:3,1:3,ipc,ip,el) = invFi_new
+
 
 end function integrateStress
 
