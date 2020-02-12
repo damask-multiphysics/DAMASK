@@ -870,27 +870,30 @@ logical function integrateStress(ipc,ip,el,timeFraction)
 
   A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
 
+  jacoCounterLi  = 0
+  steplengthLi   = 1.0_pReal
+  residuumLi_old = 0.0_pReal
+  Liguess_old    = Liguess
 
-  !* start Li loop with normal step length
-  jacoCounterLi      = 0
-  steplengthLi       = 1.0_pReal
-  residuumLi_old     = 0.0_pReal
-  Liguess_old        = Liguess
- 
-  LiLoop: do NiterationStressLi=1,num%nStress
+  NiterationStressLi = 0
+  LiLoop: do
+    NiterationStressLi = NiterationStressLi + 1
+    if (NiterationStressLi>num%nStress) return
 
     invFi_new = matmul(invFi_current,math_I3 - dt*Liguess)
     Fi_new    = math_inv33(invFi_new)
     detInvFi  = math_det33(invFi_new)
  
-    !* start Lp loop with normal step length
-    jacoCounterLp      = 0
-    steplengthLp       = 1.0_pReal
-    residuumLp_old     = 0.0_pReal
-    Lpguess_old        = Lpguess
+    jacoCounterLp  = 0
+    steplengthLp   = 1.0_pReal
+    residuumLp_old = 0.0_pReal
+    Lpguess_old    = Lpguess
  
-    LpLoop: do NiterationStressLp=1,num%nStress
- 
+    NiterationStressLp = 0
+    LpLoop: do
+      NiterationStressLp = NiterationStressLp + 1
+      if (NiterationStressLp>num%nStress) return
+       
       B  = math_I3 - dt*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
       call constitutive_SandItsTangents(S, dS_dFe, dS_dFi, &
