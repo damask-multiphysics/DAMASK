@@ -822,7 +822,6 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   real(pReal), dimension(9) ::        temp_9                                                        ! needed for matrix inversion by LAPACK
   integer,     dimension(9) ::        devNull_9                                                     ! needed for matrix inversion by LAPACK
   real(pReal), dimension(9,9) ::      dRLp_dLp, &                                                   ! partial derivative of residuum (Jacobian for Newton-Raphson scheme)
-                                      dRLp_dLp2, &                                                  ! working copy of dRdLp
                                       dRLi_dLi                                                      ! partial derivative of residuumI (Jacobian for Newton-Raphson scheme)
   real(pReal), dimension(3,3,3,3)::   dS_dFe, &                                                     ! partial derivative of 2nd Piola-Kirchhoff stress
                                       dS_dFi, &
@@ -833,8 +832,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
                                       dLi_dFi, &
                                       dLp_dS, &
                                       dLi_dS
-  real(pReal)                         detInvFi, &                                                   ! determinant of InvFi
-                                      steplengthLp, &
+  real(pReal)                         steplengthLp, &
                                       steplengthLi, &
                                       dt, &                                                         ! time increment
                                       aTolLp, &
@@ -884,7 +882,6 @@ logical function integrateStress(ipc,ip,el,timeFraction)
 
     invFi_new = matmul(invFi_current,math_I3 - dt*Liguess)
     Fi_new    = math_inv33(invFi_new)
-    detInvFi  = math_det33(invFi_new)
 
     jacoCounterLp  = 0
     steplengthLp   = 1.0_pReal
@@ -934,9 +931,8 @@ logical function integrateStress(ipc,ip,el,timeFraction)
         dFe_dLp  = - dt * dFe_dLp
         dRLp_dLp = math_identity2nd(9) &
                  - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
-        dRLp_dLp2 = dRLp_dLp                                                                        ! will be overwritten in first call to LAPACK routine
         temp_9 = math_33to9(residuumLp)
-        call dgesv(9,1,dRLp_dLp2,9,devNull_9,temp_9,9,ierr)                                         ! solve dRLp/dLp * delta Lp = -res for delta Lp
+        call dgesv(9,1,dRLp_dLp,9,devNull_9,temp_9,9,ierr)                                          ! solve dRLp/dLp * delta Lp = -res for delta Lp
         if (ierr /= 0) return ! error
         deltaLp = - math_9to33(temp_9)
       endif
