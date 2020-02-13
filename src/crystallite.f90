@@ -238,7 +238,10 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNcomponents = homogenization_Ngrains(material_homogenizationAt(e))
     do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, myNcomponents
-      crystallite_Fp0(1:3,1:3,c,i,e) = eu2om(material_orientation0(c,i,e)%asEulers())               ! plastic def gradient reflects init orientation
+      crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! plastic def gradient reflects init orientation
+      crystallite_Fp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e) &
+                                     / math_det33(crystallite_Fp0(1:3,1:3,c,i,e))**(1.0_pReal/3.0_pReal)
+
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
       crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phaseAt(c,e))
