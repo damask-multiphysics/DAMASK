@@ -239,9 +239,6 @@ subroutine crystallite_init
     myNcomponents = homogenization_Ngrains(material_homogenizationAt(e))
     do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, myNcomponents
       crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! plastic def gradient reflects init orientation
-      crystallite_Fp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e) &
-                                     / math_det33(crystallite_Fp0(1:3,1:3,c,i,e))**(1.0_pReal/3.0_pReal)
-
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
       crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phaseAt(c,e))
@@ -995,9 +992,9 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   enddo LiLoop
  
   invFp_new = matmul(invFp_current,B)
-  invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                              ! regularize
   call math_invert33(Fp_new,devNull,error,invFp_new)
   if (error) return ! error
+  Fp_new = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)                                       ! regularize
   Fe_new = matmul(matmul(F,invFp_new),invFi_new)
 
   integrateStress = .true.
