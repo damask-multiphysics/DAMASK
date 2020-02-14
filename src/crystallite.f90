@@ -66,7 +66,7 @@ module crystallite
     crystallite_subF0, &                                                                            !< def grad at start of crystallite inc
     crystallite_subLp0,&                                                                            !< plastic velocity grad at start of crystallite inc
     crystallite_subLi0                                                                              !< intermediate velocity grad at start of crystallite inc
-  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public :: &
+  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public, protected :: &
     crystallite_dPdF                                                                                !< current individual dPdF per grain (end of converged time step)
   logical,                    dimension(:,:,:),         allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
