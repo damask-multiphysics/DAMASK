@@ -416,7 +416,7 @@ end subroutine plastic_phenopowerlaw_results
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate shear rates on slip systems and their derivatives with respect to resolved.
+!> @brief Calculate shear rates on slip systems and their derivatives with respect to resolved
 !         stress.
 !> @details Derivatives are calculated only optionally.
 ! NOTE: Against the common convention, the result (i.e. intent(out)) variables are the last to
