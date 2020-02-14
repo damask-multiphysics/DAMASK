@@ -170,7 +170,7 @@ module subroutine plastic_nonlocal_init
   integer :: &
     sizeState, sizeDotState,sizeDependentState, sizeDeltaState, &
     maxNinstances, &
-    p, i, &
+    p, &
     l, &
     s1, s2, &
     s, &
