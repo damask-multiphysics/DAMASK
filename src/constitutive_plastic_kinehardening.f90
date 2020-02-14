@@ -377,24 +377,21 @@ module subroutine plastic_kinehardening_results(instance,group)
      case('resistance')
        if(prm%totalNslip>0) call results_writeDataset(group,stt%crss,'xi_sl', &
                                                       'resistance against plastic slip','Pa')
-
      case('backstress')                                                                             ! ToDo: should be 'tau_back'
        if(prm%totalNslip>0) call results_writeDataset(group,stt%crss_back,'tau_back', &
                                                       'back stress against plastic slip','Pa')
-
      case ('sense')
-       if(prm%totalNslip>0) call results_writeDataset(group,stt%sense,'sense_of_shear','tbd','1')
-
+       if(prm%totalNslip>0) call results_writeDataset(group,stt%sense,'sense_of_shear', &
+                                                      'tbd','1')
      case ('chi0')
-       if(prm%totalNslip>0) call results_writeDataset(group,stt%chi0,'chi0','tbd','Pa')
-
+       if(prm%totalNslip>0) call results_writeDataset(group,stt%chi0,'chi0', &
+                                                      'tbd','Pa')
      case ('gamma0')
-       if(prm%totalNslip>0) call results_writeDataset(group,stt%gamma0,'gamma0','tbd','1')
-
+       if(prm%totalNslip>0) call results_writeDataset(group,stt%gamma0,'gamma0', &
+                                                      'tbd','1')
      case ('accumulatedshear')
        if(prm%totalNslip>0) call results_writeDataset(group,stt%accshear,'gamma_sl', &
                                                       'plastic shear','1')
-
     end select
   enddo outputsLoop
   end associate
