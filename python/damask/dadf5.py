@@ -1,4 +1,6 @@
-from queue import Queue
+from fractions import Fraction
+from functools import reduce
+from queue     import Queue
 import re
 import glob
 import os
@@ -11,6 +13,7 @@ import numpy as np
 from . import util
 from . import version
 from . import mechanics
+from . import Orientation
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -657,31 +660,49 @@ class DADF5():
     self.__add_generic_pointwise(__add_eigenvector,requested)
 
 
-  def add_IPFcolor(self,q,p):
+  def add_IPFcolor(self,q,p=[0,0,1]):
     """
     Add RGB color tuple of inverse pole figure (IPF) color.
 
     Parameters
     ----------
-    orientation : str
+    q : str
       Label of the dataset containing the orientation data as quaternions.
-    pole : list of int
+    p : list of int
       Pole direction as Miller indices. Default value is [0, 0, 1].
 
     """
     def __add_IPFcolor(orientation,pole):
+
+      MAX_DENOMINATOR = 1000
+      def lcm(a, b):
+        """Least common multiple."""
+        return a * b // np.gcd(a, b)
+
+      def get_square_denominator(x):
+        """returns the denominator of the square of a number."""
+        return Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
+
+      def scale_to_Miller(v):
+        """Factor to scale vector to integers."""
+        denominators = [int(get_square_denominator(i)) for i in v]
+        s = reduce(lcm, denominators) ** 0.5
+        m = (np.array(v)*s).astype(np.int)
+        return m//reduce(np.gcd,m)
+
+      m = scale_to_Miller(pole)
 
       lattice   = orientation['meta']['Lattice']
       unit_pole = pole/np.linalg.norm(pole)
       colors    = np.empty((len(orientation['data']),3),np.uint8)
 
       for i,q in enumerate(orientation['data']):
-         rot = Rotation(np.array([q['w'],q['x'],q['y'],q['z']]))
-         orientation = Orientation(rot,lattice = lattice).reduced()
-         colors[i]   = np.uint8(orientation.IPFcolor(unit_pole)*255)
+         o = Orientation(np.array([q['w'],q['x'],q['y'],q['z']]),lattice).reduced()
+         colors[i]   = np.uint8(o.IPFcolor(unit_pole)*255)
+
       return {
               'data': colors,
-              'label': 'IPFcolor_[{} {} {}]'.format(*pole),
+              'label': 'IPFcolor_[{} {} {}]'.format(*m),
               'meta' : {
                         'Unit':        'RGB (8bit)',
                         'Lattice':     lattice,
@@ -690,9 +711,9 @@ class DADF5():
                        }
              }
 
-    requested = [{'label':'orientation','arg':'orientation'}]
+    requested = [{'label':q,'arg':'orientation'}]
 
-    self.__add_generic_pointwise(__add_IPFcolor,requested,{'pole':pole})
+    self.__add_generic_pointwise(__add_IPFcolor,requested,{'pole':p})
 
 
   def add_maximum_shear(self,x):
