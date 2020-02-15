@@ -16,23 +16,23 @@ from . import mechanics
 class DADF5():
   """
   Read and write to DADF5 files.
-  
+
   DADF5 files contain DAMASK results.
   """
-  
+
 # ------------------------------------------------------------------
   def __init__(self,fname):
     """
     Opens an existing DADF5 file.
-    
+
     Parameters
     ----------
     fname : str
         name of the DADF5 file to be openend.
-    
+
     """
     with h5py.File(fname,'r') as f:
-      
+
       try:
         self.version_major = f.attrs['DADF5_version_major']
         self.version_minor = f.attrs['DADF5_version_minor']
@@ -43,16 +43,16 @@ class DADF5():
       if self.version_major != 0 or not 2 <= self.version_minor <= 6:
         raise TypeError('Unsupported DADF5 version {}.{} '.format(f.attrs['DADF5_version_major'],
                                                                   f.attrs['DADF5_version_minor']))
-    
+
       self.structured = 'grid' in f['geometry'].attrs.keys()
-    
+
       if self.structured:
         self.grid = f['geometry'].attrs['grid']
         self.size = f['geometry'].attrs['size']
         if self.version_major == 0 and self.version_minor >= 5:
           self.origin = f['geometry'].attrs['origin']
 
-        
+
       r=re.compile('inc[0-9]+')
       increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
       self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
@@ -78,23 +78,23 @@ class DADF5():
                    'constituent':    range(self.Nconstituents),                                     # ToDo: stupid naming
                    'con_physics':    self.con_physics,
                    'mat_physics':    self.mat_physics}
-                  
+
     self.fname = fname
 
 
   def __manage_visible(self,datasets,what,action):
     """
     Manages the visibility of the groups.
-    
+
     Parameters
     ----------
     datasets : list of str or Boolean
       name of datasets as list, supports ? and * wildcards.
       True is equivalent to [*], False is equivalent to []
     what : str
-      attribute to change (must be in self.visible) 
+      attribute to change (must be in self.visible)
     action : str
-      select from 'set', 'add', and 'del' 
+      select from 'set', 'add', and 'del'
 
     """
     # allow True/False and string arguments
@@ -103,7 +103,7 @@ class DADF5():
     elif datasets is False:
       datasets = []
     choice = [datasets] if isinstance(datasets,str) else datasets
-   
+
     valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
     existing = set(self.visible[what])
 
@@ -113,8 +113,8 @@ class DADF5():
       self.visible[what] = list(existing.union(valid))
     elif action == 'del':
       self.visible[what] = list(existing.difference_update(valid))
-      
-  
+
+
   def __time_to_inc(self,start,end):
     selected = []
     for i,time in enumerate(self.times):
@@ -166,8 +166,8 @@ class DADF5():
 
     """
     self.__manage_visible(self.__time_to_inc(start,end),'increments','del')
-    
-    
+
+
   def set_by_increment(self,start,end):
     """
     Set active time increments based on start and end increment.
@@ -229,7 +229,7 @@ class DADF5():
     Parameters
     ----------
     what : str
-      attribute to change (must be in self.visible) 
+      attribute to change (must be in self.visible)
 
     """
     datasets = self.visible[what]
@@ -242,19 +242,19 @@ class DADF5():
       last_datasets = self.visible[what]
       yield dataset
     self.__manage_visible(datasets,what,'set')
-    
-  
+
+
   def set_visible(self,what,datasets):
     """
     Set active groups.
-    
+
     Parameters
     ----------
     datasets : list of str or Boolean
       name of datasets as list, supports ? and * wildcards.
       True is equivalent to [*], False is equivalent to []
     what : str
-      attribute to change (must be in self.visible) 
+      attribute to change (must be in self.visible)
 
     """
     self.__manage_visible(datasets,what,'set')
@@ -263,14 +263,14 @@ class DADF5():
   def add_visible(self,what,datasets):
     """
     Add to active groups.
-    
+
     Parameters
     ----------
     datasets : list of str or Boolean
       name of datasets as list, supports ? and * wildcards.
       True is equivalent to [*], False is equivalent to []
     what : str
-      attribute to change (must be in self.visible) 
+      attribute to change (must be in self.visible)
 
     """
     self.__manage_visible(datasets,what,'add')
@@ -279,14 +279,14 @@ class DADF5():
   def del_visible(self,what,datasets):
     """
     Delete from active groupse.
-    
+
     Parameters
     ----------
     datasets : list of str or Boolean
       name of datasets as list, supports ? and * wildcards.
       True is equivalent to [*], False is equivalent to []
     what : str
-      attribute to change (must be in self.visible) 
+      attribute to change (must be in self.visible)
 
     """
     self.__manage_visible(datasets,what,'del')
@@ -295,17 +295,17 @@ class DADF5():
   def groups_with_datasets(self,datasets):
     """
     Get groups that contain all requested datasets.
-    
-    Only groups within inc?????/constituent/*_*/* inc?????/materialpoint/*_*/* 
+
+    Only groups within inc?????/constituent/*_*/* inc?????/materialpoint/*_*/*
     are considered as they contain the data.
     Single strings will be treated as list with one entry.
-    
+
     Wild card matching is allowed, but the number of arguments need to fit.
-    
+
     Parameters
     ----------
       datasets : iterable or str or boolean
-    
+
     Examples
     --------
       datasets = False matches no group
@@ -315,13 +315,13 @@ class DADF5():
       datasets = ['*'] does not match a group with ['F','P','sigma']
       datasets = ['*','*'] does not match a group with ['F','P','sigma']
       datasets = ['*','*','*'] matches a group with ['F','P','sigma']
-      
+
     """
     if datasets is False: return []
     sets = [datasets] if isinstance(datasets,str) else datasets
 
     groups = []
-    
+
     with h5py.File(self.fname,'r') as f:
       for i in self.iter_visible('increments'):
         for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
@@ -378,8 +378,8 @@ class DADF5():
               except KeyError as e:
                 pass
     return path
-    
-    
+
+
   def get_constituent_ID(self,c=0):
     """Pointwise constituent ID."""
     with h5py.File(self.fname,'r') as f:
@@ -396,7 +396,7 @@ class DADF5():
   def read_dataset(self,path,c=0,plain=False):
     """
     Dataset for all points/cells.
-    
+
     If more than one path is given, the dataset is composed of the individual contributions.
     """
     with h5py.File(self.fname,'r') as f:
@@ -405,11 +405,11 @@ class DADF5():
       dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
       for pa in path:
         label = pa.split('/')[2]
-        
+
         if (pa.split('/')[1] == 'geometry'):
           dataset = np.array(f[pa])
           continue
-        
+
         p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
         if len(p)>0:
           u = (f['mapping/cellResults/constituent']['Position'][p,c])
@@ -425,7 +425,7 @@ class DADF5():
           if len(a.shape) == 1:
             a=a.reshape([a.shape[0],1])
           dataset[p,:] = a[u,:]
-    
+
     if plain and dataset.dtype.names is not None:
       return dataset.view(('float64',len(dataset.dtype.names)))
     else:
@@ -444,8 +444,8 @@ class DADF5():
     else:
       with h5py.File(self.fname,'r') as f:
         return f['geometry/x_c'][()]
-    
-    
+
+
   def add_absolute(self,x):
     """
     Add absolute value.
@@ -469,14 +469,14 @@ class DADF5():
                }
 
     requested = [{'label':x,'arg':'x'}]
-    
+
     self.__add_generic_pointwise(__add_absolute,requested)
-    
+
 
   def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
     """
     Add result of a general formula.
-    
+
     Parameters
     ----------
     formula : str
@@ -493,15 +493,15 @@ class DADF5():
     """
     if vectorized is False:
       raise NotImplementedError
-    
+
     def __add_calculation(**kwargs):
-      
+
       formula = kwargs['formula']
       for d in re.findall(r'#(.*?)#',formula):
         formula = formula.replace('#{}#'.format(d),"kwargs['{}']['data']".format(d))
-        
+
       return {
-              'data':  eval(formula), 
+              'data':  eval(formula),
               'label': kwargs['label'],
               'meta':  {
                         'Unit':        kwargs['unit'],
@@ -509,17 +509,17 @@ class DADF5():
                         'Creator':     'dadf5.py:add_calculation v{}'.format(version)
                         }
                }
-    
+
     requested    = [{'label':d,'arg':d} for d in set(re.findall(r'#(.*?)#',formula))]               # datasets used in the formula
-    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description} 
-    
+    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description}
+
     self.__add_generic_pointwise(__add_calculation,requested,pass_through)
 
 
   def add_Cauchy(self,P='P',F='F'):
     """
     Add Cauchy stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
-    
+
     Parameters
     ----------
     P : str, optional
@@ -535,15 +535,17 @@ class DADF5():
               'label': 'sigma',
               'meta':  {
                         'Unit':        P['meta']['Unit'],
-                        'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],P['meta']['Description'])+\
-                                       'and deformation gradient {} ({})'.format(F['label'],F['meta']['Description']),
+                        'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],
+                                                                                       P['meta']['Description'])+\
+                                       'and deformation gradient {} ({})'.format(F['label'],
+                                                                                 F['meta']['Description']),
                         'Creator':     'dadf5.py:add_Cauchy v{}'.format(version)
                         }
               }
-      
+
     requested = [{'label':F,'arg':'F'},
                  {'label':P,'arg':'P'} ]
-    
+
     self.__add_generic_pointwise(__add_Cauchy,requested)
 
 
@@ -558,7 +560,7 @@ class DADF5():
 
     """
     def __add_determinant(x):
-      
+
       return {
               'data':  np.linalg.det(x['data']),
               'label': 'det({})'.format(x['label']),
@@ -568,9 +570,9 @@ class DADF5():
                         'Creator':     'dadf5.py:add_determinant v{}'.format(version)
                         }
               }
-      
+
     requested = [{'label':x,'arg':'x'}]
-    
+
     self.__add_generic_pointwise(__add_determinant,requested)
 
 
@@ -585,10 +587,10 @@ class DADF5():
 
     """
     def __add_deviator(x):
-      
+
       if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
         raise ValueError
-      
+
       return {
               'data':  mechanics.deviatoric_part(x['data']),
               'label': 's_{}'.format(x['label']),
@@ -598,16 +600,106 @@ class DADF5():
                         'Creator':     'dadf5.py:add_deviator v{}'.format(version)
                         }
                }
-      
+
     requested = [{'label':x,'arg':'x'}]
-    
+
     self.__add_generic_pointwise(__add_deviator,requested)
-    
-    
+
+
+  def add_eigenvalues(self,x):
+    """
+    Add eigenvalues of symmetric tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a symmetric tensor.
+
+    """
+    def __add_eigenvalue(x):
+
+      return {
+              'data': mechanics.eigenvalues(x['data']),
+              'label': 'lambda({})'.format(x['label']),
+              'meta' : {
+                        'Unit':         x['meta']['Unit'],
+                        'Description': 'Eigenvalues of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_eigenvalues v{}'.format(version)
+                       }
+              }
+    requested = [{'label':x,'arg':'x'}]
+
+    self.__add_generic_pointwise(__add_eigenvalue,requested)
+
+
+  def add_eigenvectors(self,x):
+    """
+    Add eigenvectors of symmetric tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a symmetric tensor.
+
+    """
+    def __add_eigenvector(x):
+
+      return {
+              'data': mechanics.eigenvectors(x['data']),
+              'label': 'v({})'.format(x['label']),
+              'meta' : {
+                        'Unit':         '1',
+                        'Description': 'Eigenvectors of {} ({})'.format(x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_eigenvectors v{}'.format(version)
+                       }
+              }
+    requested = [{'label':x,'arg':'x'}]
+
+    self.__add_generic_pointwise(__add_eigenvector,requested)
+
+
+  def add_IPFcolor(self,q,p):
+    """
+    Add RGB color tuple of inverse pole figure (IPF) color.
+
+    Parameters
+    ----------
+    orientation : str
+      Label of the dataset containing the orientation data as quaternions.
+    pole : list of int
+      Pole direction as Miller indices. Default value is [0, 0, 1].
+
+    """
+    def __add_IPFcolor(orientation,pole):
+
+      lattice   = orientation['meta']['Lattice']
+      unit_pole = pole/np.linalg.norm(pole)
+      colors    = np.empty((len(orientation['data']),3),np.uint8)
+
+      for i,q in enumerate(orientation['data']):
+         rot = Rotation(np.array([q['w'],q['x'],q['y'],q['z']]))
+         orientation = Orientation(rot,lattice = lattice).reduced()
+         colors[i]   = np.uint8(orientation.IPFcolor(unit_pole)*255)
+      return {
+              'data': colors,
+              'label': 'IPFcolor_[{} {} {}]'.format(*pole),
+              'meta' : {
+                        'Unit':        'RGB (8bit)',
+                        'Lattice':     lattice,
+                        'Description': 'Inverse Pole Figure colors',
+                        'Creator':     'dadf5.py:addIPFcolor v{}'.format(version)
+                       }
+             }
+
+    requested = [{'label':'orientation','arg':'orientation'}]
+
+    self.__add_generic_pointwise(__add_IPFcolor,requested,{'pole':pole})
+
+
   def add_maximum_shear(self,x):
     """
     Add maximum shear components of symmetric tensor.
-    
+
     Parameters
     ----------
     x : str
@@ -634,7 +726,7 @@ class DADF5():
   def add_Mises(self,x):
     """
     Add the equivalent Mises stress or strain of a symmetric tensor.
-    
+
     Parameters
     ----------
     x : str
@@ -654,16 +746,94 @@ class DADF5():
                         'Creator':     'dadf5.py:add_Mises v{}'.format(version)
                         }
               }
-      
+
     requested = [{'label':x,'arg':'x'}]
-    
+
     self.__add_generic_pointwise(__add_Mises,requested)
+
+
+  def add_PK2(self,F='F',P='P'):
+    """
+    Add 2. Piola-Kirchhoff calculated from 1. Piola-Kirchhoff stress and deformation gradient.
+
+    Parameters
+    ----------
+    P : str, optional
+      Label of the dataset containing the 1. Piola-Kirchhoff stress. Default value is ‘P’.
+    F : str, optional
+      Label of the dataset containing the deformation gradient. Default value is ‘F’.
+
+    """
+    def __add_PK2(F,P):
+
+      return {
+              'data':  mechanics.PK2(F['data'],P['data']),
+              'label': 'S',
+              'meta':  {
+                        'Unit':        P['meta']['Unit'],
+                        'Description': '2. Kirchhoff stress calculated from {} ({}) '.format(P['label'],
+                                                                                             P['meta']['Description'])+\
+                                       'and deformation gradient {} ({})'.format(F['label'],
+                                                                                 F['meta']['Description']),
+                        'Creator':     'dadf5.py:add_PK2 v{}'.format(version)
+                        }
+              }
+
+    requested = [{'label':F,'arg':'F'},
+                 {'label':P,'arg':'P'},]
+
+    self.__add_generic_pointwise(__add_PK2,requested)
+
+
+  def addPole(self,q,p,polar=False):
+    """
+    Add coordinates of stereographic projection of given direction (pole) in crystal frame.
+
+    Parameters
+    ----------
+    q : str
+      Label of the dataset containing the crystallographic orientation as a quaternion.
+    p : numpy.array of shape (3)
+      Pole (direction) in crystal frame.
+    polar : bool, optional
+      Give pole in polar coordinates. Default is false.
+
+    """
+    def __addPole(orientation,pole):
+
+      pole       = np.array(pole)
+      unit_pole /= np.linalg.norm(pole)
+      coords = np.empty((len(orientation['data']),2))
+
+      for i,q in enumerate(orientation['data']):
+        o = Rotation(np.array([q['w'],q['x'],q['y'],q['z']]))
+        rotatedPole = o*pole                                # rotate pole according to crystal orientation
+        (x,y) = rotatedPole[0:2]/(1.+abs(pole[2]))          # stereographic projection
+
+        if polar is True:
+          coords[i] = [np.sqrt(x*x+y*y),np.arctan2(y,x)]
+        else:
+          coords[i] = [x,y]
+
+      return {
+              'data': coords,
+              'label': 'Pole',
+              'meta' : {
+                        'Unit': '1',
+                        'Description': 'Coordinates of stereographic projection of given direction (pole) in crystal frame',
+                        'Creator' : 'dadf5.py:addPole v{}'.format(version)
+                       }
+             }
+
+    requested = [{'label':'orientation','arg':'orientation'}]
+
+    self.__add_generic_pointwise(__addPole,requested,{'pole':pole})
 
 
   def add_norm(self,x,ord=None):
     """
     Add the norm of vector or tensor.
-    
+
     Parameters
     ----------
     x : str
@@ -699,14 +869,14 @@ class DADF5():
     requested = [{'label':x,'arg':'x'}]
 
     self.__add_generic_pointwise(__add_norm,requested,{'ord':ord})
-    
-    
+
+
   def add_principal_components(self,x):
     """
     Add principal components of symmetric tensor.
-    
+
     The principal components are sorted in descending order, each repeated according to its multiplicity.
-    
+
     Parameters
     ----------
     x : str
@@ -741,7 +911,7 @@ class DADF5():
 
     """
     def __add_spherical(x):
-      
+
       if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
         raise ValueError
 
@@ -756,16 +926,16 @@ class DADF5():
                }
 
     requested = [{'label':x,'arg':'x'}]
-    
+
     self.__add_generic_pointwise(__add_spherical,requested)
 
 
   def add_strain_tensor(self,F='F',t='U',m=0):
     """
     Add strain tensor calculated from a deformation gradient.
-    
+
     For details refer to damask.mechanics.strain_tensor
-    
+
     Parameters
     ----------
     F : str, optional
@@ -778,9 +948,9 @@ class DADF5():
 
     """
     def __add_strain_tensor(F,t,m):
-      
+
       return {
-              'data':  mechanics.strain_tensor(F['data'],t,m), 
+              'data':  mechanics.strain_tensor(F['data'],t,m),
               'label': 'epsilon_{}^{}({})'.format(t,m,F['label']),
               'meta':  {
                         'Unit':        F['meta']['Unit'],
@@ -790,14 +960,14 @@ class DADF5():
                }
 
     requested = [{'label':F,'arg':'F'}]
-    
+
     self.__add_generic_pointwise(__add_strain_tensor,requested,{'t':t,'m':m})
 
 
   def __add_generic_pointwise(self,func,datasets_requested,extra_args={}):
     """
     General function to add pointwise data.
-    
+
     Parameters
     ----------
     func : function
@@ -811,14 +981,14 @@ class DADF5():
     def job(args):
       """Call function with input data + extra arguments, returns results + group."""
       args['results'].put({**args['func'](**args['in']),'group':args['group']})
-    
+
 
     N_threads = 1 # ToDo: should be a parameter
 
     results = Queue(N_threads)
     pool    = util.ThreadPool(N_threads)
     N_added = N_threads + 1
-    
+
     todo = []
     # ToDo: It would be more memory efficient to read only from file when required, i.e. do to it in pool.add_task
     for group in self.groups_with_datasets([d['label'] for d in datasets_requested]):
@@ -831,18 +1001,18 @@ class DADF5():
           datasets_in[d['arg']] = {'data': data, 'meta' : meta, 'label' : d['label']}
 
       todo.append({'in':{**datasets_in,**extra_args},'func':func,'group':group,'results':results})
-    
+
     pool.map(job, todo[:N_added])                                                                   # initialize
 
     N_not_calculated = len(todo)
-    while N_not_calculated > 0:    
+    while N_not_calculated > 0:
       result = results.get()
       with h5py.File(self.fname,'a') as f:                                                          # write to file
         dataset_out = f[result['group']].create_dataset(result['label'],data=result['data'])
         for k in result['meta'].keys():
           dataset_out.attrs[k] = result['meta'][k].encode()
         N_not_calculated-=1
-      
+
       if N_added < len(todo):                                                                       # add more jobs
         pool.add_task(job,todo[N_added])
         N_added +=1
@@ -853,7 +1023,7 @@ class DADF5():
   def to_vtk(self,labels,mode='Cell'):
     """
     Export to vtk cell/point data.
-    
+
     Parameters
     ----------
     labels : str or list of
@@ -866,24 +1036,24 @@ class DADF5():
     if mode=='Cell':
 
       if self.structured:
-  
+
         coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
         for dim in [0,1,2]:
           for c in np.linspace(0,self.size[dim],1+self.grid[dim]):
             coordArray[dim].InsertNextValue(c)
-  
+
         vtk_geom = vtk.vtkRectilinearGrid()
         vtk_geom.SetDimensions(*(self.grid+1))
         vtk_geom.SetXCoordinates(coordArray[0])
         vtk_geom.SetYCoordinates(coordArray[1])
         vtk_geom.SetZCoordinates(coordArray[2])
-  
+
       else:
-        
+
         nodes = vtk.vtkPoints()
         with h5py.File(self.fname,'r') as f:
           nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
-          
+
           vtk_geom = vtk.vtkUnstructuredGrid()
           vtk_geom.SetPoints(nodes)
           vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
@@ -910,22 +1080,22 @@ class DADF5():
 
     elif mode == 'Point':
       Points   = vtk.vtkPoints()
-      Vertices = vtk.vtkCellArray()  
+      Vertices = vtk.vtkCellArray()
       for c in self.cell_coordinates():
         pointID = Points.InsertNextPoint(c)
         Vertices.InsertNextCell(1)
         Vertices.InsertCellPoint(pointID)
-      
+
       vtk_geom = vtk.vtkPolyData()
       vtk_geom.SetPoints(Points)
       vtk_geom.SetVerts(Vertices)
       vtk_geom.Modified()
-  
+
     N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
-    
+
     for i,inc in enumerate(self.iter_visible('increments')):
       vtk_data = []
-      
+
       materialpoints_backup = self.visible['materialpoints'].copy()
       self.set_visible('materialpoints',False)
       for label in (labels if isinstance(labels,list) else [labels]):
@@ -983,8 +1153,8 @@ class DADF5():
             vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
             vtk_geom.GetCellData().AddArray(vtk_data[-1])
       self.set_visible('constituents',constituents_backup)
-     
-      if mode=='Cell': 
+
+      if mode=='Cell':
         writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
                  vtk.vtkXMLUnstructuredGridWriter()
         x = self.get_dataset_location('u_n')
@@ -995,11 +1165,11 @@ class DADF5():
       elif mode == 'Point':
         writer = vtk.vtkXMLPolyDataWriter()
 
-      
+
       file_out = '{}_inc{}.{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
                                       inc[3:].zfill(N_digits),
                                       writer.GetDefaultFileExtension())
-      
+
       writer.SetCompressorTypeToZLib()
       writer.SetDataModeToBinary()
       writer.SetFileName(file_out)
