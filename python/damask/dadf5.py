@@ -648,7 +648,7 @@ class DADF5():
               'data': mechanics.eigenvectors(x['data']),
               'label': 'v({})'.format(x['label']),
               'meta' : {
-                        'Unit':         '1',
+                        'Unit':        '1',
                         'Description': 'Eigenvectors of {} ({})'.format(x['label'],x['meta']['Description']),
                         'Creator':     'dadf5.py:add_eigenvectors v{}'.format(version)
                        }

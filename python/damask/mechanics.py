@@ -51,7 +51,7 @@ def eigenvalues(x):
     return np.linalg.eigvalsh(symmetric(x))
 
 
-def eigenvectors(x):
+def eigenvectors(x,RHS=False):
     """
     Return eigenvectors of a symmetric tensor.
 
@@ -61,9 +61,17 @@ def eigenvectors(x):
     ----------
     x : numpy.array of shape (:,3,3) or (3,3)
       Symmetric tensor of which the eigenvectors are computed.
+    RHS: bool, optional
+      Enforce right-handed coordinate system. Default is False.
 
     """
     (u,v) = np.linalg.eigh(symmetric(x))
+
+    if RHS:
+        if np.shape(x) == (3,3):
+            if np.linalg.det(v) < 0.0: v[:,2] *= -1.0
+        else:
+            v[np.linalg.det(v) < 0.0,:,2] *= -1.0
     return v
 
 
