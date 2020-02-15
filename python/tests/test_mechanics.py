@@ -2,10 +2,10 @@ import numpy as np
 from damask import mechanics
 
 class TestMechanics:
-   
+
     n = 1000
     c = np.random.randint(n)
-   
+
 
     def test_vectorize_Cauchy(self):
          P = np.random.random((self.n,3,3))
@@ -58,10 +58,23 @@ class TestMechanics:
                             mechanics.maximum_shear(x[self.c]))
 
 
-    def test_vectorize_principal_components(self):
+    def test_vectorize_eigenvalues(self):
          x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.principal_components(x)[self.c],
-                            mechanics.principal_components(x[self.c]))
+         assert np.allclose(mechanics.eigenvalues(x)[self.c],
+                            mechanics.eigenvalues(x[self.c]))
+
+
+    def test_vectorize_eigenvectors(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.eigenvectors(x)[self.c],
+                            mechanics.eigenvectors(x[self.c]))
+
+
+    def test_vectorize_PK2(self):
+         F = np.random.random((self.n,3,3))
+         P = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.PK2(F,P)[self.c],
+                            mechanics.PK2(F[self.c],P[self.c]))
 
 
     def test_vectorize_transpose(self):
@@ -102,7 +115,14 @@ class TestMechanics:
          U = mechanics.right_stretch(F)
          assert np.allclose(np.matmul(R,U),
                             np.matmul(V,R))
-   
+
+
+    def test_PK2(self):
+         """Ensure 2. Piola-Kirchhoff stress is symmetrized 1. Piola-Kirchhoff stress for no deformation."""
+         P = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.PK2(np.broadcast_to(np.eye(3),(self.n,3,3)),P),
+                            mechanics.symmetric(P))
+
 
     def test_strain_tensor_no_rotation(self):
          """Ensure that left and right stretch give same results for no rotation."""
@@ -110,7 +130,7 @@ class TestMechanics:
          m = np.random.random()*20.0-10.0
          assert np.allclose(mechanics.strain_tensor(F,'U',m),
                             mechanics.strain_tensor(F,'V',m))
-   
+
     def test_strain_tensor_rotation_equivalence(self):
          """Ensure that left and right strain differ only by a rotation."""
          F = np.broadcast_to(np.eye(3),[self.n,3,3]) + (np.random.random((self.n,3,3))*0.5 - 0.25)
@@ -125,7 +145,7 @@ class TestMechanics:
          m = np.random.random()*2.0 - 1.0
          assert np.allclose(mechanics.strain_tensor(F,t,m),
                             0.0)
-   
+
     def test_rotation_determinant(self):
          """
          Ensure that the determinant of the rotational part is +- 1.
@@ -186,3 +206,22 @@ class TestMechanics:
          x = np.random.random((self.n,3,3))
          assert np.allclose(mechanics.Mises_stress(x)/mechanics.Mises_strain(x),
                             1.5)
+
+
+    def test_eigenvalues(self):
+         """Ensure that the characteristic polynomial can be solved."""
+         A = mechanics.symmetric(np.random.random((self.n,3,3)))
+         lambd = mechanics.eigenvalues(A)
+         s = np.random.randint(self.n)
+         for i in range(3):
+            assert np.allclose(np.linalg.det(A[s]-lambd[s,i]*np.eye(3)),.0)
+
+
+    def test_eigenvalues_and_vectors(self):
+         """Ensure that eigenvalues and -vectors are the solution to the characteristic polynomial."""
+         A = mechanics.symmetric(np.random.random((self.n,3,3)))
+         lambd = mechanics.eigenvalues(A)
+         x     = mechanics.eigenvectors(A)
+         s = np.random.randint(self.n)
+         for i in range(3):
+            assert np.allclose(np.dot(A[s]-lambd[s,i]*np.eye(3),x[s,:,i]),.0)
