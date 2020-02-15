@@ -21,6 +21,106 @@ def Cauchy(F,P):
     return symmetric(sigma)
 
 
+def deviatoric_part(x):
+    """
+    Return deviatoric part of a tensor.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Tensor of which the deviatoric part is computed.
+
+    """
+    return x - np.eye(3)*spherical_part(x) if np.shape(x) == (3,3) else \
+           x - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[x.shape[0],3,3]),spherical_part(x))
+
+
+def eigenvalues(x):
+    """
+    Return the eigenvalues, i.e. principal components, of a symmetric tensor.
+
+    The eigenvalues are sorted in ascending order, each repeated according to
+    its multiplicity.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Symmetric tensor of which the eigenvalues are computed.
+
+    """
+    return np.linalg.eigvalsh(symmetric(x))
+
+
+def eigenvectors(x):
+    """
+    Return eigenvectors of a symmetric tensor.
+
+    The eigenvalues are sorted in ascending order of their associated eigenvalues.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Symmetric tensor of which the eigenvectors are computed.
+
+    """
+    (u,v) = np.linalg.eigh(symmetric(x))
+    return v
+
+
+def left_stretch(x):
+    """
+    Return the left stretch of a tensor.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Tensor of which the left stretch is computed.
+
+    """
+    return __polar_decomposition(x,'V')[0]
+
+
+def maximum_shear(x):
+    """
+    Return the maximum shear component of a symmetric tensor.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Symmetric tensor of which the maximum shear is computed.
+
+    """
+    w = eigenvalues(x)
+    return (w[0] - w[2])*0.5 if np.shape(x) == (3,3) else \
+           (w[:,0] - w[:,2])*0.5
+
+
+def Mises_strain(epsilon):
+    """
+    Return the Mises equivalent of a strain tensor.
+
+    Parameters
+    ----------
+    epsilon : numpy.array of shape (:,3,3) or (3,3)
+      Symmetric strain tensor of which the von Mises equivalent is computed.
+
+    """
+    return __Mises(epsilon,2.0/3.0)
+
+
+def Mises_stress(sigma):
+    """
+    Return the Mises equivalent of a stress tensor.
+
+    Parameters
+    ----------
+    sigma : numpy.array of shape (:,3,3) or (3,3)
+      Symmetric stress tensor of which the von Mises equivalent is computed.
+
+    """
+    return __Mises(sigma,3.0/2.0)
+
+
 def PK2(F,P):
     """
     Return 2. Piola-Kirchhoff stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
@@ -38,6 +138,54 @@ def PK2(F,P):
     else:
         S = np.einsum('ijk,ikl->ijl',np.linalg.inv(F),P)
     return symmetric(S)
+
+def right_stretch(x):
+    """
+    Return the right stretch of a tensor.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Tensor of which the right stretch is computed.
+
+    """
+    return __polar_decomposition(x,'U')[0]
+
+
+def rotational_part(x):
+    """
+    Return the rotational part of a tensor.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Tensor of which the rotational part is computed.
+
+    """
+    return __polar_decomposition(x,'R')[0]
+
+
+def spherical_part(x,tensor=False):
+    """
+    Return spherical (hydrostatic) part of a tensor.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Tensor of which the hydrostatic part is computed.
+    tensor : bool, optional
+      Map spherical part onto identity tensor. Default is false
+
+    """
+    if x.shape == (3,3):
+        sph = np.trace(x)/3.0
+        return sph if not tensor else np.eye(3)*sph
+    else:
+        sph = np.trace(x,axis1=1,axis2=2)/3.0
+        if not tensor:
+            return sph
+        else:
+            return np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),(x.shape[0],3,3)),sph)
 
 
 def strain_tensor(F,t,m):
@@ -78,73 +226,6 @@ def strain_tensor(F,t,m):
            eps
 
 
-def deviatoric_part(x):
-    """
-    Return deviatoric part of a tensor.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Tensor of which the deviatoric part is computed.
-
-    """
-    return x - np.eye(3)*spherical_part(x) if np.shape(x) == (3,3) else \
-           x - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[x.shape[0],3,3]),spherical_part(x))
-
-
-def spherical_part(x,tensor=False):
-    """
-    Return spherical (hydrostatic) part of a tensor.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Tensor of which the hydrostatic part is computed.
-    tensor : bool, optional
-      Map spherical part onto identity tensor. Default is false
-
-    """
-    if x.shape == (3,3):
-        sph = np.trace(x)/3.0
-        return sph if not tensor else np.eye(3)*sph
-    else:
-        sph = np.trace(x,axis1=1,axis2=2)/3.0
-        if not tensor:
-            return sph
-        else:
-            return np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),(x.shape[0],3,3)),sph)
-
-
-def Mises_stress(sigma):
-    """
-    Return the Mises equivalent of a stress tensor.
-
-    Parameters
-    ----------
-    sigma : numpy.array of shape (:,3,3) or (3,3)
-      Symmetric stress tensor of which the von Mises equivalent is computed.
-
-    """
-    s = deviatoric_part(sigma)
-    return np.sqrt(3.0/2.0*(np.sum(s**2.0))) if np.shape(sigma) == (3,3) else \
-           np.sqrt(3.0/2.0*np.einsum('ijk->i',s**2.0))
-
-
-def Mises_strain(epsilon):
-    """
-    Return the Mises equivalent of a strain tensor.
-
-    Parameters
-    ----------
-    epsilon : numpy.array of shape (:,3,3) or (3,3)
-      Symmetric strain tensor of which the von Mises equivalent is computed.
-
-    """
-    s = deviatoric_part(epsilon)
-    return np.sqrt(2.0/3.0*(np.sum(s**2.0))) if np.shape(epsilon) == (3,3) else \
-           np.sqrt(2.0/3.0*np.einsum('ijk->i',s**2.0))
-
-
 def symmetric(x):
     """
     Return the symmetrized tensor.
@@ -156,53 +237,6 @@ def symmetric(x):
 
     """
     return (x+transpose(x))*0.5
-
-
-def maximum_shear(x):
-    """
-    Return the maximum shear component of a symmetric tensor.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Symmetric tensor of which the maximum shear is computed.
-
-    """
-    w = eigenvalues(x)
-    return (w[0] - w[2])*0.5 if np.shape(x) == (3,3) else \
-           (w[:,0] - w[:,2])*0.5
-
-
-def eigenvalues(x):
-    """
-    Return the eigenvalues, i.e. principal components, of a symmetric tensor.
-
-    The eigenvalues are sorted in ascending order, each repeated according to
-    its multiplicity.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Symmetric tensor of which the eigenvalues are computed.
-
-    """
-    return np.linalg.eigvalsh(symmetric(x))
-
-
-def eigenvectors(x):
-    """
-    Return eigenvectors of a symmetric tensor.
-
-    The eigenvalues are sorted in ascending order of their associated eigenvalues.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Symmetric tensor of which the eigenvectors are computed.
-
-    """
-    (u,v) = np.linalg.eigh(symmetric(x))
-    return v
 
 
 def transpose(x):
@@ -217,45 +251,6 @@ def transpose(x):
     """
     return x.T if np.shape(x) == (3,3) else \
            np.transpose(x,(0,2,1))
-
-
-def rotational_part(x):
-    """
-    Return the rotational part of a tensor.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Tensor of which the rotational part is computed.
-
-    """
-    return __polar_decomposition(x,'R')[0]
-
-
-def left_stretch(x):
-    """
-    Return the left stretch of a tensor.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Tensor of which the left stretch is computed.
-
-    """
-    return __polar_decomposition(x,'V')[0]
-
-
-def right_stretch(x):
-    """
-    Return the right stretch of a tensor.
-
-    Parameters
-    ----------
-    x : numpy.array of shape (:,3,3) or (3,3)
-      Tensor of which the right stretch is computed.
-
-    """
-    return __polar_decomposition(x,'U')[0]
 
 
 def __polar_decomposition(x,requested):
@@ -284,3 +279,19 @@ def __polar_decomposition(x,requested):
         output.append(np.dot(R.T,x) if np.shape(x) == (3,3) else np.einsum('ikj,ikl->ijl',R,x))
 
     return tuple(output)
+
+
+def __Mises(x,s):
+    """
+    Base equation for Mises equivalent of a stres or strain tensor.
+
+    Parameters
+    ----------
+    x : numpy.array of shape (:,3,3) or (3,3)
+      Symmetric tensor of which the von Mises equivalent is computed.
+    s : float
+      Scaling factor (2/3 for strain, 3/2 for stress).
+    """
+    d = deviatoric_part(x)
+    return np.sqrt(s*(np.sum(d**2.0))) if np.shape(x) == (3,3) else \
+           np.sqrt(s*np.einsum('ijk->i',d**2.0))

@@ -13,6 +13,61 @@ class TestMechanics:
          assert np.allclose(mechanics.Cauchy(F,P)[self.c],
                             mechanics.Cauchy(F[self.c],P[self.c]))
 
+    def test_vectorize_deviatoric_part(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.deviatoric_part(x)[self.c],
+                            mechanics.deviatoric_part(x[self.c]))
+
+    def test_vectorize_eigenvalues(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.eigenvalues(x)[self.c],
+                            mechanics.eigenvalues(x[self.c]))
+
+    def test_vectorize_eigenvectors(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.eigenvectors(x)[self.c],
+                            mechanics.eigenvectors(x[self.c]))
+
+    def test_vectorize_left_stretch(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.left_stretch(x)[self.c],
+                            mechanics.left_stretch(x[self.c]))
+
+    def test_vectorize_maximum_shear(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.maximum_shear(x)[self.c],
+                            mechanics.maximum_shear(x[self.c]))
+
+    def test_vectorize_Mises_strain(self):
+         epsilon = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.Mises_strain(epsilon)[self.c],
+                            mechanics.Mises_strain(epsilon[self.c]))
+
+    def test_vectorize_Mises_stress(self):
+         sigma = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.Mises_stress(sigma)[self.c],
+                            mechanics.Mises_stress(sigma[self.c]))
+
+    def test_vectorize_PK2(self):
+         F = np.random.random((self.n,3,3))
+         P = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.PK2(F,P)[self.c],
+                            mechanics.PK2(F[self.c],P[self.c]))
+
+    def test_vectorize_right_stretch(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.right_stretch(x)[self.c],
+                            mechanics.right_stretch(x[self.c]))
+
+    def test_vectorize_rotational_part(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.rotational_part(x)[self.c],
+                            mechanics.rotational_part(x[self.c]))
+
+    def test_vectorize_spherical_part(self):
+         x = np.random.random((self.n,3,3))
+         assert np.allclose(mechanics.spherical_part(x,True)[self.c],
+                            mechanics.spherical_part(x[self.c],True))
 
     def test_vectorize_strain_tensor(self):
          F = np.random.random((self.n,3,3))
@@ -21,61 +76,10 @@ class TestMechanics:
          assert np.allclose(mechanics.strain_tensor(F,t,m)[self.c],
                             mechanics.strain_tensor(F[self.c],t,m))
 
-
-    def test_vectorize_deviatoric_part(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.deviatoric_part(x)[self.c],
-                            mechanics.deviatoric_part(x[self.c]))
-
-
-    def test_vectorize_spherical_part(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.spherical_part(x,True)[self.c],
-                            mechanics.spherical_part(x[self.c],True))
-
-
-    def test_vectorize_Mises_stress(self):
-         sigma = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.Mises_stress(sigma)[self.c],
-                            mechanics.Mises_stress(sigma[self.c]))
-
-
-    def test_vectorize_Mises_strain(self):
-         epsilon = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.Mises_strain(epsilon)[self.c],
-                            mechanics.Mises_strain(epsilon[self.c]))
-
-
     def test_vectorize_symmetric(self):
          x = np.random.random((self.n,3,3))
          assert np.allclose(mechanics.symmetric(x)[self.c],
                             mechanics.symmetric(x[self.c]))
-
-
-    def test_vectorize_maximum_shear(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.maximum_shear(x)[self.c],
-                            mechanics.maximum_shear(x[self.c]))
-
-
-    def test_vectorize_eigenvalues(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.eigenvalues(x)[self.c],
-                            mechanics.eigenvalues(x[self.c]))
-
-
-    def test_vectorize_eigenvectors(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.eigenvectors(x)[self.c],
-                            mechanics.eigenvectors(x[self.c]))
-
-
-    def test_vectorize_PK2(self):
-         F = np.random.random((self.n,3,3))
-         P = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.PK2(F,P)[self.c],
-                            mechanics.PK2(F[self.c],P[self.c]))
-
 
     def test_vectorize_transpose(self):
          x = np.random.random((self.n,3,3))
@@ -83,29 +87,12 @@ class TestMechanics:
                             mechanics.transpose(x[self.c]))
 
 
-    def test_vectorize_rotational_part(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.rotational_part(x)[self.c],
-                            mechanics.rotational_part(x[self.c]))
-
-
-    def test_vectorize_left_stretch(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.left_stretch(x)[self.c],
-                            mechanics.left_stretch(x[self.c]))
-
-
-    def test_vectorize_right_stretch(self):
-         x = np.random.random((self.n,3,3))
-         assert np.allclose(mechanics.right_stretch(x)[self.c],
-                            mechanics.right_stretch(x[self.c]))
-
-
     def test_Cauchy(self):
          """Ensure Cauchy stress is symmetrized 1. Piola-Kirchhoff stress for no deformation."""
          P = np.random.random((self.n,3,3))
          assert np.allclose(mechanics.Cauchy(np.broadcast_to(np.eye(3),(self.n,3,3)),P),
                             mechanics.symmetric(P))
+
 
     def test_polar_decomposition(self):
          """F = RU = VR."""
@@ -215,7 +202,6 @@ class TestMechanics:
          s = np.random.randint(self.n)
          for i in range(3):
             assert np.allclose(np.linalg.det(A[s]-lambd[s,i]*np.eye(3)),.0)
-
 
     def test_eigenvalues_and_vectors(self):
          """Ensure that eigenvalues and -vectors are the solution to the characteristic polynomial."""
