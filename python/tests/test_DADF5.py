@@ -48,7 +48,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_Cauchy(self,default):
-        default.add_Cauchy('P','F')
+        default.add_Cauchy('F','P')
         loc = {'F':    default.get_dataset_location('F'),
                'P':    default.get_dataset_location('P'),
                'sigma':default.get_dataset_location('sigma')}
@@ -74,7 +74,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_eigenvalues(self,default):
-        default.add_Cauchy('P','F')
+        default.add_Cauchy('F','P')
         default.add_eigenvalues('sigma')
         loc = {'sigma'        :default.get_dataset_location('sigma'),
                'lambda(sigma)':default.get_dataset_location('lambda(sigma)')}
@@ -83,7 +83,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_eigenvectors(self,default):
-        default.add_Cauchy('P','F')
+        default.add_Cauchy('F','P')
         default.add_eigenvectors('sigma')
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'v(sigma)':default.get_dataset_location('v(sigma)')}
@@ -92,7 +92,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_maximum_shear(self,default):
-        default.add_Cauchy('P','F')
+        default.add_Cauchy('F','P')
         default.add_maximum_shear('sigma')
         loc = {'sigma'           :default.get_dataset_location('sigma'),
                'max_shear(sigma)':default.get_dataset_location('max_shear(sigma)')}
@@ -108,10 +108,44 @@ class TestDADF5:
         in_file   = default.read_dataset(loc['|F|_1'],0)
         assert np.allclose(in_memory,in_file)
 
+    def test_add_PK2(self,default):
+        default.add_PK2('F','P')
+        loc = {'F':default.get_dataset_location('F'),
+               'P':default.get_dataset_location('P'),
+               'S':default.get_dataset_location('S')}
+        in_memory = mechanics.PK2(default.read_dataset(loc['F'],0),
+                                  default.read_dataset(loc['P'],0))
+        in_file   = default.read_dataset(loc['S'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_rotational_part(self,default):
+        default.add_rotational_part('F')
+        loc = {'F':    default.get_dataset_location('F'),
+               'R(F)': default.get_dataset_location('R(F)')}
+        in_memory = mechanics.rotational_part(default.read_dataset(loc['F'],0))
+        in_file   = default.read_dataset(loc['R(F)'],0)
+        assert np.allclose(in_memory,in_file)
+
     def test_add_spherical(self,default):
         default.add_spherical('P')
         loc = {'P':   default.get_dataset_location('P'),
                'p_P': default.get_dataset_location('p_P')}
         in_memory = mechanics.spherical_part(default.read_dataset(loc['P'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['p_P'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_stretch_right(self,default):
+        default.add_stretch_tensor('F','U')
+        loc = {'F':    default.get_dataset_location('F'),
+               'U(F)': default.get_dataset_location('U(F)')}
+        in_memory = mechanics.right_stretch(default.read_dataset(loc['F'],0))
+        in_file   = default.read_dataset(loc['U(F)'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_stretch_left(self,default):
+        default.add_stretch_tensor('F','V')
+        loc = {'F':    default.get_dataset_location('F'),
+               'V(F)': default.get_dataset_location('V(F)')}
+        in_memory = mechanics.left_stretch(default.read_dataset(loc['F'],0))
+        in_file   = default.read_dataset(loc['V(F)'],0)
         assert np.allclose(in_memory,in_file)

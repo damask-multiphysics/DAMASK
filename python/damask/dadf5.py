@@ -516,7 +516,7 @@ class DADF5():
     self.__add_generic_pointwise(__add_calculation,requested,pass_through)
 
 
-  def add_Cauchy(self,P='P',F='F'):
+  def add_Cauchy(self,F='F',P='P'):
     """
     Add Cauchy stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
 
@@ -537,8 +537,7 @@ class DADF5():
                         'Unit':        P['meta']['Unit'],
                         'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],
                                                                                        P['meta']['Description'])+\
-                                       'and deformation gradient {} ({})'.format(F['label'],
-                                                                                 F['meta']['Description']),
+                                       'and {} ({})'.format(F['label'],F['meta']['Description']),
                         'Creator':     'dadf5.py:add_Cauchy v{}'.format(version)
                         }
               }
@@ -814,8 +813,7 @@ class DADF5():
                         'Unit':        P['meta']['Unit'],
                         'Description': '2. Kirchhoff stress calculated from {} ({}) '.format(P['label'],
                                                                                              P['meta']['Description'])+\
-                                       'and deformation gradient {} ({})'.format(F['label'],
-                                                                                 F['meta']['Description']),
+                                       'and {} ({})'.format(F['label'],F['meta']['Description']),
                         'Creator':     'dadf5.py:add_PK2 v{}'.format(version)
                         }
               }
@@ -871,33 +869,31 @@ class DADF5():
     self.__add_generic_pointwise(__addPole,requested,{'pole':pole})
 
 
-  def add_principal_components(self,x):
+  def add_rotational_part(self,F='F'):
     """
-    Add principal components of symmetric tensor.
-
-    The principal components are sorted in descending order, each repeated according to its multiplicity.
+    Add rotational part of a deformation gradient.
 
     Parameters
     ----------
-    x : str
-      Label of the dataset containing a symmetric tensor.
+    F : str
+      Label of the dataset containing a deformation gradient. Default value is ‘F’.
 
     """
-    def __add_principal_components(x):
+    def __add_rotational_part(F):
 
       return {
-              'data':  mechanics.principal_components(x['data']),
-              'label': 'lambda_{}'.format(x['label']),
+              'data':  mechanics.rotational_part(F['data']),
+              'label': 'R({})'.format(F['label']),
               'meta':  {
-                        'Unit':        x['meta']['Unit'],
-                        'Description': 'Pricipal components of {} ({})'.format(x['label'],x['meta']['Description']),
-                        'Creator':     'dadf5.py:add_principal_components v{}'.format(version)
+                        'Unit':        F['meta']['Unit'],
+                        'Description': 'Rotational part of {} ({})'.format(F['label'],F['meta']['Description']),
+                        'Creator':     'dadf5.py:add_rotational_part v{}'.format(version)
                         }
                }
 
-    requested = [{'label':x,'arg':'x'}]
+    requested = [{'label':F,'arg':'F'}]
 
-    self.__add_generic_pointwise(__add_principal_components,requested)
+    self.__add_generic_pointwise(__add_rotational_part,requested)
 
 
   def add_spherical(self,x):
@@ -941,8 +937,8 @@ class DADF5():
     F : str, optional
       Label of the dataset containing the deformation gradient. Default value is ‘F’.
     t : {‘V’, ‘U’}, optional
-      Type of the polar decomposition, ‘V’ for right stretch tensor and ‘U’ for left stretch tensor.
-      Defaults value is ‘U’.
+      Type of the polar decomposition, ‘U’ for right stretch tensor and ‘V’ for left stretch tensor.
+      Default value is ‘U’.
     m : float, optional
       Order of the strain calculation. Default value is ‘0.0’.
 
@@ -962,6 +958,37 @@ class DADF5():
     requested = [{'label':F,'arg':'F'}]
 
     self.__add_generic_pointwise(__add_strain_tensor,requested,{'t':t,'m':m})
+
+
+  def add_stretch_tensor(self,F='F',t='U'):
+    """
+    Add stretch tensor calculated from a deformation gradient.
+
+    Parameters
+    ----------
+    F : str, optional
+      Label of the dataset containing the deformation gradient. Default value is ‘F’.
+    t : {‘V’, ‘U’}, optional
+      Type of the polar decomposition, ‘U’ for right stretch tensor and ‘V’ for left stretch tensor.
+      Default value is ‘U’.
+
+    """
+    def __add_stretch_tensor(F,t):
+
+      return {
+              'data':  mechanics.left_stretch(F['data']) if t == 'V' else mechanics.right_stretch(F['data']),
+              'label': '{}({})'.format(t,F['label']),
+              'meta':  {
+                        'Unit':        F['meta']['Unit'],
+                        'Description': '{} stretch tensor of {} ({})'.format('Left' if t == 'V' else 'Right',
+                                                                             F['label'],F['meta']['Description']),
+                        'Creator':     'dadf5.py:add_stretch_tensor v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':F,'arg':'F'}]
+
+    self.__add_generic_pointwise(__add_stretch_tensor,requested,{'t':t})
 
 
   def __add_generic_pointwise(self,func,datasets_requested,extra_args={}):
