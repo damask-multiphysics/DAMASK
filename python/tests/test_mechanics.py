@@ -211,3 +211,16 @@ class TestMechanics:
          s = np.random.randint(self.n)
          for i in range(3):
             assert np.allclose(np.dot(A[s]-lambd[s,i]*np.eye(3),x[s,:,i]),.0)
+
+    def test_eigenvectors_RHS(self):
+         """Ensure that RHS coordinate system does only change sign of determinant."""
+         A = mechanics.symmetric(np.random.random((self.n,3,3)))
+         LRHS = np.linalg.det(mechanics.eigenvectors(A,RHS=False))
+         RHS  = np.linalg.det(mechanics.eigenvectors(A,RHS=True))
+         s = np.random.randint(self.n)
+         assert np.allclose(np.abs(LRHS),RHS)
+
+    def test_spherical_no_shear(self):
+         """Ensure that sherical stress has max shear of 0.0."""
+         A = mechanics.spherical_part(mechanics.symmetric(np.random.random((self.n,3,3))),True)
+         assert np.allclose(mechanics.maximum_shear(A),0.0)

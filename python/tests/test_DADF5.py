@@ -73,6 +73,33 @@ class TestDADF5:
         in_file   = default.read_dataset(loc['s_P'],0)
         assert np.allclose(in_memory,in_file)
 
+    def test_add_eigenvalues(self,default):
+        default.add_Cauchy('P','F')
+        default.add_eigenvalues('sigma')
+        loc = {'sigma'        :default.get_dataset_location('sigma'),
+               'lambda(sigma)':default.get_dataset_location('lambda(sigma)')}
+        in_memory = mechanics.eigenvalues(default.read_dataset(loc['sigma'],0))
+        in_file   = default.read_dataset(loc['lambda(sigma)'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_eigenvectors(self,default):
+        default.add_Cauchy('P','F')
+        default.add_eigenvectors('sigma')
+        loc = {'sigma'   :default.get_dataset_location('sigma'),
+               'v(sigma)':default.get_dataset_location('v(sigma)')}
+        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))
+        in_file   = default.read_dataset(loc['v(sigma)'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_maximum_shear(self,default):
+        default.add_Cauchy('P','F')
+        default.add_maximum_shear('sigma')
+        loc = {'sigma'           :default.get_dataset_location('sigma'),
+               'max_shear(sigma)':default.get_dataset_location('max_shear(sigma)')}
+        in_memory = mechanics.maximum_shear(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
+        in_file   = default.read_dataset(loc['max_shear(sigma)'],0)
+        assert np.allclose(in_memory,in_file)
+
     def test_add_norm(self,default):
         default.add_norm('F',1)
         loc = {'F':    default.get_dataset_location('F'),

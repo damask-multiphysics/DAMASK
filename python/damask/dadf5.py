@@ -752,6 +752,47 @@ class DADF5():
     self.__add_generic_pointwise(__add_Mises,requested)
 
 
+  def add_norm(self,x,ord=None):
+    """
+    Add the norm of vector or tensor.
+
+    Parameters
+    ----------
+    x : str
+      Label of the dataset containing a vector or tensor.
+    ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
+      Order of the norm. inf means numpy’s inf object. For details refer to numpy.linalg.norm.
+
+    """
+    def __add_norm(x,ord):
+
+      o = ord
+      if len(x['data'].shape) == 2:
+        axis = 1
+        t = 'vector'
+        if o is None: o = 2
+      elif len(x['data'].shape) == 3:
+        axis = (1,2)
+        t = 'tensor'
+        if o is None: o = 'fro'
+      else:
+        raise ValueError
+
+      return {
+              'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
+              'label': '|{}|_{}'.format(x['label'],o),
+              'meta':  {
+                        'Unit':        x['meta']['Unit'],
+                        'Description': '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
+                        'Creator':     'dadf5.py:add_norm v{}'.format(version)
+                        }
+               }
+
+    requested = [{'label':x,'arg':'x'}]
+
+    self.__add_generic_pointwise(__add_norm,requested,{'ord':ord})
+
+
   def add_PK2(self,F='F',P='P'):
     """
     Add 2. Piola-Kirchhoff calculated from 1. Piola-Kirchhoff stress and deformation gradient.
@@ -828,47 +869,6 @@ class DADF5():
     requested = [{'label':'orientation','arg':'orientation'}]
 
     self.__add_generic_pointwise(__addPole,requested,{'pole':pole})
-
-
-  def add_norm(self,x,ord=None):
-    """
-    Add the norm of vector or tensor.
-
-    Parameters
-    ----------
-    x : str
-      Label of the dataset containing a vector or tensor.
-    ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
-      Order of the norm. inf means numpy’s inf object. For details refer to numpy.linalg.norm.
-
-    """
-    def __add_norm(x,ord):
-
-      o = ord
-      if len(x['data'].shape) == 2:
-        axis = 1
-        t = 'vector'
-        if o is None: o = 2
-      elif len(x['data'].shape) == 3:
-        axis = (1,2)
-        t = 'tensor'
-        if o is None: o = 'fro'
-      else:
-        raise ValueError
-
-      return {
-              'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
-              'label': '|{}|_{}'.format(x['label'],o),
-              'meta':  {
-                        'Unit':        x['meta']['Unit'],
-                        'Description': '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
-                        'Creator':     'dadf5.py:add_norm v{}'.format(version)
-                        }
-               }
-
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_norm,requested,{'ord':ord})
 
 
   def add_principal_components(self,x):
