@@ -1032,7 +1032,7 @@ class DADF5():
       args['results'].put({**args['func'](**args['in']),'group':args['group']})
 
     env = Environment()
-    N_threads = int(env.options['DAMASK_NUM_THREADS'])
+    N_threads = 1#int(env.options['DAMASK_NUM_THREADS'])
 
     results = Queue(N_threads)
     pool    = util.ThreadPool(N_threads)
