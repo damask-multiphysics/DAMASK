@@ -14,6 +14,7 @@ from . import util
 from . import version
 from . import mechanics
 from . import Orientation
+from . import Environment
 
 # ------------------------------------------------------------------
 class DADF5():
@@ -1030,8 +1031,8 @@ class DADF5():
       """Call function with input data + extra arguments, returns results + group."""
       args['results'].put({**args['func'](**args['in']),'group':args['group']})
 
-
-    N_threads = 1 # ToDo: should be a parameter
+    env = Environment()
+    N_threads = int(env.options['DAMASK_NUM_THREADS'])
 
     results = Queue(N_threads)
     pool    = util.ThreadPool(N_threads)
