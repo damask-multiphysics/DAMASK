@@ -100,6 +100,27 @@ class TestDADF5:
         in_file   = default.read_dataset(loc['max_shear(sigma)'],0)
         assert np.allclose(in_memory,in_file)
 
+    def test_add_Mises_strain(self,default):
+        t = ['V','U'][np.random.randint(0,2)]
+        m = np.random.random()*2.0 - 1.0
+        default.add_strain_tensor('F',t,m)
+        label = 'epsilon_{}^{}(F)'.format(t,m)
+        default.add_Mises(label)
+        loc = {label      :default.get_dataset_location(label),
+               label+'_vM':default.get_dataset_location(label+'_vM')}
+        in_memory = mechanics.Mises_strain(default.read_dataset(loc[label],0)).reshape(-1,1)
+        in_file   = default.read_dataset(loc[label+'_vM'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_Mises_stress(self,default):
+        default.add_Cauchy('F','P')
+        default.add_Mises('sigma')
+        loc = {'sigma'   :default.get_dataset_location('sigma'),
+               'sigma_vM':default.get_dataset_location('sigma_vM')}
+        in_memory = mechanics.Mises_stress(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
+        in_file   = default.read_dataset(loc['sigma_vM'],0)
+        assert np.allclose(in_memory,in_file)
+
     def test_add_norm(self,default):
         default.add_norm('F',1)
         loc = {'F':    default.get_dataset_location('F'),
@@ -132,6 +153,17 @@ class TestDADF5:
                'p_P': default.get_dataset_location('p_P')}
         in_memory = mechanics.spherical_part(default.read_dataset(loc['P'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['p_P'],0)
+        assert np.allclose(in_memory,in_file)
+
+    def test_add_strain(self,default):
+        t = ['V','U'][np.random.randint(0,2)]
+        m = np.random.random()*2.0 - 1.0
+        default.add_strain_tensor('F',t,m)
+        label = 'epsilon_{}^{}(F)'.format(t,m)
+        loc = {'F':   default.get_dataset_location('F'),
+               label: default.get_dataset_location(label)}
+        in_memory = mechanics.strain_tensor(default.read_dataset(loc['F'],0),t,m)
+        in_file   = default.read_dataset(loc[label],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_stretch_right(self,default):
