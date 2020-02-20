@@ -87,9 +87,10 @@ if not hasattr(mapFunction,'__call__'):
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
+  try:
+    table = damask.ASCIItable(name = name)
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ sanity checks ---------------------------------------  

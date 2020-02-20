@@ -132,9 +132,10 @@ random.seed(options.randomSeed)
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(outname = name,
-                                    buffered = False)
-  except: continue
+  try:
+    table = damask.ASCIItable(outname = name)
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # --- sanity checks -------------------------------------------------------------------------

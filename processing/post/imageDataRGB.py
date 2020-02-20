@@ -82,11 +82,10 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False,
-                              labeled = options.label is not None,
-                              readonly = True)
-  except: continue
+    table = damask.ASCIItable(name = name, readonly = True,
+                              labeled = options.label is not None)
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------

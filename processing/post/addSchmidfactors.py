@@ -182,9 +182,10 @@ slip_normal    /= np.tile(np.linalg.norm(slip_normal   ,axis=1),(3,1)).T
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
+  try:
+    table = damask.ASCIItable(name = name)
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
