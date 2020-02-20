@@ -11,10 +11,11 @@ import damask
 
 
 def periodicAverage(coords, limits):
-  """Centroid in periodic domain, see https://en.wikipedia.org/wiki/Center_of_mass#Systems_with_periodic_boundary_conditions"""
+  """Centroid in periodic domain, see https://en.wikipedia.org/wiki/Center_of_mass#Systems_with_periodic_boundary_conditions."""
   theta     = 2.0*np.pi * (coords - limits[0])/(limits[1] - limits[0])
   theta_avg = np.pi + np.arctan2(-np.sin(theta).mean(axis=0), -np.cos(theta).mean(axis=0))
   return limits[0] + theta_avg * (limits[1] - limits[0])/2.0/np.pi
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -73,7 +74,7 @@ try:
                         globals().get(funcModule) or
                         __import__(funcModule), 
                         funcName)
-except:
+except Exception:
   mapFunction = None
 
 if options.label is []:
@@ -87,9 +88,10 @@ if not hasattr(mapFunction,'__call__'):
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
+  try:
+    table = damask.ASCIItable(name = name)
+  except IOError:
+    continue
   damask.util.report(scriptName,name)
 
 # ------------------------------------------ sanity checks ---------------------------------------  

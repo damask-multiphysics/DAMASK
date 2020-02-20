@@ -57,7 +57,6 @@ module crystallite
     crystallite_Li0, &                                                                              !< intermediate velocitiy grad at start of FE inc
     crystallite_partionedLi0                                                                        !< intermediate velocity grad at start of homog inc
   real(pReal),                dimension(:,:,:,:,:),    allocatable :: &
-    crystallite_subS0, &                                                                            !< 2nd Piola-Kirchhoff stress vector at start of crystallite inc
     crystallite_invFp, &                                                                            !< inverse of current plastic def grad (end of converged time step)
     crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
     crystallite_invFi, &                                                                            !< inverse of current intermediate def grad (end of converged time step)
@@ -66,7 +65,7 @@ module crystallite
     crystallite_subF0, &                                                                            !< def grad at start of crystallite inc
     crystallite_subLp0,&                                                                            !< plastic velocity grad at start of crystallite inc
     crystallite_subLi0                                                                              !< intermediate velocity grad at start of crystallite inc
-  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public :: &
+  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public, protected :: &
     crystallite_dPdF                                                                                !< current individual dPdF per grain (end of converged time step)
   logical,                    dimension(:,:,:),         allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
@@ -136,7 +135,6 @@ subroutine crystallite_init
   allocate(crystallite_S0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
   allocate(crystallite_partionedS0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
   allocate(crystallite_S(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
-  allocate(crystallite_subS0(3,3,cMax,iMax,eMax),             source=0.0_pReal)
   allocate(crystallite_P(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
   allocate(crystallite_F0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
   allocate(crystallite_partionedF0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
@@ -351,7 +349,6 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
         crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_partionedFi0(1:3,1:3,c,i,e)
         crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_partionedLi0(1:3,1:3,c,i,e)
         crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partionedF0(1:3,1:3,c,i,e)
-        crystallite_subS0(1:3,1:3,c,i,e)  = crystallite_partionedS0(1:3,1:3,c,i,e)
         crystallite_subFrac(c,i,e) = 0.0_pReal
         crystallite_subStep(c,i,e) = 1.0_pReal/num%subStepSizeCryst
         crystallite_todo(c,i,e) = .true.
@@ -397,7 +394,6 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
               crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_Li  (1:3,1:3,c,i,e)
               crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_Fp  (1:3,1:3,c,i,e)
               crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_Fi  (1:3,1:3,c,i,e)
-              crystallite_subS0 (1:3,1:3,c,i,e) = crystallite_S   (1:3,1:3,c,i,e)
               !if abbrevation, make c and p private in omp
               plasticState(    material_phaseAt(c,e))%subState0(:,material_phaseMemberAt(c,i,e)) &
                 = plasticState(material_phaseAt(c,e))%state(    :,material_phaseMemberAt(c,i,e))

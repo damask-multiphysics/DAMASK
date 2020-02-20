@@ -189,10 +189,10 @@ end function IO_isBlank
 !--------------------------------------------------------------------------------------------------
 pure function IO_getTag(string,openChar,closeChar)
 
-  character(len=:), allocatable :: IO_getTag
   character(len=*), intent(in)  :: string                                                           !< string to check for tag
   character,        intent(in)  :: openChar, &                                                      !< indicates beginning of tag
                                    closeChar                                                        !< indicates end of tag
+  character(len=:), allocatable :: IO_getTag
  
   character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                    ! whitespaces
   integer :: left,right
@@ -222,8 +222,8 @@ end function IO_getTag
 !--------------------------------------------------------------------------------------------------
 pure function IO_stringPos(string)
 
-  integer, dimension(:), allocatable            :: IO_stringPos
   character(len=*),                  intent(in) :: string                                           !< string in which chunk positions are searched for
+  integer, dimension(:), allocatable            :: IO_stringPos
  
   character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)          ! comma and whitespaces
   integer                      :: left, right
