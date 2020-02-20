@@ -13,7 +13,8 @@ from .asciitable  import ASCIItable       # noqa
     
 from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
-from .orientation import Symmetry, Lattice, Rotation, Orientation # noqa
+from .rotation    import Symmetry, Lattice, Rotation # noqa
+from .orientation import Orientation # noqa
 from .dadf5       import DADF5            # noqa
 
 from .geom        import Geom             # noqa
