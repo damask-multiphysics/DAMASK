@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 
 from . import Lambert
@@ -580,19 +578,19 @@ class Symmetry:
         Rabs = abs(rodrigues)
 
         if self.lattice == 'cubic':
-            return     math.sqrt(2.0)-1.0 >= Rabs[0] \
-                   and math.sqrt(2.0)-1.0 >= Rabs[1] \
-                   and math.sqrt(2.0)-1.0 >= Rabs[2] \
+            return     np.sqrt(2.0)-1.0 >= Rabs[0] \
+                   and np.sqrt(2.0)-1.0 >= Rabs[1] \
+                   and np.sqrt(2.0)-1.0 >= Rabs[2] \
                    and 1.0 >= Rabs[0] + Rabs[1] + Rabs[2]
         elif self.lattice == 'hexagonal':
             return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2] \
-                   and 2.0 >= math.sqrt(3)*Rabs[0] + Rabs[1] \
-                   and 2.0 >= math.sqrt(3)*Rabs[1] + Rabs[0] \
-                   and 2.0 >= math.sqrt(3) + Rabs[2]
+                   and 2.0 >= np.sqrt(3)*Rabs[0] + Rabs[1] \
+                   and 2.0 >= np.sqrt(3)*Rabs[1] + Rabs[0] \
+                   and 2.0 >= np.sqrt(3) + Rabs[2]
         elif self.lattice == 'tetragonal':
             return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] \
-                   and math.sqrt(2.0) >= Rabs[0] + Rabs[1] \
-                   and math.sqrt(2.0) >= Rabs[2] + 1.0
+                   and np.sqrt(2.0) >= Rabs[0] + Rabs[1] \
+                   and np.sqrt(2.0) >= Rabs[2] + 1.0
         elif self.lattice == 'orthorhombic':
             return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2]
         else:
@@ -615,13 +613,13 @@ class Symmetry:
 
         epsilon = 0.0
         if self.lattice == 'cubic':
-            return R[0] >= R[1]+epsilon                and R[1] >= R[2]+epsilon    and R[2] >= epsilon
+            return R[0] >= R[1]+epsilon              and R[1] >= R[2]+epsilon and R[2] >= epsilon
         elif self.lattice == 'hexagonal':
-            return R[0] >= math.sqrt(3)*(R[1]-epsilon) and R[1] >= epsilon         and R[2] >= epsilon
+            return R[0] >= np.sqrt(3)*(R[1]-epsilon) and R[1] >= epsilon      and R[2] >= epsilon
         elif self.lattice == 'tetragonal':
-            return R[0] >= R[1]-epsilon                and R[1] >= epsilon         and R[2] >= epsilon
+            return R[0] >= R[1]-epsilon              and R[1] >= epsilon      and R[2] >= epsilon
         elif self.lattice == 'orthorhombic':
-            return R[0] >= epsilon                     and R[1] >= epsilon         and R[2] >= epsilon
+            return R[0] >= epsilon                   and R[1] >= epsilon      and R[2] >= epsilon
         else:
             return True
 
