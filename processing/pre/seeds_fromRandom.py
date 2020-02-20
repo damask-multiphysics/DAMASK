@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 # ------------------------------------------ aux functions ---------------------------------
 
 def kdtree_search(cloud, queryPoints):
-  """Find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)"""
+  """Find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)."""
   n = queryPoints.shape[0]
   distances = np.zeros(n,dtype=float)
   tree = spatial.cKDTree(cloud)
@@ -23,7 +23,8 @@ def kdtree_search(cloud, queryPoints):
     distances[i], index = tree.query(queryPoints[i])
 
   return distances
-    
+
+
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------

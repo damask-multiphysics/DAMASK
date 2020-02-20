@@ -21,7 +21,7 @@ def sortingList(labels,whitelistitems):
   names   = []
 
   for label in labels:
-    if re.match('^\d+_',label):
+    if re.match(r'^\d+_',label):
       indices.append(int(label.split('_',1)[0]))
       names.append(label.split('_',1)[1])
     else:
@@ -144,7 +144,7 @@ for name in filenames:
     try:
       table.data_readArray(positions+1)                                                               # read desired columns (indexed 1,...)
       table.data_writeArray()                                                                         # directly write out
-    except:
+    except Exception:
       table.data_rewind()
       atOnce = False                                                                                  # data contains items that prevent array chunking
 
