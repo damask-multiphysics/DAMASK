@@ -60,9 +60,9 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False, labeled = options.labeled, readonly = True)
-  except: continue
+    table = damask.ASCIItable(name = name, labeled = options.labeled, readonly = True)
+  except IOError:
+    continue
   details = ', '.join(
                       (['header'] if options.table                  else []) +
                       (['info']   if options.head or options.info   else []) +

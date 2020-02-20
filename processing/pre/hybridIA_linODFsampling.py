@@ -234,7 +234,7 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name, buffered = False, readonly=True)
+    table = damask.ASCIItable(name = name, readonly=True)
   except IOError:
     continue
   damask.util.report(scriptName,name)
