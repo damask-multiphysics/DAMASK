@@ -76,7 +76,6 @@ class DADF5():
         self.visible= {'increments':     self.increments,
                        'constituents':   self.constituents,
                        'materialpoints': self.materialpoints,
-                       'constituent':    range(self.Nconstituents),                                     # ToDo: stupid naming
                        'con_physics':    self.con_physics,
                        'mat_physics':    self.mat_physics}
 
