@@ -1902,7 +1902,7 @@ module subroutine plastic_nonlocal_results(instance,group)
       case('rho_sgl_imm_edg_neg')
         if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_imm_edg_neg, 'rho_sgl_imm_edg_neg',&
                                                        'negative immobile edge density','1/m²')
-      case('rho_dip_edg_ID')
+      case('rho_dip_edg')
         if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_dip_edg, 'rho_dip_edg',&
                                                        'edge dipole density','1/m²')
       case('rho_sgl_mob_scr_pos')
