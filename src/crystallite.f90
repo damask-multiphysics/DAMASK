@@ -425,9 +425,9 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 !  prepare for integration
           if (crystallite_todo(c,i,e)) then
             crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
-                                            + crystallite_subStep(c,i,e) * (crystallite_partionedF (1:3,1:3,c,i,e) &
-                                                                          - crystallite_partionedF0(1:3,1:3,c,i,e))
-            crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF (1:3,1:3,c,i,e), &
+                                            + crystallite_subStep(c,i,e) *( crystallite_partionedF (1:3,1:3,c,i,e) &
+                                                                           -crystallite_partionedF0(1:3,1:3,c,i,e))
+            crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
                                                           math_inv33(crystallite_Fp(1:3,1:3,c,i,e))), &
                                                    math_inv33(crystallite_Fi(1:3,1:3,c,i,e)))
             crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
@@ -540,16 +540,12 @@ subroutine crystallite_stressTangent
 !--------------------------------------------------------------------------------------------------
 ! calculate dSdF
         temp_33_1 = transpose(matmul(invFp,invFi))
-        temp_33_2 = matmul(crystallite_subF(1:3,1:3,c,i,e), &
-                          invSubFp0)
-        temp_33_3 = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e),&
-                                  invFp), &
-                           invSubFi0)
+        temp_33_2 = matmul(crystallite_subF(1:3,1:3,c,i,e),invSubFp0)
+        temp_33_3 = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e),invFp), invSubFi0)
 
         do o=1,3; do p=1,3
           rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
-          temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), &
-                                          invFi) &
+          temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
                                  + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
         enddo; enddo
         lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
@@ -569,8 +565,7 @@ subroutine crystallite_stressTangent
         temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
         do o=1,3; do p=1,3
           dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(c,i,e) &
-                                * matmul(invSubFp0, &
-                                         matmul(temp_3333(1:3,1:3,p,o),invFi))
+                                * matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi))
         enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
