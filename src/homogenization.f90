@@ -146,9 +146,7 @@ subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
   allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
-  allocate(materialpoint_F0(3,3,discretization_nIP,discretization_nElem),             source=0.0_pReal)
   materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)            ! initialize to identity
-  allocate(materialpoint_F(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
   allocate(materialpoint_subF0(3,3,discretization_nIP,discretization_nElem),          source=0.0_pReal)
   allocate(materialpoint_subF(3,3,discretization_nIP,discretization_nElem),           source=0.0_pReal)
