@@ -743,7 +743,7 @@ class DADF5():
                 'label': '|{}|_{}'.format(x['label'],o),
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
-                          'Description': '{}-norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
+                          'Description': '{}-norm of {} {} ({})'.format(o,t,x['label'],x['meta']['Description']),
                           'Creator':     'dadf5.py:add_norm v{}'.format(version)
                           }
                  }
@@ -980,7 +980,9 @@ class DADF5():
 
       groups = self.groups_with_datasets(datasets.values())
       default_arg = partial(self.job,func=func,datasets=datasets,args=args,lock=lock)
-      for result in pool.imap_unordered(default_arg,groups):
+      util.progressBar(iteration=0,total=len(groups)-1)
+      for i,result in enumerate(pool.imap_unordered(default_arg,groups)):
+          util.progressBar(iteration=i,total=len(groups)-1)
           if not result: continue
           lock.acquire()
           with h5py.File(self.fname, 'a') as f:
