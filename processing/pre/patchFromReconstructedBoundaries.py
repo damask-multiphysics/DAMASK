@@ -966,9 +966,7 @@ if any(output in options.output for output in ['spectral','mentat']):
 if 'spectral' in options.output:
   fftdata = fftbuild(rcData, options.size, options.xmargin, options.ymargin, options.grid, options.extrusion)
   
-  table = damask.ASCIItable(outname = myName+'_'+str(int(fftdata['grid'][0]))+'.geom',
-                            labeled = False,
-                            buffered = False)
+  table = damask.ASCIItable(outname = myName+'_'+str(int(fftdata['grid'][0]))+'.geom', labeled = False)
   table.labels_clear()
   table.info_clear()
   table.info_append([

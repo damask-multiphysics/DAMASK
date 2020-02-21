@@ -148,7 +148,7 @@ class Geom():
         """
         if microstructure is not None:
             if len(microstructure.shape) != 3:
-                raise ValueError('Invalid microstructure shape {}'.format(*microstructure.shape))
+                raise ValueError('Invalid microstructure shape {}'.format(microstructure.shape))
             elif microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
                 raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
             else:
@@ -169,7 +169,7 @@ class Geom():
             self.size = grid/np.max(grid)
         else:
             if len(size) != 3 or any(np.array(size)<=0):
-                raise ValueError('Invalid size {}'.format(*size))
+                raise ValueError('Invalid size {}'.format(size))
             else:
                 self.size = np.array(size)
 
@@ -185,7 +185,7 @@ class Geom():
         """
         if origin is not None:
             if len(origin) != 3:
-                raise ValueError('Invalid origin {}'.format(*origin))
+                raise ValueError('Invalid origin {}'.format(origin))
             else:
                 self.origin = np.array(origin)
 
@@ -297,7 +297,7 @@ class Geom():
             i += len(items)
         
         if i != grid.prod():
-            raise TypeError('Invalid file: expected {} entries,found {}'.format(grid.prod(),i))
+            raise TypeError('Invalid file: expected {} entries, found {}'.format(grid.prod(),i))
         
         microstructure = microstructure.reshape(grid,order='F')
         if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                   # no float present
@@ -458,7 +458,7 @@ class Geom():
         if not all(isinstance(d, str) for d in directions):
             raise TypeError('Directions are not of type str.')
         elif not set(directions).issubset(valid):
-            raise ValueError('Invalid direction specified {}'.format(*set(directions).difference(valid)))
+            raise ValueError('Invalid direction specified {}'.format(set(directions).difference(valid)))
 
         limits = [None,None] if reflect else [-2,0]
         ms = self.get_microstructure()

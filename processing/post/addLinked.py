@@ -47,9 +47,7 @@ if options.link is None:
 
 if options.asciitable is not None and os.path.isfile(options.asciitable):
 
-  linkedTable = damask.ASCIItable(name = options.asciitable,
-                                  buffered = False,
-                                  readonly = True) 
+  linkedTable = damask.ASCIItable(name = options.asciitable, readonly = True) 
   linkedTable.head_read()                                                                           # read ASCII header info of linked table
   linkDim = linkedTable.label_dimension(options.link[1])                                            # dimension of linking column
 
@@ -72,9 +70,10 @@ else:
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:    table = damask.ASCIItable(name = name,
-                                    buffered = False)
-  except: continue
+  try:
+    table = damask.ASCIItable(name = name)
+  except IOError:
+    continue
   damask.util.report(scriptName,"{} {} <== {} {}".format(name,damask.util.deemph('@ '+options.link[0]),
                                                          options.asciitable,damask.util.deemph('@ '+options.link[1])))
 
