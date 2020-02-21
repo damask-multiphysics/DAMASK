@@ -40,7 +40,17 @@ class bcolors:
 
 # -----------------------------
 def srepr(arg,glue = '\n'):
-  """Joins arguments as individual lines."""
+  """
+  Join arguments as individual lines.
+  
+  Parameters
+  ----------
+  arg : iterable
+    Items to join.
+  glue : str, optional
+    Defaults to \n. 
+
+  """
   if (not hasattr(arg, "strip") and
           (hasattr(arg, "__getitem__") or
            hasattr(arg, "__iter__"))):
@@ -49,7 +59,17 @@ def srepr(arg,glue = '\n'):
 
 # -----------------------------
 def croak(what, newline = True):
-  """Writes formated to stderr."""
+  """
+  Write formated to stderr.
+  
+  Parameters
+  ----------
+  what : str or iterable
+    Content to be displayed
+  newline : bool, optional
+    Separate items of what by newline. Defaults to True. 
+
+  """
   if what is not None:
     sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
   sys.stderr.flush()
@@ -57,7 +77,12 @@ def croak(what, newline = True):
 # -----------------------------
 def report(who = None,
            what = None):
-  """Reports script and file name."""
+  """
+  Reports script and file name.
+
+  DEPRECATED
+
+  """
   croak( (emph(who)+': ' if who is not None else '') + (what if what is not None else '') + '\n' )
 
 
@@ -86,7 +111,22 @@ def execute(cmd,
             streamIn = None,
             wd = './',
             env = None):
-  """Executes a command in given directory and returns stdout and stderr for optional stdin."""
+  """
+  Execute command.
+  
+
+  Parameters
+  ----------
+  cmd : str
+    Command to be executed.
+  streanIn :, optional
+    Input (via pipe) for executed process.
+  wd : str, optional
+    Working directory of process. Defaults to ./ .
+  env :
+    Environment
+
+  """
   initialPath = os.getcwd()
   os.chdir(wd)
   myEnv = os.environ if env is None else env
@@ -109,6 +149,7 @@ class extendableOption(Option):
   Used for definition of new option parser action 'extend', which enables to take multiple option arguments.
 
   Adopted from online tutorial http://docs.python.org/library/optparse.html
+  DEPRECATED
   """
 
   ACTIONS = Option.ACTIONS + ("extend",)
@@ -123,17 +164,21 @@ class extendableOption(Option):
     else:
       Option.take_action(self, action, dest, opt, value, values, parser)
 
-# Print iterations progress
 # from https://gist.github.com/aubricus/f91fb55dc6ba5557fbab06119420dd6a
 def progressBar(iteration, total, prefix='', bar_length=50):
   """
   Call in a loop to create terminal progress bar.
 
-  @params:
-      iteration   - Required  : current iteration (Int)
-      total       - Required  : total iterations (Int)
-      prefix      - Optional  : prefix string (Str)
-      bar_length  - Optional  : character length of bar (Int)
+  Parameters
+  ----------
+  iteration : int
+    Current iteration.
+  total : int
+    Total iterations.
+  prefix : str, optional
+    Prefix string.
+  bar_length : int, optional
+    Character length of bar. Defaults to 50.
   """
   fraction = iteration / float(total)
   if not hasattr(progressBar, "last_fraction"):                                                     # first call to function
