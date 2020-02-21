@@ -647,7 +647,7 @@ class DADF5():
         self.__add_generic_pointwise(_add_eigenvector,{'S':S})
 
 
-    def add_IPFcolor(self,q,p):
+    def add_IPFcolor(self,q,l):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
@@ -655,26 +655,26 @@ class DADF5():
         ----------
         q : str
           Label of the dataset containing the crystallographic orientation as quaternions.
-        p : list of int #ToDo: Direction / int?
-          Pole (crystallographic direction or plane).
+        l : numpy.array of shape (3)
+          Lab frame direction for inverse pole figure.
 
         """
-        def _add_IPFcolor(q,p):
+        def _add_IPFcolor(q,l):
 
-          pole      = np.array(p)
-          unit_pole = pole/np.linalg.norm(pole)
-          m         = util.scale_to_coprime(pole)
-          colors    = np.empty((len(q['data']),3),np.uint8)
+          d      = np.array(l)
+          d_unit = pole/np.linalg.norm(d)
+          m      = util.scale_to_coprime(d)
+          colors = np.empty((len(q['data']),3),np.uint8)
 
           lattice   = q['meta']['Lattice']
 
           for i,q in enumerate(q['data']):
              o = Orientation(np.array([q['w'],q['x'],q['y'],q['z']]),lattice).reduced()
-             colors[i] = np.uint8(o.IPFcolor(unit_pole)*255)
+             colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
 
           return {
                   'data': colors,
-                  'label': 'IPFcolor_{{{} {} {}>'.format(*m),
+                  'label': 'IPFcolor_[{} {} {}]'.format(*m),
                   'meta' : {
                             'Unit':        'RGB (8bit)',
                             'Lattice':     lattice,
@@ -683,7 +683,7 @@ class DADF5():
                            }
                  }
 
-        self.__add_generic_pointwise(_add_IPFcolor,{'q':q},{'p':p})
+        self.__add_generic_pointwise(_add_IPFcolor,{'q':q},{'l':l})
 
 
     def add_maximum_shear(self,S):
@@ -815,9 +815,9 @@ class DADF5():
         q : str
           Label of the dataset containing the crystallographic orientation as quaternions.
         p : numpy.array of shape (3)
-          Pole in crystal frame.
+          Crystallographic direction or plane.
         polar : bool, optional
-          Give pole in polar coordinates. Defaults to false.
+          Give pole in polar coordinates. Defaults to False.
 
         """
         def _add_pole(q,p,polar):
