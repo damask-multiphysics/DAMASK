@@ -14,6 +14,7 @@ from . import mechanics
 from . import Rotation
 from . import Orientation
 from . import Environment
+from . import grid_filters
 
 class DADF5():
     """
@@ -436,15 +437,10 @@ class DADF5():
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-          delta = self.size/self.grid*0.5
-          z, y, x = np.meshgrid(np.linspace(delta[2],self.size[2]-delta[2],self.grid[2]),
-                                np.linspace(delta[1],self.size[1]-delta[1],self.grid[1]),
-                                np.linspace(delta[0],self.size[0]-delta[0],self.grid[0]),
-                               )
-          return np.concatenate((x[:,:,:,None],y[:,:,:,None],z[:,:,:,None]),axis = 3).reshape([np.product(self.grid),3])
+            return grid_filters.cell_coord0(self.grid,self.size,self.origin)
         else:
-          with h5py.File(self.fname,'r') as f:
-            return f['geometry/x_c'][()]
+            with h5py.File(self.fname,'r') as f:
+                return f['geometry/x_c'][()]
 
 
     def add_absolute(self,x):
@@ -647,7 +643,7 @@ class DADF5():
         self.__add_generic_pointwise(_add_eigenvector,{'S':S})
 
 
-    def add_IPFcolor(self,q,p):
+    def add_IPFcolor(self,q,l):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
@@ -655,35 +651,35 @@ class DADF5():
         ----------
         q : str
           Label of the dataset containing the crystallographic orientation as quaternions.
-        p : list of int #ToDo: Direction / int?
-          Pole (crystallographic direction or plane).
+        l : numpy.array of shape (3)
+          Lab frame direction for inverse pole figure.
 
         """
-        def _add_IPFcolor(q,p):
+        def _add_IPFcolor(q,l):
 
-          pole      = np.array(p)
-          unit_pole = pole/np.linalg.norm(pole)
-          m         = util.scale_to_coprime(pole)
-          colors    = np.empty((len(q['data']),3),np.uint8)
+          d      = np.array(l)
+          d_unit = d/np.linalg.norm(d)
+          m      = util.scale_to_coprime(d)
+          colors = np.empty((len(q['data']),3),np.uint8)
 
           lattice   = q['meta']['Lattice']
 
           for i,q in enumerate(q['data']):
              o = Orientation(np.array([q['w'],q['x'],q['y'],q['z']]),lattice).reduced()
-             colors[i] = np.uint8(o.IPFcolor(unit_pole)*255)
+             colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
 
           return {
                   'data': colors,
-                  'label': 'IPFcolor_{{{} {} {}>'.format(*m),
+                  'label': 'IPFcolor_[{} {} {}]'.format(*m),
                   'meta' : {
                             'Unit':        'RGB (8bit)',
                             'Lattice':     lattice,
                             'Description': 'Inverse Pole Figure (IPF) colors for direction/plane [{} {} {})'.format(*m),
-                            'Creator':     'dadf5.py:addIPFcolor v{}'.format(version)
+                            'Creator':     'dadf5.py:add_IPFcolor v{}'.format(version)
                            }
                  }
 
-        self.__add_generic_pointwise(_add_IPFcolor,{'q':q},{'p':p})
+        self.__add_generic_pointwise(_add_IPFcolor,{'q':q},{'l':l})
 
 
     def add_maximum_shear(self,S):
@@ -815,9 +811,9 @@ class DADF5():
         q : str
           Label of the dataset containing the crystallographic orientation as quaternions.
         p : numpy.array of shape (3)
-          Pole in crystal frame.
+          Crystallographic direction or plane.
         polar : bool, optional
-          Give pole in polar coordinates. Defaults to false.
+          Give pole in polar coordinates. Defaults to False.
 
         """
         def _add_pole(q,p,polar):
@@ -1076,7 +1072,7 @@ class DADF5():
               for i in f['/geometry/T_c']:
                 vtk_geom.InsertNextCell(vtk_type,n_nodes,i-1)
 
-        elif mode == 'Point':
+        elif mode.lower()=='point':
           Points   = vtk.vtkPoints()
           Vertices = vtk.vtkCellArray()
           for c in self.cell_coordinates():
@@ -1152,7 +1148,7 @@ class DADF5():
                 vtk_geom.GetCellData().AddArray(vtk_data[-1])
           self.set_visible('constituents',constituents_backup)
 
-          if mode=='Cell':
+          if mode.lower()=='cell':
             writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
                      vtk.vtkXMLUnstructuredGridWriter()
             x = self.get_dataset_location('u_n')
@@ -1160,7 +1156,7 @@ class DADF5():
                             deep=True,array_type=vtk.VTK_DOUBLE))
             vtk_data[-1].SetName('u')
             vtk_geom.GetPointData().AddArray(vtk_data[-1])
-          elif mode == 'Point':
+          elif mode.lower()=='point':
             writer = vtk.vtkXMLPolyDataWriter()
 
 
