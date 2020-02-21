@@ -73,11 +73,11 @@ class DADF5():
             self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
           self.mat_physics = list(set(self.mat_physics))                                                # make unique
 
-        self.visible= {'increments':     self.increments,
-                       'constituents':   self.constituents,
-                       'materialpoints': self.materialpoints,
-                       'con_physics':    self.con_physics,
-                       'mat_physics':    self.mat_physics}
+        self.selection= {'increments':     self.increments,
+                         'constituents':   self.constituents,
+                         'materialpoints': self.materialpoints,
+                         'con_physics':    self.con_physics,
+                         'mat_physics':    self.mat_physics}
 
         self.fname = fname
 
@@ -92,7 +92,7 @@ class DADF5():
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
         what : str
-          attribute to change (must be in self.visible)
+          attribute to change (must be in self.selection)
         action : str
           select from 'set', 'add', and 'del'
 
@@ -105,14 +105,14 @@ class DADF5():
         choice = [datasets] if isinstance(datasets,str) else datasets
 
         valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
-        existing = set(self.visible[what])
+        existing = set(self.selection[what])
 
         if   action == 'set':
-          self.visible[what] = valid
+          self.selection[what] = valid
         elif action == 'add':
-          self.visible[what] = list(existing.union(valid))
+          self.selection[what] = list(existing.union(valid))
         elif action == 'del':
-          self.visible[what] = list(existing.difference_update(valid))
+          self.selection[what] = list(existing.difference_update(valid))
 
 
     def __time_to_inc(self,start,end):
@@ -229,17 +229,17 @@ class DADF5():
         Parameters
         ----------
         what : str
-          attribute to change (must be in self.visible)
+          attribute to change (must be in self.selection)
 
         """
-        datasets = self.visible[what]
+        datasets = self.selection[what]
         last_datasets = datasets.copy()
         for dataset in datasets:
-          if last_datasets != self.visible[what]:
+          if last_datasets != self.selection[what]:
             self.__manage_visible(datasets,what,'set')
             raise Exception
           self.__manage_visible(dataset,what,'set')
-          last_datasets = self.visible[what]
+          last_datasets = self.selection[what]
           yield dataset
         self.__manage_visible(datasets,what,'set')
 
@@ -254,7 +254,7 @@ class DADF5():
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
         what : str
-          attribute to change (must be in self.visible)
+          attribute to change (must be in self.selection)
 
         """
         self.__manage_visible(datasets,what,'set')
@@ -270,7 +270,7 @@ class DADF5():
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
         what : str
-          attribute to change (must be in self.visible)
+          attribute to change (must be in self.selection)
 
         """
         self.__manage_visible(datasets,what,'add')
@@ -286,7 +286,7 @@ class DADF5():
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
         what : str
-          attribute to change (must be in self.visible)
+          attribute to change (must be in self.selection)
 
         """
         self.__manage_visible(datasets,what,'del')
@@ -1094,7 +1094,7 @@ class DADF5():
         for i,inc in enumerate(self.iter_visible('increments')):
           vtk_data = []
 
-          materialpoints_backup = self.visible['materialpoints'].copy()
+          materialpoints_backup = self.selection['materialpoints'].copy()
           self.set_visible('materialpoints',False)
           for label in (labels if isinstance(labels,list) else [labels]):
             for p in self.iter_visible('con_physics'):
@@ -1125,7 +1125,7 @@ class DADF5():
 
           self.set_visible('materialpoints',materialpoints_backup)
 
-          constituents_backup = self.visible['constituents'].copy()
+          constituents_backup = self.selection['constituents'].copy()
           self.set_visible('constituents',False)
           for label in (labels if isinstance(labels,list) else [labels]):
             for p in self.iter_visible('mat_physics'):
