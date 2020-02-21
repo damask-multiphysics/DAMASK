@@ -333,12 +333,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             !$OMP FLUSH(terminallyIll)
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
               !$OMP CRITICAL (write2out)
-                write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
+              write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
               !$OMP END CRITICAL (write2out)
             endif
-            !$OMP CRITICAL (setTerminallyIll)
-              terminallyIll = .true.                                                                ! ...and kills all others
-            !$OMP END CRITICAL (setTerminallyIll)
+            terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
             materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)              ! crystallite had severe trouble, so do a significant cutback
 
