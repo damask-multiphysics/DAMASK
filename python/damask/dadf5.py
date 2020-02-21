@@ -459,7 +459,7 @@ class DADF5():
       Label of the dataset containing a scalar, vector, or tensor.
 
     """
-    def __add_absolute(x):
+    def _add_absolute(x):
 
       return {
               'data':  np.abs(x['data']),
@@ -471,9 +471,7 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_absolute,requested)
+    self.__add_generic_pointwise(_add_absolute,{'x':x})
 
 
   def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
@@ -497,7 +495,7 @@ class DADF5():
     if vectorized is False:
       raise NotImplementedError
 
-    def __add_calculation(**kwargs):
+    def _add_calculation(**kwargs):
 
       formula = kwargs['formula']
       for d in re.findall(r'#(.*?)#',formula):
@@ -513,10 +511,10 @@ class DADF5():
                         }
                }
 
-    requested    = [{'label':d,'arg':d} for d in set(re.findall(r'#(.*?)#',formula))]               # datasets used in the formula
-    pass_through = {'formula':formula,'label':label,'unit':unit,'description':description}
+    dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                           # datasets used in the formula
+    args             = {'formula':formula,'label':label,'unit':unit,'description':description}
 
-    self.__add_generic_pointwise(__add_calculation,requested,pass_through)
+    self.__add_generic_pointwise(_add_calculation,dataset_mapping,args)
 
 
   def add_Cauchy(self,F='F',P='P'):
@@ -531,7 +529,7 @@ class DADF5():
       Label of the dataset containing the deformation gradient. Default value is ‘F’.
 
     """
-    def __add_Cauchy(F,P):
+    def _add_Cauchy(F,P):
 
       return {
               'data':  mechanics.Cauchy(F['data'],P['data']),
@@ -545,10 +543,7 @@ class DADF5():
                         }
               }
 
-    requested = [{'label':F,'arg':'F'},
-                 {'label':P,'arg':'P'} ]
-
-    self.__add_generic_pointwise(__add_Cauchy,requested)
+    self.__add_generic_pointwise(_add_Cauchy,{'F':F,'P':P})
 
 
   def add_determinant(self,x):
@@ -561,7 +556,7 @@ class DADF5():
       Label of the dataset containing a tensor.
 
     """
-    def __add_determinant(x):
+    def _add_determinant(x):
 
       return {
               'data':  np.linalg.det(x['data']),
@@ -573,9 +568,7 @@ class DADF5():
                         }
               }
 
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_determinant,requested)
+    self.__add_generic_pointwise(_add_determinant,{'x':x})
 
 
   def add_deviator(self,x):
@@ -588,7 +581,7 @@ class DADF5():
       Label of the dataset containing a tensor.
 
     """
-    def __add_deviator(x):
+    def _add_deviator(x):
 
       if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
         raise ValueError
@@ -603,9 +596,7 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_deviator,requested)
+    self.__add_generic_pointwise(_add_deviator,{'x':x})
 
 
   def add_eigenvalues(self,x):
@@ -618,7 +609,7 @@ class DADF5():
       Label of the dataset containing a symmetric tensor.
 
     """
-    def __add_eigenvalue(x):
+    def _add_eigenvalue(x):
 
       return {
               'data': mechanics.eigenvalues(x['data']),
@@ -629,9 +620,8 @@ class DADF5():
                         'Creator':     'dadf5.py:add_eigenvalues v{}'.format(version)
                        }
               }
-    requested = [{'label':x,'arg':'x'}]
 
-    self.__add_generic_pointwise(__add_eigenvalue,requested)
+    self.__add_generic_pointwise(_add_eigenvalue,{'x':x})
 
 
   def add_eigenvectors(self,x):
@@ -644,7 +634,7 @@ class DADF5():
       Label of the dataset containing a symmetric tensor.
 
     """
-    def __add_eigenvector(x):
+    def _add_eigenvector(x):
 
       return {
               'data': mechanics.eigenvectors(x['data']),
@@ -655,9 +645,8 @@ class DADF5():
                         'Creator':     'dadf5.py:add_eigenvectors v{}'.format(version)
                        }
               }
-    requested = [{'label':x,'arg':'x'}]
 
-    self.__add_generic_pointwise(__add_eigenvector,requested)
+    self.__add_generic_pointwise(_add_eigenvector,{'x':x})
 
 
   def add_IPFcolor(self,q,p):
@@ -672,7 +661,7 @@ class DADF5():
       Pole direction as Miller indices.
 
     """
-    def __add_IPFcolor(q,p):
+    def _add_IPFcolor(q,p):
 
       pole      = np.array(p)
       unit_pole = pole/np.linalg.norm(pole)
@@ -696,9 +685,7 @@ class DADF5():
                        }
              }
 
-    requested = [{'label':q,'arg':'q'}]
-
-    self.__add_generic_pointwise(__add_IPFcolor,requested,{'p':p})
+    self.__add_generic_pointwise(_add_IPFcolor,{'q':q},{'p':p})
 
 
   def add_maximum_shear(self,x):
@@ -711,7 +698,7 @@ class DADF5():
       Label of the dataset containing a symmetric tensor.
 
     """
-    def __add_maximum_shear(x):
+    def _add_maximum_shear(x):
 
       return {
               'data':  mechanics.maximum_shear(x['data']),
@@ -723,9 +710,7 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_maximum_shear,requested)
+    self.__add_generic_pointwise(_add_maximum_shear,{'x':x})
 
 
   def add_Mises(self,x):
@@ -738,7 +723,7 @@ class DADF5():
       Label of the dataset containing a symmetric stress or strain tensor.
 
     """
-    def __add_Mises(x):
+    def _add_Mises(x):
 
       t = 'strain' if x['meta']['Unit'] == '1' else \
           'stress'
@@ -752,9 +737,7 @@ class DADF5():
                         }
               }
 
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_Mises,requested)
+    self.__add_generic_pointwise(_add_Mises,{'x':x})
 
 
   def add_norm(self,x,ord=None):
@@ -769,7 +752,7 @@ class DADF5():
       Order of the norm. inf means numpy’s inf object. For details refer to numpy.linalg.norm.
 
     """
-    def __add_norm(x,ord):
+    def _add_norm(x,ord):
 
       o = ord
       if len(x['data'].shape) == 2:
@@ -793,9 +776,7 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_norm,requested,{'ord':ord})
+    self.__add_generic_pointwise(_add_norm,{'x':x},{'ord':ord})
 
 
   def add_PK2(self,F='F',P='P'):
@@ -810,7 +791,7 @@ class DADF5():
       Label of the dataset containing the deformation gradient. Default value is ‘F’.
 
     """
-    def __add_PK2(F,P):
+    def _add_PK2(F,P):
 
       return {
               'data':  mechanics.PK2(F['data'],P['data']),
@@ -824,10 +805,7 @@ class DADF5():
                         }
               }
 
-    requested = [{'label':F,'arg':'F'},
-                 {'label':P,'arg':'P'},]
-
-    self.__add_generic_pointwise(__add_PK2,requested)
+    self.__add_generic_pointwise(_add_PK2,{'F':F,'P':P})
 
 
   def add_pole(self,q,p,polar=False):
@@ -844,7 +822,7 @@ class DADF5():
       Give pole in polar coordinates. Default is false.
 
     """
-    def __add_pole(q,p,polar):
+    def _add_pole(q,p,polar):
 
       pole      = np.array(p)
       unit_pole = pole/np.linalg.norm(pole)
@@ -868,12 +846,10 @@ class DADF5():
                        }
              }
 
-    requested = [{'label':q,'arg':'q'}]
-
-    self.__add_generic_pointwise(__add_pole,requested,{'p':p,'polar':polar})
+    self.__add_generic_pointwise(_add_pole,{'q':q},{'p':p,'polar':polar})
 
 
-  def add_rotational_part(self,F='F'):
+  def add_rotational_part(self,F):
     """
     Add rotational part of a deformation gradient.
 
@@ -883,7 +859,7 @@ class DADF5():
       Label of the dataset containing a deformation gradient. Default value is ‘F’.
 
     """
-    def __add_rotational_part(F):
+    def _add_rotational_part(F):
 
       return {
               'data':  mechanics.rotational_part(F['data']),
@@ -895,9 +871,7 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':F,'arg':'F'}]
-
-    self.__add_generic_pointwise(__add_rotational_part,requested)
+    self.__add_generic_pointwise(_add_rotational_part,{'F':F})
 
 
   def add_spherical(self,x):
@@ -910,7 +884,7 @@ class DADF5():
       Label of the dataset containing a tensor.
 
     """
-    def __add_spherical(x):
+    def _add_spherical(x):
 
       if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
         raise ValueError
@@ -925,9 +899,7 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':x,'arg':'x'}]
-
-    self.__add_generic_pointwise(__add_spherical,requested)
+    self.__add_generic_pointwise(_add_spherical,{'x':x})
 
 
   def add_strain_tensor(self,F='F',t='U',m=0):
@@ -947,7 +919,7 @@ class DADF5():
       Order of the strain calculation. Default value is ‘0.0’.
 
     """
-    def __add_strain_tensor(F,t,m):
+    def _add_strain_tensor(F,t,m):
 
       return {
               'data':  mechanics.strain_tensor(F['data'],t,m),
@@ -959,9 +931,7 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':F,'arg':'F'}]
-
-    self.__add_generic_pointwise(__add_strain_tensor,requested,{'t':t,'m':m})
+    self.__add_generic_pointwise(_add_strain_tensor,{'F':F},{'t':t,'m':m})
 
 
   def add_stretch_tensor(self,F='F',t='U'):
@@ -977,7 +947,7 @@ class DADF5():
       Default value is ‘U’.
 
     """
-    def __add_stretch_tensor(F,t):
+    def _add_stretch_tensor(F,t):
 
       return {
               'data':  mechanics.left_stretch(F['data']) if t == 'V' else mechanics.right_stretch(F['data']),
@@ -990,12 +960,10 @@ class DADF5():
                         }
                }
 
-    requested = [{'label':F,'arg':'F'}]
-
-    self.__add_generic_pointwise(__add_stretch_tensor,requested,{'t':t})
+    self.__add_generic_pointwise(_add_stretch_tensor,{'F':F},{'t':t})
 
 
-  def __add_generic_pointwise(self,func,datasets_requested,extra_args={}):
+  def __add_generic_pointwise(self,func,dataset_mapping,args={}):
     """
     General function to add pointwise data.
 
@@ -1022,16 +990,16 @@ class DADF5():
 
     todo = []
     # ToDo: It would be more memory efficient to read only from file when required, i.e. do to it in pool.add_task
-    for group in self.groups_with_datasets([d['label'] for d in datasets_requested]):
+    for group in self.groups_with_datasets(dataset_mapping.values()):
       with h5py.File(self.fname,'r') as f:
         datasets_in = {}
-        for d in datasets_requested:
-          loc  = f[group+'/'+d['label']]
+        for arg,label in dataset_mapping.items():
+          loc  = f[group+'/'+label]
           data = loc[()]
           meta = {k:loc.attrs[k].decode() for k in loc.attrs.keys()}
-          datasets_in[d['arg']] = {'data': data, 'meta' : meta, 'label' : d['label']}
+          datasets_in[arg] = {'data': data, 'meta': meta, 'label': label}
 
-      todo.append({'in':{**datasets_in,**extra_args},'func':func,'group':group,'results':results})
+      todo.append({'in':{**datasets_in,**args},'func':func,'group':group,'results':results})
 
     pool.map(job, todo[:N_added])                                                                   # initialize
 
