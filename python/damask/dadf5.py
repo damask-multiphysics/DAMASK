@@ -1,5 +1,3 @@
-from fractions import Fraction
-from functools import reduce
 from queue     import Queue
 import re
 import glob
@@ -13,6 +11,7 @@ import numpy as np
 from . import util
 from . import version
 from . import mechanics
+from . import Rotation
 from . import Orientation
 from . import Environment
 
@@ -282,7 +281,7 @@ class DADF5():
 
   def del_visible(self,what,datasets):
     """
-    Delete from active groupse.
+    Delete from active groupe.
 
     Parameters
     ----------
@@ -661,7 +660,7 @@ class DADF5():
     self.__add_generic_pointwise(__add_eigenvector,requested)
 
 
-  def add_IPFcolor(self,q,p=[0,0,1]):
+  def add_IPFcolor(self,q,p):
     """
     Add RGB color tuple of inverse pole figure (IPF) color.
 
@@ -670,51 +669,36 @@ class DADF5():
     q : str
       Label of the dataset containing the orientation data as quaternions.
     p : list of int
-      Pole direction as Miller indices. Default value is [0, 0, 1].
+      Pole direction as Miller indices.
 
     """
-    def __add_IPFcolor(orientation,pole):
+    def __add_IPFcolor(q,p):
 
-      MAX_DENOMINATOR = 1000
-      def lcm(a, b):
-        """Least common multiple."""
-        return a * b // np.gcd(a, b)
-
-      def get_square_denominator(x):
-        """returns the denominator of the square of a number."""
-        return Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
-
-      def scale_to_Miller(v):
-        """Factor to scale vector to integers."""
-        denominators = [int(get_square_denominator(i)) for i in v]
-        s = reduce(lcm, denominators) ** 0.5
-        m = (np.array(v)*s).astype(np.int)
-        return m//reduce(np.gcd,m)
-
-      m = scale_to_Miller(pole)
-
-      lattice   = orientation['meta']['Lattice']
+      pole      = np.array(p)
       unit_pole = pole/np.linalg.norm(pole)
-      colors    = np.empty((len(orientation['data']),3),np.uint8)
+      m         = util.scale_to_coprime(pole)
+      colors    = np.empty((len(q['data']),3),np.uint8)
 
-      for i,q in enumerate(orientation['data']):
+      lattice   = q['meta']['Lattice']
+
+      for i,q in enumerate(q['data']):
          o = Orientation(np.array([q['w'],q['x'],q['y'],q['z']]),lattice).reduced()
-         colors[i]   = np.uint8(o.IPFcolor(unit_pole)*255)
+         colors[i] = np.uint8(o.IPFcolor(unit_pole)*255)
 
       return {
               'data': colors,
-              'label': 'IPFcolor_[{} {} {}]'.format(*m),
+              'label': 'IPFcolor_{{{} {} {}>'.format(*m),
               'meta' : {
                         'Unit':        'RGB (8bit)',
                         'Lattice':     lattice,
-                        'Description': 'Inverse Pole Figure colors',
+                        'Description': 'Inverse Pole Figure (IPF) colors for direction/plane [{} {} {})'.format(*m),
                         'Creator':     'dadf5.py:addIPFcolor v{}'.format(version)
                        }
              }
 
-    requested = [{'label':q,'arg':'orientation'}]
+    requested = [{'label':q,'arg':'q'}]
 
-    self.__add_generic_pointwise(__add_IPFcolor,requested,{'pole':p})
+    self.__add_generic_pointwise(__add_IPFcolor,requested,{'p':p})
 
 
   def add_maximum_shear(self,x):
@@ -846,49 +830,47 @@ class DADF5():
     self.__add_generic_pointwise(__add_PK2,requested)
 
 
-  def addPole(self,q,p,polar=False):
+  def add_pole(self,q,p,polar=False):
     """
-    Add coordinates of stereographic projection of given direction (pole) in crystal frame.
+    Add coordinates of stereographic projection of given pole in crystal frame.
 
     Parameters
     ----------
     q : str
       Label of the dataset containing the crystallographic orientation as a quaternion.
     p : numpy.array of shape (3)
-      Pole (direction) in crystal frame.
+      Pole in crystal frame.
     polar : bool, optional
       Give pole in polar coordinates. Default is false.
 
     """
-    def __addPole(orientation,pole):
+    def __add_pole(q,p,polar):
 
-      pole       = np.array(pole)
-      unit_pole /= np.linalg.norm(pole)
-      coords = np.empty((len(orientation['data']),2))
+      pole      = np.array(p)
+      unit_pole = pole/np.linalg.norm(pole)
+      m         = util.scale_to_coprime(pole)
+      coords    = np.empty((len(q['data']),2))
 
-      for i,q in enumerate(orientation['data']):
+      for i,q in enumerate(q['data']):
         o = Rotation(np.array([q['w'],q['x'],q['y'],q['z']]))
         rotatedPole = o*pole                                # rotate pole according to crystal orientation
         (x,y) = rotatedPole[0:2]/(1.+abs(pole[2]))          # stereographic projection
-
-        if polar is True:
-          coords[i] = [np.sqrt(x*x+y*y),np.arctan2(y,x)]
-        else:
-          coords[i] = [x,y]
+        coords[i] = [np.sqrt(x*x+y*y),np.arctan2(y,x)] if polar else [x,y]
 
       return {
               'data': coords,
-              'label': 'Pole',
+              'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
               'meta' : {
                         'Unit': '1',
-                        'Description': 'Coordinates of stereographic projection of given direction (pole) in crystal frame',
+                        'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
+                                     .format('Polar' if polar else 'Cartesian'),
                         'Creator' : 'dadf5.py:addPole v{}'.format(version)
                        }
              }
 
-    requested = [{'label':'orientation','arg':'orientation'}]
+    requested = [{'label':q,'arg':'q'}]
 
-    self.__add_generic_pointwise(__addPole,requested,{'pole':pole})
+    self.__add_generic_pointwise(__add_pole,requested,{'p':p,'polar':polar})
 
 
   def add_rotational_part(self,F='F'):
