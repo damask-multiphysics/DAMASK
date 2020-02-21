@@ -37,24 +37,23 @@ class DADF5():
         with h5py.File(fname,'r') as f:
 
           try:
-            self.version_major = f.attrs['DADF5_version_major']
-            self.version_minor = f.attrs['DADF5_version_minor']
+              self.version_major = f.attrs['DADF5_version_major']
+              self.version_minor = f.attrs['DADF5_version_minor']
           except KeyError:
-            self.version_major = f.attrs['DADF5-major']
-            self.version_minor = f.attrs['DADF5-minor']
+              self.version_major = f.attrs['DADF5-major']
+              self.version_minor = f.attrs['DADF5-minor']
 
           if self.version_major != 0 or not 2 <= self.version_minor <= 6:
-            raise TypeError('Unsupported DADF5 version {}.{} '.format(f.attrs['DADF5_version_major'],
-                                                                      f.attrs['DADF5_version_minor']))
+              raise TypeError('Unsupported DADF5 version {}.{} '.format(self.version_major,
+                                                                        self.version_minor))
 
           self.structured = 'grid' in f['geometry'].attrs.keys()
 
           if self.structured:
-            self.grid = f['geometry'].attrs['grid']
-            self.size = f['geometry'].attrs['size']
-            if self.version_major == 0 and self.version_minor >= 5:
-              self.origin = f['geometry'].attrs['origin']
-
+              self.grid   = f['geometry'].attrs['grid']
+              self.size   = f['geometry'].attrs['size']
+              self.origin = f['geometry'].attrs['origin'] if self.version_major == 0 and self.version_minor >= 5 else \
+                            np.zeros(3)
 
           r=re.compile('inc[0-9]+')
           increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
@@ -67,12 +66,12 @@ class DADF5():
 
           self.con_physics  = []
           for c in self.constituents:
-            self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
+              self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
           self.con_physics = list(set(self.con_physics))                                                # make unique
 
           self.mat_physics = []
           for m in self.materialpoints:
-            self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
+              self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
           self.mat_physics = list(set(self.mat_physics))                                                # make unique
 
         self.selection= {'increments':     self.increments,
@@ -563,7 +562,7 @@ class DADF5():
 
     @staticmethod
     def _add_deviator(T):
-        if not np.all(np.array(T['data'].shape[1:]) == np.array([3,3])):
+        if not T['data'].shape[1:] == (3,3):
             raise ValueError
 
         return {
@@ -833,7 +832,7 @@ class DADF5():
 
     @staticmethod
     def _add_rotational_part(F):
-        if not np.all(np.array(F['data'].shape[1:]) == np.array([3,3])):
+        if not F['data'].shape[1:] == (3,3):
             raise ValueError
         return {
                 'data':  mechanics.rotational_part(F['data']),
@@ -854,13 +853,12 @@ class DADF5():
           Label of deformation gradient dataset.
 
         """
-
         self.__add_generic_pointwise(self._add_rotational_part,{'F':F})
 
 
     @staticmethod
     def _add_spherical(T):
-        if not np.all(np.array(T['data'].shape[1:]) == np.array([3,3])):
+        if not T['data'].shape[1:] == (3,3):
             raise ValueError
 
         return {
@@ -887,8 +885,9 @@ class DADF5():
 
     @staticmethod
     def _add_strain_tensor(F,t,m):
-        if not np.all(np.array(F['data'].shape[1:]) == np.array([3,3])):
+        if not F['data'].shape[1:] == (3,3):
             raise ValueError
+
         return {
                 'data':  mechanics.strain_tensor(F['data'],t,m),
                 'label': 'epsilon_{}^{}({})'.format(t,m,F['label']),
@@ -920,7 +919,7 @@ class DADF5():
 
     @staticmethod
     def _add_stretch_tensor(F,t):
-        if not np.all(np.array(F['data'].shape[1:]) == np.array([3,3])):
+        if not F['data'].shape[1:] == (3,3):
             raise ValueError
 
         return {
