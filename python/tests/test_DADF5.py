@@ -40,7 +40,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_calculation(self,default):
-        default.add_calculation('2.0*np.abs(#F#)-1.0','x','-','test')
+        default.add_calculation('x','2.0*np.abs(#F#)-1.0','-','my notes')
         loc = {'F':    default.get_dataset_location('F'),
                'x':    default.get_dataset_location('x')}
         in_memory = 2.0*np.abs(default.read_dataset(loc['F'],0))-1.0
@@ -48,12 +48,12 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_Cauchy(self,default):
-        default.add_Cauchy('F','P')
+        default.add_Cauchy('P','F')
         loc = {'F':    default.get_dataset_location('F'),
                'P':    default.get_dataset_location('P'),
                'sigma':default.get_dataset_location('sigma')}
-        in_memory = mechanics.Cauchy(default.read_dataset(loc['F'],0),
-                                     default.read_dataset(loc['P'],0))
+        in_memory = mechanics.Cauchy(default.read_dataset(loc['P'],0),
+                                     default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['sigma'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -74,7 +74,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_eigenvalues(self,default):
-        default.add_Cauchy('F','P')
+        default.add_Cauchy('P','F')
         default.add_eigenvalues('sigma')
         loc = {'sigma'        :default.get_dataset_location('sigma'),
                'lambda(sigma)':default.get_dataset_location('lambda(sigma)')}
@@ -83,7 +83,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_eigenvectors(self,default):
-        default.add_Cauchy('F','P')
+        default.add_Cauchy('P','F')
         default.add_eigenvectors('sigma')
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'v(sigma)':default.get_dataset_location('v(sigma)')}
@@ -92,7 +92,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_maximum_shear(self,default):
-        default.add_Cauchy('F','P')
+        default.add_Cauchy('P','F')
         default.add_maximum_shear('sigma')
         loc = {'sigma'           :default.get_dataset_location('sigma'),
                'max_shear(sigma)':default.get_dataset_location('max_shear(sigma)')}
@@ -113,7 +113,7 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_Mises_stress(self,default):
-        default.add_Cauchy('F','P')
+        default.add_Cauchy('P','F')
         default.add_Mises('sigma')
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'sigma_vM':default.get_dataset_location('sigma_vM')}
@@ -130,12 +130,12 @@ class TestDADF5:
         assert np.allclose(in_memory,in_file)
 
     def test_add_PK2(self,default):
-        default.add_PK2('F','P')
+        default.add_PK2('P','F')
         loc = {'F':default.get_dataset_location('F'),
                'P':default.get_dataset_location('P'),
                'S':default.get_dataset_location('S')}
-        in_memory = mechanics.PK2(default.read_dataset(loc['F'],0),
-                                  default.read_dataset(loc['P'],0))
+        in_memory = mechanics.PK2(default.read_dataset(loc['P'],0),
+                                  default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['S'],0)
         assert np.allclose(in_memory,in_file)
 

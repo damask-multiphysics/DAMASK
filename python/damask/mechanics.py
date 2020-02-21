@@ -1,8 +1,8 @@
 import numpy as np
 
-def Cauchy(F,P):
+def Cauchy(P,F):
     """
-    Return Cauchy stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
+    Return Cauchy stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
     Resulting tensor is symmetrized as the Cauchy stress needs to be symmetric.
 
@@ -129,16 +129,16 @@ def Mises_stress(sigma):
     return __Mises(sigma,3.0/2.0)
 
 
-def PK2(F,P):
+def PK2(P,F):
     """
-    Return 2. Piola-Kirchhoff stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
+    Calculate second Piola-Kirchhoff stress from first Piola-Kirchhoff stress and deformation gradient.
 
     Parameters
     ----------
-    F : numpy.array of shape (:,3,3) or (3,3)
-      Deformation gradient.
     P : numpy.array of shape (:,3,3) or (3,3)
       1. Piola-Kirchhoff stress.
+    F : numpy.array of shape (:,3,3) or (3,3)
+      Deformation gradient.
 
     """
     if np.shape(F) == np.shape(P) == (3,3):

@@ -10,8 +10,8 @@ class TestMechanics:
     def test_vectorize_Cauchy(self):
         P = np.random.random((self.n,3,3))
         F = np.random.random((self.n,3,3))
-        assert np.allclose(mechanics.Cauchy(F,P)[self.c],
-                           mechanics.Cauchy(F[self.c],P[self.c]))
+        assert np.allclose(mechanics.Cauchy(P,F)[self.c],
+                           mechanics.Cauchy(P[self.c],F[self.c]))
 
     def test_vectorize_deviatoric_part(self):
         x = np.random.random((self.n,3,3))
@@ -51,8 +51,8 @@ class TestMechanics:
     def test_vectorize_PK2(self):
         F = np.random.random((self.n,3,3))
         P = np.random.random((self.n,3,3))
-        assert np.allclose(mechanics.PK2(F,P)[self.c],
-                           mechanics.PK2(F[self.c],P[self.c]))
+        assert np.allclose(mechanics.PK2(P,F)[self.c],
+                           mechanics.PK2(P[self.c],F[self.c]))
 
     def test_vectorize_right_stretch(self):
         x = np.random.random((self.n,3,3))
@@ -90,7 +90,7 @@ class TestMechanics:
     def test_Cauchy(self):
         """Ensure Cauchy stress is symmetrized 1. Piola-Kirchhoff stress for no deformation."""
         P = np.random.random((self.n,3,3))
-        assert np.allclose(mechanics.Cauchy(np.broadcast_to(np.eye(3),(self.n,3,3)),P),
+        assert np.allclose(mechanics.Cauchy(P,np.broadcast_to(np.eye(3),(self.n,3,3))),
                            mechanics.symmetric(P))
 
 
@@ -107,7 +107,7 @@ class TestMechanics:
     def test_PK2(self):
         """Ensure 2. Piola-Kirchhoff stress is symmetrized 1. Piola-Kirchhoff stress for no deformation."""
         P = np.random.random((self.n,3,3))
-        assert np.allclose(mechanics.PK2(np.broadcast_to(np.eye(3),(self.n,3,3)),P),
+        assert np.allclose(mechanics.PK2(P,np.broadcast_to(np.eye(3),(self.n,3,3))),
                            mechanics.symmetric(P))
 
 

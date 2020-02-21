@@ -454,7 +454,7 @@ class DADF5():
         Parameters
         ----------
         x : str
-          Label of the dataset containing a scalar, vector, or tensor.
+          Label of scalar, vector, or tensor dataset to take absolute value of.
 
         """
         def _add_absolute(x):
@@ -472,25 +472,25 @@ class DADF5():
         self.__add_generic_pointwise(_add_absolute,{'x':x})
 
 
-    def add_calculation(self,formula,label,unit='n/a',description=None,vectorized=True):
+    def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
         """
         Add result of a general formula.
 
         Parameters
         ----------
-        formula : str
-          Formula, refer to datasets by ‘#Label#‘.
         label : str
-          Label of the dataset containing the result of the calculation.
+          Label of resulting dataset.
+        formula : str
+          Formula to calculate resulting dataset. Existing datasets are referenced by ‘#TheirLabel#‘.
         unit : str, optional
           Physical unit of the result.
         description : str, optional
-          Human readable description of the result.
+          Human-readable description of the result.
         vectorized : bool, optional
-          Indicate whether the formula is written in vectorized form. Default is ‘True’.
+          Indicate whether the formula can be used in vectorized form. Defaults to ‘True’.
 
         """
-        if vectorized is False:
+        if not vectorized:
           raise NotImplementedError
 
         def _add_calculation(**kwargs):
@@ -515,22 +515,22 @@ class DADF5():
         self.__add_generic_pointwise(_add_calculation,dataset_mapping,args)
 
 
-    def add_Cauchy(self,F='F',P='P'):
+    def add_Cauchy(self,P='P',F='F'):
         """
-        Add Cauchy stress calculated from 1. Piola-Kirchhoff stress and deformation gradient.
+        Add Cauchy stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
         Parameters
         ----------
         P : str, optional
-          Label of the dataset containing the 1. Piola-Kirchhoff stress. Default value is ‘P’.
+          Label of the dataset containing the first Piola-Kirchhoff stress. Defaults to ‘P’.
         F : str, optional
-          Label of the dataset containing the deformation gradient. Default value is ‘F’.
+          Label of the dataset containing the deformation gradient. Defaults to ‘F’.
 
         """
-        def _add_Cauchy(F,P):
+        def _add_Cauchy(P,F):
 
           return {
-                  'data':  mechanics.Cauchy(F['data'],P['data']),
+                  'data':  mechanics.Cauchy(P['data'],F['data']),
                   'label': 'sigma',
                   'meta':  {
                             'Unit':        P['meta']['Unit'],
@@ -541,110 +541,110 @@ class DADF5():
                             }
                   }
 
-        self.__add_generic_pointwise(_add_Cauchy,{'F':F,'P':P})
+        self.__add_generic_pointwise(_add_Cauchy,{'P':P,'F':F})
 
 
-    def add_determinant(self,x):
+    def add_determinant(self,T):
         """
         Add the determinant of a tensor.
 
         Parameters
         ----------
-        x : str
-          Label of the dataset containing a tensor.
+        T : str
+          Label of tensor dataset.
 
         """
-        def _add_determinant(x):
+        def _add_determinant(T):
 
           return {
-                  'data':  np.linalg.det(x['data']),
-                  'label': 'det({})'.format(x['label']),
+                  'data':  np.linalg.det(T['data']),
+                  'label': 'det({})'.format(T['label']),
                   'meta':  {
-                            'Unit':        x['meta']['Unit'],
-                            'Description': 'Determinant of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                            'Unit':        T['meta']['Unit'],
+                            'Description': 'Determinant of tensor {} ({})'.format(T['label'],T['meta']['Description']),
                             'Creator':     'dadf5.py:add_determinant v{}'.format(version)
                             }
                   }
 
-        self.__add_generic_pointwise(_add_determinant,{'x':x})
+        self.__add_generic_pointwise(_add_determinant,{'T':T})
 
 
-    def add_deviator(self,x):
+    def add_deviator(self,T):
         """
         Add the deviatoric part of a tensor.
 
         Parameters
         ----------
-        x : str
-          Label of the dataset containing a tensor.
+        T : str
+          Label of tensor dataset.
 
         """
-        def _add_deviator(x):
+        def _add_deviator(T):
 
-          if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
+          if not np.all(np.array(T['data'].shape[1:]) == np.array([3,3])):
             raise ValueError
 
           return {
-                  'data':  mechanics.deviatoric_part(x['data']),
-                  'label': 's_{}'.format(x['label']),
+                  'data':  mechanics.deviatoric_part(T['data']),
+                  'label': 's_{}'.format(T['label']),
                   'meta':  {
-                            'Unit':        x['meta']['Unit'],
-                            'Description': 'Deviator of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                            'Unit':        T['meta']['Unit'],
+                            'Description': 'Deviator of tensor {} ({})'.format(T['label'],T['meta']['Description']),
                             'Creator':     'dadf5.py:add_deviator v{}'.format(version)
                             }
                    }
 
-        self.__add_generic_pointwise(_add_deviator,{'x':x})
+        self.__add_generic_pointwise(_add_deviator,{'T':T})
 
 
-    def add_eigenvalues(self,x):
+    def add_eigenvalues(self,S):
         """
         Add eigenvalues of symmetric tensor.
 
         Parameters
         ----------
-        x : str
-          Label of the dataset containing a symmetric tensor.
+        S : str
+          Label of symmetric tensor dataset.
 
         """
-        def _add_eigenvalue(x):
+        def _add_eigenvalue(S):
 
           return {
-                  'data': mechanics.eigenvalues(x['data']),
-                  'label': 'lambda({})'.format(x['label']),
+                  'data': mechanics.eigenvalues(S['data']),
+                  'label': 'lambda({})'.format(S['label']),
                   'meta' : {
-                            'Unit':         x['meta']['Unit'],
-                            'Description': 'Eigenvalues of {} ({})'.format(x['label'],x['meta']['Description']),
+                            'Unit':         S['meta']['Unit'],
+                            'Description': 'Eigenvalues of {} ({})'.format(S['label'],S['meta']['Description']),
                             'Creator':     'dadf5.py:add_eigenvalues v{}'.format(version)
                            }
                   }
 
-        self.__add_generic_pointwise(_add_eigenvalue,{'x':x})
+        self.__add_generic_pointwise(_add_eigenvalue,{'S':S})
 
 
-    def add_eigenvectors(self,x):
+    def add_eigenvectors(self,S):
         """
         Add eigenvectors of symmetric tensor.
 
         Parameters
         ----------
-        x : str
-          Label of the dataset containing a symmetric tensor.
+        S : str
+          Label of symmetric tensor dataset.
 
         """
-        def _add_eigenvector(x):
+        def _add_eigenvector(S):
 
           return {
-                  'data': mechanics.eigenvectors(x['data']),
-                  'label': 'v({})'.format(x['label']),
+                  'data': mechanics.eigenvectors(S['data']),
+                  'label': 'v({})'.format(S['label']),
                   'meta' : {
                             'Unit':        '1',
-                            'Description': 'Eigenvectors of {} ({})'.format(x['label'],x['meta']['Description']),
+                            'Description': 'Eigenvectors of {} ({})'.format(S['label'],S['meta']['Description']),
                             'Creator':     'dadf5.py:add_eigenvectors v{}'.format(version)
                            }
                   }
 
-        self.__add_generic_pointwise(_add_eigenvector,{'x':x})
+        self.__add_generic_pointwise(_add_eigenvector,{'S':S})
 
 
     def add_IPFcolor(self,q,p):
@@ -654,9 +654,9 @@ class DADF5():
         Parameters
         ----------
         q : str
-          Label of the dataset containing the orientation data as quaternions.
-        p : list of int
-          Pole direction as Miller indices.
+          Label of the dataset containing the crystallographic orientation as quaternions.
+        p : list of int #ToDo: Direction / int?
+          Pole (crystallographic direction or plane).
 
         """
         def _add_IPFcolor(q,p):
@@ -686,56 +686,56 @@ class DADF5():
         self.__add_generic_pointwise(_add_IPFcolor,{'q':q},{'p':p})
 
 
-    def add_maximum_shear(self,x):
+    def add_maximum_shear(self,S):
         """
         Add maximum shear components of symmetric tensor.
 
         Parameters
         ----------
-        x : str
-          Label of the dataset containing a symmetric tensor.
+        S : str
+          Label of symmetric tensor dataset.
 
         """
-        def _add_maximum_shear(x):
+        def _add_maximum_shear(S):
 
           return {
-                  'data':  mechanics.maximum_shear(x['data']),
-                  'label': 'max_shear({})'.format(x['label']),
+                  'data':  mechanics.maximum_shear(S['data']),
+                  'label': 'max_shear({})'.format(S['label']),
                   'meta':  {
-                            'Unit':        x['meta']['Unit'],
-                            'Description': 'Maximum shear component of of {} ({})'.format(x['label'],x['meta']['Description']),
+                            'Unit':        S['meta']['Unit'],
+                            'Description': 'Maximum shear component of {} ({})'.format(S['label'],S['meta']['Description']),
                             'Creator':     'dadf5.py:add_maximum_shear v{}'.format(version)
                             }
                    }
 
-        self.__add_generic_pointwise(_add_maximum_shear,{'x':x})
+        self.__add_generic_pointwise(_add_maximum_shear,{'S':S})
 
 
-    def add_Mises(self,x):
+    def add_Mises(self,S):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
         Parameters
         ----------
-        x : str
-          Label of the dataset containing a symmetric stress or strain tensor.
+        S : str
+          Label of symmetric tensorial stress or strain dataset.
 
         """
-        def _add_Mises(x):
+        def _add_Mises(S):
 
-          t = 'strain' if x['meta']['Unit'] == '1' else \
+          t = 'strain' if S['meta']['Unit'] == '1' else \
               'stress'
           return {
-                  'data':  mechanics.Mises_strain(x['data']) if t=='strain' else  mechanics.Mises_stress(x['data']),
-                  'label': '{}_vM'.format(x['label']),
+                  'data':  mechanics.Mises_strain(S['data']) if t=='strain' else mechanics.Mises_stress(S['data']),
+                  'label': '{}_vM'.format(S['label']),
                   'meta':  {
-                            'Unit':        x['meta']['Unit'],
-                            'Description': 'Mises equivalent {} of {} ({})'.format(t,x['label'],x['meta']['Description']),
+                            'Unit':        S['meta']['Unit'],
+                            'Description': 'Mises equivalent {} of {} ({})'.format(t,S['label'],S['meta']['Description']),
                             'Creator':     'dadf5.py:add_Mises v{}'.format(version)
                             }
                   }
 
-        self.__add_generic_pointwise(_add_Mises,{'x':x})
+        self.__add_generic_pointwise(_add_Mises,{'S':S})
 
 
     def add_norm(self,x,ord=None):
@@ -745,9 +745,9 @@ class DADF5():
         Parameters
         ----------
         x : str
-          Label of the dataset containing a vector or tensor.
+          Label of vector or tensor dataset.
         ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
-          Order of the norm. inf means numpy’s inf object. For details refer to numpy.linalg.norm.
+          Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
 
         """
         def _add_norm(x,ord):
@@ -769,7 +769,7 @@ class DADF5():
                   'label': '|{}|_{}'.format(x['label'],o),
                   'meta':  {
                             'Unit':        x['meta']['Unit'],
-                            'Description': '{}-Norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
+                            'Description': '{}-norm of {} {} ({})'.format(ord,t,x['label'],x['meta']['Description']),
                             'Creator':     'dadf5.py:add_norm v{}'.format(version)
                             }
                    }
@@ -777,22 +777,22 @@ class DADF5():
         self.__add_generic_pointwise(_add_norm,{'x':x},{'ord':ord})
 
 
-    def add_PK2(self,F='F',P='P'):
+    def add_PK2(self,P='P',F='F'):
         """
-        Add 2. Piola-Kirchhoff calculated from 1. Piola-Kirchhoff stress and deformation gradient.
+        Add 2. Piola-Kirchhoff calculated from first Piola-Kirchhoff stress and deformation gradient.
 
         Parameters
         ----------
         P : str, optional
-          Label of the dataset containing the 1. Piola-Kirchhoff stress. Default value is ‘P’.
+          Label first  Piola-Kirchhoff stress dataset. Defaults to ‘P’.
         F : str, optional
-          Label of the dataset containing the deformation gradient. Default value is ‘F’.
+          Label of deformation gradient dataset. Defaults to ‘F’.
 
         """
-        def _add_PK2(F,P):
+        def _add_PK2(P,F):
 
           return {
-                  'data':  mechanics.PK2(F['data'],P['data']),
+                  'data':  mechanics.PK2(P['data'],F['data']),
                   'label': 'S',
                   'meta':  {
                             'Unit':        P['meta']['Unit'],
@@ -803,7 +803,7 @@ class DADF5():
                             }
                   }
 
-        self.__add_generic_pointwise(_add_PK2,{'F':F,'P':P})
+        self.__add_generic_pointwise(_add_PK2,{'P':P,'F':F})
 
 
     def add_pole(self,q,p,polar=False):
@@ -813,11 +813,11 @@ class DADF5():
         Parameters
         ----------
         q : str
-          Label of the dataset containing the crystallographic orientation as a quaternion.
+          Label of the dataset containing the crystallographic orientation as quaternions.
         p : numpy.array of shape (3)
           Pole in crystal frame.
         polar : bool, optional
-          Give pole in polar coordinates. Default is false.
+          Give pole in polar coordinates. Defaults to false.
 
         """
         def _add_pole(q,p,polar):
@@ -853,8 +853,8 @@ class DADF5():
 
         Parameters
         ----------
-        F : str
-          Label of the dataset containing a deformation gradient. Default value is ‘F’.
+        F : str, optional
+          Label of deformation gradient dataset.
 
         """
         def _add_rotational_part(F):
@@ -872,49 +872,49 @@ class DADF5():
         self.__add_generic_pointwise(_add_rotational_part,{'F':F})
 
 
-    def add_spherical(self,x):
+    def add_spherical(self,T):
         """
         Add the spherical (hydrostatic) part of a tensor.
 
         Parameters
         ----------
-        x : str
-          Label of the dataset containing a tensor.
+        T : str
+          Label of tensor dataset.
 
         """
-        def _add_spherical(x):
+        def _add_spherical(T):
 
-          if not np.all(np.array(x['data'].shape[1:]) == np.array([3,3])):
+          if not np.all(np.array(T['data'].shape[1:]) == np.array([3,3])):
             raise ValueError
 
           return {
-                  'data':  mechanics.spherical_part(x['data']),
-                  'label': 'p_{}'.format(x['label']),
+                  'data':  mechanics.spherical_part(T['data']),
+                  'label': 'p_{}'.format(T['label']),
                   'meta':  {
-                            'Unit':        x['meta']['Unit'],
-                            'Description': 'Spherical component of tensor {} ({})'.format(x['label'],x['meta']['Description']),
+                            'Unit':        T['meta']['Unit'],
+                            'Description': 'Spherical component of tensor {} ({})'.format(T['label'],T['meta']['Description']),
                             'Creator':     'dadf5.py:add_spherical v{}'.format(version)
                             }
                    }
 
-        self.__add_generic_pointwise(_add_spherical,{'x':x})
+        self.__add_generic_pointwise(_add_spherical,{'T':T})
 
 
-    def add_strain_tensor(self,F='F',t='U',m=0):
+    def add_strain_tensor(self,F='F',t='V',m=0.0):
         """
-        Add strain tensor calculated from a deformation gradient.
+        Add strain tensor of a deformation gradient.
 
         For details refer to damask.mechanics.strain_tensor
 
         Parameters
         ----------
         F : str, optional
-          Label of the dataset containing the deformation gradient. Default value is ‘F’.
+          Label of deformation gradient dataset. Defaults to ‘F’.
         t : {‘V’, ‘U’}, optional
-          Type of the polar decomposition, ‘U’ for right stretch tensor and ‘V’ for left stretch tensor.
-          Default value is ‘U’.
+          Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+          Defaults to ‘V’.
         m : float, optional
-          Order of the strain calculation. Default value is ‘0.0’.
+          Order of the strain calculation. Defaults to ‘0.0’.
 
         """
         def _add_strain_tensor(F,t,m):
@@ -932,17 +932,17 @@ class DADF5():
         self.__add_generic_pointwise(_add_strain_tensor,{'F':F},{'t':t,'m':m})
 
 
-    def add_stretch_tensor(self,F='F',t='U'):
+    def add_stretch_tensor(self,F='F',t='V'):
         """
-        Add stretch tensor calculated from a deformation gradient.
+        Add stretch tensor of a deformation gradient.
 
         Parameters
         ----------
         F : str, optional
-          Label of the dataset containing the deformation gradient. Default value is ‘F’.
+          Label of deformation gradient dataset. Defaults to ‘F’.
         t : {‘V’, ‘U’}, optional
-          Type of the polar decomposition, ‘U’ for right stretch tensor and ‘V’ for left stretch tensor.
-          Default value is ‘U’.
+          Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+          Defaults to ‘V’.
 
         """
         def _add_stretch_tensor(F,t):
@@ -969,8 +969,8 @@ class DADF5():
         ----------
         func : function
           Function that calculates a new dataset from one or more datasets per HDF5 group.
-        datasets_requested : list of dictionaries
-          Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+        dataset_mapping : dictionary
+          Mapping HDF5 data label to callback function argument
         extra_args : dictionary, optional
           Any extra arguments parsed to func.
 
@@ -1018,7 +1018,7 @@ class DADF5():
         pool.wait_completion()
 
 
-    def to_vtk(self,labels,mode='Cell'):
+    def to_vtk(self,labels,mode='cell'):
         """
         Export to vtk cell/point data.
 
@@ -1026,12 +1026,12 @@ class DADF5():
         ----------
         labels : str or list of
           Labels of the datasets to be exported.
-        mode : str, either 'Cell' or 'Point'
+        mode : str, either 'cell' or 'point'
           Export in cell format or point format.
-          Default value is 'Cell'.
+          Defaults to 'cell'.
 
         """
-        if mode=='Cell':
+        if mode.lower()=='cell':
 
           if self.structured:
 
