@@ -949,9 +949,7 @@ class DADF5():
 
 
     def _job(self,group,func,datasets,args,lock):
-        """
-        Execute job for _add_generic_pointwise
-        """
+        """Execute job for _add_generic_pointwise."""
         try:
             datasets_in = {}
             lock.acquire()
@@ -981,6 +979,7 @@ class DADF5():
           Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
         args : dictionary, optional
           Arguments parsed to func.
+
         """
         N_threads = int(Environment().options['DAMASK_NUM_THREADS'])
         pool = multiprocessing.Pool(N_threads)
