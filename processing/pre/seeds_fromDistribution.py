@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
 import threading,time,os,sys,random
 import numpy as np
 from optparse import OptionParser
 from io import StringIO
-import binascii
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -16,9 +14,10 @@ currentSeedsName = None
 
 #---------------------------------------------------------------------------------------------------
 class myThread (threading.Thread):
-  """perturbes seed in seed file, performes Voronoi tessellation, evaluates, and updates best match"""
+  """Perturb seed in seed file, performes Voronoi tessellation, evaluates, and updates best match."""
 
   def __init__(self, threadID):
+    """Threading class with thread ID."""
     threading.Thread.__init__(self)
     self.threadID = threadID
 
@@ -215,7 +214,7 @@ options = parser.parse_args()[0]
 damask.util.report(scriptName,options.seedFile)
 
 if options.randomSeed is None:
-  options.randomSeed = int(binascii.hexlify(os.urandom(4)),16)
+  options.randomSeed = int(os.urandom(4).hex(),16)
 damask.util.croak(options.randomSeed)
 delta = (options.scale/options.grid[0],options.scale/options.grid[1],options.scale/options.grid[2])
 baseFile=os.path.splitext(os.path.basename(options.seedFile))[0]
