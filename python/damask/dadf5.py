@@ -14,6 +14,7 @@ from . import mechanics
 from . import Rotation
 from . import Orientation
 from . import Environment
+from . import grid_filters
 
 class DADF5():
     """
@@ -436,15 +437,10 @@ class DADF5():
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-          delta = self.size/self.grid*0.5
-          z, y, x = np.meshgrid(np.linspace(delta[2],self.size[2]-delta[2],self.grid[2]),
-                                np.linspace(delta[1],self.size[1]-delta[1],self.grid[1]),
-                                np.linspace(delta[0],self.size[0]-delta[0],self.grid[0]),
-                               )
-          return np.concatenate((x[:,:,:,None],y[:,:,:,None],z[:,:,:,None]),axis = 3).reshape([np.product(self.grid),3])
+            return grid_filters.cell_coord0(self.grid,self.size,self.origin)
         else:
-          with h5py.File(self.fname,'r') as f:
-            return f['geometry/x_c'][()]
+            with h5py.File(self.fname,'r') as f:
+                return f['geometry/x_c'][()]
 
 
     def add_absolute(self,x):
@@ -662,7 +658,7 @@ class DADF5():
         def _add_IPFcolor(q,l):
 
           d      = np.array(l)
-          d_unit = pole/np.linalg.norm(d)
+          d_unit = d/np.linalg.norm(d)
           m      = util.scale_to_coprime(d)
           colors = np.empty((len(q['data']),3),np.uint8)
 
@@ -679,7 +675,7 @@ class DADF5():
                             'Unit':        'RGB (8bit)',
                             'Lattice':     lattice,
                             'Description': 'Inverse Pole Figure (IPF) colors for direction/plane [{} {} {})'.format(*m),
-                            'Creator':     'dadf5.py:addIPFcolor v{}'.format(version)
+                            'Creator':     'dadf5.py:add_IPFcolor v{}'.format(version)
                            }
                  }
 
