@@ -4,14 +4,10 @@ from . import Lambert
 
 P = -1
 
-def isone(a):
-  return np.isclose(a,1.0,atol=1.0e-7,rtol=0.0)
-
 def iszero(a):
-  return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
+    return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
 
 
-####################################################################################################
 class Rotation:
     u"""
     Orientation stored with functionality for conversion to different representations.

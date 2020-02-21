@@ -312,330 +312,330 @@ class Symmetry:
 
 # ******************************************************************************************
 class Lattice:
-  """
-  Lattice system.
-
-  Currently, this contains only a mapping from Bravais lattice to symmetry
-  and orientation relationships. It could include twin and slip systems.
-
-  References
-  ----------
-  https://en.wikipedia.org/wiki/Bravais_lattice
-
-  """
-
-  lattices = {
-              'triclinic':{'symmetry':None},
-              'bct':{'symmetry':'tetragonal'},
-              'hex':{'symmetry':'hexagonal'},
-              'fcc':{'symmetry':'cubic','c/a':1.0},
-              'bcc':{'symmetry':'cubic','c/a':1.0},
-             }
-
-
-  def __init__(self, lattice):
     """
-    New lattice of given type.
+    Lattice system.
 
-    Parameters
-    ----------
-    lattice : str
-        Bravais lattice.
-
-    """
-    self.lattice  = lattice
-    self.symmetry = Symmetry(self.lattices[lattice]['symmetry'])
-
-
-  def __repr__(self):
-    """Report basic lattice information."""
-    return 'Bravais lattice {} ({} symmetry)'.format(self.lattice,self.symmetry)
-
-
-  # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
-  # from S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
-  # also see K. Kitahara et al., Acta Materialia 54:1279-1288, 2006
-  KS = {'mapping':{'fcc':0,'bcc':1},
-      'planes': np.array([
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[  1,  1, -1],[  0,  1,  1]],
-      [[  1,  1, -1],[  0,  1,  1]],
-      [[  1,  1, -1],[  0,  1,  1]],
-      [[  1,  1, -1],[  0,  1,  1]],
-      [[  1,  1, -1],[  0,  1,  1]],
-      [[  1,  1, -1],[  0,  1,  1]]],dtype='float'),
-      'directions': np.array([
-      [[ -1,  0,  1],[ -1, -1,  1]],
-      [[ -1,  0,  1],[ -1,  1, -1]],
-      [[  0,  1, -1],[ -1, -1,  1]],
-      [[  0,  1, -1],[ -1,  1, -1]],
-      [[  1, -1,  0],[ -1, -1,  1]],
-      [[  1, -1,  0],[ -1,  1, -1]],
-      [[  1,  0, -1],[ -1, -1,  1]],
-      [[  1,  0, -1],[ -1,  1, -1]],
-      [[ -1, -1,  0],[ -1, -1,  1]],
-      [[ -1, -1,  0],[ -1,  1, -1]],
-      [[  0,  1,  1],[ -1, -1,  1]],
-      [[  0,  1,  1],[ -1,  1, -1]],
-      [[  0, -1,  1],[ -1, -1,  1]],
-      [[  0, -1,  1],[ -1,  1, -1]],
-      [[ -1,  0, -1],[ -1, -1,  1]],
-      [[ -1,  0, -1],[ -1,  1, -1]],
-      [[  1,  1,  0],[ -1, -1,  1]],
-      [[  1,  1,  0],[ -1,  1, -1]],
-      [[ -1,  1,  0],[ -1, -1,  1]],
-      [[ -1,  1,  0],[ -1,  1, -1]],
-      [[  0, -1, -1],[ -1, -1,  1]],
-      [[  0, -1, -1],[ -1,  1, -1]],
-      [[  1,  0,  1],[ -1, -1,  1]],
-      [[  1,  0,  1],[ -1,  1, -1]]],dtype='float')}
-
-  # Greninger--Troiano orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-  GT = {'mapping':{'fcc':0,'bcc':1},
-      'planes': np.array([
-      [[  1,  1,  1],[  1,  0,  1]],
-      [[  1,  1,  1],[  1,  1,  0]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[ -1, -1,  1],[ -1,  0,  1]],
-      [[ -1, -1,  1],[ -1, -1,  0]],
-      [[ -1, -1,  1],[  0, -1,  1]],
-      [[ -1,  1,  1],[ -1,  0,  1]],
-      [[ -1,  1,  1],[ -1,  1,  0]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  1,  0,  1]],
-      [[  1, -1,  1],[  1, -1,  0]],
-      [[  1, -1,  1],[  0, -1,  1]],
-      [[  1,  1,  1],[  1,  1,  0]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  1,  0,  1]],
-      [[ -1, -1,  1],[ -1, -1,  0]],
-      [[ -1, -1,  1],[  0, -1,  1]],
-      [[ -1, -1,  1],[ -1,  0,  1]],
-      [[ -1,  1,  1],[ -1,  1,  0]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[ -1,  0,  1]],
-      [[  1, -1,  1],[  1, -1,  0]],
-      [[  1, -1,  1],[  0, -1,  1]],
-      [[  1, -1,  1],[  1,  0,  1]]],dtype='float'),
-      'directions': np.array([
-      [[ -5,-12, 17],[-17, -7, 17]],
-      [[ 17, -5,-12],[ 17,-17, -7]],
-      [[-12, 17, -5],[ -7, 17,-17]],
-      [[  5, 12, 17],[ 17,  7, 17]],
-      [[-17,  5,-12],[-17, 17, -7]],
-      [[ 12,-17, -5],[  7,-17,-17]],
-      [[ -5, 12,-17],[-17,  7,-17]],
-      [[ 17,  5, 12],[ 17, 17,  7]],
-      [[-12,-17,  5],[ -7,-17, 17]],
-      [[  5,-12,-17],[ 17, -7,-17]],
-      [[-17, -5, 12],[-17,-17,  7]],
-      [[ 12, 17,  5],[  7, 17, 17]],
-      [[ -5, 17,-12],[-17, 17, -7]],
-      [[-12, -5, 17],[ -7,-17, 17]],
-      [[ 17,-12, -5],[ 17, -7,-17]],
-      [[  5,-17,-12],[ 17,-17, -7]],
-      [[ 12,  5, 17],[  7, 17, 17]],
-      [[-17, 12, -5],[-17,  7,-17]],
-      [[ -5,-17, 12],[-17,-17,  7]],
-      [[-12,  5,-17],[ -7, 17,-17]],
-      [[ 17, 12,  5],[ 17,  7, 17]],
-      [[  5, 17, 12],[ 17, 17,  7]],
-      [[ 12, -5,-17],[  7,-17,-17]],
-      [[-17,-12,  5],[-17,-7, 17]]],dtype='float')}
-
-  # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-  GTprime = {'mapping':{'fcc':0,'bcc':1},
-      'planes': np.array([
-      [[  7, 17, 17],[ 12,  5, 17]],
-      [[ 17,  7, 17],[ 17, 12,  5]],
-      [[ 17, 17,  7],[  5, 17, 12]],
-      [[ -7,-17, 17],[-12, -5, 17]],
-      [[-17, -7, 17],[-17,-12,  5]],
-      [[-17,-17,  7],[ -5,-17, 12]],
-      [[  7,-17,-17],[ 12, -5,-17]],
-      [[ 17, -7,-17],[ 17,-12, -5]],
-      [[ 17,-17, -7],[  5,-17,-12]],
-      [[ -7, 17,-17],[-12,  5,-17]],
-      [[-17,  7,-17],[-17, 12, -5]],
-      [[-17, 17, -7],[ -5, 17,-12]],
-      [[  7, 17, 17],[ 12, 17,  5]],
-      [[ 17,  7, 17],[  5, 12, 17]],
-      [[ 17, 17,  7],[ 17,  5, 12]],
-      [[ -7,-17, 17],[-12,-17,  5]],
-      [[-17, -7, 17],[ -5,-12, 17]],
-      [[-17,-17,  7],[-17, -5, 12]],
-      [[  7,-17,-17],[ 12,-17, -5]],
-      [[ 17, -7,-17],[ 5, -12,-17]],
-      [[ 17,-17, -7],[ 17, -5,-12]],
-      [[ -7, 17,-17],[-12, 17, -5]],
-      [[-17,  7,-17],[ -5, 12,-17]],
-      [[-17, 17, -7],[-17,  5,-12]]],dtype='float'),
-      'directions': np.array([
-      [[  0,  1, -1],[  1,  1, -1]],
-      [[ -1,  0,  1],[ -1,  1,  1]],
-      [[  1, -1,  0],[  1, -1,  1]],
-      [[  0, -1, -1],[ -1, -1, -1]],
-      [[  1,  0,  1],[  1, -1,  1]],
-      [[  1, -1,  0],[  1, -1, -1]],
-      [[  0,  1, -1],[ -1,  1, -1]],
-      [[  1,  0,  1],[  1,  1,  1]],
-      [[ -1, -1,  0],[ -1, -1,  1]],
-      [[  0, -1, -1],[  1, -1, -1]],
-      [[ -1,  0,  1],[ -1, -1,  1]],
-      [[ -1, -1,  0],[ -1, -1, -1]],
-      [[  0, -1,  1],[  1, -1,  1]],
-      [[  1,  0, -1],[  1,  1, -1]],
-      [[ -1,  1,  0],[ -1,  1,  1]],
-      [[  0,  1,  1],[ -1,  1,  1]],
-      [[ -1,  0, -1],[ -1, -1, -1]],
-      [[ -1,  1,  0],[ -1,  1, -1]],
-      [[  0, -1,  1],[ -1, -1,  1]],
-      [[ -1,  0, -1],[ -1,  1, -1]],
-      [[  1,  1,  0],[  1,  1,  1]],
-      [[  0,  1,  1],[  1,  1,  1]],
-      [[  1,  0, -1],[  1, -1, -1]],
-      [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
-
-  # Nishiyama--Wassermann orientation relationship for fcc <-> bcc transformation
-  # from H. Kitahara et al., Materials Characterization 54:378-386, 2005
-  NW = {'mapping':{'fcc':0,'bcc':1},
-      'planes': np.array([
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[  1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[ -1,  1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[  1, -1,  1],[  0,  1,  1]],
-      [[ -1, -1,  1],[  0,  1,  1]],
-      [[ -1, -1,  1],[  0,  1,  1]],
-      [[ -1, -1,  1],[  0,  1,  1]]],dtype='float'),
-      'directions': np.array([
-      [[  2, -1, -1],[  0, -1,  1]],
-      [[ -1,  2, -1],[  0, -1,  1]],
-      [[ -1, -1,  2],[  0, -1,  1]],
-      [[ -2, -1, -1],[  0, -1,  1]],
-      [[  1,  2, -1],[  0, -1,  1]],
-      [[  1, -1,  2],[  0, -1,  1]],
-      [[  2,  1, -1],[  0, -1,  1]],
-      [[ -1, -2, -1],[  0, -1,  1]],
-      [[ -1,  1,  2],[  0, -1,  1]],
-      [[  2, -1,  1],[  0, -1,  1]], #It is wrong in the paper, but matrix is correct
-      [[ -1,  2,  1],[  0, -1,  1]],
-      [[ -1, -1, -2],[  0, -1,  1]]],dtype='float')}
-
-  # Pitsch orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al., Acta Materialia 53:1179-1190, 2005
-  Pitsch = {'mapping':{'fcc':0,'bcc':1},
-      'planes': np.array([
-      [[  0,  1,  0],[ -1,  0,  1]],
-      [[  0,  0,  1],[  1, -1,  0]],
-      [[  1,  0,  0],[  0,  1, -1]],
-      [[  1,  0,  0],[  0, -1, -1]],
-      [[  0,  1,  0],[ -1,  0, -1]],
-      [[  0,  0,  1],[ -1, -1,  0]],
-      [[  0,  1,  0],[ -1,  0, -1]],
-      [[  0,  0,  1],[ -1, -1,  0]],
-      [[  1,  0,  0],[  0, -1, -1]],
-      [[  1,  0,  0],[  0, -1,  1]],
-      [[  0,  1,  0],[  1,  0, -1]],
-      [[  0,  0,  1],[ -1,  1,  0]]],dtype='float'),
-      'directions': np.array([
-      [[  1,  0,  1],[  1, -1,  1]],
-      [[  1,  1,  0],[  1,  1, -1]],
-      [[  0,  1,  1],[ -1,  1,  1]],
-      [[  0,  1, -1],[ -1,  1, -1]],
-      [[ -1,  0,  1],[ -1, -1,  1]],
-      [[  1, -1,  0],[  1, -1, -1]],
-      [[  1,  0, -1],[  1, -1, -1]],
-      [[ -1,  1,  0],[ -1,  1, -1]],
-      [[  0, -1,  1],[ -1, -1,  1]],
-      [[  0,  1,  1],[ -1,  1,  1]],
-      [[  1,  0,  1],[  1, -1,  1]],
-      [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
-
-  # Bain orientation relationship for fcc <-> bcc transformation
-  # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-  Bain = {'mapping':{'fcc':0,'bcc':1},
-      'planes': np.array([
-      [[  1,  0,  0],[  1,  0,  0]],
-      [[  0,  1,  0],[  0,  1,  0]],
-      [[  0,  0,  1],[  0,  0,  1]]],dtype='float'),
-      'directions': np.array([
-      [[  0,  1,  0],[  0,  1,  1]],
-      [[  0,  0,  1],[  1,  0,  1]],
-      [[  1,  0,  0],[  1,  1,  0]]],dtype='float')}
-
-  def relationOperations(self,model):
-    """
-    Crystallographic orientation relationships for phase transformations.
+    Currently, this contains only a mapping from Bravais lattice to symmetry
+    and orientation relationships. It could include twin and slip systems.
 
     References
     ----------
-    S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
-    https://doi.org/10.1016/j.jallcom.2012.02.004
-
-    K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
-    https://doi.org/10.1016/j.actamat.2005.11.001
-
-    Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-    https://doi.org/10.1107/S0021889805038276
-
-    H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
-    https://doi.org/10.1016/j.matchar.2004.12.015
-
-    Y. He et al., Acta Materialia 53(4):1179-1190, 2005
-    https://doi.org/10.1016/j.actamat.2004.11.021
+    https://en.wikipedia.org/wiki/Bravais_lattice
 
     """
-    models={'KS':self.KS, 'GT':self.GT, 'GT_prime':self.GTprime,
-            'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
-    try:
-      relationship = models[model]
-    except KeyError :
-      raise KeyError('Orientation relationship "{}" is unknown'.format(model))
 
-    if self.lattice not in relationship['mapping']:
-      raise ValueError('Relationship "{}" not supported for lattice "{}"'.format(model,self.lattice))
+    lattices = {
+                'triclinic':{'symmetry':None},
+                'bct':{'symmetry':'tetragonal'},
+                'hex':{'symmetry':'hexagonal'},
+                'fcc':{'symmetry':'cubic','c/a':1.0},
+                'bcc':{'symmetry':'cubic','c/a':1.0},
+               }
 
-    r = {'lattice':Lattice((set(relationship['mapping'])-{self.lattice}).pop()),                    # target lattice
-         'rotations':[] }
 
-    myPlane_id    = relationship['mapping'][self.lattice]
-    otherPlane_id = (myPlane_id+1)%2
-    myDir_id      = myPlane_id +2
-    otherDir_id   = otherPlane_id +2
+    def __init__(self, lattice):
+        """
+        New lattice of given type.
 
-    for miller in np.hstack((relationship['planes'],relationship['directions'])):
-      myPlane     = miller[myPlane_id]/    np.linalg.norm(miller[myPlane_id])
-      myDir       = miller[myDir_id]/      np.linalg.norm(miller[myDir_id])
-      myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane])
+        Parameters
+        ----------
+        lattice : str
+            Bravais lattice.
 
-      otherPlane  = miller[otherPlane_id]/ np.linalg.norm(miller[otherPlane_id])
-      otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
-      otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
+        """
+        self.lattice  = lattice
+        self.symmetry = Symmetry(self.lattices[lattice]['symmetry'])
 
-      r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix.T,myMatrix)))
 
-    return r
+    def __repr__(self):
+        """Report basic lattice information."""
+        return 'Bravais lattice {} ({} symmetry)'.format(self.lattice,self.symmetry)
+
+
+    # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
+    # from S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
+    # also see K. Kitahara et al., Acta Materialia 54:1279-1288, 2006
+    KS = {'mapping':{'fcc':0,'bcc':1},
+        'planes': np.array([
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[  1,  1, -1],[  0,  1,  1]],
+        [[  1,  1, -1],[  0,  1,  1]],
+        [[  1,  1, -1],[  0,  1,  1]],
+        [[  1,  1, -1],[  0,  1,  1]],
+        [[  1,  1, -1],[  0,  1,  1]],
+        [[  1,  1, -1],[  0,  1,  1]]],dtype='float'),
+        'directions': np.array([
+        [[ -1,  0,  1],[ -1, -1,  1]],
+        [[ -1,  0,  1],[ -1,  1, -1]],
+        [[  0,  1, -1],[ -1, -1,  1]],
+        [[  0,  1, -1],[ -1,  1, -1]],
+        [[  1, -1,  0],[ -1, -1,  1]],
+        [[  1, -1,  0],[ -1,  1, -1]],
+        [[  1,  0, -1],[ -1, -1,  1]],
+        [[  1,  0, -1],[ -1,  1, -1]],
+        [[ -1, -1,  0],[ -1, -1,  1]],
+        [[ -1, -1,  0],[ -1,  1, -1]],
+        [[  0,  1,  1],[ -1, -1,  1]],
+        [[  0,  1,  1],[ -1,  1, -1]],
+        [[  0, -1,  1],[ -1, -1,  1]],
+        [[  0, -1,  1],[ -1,  1, -1]],
+        [[ -1,  0, -1],[ -1, -1,  1]],
+        [[ -1,  0, -1],[ -1,  1, -1]],
+        [[  1,  1,  0],[ -1, -1,  1]],
+        [[  1,  1,  0],[ -1,  1, -1]],
+        [[ -1,  1,  0],[ -1, -1,  1]],
+        [[ -1,  1,  0],[ -1,  1, -1]],
+        [[  0, -1, -1],[ -1, -1,  1]],
+        [[  0, -1, -1],[ -1,  1, -1]],
+        [[  1,  0,  1],[ -1, -1,  1]],
+        [[  1,  0,  1],[ -1,  1, -1]]],dtype='float')}
+
+    # Greninger--Troiano orientation relationship for fcc <-> bcc transformation
+    # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
+    GT = {'mapping':{'fcc':0,'bcc':1},
+        'planes': np.array([
+        [[  1,  1,  1],[  1,  0,  1]],
+        [[  1,  1,  1],[  1,  1,  0]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[ -1, -1,  1],[ -1,  0,  1]],
+        [[ -1, -1,  1],[ -1, -1,  0]],
+        [[ -1, -1,  1],[  0, -1,  1]],
+        [[ -1,  1,  1],[ -1,  0,  1]],
+        [[ -1,  1,  1],[ -1,  1,  0]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  1,  0,  1]],
+        [[  1, -1,  1],[  1, -1,  0]],
+        [[  1, -1,  1],[  0, -1,  1]],
+        [[  1,  1,  1],[  1,  1,  0]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  1,  0,  1]],
+        [[ -1, -1,  1],[ -1, -1,  0]],
+        [[ -1, -1,  1],[  0, -1,  1]],
+        [[ -1, -1,  1],[ -1,  0,  1]],
+        [[ -1,  1,  1],[ -1,  1,  0]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[ -1,  0,  1]],
+        [[  1, -1,  1],[  1, -1,  0]],
+        [[  1, -1,  1],[  0, -1,  1]],
+        [[  1, -1,  1],[  1,  0,  1]]],dtype='float'),
+        'directions': np.array([
+        [[ -5,-12, 17],[-17, -7, 17]],
+        [[ 17, -5,-12],[ 17,-17, -7]],
+        [[-12, 17, -5],[ -7, 17,-17]],
+        [[  5, 12, 17],[ 17,  7, 17]],
+        [[-17,  5,-12],[-17, 17, -7]],
+        [[ 12,-17, -5],[  7,-17,-17]],
+        [[ -5, 12,-17],[-17,  7,-17]],
+        [[ 17,  5, 12],[ 17, 17,  7]],
+        [[-12,-17,  5],[ -7,-17, 17]],
+        [[  5,-12,-17],[ 17, -7,-17]],
+        [[-17, -5, 12],[-17,-17,  7]],
+        [[ 12, 17,  5],[  7, 17, 17]],
+        [[ -5, 17,-12],[-17, 17, -7]],
+        [[-12, -5, 17],[ -7,-17, 17]],
+        [[ 17,-12, -5],[ 17, -7,-17]],
+        [[  5,-17,-12],[ 17,-17, -7]],
+        [[ 12,  5, 17],[  7, 17, 17]],
+        [[-17, 12, -5],[-17,  7,-17]],
+        [[ -5,-17, 12],[-17,-17,  7]],
+        [[-12,  5,-17],[ -7, 17,-17]],
+        [[ 17, 12,  5],[ 17,  7, 17]],
+        [[  5, 17, 12],[ 17, 17,  7]],
+        [[ 12, -5,-17],[  7,-17,-17]],
+        [[-17,-12,  5],[-17,-7, 17]]],dtype='float')}
+
+    # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
+    # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
+    GTprime = {'mapping':{'fcc':0,'bcc':1},
+        'planes': np.array([
+        [[  7, 17, 17],[ 12,  5, 17]],
+        [[ 17,  7, 17],[ 17, 12,  5]],
+        [[ 17, 17,  7],[  5, 17, 12]],
+        [[ -7,-17, 17],[-12, -5, 17]],
+        [[-17, -7, 17],[-17,-12,  5]],
+        [[-17,-17,  7],[ -5,-17, 12]],
+        [[  7,-17,-17],[ 12, -5,-17]],
+        [[ 17, -7,-17],[ 17,-12, -5]],
+        [[ 17,-17, -7],[  5,-17,-12]],
+        [[ -7, 17,-17],[-12,  5,-17]],
+        [[-17,  7,-17],[-17, 12, -5]],
+        [[-17, 17, -7],[ -5, 17,-12]],
+        [[  7, 17, 17],[ 12, 17,  5]],
+        [[ 17,  7, 17],[  5, 12, 17]],
+        [[ 17, 17,  7],[ 17,  5, 12]],
+        [[ -7,-17, 17],[-12,-17,  5]],
+        [[-17, -7, 17],[ -5,-12, 17]],
+        [[-17,-17,  7],[-17, -5, 12]],
+        [[  7,-17,-17],[ 12,-17, -5]],
+        [[ 17, -7,-17],[ 5, -12,-17]],
+        [[ 17,-17, -7],[ 17, -5,-12]],
+        [[ -7, 17,-17],[-12, 17, -5]],
+        [[-17,  7,-17],[ -5, 12,-17]],
+        [[-17, 17, -7],[-17,  5,-12]]],dtype='float'),
+        'directions': np.array([
+        [[  0,  1, -1],[  1,  1, -1]],
+        [[ -1,  0,  1],[ -1,  1,  1]],
+        [[  1, -1,  0],[  1, -1,  1]],
+        [[  0, -1, -1],[ -1, -1, -1]],
+        [[  1,  0,  1],[  1, -1,  1]],
+        [[  1, -1,  0],[  1, -1, -1]],
+        [[  0,  1, -1],[ -1,  1, -1]],
+        [[  1,  0,  1],[  1,  1,  1]],
+        [[ -1, -1,  0],[ -1, -1,  1]],
+        [[  0, -1, -1],[  1, -1, -1]],
+        [[ -1,  0,  1],[ -1, -1,  1]],
+        [[ -1, -1,  0],[ -1, -1, -1]],
+        [[  0, -1,  1],[  1, -1,  1]],
+        [[  1,  0, -1],[  1,  1, -1]],
+        [[ -1,  1,  0],[ -1,  1,  1]],
+        [[  0,  1,  1],[ -1,  1,  1]],
+        [[ -1,  0, -1],[ -1, -1, -1]],
+        [[ -1,  1,  0],[ -1,  1, -1]],
+        [[  0, -1,  1],[ -1, -1,  1]],
+        [[ -1,  0, -1],[ -1,  1, -1]],
+        [[  1,  1,  0],[  1,  1,  1]],
+        [[  0,  1,  1],[  1,  1,  1]],
+        [[  1,  0, -1],[  1, -1, -1]],
+        [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
+
+    # Nishiyama--Wassermann orientation relationship for fcc <-> bcc transformation
+    # from H. Kitahara et al., Materials Characterization 54:378-386, 2005
+    NW = {'mapping':{'fcc':0,'bcc':1},
+        'planes': np.array([
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[  1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[ -1,  1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[  1, -1,  1],[  0,  1,  1]],
+        [[ -1, -1,  1],[  0,  1,  1]],
+        [[ -1, -1,  1],[  0,  1,  1]],
+        [[ -1, -1,  1],[  0,  1,  1]]],dtype='float'),
+        'directions': np.array([
+        [[  2, -1, -1],[  0, -1,  1]],
+        [[ -1,  2, -1],[  0, -1,  1]],
+        [[ -1, -1,  2],[  0, -1,  1]],
+        [[ -2, -1, -1],[  0, -1,  1]],
+        [[  1,  2, -1],[  0, -1,  1]],
+        [[  1, -1,  2],[  0, -1,  1]],
+        [[  2,  1, -1],[  0, -1,  1]],
+        [[ -1, -2, -1],[  0, -1,  1]],
+        [[ -1,  1,  2],[  0, -1,  1]],
+        [[  2, -1,  1],[  0, -1,  1]], #It is wrong in the paper, but matrix is correct
+        [[ -1,  2,  1],[  0, -1,  1]],
+        [[ -1, -1, -2],[  0, -1,  1]]],dtype='float')}
+
+    # Pitsch orientation relationship for fcc <-> bcc transformation
+    # from Y. He et al., Acta Materialia 53:1179-1190, 2005
+    Pitsch = {'mapping':{'fcc':0,'bcc':1},
+        'planes': np.array([
+        [[  0,  1,  0],[ -1,  0,  1]],
+        [[  0,  0,  1],[  1, -1,  0]],
+        [[  1,  0,  0],[  0,  1, -1]],
+        [[  1,  0,  0],[  0, -1, -1]],
+        [[  0,  1,  0],[ -1,  0, -1]],
+        [[  0,  0,  1],[ -1, -1,  0]],
+        [[  0,  1,  0],[ -1,  0, -1]],
+        [[  0,  0,  1],[ -1, -1,  0]],
+        [[  1,  0,  0],[  0, -1, -1]],
+        [[  1,  0,  0],[  0, -1,  1]],
+        [[  0,  1,  0],[  1,  0, -1]],
+        [[  0,  0,  1],[ -1,  1,  0]]],dtype='float'),
+        'directions': np.array([
+        [[  1,  0,  1],[  1, -1,  1]],
+        [[  1,  1,  0],[  1,  1, -1]],
+        [[  0,  1,  1],[ -1,  1,  1]],
+        [[  0,  1, -1],[ -1,  1, -1]],
+        [[ -1,  0,  1],[ -1, -1,  1]],
+        [[  1, -1,  0],[  1, -1, -1]],
+        [[  1,  0, -1],[  1, -1, -1]],
+        [[ -1,  1,  0],[ -1,  1, -1]],
+        [[  0, -1,  1],[ -1, -1,  1]],
+        [[  0,  1,  1],[ -1,  1,  1]],
+        [[  1,  0,  1],[  1, -1,  1]],
+        [[  1,  1,  0],[  1,  1, -1]]],dtype='float')}
+
+    # Bain orientation relationship for fcc <-> bcc transformation
+    # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
+    Bain = {'mapping':{'fcc':0,'bcc':1},
+        'planes': np.array([
+        [[  1,  0,  0],[  1,  0,  0]],
+        [[  0,  1,  0],[  0,  1,  0]],
+        [[  0,  0,  1],[  0,  0,  1]]],dtype='float'),
+        'directions': np.array([
+        [[  0,  1,  0],[  0,  1,  1]],
+        [[  0,  0,  1],[  1,  0,  1]],
+        [[  1,  0,  0],[  1,  1,  0]]],dtype='float')}
+
+    def relationOperations(self,model):
+        """
+        Crystallographic orientation relationships for phase transformations.
+
+        References
+        ----------
+        S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
+        https://doi.org/10.1016/j.jallcom.2012.02.004
+
+        K. Kitahara et al., Acta Materialia 54(5):1279-1288, 2006
+        https://doi.org/10.1016/j.actamat.2005.11.001
+
+        Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
+        https://doi.org/10.1107/S0021889805038276
+
+        H. Kitahara et al., Materials Characterization 54(4-5):378-386, 2005
+        https://doi.org/10.1016/j.matchar.2004.12.015
+
+        Y. He et al., Acta Materialia 53(4):1179-1190, 2005
+        https://doi.org/10.1016/j.actamat.2004.11.021
+
+        """
+        models={'KS':self.KS, 'GT':self.GT, 'GT_prime':self.GTprime,
+                'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
+        try:
+            relationship = models[model]
+        except KeyError :
+            raise KeyError('Orientation relationship "{}" is unknown'.format(model))
+
+        if self.lattice not in relationship['mapping']:
+            raise ValueError('Relationship "{}" not supported for lattice "{}"'.format(model,self.lattice))
+
+        r = {'lattice':Lattice((set(relationship['mapping'])-{self.lattice}).pop()),                # target lattice
+             'rotations':[] }
+
+        myPlane_id    = relationship['mapping'][self.lattice]
+        otherPlane_id = (myPlane_id+1)%2
+        myDir_id      = myPlane_id +2
+        otherDir_id   = otherPlane_id +2
+
+        for miller in np.hstack((relationship['planes'],relationship['directions'])):
+            myPlane     = miller[myPlane_id]/    np.linalg.norm(miller[myPlane_id])
+            myDir       = miller[myDir_id]/      np.linalg.norm(miller[myDir_id])
+            myMatrix    = np.array([myDir,np.cross(myPlane,myDir),myPlane])
+
+            otherPlane  = miller[otherPlane_id]/ np.linalg.norm(miller[otherPlane_id])
+            otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
+            otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
+
+            r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix.T,myMatrix)))
+
+        return r
