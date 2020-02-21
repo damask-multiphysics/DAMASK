@@ -1072,7 +1072,7 @@ class DADF5():
               for i in f['/geometry/T_c']:
                 vtk_geom.InsertNextCell(vtk_type,n_nodes,i-1)
 
-        elif mode == 'Point':
+        elif mode.lower()=='point':
           Points   = vtk.vtkPoints()
           Vertices = vtk.vtkCellArray()
           for c in self.cell_coordinates():
@@ -1148,7 +1148,7 @@ class DADF5():
                 vtk_geom.GetCellData().AddArray(vtk_data[-1])
           self.set_visible('constituents',constituents_backup)
 
-          if mode=='Cell':
+          if mode.lower()=='cell':
             writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
                      vtk.vtkXMLUnstructuredGridWriter()
             x = self.get_dataset_location('u_n')
@@ -1156,7 +1156,7 @@ class DADF5():
                             deep=True,array_type=vtk.VTK_DOUBLE))
             vtk_data[-1].SetName('u')
             vtk_geom.GetPointData().AddArray(vtk_data[-1])
-          elif mode == 'Point':
+          elif mode.lower()=='point':
             writer = vtk.vtkXMLPolyDataWriter()
 
 
