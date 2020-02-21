@@ -167,11 +167,10 @@ def progressBar(iteration, total, prefix='', bar_length=50):
 
 def scale_to_coprime(v):
   """Scale vector to co-prime (relatively prime) integers."""
-
   MAX_DENOMINATOR = 1000
 
   def get_square_denominator(x):
-    """returns the denominator of the square of a number."""
+    """Denominator of the square of a number."""
     return Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
 
   def lcm(a, b):

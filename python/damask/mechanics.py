@@ -299,6 +299,7 @@ def __Mises(x,s):
       Symmetric tensor of which the von Mises equivalent is computed.
     s : float
       Scaling factor (2/3 for strain, 3/2 for stress).
+    
     """
     d = deviatoric_part(x)
     return np.sqrt(s*(np.sum(d**2.0))) if np.shape(x) == (3,3) else \

@@ -829,8 +829,8 @@ class DADF5():
 
           for i,q in enumerate(q['data']):
             o = Rotation(np.array([q['w'],q['x'],q['y'],q['z']]))
-            rotatedPole = o*pole                                # rotate pole according to crystal orientation
-            (x,y) = rotatedPole[0:2]/(1.+abs(pole[2]))          # stereographic projection
+            rotatedPole = o*unit_pole                                # rotate pole according to crystal orientation
+            (x,y) = rotatedPole[0:2]/(1.+abs(unit_pole[2]))          # stereographic projection
             coords[i] = [np.sqrt(x*x+y*y),np.arctan2(y,x)] if polar else [x,y]
 
           return {
@@ -839,8 +839,8 @@ class DADF5():
                   'meta' : {
                             'Unit': '1',
                             'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
-                                         .format('Polar' if polar else 'Cartesian'),
-                            'Creator' : 'dadf5.py:addPole v{}'.format(version)
+                                           .format('Polar' if polar else 'Cartesian'),
+                            'Creator' : 'dadf5.py:add_pole v{}'.format(version)
                            }
                  }
 
@@ -980,7 +980,8 @@ class DADF5():
           args['results'].put({**args['func'](**args['in']),'group':args['group']})
 
         env = Environment()
-        N_threads = 1#int(env.options['DAMASK_NUM_THREADS'])
+        N_threads = int(env.options['DAMASK_NUM_THREADS'])
+        N_threads //=N_threads # disable for the moment
 
         results = Queue(N_threads)
         pool    = util.ThreadPool(N_threads)

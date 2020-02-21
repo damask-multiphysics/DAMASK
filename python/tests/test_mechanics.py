@@ -217,7 +217,6 @@ class TestMechanics:
         A = mechanics.symmetric(np.random.random((self.n,3,3)))
         LRHS = np.linalg.det(mechanics.eigenvectors(A,RHS=False))
         RHS  = np.linalg.det(mechanics.eigenvectors(A,RHS=True))
-        s = np.random.randint(self.n)
         assert np.allclose(np.abs(LRHS),RHS)
 
     def test_spherical_no_shear(self):
