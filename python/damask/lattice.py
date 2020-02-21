@@ -204,7 +204,7 @@ class Symmetry:
 
         """
         if (len(rodrigues) != 3):
-          raise ValueError('Input is not a Rodriques-Frank vector.\n')
+            raise ValueError('Input is not a Rodriques-Frank vector.\n')
         R = rodrigues
 
         epsilon = 0.0
@@ -288,8 +288,8 @@ class Symmetry:
             theComponents = np.around(np.dot(basis['improper'],v),12)
             inSST = np.all(theComponents >= 0.0)
             if not inSST:                                                                           # ... and proper SST
-              theComponents = np.around(np.dot(basis['proper'],v),12)
-              inSST = np.all(theComponents >= 0.0)
+                theComponents = np.around(np.dot(basis['proper'],v),12)
+                inSST = np.all(theComponents >= 0.0)
         else:
             v[2] = abs(v[2])                                                                        # z component projects identical
             theComponents = np.around(np.dot(basis['improper'],v),12)                               # for positive and negative values
