@@ -219,8 +219,7 @@ class Rotation:
     def asRodrigues(self,
                     vector = False):
         """
-        Rodrigues-Frank vector representation [n_1, n_2, n_3, tan(ω/2)] unless vector == True:
-        [n_1, n_2, n_3] * tan(ω/2).
+        Rodrigues-Frank vector representation [n_1, n_2, n_3, tan(ω/2)] unless vector == True: [n_1, n_2, n_3] * tan(ω/2).
 
         Parameters
         ----------
@@ -634,7 +633,7 @@ class Rotation:
     @staticmethod
     def eu2ro(eu):
         """Bunge-Euler angles to Rodriques-Frank vector."""
-        ro = eu2ax(eu)                                                                              # convert to axis angle pair representation
+        ro = Rotation.eu2ax(eu)                                                                     # convert to axis angle pair representation
         if ro[3] >= np.pi:                                                                          # Differs from original implementation. check convention 5
             ro[3] = np.inf
         elif iszero(ro[3]):
@@ -754,7 +753,7 @@ class Rotation:
     @staticmethod
     def ro2cu(ro):
         """Rodriques-Frank vector to cubochoric vector."""
-        return ho2cu(ro2ho(ro))
+        return Rotation.ho2cu(Rotation.ro2ho(ro))
 
 
     #---------- Homochoric vector----------

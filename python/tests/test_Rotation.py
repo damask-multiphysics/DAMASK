@@ -1,10 +1,8 @@
 import os
-from itertools import permutations
 
 import pytest
 import numpy as np
 
-import damask
 from damask import Rotation
    
 n = 1000

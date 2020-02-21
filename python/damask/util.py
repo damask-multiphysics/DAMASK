@@ -39,7 +39,7 @@ class bcolors:
     
 
 def srepr(arg,glue = '\n'):
-    """
+    r"""
     Join arguments as individual lines.
     
     Parameters
@@ -110,7 +110,6 @@ def execute(cmd,
             env = None):
     """
     Execute command.
-    
 
     Parameters
     ----------
@@ -179,6 +178,7 @@ def progressBar(iteration, total, prefix='', bar_length=50):
       Prefix string.
     bar_length : int, optional
       Character length of bar. Defaults to 50.
+
     """
     fraction = iteration / float(total)
     if not hasattr(progressBar, "last_fraction"):                                                   # first call to function

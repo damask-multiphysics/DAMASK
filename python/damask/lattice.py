@@ -1,7 +1,6 @@
 import numpy as np
 
 from .rotation import Rotation
-from . import Lambert
 
 P = -1
 
