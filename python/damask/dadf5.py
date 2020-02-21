@@ -464,7 +464,7 @@ class DADF5():
           Label of scalar, vector, or tensor dataset to take absolute value of.
 
         """
-        self.__add_generic_pointwise(self._add_absolute,{'x':x})
+        self._add_generic_pointwise(self._add_absolute,{'x':x})
 
 
     @staticmethod
@@ -505,7 +505,7 @@ class DADF5():
 
         dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
         args             = {'formula':formula,'label':label,'unit':unit,'description':description}
-        self.__add_generic_pointwise(self._add_calculation,dataset_mapping,args)
+        self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
 
 
     @staticmethod
@@ -533,7 +533,7 @@ class DADF5():
           Label of the dataset containing the deformation gradient. Defaults to ‘F’.
 
         """
-        self.__add_generic_pointwise(self._add_Cauchy,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_Cauchy,{'P':P,'F':F})
 
 
     @staticmethod
@@ -557,7 +557,7 @@ class DADF5():
           Label of tensor dataset.
 
         """
-        self.__add_generic_pointwise(self._add_determinant,{'T':T})
+        self._add_generic_pointwise(self._add_determinant,{'T':T})
 
 
     @staticmethod
@@ -584,7 +584,7 @@ class DADF5():
           Label of tensor dataset.
 
         """
-        self.__add_generic_pointwise(self._add_deviator,{'T':T})
+        self._add_generic_pointwise(self._add_deviator,{'T':T})
 
 
     @staticmethod
@@ -608,7 +608,7 @@ class DADF5():
           Label of symmetric tensor dataset.
 
         """
-        self.__add_generic_pointwise(self._add_eigenvalue,{'S':S})
+        self._add_generic_pointwise(self._add_eigenvalue,{'S':S})
 
 
     @staticmethod
@@ -632,7 +632,7 @@ class DADF5():
           Label of symmetric tensor dataset.
 
         """
-        self.__add_generic_pointwise(self._add_eigenvector,{'S':S})
+        self._add_generic_pointwise(self._add_eigenvector,{'S':S})
 
 
     @staticmethod
@@ -670,7 +670,7 @@ class DADF5():
           Lab frame direction for inverse pole figure.
 
         """
-        self.__add_generic_pointwise(self._add_IPFcolor,{'q':q},{'l':l})
+        self._add_generic_pointwise(self._add_IPFcolor,{'q':q},{'l':l})
 
 
     @staticmethod
@@ -694,7 +694,7 @@ class DADF5():
           Label of symmetric tensor dataset.
 
         """
-        self.__add_generic_pointwise(self._add_maximum_shear,{'S':S})
+        self._add_generic_pointwise(self._add_maximum_shear,{'S':S})
 
 
     @staticmethod
@@ -721,7 +721,7 @@ class DADF5():
           Label of symmetric tensorial stress or strain dataset.
 
         """
-        self.__add_generic_pointwise(self._add_Mises,{'S':S})
+        self._add_generic_pointwise(self._add_Mises,{'S':S})
 
 
     @staticmethod
@@ -759,7 +759,7 @@ class DADF5():
           Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
 
         """
-        self.__add_generic_pointwise(self._add_norm,{'x':x},{'ord':ord})
+        self._add_generic_pointwise(self._add_norm,{'x':x},{'ord':ord})
 
 
     @staticmethod
@@ -787,7 +787,7 @@ class DADF5():
           Label of deformation gradient dataset. Defaults to ‘F’.
 
         """
-        self.__add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
 
 
     @staticmethod
@@ -827,7 +827,7 @@ class DADF5():
           Give pole in polar coordinates. Defaults to False.
 
         """
-        self.__add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
+        self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
 
 
     @staticmethod
@@ -853,7 +853,7 @@ class DADF5():
           Label of deformation gradient dataset.
 
         """
-        self.__add_generic_pointwise(self._add_rotational_part,{'F':F})
+        self._add_generic_pointwise(self._add_rotational_part,{'F':F})
 
 
     @staticmethod
@@ -880,7 +880,7 @@ class DADF5():
           Label of tensor dataset.
 
         """
-        self.__add_generic_pointwise(self._add_spherical,{'T':T})
+        self._add_generic_pointwise(self._add_spherical,{'T':T})
 
 
     @staticmethod
@@ -914,7 +914,7 @@ class DADF5():
           Order of the strain calculation. Defaults to ‘0.0’.
 
         """
-        self.__add_generic_pointwise(self._add_strain_tensor,{'F':F},{'t':t,'m':m})
+        self._add_generic_pointwise(self._add_strain_tensor,{'F':F},{'t':t,'m':m})
 
 
     @staticmethod
@@ -945,12 +945,24 @@ class DADF5():
           Defaults to ‘V’.
 
         """
-        self.__add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
+        self._add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
 
 
-    def job(self,group,func,datasets,args,lock):
+    def _job(self,group,func,datasets,args,lock):
+        def _read(group,datasets,lock):
+          datasets_in = {}
+          lock.acquire()
+          with h5py.File(self.fname,'r') as f:
+            for k,v in datasets.items():
+              loc  = f[group+'/'+v]
+              datasets_in[k]={'data':loc[()],
+                              'label':v,
+                              'meta':{k2:v2.decode() for k2,v2 in loc.attrs.items()}}
+          lock.release()
+          return datasets_in
+
         try:
-            d = self._read(group,datasets,lock)
+            d = _read(group,datasets,lock)
             r = func(**d,**args)
             return [group,r]
         except Exception as err:
@@ -958,19 +970,7 @@ class DADF5():
             return None
 
 
-    def _read(self,group,datasets,lock):
-      datasets_in = {}
-      lock.acquire()
-      with h5py.File(self.fname,'r') as f:
-        for k,v in datasets.items():
-          loc  = f[group+'/'+v]
-          datasets_in[k]={'data':loc[()],
-                          'label':v,
-                          'meta':{k2:v2.decode() for k2,v2 in loc.attrs.items()}}
-      lock.release()
-      return datasets_in
-
-    def __add_generic_pointwise(self,func,datasets,args={}):
+    def _add_generic_pointwise(self,func,datasets,args={}):
 
       env = Environment()
       N_threads = int(env.options['DAMASK_NUM_THREADS'])
@@ -979,7 +979,7 @@ class DADF5():
       lock = m.Lock()
 
       groups = self.groups_with_datasets(datasets.values())
-      default_arg = partial(self.job,func=func,datasets=datasets,args=args,lock=lock)
+      default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
       util.progressBar(iteration=0,total=len(groups)-1)
       for i,result in enumerate(pool.imap_unordered(default_arg,groups)):
           util.progressBar(iteration=i,total=len(groups)-1)
