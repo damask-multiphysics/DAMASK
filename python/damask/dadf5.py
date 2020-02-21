@@ -351,7 +351,8 @@ class DADF5():
                   for d in f[group].keys():
                     try:
                       dataset = f['/'.join([group,d])]
-                      message+='      {} / ({}): {}\n'.format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
+                      message+='      {} / ({}): {}\n'.\
+                                format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
                     except KeyError:
                       pass
         return message
