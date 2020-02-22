@@ -317,6 +317,7 @@ subroutine material_init
  
   deallocate(microstructure_phase)
   deallocate(microstructure_texture)
+  deallocate(texture_orientation)
  
   
   allocate(material_homogenizationAt,source=discretization_homogenizationAt)
