@@ -42,7 +42,7 @@ contains
 subroutine thermal_conduction_init
 
   
-  integer :: maxNinstance,o,NofMyHomog,h
+  integer :: maxNinstance,NofMyHomog,h
  
   write(6,'(/,a)') ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'; flush(6)
   

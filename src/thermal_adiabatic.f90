@@ -41,7 +41,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
  
-  integer :: maxNinstance,o,h,NofMyHomog   
+  integer :: maxNinstance,h,NofMyHomog   
  
   write(6,'(/,a)') ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'; flush(6)
   
