@@ -40,9 +40,11 @@ module DAMASK_interface
   implicit none
   private
 
-  logical,                     public :: symmetricSolver 
+  logical,                     public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
-  
+
+  integer(pInt),    parameter, public :: interface_restartInc = 0
+
   public :: &
     DAMASK_interface_init, &
     getSolverJobName
@@ -57,14 +59,14 @@ subroutine DAMASK_interface_init
   integer, dimension(8)   :: dateAndTime
   integer                 :: ierr
   character(len=pPathLen) :: wd
- 
+
   write(6,'(/,a)') ' <<<+-  DAMASK_marc init -+>>>'
- 
+
   write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
   write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
- 
+
   write(6,'(/,a)') ' Version: '//DAMASKVERSION
- 
+
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if __INTEL_COMPILER >= 1800
    write(6,'(/,a)') ' Compiled with: '//compiler_version()
@@ -73,13 +75,13 @@ subroutine DAMASK_interface_init
    write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
                                                         ', build date :', __INTEL_COMPILER_BUILD_DATE
 #endif
- 
+
   write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
- 
+
   call date_and_time(values = dateAndTime)
   write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
   write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
- 
+
   inquire(5, name=wd)
   wd = wd(1:scan(wd,'/',back=.true.))
   ierr = CHDIR(wd)
