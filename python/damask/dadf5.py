@@ -111,10 +111,13 @@ class DADF5():
         if   action == 'set':
           self.selection[what] = valid
         elif action == 'add':
-          self.selection[what] = list(existing.union(valid))
+          add=existing.union(valid)
+          add_sorted=sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+          self.selection[what] = add_sorted
         elif action == 'del':
-          self.selection[what] = list(existing.difference_update(valid))
-
+          diff=existing.difference(valid)
+          diff_sorted=sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+          self.selection[what] = diff_sorted
 
     def __time_to_inc(self,start,end):
         selected = []
