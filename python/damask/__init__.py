@@ -15,6 +15,7 @@ from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
 from .orientation import Symmetry, Lattice, Rotation, Orientation # noqa
 from .dadf5       import DADF5            # noqa
+from .dadf5       import DADF5 as Result  # noqa
 
 from .geom        import Geom             # noqa
 from .solver      import Solver           # noqa
