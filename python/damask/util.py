@@ -3,14 +3,18 @@ import time
 import os
 import subprocess
 import shlex
+from fractions import Fraction
+from functools import reduce
 from optparse import Option
 from queue import Queue
 from threading import Thread
 
+import numpy as np
+
 class bcolors:
     """
     ASCII Colors (Blender code).
-    
+
     https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
     http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
     """
@@ -36,7 +40,7 @@ class bcolors:
         self.BOLD = ''
         self.UNDERLINE = ''
         self.CROSSOUT = ''
-    
+
 
 # -----------------------------
 def srepr(arg,glue = '\n'):
@@ -159,11 +163,29 @@ def progressBar(iteration, total, prefix='', bar_length=50):
 
   if iteration == total: sys.stderr.write('\n')
   sys.stderr.flush()
- 
+
+
+def scale_to_coprime(v):
+  """Scale vector to co-prime (relatively prime) integers."""
+  MAX_DENOMINATOR = 1000
+
+  def get_square_denominator(x):
+    """Denominator of the square of a number."""
+    return Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
+
+  def lcm(a, b):
+    """Least common multiple."""
+    return a * b // np.gcd(a, b)
+
+  denominators = [int(get_square_denominator(i)) for i in v]
+  s = reduce(lcm, denominators) ** 0.5
+  m = (np.array(v)*s).astype(np.int)
+  return m//reduce(np.gcd,m)
+
 
 class return_message():
   """Object with formatted return message."""
-  
+
   def __init__(self,message):
     """
     Sets return message.
@@ -175,7 +197,7 @@ class return_message():
 
     """
     self.message = message
-  
+
   def __repr__(self):
     """Return message suitable for interactive shells."""
     return srepr(self.message)

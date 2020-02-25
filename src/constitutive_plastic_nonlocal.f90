@@ -48,32 +48,6 @@ submodule(constitutive) plastic_nonlocal
   real(pReal), dimension(:,:,:,:,:,:), allocatable :: &
     compatibility                                                                                   !< slip system compatibility between me and my neighbors
 
-  enum, bind(c)
-    enumerator :: &
-      undefined_ID, &
-      rho_sgl_mob_edg_pos_ID, &
-      rho_sgl_mob_edg_neg_ID, &
-      rho_sgl_mob_scr_pos_ID, &
-      rho_sgl_mob_scr_neg_ID, &
-      rho_sgl_imm_edg_pos_ID, &
-      rho_sgl_imm_edg_neg_ID, &
-      rho_sgl_imm_scr_pos_ID, &
-      rho_sgl_imm_scr_neg_ID, &
-      rho_dip_edg_ID, &
-      rho_dip_scr_ID, &
-      rho_forest_ID, &
-      resolvedstress_back_ID, &
-      tau_pass_ID, &
-      rho_dot_sgl_ID, &
-      rho_dot_sgl_mobile_ID, &
-      rho_dot_dip_ID, &
-      v_edg_pos_ID, &
-      v_edg_neg_ID, &
-      v_scr_pos_ID, &
-      v_scr_neg_ID, &
-      gamma_ID
-  end enum
-
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       atomicVolume, &                                                                               !< atomic volume
@@ -135,13 +109,11 @@ submodule(constitutive) plastic_nonlocal
     integer, dimension(:) ,allocatable :: &
       Nslip,&
       colinearSystem                                                                                !< colinear system to the active slip system (only valid for fcc!)
-
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      output
     logical :: &
       shortRangeStressCorrection, &                                                                 !< flag indicating the use of the short range stress correction by a excess density gradient term
       probabilisticMultiplication
-
-    integer(kind(undefined_ID)),  dimension(:), allocatable :: &
-      outputID                                                                                      !< ID of each post result output
 
   end type tParameters
 
@@ -198,22 +170,19 @@ module subroutine plastic_nonlocal_init
   integer :: &
     sizeState, sizeDotState,sizeDependentState, sizeDeltaState, &
     maxNinstances, &
-    p, i, &
+    p, &
     l, &
     s1, s2, &
     s, &
     t, &
     c
 
-  integer(kind(undefined_ID)) :: &
-    outputID
   character(len=pStringLen) :: &
     extmsg    = '', &
     structure
-  character(len=pStringLen), dimension(:), allocatable :: outputs
   integer :: NofMyPhase
 
-  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'; flush(6)
 
   write(6,'(/,a)') ' Reuber et al., Acta Materialia 71:333–348, 2014'
   write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2014.03.012'
@@ -407,60 +376,7 @@ module subroutine plastic_nonlocal_init
 
     endif slipActive
 
-    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
-    allocate(prm%outputID(0))
-    do i=1, size(outputs)
-      outputID = undefined_ID
-      select case(trim(outputs(i)))
-        case ('rho_sgl_mob_edg_pos')
-          outputID = merge(rho_sgl_mob_edg_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_mob_edg_neg')
-          outputID = merge(rho_sgl_mob_edg_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_mob_scr_pos')
-          outputID = merge(rho_sgl_mob_scr_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_mob_scr_neg')
-          outputID = merge(rho_sgl_mob_scr_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_imm_edg_pos')
-          outputID = merge(rho_sgl_imm_edg_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_imm_edg_neg')
-          outputID = merge(rho_sgl_imm_edg_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_imm_scr_pos')
-          outputID = merge(rho_sgl_imm_scr_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_sgl_imm_scr_neg')
-          outputID = merge(rho_sgl_imm_scr_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dip_edg')
-          outputID = merge(rho_dip_edg_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dip_scr')
-          outputID = merge(rho_dip_scr_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_forest')
-          outputID = merge(rho_forest_ID,undefined_ID,prm%totalNslip>0)
-        case ('resolvedstress_back')
-          outputID = merge(resolvedstress_back_ID,undefined_ID,prm%totalNslip>0)
-        case ('tau_pass')
-          outputID = merge(tau_pass_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_sgl')
-          outputID = merge(rho_dot_sgl_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_sgl_mobile')
-          outputID = merge(rho_dot_sgl_mobile_ID,undefined_ID,prm%totalNslip>0)
-        case ('rho_dot_dip')
-          outputID = merge(rho_dot_dip_ID,undefined_ID,prm%totalNslip>0)
-        case ('v_edg_pos')
-          outputID = merge(v_edg_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('v_edg_neg')
-          outputID = merge(v_edg_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('v_scr_pos')
-          outputID = merge(v_scr_pos_ID,undefined_ID,prm%totalNslip>0)
-        case ('v_scr_neg')
-          outputID = merge(v_scr_neg_ID,undefined_ID,prm%totalNslip>0)
-        case ('gamma')
-          outputID = merge(gamma_ID,undefined_ID,prm%totalNslip>0)
-      end select
-
-      if (outputID /= undefined_ID) then
-        prm%outputID = [prm%outputID , outputID]
-      endif
-
-    enddo
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -561,7 +477,7 @@ module subroutine plastic_nonlocal_init
         stt%v_scr_neg  => plasticState(p)%state             (15*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
 
     allocate(dst%tau_pass(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-    allocate(dst%tau_Back(prm%totalNslip,NofMyPhase),     source=0.0_pReal)
+    allocate(dst%tau_back(prm%totalNslip,NofMyPhase),source=0.0_pReal)
     end associate
 
     if (NofMyPhase > 0) call stateInit(p,NofMyPhase)
@@ -1968,62 +1884,63 @@ module subroutine plastic_nonlocal_results(instance,group)
 
   integer,         intent(in) :: instance
   character(len=*),intent(in) :: group
+
   integer :: o
 
   associate(prm => param(instance),dst => microstructure(instance),stt=>state(instance))
-  outputsLoop: do o = 1,size(prm%outputID)
-    select case(prm%outputID(o))
-      case (rho_sgl_mob_edg_pos_ID)
-        call results_writeDataset(group,stt%rho_sgl_mob_edg_pos, 'rho_sgl_mob_edg_pos', &
-                                  'positive mobile edge density','1/m²')
-      case (rho_sgl_imm_edg_pos_ID)
-        call results_writeDataset(group,stt%rho_sgl_imm_edg_pos, 'rho_sgl_imm_edg_pos',&
-                                  'positive immobile edge density','1/m²')
-      case (rho_sgl_mob_edg_neg_ID)
-        call results_writeDataset(group,stt%rho_sgl_mob_edg_neg, 'rho_sgl_mob_edg_neg',&
-                                  'negative mobile edge density','1/m²')
-      case (rho_sgl_imm_edg_neg_ID)
-        call results_writeDataset(group,stt%rho_sgl_imm_edg_neg, 'rho_sgl_imm_edg_neg',&
-                                  'negative immobile edge density','1/m²')
-      case (rho_dip_edg_ID)
-        call results_writeDataset(group,stt%rho_dip_edg, 'rho_dip_edg',&
-                                  'edge dipole density','1/m²')
-      case (rho_sgl_mob_scr_pos_ID)
-        call results_writeDataset(group,stt%rho_sgl_mob_scr_pos, 'rho_sgl_mob_scr_pos',&
-                                  'positive mobile screw density','1/m²')
-      case (rho_sgl_imm_scr_pos_ID)
-        call results_writeDataset(group,stt%rho_sgl_imm_scr_pos, 'rho_sgl_imm_scr_pos',&
-                                  'positive immobile screw density','1/m²')
-      case (rho_sgl_mob_scr_neg_ID)
-        call results_writeDataset(group,stt%rho_sgl_mob_scr_neg, 'rho_sgl_mob_scr_neg',&
-                                  'negative mobile screw density','1/m²')
-      case (rho_sgl_imm_scr_neg_ID)
-        call results_writeDataset(group,stt%rho_sgl_imm_scr_neg, 'rho_sgl_imm_scr_neg',&
-                                  'negative immobile screw density','1/m²')
-      case (rho_dip_scr_ID)
-        call results_writeDataset(group,stt%rho_dip_scr, 'rho_dip_scr',&
-                                  'screw dipole density','1/m²')
-      case (rho_forest_ID)
-        call results_writeDataset(group,stt%rho_forest, 'rho_forest',&
-                                  'forest density','1/m²')
-      case (v_edg_pos_ID)
-        call results_writeDataset(group,stt%v_edg_pos, 'v_edg_pos',&
-                                  'positive edge velocity','m/s')
-      case (v_edg_neg_ID)
-        call results_writeDataset(group,stt%v_edg_neg, 'v_edg_neg',&
-                                  'negative edge velocity','m/s')
-      case (v_scr_pos_ID)
-        call results_writeDataset(group,stt%v_scr_pos, 'v_scr_pos',&
-                                  'positive srew velocity','m/s')
-      case (v_scr_neg_ID)
-        call results_writeDataset(group,stt%v_scr_neg, 'v_scr_neg',&
-                                  'negative screw velocity','m/s')
-      case(gamma_ID)
-        call results_writeDataset(group,stt%gamma,'gamma',&
-                                  'plastic shear','1')
-      case (tau_pass_ID)
-        call results_writeDataset(group,dst%tau_pass,'tau_pass',&
-                                  'passing stress for slip','Pa')
+  outputsLoop: do o = 1,size(prm%output)
+    select case(trim(prm%output(o)))
+      case('rho_sgl_mob_edg_pos')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_mob_edg_pos, 'rho_sgl_mob_edg_pos', &
+                                                       'positive mobile edge density','1/m²')
+      case('rho_sgl_imm_edg_pos')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_imm_edg_pos, 'rho_sgl_imm_edg_pos',&
+                                                       'positive immobile edge density','1/m²')
+      case('rho_sgl_mob_edg_neg')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_mob_edg_neg, 'rho_sgl_mob_edg_neg',&
+                                                       'negative mobile edge density','1/m²')
+      case('rho_sgl_imm_edg_neg')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_imm_edg_neg, 'rho_sgl_imm_edg_neg',&
+                                                       'negative immobile edge density','1/m²')
+      case('rho_dip_edg')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_dip_edg, 'rho_dip_edg',&
+                                                       'edge dipole density','1/m²')
+      case('rho_sgl_mob_scr_pos')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_mob_scr_pos, 'rho_sgl_mob_scr_pos',&
+                                                       'positive mobile screw density','1/m²')
+      case('rho_sgl_imm_scr_pos')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_imm_scr_pos, 'rho_sgl_imm_scr_pos',&
+                                                       'positive immobile screw density','1/m²')
+      case('rho_sgl_mob_scr_neg')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_mob_scr_neg, 'rho_sgl_mob_scr_neg',&
+                                                       'negative mobile screw density','1/m²')
+      case('rho_sgl_imm_scr_neg')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_sgl_imm_scr_neg, 'rho_sgl_imm_scr_neg',&
+                                                       'negative immobile screw density','1/m²')
+      case('rho_dip_scr')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_dip_scr, 'rho_dip_scr',&
+                                                       'screw dipole density','1/m²')
+      case('rho_forest')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%rho_forest, 'rho_forest',&
+                                                       'forest density','1/m²')
+      case('v_edg_pos')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%v_edg_pos, 'v_edg_pos',&
+                                                       'positive edge velocity','m/s')
+      case('v_edg_neg')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%v_edg_neg, 'v_edg_neg',&
+                                                       'negative edge velocity','m/s')
+      case('v_scr_pos')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%v_scr_pos, 'v_scr_pos',&
+                                                       'positive srew velocity','m/s')
+      case('v_scr_neg')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%v_scr_neg, 'v_scr_neg',&
+                                                       'negative screw velocity','m/s')
+      case('gamma')
+        if(prm%totalNslip>0) call results_writeDataset(group,stt%gamma,'gamma',&
+                                                       'plastic shear','1')
+      case('tau_pass')
+        if(prm%totalNslip>0) call results_writeDataset(group,dst%tau_pass,'tau_pass',&
+                                                       'passing stress for slip','Pa')
     end select
   enddo outputsLoop
   end associate

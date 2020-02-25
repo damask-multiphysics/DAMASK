@@ -8,7 +8,7 @@ class Environment():
     def __init__(self):
         """Read and provide values of DAMASK configuration."""
         self.options = {}
-        self.get_options()
+        self.__get_options()
 
     def relPath(self,relative = '.'):
         return os.path.join(self.rootDir(),relative)
@@ -16,7 +16,7 @@ class Environment():
     def rootDir(self):
         return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
 
-    def get_options(self):
+    def __get_options(self):
         for item in ['DAMASK_NUM_THREADS',
                      'MSC_ROOT',
                      'MARC_VERSION',
