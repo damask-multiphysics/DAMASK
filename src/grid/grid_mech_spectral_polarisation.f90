@@ -22,20 +22,20 @@ module grid_mech_spectral_polarisation
   use homogenization
   use mesh_grid
   use debug
- 
+
   implicit none
   private
- 
+
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type(tSolutionParams), private :: params
-  
+
   type, private :: tNumerics
     logical :: update_gamma                                                                         !< update gamma operator with current stiffness
   end type tNumerics
-  
+
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
-  
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM,   private :: da
@@ -46,7 +46,7 @@ module grid_mech_spectral_polarisation
 ! common pointwise data
   real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
     F_lastInc, &                                                                                    !< field of previous compatible deformation gradients
-    F_tau_lastInc, &                                                                                !< field of previous incompatible deformation gradient 
+    F_tau_lastInc, &                                                                                !< field of previous incompatible deformation gradient
     Fdot, &                                                                                         !< field of assumed rate of compatible deformation gradient
     F_tauDot                                                                                        !< field of assumed rate of incopatible deformation gradient
 
@@ -58,25 +58,25 @@ module grid_mech_spectral_polarisation
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
     F_av = 0.0_pReal, &                                                                             !< average incompatible def grad field
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
-  
+
   character(len=pStringLen), private :: incInfo                                                     !< time and increment information
   real(pReal), private, dimension(3,3,3,3) :: &
-    C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness 
+    C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
     C_minMaxAvg = 0.0_pReal, &                                                                      !< current (min+max)/2 stiffness
     C_minMaxAvgLastInc = 0.0_pReal, &                                                               !< previous (min+max)/2 stiffness
     S = 0.0_pReal, &                                                                                !< current compliance (filled up with zeros)
     C_scale = 0.0_pReal, &
     S_scale = 0.0_pReal
- 
+
   real(pReal), private :: &
     err_BC, &                                                                                       !< deviation from stress BC
     err_curl, &                                                                                     !< RMS of curl of F
     err_div                                                                                         !< RMS of div of P
-   
+
   integer, private :: &
     totalIter = 0                                                                                   !< total iteration in current increment
-  
+
   public :: &
     grid_mech_spectral_polarisation_init, &
     grid_mech_spectral_polarisation_solution, &
@@ -90,26 +90,26 @@ contains
 !> @brief allocates all necessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_spectral_polarisation_init
-   
+
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
- 
+
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     FandF_tau, &                                                                                    ! overall pointer to solution data
     F, &                                                                                            ! specific (sub)pointer
     F_tau                                                                                           ! specific (sub)pointer
-  PetscInt, dimension(0:worldsize-1) :: localK 
+  PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   integer        :: fileUnit
   character(len=pStringLen) :: fileName
-  
+
   write(6,'(/,a)') ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'; flush(6)
- 
+
   write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
-  
+
   num%update_gamma = config_numerics%getInt('update_gamma',defaultVal=0) > 0
 
 !--------------------------------------------------------------------------------------------------
@@ -125,11 +125,11 @@ subroutine grid_mech_spectral_polarisation_init
   allocate(Fdot         (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
   allocate(F_tau_lastInc(3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
   allocate(F_tauDot     (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
-    
+
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
-  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr) 
+  call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr)
   localK            = 0
   localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
@@ -147,24 +147,24 @@ subroutine grid_mech_spectral_polarisation_init
   call DMsetUp(da,ierr); CHKERRQ(ierr)
   call DMcreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                    ! global solution vector (grid x 18, i.e. every def grad tensor)
   call DMDASNESsetFunctionLocal(da,INSERT_VALUES,formResidual,PETSC_NULL_SNES,ierr)                 ! residual vector of same shape as solution vector
-  CHKERRQ(ierr) 
+  CHKERRQ(ierr)
   call SNESsetConvergenceTest(snes,converged,PETSC_NULL_SNES,PETSC_NULL_FUNCTION,ierr)              ! specify custom convergence check function "converged"
   CHKERRQ(ierr)
   call SNESsetFromOptions(snes,ierr); CHKERRQ(ierr)                                                 ! pull it all together with additional CLI arguments
 
 !--------------------------------------------------------------------------------------------------
-! init fields                 
+! init fields
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                             ! places pointer on PETSc data
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
- 
+
   restartRead: if (interface_restartInc > 0) then
     write(6,'(/,a,i0,a)') ' reading restart data of increment ', interface_restartInc, ' from file'
 
     write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
     fileHandle  = HDF5_openFile(fileName)
     groupHandle = HDF5_openGroup(fileHandle,'solver')
- 
+
     call HDF5_read(groupHandle,F_aim,        'F_aim')
     call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
     call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
@@ -172,21 +172,21 @@ subroutine grid_mech_spectral_polarisation_init
     call HDF5_read(groupHandle,F_lastInc,    'F_lastInc')
     call HDF5_read(groupHandle,F_tau,        'F_tau')
     call HDF5_read(groupHandle,F_tau_lastInc,'F_tau_lastInc')
- 
+
   elseif (interface_restartInc == 0) then restartRead
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
     F_tau = 2.0_pReal*F
     F_tau_lastInc = 2.0_pReal*F_lastInc
   endif restartRead
- 
+
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
- 
+
   restartRead2: if (interface_restartInc > 0) then
     write(6,'(/,a,i0,a)') ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
@@ -200,12 +200,12 @@ subroutine grid_mech_spectral_polarisation_init
     call MPI_File_read(fileUnit,C_minMaxAvg,81,MPI_DOUBLE,MPI_STATUS_IGNORE,ierr)
     call MPI_File_close(fileUnit,ierr)
   endif restartRead2
- 
+
   call utilities_updateGamma(C_minMaxAvg)
   call utilities_saveReferenceStiffness
   C_scale = C_minMaxAvg
   S_scale = math_invSym3333(C_minMaxAvg)
- 
+
 end subroutine grid_mech_spectral_polarisation_init
 
 
@@ -229,9 +229,9 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
     solution
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
-  PetscErrorCode :: ierr   
+  PetscErrorCode :: ierr
   SNESConvergedReason :: reason
- 
+
   incInfo = incInfoIn
 
 !--------------------------------------------------------------------------------------------------
@@ -241,10 +241,10 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
     call utilities_updateGamma(C_minMaxAvg)
     C_scale = C_minMaxAvg
     S_scale = math_invSym3333(C_minMaxAvg)
-  endif  
+  endif
 
 !--------------------------------------------------------------------------------------------------
-! set module wide available data 
+! set module wide available data
   params%stress_mask = stress_BC%maskFloat
   params%stress_BC   = stress_BC%values
   params%rotation_BC = rotation_BC
@@ -252,13 +252,13 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
   params%timeincOld  = timeinc_old
 
 !--------------------------------------------------------------------------------------------------
-! solve BVP 
+! solve BVP
   call SNESsolve(snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! check convergence
   call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
- 
+
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
   solution%termIll = terminallyIll
@@ -299,7 +299,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
   if (cutBack) then
     C_volAvg    = C_volAvgLastInc
     C_minMaxAvg = C_minMaxAvgLastInc
-  else    
+  else
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
@@ -321,13 +321,13 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
 
     Fdot     = utilities_calculateRate(guess, &
                                        F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
-                                       rotation_BC%rotTensor2(F_aimDot,active=.true.))
+                                       rotation_BC%rotate(F_aimDot,active=.true.))
     F_tauDot = utilities_calculateRate(guess, &
                                        F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid3]), timeinc_old, &
-                                       rotation_BC%rotTensor2(F_aimDot,active=.true.))
+                                       rotation_BC%rotate(F_aimDot,active=.true.))
     F_lastInc     = reshape(F,    [3,3,grid(1),grid(2),grid3])
     F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])
-    
+
     materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
   endif
 
@@ -335,7 +335,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! estimate of F at end of time+timeinc that matches rotated F_aim on average
-                                     rotation_BC%rotTensor2(F_aim,active=.true.)),&
+                                     rotation_BC%rotate(F_aim,active=.true.)),&
               [9,grid(1),grid(2),grid3])
   if (guess) then
      F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &
@@ -351,7 +351,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
        F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
     enddo; enddo; enddo
   endif
- 
+
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine grid_mech_spectral_polarisation_forward
@@ -364,7 +364,7 @@ subroutine grid_mech_spectral_polarisation_updateCoords
 
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau
-  
+
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   call utilities_updateCoords(FandF_tau(0:8,:,:,:))
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
@@ -391,7 +391,7 @@ subroutine grid_mech_spectral_polarisation_restartWrite
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
-  
+
   call HDF5_write(groupHandle,F_aim,        'F_aim')
   call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
   call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
@@ -405,9 +405,9 @@ subroutine grid_mech_spectral_polarisation_restartWrite
 
   call HDF5_closeGroup(groupHandle)
   call HDF5_closeFile(fileHandle)
-  
+
   if(num%update_gamma) call utilities_saveReferenceStiffness
- 
+
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
 
 end subroutine grid_mech_spectral_polarisation_restartWrite
@@ -417,13 +417,13 @@ end subroutine grid_mech_spectral_polarisation_restartWrite
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
 subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dummy,ierr)
- 
+
   SNES :: snes_local
   PetscInt,  intent(in) :: PETScIter
   PetscReal, intent(in) :: &
     devNull1, &
     devNull2, &
-    devNull3 
+    devNull3
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: ierr
@@ -431,11 +431,11 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     curlTol, &
     divTol, &
     BCTol
- 
+
   curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel  ,err_curl_tolAbs)
   divTol     = max(maxval(abs(P_av))         *err_div_tolRel   ,err_div_tolAbs)
   BCTol      = max(maxval(abs(P_av))         *err_stress_tolRel,err_stress_tolAbs)
- 
+
   if ((totalIter >= itmin .and. &
                             all([ err_div /divTol, &
                                   err_curl/curlTol, &
@@ -456,9 +456,9 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   write(6,  '(a,f12.2,a,es8.2,a,es9.2,a)') ' error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
   write(6,  '(a,f12.2,a,es8.2,a,es9.2,a)') ' error BC         = ', &
-            err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')' 
+            err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
   write(6,'(/,a)') ' ==========================================================================='
-  flush(6) 
+  flush(6)
 
 end subroutine converged
 
@@ -498,7 +498,7 @@ subroutine formResidual(in, FandF_tau, &
 
   F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
   call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  
+
   call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
   call SNESGetIterationNumber(snes,PETScIter,ierr);  CHKERRQ(ierr)
 
@@ -510,14 +510,14 @@ subroutine formResidual(in, FandF_tau, &
     write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotTensor2(F_aim,active=.true.))
+              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
     flush(6)
   endif newIteration
 
 !--------------------------------------------------------------------------------------------------
-! 
+!
   tensorField_real = 0.0_pReal
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
     tensorField_real(1:3,1:3,i,j,k) = &
@@ -525,15 +525,15 @@ subroutine formResidual(in, FandF_tau, &
       polarAlpha*matmul(F(1:3,1:3,i,j,k), &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
   enddo; enddo; enddo
- 
+
 !--------------------------------------------------------------------------------------------------
-! doing convolution in Fourier space 
+! doing convolution in Fourier space
   call utilities_FFTtensorForward
-  call utilities_fourierGammaConvolution(params%rotation_BC%rotTensor2(polarBeta*F_aim,active=.true.)) 
+  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(polarBeta*F_aim,active=.true.))
   call utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
-! constructing residual                         
+! constructing residual
   residual_F_tau = polarBeta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
 
 !--------------------------------------------------------------------------------------------------
@@ -541,13 +541,13 @@ subroutine formResidual(in, FandF_tau, &
   call utilities_constitutiveResponse(residual_F, &                                                 ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
                                       F - residual_F_tau/polarBeta,params%timeinc,params%rotation_BC)
-  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr) 
- 
+  call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                  ! S = 0.0 for no bc
   err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim &
-                                                 -params%rotation_BC%rotTensor2(F_av)) + &
+                                                 -params%rotation_BC%rotate(F_av)) + &
                                  params%stress_mask  * (P_av-params%stress_BC)))                    ! mask = 0.0 for no bc
 ! calculate divergence
   tensorField_real = 0.0_pReal
@@ -566,7 +566,7 @@ subroutine formResidual(in, FandF_tau, &
                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
                        + residual_F_tau(1:3,1:3,i,j,k)
   enddo; enddo; enddo
- 
+
 !--------------------------------------------------------------------------------------------------
 ! calculating curl
   tensorField_real = 0.0_pReal
