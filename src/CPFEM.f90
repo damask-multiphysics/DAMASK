@@ -77,7 +77,7 @@ subroutine CPFEM_initAll(el,ip)
 
  !$OMP CRITICAL (init)
    if (.not. CPFEM_init_done) then
-     call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
+     call DAMASK_interface_init
      call prec_init
      call IO_init
      call numerics_init
@@ -331,9 +331,18 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
 end subroutine CPFEM_general
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data for new time increment.
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_forward
+
+  call crystallite_forward
+
+end subroutine CPFEM_forward
+
 
 !--------------------------------------------------------------------------------------------------
-!> @brief triggers writing of the results
+!> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
 

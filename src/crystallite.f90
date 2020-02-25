@@ -107,9 +107,9 @@ module crystallite
     crystallite_orientations, &
     crystallite_push33ToRef, &
     crystallite_results, &
-    CPFEM_restartWrite, &
-    CPFEM_forward, &
-    CPFEM_initX
+    crystallite_restartWrite, &
+    crystallite_restartRead, &
+    crystallite_forward
 
 contains
 
@@ -1852,8 +1852,9 @@ end function stateJump
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current  restart information (Field and constitutive data) to file.
+! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_restartWrite
+subroutine crystallite_restartWrite
 
   integer :: i
   integer(HID_T) :: fileHandle, groupHandle
@@ -1887,14 +1888,55 @@ subroutine CPFEM_restartWrite
 
   call HDF5_closeFile(fileHandle)
 
-end subroutine CPFEM_restartWrite
+end subroutine crystallite_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read data for restart
+! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_restartRead
+
+  integer :: i
+  integer(HID_T) :: fileHandle, groupHandle
+  character(len=pStringLen) :: fileName, datasetName
+
+  write(6,'(/,a,i0,a)') ' reading restart information of increment from file'
+
+  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
+  fileHandle = HDF5_openFile(fileName)
+
+  call HDF5_read(fileHandle,crystallite_F0, 'F')
+  call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
+  call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
+  call HDF5_read(fileHandle,crystallite_Lp0,'Lp')
+  call HDF5_read(fileHandle,crystallite_Li0,'Li')
+  call HDF5_read(fileHandle,crystallite_S0, 'S')
+
+  groupHandle = HDF5_openGroup(fileHandle,'constituent')
+  do i = 1,size(phase_plasticity)
+    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
+  enddo
+  call HDF5_closeGroup(groupHandle)
+
+  groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
+  do i = 1, material_Nhomogenization
+    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+    call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
+  enddo
+  call HDF5_closeGroup(groupHandle)
+
+  call HDF5_closeFile(fileHandle)
+
+end subroutine crystallite_restartRead
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_forward
+subroutine crystallite_forward
 
   integer :: i, j
 
@@ -1918,49 +1960,6 @@ subroutine CPFEM_forward
     damageState (i)%state0 = damageState (i)%state
   enddo
 
-end subroutine CPFEM_forward
-
-!--------------------------------------------------------------------------------------------------
-!> @brief allocate the arrays defined in module CPFEM and initialize them
-!--------------------------------------------------------------------------------------------------
-subroutine CPFEM_initX
-
-  integer :: i
-  integer(HID_T) :: fileHandle, groupHandle
-  character(len=pStringLen) :: fileName, datasetName
-
-  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'; flush(6)
-
-  if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading restart information of increment ', interface_restartInc, ' from file'
-
-    write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
-    fileHandle = HDF5_openFile(fileName)
-
-    call HDF5_read(fileHandle,crystallite_F0, 'F')
-    call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
-    call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
-    call HDF5_read(fileHandle,crystallite_Lp0,'Lp')
-    call HDF5_read(fileHandle,crystallite_Li0,'Li')
-    call HDF5_read(fileHandle,crystallite_S0, 'S')
-
-    groupHandle = HDF5_openGroup(fileHandle,'constituent')
-    do i = 1,size(phase_plasticity)
-      write(datasetName,'(i0,a)') i,'_omega_plastic'
-      call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
-    enddo
-    call HDF5_closeGroup(groupHandle)
-
-    groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
-    do i = 1, material_Nhomogenization
-      write(datasetName,'(i0,a)') i,'_omega_homogenization'
-      call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
-    enddo
-    call HDF5_closeGroup(groupHandle)
-
-    call HDF5_closeFile(fileHandle)
-  endif
-
-end subroutine CPFEM_initX
+end subroutine crystallite_forward
 
 end module crystallite

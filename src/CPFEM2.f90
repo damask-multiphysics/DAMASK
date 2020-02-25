@@ -59,21 +59,40 @@ subroutine CPFEM_initAll
   call crystallite_init
   call homogenization_init
   call CPFEM_init
-  call CPFEM_initX
 
 end subroutine CPFEM_initAll
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocate the arrays defined in module CPFEM and initialize them
+!> @brief Read restart information if needed.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
 
   write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'; flush(6)
 
+  if (interface_restartInc > 0) call crystallite_restartRead
+
 end subroutine CPFEM_init
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Write restart information.
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_restartWrite
+
+  call crystallite_restartWrite
+
+end subroutine CPFEM_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data for new time increment.
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_forward
+
+  call crystallite_forward
+
+end subroutine CPFEM_forward
 
 
 !--------------------------------------------------------------------------------------------------

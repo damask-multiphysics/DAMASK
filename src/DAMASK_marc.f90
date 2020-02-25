@@ -43,8 +43,6 @@ module DAMASK_interface
   logical,                     public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
 
-  integer(pInt),    parameter, public :: interface_restartInc = 0
-
   public :: &
     DAMASK_interface_init, &
     getSolverJobName
