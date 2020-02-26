@@ -396,26 +396,6 @@ module lattice
        1, 1, 1,      1,-2, 1  &
        ],pReal),shape(LATTICE_BCT_SYSTEMSLIP))                                                      !< slip systems for bct sorted by Bieler
 
-!--------------------------------------------------------------------------------------------------
-! isotropic
-  integer, dimension(1), parameter :: &
-    LATTICE_ISO_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for iso
-
-  integer, parameter  :: &
-#ifndef __PGI
-    LATTICE_ISO_NCLEAVAGE = sum(LATTICE_ISO_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for iso
-#else
-    LATTICE_ISO_NCLEAVAGE = 3
-#endif
-
-  real(pReal), dimension(3+3,LATTICE_ISO_NCLEAVAGE), parameter :: &
-    LATTICE_ISO_SYSTEMCLEAVAGE= reshape(real([&
-     ! Cleavage direction     Plane normal
-       0, 1, 0,     1, 0, 0, &
-       0, 0, 1,     0, 1, 0, &
-       1, 0, 0,     0, 0, 1  &
-      ],pReal),shape(LATTICE_ISO_SYSTEMCLEAVAGE))
-
 
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
@@ -442,8 +422,7 @@ module lattice
 ! BEGIN DEPRECATED
   integer, parameter, public :: &
     LATTICE_maxNcleavage    = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
-                                  LATTICE_hex_Ncleavage, &
-                                  LATTICE_iso_Ncleavage,LATTICE_ort_Ncleavage)
+                                  LATTICE_hex_Ncleavage,LATTICE_ort_Ncleavage)
 ! END DEPRECATED
 
   real(pReal),    dimension(:,:,:),     allocatable, public, protected :: &
@@ -672,11 +651,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
       lattice_NcleavageSystem(1:3,myPhase)  = lattice_ort_NcleavageSystem
       lattice_Scleavage(1:3,1:3,1:3,1:lattice_ort_Ncleavage,myPhase) = &
       lattice_SchmidMatrix_cleavage(lattice_ort_NcleavageSystem,'ort',covera)
-
-    case (LATTICE_iso_ID)
-      lattice_NcleavageSystem(1:1,myPhase)  = lattice_iso_NcleavageSystem
-      lattice_Scleavage(1:3,1:3,1:3,1:lattice_iso_Ncleavage,myPhase) = &
-      lattice_SchmidMatrix_cleavage(lattice_iso_NcleavageSystem,'iso',covera)
 
   end select
 
@@ -1809,9 +1783,6 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
     call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(structure))
 
   select case(structure(1:3))
-    case('iso')
-      NcleavageMax    = LATTICE_ISO_NCLEAVAGESYSTEM
-      cleavageSystems = LATTICE_ISO_SYSTEMCLEAVAGE
     case('ort')
       NcleavageMax    = LATTICE_ORT_NCLEAVAGESYSTEM
       cleavageSystems = LATTICE_ORT_SYSTEMCLEAVAGE
