@@ -524,7 +524,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
 
-  integer :: Nphases, p
+  integer :: Nphases, p,i
   character(len=pStringLen) :: &
     tag  = ''
   real(pReal) :: CoverA
@@ -553,25 +553,8 @@ subroutine lattice_init
   allocate(lattice_Scleavage(3,3,3,lattice_maxNcleavage,Nphases),source=0.0_pReal)
   allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0)
 
-  do p = 1, size(config_phase)
-    tag = config_phase(p)%getString('lattice_structure')
-    select case(tag(1:3))
-      case('iso')
-        lattice_structure(p) = LATTICE_iso_ID
-      case('fcc')
-        lattice_structure(p) = LATTICE_fcc_ID
-      case('bcc')
-        lattice_structure(p) = LATTICE_bcc_ID
-      case('hex')
-        lattice_structure(p) = LATTICE_hex_ID
-      case('bct')
-        lattice_structure(p) = LATTICE_bct_ID
-      case('ort')
-        lattice_structure(p) = LATTICE_ort_ID
-      case default
-        call IO_error(130,ext_msg='lattice_init')
-    end select
 
+  do p = 1, size(config_phase)
 
     lattice_C66(1,1,p) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
     lattice_C66(1,2,p) = config_phase(p)%getFloat('c12',defaultVal=0.0_pReal)
@@ -583,9 +566,44 @@ subroutine lattice_init
     lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
     lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
 
-
     CoverA = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
 
+    tag = config_phase(p)%getString('lattice_structure')
+    select case(tag(1:3))
+      case('iso')
+        lattice_structure(p) = LATTICE_iso_ID
+      case('fcc')
+        lattice_structure(p) = LATTICE_fcc_ID
+      case('bcc')
+        lattice_structure(p) = LATTICE_bcc_ID
+      case('hex')
+        if(CoverA < 1.0_pReal .or. CoverA > 2.0_pReal) call IO_error(131,el=p)
+        lattice_structure(p) = LATTICE_hex_ID
+      case('bct')
+        if(CoverA > 2.0_pReal) call IO_error(131,el=p)
+        lattice_structure(p) = LATTICE_bct_ID
+      case('ort')
+        lattice_structure(p) = LATTICE_ort_ID
+      case default
+        call IO_error(130,ext_msg='lattice_init')
+    end select
+
+    lattice_C66(1:6,1:6,p) = lattice_symmetrizeC66(lattice_structure(p),lattice_C66(1:6,1:6,p))
+
+    lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p)) ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+    lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
+                  / (4.0_pReal*lattice_C66(1,1,p) +6.0_pReal*lattice_C66(1,2,p) +2.0_pReal*lattice_C66(4,4,p))! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+
+    lattice_C3333(1:3,1:3,1:3,1:3,p) = math_Voigt66to3333(lattice_C66(1:6,1:6,p))                   ! Literature data is Voigt
+    lattice_C66(1:6,1:6,p)           = math_sym3333to66(lattice_C3333(1:3,1:3,1:3,1:3,p))           ! DAMASK uses Mandel-weighting
+
+    do i = 1, 6
+      if (abs(lattice_C66(i,i,p))<tol_math_check) &
+        call IO_error(135,el=i,ip=p,ext_msg='matrix diagonal "el"ement of phase "ip"')
+    enddo
+
+
+    ! should not be part of lattice
     lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
     lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
     lattice_thermalConductivity33(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
@@ -605,10 +623,6 @@ subroutine lattice_init
     lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
 
-    if ((CoverA < 1.0_pReal .or. CoverA > 2.0_pReal) &
-        .and. lattice_structure(p) == LATTICE_hex_ID) call IO_error(131,el=p)                       ! checking physical significance of c/a
-    if ((CoverA > 2.0_pReal) &
-        .and. lattice_structure(p) == LATTICE_bct_ID) call IO_error(131,el=p)                       ! checking physical significance of c/a
     call lattice_initializeStructure(p, CoverA)
   enddo
 
@@ -626,25 +640,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
 
   integer :: &
    i
-
-  lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),&
-                                                       lattice_C66(1:6,1:6,myPhase))
-
-  lattice_mu(myPhase) = 0.2_pReal *(  lattice_C66(1,1,myPhase) &
-                                    - lattice_C66(1,2,myPhase) &
-                                    + 3.0_pReal*lattice_C66(4,4,myPhase))                           ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-  lattice_nu(myPhase) = (  lattice_C66(1,1,myPhase) &
-                         + 4.0_pReal*lattice_C66(1,2,myPhase) &
-                         - 2.0_pReal*lattice_C66(4,4,myPhase)) &
-                                                              /(  4.0_pReal*lattice_C66(1,1,myPhase) &
-                                                                + 6.0_pReal*lattice_C66(1,2,myPhase) &
-                                                                + 2.0_pReal*lattice_C66(4,4,myPhase))! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-  lattice_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_C66(1:6,1:6,myPhase))         ! Literature data is Voigt
-  lattice_C66(1:6,1:6,myPhase) = math_sym3333to66(lattice_C3333(1:3,1:3,1:3,1:3,myPhase))           ! DAMASK uses Mandel-weighting
-  do i = 1, 6
-    if (abs(lattice_C66(i,i,myPhase))<tol_math_check) &
-      call IO_error(135,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip"')
-  enddo
 
   do i = 1,3
     lattice_thermalExpansion33 (1:3,1:3,i,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
