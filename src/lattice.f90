@@ -2051,40 +2051,40 @@ end function coordinateSystem_slip
 !--------------------------------------------------------------------------------------------------
 function buildInteraction(reacting_used,acting_used,reacting_max,acting_max,values,matrix)
 
-   integer,     dimension(:),                                 intent(in) :: &
-      reacting_used, &                                                                              !< # of reacting systems per family as specified in material.config
-      acting_used, &                                                                                !< # of   acting systems per family as specified in material.config
-      reacting_max, &                                                                               !< max # of reacting systems per family for given lattice
-      acting_max                                                                                    !< max # of   acting systems per family for given lattice
-   real(pReal), dimension(:),                                 intent(in) :: values                  !< interaction values
-   integer,     dimension(:,:),                               intent(in) :: matrix                  !< interaction types
-   real(pReal), dimension(sum(reacting_used),sum(acting_used))           :: buildInteraction
+  integer,     dimension(:),                                 intent(in) :: &
+    reacting_used, &                                                                                !< # of reacting systems per family as specified in material.config
+    acting_used, &                                                                                  !< # of   acting systems per family as specified in material.config
+    reacting_max, &                                                                                 !< max # of reacting systems per family for given lattice
+    acting_max                                                                                      !< max # of   acting systems per family for given lattice
+  real(pReal), dimension(:),                                 intent(in) :: values                   !< interaction values
+  integer,     dimension(:,:),                               intent(in) :: matrix                   !< interaction types
+  real(pReal), dimension(sum(reacting_used),sum(acting_used))           :: buildInteraction
 
-   integer :: &
-     acting_family_index,     acting_family,   acting_system, &
-     reacting_family_index, reacting_family, reacting_system, &
-     i,j,k,l
+  integer :: &
+    acting_family_index,     acting_family,   acting_system, &
+    reacting_family_index, reacting_family, reacting_system, &
+    i,j,k,l
 
-   do acting_family = 1,size(acting_used,1)
-     acting_family_index = sum(acting_used(1:acting_family-1))
-     do acting_system = 1,acting_used(acting_family)
+  do acting_family = 1,size(acting_used,1)
+    acting_family_index = sum(acting_used(1:acting_family-1))
+    do acting_system = 1,acting_used(acting_family)
 
-       do reacting_family = 1,size(reacting_used,1)
-       reacting_family_index = sum(reacting_used(1:reacting_family-1))
-         do reacting_system = 1,reacting_used(reacting_family)
+      do reacting_family = 1,size(reacting_used,1)
+        reacting_family_index = sum(reacting_used(1:reacting_family-1))
+        do reacting_system = 1,reacting_used(reacting_family)
 
-           i = sum(  acting_max(1:  acting_family-1)) +   acting_system
-           j = sum(reacting_max(1:reacting_family-1)) + reacting_system
+          i = sum(  acting_max(1:  acting_family-1)) +   acting_system
+          j = sum(reacting_max(1:reacting_family-1)) + reacting_system
 
-           k =   acting_family_index +   acting_system
-           l = reacting_family_index + reacting_system
+          k =   acting_family_index +   acting_system
+          l = reacting_family_index + reacting_system
 
-           if (matrix(i,j) > size(values)) call IO_error(138,ext_msg='buildInteraction')
+          if (matrix(i,j) > size(values)) call IO_error(138,ext_msg='buildInteraction')
 
-           buildInteraction(l,k) = values(matrix(i,j))
+          buildInteraction(l,k) = values(matrix(i,j))
 
-       enddo; enddo
-   enddo; enddo
+      enddo; enddo
+  enddo; enddo
 
 end function buildInteraction
 
