@@ -104,7 +104,7 @@ checkout:
     - release
 
 ###################################################################################################
-Pytest:
+Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
@@ -381,6 +381,15 @@ Homogenization:
 Phenopowerlaw_singleSlip:
   stage: grid
   script: Phenopowerlaw_singleSlip/test.py
+  except:
+    - master
+    - release
+
+Pytest_grid:
+  stage: grid
+  script:
+    - cd pytest
+    - pytest
   except:
     - master
     - release
