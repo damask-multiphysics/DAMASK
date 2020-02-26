@@ -72,32 +72,32 @@ contains
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll(el,ip)
- integer(pInt), intent(in) ::                        el, &                                          !< FE el number
-                                                     ip                                             !< FE integration point number
+ 
+  integer(pInt), intent(in) :: el, &                                                                !< FE el number
+                               ip                                                                   !< FE integration point number
 
- !$OMP CRITICAL (init)
-   if (.not. CPFEM_init_done) then
-     call DAMASK_interface_init
-     call prec_init
-     call IO_init
-     call numerics_init
-     call debug_init
-     call config_init
-     call math_init
-     call rotations_init
-     call HDF5_utilities_init
-     call results_init
-     call mesh_init(ip, el)
-     call lattice_init
-     call material_init
-     call constitutive_init
-     call crystallite_init
-     call homogenization_init
-     call CPFEM_init
-     call CPFEM_initX
-     CPFEM_init_done = .true.
-   endif
- !$OMP END CRITICAL (init)
+  !$OMP CRITICAL(init)
+  if (.not. CPFEM_init_done) then
+    call DAMASK_interface_init
+    call prec_init
+    call IO_init
+    call numerics_init
+    call debug_init
+    call config_init
+    call math_init
+    call rotations_init
+    call HDF5_utilities_init
+    call results_init
+    call mesh_init(ip, el)
+    call lattice_init
+    call material_init
+    call constitutive_init
+    call crystallite_init
+    call homogenization_init
+    call CPFEM_init
+    CPFEM_init_done = .true.
+  endif
+  !$OMP END CRITICAL(init)
 
 end subroutine CPFEM_initAll
 
