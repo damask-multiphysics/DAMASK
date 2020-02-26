@@ -39,8 +39,8 @@ module lattice
   integer, dimension(1), parameter :: &
     LATTICE_FCC_NTRANSSYSTEM = [12]                                                                 !< # of transformation systems per family for fcc
 
-  integer, dimension(2), parameter :: &
-    LATTICE_FCC_NCLEAVAGESYSTEM = [3, 4]                                                            !< # of cleavage systems per family for fcc
+  integer, dimension(1), parameter :: &
+    LATTICE_FCC_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for fcc
 
   integer, parameter  :: &
 #ifndef __PGI
@@ -52,7 +52,7 @@ module lattice
     LATTICE_FCC_NSLIP     = 18, &
     LATTICE_FCC_NTWIN     = 12, &
     LATTICE_FCC_NTRANS    = 12, &
-    LATTICE_FCC_NCLEAVAGE = 7
+    LATTICE_FCC_NCLEAVAGE = 3
 #endif
 
   real(pReal), dimension(3+3,LATTICE_FCC_NSLIP), parameter :: &
@@ -116,11 +116,7 @@ module lattice
      ! Cleavage direction     Plane normal
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
-       1, 0, 0,     0, 0, 1, &
-       0, 1,-1,     1, 1, 1, &
-       0,-1,-1,    -1,-1, 1, &
-      -1, 0,-1,     1,-1,-1, &
-       0, 1, 1,    -1, 1,-1  &
+       1, 0, 0,     0, 0, 1  &
       ],pReal),shape(LATTICE_FCC_SYSTEMCLEAVAGE))
 
 !--------------------------------------------------------------------------------------------------
@@ -131,8 +127,8 @@ module lattice
   integer, dimension(1), parameter :: &
     LATTICE_BCC_NTWINSYSTEM = [12]                                                                  !< # of twin systems per family for bcc
 
-  integer, dimension(2), parameter :: &
-    LATTICE_BCC_NCLEAVAGESYSTEM = [3, 6]                                                            !< # of cleavage systems per family for bcc
+  integer, dimension(1), parameter :: &
+    LATTICE_BCC_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for bcc
 
   integer, parameter  :: &
 #ifndef __PGI
@@ -142,7 +138,7 @@ module lattice
 #else
     LATTICE_BCC_NSLIP     = 24, &
     LATTICE_BCC_NTWIN     = 12, &
-    LATTICE_BCC_NCLEAVAGE = 9
+    LATTICE_BCC_NCLEAVAGE = 3
 #endif
 
   real(pReal), dimension(3+3,LATTICE_BCC_NSLIP), parameter :: &
@@ -198,13 +194,7 @@ module lattice
      ! Cleavage direction     Plane normal
        0, 1, 0,     1, 0, 0, &
        0, 0, 1,     0, 1, 0, &
-       1, 0, 0,     0, 0, 1, &
-       1,-1, 1,     0, 1, 1, &
-       1, 1, 1,     0,-1, 1, &
-      -1, 1, 1,     1, 0, 1, &
-       1, 1, 1,    -1, 0, 1, &
-      -1, 1, 1,     1, 1, 0, &
-       1, 1, 1,    -1, 1, 0  &
+       1, 0, 0,     0, 0, 1  &
       ],pReal),shape(LATTICE_BCC_SYSTEMCLEAVAGE))
 
 !--------------------------------------------------------------------------------------------------
@@ -215,18 +205,13 @@ module lattice
   integer, dimension(4), parameter :: &
     LATTICE_HEX_NTWINSYSTEM = [6, 6, 6, 6]                                                          !< # of slip systems per family for hex
 
-  integer, dimension(1), parameter :: &
-    LATTICE_HEX_NCLEAVAGESYSTEM = [3]                                                               !< # of cleavage systems per family for hex
-
   integer, parameter  :: &
 #ifndef __PGI
     LATTICE_HEX_NSLIP     = sum(LATTICE_HEX_NSLIPSYSTEM), &                                         !< total # of slip systems for hex
-    LATTICE_HEX_NTWIN     = sum(LATTICE_HEX_NTWINSYSTEM), &                                         !< total # of twin systems for hex
-    LATTICE_HEX_NCLEAVAGE = sum(LATTICE_HEX_NCLEAVAGESYSTEM)                                        !< total # of cleavage systems for hex
+    LATTICE_HEX_NTWIN     = sum(LATTICE_HEX_NTWINSYSTEM)                                            !< total # of twin systems for hex
 #else
     LATTICE_HEX_NSLIP     = 33, &
-    LATTICE_HEX_NTWIN     = 24, &
-    LATTICE_HEX_NCLEAVAGE = 3
+    LATTICE_HEX_NTWIN     = 24
 #endif
 
   real(pReal), dimension(4+4,LATTICE_HEX_NSLIP), parameter :: &
@@ -304,14 +289,6 @@ module lattice
        1, -2,  1, -3,     1, -2,  1,  2, &
        2, -1, -1, -3,     2, -1, -1,  2  &
       ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                       !< twin systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
-
-  real(pReal), dimension(4+4,LATTICE_HEX_NCLEAVAGE), parameter :: &
-    LATTICE_HEX_SYSTEMCLEAVAGE = reshape(real([&
-     ! Cleavage direction     Plane normal
-       2,-1,-1, 0,     0, 0, 0, 1, &
-       0, 0, 0, 1,     2,-1,-1, 0, &
-       0, 0, 0, 1,     0, 1,-1, 0  &
-      ],pReal),shape(LATTICE_HEX_SYSTEMCLEAVAGE))
 
 
 !--------------------------------------------------------------------------------------------------
@@ -421,8 +398,7 @@ module lattice
 
 ! BEGIN DEPRECATED
   integer, parameter, public :: &
-    LATTICE_maxNcleavage    = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage, &
-                                  LATTICE_hex_Ncleavage,LATTICE_ort_Ncleavage)
+    LATTICE_maxNcleavage = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage,LATTICE_ort_Ncleavage)
 ! END DEPRECATED
 
   real(pReal),    dimension(:,:,:),     allocatable, public, protected :: &
@@ -631,19 +607,14 @@ subroutine initializeStructure(myPhase,CoverA)
   select case(lattice_structure(myPhase))
 
     case (LATTICE_fcc_ID)
-      lattice_NcleavageSystem(1:2,myPhase)  = lattice_fcc_NcleavageSystem
+      lattice_NcleavageSystem(1:1,myPhase)  = lattice_fcc_NcleavageSystem
       lattice_Scleavage(1:3,1:3,1:3,1:lattice_fcc_Ncleavage,myPhase) = &
       lattice_SchmidMatrix_cleavage(lattice_fcc_ncleavageSystem,'fcc',covera)
 
     case (LATTICE_bcc_ID)
-      lattice_NcleavageSystem(1:2,myPhase)  = lattice_bcc_NcleavageSystem
+      lattice_NcleavageSystem(1:1,myPhase)  = lattice_bcc_NcleavageSystem
       lattice_Scleavage(1:3,1:3,1:3,1:lattice_bcc_Ncleavage,myPhase) = &
       lattice_SchmidMatrix_cleavage(lattice_bcc_ncleavagesystem,'bcc',covera)
-
-    case (LATTICE_hex_ID)
-      lattice_NcleavageSystem(1:1,myPhase) = lattice_hex_NcleavageSystem
-      lattice_Scleavage(1:3,1:3,1:3,1:lattice_hex_Ncleavage,myPhase) = &
-      lattice_SchmidMatrix_cleavage(lattice_hex_ncleavagesystem,'hex',covera)
 
     case (LATTICE_ort_ID)
       lattice_NcleavageSystem(1:3,myPhase)  = lattice_ort_NcleavageSystem
@@ -1684,9 +1655,6 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
     case('bcc')
       NcleavageMax    = LATTICE_BCC_NCLEAVAGESYSTEM
       cleavageSystems = LATTICE_BCC_SYSTEMCLEAVAGE
-    case('hex')
-      NcleavageMax    = LATTICE_HEX_NCLEAVAGESYSTEM
-      cleavageSystems = LATTICE_HEX_SYSTEMCLEAVAGE
     case default
       call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(structure))
   end select
