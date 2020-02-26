@@ -19,7 +19,7 @@ module source_damage_isoDuctile
    source_damage_isoDuctile_offset, &                                                                 !< which source is my current damage mechanism?
    source_damage_isoDuctile_instance                                                                  !< instance of damage source mechanism
 
- enum, bind(c) 
+ enum, bind(c)
    enumerator :: undefined_ID, &
                  damage_drivingforce_ID
  end enum                                                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ToDo
@@ -51,52 +51,47 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_init
 
- integer :: Ninstance,phase,instance,source,sourceOffset
- integer :: NofMyPhase,p,i
+ integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p,i
  integer(kind(undefined_ID)) :: &
    outputID
-
  character(len=pStringLen) :: &
    extmsg = ''
  character(len=pStringLen), dimension(:), allocatable :: &
    outputs
 
- write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'; flush(6)
 
- Ninstance = count(phase_source == SOURCE_damage_isoDuctile_ID)
- if (Ninstance == 0) return
- 
+ Ninstance = count(phase_source == SOURCE_DAMAGE_ISODUCTILE_ID)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
- 
- allocate(source_damage_isoDuctile_offset(material_Nphase), source=0)
- allocate(source_damage_isoDuctile_instance(material_Nphase), source=0)
- do phase = 1, material_Nphase
-   source_damage_isoDuctile_instance(phase) = count(phase_source(:,1:phase) == source_damage_isoDuctile_ID)
-   do source = 1, phase_Nsources(phase)
-     if (phase_source(source,phase) == source_damage_isoDuctile_ID) &
-       source_damage_isoDuctile_offset(phase) = source
-   enddo    
- enddo
 
+ allocate(source_damage_isoDuctile_offset  (size(config_phase)), source=0)
+ allocate(source_damage_isoDuctile_instance(size(config_phase)), source=0)
  allocate(param(Ninstance))
- 
- do p=1, size(config_phase)
+
+ do p = 1, size(config_phase)
+   source_damage_isoDuctile_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ISODUCTILE_ID)
+   do source = 1, phase_Nsources(p)
+     if (phase_source(source,p) == SOURCE_DAMAGE_ISODUCTILE_ID) &
+       source_damage_isoDuctile_offset(p) = source
+   enddo
+
    if (all(phase_source(:,p) /= SOURCE_DAMAGE_ISODUCTILE_ID)) cycle
+
    associate(prm => param(source_damage_isoDuctile_instance(p)), &
              config => config_phase(p))
-             
+
    prm%aTol              = config%getFloat('isoductile_atol',defaultVal = 1.0e-3_pReal)
 
    prm%N                 = config%getFloat('isoductile_ratesensitivity')
    prm%critPlasticStrain = config%getFloat('isoductile_criticalplasticstrain')
-   
+
    ! sanity checks
    if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' isoductile_atol'
-   
+
    if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_ratesensitivity'
    if (prm%critPlasticStrain   <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_criticalplasticstrain'
-   
+
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
    if (extmsg /= '') &
@@ -109,7 +104,7 @@ subroutine source_damage_isoDuctile_init
    do i=1, size(outputs)
      outputID = undefined_ID
      select case(outputs(i))
-     
+
        case ('isoductile_drivingforce')
          prm%outputID = [prm%outputID, damage_drivingforce_ID]
 
@@ -118,17 +113,17 @@ subroutine source_damage_isoDuctile_init
    enddo
 
    end associate
-   
-   phase = p
-   NofMyPhase=count(material_phaseAt==phase) * discretization_nIP
-   instance = source_damage_isoDuctile_instance(phase)
-   sourceOffset = source_damage_isoDuctile_offset(phase)
 
-   call material_allocateSourceState(phase,sourceOffset,NofMyPhase,1,1,0)
-   sourceState(phase)%p(sourceOffset)%aTolState=param(instance)%aTol
- 
+
+   NofMyPhase=count(material_phaseAt==p) * discretization_nIP
+   instance = source_damage_isoDuctile_instance(p)
+   sourceOffset = source_damage_isoDuctile_offset(p)
+
+   call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
+   sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
+
  enddo
- 
+
 end subroutine source_damage_isoDuctile_init
 
 !--------------------------------------------------------------------------------------------------
@@ -152,11 +147,11 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
 
  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
    sum(plasticState(phase)%slipRate(:,constituent))/ &
-   ((damage(homog)%p(damageOffset))**param(instance)%N)/ & 
-   param(instance)%critPlasticStrain 
+   ((damage(homog)%p(damageOffset))**param(instance)%N)/ &
+   param(instance)%critPlasticStrain
 
 end subroutine source_damage_isoDuctile_dotState
- 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
@@ -174,12 +169,12 @@ subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiD
    sourceOffset
 
  sourceOffset = source_damage_isoDuctile_offset(phase)
- 
+
  localphiDot = 1.0_pReal &
              - sourceState(phase)%p(sourceOffset)%state(1,constituent) * phi
- 
+
  dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
- 
+
 end subroutine source_damage_isoDuctile_getRateAndItsTangent
 
 
@@ -189,9 +184,9 @@ end subroutine source_damage_isoDuctile_getRateAndItsTangent
 subroutine source_damage_isoDuctile_results(phase,group)
 
   integer, intent(in) :: phase
-  character(len=*), intent(in) :: group 
+  character(len=*), intent(in) :: group
   integer :: sourceOffset, o, instance
-   
+
   instance     = source_damage_isoDuctile_instance(phase)
   sourceOffset = source_damage_isoDuctile_offset(phase)
 

@@ -10,26 +10,26 @@ module source_thermal_dissipation
   use discretization
   use material
   use config
- 
+
   implicit none
   private
 
   integer,           dimension(:),   allocatable :: &
     source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
     source_thermal_dissipation_instance                                                             !< instance of thermal dissipation source mechanism
- 
+
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       kappa
   end type tParameters
- 
+
   type(tParameters), dimension(:),   allocatable :: param                                           !< containers of constitutive parameters (len Ninstance)
- 
- 
+
+
   public :: &
     source_thermal_dissipation_init, &
     source_thermal_dissipation_getRateAndItsTangent
- 
+
 contains
 
 
@@ -38,45 +38,42 @@ contains
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_init
- 
-  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p   
- 
-  write(6,'(/,a)')   ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'; flush(6)
- 
-  
-  Ninstance = count(phase_source == SOURCE_thermal_dissipation_ID)
-  if (Ninstance == 0) return
+
+  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p
+
+  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'; flush(6)
+
+  Ninstance = count(phase_source == SOURCE_THERMAL_DISSIPATION_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
-  
-  allocate(source_thermal_dissipation_offset(material_Nphase), source=0)
-  allocate(source_thermal_dissipation_instance(material_Nphase), source=0)
+
+  allocate(source_thermal_dissipation_offset  (size(config_phase)), source=0)
+  allocate(source_thermal_dissipation_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))
-  
-  do p = 1, material_Nphase
-    source_thermal_dissipation_instance(p) = count(phase_source(:,1:p) == SOURCE_thermal_dissipation_ID)
+
+  do p = 1, size(config_phase)
+    source_thermal_dissipation_instance(p) = count(phase_source(:,1:p) == SOURCE_THERMAL_DISSIPATION_ID)
     do source = 1, phase_Nsources(p)
-      if (phase_source(source,p) == SOURCE_thermal_dissipation_ID) &
+      if (phase_source(source,p) == SOURCE_THERMAL_DISSIPATION_ID) &
         source_thermal_dissipation_offset(p) = source
-    enddo    
-  enddo
-    
-  do p=1, size(config_phase)
+    enddo
+
     if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle
+
     instance = source_thermal_dissipation_instance(p)
     param(instance)%kappa = config_phase(p)%getFloat('dissipation_coldworkcoeff')
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
     sourceOffset = source_thermal_dissipation_offset(p)
- 
+
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,0,0,0)
-  
+
   enddo
-  
+
 end subroutine source_thermal_dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns dissipation rate
+!> @brief Ninstances dissipation rate
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar, Lp, phase)
 
@@ -91,12 +88,12 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDOT_dT, Tstar
     dTDOT_dT
   integer :: &
     instance
- 
+
   instance = source_thermal_dissipation_instance(phase)
-  
+
   TDot = param(instance)%kappa*sum(abs(Tstar*Lp))
-  dTDOT_dT = 0.0_pReal       
- 
+  dTDOT_dT = 0.0_pReal
+
 end subroutine source_thermal_dissipation_getRateAndItsTangent
- 
+
 end module source_thermal_dissipation
