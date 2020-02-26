@@ -510,7 +510,7 @@ subroutine lattice_init
   real(pReal),  dimension(:), allocatable :: &
     temp
 
-  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'; flush(6)
 
   Nphases = size(config_phase)
 
@@ -567,7 +567,7 @@ subroutine lattice_init
         call IO_error(130,ext_msg='lattice_init')
     end select
 
-    lattice_C66(1:6,1:6,p) = lattice_symmetrizeC66(lattice_structure(p),lattice_C66(1:6,1:6,p))
+    lattice_C66(1:6,1:6,p) = symmetrizeC66(lattice_structure(p),lattice_C66(1:6,1:6,p))
 
     lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p)) ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
     lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
@@ -602,16 +602,14 @@ subroutine lattice_init
     lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
 
-    call lattice_initializeStructure(p, CoverA)
+    call initializeStructure(p, CoverA)
   enddo
 
-end subroutine lattice_init
-
-
+contains
 !--------------------------------------------------------------------------------------------------
 !> @brief !!!!!!!DEPRECTATED!!!!!!
 !--------------------------------------------------------------------------------------------------
-subroutine lattice_initializeStructure(myPhase,CoverA)
+subroutine initializeStructure(myPhase,CoverA)
 
   integer, intent(in) :: myPhase
   real(pReal), intent(in) :: &
@@ -621,13 +619,13 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    i
 
   do i = 1,3
-    lattice_thermalExpansion33 (1:3,1:3,i,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+    lattice_thermalExpansion33 (1:3,1:3,i,myPhase) = symmetrize33(lattice_structure(myPhase),&
                                                                           lattice_thermalExpansion33   (1:3,1:3,i,myPhase))
   enddo
 
-  lattice_thermalConductivity33  (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+  lattice_thermalConductivity33  (1:3,1:3,myPhase) = symmetrize33(lattice_structure(myPhase),&
                                                                           lattice_thermalConductivity33  (1:3,1:3,myPhase))
-  lattice_DamageDiffusion33      (1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+  lattice_DamageDiffusion33      (1:3,1:3,myPhase) = symmetrize33(lattice_structure(myPhase),&
                                                                           lattice_DamageDiffusion33      (1:3,1:3,myPhase))
 
   select case(lattice_structure(myPhase))
@@ -654,115 +652,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
 
   end select
 
-end subroutine lattice_initializeStructure
+end subroutine initializeStructure
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Symmetrizes stiffness matrix according to lattice type
-!> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
-!--------------------------------------------------------------------------------------------------
-pure function lattice_symmetrizeC66(struct,C66)
-
-  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
-  real(pReal), dimension(6,6), intent(in) :: C66
-  real(pReal), dimension(6,6) :: lattice_symmetrizeC66
-  integer :: j,k
-
-  lattice_symmetrizeC66 = 0.0_pReal
-
-  select case(struct)
-    case (LATTICE_iso_ID)
-      do k=1,3
-        do j=1,3
-          lattice_symmetrizeC66(k,j) = C66(1,2)
-        enddo
-        lattice_symmetrizeC66(k,k)     = C66(1,1)
-        lattice_symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
-      enddo
-    case (LATTICE_fcc_ID,LATTICE_bcc_ID)
-      do k=1,3
-        do j=1,3
-          lattice_symmetrizeC66(k,j) = C66(1,2)
-        enddo
-        lattice_symmetrizeC66(k,k)     = C66(1,1)
-        lattice_symmetrizeC66(k+3,k+3) = C66(4,4)
-      enddo
-    case (LATTICE_hex_ID)
-      lattice_symmetrizeC66(1,1) = C66(1,1)
-      lattice_symmetrizeC66(2,2) = C66(1,1)
-      lattice_symmetrizeC66(3,3) = C66(3,3)
-      lattice_symmetrizeC66(1,2) = C66(1,2)
-      lattice_symmetrizeC66(2,1) = C66(1,2)
-      lattice_symmetrizeC66(1,3) = C66(1,3)
-      lattice_symmetrizeC66(3,1) = C66(1,3)
-      lattice_symmetrizeC66(2,3) = C66(1,3)
-      lattice_symmetrizeC66(3,2) = C66(1,3)
-      lattice_symmetrizeC66(4,4) = C66(4,4)
-      lattice_symmetrizeC66(5,5) = C66(4,4)
-      lattice_symmetrizeC66(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
-    case (LATTICE_ort_ID)
-      lattice_symmetrizeC66(1,1) = C66(1,1)
-      lattice_symmetrizeC66(2,2) = C66(2,2)
-      lattice_symmetrizeC66(3,3) = C66(3,3)
-      lattice_symmetrizeC66(1,2) = C66(1,2)
-      lattice_symmetrizeC66(2,1) = C66(1,2)
-      lattice_symmetrizeC66(1,3) = C66(1,3)
-      lattice_symmetrizeC66(3,1) = C66(1,3)
-      lattice_symmetrizeC66(2,3) = C66(2,3)
-      lattice_symmetrizeC66(3,2) = C66(2,3)
-      lattice_symmetrizeC66(4,4) = C66(4,4)
-      lattice_symmetrizeC66(5,5) = C66(5,5)
-      lattice_symmetrizeC66(6,6) = C66(6,6)
-    case (LATTICE_bct_ID)
-      lattice_symmetrizeC66(1,1) = C66(1,1)
-      lattice_symmetrizeC66(2,2) = C66(1,1)
-      lattice_symmetrizeC66(3,3) = C66(3,3)
-      lattice_symmetrizeC66(1,2) = C66(1,2)
-      lattice_symmetrizeC66(2,1) = C66(1,2)
-      lattice_symmetrizeC66(1,3) = C66(1,3)
-      lattice_symmetrizeC66(3,1) = C66(1,3)
-      lattice_symmetrizeC66(2,3) = C66(1,3)
-      lattice_symmetrizeC66(3,2) = C66(1,3)
-      lattice_symmetrizeC66(4,4) = C66(4,4)
-      lattice_symmetrizeC66(5,5) = C66(4,4)
-      lattice_symmetrizeC66(6,6) = C66(6,6)
-    case default
-      lattice_symmetrizeC66 = C66
-   end select
-
-end function lattice_symmetrizeC66
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Symmetrizes 2nd order tensor according to lattice type
-!--------------------------------------------------------------------------------------------------
-pure function lattice_symmetrize33(struct,T33)
-
-  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
-  real(pReal), dimension(3,3), intent(in) :: T33
-  real(pReal), dimension(3,3) :: lattice_symmetrize33
-  integer :: k
-
-  lattice_symmetrize33 = 0.0_pReal
-
-  select case(struct)
-    case (LATTICE_iso_ID,LATTICE_fcc_ID,LATTICE_bcc_ID)
-      do k=1,3
-        lattice_symmetrize33(k,k) = T33(1,1)
-      enddo
-    case (LATTICE_hex_ID)
-      lattice_symmetrize33(1,1) = T33(1,1)
-      lattice_symmetrize33(2,2) = T33(1,1)
-      lattice_symmetrize33(3,3) = T33(3,3)
-    case (LATTICE_ort_ID,lattice_bct_ID)
-      lattice_symmetrize33(1,1) = T33(1,1)
-      lattice_symmetrize33(2,2) = T33(2,2)
-      lattice_symmetrize33(3,3) = T33(3,3)
-    case default
-      lattice_symmetrize33 = T33
-   end select
-
-end function lattice_symmetrize33
+end subroutine lattice_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -920,7 +812,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = lattice_symmetrizeC66(LATTICE_HEX_ID,C_target_unrotated66)
+    C_target_unrotated66 = symmetrizeC66(LATTICE_HEX_ID,C_target_unrotated66)
   elseif (structure_target(1:3)  == 'bcc') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
       call IO_error(134,ext_msg='lattice_C66_trans: '//trim(structure_target))
@@ -1870,30 +1762,6 @@ end function lattice_slip_transverse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Projection of the transverse direction onto the slip plane
-!> @details: This projection is used to calculate forest hardening for edge dislocations
-!--------------------------------------------------------------------------------------------------
-function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
-
-  integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
-  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
-  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
-
-  real(pReal), dimension(3,sum(Nslip)) :: n, t
-  integer                              :: i, j
-
-  n = lattice_slip_normal    (Nslip,structure,cOverA)
-  t = lattice_slip_transverse(Nslip,structure,cOverA)
-
-  do i=1, sum(Nslip); do j=1, sum(Nslip)
-    projection(i,j) = abs(math_inner(n(:,i),t(:,j)))
-  enddo; enddo
-
-end function slipProjection_transverse
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Labels for slip systems
 !> details only active slip systems are considered
 !--------------------------------------------------------------------------------------------------
@@ -1979,6 +1847,30 @@ end function lattice_labels_twin
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Projection of the transverse direction onto the slip plane
+!> @details: This projection is used to calculate forest hardening for edge dislocations
+!--------------------------------------------------------------------------------------------------
+function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
+
+  integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
+  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
+  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
+
+  real(pReal), dimension(3,sum(Nslip)) :: n, t
+  integer                              :: i, j
+
+  n = lattice_slip_normal    (Nslip,structure,cOverA)
+  t = lattice_slip_transverse(Nslip,structure,cOverA)
+
+  do i=1, sum(Nslip); do j=1, sum(Nslip)
+    projection(i,j) = abs(math_inner(n(:,i),t(:,j)))
+  enddo; enddo
+
+end function slipProjection_transverse
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Projection of the slip direction onto the slip plane
 !> @details: This projection is used to calculate forest hardening for screw dislocations
 !--------------------------------------------------------------------------------------------------
@@ -2000,6 +1892,114 @@ function slipProjection_direction(Nslip,structure,cOverA) result(projection)
   enddo; enddo
 
 end function slipProjection_direction
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Symmetrizes 2nd order tensor according to lattice type
+!--------------------------------------------------------------------------------------------------
+pure function symmetrize33(struct,T33)
+
+  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
+  real(pReal), dimension(3,3), intent(in) :: T33
+  real(pReal), dimension(3,3) :: symmetrize33
+  integer :: k
+
+  symmetrize33 = 0.0_pReal
+
+  select case(struct)
+    case (LATTICE_iso_ID,LATTICE_fcc_ID,LATTICE_bcc_ID)
+      do k=1,3
+        symmetrize33(k,k) = T33(1,1)
+      enddo
+    case (LATTICE_hex_ID)
+      symmetrize33(1,1) = T33(1,1)
+      symmetrize33(2,2) = T33(1,1)
+      symmetrize33(3,3) = T33(3,3)
+    case (LATTICE_ort_ID,lattice_bct_ID)
+      symmetrize33(1,1) = T33(1,1)
+      symmetrize33(2,2) = T33(2,2)
+      symmetrize33(3,3) = T33(3,3)
+    case default
+      symmetrize33 = T33
+   end select
+
+end function symmetrize33
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Symmetrizes stiffness matrix according to lattice type
+!> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
+!--------------------------------------------------------------------------------------------------
+pure function symmetrizeC66(struct,C66)
+
+  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
+  real(pReal), dimension(6,6), intent(in) :: C66
+  real(pReal), dimension(6,6) :: symmetrizeC66
+  integer :: j,k
+
+  symmetrizeC66 = 0.0_pReal
+
+  select case(struct)
+    case (LATTICE_iso_ID)
+      do k=1,3
+        do j=1,3
+          symmetrizeC66(k,j) = C66(1,2)
+        enddo
+        symmetrizeC66(k,k)     = C66(1,1)
+        symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
+      enddo
+    case (LATTICE_fcc_ID,LATTICE_bcc_ID)
+      do k=1,3
+        do j=1,3
+          symmetrizeC66(k,j) = C66(1,2)
+        enddo
+        symmetrizeC66(k,k)     = C66(1,1)
+        symmetrizeC66(k+3,k+3) = C66(4,4)
+      enddo
+    case (LATTICE_hex_ID)
+      symmetrizeC66(1,1) = C66(1,1)
+      symmetrizeC66(2,2) = C66(1,1)
+      symmetrizeC66(3,3) = C66(3,3)
+      symmetrizeC66(1,2) = C66(1,2)
+      symmetrizeC66(2,1) = C66(1,2)
+      symmetrizeC66(1,3) = C66(1,3)
+      symmetrizeC66(3,1) = C66(1,3)
+      symmetrizeC66(2,3) = C66(1,3)
+      symmetrizeC66(3,2) = C66(1,3)
+      symmetrizeC66(4,4) = C66(4,4)
+      symmetrizeC66(5,5) = C66(4,4)
+      symmetrizeC66(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
+    case (LATTICE_ort_ID)
+      symmetrizeC66(1,1) = C66(1,1)
+      symmetrizeC66(2,2) = C66(2,2)
+      symmetrizeC66(3,3) = C66(3,3)
+      symmetrizeC66(1,2) = C66(1,2)
+      symmetrizeC66(2,1) = C66(1,2)
+      symmetrizeC66(1,3) = C66(1,3)
+      symmetrizeC66(3,1) = C66(1,3)
+      symmetrizeC66(2,3) = C66(2,3)
+      symmetrizeC66(3,2) = C66(2,3)
+      symmetrizeC66(4,4) = C66(4,4)
+      symmetrizeC66(5,5) = C66(5,5)
+      symmetrizeC66(6,6) = C66(6,6)
+    case (LATTICE_bct_ID)
+      symmetrizeC66(1,1) = C66(1,1)
+      symmetrizeC66(2,2) = C66(1,1)
+      symmetrizeC66(3,3) = C66(3,3)
+      symmetrizeC66(1,2) = C66(1,2)
+      symmetrizeC66(2,1) = C66(1,2)
+      symmetrizeC66(1,3) = C66(1,3)
+      symmetrizeC66(3,1) = C66(1,3)
+      symmetrizeC66(2,3) = C66(1,3)
+      symmetrizeC66(3,2) = C66(1,3)
+      symmetrizeC66(4,4) = C66(4,4)
+      symmetrizeC66(5,5) = C66(4,4)
+      symmetrizeC66(6,6) = C66(6,6)
+    case default
+      symmetrizeC66 = C66
+   end select
+
+end function symmetrizeC66
 
 
 !--------------------------------------------------------------------------------------------------
