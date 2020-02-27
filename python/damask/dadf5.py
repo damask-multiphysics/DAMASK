@@ -1090,29 +1090,27 @@ class DADF5():
           for label in (labels if isinstance(labels,list) else [labels]):
             for p in self.iter_visible('con_physics'):
               if p != 'generic':
-                for c in self.iter_visible('constituents'):
-                  x = self.get_dataset_location(label)
-                  if len(x) == 0:
-                    continue
-                  array = self.read_dataset(x,0)
-                  shape = [array.shape[0],np.product(array.shape[1:])]
-                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
-                                  deep=True,array_type= vtk.VTK_DOUBLE))
-                  vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
-                  vtk_geom.GetCellData().AddArray(vtk_data[-1])
+                  for c in self.iter_visible('constituents'):
+                      x = self.get_dataset_location(label)
+                      if len(x) == 0:
+                          continue
+                      array = self.read_dataset(x,0)
+                      shape = [array.shape[0],np.product(array.shape[1:])]
+                      vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
+                      vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
+                      vtk_geom.GetCellData().AddArray(vtk_data[-1])
 
               else:
-                x = self.get_dataset_location(label)
-                if len(x) == 0:
-                  continue
-                array = self.read_dataset(x,0)
-                shape = [array.shape[0],np.product(array.shape[1:])]
-                vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
-                                deep=True,array_type= vtk.VTK_DOUBLE))
-                ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')                         # identify  phase name
-                dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                             # removing phase name
-                vtk_data[-1].SetName(dset_name)
-                vtk_geom.GetCellData().AddArray(vtk_data[-1])
+                  x = self.get_dataset_location(label)
+                  if len(x) == 0:
+                      continue
+                  array = self.read_dataset(x,0)
+                  shape = [array.shape[0],np.product(array.shape[1:])]
+                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
+                  ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')                   # identify  phase name
+                  dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                       # removing phase name
+                  vtk_data[-1].SetName(dset_name)
+                  vtk_geom.GetCellData().AddArray(vtk_data[-1])
 
           self.set_visible('materialpoints',materialpoints_backup)
 
@@ -1121,38 +1119,35 @@ class DADF5():
           for label in (labels if isinstance(labels,list) else [labels]):
             for p in self.iter_visible('mat_physics'):
               if p != 'generic':
-                for m in self.iter_visible('materialpoints'):
+                  for m in self.iter_visible('materialpoints'):
+                      x = self.get_dataset_location(label)
+                      if len(x) == 0:
+                          continue
+                      array = self.read_dataset(x,0)
+                      shape = [array.shape[0],np.product(array.shape[1:])]
+                      vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
+                      vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
+                      vtk_geom.GetCellData().AddArray(vtk_data[-1])
+              else:
                   x = self.get_dataset_location(label)
                   if len(x) == 0:
-                    continue
+                      continue
                   array = self.read_dataset(x,0)
                   shape = [array.shape[0],np.product(array.shape[1:])]
-                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
-                                  deep=True,array_type= vtk.VTK_DOUBLE))
-                  vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
+                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
+                  vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
                   vtk_geom.GetCellData().AddArray(vtk_data[-1])
-              else:
-                x = self.get_dataset_location(label)
-                if len(x) == 0:
-                  continue
-                array = self.read_dataset(x,0)
-                shape = [array.shape[0],np.product(array.shape[1:])]
-                vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),
-                                deep=True,array_type= vtk.VTK_DOUBLE))
-                vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-                vtk_geom.GetCellData().AddArray(vtk_data[-1])
           self.set_visible('constituents',constituents_backup)
 
           if mode.lower()=='cell':
-            writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
-                     vtk.vtkXMLUnstructuredGridWriter()
-            x = self.get_dataset_location('u_n')
-            vtk_data.append(numpy_support.numpy_to_vtk(num_array=self.read_dataset(x,0),
-                            deep=True,array_type=vtk.VTK_DOUBLE))
-            vtk_data[-1].SetName('u')
-            vtk_geom.GetPointData().AddArray(vtk_data[-1])
+              writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
+                       vtk.vtkXMLUnstructuredGridWriter()
+              x = self.get_dataset_location('u_n')
+              vtk_data.append(numpy_support.numpy_to_vtk(num_array=self.read_dataset(x,0),deep=True))
+              vtk_data[-1].SetName('u')
+              vtk_geom.GetPointData().AddArray(vtk_data[-1])
           elif mode.lower()=='point':
-            writer = vtk.vtkXMLPolyDataWriter()
+              writer = vtk.vtkXMLPolyDataWriter()
 
 
           file_out = '{}_inc{}.{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
