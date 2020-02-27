@@ -257,7 +257,7 @@ subroutine material_init
   allocate(damage          (material_Nhomogenization))
  
   allocate(temperatureRate (material_Nhomogenization))
- 
+
   do m = 1,size(config_microstructure)
     if(minval(microstructure_phase(1:microstructure_Nconstituents(m),m)) < 1 .or. &
        maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > size(config_phase)) &
@@ -268,6 +268,7 @@ subroutine material_init
     if(microstructure_Nconstituents(m) < 1) &
          call IO_error(151,m)
   enddo
+  if(homogenization_maxNgrains > size(microstructure_phase,1)) call IO_error(148)
  
   debugOut: if (iand(myDebug,debug_levelExtensive) /= 0) then
     write(6,'(/,a,/)') ' MATERIAL configuration'
@@ -290,6 +291,7 @@ subroutine material_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! new mappings
+
   allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),                   source=0)
   allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)   !this is only needed by plasticity nonlocal
   allocate(material_orientation0(homogenization_maxNgrains,discretization_nIP,discretization_nElem))
@@ -298,15 +300,24 @@ subroutine material_init
      do i = 1, discretization_nIP
        myMicro = discretization_microstructureAt(e)
        do c = 1, homogenization_Ngrains(discretization_homogenizationAt(e))
-         material_phaseAt(c,e)        = microstructure_phase(c,myMicro)
-         material_texture(c,i,e)      = microstructure_texture(c,myMicro)
-         material_orientation0(c,i,e) = texture_orientation(material_texture(c,i,e))
+         if(microstructure_phase(c,myMicro) > 0) then
+           material_phaseAt(c,e)        = microstructure_phase(c,myMicro)
+         else
+           call IO_error(150,ext_msg='phase')
+         endif
+         if(microstructure_texture(c,myMicro) > 0) then
+           material_texture(c,i,e)      = microstructure_texture(c,myMicro)
+           material_orientation0(c,i,e) = texture_orientation(material_texture(c,i,e))
+         else
+           call IO_error(150,ext_msg='texture')
+         endif
        enddo
      enddo
    enddo
  
   deallocate(microstructure_phase)
   deallocate(microstructure_texture)
+  deallocate(texture_orientation)
  
   
   allocate(material_homogenizationAt,source=discretization_homogenizationAt)
@@ -464,7 +475,7 @@ subroutine material_parseMicrostructure
   real(pReal), dimension(:,:), allocatable :: &
     microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
   integer :: &
-    microstructure_maxNconstituents                                                                 !< max number of constituents in any phase
+    maxNconstituents                                                                                !< max number of constituents in any phase
  
   allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
  
@@ -475,10 +486,10 @@ subroutine material_parseMicrostructure
     microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
   enddo
  
-  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
-  allocate(microstructure_phase   (microstructure_maxNconstituents,size(config_microstructure)),source=0)
-  allocate(microstructure_texture (microstructure_maxNconstituents,size(config_microstructure)),source=0)
-  allocate(microstructure_fraction(microstructure_maxNconstituents,size(config_microstructure)),source=0.0_pReal)
+  maxNconstituents = maxval(microstructure_Nconstituents)
+  allocate(microstructure_phase   (maxNconstituents,size(config_microstructure)),source=0)
+  allocate(microstructure_texture (maxNconstituents,size(config_microstructure)),source=0)
+  allocate(microstructure_fraction(maxNconstituents,size(config_microstructure)),source=0.0_pReal)
  
   allocate(strings(1))                                                                              ! Intel 16.0 Bug
   do m=1, size(config_microstructure)

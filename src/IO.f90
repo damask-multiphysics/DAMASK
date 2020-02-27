@@ -400,6 +400,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'number of values does not match'
     case (147)
       msg = 'not supported anymore'
+    case (148)
+      msg = 'Nconstituents mismatch between homogenization and microstructure'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
