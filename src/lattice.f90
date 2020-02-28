@@ -16,18 +16,6 @@ module lattice
   implicit none
   private
 
-! BEGIN DEPRECATED
-  integer, parameter, public :: &
-    LATTICE_maxNcleavageFamily =  3                                                                 !< max # of transformation system families over lattice structures
-
-  integer, allocatable, dimension(:,:), protected, public :: &
-    lattice_NcleavageSystem                                                                         !< total # of transformation systems in each family
-
-  real(pReal), allocatable, dimension(:,:,:,:,:), protected, public :: &
-    lattice_Scleavage                                                                               !< Schmid matrices for cleavage systems
-! END DEPRECATED
-
-
 !--------------------------------------------------------------------------------------------------
 ! face centered cubic
   integer, dimension(2), parameter :: &
@@ -290,7 +278,6 @@ module lattice
        2, -1, -1, -3,     2, -1, -1,  2  &
       ],pReal),shape(LATTICE_HEX_SYSTEMTWIN))                                                       !< twin systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
 
-
 !--------------------------------------------------------------------------------------------------
 ! body centered tetragonal
   integer, dimension(13), parameter :: &
@@ -373,7 +360,6 @@ module lattice
        1, 1, 1,      1,-2, 1  &
        ],pReal),shape(LATTICE_BCT_SYSTEMSLIP))                                                      !< slip systems for bct sorted by Bieler
 
-
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
   integer, dimension(3), parameter :: &
@@ -394,12 +380,6 @@ module lattice
        1, 0, 0,     0, 0, 1  &
       ],pReal),shape(LATTICE_ORT_SYSTEMCLEAVAGE))
 
-
-
-! BEGIN DEPRECATED
-  integer, parameter, public :: &
-    LATTICE_maxNcleavage = max(LATTICE_fcc_Ncleavage,LATTICE_bcc_Ncleavage,LATTICE_ort_Ncleavage)
-! END DEPRECATED
 
   real(pReal),    dimension(:,:,:),     allocatable, public, protected :: &
     lattice_C66
@@ -505,10 +485,6 @@ subroutine lattice_init
   allocate(lattice_mu(Nphases), source=0.0_pReal)
   allocate(lattice_nu(Nphases), source=0.0_pReal)
 
-  allocate(lattice_Scleavage(3,3,3,lattice_maxNcleavage,Nphases),source=0.0_pReal)
-  allocate(lattice_NcleavageSystem(lattice_maxNcleavageFamily,Nphases),source=0)
-
-
   do p = 1, size(config_phase)
 
     lattice_C66(1,1,p) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
@@ -578,52 +554,16 @@ subroutine lattice_init
     lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
 
-    call initializeStructure(p, CoverA)
+    do i = 1,3
+      lattice_thermalExpansion33 (1:3,1:3,i,p) = symmetrize33(lattice_structure(p),&
+                                                              lattice_thermalExpansion33   (1:3,1:3,i,p))
+    enddo
+
+    lattice_thermalConductivity33  (1:3,1:3,p) = symmetrize33(lattice_structure(p),&
+                                                              lattice_thermalConductivity33(1:3,1:3,p))
+    lattice_DamageDiffusion33      (1:3,1:3,p) = symmetrize33(lattice_structure(p),&
+                                                              lattice_DamageDiffusion33    (1:3,1:3,p))
   enddo
-
-contains
-!--------------------------------------------------------------------------------------------------
-!> @brief !!!!!!!DEPRECTATED!!!!!!
-!--------------------------------------------------------------------------------------------------
-subroutine initializeStructure(myPhase,CoverA)
-
-  integer, intent(in) :: myPhase
-  real(pReal), intent(in) :: &
-    CoverA
-
-  integer :: &
-   i
-
-  do i = 1,3
-    lattice_thermalExpansion33 (1:3,1:3,i,myPhase) = symmetrize33(lattice_structure(myPhase),&
-                                                                          lattice_thermalExpansion33   (1:3,1:3,i,myPhase))
-  enddo
-
-  lattice_thermalConductivity33  (1:3,1:3,myPhase) = symmetrize33(lattice_structure(myPhase),&
-                                                                          lattice_thermalConductivity33  (1:3,1:3,myPhase))
-  lattice_DamageDiffusion33      (1:3,1:3,myPhase) = symmetrize33(lattice_structure(myPhase),&
-                                                                          lattice_DamageDiffusion33      (1:3,1:3,myPhase))
-
-  select case(lattice_structure(myPhase))
-
-    case (LATTICE_fcc_ID)
-      lattice_NcleavageSystem(1:1,myPhase)  = lattice_fcc_NcleavageSystem
-      lattice_Scleavage(1:3,1:3,1:3,1:lattice_fcc_Ncleavage,myPhase) = &
-      lattice_SchmidMatrix_cleavage(lattice_fcc_ncleavageSystem,'fcc',covera)
-
-    case (LATTICE_bcc_ID)
-      lattice_NcleavageSystem(1:1,myPhase)  = lattice_bcc_NcleavageSystem
-      lattice_Scleavage(1:3,1:3,1:3,1:lattice_bcc_Ncleavage,myPhase) = &
-      lattice_SchmidMatrix_cleavage(lattice_bcc_ncleavagesystem,'bcc',covera)
-
-    case (LATTICE_ort_ID)
-      lattice_NcleavageSystem(1:3,myPhase)  = lattice_ort_NcleavageSystem
-      lattice_Scleavage(1:3,1:3,1:3,1:lattice_ort_Ncleavage,myPhase) = &
-      lattice_SchmidMatrix_cleavage(lattice_ort_NcleavageSystem,'ort',covera)
-
-  end select
-
-end subroutine initializeStructure
 
 end subroutine lattice_init
 

@@ -22,9 +22,6 @@ module source_damage_anisoBrittle
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
     source_damage_anisoBrittle_instance                                                             !< instance of source mechanism
 
-  integer,                       dimension(:,:),         allocatable :: &
-    source_damage_anisoBrittle_Ncleavage                                                            !< number of cleavage systems per family
-
   type :: tParameters                                                                                !< container type for internal constitutive parameters
     real(pReal) :: &
       aTol, &
@@ -75,7 +72,6 @@ subroutine source_damage_anisoBrittle_init
   allocate(source_damage_anisoBrittle_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))
 
-  allocate(source_damage_anisoBrittle_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0)
 
   do p = 1, size(config_phase)
     source_damage_anisoBrittle_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ANISOBRITTLE_ID)
@@ -124,8 +120,6 @@ subroutine source_damage_anisoBrittle_init
 
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
     sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
-
-    source_damage_anisoBrittle_Ncleavage(1:size(param(instance)%Ncleavage),instance) = param(instance)%Ncleavage
 
     end associate
   enddo

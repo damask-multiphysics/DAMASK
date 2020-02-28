@@ -36,7 +36,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_thermal_expansion_init
 
-  integer :: Ninstance,p,i,instance
+  integer :: Ninstance,p,i
   real(pReal),  dimension(:), allocatable :: &
     temp
 

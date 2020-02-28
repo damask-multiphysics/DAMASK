@@ -49,7 +49,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_slipplane_opening_init
 
-  integer :: Ninstance,p,instance
+  integer :: Ninstance,p
 
   write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'; flush(6)
 
