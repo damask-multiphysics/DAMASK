@@ -92,6 +92,7 @@ subroutine source_damage_anisoBrittle_init
     prm%N         = config%getFloat('anisobrittle_ratesensitivity')
     prm%sdot_0    = config%getFloat('anisobrittle_sdot0')
     prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
+    prm%totalNcleavage = sum(prm%Ncleavage)
     prm%critDisp  = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(prm%Ncleavage))
     prm%critLoad  = config%getFloats('anisobrittle_criticalload',        requiredSize=size(prm%Ncleavage))
 
@@ -150,7 +151,7 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
     sourceOffset, &
     damageOffset, &
     homog, &
-    f, i, index_myFamily, index
+    index
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
 
@@ -163,14 +164,11 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
 
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal
 
-  index = 1
-  do f = 1,lattice_maxNcleavageFamily
-    index_myFamily = sum(lattice_NcleavageSystem(1:f-1,phase))                                      ! at which index starts my family
-    do i = 1,source_damage_anisoBrittle_Ncleavage(f,instance)                                       ! process each (active) cleavage system in family
+  do index = 1, param(instance)%totalNcleavage
 
-      traction_d    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase))
-      traction_t    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase))
-      traction_n    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase))
+      traction_d    = math_mul33xx33(S,param(instance)%cleavage_systems(1:3,1:3,1,index))
+      traction_t    = math_mul33xx33(S,param(instance)%cleavage_systems(1:3,1:3,2,index))
+      traction_n    = math_mul33xx33(S,param(instance)%cleavage_systems(1:3,1:3,3,index))
 
       traction_crit = param(instance)%critLoad(index)* &
                       damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
@@ -183,8 +181,6 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
          (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**param(instance)%N)/ &
         param(instance)%critDisp(index)
 
-    index = index + 1
-    enddo
   enddo
 
 end subroutine source_damage_anisoBrittle_dotState
