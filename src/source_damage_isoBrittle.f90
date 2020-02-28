@@ -16,6 +16,7 @@ module source_damage_isoBrittle
 
   implicit none
   private
+
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoBrittle_offset, &
     source_damage_isoBrittle_instance
@@ -36,7 +37,7 @@ module source_damage_isoBrittle
     source_damage_isoBrittle_init, &
     source_damage_isoBrittle_deltaState, &
     source_damage_isoBrittle_getRateAndItsTangent, &
-    source_damage_isoBrittle_Results
+    source_damage_isoBrittle_results
 
 contains
 

@@ -29,7 +29,12 @@ module kinematics_cleavage_opening
     real(pReal),   dimension(:),   allocatable :: &
       critDisp, &
       critLoad
-  end type
+    real(pReal), dimension(:,:,:,:), allocatable :: &
+      cleavage_systems
+  end type tParameters
+
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+
 
 ! Begin Deprecated
   integer,                       dimension(:),           allocatable :: &
@@ -71,10 +76,9 @@ subroutine kinematics_cleavage_opening_init
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
+  allocate(param(Ninstance))
+
   allocate(kinematics_cleavage_opening_instance(size(config_phase)), source=0)
-  do p = 1, size(config_phase)
-    kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_cleavage_opening_ID) ! ToDo: count correct?
-  enddo
 
   allocate(kinematics_cleavage_opening_critDisp(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal)
   allocate(kinematics_cleavage_opening_critLoad(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal)
@@ -84,6 +88,7 @@ subroutine kinematics_cleavage_opening_init
   allocate(kinematics_cleavage_opening_N(Ninstance),                                    source=0.0_pReal)
 
   do p = 1, size(config_phase)
+    kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_cleavage_opening_ID) ! ToDo: count correct?
     if (all(phase_kinematics(:,p) /= KINEMATICS_cleavage_opening_ID)) cycle
     associate(config => config_phase(p))
 

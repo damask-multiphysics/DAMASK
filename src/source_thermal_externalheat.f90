@@ -18,7 +18,7 @@ module source_thermal_externalheat
     source_thermal_externalheat_offset, &                                                           !< which source is my current thermal dissipation mechanism?
     source_thermal_externalheat_instance                                                            !< instance of thermal dissipation source mechanism
 
-  type  :: tParameters                                                                              !< container type for internal constitutive parameters
+  type :: tParameters                                                                              !< container type for internal constitutive parameters
     real(pReal), dimension(:), allocatable :: &
       time, &
       heat_rate
