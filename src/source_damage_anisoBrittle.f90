@@ -95,23 +95,15 @@ subroutine source_damage_anisoBrittle_init
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_DAMAGE_ANISOBRITTLE_ID)) cycle
-
     associate(prm => param(source_damage_anisoBrittle_instance(p)), &
               config => config_phase(p))
 
     prm%aTol      = config%getFloat('anisobrittle_atol',defaultVal = 1.0e-3_pReal)
     prm%N         = config%getFloat('anisobrittle_ratesensitivity')
     prm%sdot_0    = config%getFloat('anisobrittle_sdot0')
-
-    ! sanity checks
-    if (prm%aTol      < 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_atol'
-    if (prm%N        <= 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_ratesensitivity'
-    if (prm%sdot_0   <= 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_sdot0'
-
     prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
-
-    prm%critDisp = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(prm%Ncleavage))
-    prm%critLoad = config%getFloats('anisobrittle_criticalload',        requiredSize=size(prm%Ncleavage))
+    prm%critDisp  = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(prm%Ncleavage))
+    prm%critLoad  = config%getFloats('anisobrittle_criticalload',        requiredSize=size(prm%Ncleavage))
 
     prm%cleavage_systems  = lattice_SchmidMatrix_cleavage (prm%Ncleavage,config%getString('lattice_structure'),&
                                                      config%getFloat('c/a',defaultVal=0.0_pReal))
@@ -120,8 +112,11 @@ subroutine source_damage_anisoBrittle_init
     prm%critDisp  = math_expand(prm%critDisp, prm%Ncleavage)
     prm%critLoad  = math_expand(prm%critLoad, prm%Ncleavage)
 
-    if (any(prm%critLoad < 0.0_pReal))     extmsg = trim(extmsg)//' anisobrittle_criticalload'
-    if (any(prm%critDisp < 0.0_pReal))     extmsg = trim(extmsg)//' anisobrittle_criticaldisplacement'
+    if (prm%aTol      < 0.0_pReal)     extmsg = trim(extmsg)//' anisobrittle_atol'
+    if (prm%N        <= 0.0_pReal)     extmsg = trim(extmsg)//' anisobrittle_ratesensitivity'
+    if (prm%sdot_0   <= 0.0_pReal)     extmsg = trim(extmsg)//' anisobrittle_sdot0'
+    if (any(prm%critLoad < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_criticalload'
+    if (any(prm%critDisp < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_criticaldisplacement'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -143,8 +138,6 @@ subroutine source_damage_anisoBrittle_init
 
     enddo
 
-    end associate
-
     NofMyPhase=count(material_phaseAt==p) * discretization_nIP
     instance = source_damage_anisoBrittle_instance(p)
     sourceOffset = source_damage_anisoBrittle_offset(p)
@@ -153,6 +146,8 @@ subroutine source_damage_anisoBrittle_init
     sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
 
     source_damage_anisoBrittle_Ncleavage(1:size(param(instance)%Ncleavage),instance) = param(instance)%Ncleavage
+
+    end associate
   enddo
 
 end subroutine source_damage_anisoBrittle_init

@@ -63,19 +63,21 @@ subroutine source_thermal_externalheat_init
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_thermal_externalheat_ID)) cycle
+    associate(config => config_phase(p))
 
     instance = source_thermal_externalheat_instance(p)
     sourceOffset = source_thermal_externalheat_offset(p)
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
 
-    param(instance)%time       = config_phase(p)%getFloats('externalheat_time')
+    param(instance)%time       = config%getFloats('externalheat_time')
     param(instance)%nIntervals = size(param(instance)%time) - 1
 
 
-    param(instance)%heat_rate = config_phase(p)%getFloats('externalheat_rate',requiredSize = size(param(instance)%time))
+    param(instance)%heat_rate = config%getFloats('externalheat_rate',requiredSize = size(param(instance)%time))
 
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
 
+    end associate
   enddo
 
 end subroutine source_thermal_externalheat_init

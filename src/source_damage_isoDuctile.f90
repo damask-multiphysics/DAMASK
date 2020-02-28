@@ -77,18 +77,15 @@ subroutine source_damage_isoDuctile_init
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_DAMAGE_ISODUCTILE_ID)) cycle
-
     associate(prm => param(source_damage_isoDuctile_instance(p)), &
               config => config_phase(p))
 
     prm%aTol              = config%getFloat('isoductile_atol',defaultVal = 1.0e-3_pReal)
-
     prm%N                 = config%getFloat('isoductile_ratesensitivity')
     prm%critPlasticStrain = config%getFloat('isoductile_criticalplasticstrain')
 
     ! sanity checks
     if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' isoductile_atol'
-
     if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_ratesensitivity'
     if (prm%critPlasticStrain   <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_criticalplasticstrain'
 
@@ -112,9 +109,6 @@ subroutine source_damage_isoDuctile_init
 
     enddo
 
-    end associate
-
-
     NofMyPhase=count(material_phaseAt==p) * discretization_nIP
     instance = source_damage_isoDuctile_instance(p)
     sourceOffset = source_damage_isoDuctile_offset(p)
@@ -122,6 +116,7 @@ subroutine source_damage_isoDuctile_init
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
     sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
 
+    end associate
   enddo
 
 end subroutine source_damage_isoDuctile_init

@@ -85,25 +85,20 @@ subroutine source_damage_anisoDuctile_init
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_DAMAGE_ANISODUCTILE_ID)) cycle
-
     associate(prm => param(source_damage_anisoDuctile_instance(p)), &
               config => config_phase(p))
 
-    prm%aTol   = config%getFloat('anisoductile_atol',defaultVal = 1.0e-3_pReal)
+    prm%aTol              = config%getFloat('anisoductile_atol',defaultVal = 1.0e-3_pReal)
+    prm%N                 = config%getFloat('anisoductile_ratesensitivity')
+    prm%Nslip             = config%getInts('nslip',defaultVal=emptyIntArray)
+    prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(prm%Nslip))
 
-    prm%N      = config%getFloat('anisoductile_ratesensitivity')
-    prm%totalNslip = sum(prm%Nslip)
+    prm%totalNslip = sum(prm%Nslip)      ! expand: family => system
+    prm%critPlasticStrain   = math_expand(prm%critPlasticStrain,  prm%Nslip)
+
     ! sanity checks
     if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_atol'
     if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
-
-    prm%Nslip  = config%getInts('nslip',defaultVal=emptyIntArray)
-
-    prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(prm%Nslip))
-
-      ! expand: family => system
-    prm%critPlasticStrain   = math_expand(prm%critPlasticStrain,  prm%Nslip)
-
     if (any(prm%critPlasticStrain < 0.0_pReal))     extmsg = trim(extmsg)//' anisoductile_criticalplasticstrain'
 
 !--------------------------------------------------------------------------------------------------
@@ -125,8 +120,6 @@ subroutine source_damage_anisoDuctile_init
 
     enddo
 
-    end associate
-
     NofMyPhase=count(material_phaseAt==p) * discretization_nIP
     instance = source_damage_anisoDuctile_instance(p)
     sourceOffset = source_damage_anisoDuctile_offset(p)
@@ -134,6 +127,7 @@ subroutine source_damage_anisoDuctile_init
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
     sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
 
+    end associate
   enddo
 
 end subroutine source_damage_anisoDuctile_init

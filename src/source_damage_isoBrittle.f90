@@ -80,18 +80,15 @@ subroutine source_damage_isoBrittle_init
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_DAMAGE_ISOBRITTLE_ID)) cycle
-
     associate(prm => param(source_damage_isoBrittle_instance(p)), &
               config => config_phase(p))
 
     prm%aTol             = config%getFloat('isobrittle_atol',defaultVal = 1.0e-3_pReal)
-
     prm%N                = config%getFloat('isobrittle_n')
     prm%critStrainEnergy = config%getFloat('isobrittle_criticalstrainenergy')
 
     ! sanity checks
     if (prm%aTol                < 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_atol'
-
     if (prm%N                  <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
     if (prm%critStrainEnergy   <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
 
@@ -115,15 +112,14 @@ subroutine source_damage_isoBrittle_init
 
     enddo
 
+    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
+    instance = source_damage_isoBrittle_instance(p)
+    sourceOffset = source_damage_isoBrittle_offset(p)
+
+    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,1)
+    sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
+
     end associate
-
-   NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-   instance = source_damage_isoBrittle_instance(p)
-   sourceOffset = source_damage_isoBrittle_offset(p)
-
-   call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,1)
-   sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
-
   enddo
 
 end subroutine source_damage_isoBrittle_init

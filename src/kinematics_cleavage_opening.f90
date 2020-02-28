@@ -63,40 +63,41 @@ subroutine kinematics_cleavage_opening_init
   integer, allocatable, dimension(:) :: tempInt
   real(pReal), allocatable, dimension(:) :: tempFloat
 
-  integer :: maxNinstance,p,instance
+  integer :: Ninstance,p,instance
 
   write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'; flush(6)
 
-  maxNinstance = count(phase_kinematics == KINEMATICS_cleavage_opening_ID)
-  if (maxNinstance == 0) return
-
+  Ninstance = count(phase_kinematics == KINEMATICS_cleavage_opening_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   allocate(kinematics_cleavage_opening_instance(size(config_phase)), source=0)
   do p = 1, size(config_phase)
     kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_cleavage_opening_ID) ! ToDo: count correct?
   enddo
 
-  allocate(kinematics_cleavage_opening_critDisp(lattice_maxNcleavageFamily,maxNinstance),  source=0.0_pReal)
-  allocate(kinematics_cleavage_opening_critLoad(lattice_maxNcleavageFamily,maxNinstance),  source=0.0_pReal)
-  allocate(kinematics_cleavage_opening_Ncleavage(lattice_maxNcleavageFamily,maxNinstance), source=0)
-  allocate(kinematics_cleavage_opening_totalNcleavage(maxNinstance),                       source=0)
-  allocate(kinematics_cleavage_opening_sdot_0(maxNinstance),                               source=0.0_pReal)
-  allocate(kinematics_cleavage_opening_N(maxNinstance),                                    source=0.0_pReal)
+  allocate(kinematics_cleavage_opening_critDisp(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal)
+  allocate(kinematics_cleavage_opening_critLoad(lattice_maxNcleavageFamily,Ninstance),  source=0.0_pReal)
+  allocate(kinematics_cleavage_opening_Ncleavage(lattice_maxNcleavageFamily,Ninstance), source=0)
+  allocate(kinematics_cleavage_opening_totalNcleavage(Ninstance),                       source=0)
+  allocate(kinematics_cleavage_opening_sdot_0(Ninstance),                               source=0.0_pReal)
+  allocate(kinematics_cleavage_opening_N(Ninstance),                                    source=0.0_pReal)
 
   do p = 1, size(config_phase)
     if (all(phase_kinematics(:,p) /= KINEMATICS_cleavage_opening_ID)) cycle
+    associate(config => config_phase(p))
+
     instance = kinematics_cleavage_opening_instance(p)
-    kinematics_cleavage_opening_sdot_0(instance) = config_phase(p)%getFloat('anisobrittle_sdot0')
-    kinematics_cleavage_opening_N(instance)      = config_phase(p)%getFloat('anisobrittle_ratesensitivity')
-    tempInt = config_phase(p)%getInts('ncleavage')
+
+    kinematics_cleavage_opening_sdot_0(instance) = config%getFloat('anisobrittle_sdot0')
+    kinematics_cleavage_opening_N(instance)      = config%getFloat('anisobrittle_ratesensitivity')
+    tempInt = config%getInts('ncleavage')
     kinematics_cleavage_opening_Ncleavage(1:size(tempInt),instance) = tempInt
 
-    tempFloat = config_phase(p)%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(tempInt))
+    tempFloat = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(tempInt))
     kinematics_cleavage_opening_critDisp(1:size(tempInt),instance) = tempFloat
 
-    tempFloat = config_phase(p)%getFloats('anisobrittle_criticalload',requiredSize=size(tempInt))
+    tempFloat = config%getFloats('anisobrittle_criticalload',requiredSize=size(tempInt))
     kinematics_cleavage_opening_critLoad(1:size(tempInt),instance) = tempFloat
 
     kinematics_cleavage_opening_Ncleavage(1:lattice_maxNcleavageFamily,instance) = &
@@ -111,6 +112,8 @@ subroutine kinematics_cleavage_opening_init
       call IO_error(211,el=instance,ext_msg='critical_load ('//KINEMATICS_cleavage_opening_LABEL//')')
     if (kinematics_cleavage_opening_N(instance) <= 0.0_pReal) &
       call IO_error(211,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_cleavage_opening_LABEL//')')
+
+    end associate
   enddo
 
 end subroutine kinematics_cleavage_opening_init
