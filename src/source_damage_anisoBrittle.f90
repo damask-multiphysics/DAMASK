@@ -100,13 +100,11 @@ subroutine source_damage_anisoBrittle_init
               config => config_phase(p))
 
     prm%aTol      = config%getFloat('anisobrittle_atol',defaultVal = 1.0e-3_pReal)
-
     prm%N         = config%getFloat('anisobrittle_ratesensitivity')
     prm%sdot_0    = config%getFloat('anisobrittle_sdot0')
 
     ! sanity checks
     if (prm%aTol      < 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_atol'
-
     if (prm%N        <= 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_ratesensitivity'
     if (prm%sdot_0   <= 0.0_pReal) extmsg = trim(extmsg)//' anisobrittle_sdot0'
 

@@ -34,10 +34,10 @@ module kinematics_cleavage_opening
 ! Begin Deprecated
   integer,                       dimension(:),           allocatable :: &
     kinematics_cleavage_opening_totalNcleavage                                                      !< total number of cleavage systems
-    
+
   integer,                       dimension(:,:),         allocatable :: &
     kinematics_cleavage_opening_Ncleavage                                                           !< number of cleavage systems per family
-    
+
   real(pReal),                   dimension(:),           allocatable :: &
     kinematics_cleavage_opening_sdot_0, &
     kinematics_cleavage_opening_N
@@ -69,28 +69,28 @@ subroutine kinematics_cleavage_opening_init
 
   maxNinstance = count(phase_kinematics == KINEMATICS_cleavage_opening_ID)
   if (maxNinstance == 0) return
-  
+
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
-  
+
   allocate(kinematics_cleavage_opening_instance(size(config_phase)), source=0)
   do p = 1, size(config_phase)
     kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_cleavage_opening_ID) ! ToDo: count correct?
   enddo
-    
-  allocate(kinematics_cleavage_opening_critDisp(lattice_maxNcleavageFamily,maxNinstance),  source=0.0_pReal) 
-  allocate(kinematics_cleavage_opening_critLoad(lattice_maxNcleavageFamily,maxNinstance),  source=0.0_pReal) 
+
+  allocate(kinematics_cleavage_opening_critDisp(lattice_maxNcleavageFamily,maxNinstance),  source=0.0_pReal)
+  allocate(kinematics_cleavage_opening_critLoad(lattice_maxNcleavageFamily,maxNinstance),  source=0.0_pReal)
   allocate(kinematics_cleavage_opening_Ncleavage(lattice_maxNcleavageFamily,maxNinstance), source=0)
   allocate(kinematics_cleavage_opening_totalNcleavage(maxNinstance),                       source=0)
-  allocate(kinematics_cleavage_opening_sdot_0(maxNinstance),                               source=0.0_pReal) 
-  allocate(kinematics_cleavage_opening_N(maxNinstance),                                    source=0.0_pReal) 
+  allocate(kinematics_cleavage_opening_sdot_0(maxNinstance),                               source=0.0_pReal)
+  allocate(kinematics_cleavage_opening_N(maxNinstance),                                    source=0.0_pReal)
 
   do p = 1, size(config_phase)
     if (all(phase_kinematics(:,p) /= KINEMATICS_cleavage_opening_ID)) cycle
     instance = kinematics_cleavage_opening_instance(p)
     kinematics_cleavage_opening_sdot_0(instance) = config_phase(p)%getFloat('anisobrittle_sdot0')
     kinematics_cleavage_opening_N(instance)      = config_phase(p)%getFloat('anisobrittle_ratesensitivity')
-    tempInt = config_phase(p)%getInts('ncleavage')     
+    tempInt = config_phase(p)%getInts('ncleavage')
     kinematics_cleavage_opening_Ncleavage(1:size(tempInt),instance) = tempInt
 
     tempFloat = config_phase(p)%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(tempInt))
@@ -112,14 +112,14 @@ subroutine kinematics_cleavage_opening_init
     if (kinematics_cleavage_opening_N(instance) <= 0.0_pReal) &
       call IO_error(211,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_cleavage_opening_LABEL//')')
   enddo
- 
+
 end subroutine kinematics_cleavage_opening_init
- 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the velocity gradient  
+!> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
- 
+
   integer, intent(in) :: &
     ipc, &                                                                                          !< grain number
     ip, &                                                                                           !< integration point number
@@ -142,7 +142,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
   instance = kinematics_cleavage_opening_instance(phase)
   homog = material_homogenizationAt(el)
   damageOffset = damageMapping(homog)%p(ip,el)
-  
+
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
   do f = 1,lattice_maxNcleavageFamily
@@ -152,7 +152,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
       traction_t    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase))
       traction_n    = math_mul33xx33(S,lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase))
       traction_crit = kinematics_cleavage_opening_critLoad(f,instance)* &
-                      damage(homog)%p(damageOffset)*damage(homog)%p(damageOffset)
+                      damage(homog)%p(damageOffset)**2.0_pReal
       udotd = &
         sign(1.0_pReal,traction_d)* &
         kinematics_cleavage_opening_sdot_0(instance)* &
@@ -165,7 +165,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
           dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
             dudotd_dt*lattice_Scleavage(k,l,1,index_myFamily+i,phase)* &
                       lattice_Scleavage(m,n,1,index_myFamily+i,phase)
-      endif                
+      endif
 
       udott = &
         sign(1.0_pReal,traction_t)* &
@@ -174,12 +174,12 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
       if (abs(udott) > tol_math_check) then
         Ld = Ld + udott*lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase)
         dudott_dt = sign(1.0_pReal,traction_t)*udott*kinematics_cleavage_opening_N(instance)/ &
-                    max(0.0_pReal, abs(traction_t) - traction_crit)  
+                    max(0.0_pReal, abs(traction_t) - traction_crit)
         forall (k=1:3,l=1:3,m=1:3,n=1:3) &
           dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
             dudott_dt*lattice_Scleavage(k,l,2,index_myFamily+i,phase)* &
                       lattice_Scleavage(m,n,2,index_myFamily+i,phase)
-      endif                
+      endif
 
       udotn = &
         sign(1.0_pReal,traction_n)* &
@@ -193,10 +193,10 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
           dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
             dudotn_dt*lattice_Scleavage(k,l,3,index_myFamily+i,phase)* &
                       lattice_Scleavage(m,n,3,index_myFamily+i,phase)
-      endif                
+      endif
     enddo
   enddo
- 
+
 end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
 end module kinematics_cleavage_opening
