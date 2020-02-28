@@ -462,7 +462,6 @@ subroutine lattice_init
   integer :: Nphases, p,i
   character(len=pStringLen) :: &
     tag  = ''
-  real(pReal) :: CoverA
   real(pReal),  dimension(:), allocatable :: &
     temp
 
@@ -497,8 +496,6 @@ subroutine lattice_init
     lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
     lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
 
-    CoverA = config_phase(p)%getFloat('c/a',defaultVal=0.0_pReal)
-
     tag = config_phase(p)%getString('lattice_structure')
     select case(tag(1:3))
       case('iso')
@@ -508,10 +505,8 @@ subroutine lattice_init
       case('bcc')
         lattice_structure(p) = LATTICE_bcc_ID
       case('hex')
-        if(CoverA < 1.0_pReal .or. CoverA > 2.0_pReal) call IO_error(131,el=p)
         lattice_structure(p) = LATTICE_hex_ID
       case('bct')
-        if(CoverA > 2.0_pReal) call IO_error(131,el=p)
         lattice_structure(p) = LATTICE_bct_ID
       case('ort')
         lattice_structure(p) = LATTICE_ort_ID
