@@ -21,12 +21,6 @@ module source_damage_anisoDuctile
     source_damage_anisoDuctile_offset, &                                                            !< which source is my current damage mechanism?
     source_damage_anisoDuctile_instance                                                             !< instance of damage source mechanism
 
-  enum, bind(c)
-    enumerator :: undefined_ID, &
-                  damage_drivingforce_ID
-  end enum
-
-
   type, private :: tParameters                                                                      !< container type for internal constitutive parameters
     real(pReal) :: &
       aTol, &
@@ -37,8 +31,8 @@ module source_damage_anisoDuctile
       totalNslip
     integer, dimension(:), allocatable :: &
       Nslip
-    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
-      outputID
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      output
   end type tParameters
 
   type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
@@ -59,13 +53,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoDuctile_init
 
-  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p,i
-  integer(kind(undefined_ID)) :: &
-    outputID
+  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=pStringLen), dimension(:), allocatable :: &
-    outputs
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'; flush(6)
 
@@ -97,9 +87,9 @@ subroutine source_damage_anisoDuctile_init
     prm%critPlasticStrain   = math_expand(prm%critPlasticStrain,  prm%Nslip)
 
     ! sanity checks
-    if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_atol'
-    if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
-    if (any(prm%critPlasticStrain < 0.0_pReal))     extmsg = trim(extmsg)//' anisoductile_criticalplasticstrain'
+    if (prm%aTol                 < 0.0_pReal)   extmsg = trim(extmsg)//' anisoductile_atol'
+    if (prm%N                   <= 0.0_pReal)   extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
+    if (any(prm%critPlasticStrain < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_criticalplasticstrain'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -107,18 +97,7 @@ subroutine source_damage_anisoDuctile_init
 
 !--------------------------------------------------------------------------------------------------
 !  output pararameters
-    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
-    allocate(prm%outputID(0))
-    do i=1, size(outputs)
-      outputID = undefined_ID
-      select case(outputs(i))
-
-        case ('anisoductile_drivingforce')
-          prm%outputID = [prm%outputID, damage_drivingforce_ID]
-
-      end select
-
-    enddo
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
     NofMyPhase=count(material_phaseAt==p) * discretization_nIP
     instance = source_damage_anisoDuctile_instance(p)
@@ -199,21 +178,20 @@ end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoDuctile_results(phase,group)
 
-  integer, intent(in) :: phase
+  integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
-  integer :: sourceOffset, o, instance
 
-  instance     = source_damage_anisoDuctile_instance(phase)
-  sourceOffset = source_damage_anisoDuctile_offset(phase)
+  integer :: o
 
-   associate(prm => param(instance), stt => sourceState(phase)%p(sourceOffset)%state)
-   outputsLoop: do o = 1,size(prm%outputID)
-     select case(prm%outputID(o))
-       case (damage_drivingforce_ID)
-         call results_writeDataset(group,stt,'tbd','driving force','tbd')
-     end select
-   enddo outputsLoop
-   end associate
+  associate(prm => param(source_damage_anisoDuctile_instance(phase)), &
+            stt => sourceState(phase)%p(source_damage_anisoDuctile_offset(phase))%state)
+  outputsLoop: do o = 1,size(prm%output)
+    select case(trim(prm%output(o)))
+      case ('anisoductile_drivingforce')
+        call results_writeDataset(group,stt,'tbd','driving force','tbd')
+    end select
+  enddo outputsLoop
+  end associate
 
 end subroutine source_damage_anisoDuctile_results
 

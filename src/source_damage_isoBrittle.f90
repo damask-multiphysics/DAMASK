@@ -20,20 +20,13 @@ module source_damage_isoBrittle
     source_damage_isoBrittle_offset, &
     source_damage_isoBrittle_instance
 
-  enum, bind(c)
-    enumerator :: &
-      undefined_ID, &
-      damage_drivingforce_ID
-  end enum
-
-
   type, private :: tParameters                                                                      !< container type for internal constitutive parameters
     real(pReal) :: &
       critStrainEnergy, &
       N, &
       aTol
-    integer(kind(undefined_ID)), allocatable, dimension(:) :: &
-      outputID
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      output
   end type tParameters
 
   type(tParameters), dimension(:), allocatable  :: param                                            !< containers of constitutive parameters (len Ninstance)
@@ -54,13 +47,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoBrittle_init
 
-  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p,i
-  integer(kind(undefined_ID)) :: &
-    outputID
+  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p
   character(len=pStringLen) :: &
     extmsg = ''
-  character(len=pStringLen), dimension(:), allocatable :: &
-    outputs
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
 
@@ -99,18 +88,7 @@ subroutine source_damage_isoBrittle_init
 
 !--------------------------------------------------------------------------------------------------
 !  output pararameters
-    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
-    allocate(prm%outputID(0))
-    do i=1, size(outputs)
-      outputID = undefined_ID
-      select case(outputs(i))
-
-        case ('isobrittle_drivingforce')
-          prm%outputID = [prm%outputID, damage_drivingforce_ID]
-
-      end select
-
-    enddo
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
     instance = source_damage_isoBrittle_instance(p)
@@ -199,21 +177,20 @@ end subroutine source_damage_isoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoBrittle_results(phase,group)
 
-  integer, intent(in) :: phase
+  integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
-  integer :: sourceOffset, o, instance
 
-  instance     = source_damage_isoBrittle_instance(phase)
-  sourceOffset = source_damage_isoBrittle_offset(phase)
+  integer :: o
 
-   associate(prm => param(instance), stt => sourceState(phase)%p(sourceOffset)%state)
-   outputsLoop: do o = 1,size(prm%outputID)
-     select case(prm%outputID(o))
-       case (damage_drivingforce_ID)
-         call results_writeDataset(group,stt,'tbd','driving force','tbd')
-     end select
-   enddo outputsLoop
-   end associate
+  associate(prm => param(source_damage_isoBrittle_instance(phase)), &
+            stt => sourceState(phase)%p(source_damage_isoBrittle_offset(phase))%state)
+  outputsLoop: do o = 1,size(prm%output)
+    select case(trim(prm%output(o)))
+      case ('isobrittle_drivingforce')
+        call results_writeDataset(group,stt,'tbd','driving force','tbd')
+    end select
+  enddo outputsLoop
+  end associate
 
 end subroutine source_damage_isoBrittle_results
 
