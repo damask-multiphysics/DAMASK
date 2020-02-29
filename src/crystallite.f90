@@ -135,38 +135,30 @@ subroutine crystallite_init
   iMax = discretization_nIP
   eMax = discretization_nElem
 
-  allocate(crystallite_S0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_partionedS0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
-  allocate(crystallite_S(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
-  allocate(crystallite_P(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
-  allocate(crystallite_F0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_partionedF0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
-  allocate(crystallite_partionedF(3,3,cMax,iMax,eMax),        source=0.0_pReal)
-  allocate(crystallite_subF0(3,3,cMax,iMax,eMax),             source=0.0_pReal)
-  allocate(crystallite_subF(3,3,cMax,iMax,eMax),              source=0.0_pReal)
-  allocate(crystallite_Fp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedFp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subFp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Fp(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Fi0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedFi0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subFi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Fi(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Fe(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Lp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedLp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subLp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Lp(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Li0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedLi0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subLi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Li(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),          source=0.0_pReal)
-  allocate(crystallite_dt(cMax,iMax,eMax),                    source=0.0_pReal)
-  allocate(crystallite_subdt(cMax,iMax,eMax),                 source=0.0_pReal)
-  allocate(crystallite_subFrac(cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_subStep(cMax,iMax,eMax),               source=0.0_pReal)
+  allocate(crystallite_partionedF(3,3,cMax,iMax,eMax),source=0.0_pReal)
+
+  allocate(crystallite_S0, &
+           crystallite_F0, crystallite_Fi0,crystallite_Fp0, &
+                           crystallite_Li0,crystallite_Lp0, &
+           crystallite_partionedS0, &
+           crystallite_partionedF0,crystallite_partionedFp0,crystallite_partionedFi0, &
+                                   crystallite_partionedLp0,crystallite_partionedLi0, &
+           crystallite_S,crystallite_P, &
+           crystallite_Fe,crystallite_Fi,crystallite_Fp, &
+                          crystallite_Li,crystallite_Lp, &
+           crystallite_subF,crystallite_subF0, &
+           crystallite_subFp0,crystallite_subFi0, &
+           crystallite_subLi0,crystallite_subLp0, &
+           source = crystallite_partionedF)
+
+  allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),source=0.0_pReal)
+
+  allocate(crystallite_dt(cMax,iMax,eMax),source=0.0_pReal)
+  allocate(crystallite_subdt,crystallite_subFrac,crystallite_subStep, &
+           source = crystallite_dt)
+
   allocate(crystallite_orientation(cMax,iMax,eMax))
+
   allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
