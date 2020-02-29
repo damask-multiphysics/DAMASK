@@ -54,8 +54,10 @@ subroutine source_thermal_dissipation_init
   do p = 1, size(config_phase)
     source_thermal_dissipation_instance(p) = count(phase_source(:,1:p) == SOURCE_THERMAL_DISSIPATION_ID)
     do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_THERMAL_DISSIPATION_ID) &
+      if (phase_source(sourceOffset,p) == SOURCE_THERMAL_DISSIPATION_ID) then
         source_thermal_dissipation_offset(p) = sourceOffset
+        exit
+      endif
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle

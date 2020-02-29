@@ -65,8 +65,10 @@ subroutine source_damage_isoBrittle_init
   do p = 1, size(config_phase)
     source_damage_isoBrittle_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ISOBRITTLE_ID)
     do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_DAMAGE_ISOBRITTLE_ID) &
+      if (phase_source(sourceOffset,p) == SOURCE_DAMAGE_ISOBRITTLE_ID) then
         source_damage_isoBrittle_offset(p) = sourceOffset
+        exit
+      endif
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_DAMAGE_ISOBRITTLE_ID)) cycle

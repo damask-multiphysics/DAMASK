@@ -58,8 +58,10 @@ subroutine source_thermal_externalheat_init
   do p = 1, size(config_phase)
     source_thermal_externalheat_instance(p) = count(phase_source(:,1:p) == SOURCE_thermal_externalheat_ID)
     do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_thermal_externalheat_ID) &
+      if (phase_source(sourceOffset,p) == SOURCE_thermal_externalheat_ID) then
         source_thermal_externalheat_offset(p) = sourceOffset
+        exit 
+      endif
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_thermal_externalheat_ID)) cycle
