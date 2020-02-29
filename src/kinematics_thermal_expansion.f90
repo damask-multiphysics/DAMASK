@@ -69,6 +69,9 @@ subroutine kinematics_thermal_expansion_init
     prm%expansion(2,2,1:size(temp)) = temp
     temp = config%getFloats('thermal_expansion33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
     prm%expansion(3,3,1:size(temp)) = temp
+    do i=1, size(prm%expansion,3)
+      prm%expansion(1:3,1:3,i) = lattice_symmetrize33(prm%expansion(1:3,1:3,i),config%getString('lattice_structure'))
+    enddo
 
     end associate
   enddo
@@ -90,12 +93,9 @@ pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
 
   associate(prm => param(kinematics_thermal_expansion_instance(phase)))
   kinematics_thermal_expansion_initialStrain = &
-    (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * &
-    lattice_thermalExpansion33(1:3,1:3,1,phase) + &                                                 ! constant  coefficient
-    (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * &
-    lattice_thermalExpansion33(1:3,1:3,2,phase) + &                                                 ! linear    coefficient
-    (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * &
-    lattice_thermalExpansion33(1:3,1:3,3,phase)                                                     ! quadratic coefficient
+    (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%expansion(1:3,1:3,1) + &               ! constant  coefficient
+    (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%expansion(1:3,1:3,2) + &               ! linear    coefficient
+    (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%expansion(1:3,1:3,3)                   ! quadratic coefficient
   end associate
 
 end function kinematics_thermal_expansion_initialStrain
@@ -128,14 +128,14 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
 
   associate(prm => param(kinematics_thermal_expansion_instance(phase)))
   Li = TDot * ( &
-                lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - prm%T_ref)**0 &                    ! constant  coefficient
-              + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - prm%T_ref)**1 &                    ! linear    coefficient
-              + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - prm%T_ref)**2 &                    ! quadratic coefficient
+                prm%expansion(1:3,1:3,1)*(T - prm%T_ref)**0 &                                       ! constant  coefficient
+              + prm%expansion(1:3,1:3,2)*(T - prm%T_ref)**1 &                                       ! linear    coefficient
+              + prm%expansion(1:3,1:3,3)*(T - prm%T_ref)**2 &                                       ! quadratic coefficient
               ) / &
        (1.0_pReal &
-             + lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - prm%T_ref)**1 / 1. &
-             + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - prm%T_ref)**2 / 2. &
-             + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - prm%T_ref)**3 / 3. &
+             + prm%expansion(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
+             + prm%expansion(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
+             + prm%expansion(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
        )
   end associate
   dLi_dTstar = 0.0_pReal

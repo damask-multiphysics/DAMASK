@@ -26,7 +26,7 @@ module thermal_conduction
   public :: &
     thermal_conduction_init, &
     thermal_conduction_getSourceAndItsTangent, &
-    thermal_conduction_getConductivity33, &
+    thermal_conduction_getConductivity, &
     thermal_conduction_getSpecificHeat, &
     thermal_conduction_getMassDensity, &
     thermal_conduction_putTemperatureAndItsRate, &
@@ -137,27 +137,27 @@ end subroutine thermal_conduction_getSourceAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized thermal conductivity in reference configuration
 !--------------------------------------------------------------------------------------------------
-function thermal_conduction_getConductivity33(ip,el)
+function thermal_conduction_getConductivity(ip,el)
   
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal), dimension(3,3) :: &
-    thermal_conduction_getConductivity33
+    thermal_conduction_getConductivity
   integer :: &
     grain
     
    
-  thermal_conduction_getConductivity33 = 0.0_pReal
+  thermal_conduction_getConductivity = 0.0_pReal
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
-    thermal_conduction_getConductivity33 = thermal_conduction_getConductivity33 + &
-     crystallite_push33ToRef(grain,ip,el,lattice_thermalConductivity33(:,:,material_phaseAt(grain,el)))
+    thermal_conduction_getConductivity = thermal_conduction_getConductivity + &
+     crystallite_push33ToRef(grain,ip,el,lattice_thermalConductivity(:,:,material_phaseAt(grain,el)))
   enddo
  
-  thermal_conduction_getConductivity33 = thermal_conduction_getConductivity33 &
-                                       / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  thermal_conduction_getConductivity = thermal_conduction_getConductivity &
+                                     / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
  
-end function thermal_conduction_getConductivity33
+end function thermal_conduction_getConductivity
 
 
 !--------------------------------------------------------------------------------------------------

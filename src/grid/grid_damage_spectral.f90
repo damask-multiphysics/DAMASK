@@ -249,8 +249,8 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion33(1,cell) - K_ref, &
-                                               vectorField_real(1:3,i,j,k))
+    vectorField_real(1:3,i,j,k) = matmul(damage_nonlocal_getDiffusion(1,cell) - K_ref, &
+                                         vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
   call utilities_fourierVectorDivergence                                                            !< calculate damage divergence in fourier field
@@ -294,7 +294,7 @@ subroutine updateReference
   mu_ref = 0.0_pReal
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    K_ref  = K_ref  + damage_nonlocal_getDiffusion33(1,cell)
+    K_ref  = K_ref  + damage_nonlocal_getDiffusion(1,cell)
     mu_ref = mu_ref + damage_nonlocal_getMobility(1,cell)
   enddo; enddo; enddo
   K_ref = K_ref*wgt

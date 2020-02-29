@@ -387,11 +387,9 @@ module lattice
 ! SHOULD NOT BE PART OF LATTICE BEGIN
   real(pReal),                          dimension(:),       allocatable, public, protected :: &
     lattice_mu, lattice_nu
-  real(pReal),                          dimension(:,:,:,:), allocatable, public, protected :: & ! with higher-order parameters (e.g. temperature-dependent)
-    lattice_thermalExpansion33
   real(pReal),                          dimension(:,:,:),   allocatable, public, protected :: &
-    lattice_thermalConductivity33, &
-    lattice_damageDiffusion33
+    lattice_thermalConductivity, &
+    lattice_damageDiffusion
   real(pReal),                          dimension(:),       allocatable, public, protected :: &
     lattice_damageMobility, &
     lattice_massDensity, &
@@ -399,13 +397,13 @@ module lattice
 ! SHOULD NOT BE PART OF LATTICE END
 
   enum, bind(c)
-    enumerator :: LATTICE_undefined_ID, &
-                  LATTICE_iso_ID, &
-                  LATTICE_fcc_ID, &
-                  LATTICE_bcc_ID, &
-                  LATTICE_hex_ID, &
-                  LATTICE_bct_ID, &
-                  LATTICE_ort_ID
+    enumerator :: LATTICE_UNDEFINED_ID, &
+                  LATTICE_ISO_ID, &
+                  LATTICE_FCC_ID, &
+                  LATTICE_BCC_ID, &
+                  LATTICE_BCT_ID, &
+                  LATTICE_HEX_ID, &
+                  LATTICE_ORT_ID
   end enum
 
   integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
@@ -421,12 +419,13 @@ module lattice
 
   public :: &
     lattice_init, &
-    LATTICE_iso_ID, &
-    LATTICE_fcc_ID, &
-    LATTICE_bcc_ID, &
-    LATTICE_bct_ID, &
-    LATTICE_hex_ID, &
-    LATTICE_ort_ID, &
+    LATTICE_ISO_ID, &
+    LATTICE_FCC_ID, &
+    LATTICE_BCC_ID, &
+    LATTICE_BCT_ID, &
+    LATTICE_HEX_ID, &
+    LATTICE_ORT_ID, &
+    lattice_symmetrize33, &
     lattice_SchmidMatrix_slip, &
     lattice_SchmidMatrix_twin, &
     lattice_SchmidMatrix_trans, &
@@ -458,8 +457,6 @@ subroutine lattice_init
 
   integer :: Nphases, p,i
   character(len=pStringLen) :: structure = ''
-  real(pReal),  dimension(:), allocatable :: &
-    temp
 
   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'; flush(6)
 
@@ -468,12 +465,11 @@ subroutine lattice_init
   allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
 
-  allocate(lattice_thermalExpansion33     (3,3,3,Nphases), source=0.0_pReal)                        ! constant, linear, quadratic coefficients
-  allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
-  allocate(lattice_damageDiffusion33      (3,3,Nphases), source=0.0_pReal)
-  allocate(lattice_damageMobility         (    Nphases), source=0.0_pReal)
-  allocate(lattice_massDensity            (    Nphases), source=0.0_pReal)
-  allocate(lattice_specificHeat           (    Nphases), source=0.0_pReal)
+  allocate(lattice_thermalConductivity  (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_damageDiffusion      (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_damageMobility       (    Nphases), source=0.0_pReal)
+  allocate(lattice_massDensity          (    Nphases), source=0.0_pReal)
+  allocate(lattice_specificHeat         (    Nphases), source=0.0_pReal)
 
   allocate(lattice_mu(Nphases), source=0.0_pReal)
   allocate(lattice_nu(Nphases), source=0.0_pReal)
@@ -523,33 +519,21 @@ subroutine lattice_init
 
 
     ! should not be part of lattice
-    lattice_thermalConductivity33(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
-    lattice_thermalConductivity33(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
-    lattice_thermalConductivity33(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
+    lattice_thermalConductivity(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
+    lattice_thermalConductivity(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
+    lattice_thermalConductivity(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
+    lattice_thermalConductivity(1:3,1:3,p) = lattice_symmetrize33(lattice_thermalConductivity(1:3,1:3,p),structure)
 
-    temp = config_phase(p)%getFloats('thermal_expansion11',defaultVal=[0.0_pReal])                  ! read up to three parameters (constant, linear, quadratic with T)
-    lattice_thermalExpansion33(1,1,1:size(temp),p) = temp
-    temp = config_phase(p)%getFloats('thermal_expansion22',defaultVal=[0.0_pReal])                  ! read up to three parameters (constant, linear, quadratic with T)
-    lattice_thermalExpansion33(2,2,1:size(temp),p) = temp
-    temp = config_phase(p)%getFloats('thermal_expansion33',defaultVal=[0.0_pReal])                  ! read up to three parameters (constant, linear, quadratic with T)
-    lattice_thermalExpansion33(3,3,1:size(temp),p) = temp
+    lattice_specificHeat(p) = config_phase(p)%getFloat('specific_heat',defaultVal=0.0_pReal)
+    lattice_massDensity(p)  = config_phase(p)%getFloat('mass_density', defaultVal=0.0_pReal)
 
-    lattice_specificHeat(p) = config_phase(p)%getFloat( 'specific_heat',defaultVal=0.0_pReal)
-    lattice_massDensity(p) = config_phase(p)%getFloat( 'mass_density',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion33(1,1,p) = config_phase(p)%getFloat( 'damage_diffusion11',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion33(2,2,p) = config_phase(p)%getFloat( 'damage_diffusion22',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
+    lattice_DamageDiffusion(1,1,p) = config_phase(p)%getFloat('damage_diffusion11',defaultVal=0.0_pReal)
+    lattice_DamageDiffusion(2,2,p) = config_phase(p)%getFloat('damage_diffusion22',defaultVal=0.0_pReal)
+    lattice_DamageDiffusion(3,3,p) = config_phase(p)%getFloat('damage_diffusion33',defaultVal=0.0_pReal)
+    lattice_DamageDiffusion(1:3,1:3,p) = lattice_symmetrize33(lattice_DamageDiffusion(1:3,1:3,p),structure)
+    
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
-
-    do i = 1,3
-      lattice_thermalExpansion33 (1:3,1:3,i,p) = lattice_symmetrize33(lattice_thermalExpansion33   (1:3,1:3,i,p), &
-                                                                      structure)
-    enddo
-
-    lattice_thermalConductivity33  (1:3,1:3,p) = lattice_symmetrize33(lattice_thermalConductivity33(1:3,1:3,p), &
-                                                                      structure)
-    lattice_DamageDiffusion33      (1:3,1:3,p) = lattice_symmetrize33(lattice_DamageDiffusion33    (1:3,1:3,p), &
-                                                                      structure)
+  
   enddo
 
 end subroutine lattice_init

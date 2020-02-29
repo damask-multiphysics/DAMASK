@@ -29,7 +29,7 @@ module damage_nonlocal
   public :: &
     damage_nonlocal_init, &
     damage_nonlocal_getSourceAndItsTangent, &
-    damage_nonlocal_getDiffusion33, &
+    damage_nonlocal_getDiffusion, &
     damage_nonlocal_getMobility, &
     damage_nonlocal_putNonLocalDamage, &
     damage_nonlocal_results
@@ -130,28 +130,28 @@ end subroutine damage_nonlocal_getSourceAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief returns homogenized non local damage diffusion tensor in reference configuration
 !--------------------------------------------------------------------------------------------------
-function damage_nonlocal_getDiffusion33(ip,el)
+function damage_nonlocal_getDiffusion(ip,el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal), dimension(3,3) :: &
-    damage_nonlocal_getDiffusion33
+    damage_nonlocal_getDiffusion
   integer :: &
     homog, &
     grain
 
   homog  = material_homogenizationAt(el)
-  damage_nonlocal_getDiffusion33 = 0.0_pReal
+  damage_nonlocal_getDiffusion = 0.0_pReal
   do grain = 1, homogenization_Ngrains(homog)
-    damage_nonlocal_getDiffusion33 = damage_nonlocal_getDiffusion33 + &
-      crystallite_push33ToRef(grain,ip,el,lattice_DamageDiffusion33(1:3,1:3,material_phaseAt(grain,el)))
+    damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
+      crystallite_push33ToRef(grain,ip,el,lattice_DamageDiffusion(1:3,1:3,material_phaseAt(grain,el)))
   enddo
 
-  damage_nonlocal_getDiffusion33 = &
-    charLength**2*damage_nonlocal_getDiffusion33/real(homogenization_Ngrains(homog),pReal)
+  damage_nonlocal_getDiffusion = &
+    charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Ngrains(homog),pReal)
 
-end function damage_nonlocal_getDiffusion33
+end function damage_nonlocal_getDiffusion
 
 
 !--------------------------------------------------------------------------------------------------
