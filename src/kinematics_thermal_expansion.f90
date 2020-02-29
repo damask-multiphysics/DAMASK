@@ -20,8 +20,8 @@ module kinematics_thermal_expansion
   type :: tParameters
     real(pReal) :: &
       T_ref
-    real(pReal), allocatable, dimension(:,:,:) :: &
-      expansion
+    real(pReal), dimension(3,3,3) :: &
+      expansion = 0.0_pReal
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param
@@ -41,7 +41,7 @@ contains
 subroutine kinematics_thermal_expansion_init
 
   integer :: Ninstance,p,i
-  real(pReal),  dimension(:), allocatable :: &
+  real(pReal), dimension(:), allocatable :: &
     temp
 
   write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'; flush(6)
@@ -61,14 +61,15 @@ subroutine kinematics_thermal_expansion_init
               config => config_phase(p))
 
     prm%T_ref = config%getFloat('reference_temperature', defaultVal=0.0_pReal)
+
     ! read up to three parameters (constant, linear, quadratic with T)
     temp = config%getFloats('thermal_expansion11')
-    !lattice_thermalExpansion33(1,1,1:size(temp),p) = temp
-    temp = config%getFloats('thermal_expansion22', &
-                            defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-    !lattice_thermalExpansion33(2,2,1:size(temp),p) = temp
-    temp = config%getFloats('thermal_expansion33', &
-                            defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
+    prm%expansion(1,1,1:size(temp)) = temp
+    temp = config%getFloats('thermal_expansion22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
+    prm%expansion(2,2,1:size(temp)) = temp
+    temp = config%getFloats('thermal_expansion33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
+    prm%expansion(3,3,1:size(temp)) = temp
+
     end associate
   enddo
 
