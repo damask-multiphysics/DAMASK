@@ -77,20 +77,6 @@ module HDF5_utilities
     module procedure HDF5_addAttribute_real_array
   end interface HDF5_addAttribute
  
- 
-!--------------------------------------------------------------------------------------------------
-  public :: &
-    HDF5_utilities_init, &
-    HDF5_openFile, &
-    HDF5_closeFile, &
-    HDF5_addAttribute, &
-    HDF5_closeGroup ,&
-    HDF5_openGroup, &
-    HDF5_addGroup, &
-    HDF5_read, &
-    HDF5_write, &
-    HDF5_setLink, &
-    HDF5_objectExists
 contains
 
 
