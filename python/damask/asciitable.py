@@ -473,33 +473,3 @@ class ASCIItable():
         for item in what: self.data_append(item)
       except TypeError:
         self.data += [str(what)]
-
-# ------------------------------------------------------------------
-  def microstructure_read(self,
-                          grid,
-                          type = 'i',
-                          strict = False):
-    """Read microstructure data (from .geom format)."""
-    def datatype(item):
-      return int(item) if type.lower() == 'i' else float(item)
-      
-    N = grid.prod()                                                                          # expected number of microstructure indices in data
-    microstructure = np.zeros(N,type)                                                        # initialize as flat array
-
-    i = 0
-    while i < N and self.data_read():
-      items = self.data
-      if len(items) > 2:
-        if   items[1].lower() == 'of':
-          items = np.ones(datatype(items[0]))*datatype(items[2])
-        elif items[1].lower() == 'to':
-          items = np.linspace(datatype(items[0]),datatype(items[2]),
-                              abs(datatype(items[2])-datatype(items[0]))+1,dtype=int)
-        else:                          items = list(map(datatype,items))
-      else:                            items = list(map(datatype,items))
-
-      s = min(len(items), N-i)                                                              # prevent overflow of microstructure array
-      microstructure[i:i+s] = items[:s]
-      i += len(items)
-
-    return (microstructure, i == N and not self.data_read()) if strict else microstructure  # check for proper point count and end of file
