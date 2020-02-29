@@ -48,7 +48,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoBrittle_init
 
-  integer :: Ninstance,source,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,sourceOffset,NofMyPhase,p
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -64,9 +64,9 @@ subroutine source_damage_isoBrittle_init
 
   do p = 1, size(config_phase)
     source_damage_isoBrittle_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ISOBRITTLE_ID)
-    do source = 1, phase_Nsources(p)
-      if (phase_source(source,p) == SOURCE_DAMAGE_ISOBRITTLE_ID) &
-        source_damage_isoBrittle_offset(p) = source
+    do sourceOffset = 1, phase_Nsources(p)
+      if (phase_source(sourceOffset,p) == SOURCE_DAMAGE_ISOBRITTLE_ID) &
+        source_damage_isoBrittle_offset(p) = sourceOffset
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_DAMAGE_ISOBRITTLE_ID)) cycle
@@ -92,8 +92,6 @@ subroutine source_damage_isoBrittle_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    sourceOffset = source_damage_isoBrittle_offset(p)
-
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,1)
     sourceState(p)%p(sourceOffset)%aTolState=prm%aTol
 

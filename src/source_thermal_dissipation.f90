@@ -39,7 +39,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_init
 
-  integer :: Ninstance,source,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,sourceOffset,NofMyPhase,p
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'; flush(6)
 
@@ -53,9 +53,9 @@ subroutine source_thermal_dissipation_init
 
   do p = 1, size(config_phase)
     source_thermal_dissipation_instance(p) = count(phase_source(:,1:p) == SOURCE_THERMAL_DISSIPATION_ID)
-    do source = 1, phase_Nsources(p)
-      if (phase_source(source,p) == SOURCE_THERMAL_DISSIPATION_ID) &
-        source_thermal_dissipation_offset(p) = source
+    do sourceOffset = 1, phase_Nsources(p)
+      if (phase_source(sourceOffset,p) == SOURCE_THERMAL_DISSIPATION_ID) &
+        source_thermal_dissipation_offset(p) = sourceOffset
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle
@@ -65,8 +65,6 @@ subroutine source_thermal_dissipation_init
     prm%kappa = config%getFloat('dissipation_coldworkcoeff')
 
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    sourceOffset = source_thermal_dissipation_offset(p)
-
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,0,0,0)
 
     end associate
