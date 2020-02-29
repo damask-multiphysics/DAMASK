@@ -485,28 +485,31 @@ subroutine lattice_init
     structure = config_phase(p)%getString('lattice_structure')
     select case(trim(structure))
       case('iso')
-        lattice_structure(p) = LATTICE_iso_ID
+        lattice_structure(p) = LATTICE_ISO_ID
       case('fcc')
-        lattice_structure(p) = LATTICE_fcc_ID
+        lattice_structure(p) = LATTICE_FCC_ID
       case('bcc')
-        lattice_structure(p) = LATTICE_bcc_ID
+        lattice_structure(p) = LATTICE_BCC_ID
       case('hex')
-        lattice_structure(p) = LATTICE_hex_ID
+        lattice_structure(p) = LATTICE_HEX_ID
       case('bct')
-        lattice_structure(p) = LATTICE_bct_ID
+        lattice_structure(p) = LATTICE_BCT_ID
       case('ort')
-        lattice_structure(p) = LATTICE_ort_ID
+        lattice_structure(p) = LATTICE_ORT_ID
       case default
         call IO_error(130,ext_msg='lattice_init: '//trim(structure))
     end select
 
     lattice_C66(1:6,1:6,p) = symmetrizeC66(lattice_C66(1:6,1:6,p),structure)
 
-    lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p)) ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-    lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
-                  / (4.0_pReal*lattice_C66(1,1,p) +6.0_pReal*lattice_C66(1,2,p) +2.0_pReal*lattice_C66(4,4,p))! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+    ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+    lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p))
 
-    lattice_C66(1:6,1:6,p)  = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,p)))          ! Literature data is Voigt
+    ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+    lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
+                  / (4.0_pReal*lattice_C66(1,1,p) +6.0_pReal*lattice_C66(1,2,p) +2.0_pReal*lattice_C66(4,4,p))
+
+    lattice_C66(1:6,1:6,p) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,p)))           ! Literature data is in Voigt notation
 
     do i = 1, 6
       if (abs(lattice_C66(i,i,p))<tol_math_check) &
@@ -514,7 +517,7 @@ subroutine lattice_init
     enddo
 
 
-    ! should not be part of lattice
+    ! SHOULD NOT BE PART OF LATTICE BEGIN
     lattice_thermalConductivity(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
     lattice_thermalConductivity(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
     lattice_thermalConductivity(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
@@ -529,6 +532,7 @@ subroutine lattice_init
     lattice_DamageDiffusion(1:3,1:3,p) = lattice_symmetrize33(lattice_DamageDiffusion(1:3,1:3,p),structure)
 
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
+    ! SHOULD NOT BE PART OF LATTICE END
 
   enddo
 
@@ -586,7 +590,7 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
   myFamilies: do f = 1,size(Ntwin,1)
     mySystems: do s = 1,Ntwin(f)
       a = a + 1
-      select case(structure(1:3))
+      select case(structure)
         case('fcc','bcc')
           characteristicShear(a) = 0.5_pReal*sqrt(2.0_pReal)
         case('hex')
@@ -630,7 +634,7 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_C66_twin: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       coordinateSystem = buildCoordinateSystem(Ntwin,LATTICE_FCC_NSLIPSYSTEM,LATTICE_FCC_SYSTEMTWIN,&
                                                trim(structure),0.0_pReal)
@@ -960,7 +964,7 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_interaction_SlipBySlip: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONSLIPSLIP
       NslipMax         = LATTICE_FCC_NSLIPSYSTEM
@@ -1064,7 +1068,7 @@ function lattice_interaction_TwinByTwin(Ntwin,interactionValues,structure) resul
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_interaction_TwinByTwin: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONTWINTWIN
       NtwinMax         = LATTICE_FCC_NTWINSYSTEM
@@ -1116,7 +1120,7 @@ function lattice_interaction_TransByTrans(Ntrans,interactionValues,structure) re
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_interaction_TransByTrans: '//trim(structure))
 
-  if(structure(1:3) == 'fcc') then
+  if(structure == 'fcc') then
     interactionTypes = FCC_INTERACTIONTRANSTRANS
     NtransMax        = LATTICE_FCC_NTRANSSYSTEM
   else
@@ -1246,7 +1250,7 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,structure)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_interaction_SlipByTwin: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONSLIPTWIN
       NslipMax         = LATTICE_FCC_NSLIPSYSTEM
@@ -1310,7 +1314,7 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,structur
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_interaction_SlipByTrans: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONSLIPTRANS
       NslipMax         = LATTICE_FCC_NSLIPSYSTEM
@@ -1380,7 +1384,7 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,structure)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_interaction_TwinBySlip: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONTWINSLIP
       NtwinMax         = LATTICE_FCC_NTWINSYSTEM
@@ -1421,7 +1425,7 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_SchmidMatrix_slip: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       NslipMax    = LATTICE_FCC_NSLIPSYSTEM
       slipSystems = LATTICE_FCC_SYSTEMSLIP
@@ -1473,7 +1477,7 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_SchmidMatrix_twin: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       NtwinMax    = LATTICE_FCC_NTWINSYSTEM
       twinSystems = LATTICE_FCC_SYSTEMTWIN
@@ -1552,7 +1556,7 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('ort')
       NcleavageMax    = LATTICE_ORT_NCLEAVAGESYSTEM
       cleavageSystems = LATTICE_ORT_SYSTEMCLEAVAGE
@@ -1653,7 +1657,7 @@ function lattice_labels_slip(Nslip,structure) result(labels)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_labels_slip: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       NslipMax    = LATTICE_FCC_NSLIPSYSTEM
       slipSystems = LATTICE_FCC_SYSTEMSLIP
@@ -1697,7 +1701,7 @@ function lattice_labels_twin(Ntwin,structure) result(labels)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       NtwinMax    = LATTICE_FCC_NTWINSYSTEM
       twinSystems = LATTICE_FCC_SYSTEMTWIN
@@ -1783,6 +1787,9 @@ function lattice_symmetrize33(T,structure) result(T_sym)
 
   T_sym = 0.0_pReal
 
+  if (len_trim(structure) /= 3) &
+    call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
+
   select case(structure)
     case('iso','fcc','bcc')
       do k=1,3
@@ -1817,6 +1824,9 @@ function symmetrizeC66(C66,structure) result(C66_sym)
   integer :: j,k
 
   C66_sym = 0.0_pReal
+
+  if (len_trim(structure) /= 3) &
+    call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
 
   select case(structure)
     case ('iso')
@@ -1898,7 +1908,7 @@ function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='coordinateSystem_slip: '//trim(structure))
 
-  select case(structure(1:3))
+  select case(structure)
     case('fcc')
       NslipMax    = LATTICE_FCC_NSLIPSYSTEM
       slipSystems = LATTICE_FCC_SYSTEMSLIP
@@ -1996,9 +2006,9 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
 
   if (len_trim(structure) /= 3) &
     call IO_error(137,ext_msg='buildCoordinateSystem: '//trim(structure))
-  if (trim(structure(1:3)) == 'bct' .and. cOverA > 2.0_pReal) &
+  if (trim(structure) == 'bct' .and. cOverA > 2.0_pReal) &
     call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(structure))
-  if (trim(structure(1:3)) == 'hex' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+  if (trim(structure) == 'hex' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
     call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(structure))
 
   a = 0
@@ -2007,7 +2017,7 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
       a = a + 1
       p = sum(potential(1:f-1))+s
 
-      select case(trim(structure(1:3)))
+      select case(trim(structure))
 
         case ('fcc','bcc','iso','ort','bct')
           direction = system(1:3,p)
