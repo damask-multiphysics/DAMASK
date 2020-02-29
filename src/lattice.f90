@@ -457,8 +457,7 @@ contains
 subroutine lattice_init
 
   integer :: Nphases, p,i
-  character(len=pStringLen) :: &
-    tag  = ''
+  character(len=pStringLen) :: structure = ''
   real(pReal),  dimension(:), allocatable :: &
     temp
 
@@ -491,8 +490,8 @@ subroutine lattice_init
     lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
     lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
 
-    tag = config_phase(p)%getString('lattice_structure')
-    select case(tag(1:3))
+    structure = config_phase(p)%getString('lattice_structure')
+    select case(trim(structure))
       case('iso')
         lattice_structure(p) = LATTICE_iso_ID
       case('fcc')
@@ -506,7 +505,7 @@ subroutine lattice_init
       case('ort')
         lattice_structure(p) = LATTICE_ort_ID
       case default
-        call IO_error(130,ext_msg='lattice_init')
+        call IO_error(130,ext_msg='lattice_init: '//trim(structure))
     end select
 
     lattice_C66(1:6,1:6,p) = symmetrizeC66(lattice_structure(p),lattice_C66(1:6,1:6,p))
@@ -543,14 +542,14 @@ subroutine lattice_init
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
 
     do i = 1,3
-      lattice_thermalExpansion33 (1:3,1:3,i,p) = symmetrize33(lattice_structure(p),&
-                                                              lattice_thermalExpansion33   (1:3,1:3,i,p))
+      lattice_thermalExpansion33 (1:3,1:3,i,p) = lattice_symmetrize33(lattice_thermalExpansion33   (1:3,1:3,i,p), &
+                                                                      structure)
     enddo
 
-    lattice_thermalConductivity33  (1:3,1:3,p) = symmetrize33(lattice_structure(p),&
-                                                              lattice_thermalConductivity33(1:3,1:3,p))
-    lattice_DamageDiffusion33      (1:3,1:3,p) = symmetrize33(lattice_structure(p),&
-                                                              lattice_DamageDiffusion33    (1:3,1:3,p))
+    lattice_thermalConductivity33  (1:3,1:3,p) = lattice_symmetrize33(lattice_thermalConductivity33(1:3,1:3,p), &
+                                                                      structure)
+    lattice_DamageDiffusion33      (1:3,1:3,p) = lattice_symmetrize33(lattice_DamageDiffusion33    (1:3,1:3,p), &
+                                                                      structure)
   enddo
 
 end subroutine lattice_init
@@ -1793,33 +1792,35 @@ end function slipProjection_direction
 !--------------------------------------------------------------------------------------------------
 !> @brief Symmetrizes 2nd order tensor according to lattice type
 !--------------------------------------------------------------------------------------------------
-pure function symmetrize33(struct,T33)
+function lattice_symmetrize33(T,structure) result(T_sym)
 
-  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
-  real(pReal), dimension(3,3), intent(in) :: T33
-  real(pReal), dimension(3,3) :: symmetrize33
+  real(pReal), dimension(3,3) :: T_sym
+
+  real(pReal), dimension(3,3), intent(in) :: T
+  character(len=*),            intent(in) :: structure
+
   integer :: k
 
-  symmetrize33 = 0.0_pReal
+  T_sym = 0.0_pReal
 
-  select case(struct)
-    case (LATTICE_iso_ID,LATTICE_fcc_ID,LATTICE_bcc_ID)
+  select case(structure)
+    case('iso','fcc','bcc')
       do k=1,3
-        symmetrize33(k,k) = T33(1,1)
+        T_sym(k,k) = T(1,1)
       enddo
-    case (LATTICE_hex_ID)
-      symmetrize33(1,1) = T33(1,1)
-      symmetrize33(2,2) = T33(1,1)
-      symmetrize33(3,3) = T33(3,3)
-    case (LATTICE_ort_ID,lattice_bct_ID)
-      symmetrize33(1,1) = T33(1,1)
-      symmetrize33(2,2) = T33(2,2)
-      symmetrize33(3,3) = T33(3,3)
+    case('hex')
+      T_sym(1,1) = T(1,1)
+      T_sym(2,2) = T(1,1)
+      T_sym(3,3) = T(3,3)
+    case('ort','bct')
+      T_sym(1,1) = T(1,1)
+      T_sym(2,2) = T(2,2)
+      T_sym(3,3) = T(3,3)
     case default
-      symmetrize33 = T33
+       call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
    end select
 
-end function symmetrize33
+end function lattice_symmetrize33
 
 
 !--------------------------------------------------------------------------------------------------
