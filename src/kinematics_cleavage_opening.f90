@@ -127,48 +127,39 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
     traction_d    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,1,i))
     traction_t    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,2,i))
     traction_n    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,3,i))
-    traction_crit = prm%critLoad(i)* &
-                    damage(homog)%p(damageOffset)**2.0_pReal
-    udotd = &
-      sign(1.0_pReal,traction_d)* &
-      prm%sdot0* &
-      (max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%n
+    traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)**2.0_pReal
+
+    udotd = sign(1.0_pReal,traction_d)* prm%sdot0 &
+          * (max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%n
     if (abs(udotd) > tol_math_check) then
       Ld = Ld + udotd*prm%cleavage_systems(1:3,1:3,1,i)
-      dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%n/ &
-                  max(0.0_pReal, abs(traction_d) - traction_crit)
+      dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%n &
+                / max(0.0_pReal, abs(traction_d) - traction_crit)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-          dudotd_dt*prm%cleavage_systems(k,l,1,i)* &
-                    prm%cleavage_systems(m,n,1,i)
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                            + dudotd_dt*prm%cleavage_systems(k,l,1,i) * prm%cleavage_systems(m,n,1,i)
     endif
 
-    udott = &
-      sign(1.0_pReal,traction_t)* &
-      prm%sdot0* &
-      (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%n
+    udott = sign(1.0_pReal,traction_t)* prm%sdot0 &
+          * (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%n
     if (abs(udott) > tol_math_check) then
       Ld = Ld + udott*prm%cleavage_systems(1:3,1:3,2,i)
-      dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%n/ &
-                  max(0.0_pReal, abs(traction_t) - traction_crit)
+      dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%n &
+                / max(0.0_pReal, abs(traction_t) - traction_crit)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-          dudott_dt*prm%cleavage_systems(k,l,2,i)* &
-                    prm%cleavage_systems(m,n,2,i)
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                            + dudott_dt*prm%cleavage_systems(k,l,2,i) * prm%cleavage_systems(m,n,2,i)
     endif
 
-    udotn = &
-      sign(1.0_pReal,traction_n)* &
-      prm%sdot0* &
-      (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%n
+    udotn = sign(1.0_pReal,traction_n)* prm%sdot0 &
+          * (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%n
     if (abs(udotn) > tol_math_check) then
       Ld = Ld + udotn*prm%cleavage_systems(1:3,1:3,3,i)
-      dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%n/ &
-                  max(0.0_pReal, abs(traction_n) - traction_crit)
+      dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%n &
+                / max(0.0_pReal, abs(traction_n) - traction_crit)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-          dudotn_dt*prm%cleavage_systems(k,l,3,i)* &
-                    prm%cleavage_systems(m,n,3,i)
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                            + dudotn_dt*prm%cleavage_systems(k,l,3,i) * prm%cleavage_systems(m,n,3,i)
     endif
   enddo
   end associate
