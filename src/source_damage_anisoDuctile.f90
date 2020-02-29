@@ -54,8 +54,7 @@ contains
 subroutine source_damage_anisoDuctile_init
 
   integer :: Ninstance,sourceOffset,NofMyPhase,p
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'; flush(6)
 

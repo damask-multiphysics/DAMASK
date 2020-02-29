@@ -49,8 +49,7 @@ contains
 subroutine source_damage_isoBrittle_init
 
   integer :: Ninstance,sourceOffset,NofMyPhase,p
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
 

@@ -59,8 +59,7 @@ contains
 subroutine source_damage_anisoBrittle_init
 
   integer :: Ninstance,sourceOffset,NofMyPhase,p
-  character(len=pStringLen) :: &
-    extmsg = ''
+  character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
 
@@ -104,10 +103,10 @@ subroutine source_damage_anisoBrittle_init
 
     ! sanity checks
     if (prm%aTol         <  0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_atol'
-    if (prm%N            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_ratesensitivity'
+    if (prm%N            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_n'
     if (prm%sdot_0       <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_sdot0'
-    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_criticalload'
-    if (any(prm%critDisp <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_criticaldisplacement'
+    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critLoad'
+    if (any(prm%critDisp <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critDisp'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range

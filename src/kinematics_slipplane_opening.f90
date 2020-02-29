@@ -50,6 +50,7 @@ contains
 subroutine kinematics_slipplane_opening_init
 
   integer :: Ninstance,p
+  character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'; flush(6)
 
@@ -78,19 +79,24 @@ subroutine kinematics_slipplane_opening_init
                                                   config%getFloat('c/a',defaultVal=0.0_pReal))
 
     prm%critLoad = config%getFloats('anisoductile_criticalload',requiredSize=size(prm%Nslip))
+
+    ! expand: family => system
     prm%critLoad = math_expand(prm%critLoad, prm%Nslip)
 
-    !  if (kinematics_slipplane_opening_sdot_0(instance) <= 0.0_pReal) &
-    !    call IO_error(211,el=instance,ext_msg='sdot_0 ('//KINEMATICS_slipplane_opening_LABEL//')')
-    !  if (any(kinematics_slipplane_opening_critPlasticStrain(:,instance) < 0.0_pReal)) &
-    !    call IO_error(211,el=instance,ext_msg='criticaPlasticStrain ('//KINEMATICS_slipplane_opening_LABEL//')')
-    !  if (kinematics_slipplane_opening_N(instance) <= 0.0_pReal) &
-    !    call IO_error(211,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_slipplane_opening_LABEL//')')
+    ! sanity checks
+    if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_n'
+    if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_sdot0'
+    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisoDuctile_critLoad'
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISODUCTILE_LABEL//')')
 
     end associate
   enddo
 
 end subroutine kinematics_slipplane_opening_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient

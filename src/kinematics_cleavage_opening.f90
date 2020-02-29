@@ -27,7 +27,6 @@ module kinematics_cleavage_opening
       sdot0, &
       n
     real(pReal),   dimension(:),   allocatable :: &
-      critDisp, &
       critLoad
     real(pReal), dimension(:,:,:,:), allocatable :: &
       cleavage_systems
@@ -48,7 +47,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_cleavage_opening_init
 
-  integer :: Ninstance,p,instance
+  integer :: Ninstance,p
+  character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'; flush(6)
 
@@ -66,33 +66,34 @@ subroutine kinematics_cleavage_opening_init
     associate(prm => param(kinematics_cleavage_opening_instance(p)), &
               config => config_phase(p))
 
-    instance = kinematics_cleavage_opening_instance(p)
-
-    prm%sdot0      = config%getFloat('anisobrittle_sdot0')
-    prm%n   = config%getFloat('anisobrittle_ratesensitivity')
-
-    prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
-
-    prm%critDisp = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(prm%Ncleavage))
-    prm%critLoad = config%getFloats('anisobrittle_criticalload',requiredSize=size(prm%Ncleavage))
-
-
+    prm%Ncleavage = config%getInts('ncleavage')
     prm%totalNcleavage = sum(prm%Ncleavage)
-        prm%cleavage_systems  = lattice_SchmidMatrix_cleavage (prm%Ncleavage,config%getString('lattice_structure'),&
-                                                     config%getFloat('c/a',defaultVal=0.0_pReal))
 
-   ! if (kinematics_cleavage_opening_sdot_0(instance) <= 0.0_pReal) &
-   !   call IO_error(211,el=instance,ext_msg='sdot_0 ('//KINEMATICS_cleavage_opening_LABEL//')')
-   !   call IO_error(211,el=instance,ext_msg='critical_displacement ('//KINEMATICS_cleavage_opening_LABEL//')')
-   ! if (any(kinematics_cleavage_opening_critLoad(1:size(tempInt),instance) < 0.0_pReal)) &
-   !   call IO_error(211,el=instance,ext_msg='critical_load ('//KINEMATICS_cleavage_opening_LABEL//')')
-   ! if (kinematics_cleavage_opening_N(instance) <= 0.0_pReal) &
-   !   call IO_error(211,el=instance,ext_msg='rate_sensitivity ('//KINEMATICS_cleavage_opening_LABEL//')')
+    prm%n         = config%getFloat('anisobrittle_ratesensitivity')
+    prm%sdot0     = config%getFloat('anisobrittle_sdot0')
+
+    prm%critLoad  = config%getFloats('anisobrittle_criticalload',requiredSize=size(prm%Ncleavage))
+
+    prm%cleavage_systems  = lattice_SchmidMatrix_cleavage(prm%Ncleavage,config%getString('lattice_structure'),&
+                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+
+    ! expand: family => system
+    prm%critLoad = math_expand(prm%critLoad, prm%Ncleavage)
+
+    ! sanity checks
+    if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_n'
+    if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_sdot0'
+    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critLoad'
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//')')
 
     end associate
   enddo
 
 end subroutine kinematics_cleavage_opening_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
@@ -110,68 +111,67 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
   integer :: &
-    instance, phase, &
     homog, damageOffset, &
     i, k, l, m, n
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit, &
     udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
 
-  phase = material_phaseAt(ipc,el)
-  instance = kinematics_cleavage_opening_instance(phase)
   homog = material_homogenizationAt(el)
   damageOffset = damageMapping(homog)%p(ip,el)
 
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
-    do i = 1,param(instance)%totalNcleavage
-      traction_d    = math_mul33xx33(S,param(instance)%cleavage_systems(1:3,1:3,1,i))
-      traction_t    = math_mul33xx33(S,param(instance)%cleavage_systems(1:3,1:3,2,i))
-      traction_n    = math_mul33xx33(S,param(instance)%cleavage_systems(1:3,1:3,3,i))
-      traction_crit = param(instance)%critLoad(i)* &
-                      damage(homog)%p(damageOffset)**2.0_pReal
-      udotd = &
-        sign(1.0_pReal,traction_d)* &
-        param(instance)%sdot0* &
-        (max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**param(instance)%n
-      if (abs(udotd) > tol_math_check) then
-        Ld = Ld + udotd*param(instance)%cleavage_systems(1:3,1:3,1,i)
-        dudotd_dt = sign(1.0_pReal,traction_d)*udotd*param(instance)%n/ &
-                    max(0.0_pReal, abs(traction_d) - traction_crit)
-        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-            dudotd_dt*param(instance)%cleavage_systems(k,l,1,i)* &
-                      param(instance)%cleavage_systems(m,n,1,i)
-      endif
+  associate(prm => param(kinematics_cleavage_opening_instance(material_phaseAt(ipc,el))))
+  do i = 1,prm%totalNcleavage
+    traction_d    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,1,i))
+    traction_t    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,2,i))
+    traction_n    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,3,i))
+    traction_crit = prm%critLoad(i)* &
+                    damage(homog)%p(damageOffset)**2.0_pReal
+    udotd = &
+      sign(1.0_pReal,traction_d)* &
+      prm%sdot0* &
+      (max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%n
+    if (abs(udotd) > tol_math_check) then
+      Ld = Ld + udotd*prm%cleavage_systems(1:3,1:3,1,i)
+      dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%n/ &
+                  max(0.0_pReal, abs(traction_d) - traction_crit)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
+          dudotd_dt*prm%cleavage_systems(k,l,1,i)* &
+                    prm%cleavage_systems(m,n,1,i)
+    endif
 
-      udott = &
-        sign(1.0_pReal,traction_t)* &
-        param(instance)%sdot0* &
-        (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**param(instance)%n
-      if (abs(udott) > tol_math_check) then
-        Ld = Ld + udott*param(instance)%cleavage_systems(1:3,1:3,2,i)
-        dudott_dt = sign(1.0_pReal,traction_t)*udott*param(instance)%n/ &
-                    max(0.0_pReal, abs(traction_t) - traction_crit)
-        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-            dudott_dt*param(instance)%cleavage_systems(k,l,2,i)* &
-                      param(instance)%cleavage_systems(m,n,2,i)
-      endif
+    udott = &
+      sign(1.0_pReal,traction_t)* &
+      prm%sdot0* &
+      (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%n
+    if (abs(udott) > tol_math_check) then
+      Ld = Ld + udott*prm%cleavage_systems(1:3,1:3,2,i)
+      dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%n/ &
+                  max(0.0_pReal, abs(traction_t) - traction_crit)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
+          dudott_dt*prm%cleavage_systems(k,l,2,i)* &
+                    prm%cleavage_systems(m,n,2,i)
+    endif
 
-      udotn = &
-        sign(1.0_pReal,traction_n)* &
-        param(instance)%sdot0* &
-        (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**param(instance)%n
-      if (abs(udotn) > tol_math_check) then
-        Ld = Ld + udotn*param(instance)%cleavage_systems(1:3,1:3,3,i)
-        dudotn_dt = sign(1.0_pReal,traction_n)*udotn*param(instance)%n/ &
-                    max(0.0_pReal, abs(traction_n) - traction_crit)
-        forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-          dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
-            dudotn_dt*param(instance)%cleavage_systems(k,l,3,i)* &
-                      param(instance)%cleavage_systems(m,n,3,i)
-      endif
+    udotn = &
+      sign(1.0_pReal,traction_n)* &
+      prm%sdot0* &
+      (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%n
+    if (abs(udotn) > tol_math_check) then
+      Ld = Ld + udotn*prm%cleavage_systems(1:3,1:3,3,i)
+      dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%n/ &
+                  max(0.0_pReal, abs(traction_n) - traction_crit)
+      forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+        dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + &
+          dudotn_dt*prm%cleavage_systems(k,l,3,i)* &
+                    prm%cleavage_systems(m,n,3,i)
+    endif
   enddo
+  end associate
 
 end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
