@@ -30,7 +30,7 @@ module source_damage_isoBrittle
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable  :: param                                            !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
 
 
   public :: &
@@ -48,7 +48,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoBrittle_init
 
-  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,source,sourceOffset,NofMyPhase,p
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -78,9 +78,9 @@ subroutine source_damage_isoBrittle_init
     prm%critStrainEnergy = config%getFloat('isobrittle_criticalstrainenergy')
 
     ! sanity checks
-    if (prm%aTol                < 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_atol'
-    if (prm%N                  <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
-    if (prm%critStrainEnergy   <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
+    if (prm%aTol             <  0.0_pReal) extmsg = trim(extmsg)//' isobrittle_atol'
+    if (prm%N                <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
+    if (prm%critStrainEnergy <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -92,16 +92,16 @@ subroutine source_damage_isoBrittle_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    instance = source_damage_isoBrittle_instance(p)
     sourceOffset = source_damage_isoBrittle_offset(p)
 
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,1)
-    sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
+    sourceState(p)%p(sourceOffset)%aTolState=prm%aTol
 
     end associate
   enddo
 
 end subroutine source_damage_isoBrittle_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
@@ -116,22 +116,25 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
     Fe
   real(pReal),  intent(in), dimension(6,6) :: &
     C
+
   integer :: &
-    phase, constituent, instance, sourceOffset
+    phase, &
+    constituent, &
+    sourceOffset
+  real(pReal), dimension(6) :: &
+    strain
   real(pReal) :: &
-    strain(6), &
     strainenergy
 
   phase = material_phaseAt(ipc,el)                                                                        !< phase ID at ipc,ip,el
   constituent = material_phasememberAt(ipc,ip,el)                                                            !< state array offset for phase ID at ipc,ip,el
   ! ToDo: capability for multiple instances of SAME source within given phase. Needs Ninstance loop from here on!
-  instance = source_damage_isoBrittle_instance(phase)                                               !< instance of damage_isoBrittle source
   sourceOffset = source_damage_isoBrittle_offset(phase)
-
 
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
-  strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/param(instance)%critStrainEnergy
+  associate(prm => param(source_damage_isoBrittle_instance(phase)))
+  strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%critStrainEnergy
   ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/param(instance)%critStrainEnergy
 
   if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
@@ -142,8 +145,10 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
       sourceState(phase)%p(sourceOffset)%subState0(1,constituent) - &
       sourceState(phase)%p(sourceOffset)%state(1,constituent)
   endif
+  end associate
 
 end subroutine source_damage_isoBrittle_deltaState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
@@ -158,17 +163,19 @@ subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiD
   real(pReal),  intent(out) :: &
     localphiDot, &
     dLocalphiDot_dPhi
-  integer :: &
-    instance, sourceOffset
 
-  instance = source_damage_isoBrittle_instance(phase)
+  integer :: &
+    sourceOffset
+
   sourceOffset = source_damage_isoBrittle_offset(phase)
 
-  localphiDot = (1.0_pReal - phi)**(param(instance)%N - 1.0_pReal) - &
+  associate(prm => param(source_damage_isoBrittle_instance(phase)))
+  localphiDot = (1.0_pReal - phi)**(prm%n - 1.0_pReal) - &
                 phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
-  dLocalphiDot_dPhi = - (param(instance)%N - 1.0_pReal)* &
-                        (1.0_pReal - phi)**max(0.0_pReal,param(instance)%N - 2.0_pReal) &
+  dLocalphiDot_dPhi = - (prm%n - 1.0_pReal)* &
+                        (1.0_pReal - phi)**max(0.0_pReal,prm%n - 2.0_pReal) &
                       - sourceState(phase)%p(sourceOffset)%state(1,constituent)
+  end associate
 
 end subroutine source_damage_isoBrittle_getRateAndItsTangent
 

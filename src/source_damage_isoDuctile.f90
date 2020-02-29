@@ -15,6 +15,7 @@ module source_damage_isoDuctile
 
   implicit none
   private
+
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoDuctile_offset, &                                                                 !< which source is my current damage mechanism?
     source_damage_isoDuctile_instance                                                                  !< instance of damage source mechanism
@@ -46,7 +47,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_init
 
-  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,source,sourceOffset,NofMyPhase,p
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -76,9 +77,9 @@ subroutine source_damage_isoDuctile_init
     prm%critPlasticStrain = config%getFloat('isoductile_criticalplasticstrain')
 
     ! sanity checks
-    if (prm%aTol                 < 0.0_pReal) extmsg = trim(extmsg)//' isoductile_atol'
-    if (prm%N                   <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_ratesensitivity'
-    if (prm%critPlasticStrain   <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_criticalplasticstrain'
+    if (prm%aTol              <  0.0_pReal) extmsg = trim(extmsg)//' isoductile_atol'
+    if (prm%N                 <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_ratesensitivity'
+    if (prm%critPlasticStrain <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_criticalplasticstrain'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -90,11 +91,10 @@ subroutine source_damage_isoDuctile_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
     NofMyPhase=count(material_phaseAt==p) * discretization_nIP
-    instance = source_damage_isoDuctile_instance(p)
     sourceOffset = source_damage_isoDuctile_offset(p)
 
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
-    sourceState(p)%p(sourceOffset)%aTolState=param(instance)%aTol
+    sourceState(p)%p(sourceOffset)%aTolState=prm%aTol
 
     end associate
   enddo
@@ -111,22 +111,27 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
+
   integer :: &
-    phase, constituent, instance, homog, sourceOffset, damageOffset
+    phase, &
+    constituent, &
+    sourceOffset, &
+    damageOffset, &
+    homog
 
   phase = material_phaseAt(ipc,el)
   constituent = material_phasememberAt(ipc,ip,el)
-  instance = source_damage_isoDuctile_instance(phase)
   sourceOffset = source_damage_isoDuctile_offset(phase)
   homog = material_homogenizationAt(el)
   damageOffset = damageMapping(homog)%p(ip,el)
 
+  associate(prm => param(source_damage_isoDuctile_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
-    sum(plasticState(phase)%slipRate(:,constituent))/ &
-    ((damage(homog)%p(damageOffset))**param(instance)%N)/ &
-    param(instance)%critPlasticStrain
+    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain
+  end associate
 
 end subroutine source_damage_isoDuctile_dotState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
@@ -141,15 +146,16 @@ subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiD
   real(pReal),  intent(out) :: &
     localphiDot, &
     dLocalphiDot_dPhi
+
   integer :: &
     sourceOffset
 
   sourceOffset = source_damage_isoDuctile_offset(phase)
 
-  localphiDot = 1.0_pReal &
-              - sourceState(phase)%p(sourceOffset)%state(1,constituent) * phi
-
   dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
+
+  localphiDot = 1.0_pReal &
+              + dLocalphiDot_dPhi*phi
 
 end subroutine source_damage_isoDuctile_getRateAndItsTangent
 
