@@ -26,10 +26,7 @@ module CPFEM
 
   implicit none
   private
-  
-  real(pReal),                      parameter,   private :: &
-    CPFEM_odd_stress    = 1e15_pReal, &                                                             !< return value for stress in case of ping pong dummy cycle
-    CPFEM_odd_jacobian  = 1e50_pReal                                                                !< return value for jacobian in case of ping pong dummy cycle
+
   real(pReal), dimension (:,:,:),   allocatable, private :: &
     CPFEM_cs                                                                                        !< Cauchy stress
   real(pReal), dimension (:,:,:,:), allocatable, private :: &
@@ -42,8 +39,8 @@ module CPFEM
     lastLovl     =  0_pInt                                                                          !< lovl in previous call to marc hypela2
   real(pReal),                                   public :: &
     theTime      = 0.0_pReal, &                                                                     !< needs description
-    theDelta     = 0.0_pReal    
-  logical,                                       public :: & 
+    theDelta     = 0.0_pReal
+  logical,                                       public :: &
     outdatedFFN1      = .false., &                                                                  !< needs description
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false.                                                                     !< needs description
@@ -149,7 +146,10 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
                                                      i, j, k, l, m, n, ph, homog, mySource
- logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
+ logical                                             updateJaco                                     ! flag indicating if Jacobian has to be updated
+
+ real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                   !< return value for stress in case of ping pong dummy cycle
+                                                    ODD_JACOBIAN  = 1e50_pReal                      !< return value for jacobian in case of ping pong dummy cycle
 
  elCP = mesh_FEM2DAMASK_elem(elFE)
 
@@ -220,8 +220,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
  elseif (iand(mode, CPFEM_COLLECT) /= 0_pInt) then
    call random_number(rnd)
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
-   CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
-   CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
+   CPFEM_cs(1:6,ip,elCP) = rnd * ODD_STRESS
+   CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
    chosenThermal2: select case (thermal_type(material_homogenizationAt(elCP)))
      case (THERMAL_conduction_ID) chosenThermal2
        temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
@@ -253,8 +253,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
      endif
      call random_number(rnd)
      if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
-     CPFEM_cs(1:6,ip,elCP) = rnd*CPFEM_odd_stress
-     CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian*math_identity2nd(6)
+     CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
+     CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
 
    !*** deformation gradient is not outdated
 
@@ -284,8 +284,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
        call random_number(rnd)
        if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
-       CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
-       CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
+       CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
+       CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
 
      else terminalIllness
 
