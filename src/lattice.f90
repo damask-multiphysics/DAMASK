@@ -383,18 +383,16 @@ module lattice
 
   real(pReal),    dimension(:,:,:),     allocatable, public, protected :: &
     lattice_C66
-  real(pReal),    dimension(:,:,:,:,:), allocatable, public, protected :: &
-    lattice_C3333
-  real(pReal),    dimension(:),         allocatable, public, protected :: &
-    lattice_mu, lattice_nu
 
 ! SHOULD NOT BE PART OF LATTICE BEGIN
-  real(pReal),                              dimension(:,:,:,:), allocatable, public, protected :: & ! with higher-order parameters (e.g. temperature-dependent)
+  real(pReal),                          dimension(:),       allocatable, public, protected :: &
+    lattice_mu, lattice_nu
+  real(pReal),                          dimension(:,:,:,:), allocatable, public, protected :: & ! with higher-order parameters (e.g. temperature-dependent)
     lattice_thermalExpansion33
-  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
+  real(pReal),                          dimension(:,:,:),   allocatable, public, protected :: &
     lattice_thermalConductivity33, &
     lattice_damageDiffusion33
-  real(pReal),                              dimension(:),       allocatable, public, protected :: &
+  real(pReal),                          dimension(:),       allocatable, public, protected :: &
     lattice_damageMobility, &
     lattice_massDensity, &
     lattice_specificHeat, &
@@ -471,7 +469,6 @@ subroutine lattice_init
 
   allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
-  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
 
   allocate(lattice_thermalExpansion33     (3,3,3,Nphases), source=0.0_pReal)                        ! constant, linear, quadratic coefficients
   allocate(lattice_thermalConductivity33  (3,3,Nphases), source=0.0_pReal)
@@ -520,8 +517,7 @@ subroutine lattice_init
     lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
                   / (4.0_pReal*lattice_C66(1,1,p) +6.0_pReal*lattice_C66(1,2,p) +2.0_pReal*lattice_C66(4,4,p))! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
 
-    lattice_C3333(1:3,1:3,1:3,1:3,p) = math_Voigt66to3333(lattice_C66(1:6,1:6,p))                   ! Literature data is Voigt
-    lattice_C66(1:6,1:6,p)           = math_sym3333to66(lattice_C3333(1:3,1:3,1:3,1:3,p))           ! DAMASK uses Mandel-weighting
+    lattice_C66(1:6,1:6,p)  = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,p)))          ! Literature data is Voigt
 
     do i = 1, 6
       if (abs(lattice_C66(i,i,p))<tol_math_check) &
