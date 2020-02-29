@@ -381,21 +381,6 @@ module lattice
       ],pReal),shape(LATTICE_ORT_SYSTEMCLEAVAGE))
 
 
-  real(pReal),    dimension(:,:,:),     allocatable, public, protected :: &
-    lattice_C66
-
-! SHOULD NOT BE PART OF LATTICE BEGIN
-  real(pReal),                          dimension(:),       allocatable, public, protected :: &
-    lattice_mu, lattice_nu
-  real(pReal),                          dimension(:,:,:),   allocatable, public, protected :: &
-    lattice_thermalConductivity, &
-    lattice_damageDiffusion
-  real(pReal),                          dimension(:),       allocatable, public, protected :: &
-    lattice_damageMobility, &
-    lattice_massDensity, &
-    lattice_specificHeat
-! SHOULD NOT BE PART OF LATTICE END
-
   enum, bind(c)
     enumerator :: LATTICE_UNDEFINED_ID, &
                   LATTICE_ISO_ID, &
@@ -406,8 +391,19 @@ module lattice
                   LATTICE_ORT_ID
   end enum
 
-  integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
+! SHOULD NOT BE PART OF LATTICE BEGIN
+  real(pReal),                        dimension(:),     allocatable, public, protected :: &
+    lattice_mu, lattice_nu, &
+    lattice_damageMobility, &
+    lattice_massDensity, &
+    lattice_specificHeat
+   real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
+    lattice_C66, &
+    lattice_thermalConductivity, &
+    lattice_damageDiffusion
+ integer(kind(LATTICE_undefined_ID)), dimension(:),     allocatable, public, protected :: &
     lattice_structure
+! SHOULD NOT BE PART OF LATTICE END
 
   interface lattice_forestProjection_edge
     module procedure slipProjection_transverse
@@ -467,17 +463,17 @@ subroutine lattice_init
 
   allocate(lattice_thermalConductivity  (3,3,Nphases), source=0.0_pReal)
   allocate(lattice_damageDiffusion      (3,3,Nphases), source=0.0_pReal)
-  allocate(lattice_damageMobility       (    Nphases), source=0.0_pReal)
-  allocate(lattice_massDensity          (    Nphases), source=0.0_pReal)
-  allocate(lattice_specificHeat         (    Nphases), source=0.0_pReal)
-
-  allocate(lattice_mu(Nphases), source=0.0_pReal)
-  allocate(lattice_nu(Nphases), source=0.0_pReal)
+  
+  allocate(lattice_damageMobility,&
+           lattice_massDensity,lattice_specificHeat, &
+           lattice_mu, lattice_nu,&
+           source=[(0.0_pReal,i=1,Nphases)])
 
   do p = 1, size(config_phase)
 
-    lattice_C66(1,1,p) = config_phase(p)%getFloat('c11',defaultVal=0.0_pReal)
-    lattice_C66(1,2,p) = config_phase(p)%getFloat('c12',defaultVal=0.0_pReal)
+    lattice_C66(1,1,p) = config_phase(p)%getFloat('c11')
+    lattice_C66(1,2,p) = config_phase(p)%getFloat('c12')
+
     lattice_C66(1,3,p) = config_phase(p)%getFloat('c13',defaultVal=0.0_pReal)
     lattice_C66(2,2,p) = config_phase(p)%getFloat('c22',defaultVal=0.0_pReal)
     lattice_C66(2,3,p) = config_phase(p)%getFloat('c23',defaultVal=0.0_pReal)
