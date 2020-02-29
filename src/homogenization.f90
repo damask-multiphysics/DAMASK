@@ -146,9 +146,7 @@ subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
   allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
-  allocate(materialpoint_F0(3,3,discretization_nIP,discretization_nElem),             source=0.0_pReal)
   materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)            ! initialize to identity
-  allocate(materialpoint_F(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
   allocate(materialpoint_subF0(3,3,discretization_nIP,discretization_nElem),          source=0.0_pReal)
   allocate(materialpoint_subF(3,3,discretization_nIP,discretization_nElem),           source=0.0_pReal)
@@ -333,12 +331,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             !$OMP FLUSH(terminallyIll)
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
               !$OMP CRITICAL (write2out)
-                write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
+              write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
               !$OMP END CRITICAL (write2out)
             endif
-            !$OMP CRITICAL (setTerminallyIll)
-              terminallyIll = .true.                                                                ! ...and kills all others
-            !$OMP END CRITICAL (setTerminallyIll)
+            terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
             materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)              ! crystallite had severe trouble, so do a significant cutback
 

@@ -734,7 +734,7 @@ subroutine crystallite_results
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
     integer :: e,i,c,j
 
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)

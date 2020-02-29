@@ -485,15 +485,15 @@ end subroutine results_writeScalarDataset_rotation
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_constituent(phaseAt,memberAt,label)
+subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
     
   integer,          dimension(:,:),   intent(in) :: phaseAt                                         !< phase section at (constituent,element)
-  integer,          dimension(:,:,:), intent(in) :: memberAt                                        !< phase member at (constituent,IP,element)
-  character(len=*), dimension(:),     intent(in) :: label                                           !< label of each phase section
+  integer,                   dimension(:,:,:), intent(in) :: memberAtLocal                          !< phase member at (constituent,IP,element)
+  character(len=pStringLen), dimension(:),     intent(in) :: label                                  !< label of each phase section
   
-  integer, dimension(size(memberAt,1),size(memberAt,2),size(memberAt,3)) :: &
-    phaseAt_perIP, &
-    memberAt_total
+  integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2),size(memberAtLocal,3)) :: &
+    phaseAtMaterialpoint, &
+    memberAtGlobal
   integer, dimension(size(label),0:worldsize-1) :: memberOffset                                     !< offset in member counting per process
   integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
   integer(HSIZE_T), dimension(2) :: &
@@ -543,10 +543,10 @@ subroutine results_mapping_constituent(phaseAt,memberAt,label)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
   memberOffset = 0
   do i=1, size(label)
-    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAt,2)                                ! number of points/instance of this process
+    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                                ! number of points/instance of this process
   enddo
   writeSize = 0
-  writeSize(worldrank) = size(memberAt(1,:,:))                                                      ! total number of points by this process
+  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                      ! total number of points by this process
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
@@ -578,14 +578,14 @@ subroutine results_mapping_constituent(phaseAt,memberAt,label)
 
 !---------------------------------------------------------------------------------------------------
 ! expand phaseAt to consider IPs (is not stored per IP)
-  do i = 1, size(phaseAt_perIP,2)
-    phaseAt_perIP(:,i,:) = phaseAt
+  do i = 1, size(phaseAtMaterialpoint,2)
+    phaseAtMaterialpoint(:,i,:) = phaseAt
   enddo
   
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
-    where(phaseAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1)) -1     ! convert to 0-based
+    where(phaseAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) -1     ! convert to 0-based
   enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -596,10 +596,10 @@ subroutine results_mapping_constituent(phaseAt,memberAt,label)
   call h5dcreate_f(loc_id, 'constituent', dtype_id, filespace_id, dset_id, ierr)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dcreate_f')
   
-  call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAt_perIP,.true.)),myShape), &
+  call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dwrite_f/name_id')
-  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAt_total,.true.),myShape), &
+  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dwrite_f/position_id')
 
@@ -620,15 +620,15 @@ end subroutine results_mapping_constituent
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
+subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
     
   integer,          dimension(:),   intent(in) :: homogenizationAt                                  !< homogenization section at (element)
-  integer,          dimension(:,:), intent(in) :: memberAt                                          !< homogenization member at (IP,element)
-  character(len=*), dimension(:),   intent(in) :: label                                             !< label of each homogenization section
+  integer,                   dimension(:,:), intent(in) :: memberAtLocal                            !< homogenization member at (IP,element)
+  character(len=pStringLen), dimension(:),   intent(in) :: label                                    !< label of each homogenization section
   
-  integer, dimension(size(memberAt,1),size(memberAt,2)) :: &
-    homogenizationAt_perIP, &
-    memberAt_total
+  integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2)) :: &
+    homogenizationAtMaterialpoint, &
+    memberAtGlobal
   integer, dimension(size(label),0:worldsize-1) :: memberOffset                                     !< offset in member counting per process
   integer, dimension(0:worldsize-1)             :: writeSize                                        !< amount of data written per process
   integer(HSIZE_T), dimension(1) :: &
@@ -678,10 +678,10 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, ierr)
   memberOffset = 0
   do i=1, size(label)
-    memberOffset(i,worldrank) = count(homogenizationAt == i)*size(memberAt,1)                       ! number of points/instance of this process
+    memberOffset(i,worldrank) = count(homogenizationAt == i)*size(memberAtLocal,1)                       ! number of points/instance of this process
   enddo
   writeSize = 0
-  writeSize(worldrank) = size(memberAt)                                                             ! total number of points by this process
+  writeSize(worldrank) = size(memberAtLocal)                                                             ! total number of points by this process
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
@@ -713,14 +713,14 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
 
 !---------------------------------------------------------------------------------------------------
 ! expand phaseAt to consider IPs (is not stored per IP)
-  do i = 1, size(homogenizationAt_perIP,1)
-    homogenizationAt_perIP(i,:) = homogenizationAt
+  do i = 1, size(homogenizationAtMaterialpoint,1)
+    homogenizationAtMaterialpoint(i,:) = homogenizationAt
   enddo
   
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
-    where(homogenizationAt_perIP == i) memberAt_total = memberAt + sum(memberOffset(i,0:worldrank-1)) - 1  ! convert to 0-based
+    where(homogenizationAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) - 1  ! convert to 0-based
   enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -731,10 +731,10 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAt,label)
   call h5dcreate_f(loc_id, 'materialpoint', dtype_id, filespace_id, dset_id, ierr)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dcreate_f')
   
-  call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAt_perIP,.true.)),myShape), &
+  call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/name_id')
-  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAt_total,.true.),myShape), &
+  call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/position_id')
 
