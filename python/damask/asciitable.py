@@ -376,15 +376,6 @@ class ASCIItable():
     self.__IO__['labeled'] = len(self.tags) > 0
 
 # ------------------------------------------------------------------
-  def data_skipLines(self,
-                     count):
-    """Wind forward by count number of lines."""
-    for i in range(count):
-      alive = self.data_read()
-
-    return alive
-
-# ------------------------------------------------------------------
   def data_read(self,
                 advance = True,
                 respectLabels = True):
