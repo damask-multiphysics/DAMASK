@@ -18,6 +18,8 @@ module kinematics_thermal_expansion
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
   type :: tParameters
+    real(pReal) :: &
+      T_ref
     real(pReal), allocatable, dimension(:,:,:) :: &
       expansion
   end type tParameters
@@ -54,8 +56,11 @@ subroutine kinematics_thermal_expansion_init
   do p = 1, size(config_phase)
     kinematics_thermal_expansion_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_thermal_expansion_ID)
     if (all(phase_kinematics(:,p) /= KINEMATICS_thermal_expansion_ID)) cycle
-    associate(config => config_phase(p))
 
+    associate(prm => param(kinematics_thermal_expansion_instance(p)), &
+              config => config_phase(p))
+
+    prm%T_ref = config%getFloat('reference_temperature', defaultVal=0.0_pReal)
     ! read up to three parameters (constant, linear, quadratic with T)
     temp = config%getFloats('thermal_expansion11')
     !lattice_thermalExpansion33(1,1,1:size(temp),p) = temp
@@ -82,13 +87,15 @@ pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
   real(pReal), dimension(3,3) :: &
     kinematics_thermal_expansion_initialStrain                                                      !< initial thermal strain (should be small strain, though)
 
+  associate(prm => param(kinematics_thermal_expansion_instance(phase)))
   kinematics_thermal_expansion_initialStrain = &
-    (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**1 / 1. * &
+    (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * &
     lattice_thermalExpansion33(1:3,1:3,1,phase) + &                                                 ! constant  coefficient
-    (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**2 / 2. * &
+    (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * &
     lattice_thermalExpansion33(1:3,1:3,2,phase) + &                                                 ! linear    coefficient
-    (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**3 / 3. * &
+    (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * &
     lattice_thermalExpansion33(1:3,1:3,3,phase)                                                     ! quadratic coefficient
+  end associate
 
 end function kinematics_thermal_expansion_initialStrain
 
@@ -111,24 +118,25 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
     phase, &
     homog
   real(pReal) :: &
-    T, TRef, TDot
+    T, TDot
 
   phase = material_phaseAt(ipc,el)
   homog = material_homogenizationAt(el)
   T = temperature(homog)%p(thermalMapping(homog)%p(ip,el))
   TDot = temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el))
-  TRef = lattice_referenceTemperature(phase)
 
+  associate(prm => param(kinematics_thermal_expansion_instance(phase)))
   Li = TDot * ( &
-                lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - TRef)**0 &                         ! constant  coefficient
-              + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - TRef)**1 &                         ! linear    coefficient
-              + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - TRef)**2 &                         ! quadratic coefficient
+                lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - prm%T_ref)**0 &                    ! constant  coefficient
+              + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - prm%T_ref)**1 &                    ! linear    coefficient
+              + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - prm%T_ref)**2 &                    ! quadratic coefficient
               ) / &
        (1.0_pReal &
-             + lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - TRef)**1 / 1. &
-             + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - TRef)**2 / 2. &
-             + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - TRef)**3 / 3. &
+             + lattice_thermalExpansion33(1:3,1:3,1,phase)*(T - prm%T_ref)**1 / 1. &
+             + lattice_thermalExpansion33(1:3,1:3,2,phase)*(T - prm%T_ref)**2 / 2. &
+             + lattice_thermalExpansion33(1:3,1:3,3,phase)*(T - prm%T_ref)**3 / 3. &
        )
+  end associate
   dLi_dTstar = 0.0_pReal
 
 end subroutine kinematics_thermal_expansion_LiAndItsTangent

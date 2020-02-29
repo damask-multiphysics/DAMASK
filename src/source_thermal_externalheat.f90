@@ -60,7 +60,7 @@ subroutine source_thermal_externalheat_init
     do sourceOffset = 1, phase_Nsources(p)
       if (phase_source(sourceOffset,p) == SOURCE_thermal_externalheat_ID) then
         source_thermal_externalheat_offset(p) = sourceOffset
-        exit 
+        exit
       endif
     enddo
 

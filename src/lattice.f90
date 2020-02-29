@@ -395,8 +395,7 @@ module lattice
   real(pReal),                          dimension(:),       allocatable, public, protected :: &
     lattice_damageMobility, &
     lattice_massDensity, &
-    lattice_specificHeat, &
-    lattice_referenceTemperature
+    lattice_specificHeat
 ! SHOULD NOT BE PART OF LATTICE END
 
   enum, bind(c)
@@ -476,7 +475,6 @@ subroutine lattice_init
   allocate(lattice_damageMobility         (    Nphases), source=0.0_pReal)
   allocate(lattice_massDensity            (    Nphases), source=0.0_pReal)
   allocate(lattice_specificHeat           (    Nphases), source=0.0_pReal)
-  allocate(lattice_referenceTemperature   (    Nphases), source=300.0_pReal)
 
   allocate(lattice_mu(Nphases), source=0.0_pReal)
   allocate(lattice_nu(Nphases), source=0.0_pReal)
@@ -539,7 +537,6 @@ subroutine lattice_init
 
     lattice_specificHeat(p) = config_phase(p)%getFloat( 'specific_heat',defaultVal=0.0_pReal)
     lattice_massDensity(p) = config_phase(p)%getFloat( 'mass_density',defaultVal=0.0_pReal)
-    lattice_referenceTemperature(p) = config_phase(p)%getFloat( 'reference_temperature',defaultVal=0.0_pReal)
     lattice_DamageDiffusion33(1,1,p) = config_phase(p)%getFloat( 'damage_diffusion11',defaultVal=0.0_pReal)
     lattice_DamageDiffusion33(2,2,p) = config_phase(p)%getFloat( 'damage_diffusion22',defaultVal=0.0_pReal)
     lattice_DamageDiffusion33(3,3,p) = config_phase(p)%getFloat( 'damage_diffusion33',defaultVal=0.0_pReal)
