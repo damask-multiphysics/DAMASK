@@ -39,7 +39,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_dissipation_init
 
-  integer :: Ninstance,instance,source,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,source,sourceOffset,NofMyPhase,p
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'; flush(6)
 
@@ -59,10 +59,11 @@ subroutine source_thermal_dissipation_init
     enddo
 
     if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle
-    associate(config => config_phase(p))
+    associate(prm => param(source_thermal_dissipation_instance(p)), &
+              config => config_phase(p))
 
-    instance = source_thermal_dissipation_instance(p)
-    param(instance)%kappa = config%getFloat('dissipation_coldworkcoeff')
+    prm%kappa = config%getFloat('dissipation_coldworkcoeff')
+
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
     sourceOffset = source_thermal_dissipation_offset(p)
 
@@ -88,13 +89,11 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar
   real(pReal),  intent(out) :: &
     TDot, &
     dTDot_dT
-  integer :: &
-    instance
 
-  instance = source_thermal_dissipation_instance(phase)
-
-  TDot = param(instance)%kappa*sum(abs(Tstar*Lp))
+  associate(prm => param(source_thermal_dissipation_instance(phase)))
+  TDot = prm%kappa*sum(abs(Tstar*Lp))
   dTDot_dT = 0.0_pReal
+  end associate
 
 end subroutine source_thermal_dissipation_getRateAndItsTangent
 
