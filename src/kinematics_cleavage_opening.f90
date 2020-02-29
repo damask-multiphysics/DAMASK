@@ -73,10 +73,12 @@ subroutine kinematics_cleavage_opening_init
     prm%sdot0      = config%getFloat('anisobrittle_sdot0')
     prm%n   = config%getFloat('anisobrittle_ratesensitivity')
 
+    prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
+
     prm%critDisp = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(prm%Ncleavage))
     prm%critLoad = config%getFloats('anisobrittle_criticalload',requiredSize=size(prm%Ncleavage))
 
-    prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
+
     prm%totalNcleavage = sum(prm%Ncleavage)
         prm%cleavage_systems  = lattice_SchmidMatrix_cleavage (prm%Ncleavage,config%getString('lattice_structure'),&
                                                      config%getFloat('c/a',defaultVal=0.0_pReal))
