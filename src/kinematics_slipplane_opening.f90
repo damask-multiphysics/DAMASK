@@ -58,13 +58,10 @@ subroutine kinematics_slipplane_opening_init
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   allocate(kinematics_slipplane_opening_instance(size(config_phase)), source=0)
-  do p = 1, size(config_phase)
-    kinematics_slipplane_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_slipplane_opening_ID) ! ToDo: count correct?
-  enddo
-
   allocate(param(Ninstance))
 
   do p = 1, size(config_phase)
+    kinematics_slipplane_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_slipplane_opening_ID)
     if (all(phase_kinematics(:,p) /= KINEMATICS_slipplane_opening_ID)) cycle
     associate(prm => param(kinematics_slipplane_opening_instance(p)), &
              config => config_phase(p))

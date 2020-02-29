@@ -15,6 +15,8 @@ module kinematics_thermal_expansion
   implicit none
   private
 
+  integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
+
   type :: tParameters
     real(pReal), allocatable, dimension(:,:,:) :: &
       expansion
@@ -46,14 +48,13 @@ subroutine kinematics_thermal_expansion_init
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
+  allocate(kinematics_thermal_expansion_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))
 
   do p = 1, size(config_phase)
+    kinematics_thermal_expansion_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_thermal_expansion_ID)
     if (all(phase_kinematics(:,p) /= KINEMATICS_thermal_expansion_ID)) cycle
     associate(config => config_phase(p))
-
-    ! ToDo: Here we need to decide how to extend the concept of instances to
-    ! kinetics and sources. I would suggest that the same mechanism exists at maximum once per phase
 
     ! read up to three parameters (constant, linear, quadratic with T)
     temp = config%getFloats('thermal_expansion11')
@@ -76,9 +77,10 @@ pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
 
   integer, intent(in) :: &
     phase, &
-    homog, offset
+    homog, &
+    offset
   real(pReal), dimension(3,3) :: &
-    kinematics_thermal_expansion_initialStrain                                                       !< initial thermal strain (should be small strain, though)
+    kinematics_thermal_expansion_initialStrain                                                      !< initial thermal strain (should be small strain, though)
 
   kinematics_thermal_expansion_initialStrain = &
     (temperature(homog)%p(offset) - lattice_referenceTemperature(phase))**1 / 1. * &
@@ -104,17 +106,17 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
     Li                                                                                              !< thermal velocity gradient
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
+
   integer :: &
     phase, &
-    homog, offset
+    homog
   real(pReal) :: &
     T, TRef, TDot
 
   phase = material_phaseAt(ipc,el)
   homog = material_homogenizationAt(el)
-  offset = thermalMapping(homog)%p(ip,el)
-  T = temperature(homog)%p(offset)
-  TDot = temperatureRate(homog)%p(offset)
+  T = temperature(homog)%p(thermalMapping(homog)%p(ip,el))
+  TDot = temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el))
   TRef = lattice_referenceTemperature(phase)
 
   Li = TDot * ( &
