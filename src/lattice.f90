@@ -1685,95 +1685,6 @@ end function lattice_labels_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Labels for twin systems
-!> details only active twin systems are considered
-!--------------------------------------------------------------------------------------------------
-function lattice_labels_twin(Ntwin,structure) result(labels)
-
-  integer,         dimension(:),  intent(in)  :: Ntwin                                              !< number of active slip systems per family
-  character(len=*),               intent(in)  :: structure                                          !< lattice structure
-
-  character(len=:), dimension(:),   allocatable :: labels
-
-  real(pReal),      dimension(:,:), allocatable :: twinSystems
-  integer,          dimension(:),   allocatable :: NtwinMax
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
-
-  select case(structure)
-    case('fcc')
-      NtwinMax    = LATTICE_FCC_NTWINSYSTEM
-      twinSystems = LATTICE_FCC_SYSTEMTWIN
-    case('bcc')
-      NtwinMax    = LATTICE_BCC_NTWINSYSTEM
-      twinSystems = LATTICE_BCC_SYSTEMTWIN
-    case('hex')
-      NtwinMax    = LATTICE_HEX_NTWINSYSTEM
-      twinSystems = LATTICE_HEX_SYSTEMTWIN
-    case default
-      call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
-  end select
-
-  if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0)) &
-    call IO_error(145,ext_msg='Ntwin '//trim(structure))
-  if (any(Ntwin < 0)) &
-    call IO_error(144,ext_msg='Ntwin '//trim(structure))
-
-  labels = getLabels(Ntwin,NtwinMax,twinSystems)
-
-end function lattice_labels_twin
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Projection of the transverse direction onto the slip plane
-!> @details: This projection is used to calculate forest hardening for edge dislocations
-!--------------------------------------------------------------------------------------------------
-function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
-
-  integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
-  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
-  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
-
-  real(pReal), dimension(3,sum(Nslip)) :: n, t
-  integer                              :: i, j
-
-  n = lattice_slip_normal    (Nslip,structure,cOverA)
-  t = lattice_slip_transverse(Nslip,structure,cOverA)
-
-  do i=1, sum(Nslip); do j=1, sum(Nslip)
-    projection(i,j) = abs(math_inner(n(:,i),t(:,j)))
-  enddo; enddo
-
-end function slipProjection_transverse
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Projection of the slip direction onto the slip plane
-!> @details: This projection is used to calculate forest hardening for screw dislocations
-!--------------------------------------------------------------------------------------------------
-function slipProjection_direction(Nslip,structure,cOverA) result(projection)
-
-  integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
-  character(len=*),                                intent(in) :: structure                          !< lattice structure
-  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
-  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
-
-  real(pReal), dimension(3,sum(Nslip)) :: n, d
-  integer                              :: i, j
-
-  n = lattice_slip_normal   (Nslip,structure,cOverA)
-  d = lattice_slip_direction(Nslip,structure,cOverA)
-
-  do i=1, sum(Nslip); do j=1, sum(Nslip)
-    projection(i,j) = abs(math_inner(n(:,i),d(:,j)))
-  enddo; enddo
-
-end function slipProjection_direction
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Symmetrizes 2nd order tensor according to lattice type
 !--------------------------------------------------------------------------------------------------
 function lattice_symmetrize33(T,structure) result(T_sym)
@@ -1889,6 +1800,95 @@ function symmetrizeC66(C66,structure) result(C66_sym)
    end select
 
 end function symmetrizeC66
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Labels for twin systems
+!> details only active twin systems are considered
+!--------------------------------------------------------------------------------------------------
+function lattice_labels_twin(Ntwin,structure) result(labels)
+
+  integer,         dimension(:),  intent(in)  :: Ntwin                                              !< number of active slip systems per family
+  character(len=*),               intent(in)  :: structure                                          !< lattice structure
+
+  character(len=:), dimension(:),   allocatable :: labels
+
+  real(pReal),      dimension(:,:), allocatable :: twinSystems
+  integer,          dimension(:),   allocatable :: NtwinMax
+
+  if (len_trim(structure) /= 3) &
+    call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
+
+  select case(structure)
+    case('fcc')
+      NtwinMax    = LATTICE_FCC_NTWINSYSTEM
+      twinSystems = LATTICE_FCC_SYSTEMTWIN
+    case('bcc')
+      NtwinMax    = LATTICE_BCC_NTWINSYSTEM
+      twinSystems = LATTICE_BCC_SYSTEMTWIN
+    case('hex')
+      NtwinMax    = LATTICE_HEX_NTWINSYSTEM
+      twinSystems = LATTICE_HEX_SYSTEMTWIN
+    case default
+      call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
+  end select
+
+  if (any(NtwinMax(1:size(Ntwin)) - Ntwin < 0)) &
+    call IO_error(145,ext_msg='Ntwin '//trim(structure))
+  if (any(Ntwin < 0)) &
+    call IO_error(144,ext_msg='Ntwin '//trim(structure))
+
+  labels = getLabels(Ntwin,NtwinMax,twinSystems)
+
+end function lattice_labels_twin
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Projection of the transverse direction onto the slip plane
+!> @details: This projection is used to calculate forest hardening for edge dislocations
+!--------------------------------------------------------------------------------------------------
+function slipProjection_transverse(Nslip,structure,cOverA) result(projection)
+
+  integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
+  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
+  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
+
+  real(pReal), dimension(3,sum(Nslip)) :: n, t
+  integer                              :: i, j
+
+  n = lattice_slip_normal    (Nslip,structure,cOverA)
+  t = lattice_slip_transverse(Nslip,structure,cOverA)
+
+  do i=1, sum(Nslip); do j=1, sum(Nslip)
+    projection(i,j) = abs(math_inner(n(:,i),t(:,j)))
+  enddo; enddo
+
+end function slipProjection_transverse
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Projection of the slip direction onto the slip plane
+!> @details: This projection is used to calculate forest hardening for screw dislocations
+!--------------------------------------------------------------------------------------------------
+function slipProjection_direction(Nslip,structure,cOverA) result(projection)
+
+  integer,         dimension(:),                   intent(in) :: Nslip                              !< number of active slip systems per family
+  character(len=*),                                intent(in) :: structure                          !< lattice structure
+  real(pReal),                                     intent(in) :: cOverA                             !< c/a ratio
+  real(pReal),     dimension(sum(Nslip),sum(Nslip))           :: projection
+
+  real(pReal), dimension(3,sum(Nslip)) :: n, d
+  integer                              :: i, j
+
+  n = lattice_slip_normal   (Nslip,structure,cOverA)
+  d = lattice_slip_direction(Nslip,structure,cOverA)
+
+  do i=1, sum(Nslip); do j=1, sum(Nslip)
+    projection(i,j) = abs(math_inner(n(:,i),d(:,j)))
+  enddo; enddo
+
+end function slipProjection_direction
 
 
 !--------------------------------------------------------------------------------------------------
