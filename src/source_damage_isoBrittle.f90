@@ -125,9 +125,8 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
   real(pReal) :: &
     strainenergy
 
-  phase = material_phaseAt(ipc,el)                                                                        !< phase ID at ipc,ip,el
-  constituent = material_phasememberAt(ipc,ip,el)                                                            !< state array offset for phase ID at ipc,ip,el
-  ! ToDo: capability for multiple instances of SAME source within given phase. Needs Ninstance loop from here on!
+  phase = material_phaseAt(ipc,el)                                                                  !< phase ID at ipc,ip,el
+  constituent = material_phasememberAt(ipc,ip,el)                                                   !< state array offset for phase ID at ipc,ip,el
   sourceOffset = source_damage_isoBrittle_offset(phase)
 
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
@@ -169,10 +168,9 @@ subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiD
   sourceOffset = source_damage_isoBrittle_offset(phase)
 
   associate(prm => param(source_damage_isoBrittle_instance(phase)))
-  localphiDot = (1.0_pReal - phi)**(prm%n - 1.0_pReal) - &
-                phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
-  dLocalphiDot_dPhi = - (prm%n - 1.0_pReal)* &
-                        (1.0_pReal - phi)**max(0.0_pReal,prm%n - 2.0_pReal) &
+  localphiDot = (1.0_pReal - phi)**(prm%n - 1.0_pReal) &
+              - phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
+  dLocalphiDot_dPhi = - (prm%n - 1.0_pReal)* (1.0_pReal - phi)**max(0.0_pReal,prm%n - 2.0_pReal) &
                       - sourceState(phase)%p(sourceOffset)%state(1,constituent)
   end associate
 

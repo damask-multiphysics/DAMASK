@@ -122,15 +122,15 @@ subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phas
   sourceOffset = source_thermal_externalheat_offset(phase)
 
   associate(prm => param(source_thermal_externalheat_instance(phase)))
-  do interval = 1, prm%nIntervals                                                       ! scan through all rate segments
+  do interval = 1, prm%nIntervals                                                                   ! scan through all rate segments
     frac_time = (sourceState(phase)%p(sourceOffset)%state(1,of) - prm%time(interval)) &
-              / (prm%time(interval+1) - prm%time(interval))                             ! fractional time within segment
+              / (prm%time(interval+1) - prm%time(interval))                                         ! fractional time within segment
     if (     (frac_time <  0.0_pReal .and. interval == 1) &
         .or. (frac_time >= 1.0_pReal .and. interval == prm%nIntervals) &
         .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
       TDot = prm%heat_rate(interval  ) * (1.0_pReal - frac_time) + &
-             prm%heat_rate(interval+1) * frac_time                                      ! interpolate heat rate between segment boundaries...
-                                                                                        ! ...or extrapolate if outside of bounds
+             prm%heat_rate(interval+1) * frac_time                                                  ! interpolate heat rate between segment boundaries...
+                                                                                                    ! ...or extrapolate if outside of bounds
   enddo
   dTDot_dT = 0.0
   end associate

@@ -463,7 +463,7 @@ subroutine lattice_init
 
   allocate(lattice_thermalConductivity  (3,3,Nphases), source=0.0_pReal)
   allocate(lattice_damageDiffusion      (3,3,Nphases), source=0.0_pReal)
-  
+
   allocate(lattice_damageMobility,&
            lattice_massDensity,lattice_specificHeat, &
            lattice_mu, lattice_nu,&
@@ -500,7 +500,7 @@ subroutine lattice_init
         call IO_error(130,ext_msg='lattice_init: '//trim(structure))
     end select
 
-    lattice_C66(1:6,1:6,p) = symmetrizeC66(lattice_structure(p),lattice_C66(1:6,1:6,p))
+    lattice_C66(1:6,1:6,p) = symmetrizeC66(lattice_C66(1:6,1:6,p),structure)
 
     lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p)) ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
     lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
@@ -527,9 +527,9 @@ subroutine lattice_init
     lattice_DamageDiffusion(2,2,p) = config_phase(p)%getFloat('damage_diffusion22',defaultVal=0.0_pReal)
     lattice_DamageDiffusion(3,3,p) = config_phase(p)%getFloat('damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageDiffusion(1:3,1:3,p) = lattice_symmetrize33(lattice_DamageDiffusion(1:3,1:3,p),structure)
-    
+
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
-  
+
   enddo
 
 end subroutine lattice_init
@@ -690,7 +690,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = symmetrizeC66(LATTICE_HEX_ID,C_target_unrotated66)
+    C_target_unrotated66 = symmetrizeC66(C_target_unrotated66,'hex')
   elseif (structure_target(1:3)  == 'bcc') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
       call IO_error(134,ext_msg='lattice_C66_trans: '//trim(structure_target))
@@ -1797,7 +1797,7 @@ function lattice_symmetrize33(T,structure) result(T_sym)
       T_sym(2,2) = T(2,2)
       T_sym(3,3) = T(3,3)
     case default
-       call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
    end select
 
 end function lattice_symmetrize33
@@ -1807,73 +1807,75 @@ end function lattice_symmetrize33
 !> @brief Symmetrizes stiffness matrix according to lattice type
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
-pure function symmetrizeC66(struct,C66)
+function symmetrizeC66(C66,structure) result(C66_sym)
 
-  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
+  real(pReal), dimension(6,6) :: C66_sym
+
   real(pReal), dimension(6,6), intent(in) :: C66
-  real(pReal), dimension(6,6) :: symmetrizeC66
+  character(len=*),            intent(in) :: structure
+
   integer :: j,k
 
-  symmetrizeC66 = 0.0_pReal
+  C66_sym = 0.0_pReal
 
-  select case(struct)
-    case (LATTICE_iso_ID)
+  select case(structure)
+    case ('iso')
       do k=1,3
         do j=1,3
-          symmetrizeC66(k,j) = C66(1,2)
+          C66_sym(k,j) = C66(1,2)
         enddo
-        symmetrizeC66(k,k)     = C66(1,1)
-        symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
+        C66_sym(k,k)     = C66(1,1)
+        C66_sym(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
       enddo
-    case (LATTICE_fcc_ID,LATTICE_bcc_ID)
+    case ('fcc','bcc')
       do k=1,3
         do j=1,3
-          symmetrizeC66(k,j) = C66(1,2)
+          C66_sym(k,j) = C66(1,2)
         enddo
-        symmetrizeC66(k,k)     = C66(1,1)
-        symmetrizeC66(k+3,k+3) = C66(4,4)
+        C66_sym(k,k)     = C66(1,1)
+        C66_sym(k+3,k+3) = C66(4,4)
       enddo
-    case (LATTICE_hex_ID)
-      symmetrizeC66(1,1) = C66(1,1)
-      symmetrizeC66(2,2) = C66(1,1)
-      symmetrizeC66(3,3) = C66(3,3)
-      symmetrizeC66(1,2) = C66(1,2)
-      symmetrizeC66(2,1) = C66(1,2)
-      symmetrizeC66(1,3) = C66(1,3)
-      symmetrizeC66(3,1) = C66(1,3)
-      symmetrizeC66(2,3) = C66(1,3)
-      symmetrizeC66(3,2) = C66(1,3)
-      symmetrizeC66(4,4) = C66(4,4)
-      symmetrizeC66(5,5) = C66(4,4)
-      symmetrizeC66(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
-    case (LATTICE_ort_ID)
-      symmetrizeC66(1,1) = C66(1,1)
-      symmetrizeC66(2,2) = C66(2,2)
-      symmetrizeC66(3,3) = C66(3,3)
-      symmetrizeC66(1,2) = C66(1,2)
-      symmetrizeC66(2,1) = C66(1,2)
-      symmetrizeC66(1,3) = C66(1,3)
-      symmetrizeC66(3,1) = C66(1,3)
-      symmetrizeC66(2,3) = C66(2,3)
-      symmetrizeC66(3,2) = C66(2,3)
-      symmetrizeC66(4,4) = C66(4,4)
-      symmetrizeC66(5,5) = C66(5,5)
-      symmetrizeC66(6,6) = C66(6,6)
-    case (LATTICE_bct_ID)
-      symmetrizeC66(1,1) = C66(1,1)
-      symmetrizeC66(2,2) = C66(1,1)
-      symmetrizeC66(3,3) = C66(3,3)
-      symmetrizeC66(1,2) = C66(1,2)
-      symmetrizeC66(2,1) = C66(1,2)
-      symmetrizeC66(1,3) = C66(1,3)
-      symmetrizeC66(3,1) = C66(1,3)
-      symmetrizeC66(2,3) = C66(1,3)
-      symmetrizeC66(3,2) = C66(1,3)
-      symmetrizeC66(4,4) = C66(4,4)
-      symmetrizeC66(5,5) = C66(4,4)
-      symmetrizeC66(6,6) = C66(6,6)
+    case ('hex')
+      C66_sym(1,1) = C66(1,1)
+      C66_sym(2,2) = C66(1,1)
+      C66_sym(3,3) = C66(3,3)
+      C66_sym(1,2) = C66(1,2)
+      C66_sym(2,1) = C66(1,2)
+      C66_sym(1,3) = C66(1,3)
+      C66_sym(3,1) = C66(1,3)
+      C66_sym(2,3) = C66(1,3)
+      C66_sym(3,2) = C66(1,3)
+      C66_sym(4,4) = C66(4,4)
+      C66_sym(5,5) = C66(4,4)
+      C66_sym(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
+    case ('ort')
+      C66_sym(1,1) = C66(1,1)
+      C66_sym(2,2) = C66(2,2)
+      C66_sym(3,3) = C66(3,3)
+      C66_sym(1,2) = C66(1,2)
+      C66_sym(2,1) = C66(1,2)
+      C66_sym(1,3) = C66(1,3)
+      C66_sym(3,1) = C66(1,3)
+      C66_sym(2,3) = C66(2,3)
+      C66_sym(3,2) = C66(2,3)
+      C66_sym(4,4) = C66(4,4)
+      C66_sym(5,5) = C66(5,5)
+      C66_sym(6,6) = C66(6,6)
+    case ('bct')
+      C66_sym(1,1) = C66(1,1)
+      C66_sym(2,2) = C66(1,1)
+      C66_sym(3,3) = C66(3,3)
+      C66_sym(1,2) = C66(1,2)
+      C66_sym(2,1) = C66(1,2)
+      C66_sym(1,3) = C66(1,3)
+      C66_sym(3,1) = C66(1,3)
+      C66_sym(2,3) = C66(1,3)
+      C66_sym(3,2) = C66(1,3)
+      C66_sym(4,4) = C66(4,4)
+      C66_sym(5,5) = C66(4,4)
+      C66_sym(6,6) = C66(6,6)
     case default
-      symmetrizeC66 = C66
+      call IO_error(137,ext_msg='symmetrizeC66: '//trim(structure))
    end select
 
 end function symmetrizeC66

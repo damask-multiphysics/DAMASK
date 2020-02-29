@@ -17,10 +17,10 @@ module source_damage_isoDuctile
   private
 
   integer,                       dimension(:),           allocatable :: &
-    source_damage_isoDuctile_offset, &                                                                 !< which source is my current damage mechanism?
-    source_damage_isoDuctile_instance                                                                  !< instance of damage source mechanism
+    source_damage_isoDuctile_offset, &                                                              !< which source is my current damage mechanism?
+    source_damage_isoDuctile_instance                                                               !< instance of damage source mechanism
 
-  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+  type, private :: tParameters                                                                      !< container type for internal constitutive parameters
     real(pReal) :: &
       critPlasticStrain, &
       N, &
@@ -29,7 +29,7 @@ module source_damage_isoDuctile
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
 
 
   public :: &
@@ -126,7 +126,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
 
   associate(prm => param(source_damage_isoDuctile_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
-    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain
+    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain ! ToDo: abs for slip rate?
   end associate
 
 end subroutine source_damage_isoDuctile_dotState

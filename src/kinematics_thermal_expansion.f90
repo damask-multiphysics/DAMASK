@@ -41,8 +41,7 @@ contains
 subroutine kinematics_thermal_expansion_init
 
   integer :: Ninstance,p,i
-  real(pReal), dimension(:), allocatable :: &
-    temp
+  real(pReal), dimension(:), allocatable :: temp
 
   write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'; flush(6)
 
@@ -88,6 +87,7 @@ pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
     phase, &
     homog, &
     offset
+
   real(pReal), dimension(3,3) :: &
     kinematics_thermal_expansion_initialStrain                                                      !< initial thermal strain (should be small strain, though)
 

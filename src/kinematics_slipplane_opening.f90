@@ -29,9 +29,9 @@ module kinematics_slipplane_opening
     real(pReal), dimension(:),   allocatable :: &
       critLoad
     real(pReal), dimension(:,:), allocatable     :: &
-     slip_direction, &
-     slip_normal, &
-     slip_transverse
+      slip_direction, &
+      slip_normal, &
+      slip_transverse
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
@@ -113,6 +113,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
     Ld                                                                                              !< damage velocity gradient
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
+
   real(pReal),   dimension(3,3) :: &
     projection_d, projection_t, projection_n                                                        !< projection modes 3x3 tensor
   integer :: &

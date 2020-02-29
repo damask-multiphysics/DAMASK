@@ -22,7 +22,7 @@ module source_damage_anisoBrittle
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
     source_damage_anisoBrittle_instance                                                             !< instance of source mechanism
 
-  type :: tParameters                                                                                !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
       aTol, &
       sdot_0, &
@@ -166,11 +166,10 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
 
     sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
     = sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    + prm%sdot_0* &
-      ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%N + &
-       (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%N + &
-       (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%N)/ &
-      prm%critDisp(i)
+    + prm%sdot_0 / prm%critDisp(i) &
+      * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%N + &
+         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%N + &
+         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%N)
 
   enddo
   end associate

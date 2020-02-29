@@ -110,6 +110,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
     Ld                                                                                              !< damage velocity gradient
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
+
   integer :: &
     homog, damageOffset, &
     i, k, l, m, n

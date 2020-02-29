@@ -86,6 +86,7 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar
     Tstar
   real(pReal),  intent(in), dimension(3,3) :: &
     Lp
+
   real(pReal),  intent(out) :: &
     TDot, &
     dTDot_dT
