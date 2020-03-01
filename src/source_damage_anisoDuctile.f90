@@ -141,7 +141,7 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
   do i = 1, prm%totalNslip
     sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
     = sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    + plasticState(phase)%slipRate(i,constituent)/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain(i)
+    + plasticState(phase)%slipRate(i,constituent)/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain(i)  ! ToDo: abs for slip rate?
   enddo
   end associate
 
