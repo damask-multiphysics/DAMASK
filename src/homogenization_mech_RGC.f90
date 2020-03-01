@@ -669,7 +669,7 @@ module procedure mech_RGC_updateState
        nDef = 0.0_pReal
        do i = 1,3; do j = 1,3
          do k = 1,3; do l = 1,3
-           nDef(i,j) = nDef(i,j) - nVect(k)*gDef(i,l)*math_civita(j,k,l)                            ! compute the interface mismatch tensor from the jump of deformation gradient
+           nDef(i,j) = nDef(i,j) - nVect(k)*gDef(i,l)*math_LeviCivita(j,k,l)                        ! compute the interface mismatch tensor from the jump of deformation gradient
          enddo; enddo
          nDefNorm = nDefNorm + nDef(i,j)**2.0_pReal                                                 ! compute the norm of the mismatch tensor
        enddo; enddo
@@ -689,7 +689,7 @@ module procedure mech_RGC_updateState
          rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xiAlpha &
                                                 *surfCorr(abs(intFace(1)))/prm%dAlpha(abs(intFace(1))) &
                                                 *cosh(prm%ciAlpha*nDefNorm) &
-                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
+                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_LeviCivita(k,l,j) &
                                                 *tanh(nDefNorm/xSmoo_RGC)
        enddo; enddo;enddo; enddo
      enddo interfaceLoop

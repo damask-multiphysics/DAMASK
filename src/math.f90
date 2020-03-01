@@ -271,31 +271,30 @@ end function math_identity4th
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief permutation tensor e_ijk used for computing cross product of two tensors
+!> @brief permutation tensor e_ijk
 ! e_ijk =  1 if even permutation of ijk
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_civita(i,j,k)
+real(pReal) pure function math_LeviCivita(i,j,k)
 
   integer, intent(in) :: i,j,k
 
-  math_civita = 0.0_pReal
-  if (((i == 1).and.(j == 2).and.(k == 3)) .or. &
-      ((i == 2).and.(j == 3).and.(k == 1)) .or. &
-      ((i == 3).and.(j == 1).and.(k == 2))) math_civita = 1.0_pReal
-  if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
-      ((i == 2).and.(j == 1).and.(k == 3)) .or. &
-      ((i == 3).and.(j == 2).and.(k == 1))) math_civita = -1.0_pReal
+  if     (all([i,j,k] == [1,2,3]) .or. all([i,j,k] == [2,3,1]) .or. all([i,j,k] == [3,1,2])) then
+    math_LeviCivita = +1.0_pReal
+  elseif (all([i,j,k] == [3,2,1]) .or. all([i,j,k] == [2,1,3]) .or. all([i,j,k] == [1,3,2])) then
+    math_LeviCivita = -1.0_pReal
+  else
+    math_LeviCivita =  0.0_pReal
+  endif
 
-end function math_civita
+end function math_LeviCivita
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief kronecker delta function d_ij
 ! d_ij = 1 if i = j
 ! d_ij = 0 otherwise
-! inspired by http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_delta(i,j)
 
@@ -1309,6 +1308,7 @@ subroutine unitTest
     sort_out_  = reshape([-1,-1,  +1,+5,  +5,+6,  +3,-2],[2,4])
 
   integer,     dimension(5) :: range_out_ = [1,2,3,4,5]
+  integer,     dimension(3) :: ijk
 
   real(pReal)                 :: det
   real(pReal), dimension(3)   :: v3_1,v3_2,v3_3,v3_4
@@ -1424,6 +1424,16 @@ subroutine unitTest
 
   if(math_binomial(49,6) /= 13983816) &
     call IO_error(0,ext_msg='math_binomial')
+
+  ijk = cshift([1,2,3],int(r*1.0e2_pReal))
+  if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),+1.0_pReal)) &
+    call IO_error(0,ext_msg='math_LeviCivita(even)')
+  ijk = cshift([3,2,1],int(r*2.0e2_pReal))
+  if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),-1.0_pReal)) &
+    call IO_error(0,ext_msg='math_LeviCivita(odd)')
+  ijk = cshift([2,2,1],int(r*2.0e2_pReal))
+  if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3))))&
+    call IO_error(0,ext_msg='math_LeviCivita')
 
 end subroutine unitTest
 
