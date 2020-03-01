@@ -351,19 +351,14 @@ end function math_inner
 real(pReal) pure function math_mul33xx33(A,B)
 
   real(pReal), dimension(3,3), intent(in) :: A,B
-  integer :: i,j
-  real(pReal), dimension(3,3) ::             C
 
-  do i=1,3; do j=1,3
-    C(i,j) = A(i,j) * B(i,j)
-  enddo; enddo
-  math_mul33xx33 = sum(C)
+  math_mul33xx33 = sum(A*B)
 
 end function math_mul33xx33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 3333x33 = 33 (double contraction --> ijkl *kl = ij)
+!> @brief matrix multiplication 3333x33 = 33 (double contraction --> ijkl * kl)
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx33(A,B)
 
@@ -380,7 +375,7 @@ end function math_mul3333xx33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 3333x3333 = 3333 (ijkl *klmn = ijmn)
+!> @brief matrix multiplication 3333x3333 = 3333 (ijkl * klmn)
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx3333(A,B)
 
@@ -402,8 +397,9 @@ end function math_mul3333xx3333
 pure function math_exp33(A,n)
 
   real(pReal), dimension(3,3), intent(in) :: A
-  integer, intent(in), optional :: n
+  integer,                     intent(in), optional :: n
   real(pReal), dimension(3,3) :: B, math_exp33
+  
   real(pReal) :: invFac
   integer     :: n_,i
 
@@ -433,10 +429,11 @@ end function math_exp33
 !--------------------------------------------------------------------------------------------------
 pure function math_inv33(A)
 
-  real(pReal),dimension(3,3),intent(in)  :: A
-  real(pReal)                :: DetA
-  real(pReal),dimension(3,3) :: math_inv33
-  logical                    :: error
+  real(pReal), dimension(3,3), intent(in) :: A
+  real(pReal), dimension(3,3) :: math_inv33
+  
+  real(pReal) :: DetA
+  logical     :: error
 
   call math_invert33(math_inv33,DetA,error,A)
   if(error) math_inv33 = 0.0_pReal
@@ -451,10 +448,10 @@ end function math_inv33
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(InvA, DetA, error, A)
 
-  logical, intent(out) :: error
-  real(pReal),dimension(3,3),intent(in)  :: A
-  real(pReal),dimension(3,3),intent(out) :: InvA
-  real(pReal), intent(out) :: DetA
+  real(pReal), dimension(3,3), intent(out) :: InvA
+  real(pReal),                 intent(out) :: DetA
+  logical,                     intent(out) :: error
+  real(pReal), dimension(3,3), intent(in)  :: A
 
   InvA(1,1) =  A(2,2) * A(3,3) - A(2,3) * A(3,2)
   InvA(2,1) = -A(2,1) * A(3,3) + A(2,3) * A(3,1)
