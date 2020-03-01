@@ -126,7 +126,7 @@ subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
 
   associate(prm => param(source_damage_isoDuctile_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
-    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain ! ToDo: abs for slip rate?
+    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain
   end associate
 
 end subroutine source_damage_isoDuctile_dotState
