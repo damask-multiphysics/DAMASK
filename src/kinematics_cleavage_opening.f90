@@ -128,7 +128,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
     traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)**2.0_pReal
 
     traction_d = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,1,i))
-    if (abs(traction_d) > tol_math_check + traction_crit) then
+    if (abs(traction_d) > traction_crit + tol_math_check) then
       udotd = sign(1.0_pReal,traction_d)* prm%sdot0 * ((abs(traction_d) - traction_crit)/traction_crit)**prm%n
       Ld = Ld + udotd*prm%cleavage_systems(1:3,1:3,1,i)
       dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%n / (abs(traction_d) - traction_crit)
@@ -138,7 +138,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
     endif
 
     traction_t = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,2,i))
-    if (abs(traction_t) > tol_math_check + traction_crit) then
+    if (abs(traction_t) > traction_crit + tol_math_check) then
       udott = sign(1.0_pReal,traction_t)* prm%sdot0 * ((abs(traction_t) - traction_crit)/traction_crit)**prm%n
       Ld = Ld + udott*prm%cleavage_systems(1:3,1:3,2,i)
       dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%n / (abs(traction_t) - traction_crit)
@@ -148,7 +148,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
     endif
 
     traction_n = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,3,i))
-    if (abs(traction_n) > tol_math_check + traction_crit) then
+    if (abs(traction_n) > traction_crit + tol_math_check) then
       udotn = sign(1.0_pReal,traction_n)* prm%sdot0 * ((abs(traction_n) - traction_crit)/traction_crit)**prm%n
       Ld = Ld + udotn*prm%cleavage_systems(1:3,1:3,3,i)
       dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%n / (abs(traction_n) - traction_crit)
