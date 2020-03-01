@@ -71,6 +71,7 @@ subroutine kinematics_slipplane_opening_init
     prm%sdot0    = config%getFloat('anisoductile_sdot0')
     prm%n        = config%getFloat('anisoductile_ratesensitivity')
     prm%Nslip    = config%getInts('nslip')
+    prm%totalNslip = sum(prm%Nslip)
 
     d = lattice_slip_direction (prm%Nslip,config%getString('lattice_structure'),&
                                 config%getFloat('c/a',defaultVal=0.0_pReal))
