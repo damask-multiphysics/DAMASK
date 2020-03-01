@@ -28,10 +28,10 @@ module kinematics_slipplane_opening
       n
     real(pReal), dimension(:),   allocatable :: &
       critLoad
-    real(pReal), dimension(:,:), allocatable     :: &
-      slip_direction, &
-      slip_normal, &
-      slip_transverse
+    real(pReal), dimension(:,:,:), allocatable     :: &
+      P_d, &
+      P_t, &
+      P_n
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
@@ -49,8 +49,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_slipplane_opening_init
 
-  integer :: Ninstance,p
+  integer :: Ninstance,p,i
   character(len=pStringLen) :: extmsg = ''
+  real(pReal), dimension(:,:), allocatable :: d,n,t
 
   write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'; flush(6)
 
@@ -71,12 +72,19 @@ subroutine kinematics_slipplane_opening_init
     prm%n        = config%getFloat('anisoductile_ratesensitivity')
     prm%Nslip    = config%getInts('nslip')
 
-    prm%slip_direction  = lattice_slip_direction (prm%Nslip,config%getString('lattice_structure'),&
-                                                  config%getFloat('c/a',defaultVal=0.0_pReal))
-    prm%slip_normal     = lattice_slip_normal    (prm%Nslip,config%getString('lattice_structure'),&
-                                                  config%getFloat('c/a',defaultVal=0.0_pReal))
-    prm%slip_transverse = lattice_slip_transverse(prm%Nslip,config%getString('lattice_structure'),&
-                                                  config%getFloat('c/a',defaultVal=0.0_pReal))
+    d = lattice_slip_direction (prm%Nslip,config%getString('lattice_structure'),&
+                                config%getFloat('c/a',defaultVal=0.0_pReal))
+    t = lattice_slip_transverse(prm%Nslip,config%getString('lattice_structure'),&
+                                config%getFloat('c/a',defaultVal=0.0_pReal))
+    n = lattice_slip_normal    (prm%Nslip,config%getString('lattice_structure'),&
+                                config%getFloat('c/a',defaultVal=0.0_pReal))
+    allocate(prm%P_d(3,3,size(d,2)),prm%P_t(3,3,size(t,2)),prm%P_n(3,3,size(n,2)))
+
+    do i=1, size(n,2)
+      prm%P_d(1:3,1:3,i) = math_outer(d(1:3,i), n(1:3,i))
+      prm%P_t(1:3,1:3,i) = math_outer(t(1:3,i), n(1:3,i))
+      prm%P_n(1:3,1:3,i) = math_outer(n(1:3,i), n(1:3,i))
+    enddo
 
     prm%critLoad = config%getFloats('anisoductile_criticalload',requiredSize=size(prm%Nslip))
 
@@ -114,8 +122,6 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
 
-  real(pReal),   dimension(3,3) :: &
-    projection_d, projection_t, projection_n                                                        !< projection modes 3x3 tensor
   integer :: &
     instance, phase, &
     homog, damageOffset, &
@@ -134,13 +140,9 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
   dLd_dTstar = 0.0_pReal
   do i = 1, prm%totalNslip
 
-    projection_d = math_outer(prm%slip_direction(1:3,i), prm%slip_normal(1:3,i))
-    projection_t = math_outer(prm%slip_transverse(1:3,i),prm%slip_normal(1:3,i))
-    projection_n = math_outer(prm%slip_normal(1:3,i),    prm%slip_normal(1:3,i))
-
-    traction_d    = math_mul33xx33(S,projection_d)
-    traction_t    = math_mul33xx33(S,projection_t)
-    traction_n    = math_mul33xx33(S,projection_n)
+    traction_d = math_mul33xx33(S,prm%P_d(3,3,i))
+    traction_t = math_mul33xx33(S,prm%P_t(3,3,i))
+    traction_n = math_mul33xx33(S,prm%P_n(3,3,i))
 
     traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)                                  ! degrading critical load carrying capacity by damage
 
@@ -168,13 +170,15 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
     endif
 
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) + dudotd_dt*projection_d(k,l)*projection_d(m,n) &
-                                                + dudott_dt*projection_t(k,l)*projection_t(m,n) &
-                                                + dudotn_dt*projection_n(k,l)*projection_n(m,n)
+      dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
+                          + dudotd_dt*prm%P_d(k,l,i)*prm%P_d(m,n,i) &
+                          + dudott_dt*prm%P_t(k,l,i)*prm%P_t(m,n,i) &
+                          + dudotn_dt*prm%P_n(k,l,i)*prm%P_n(m,n,i)
 
-    Ld = Ld + udotd*projection_d &
-            + udott*projection_t &
-            + udotn*projection_n
+    Ld = Ld &
+       + udotd*prm%P_d(1:3,1:3,i) &
+       + udott*prm%P_t(1:3,1:3,i) &
+       + udotn*prm%P_n(1:3,1:3,i)
   enddo
 
   end associate
