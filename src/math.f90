@@ -321,7 +321,7 @@ end function math_cross
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief outer product A \otimes B of arbitrary sized vectors A and B
+!> @brief outer product of arbitrary sized vectors (A ⊗ B / i,j)
 !--------------------------------------------------------------------------------------------------
 pure function math_outer(A,B)
 
@@ -337,7 +337,7 @@ end function math_outer
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief outer product A \otimes B of arbitrary sized vectors A and B
+!> @brief inner product of arbitrary sized vectors (A · B / i,i)
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_inner(A,B)
 
@@ -350,7 +350,7 @@ end function math_inner
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief 3x3 tensor double contraction: ij * ij
+!> @brief double contraction of 3x3 matrices (A : B / ij,ij)
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_tensordot(A,B)
 
@@ -362,7 +362,7 @@ end function math_tensordot
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 3333x33 = 33 (double contraction --> ijkl * kl)
+!> @brief matrix double contraction 3333x33 = 33 (ijkl,kl)
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx33(A,B)
 
@@ -379,7 +379,7 @@ end function math_mul3333xx33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 3333x3333 = 3333 (ijkl * klmn)
+!> @brief matrix multiplication 3333x3333 = 3333 (ijkl,klmn)
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx3333(A,B)
 
