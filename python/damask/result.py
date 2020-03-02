@@ -591,51 +591,51 @@ class Result():
 
 
     @staticmethod
-    def _add_eigenvalue(S):
+    def _add_eigenvalue(T_sym):
         return {
-                'data': mechanics.eigenvalues(S['data']),
-                'label': 'lambda({})'.format(S['label']),
+                'data': mechanics.eigenvalues(T_sym['data']),
+                'label': 'lambda({})'.format(T_sym['label']),
                 'meta' : {
-                          'Unit':         S['meta']['Unit'],
-                          'Description': 'Eigenvalues of {} ({})'.format(S['label'],S['meta']['Description']),
+                          'Unit':         T_sym['meta']['Unit'],
+                          'Description': 'Eigenvalues of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
                           'Creator':     'result.py:add_eigenvalues v{}'.format(version)
                          }
                 }
-    def add_eigenvalues(self,S):
+    def add_eigenvalues(self,T_sym):
         """
         Add eigenvalues of symmetric tensor.
 
         Parameters
         ----------
-        S : str
+        T_sym : str
           Label of symmetric tensor dataset.
 
         """
-        self._add_generic_pointwise(self._add_eigenvalue,{'S':S})
+        self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym})
 
 
     @staticmethod
-    def _add_eigenvector(S):
+    def _add_eigenvector(T_sym):
         return {
-                'data': mechanics.eigenvectors(S['data']),
-                'label': 'v({})'.format(S['label']),
+                'data': mechanics.eigenvectors(T_sym['data']),
+                'label': 'v({})'.format(T_sym['label']),
                 'meta' : {
                           'Unit':        '1',
-                          'Description': 'Eigenvectors of {} ({})'.format(S['label'],S['meta']['Description']),
+                          'Description': 'Eigenvectors of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
                           'Creator':     'result.py:add_eigenvectors v{}'.format(version)
                          }
                 }
-    def add_eigenvectors(self,S):
+    def add_eigenvectors(self,T_sym):
         """
         Add eigenvectors of symmetric tensor.
 
         Parameters
         ----------
-        S : str
+        T_sym : str
           Label of symmetric tensor dataset.
 
         """
-        self._add_generic_pointwise(self._add_eigenvector,{'S':S})
+        self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym})
 
 
     @staticmethod
@@ -677,54 +677,54 @@ class Result():
 
 
     @staticmethod
-    def _add_maximum_shear(S):
+    def _add_maximum_shear(T_sym):
         return {
-                'data':  mechanics.maximum_shear(S['data']),
-                'label': 'max_shear({})'.format(S['label']),
+                'data':  mechanics.maximum_shear(T_sym['data']),
+                'label': 'max_shear({})'.format(T_sym['label']),
                 'meta':  {
-                          'Unit':        S['meta']['Unit'],
-                          'Description': 'Maximum shear component of {} ({})'.format(S['label'],S['meta']['Description']),
+                          'Unit':        T_sym['meta']['Unit'],
+                          'Description': 'Maximum shear component of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
                           'Creator':     'result.py:add_maximum_shear v{}'.format(version)
                           }
                  }
-    def add_maximum_shear(self,S):
+    def add_maximum_shear(self,T_sym):
         """
         Add maximum shear components of symmetric tensor.
 
         Parameters
         ----------
-        S : str
+        T_sym : str
           Label of symmetric tensor dataset.
 
         """
-        self._add_generic_pointwise(self._add_maximum_shear,{'S':S})
+        self._add_generic_pointwise(self._add_maximum_shear,{'T_sym':T_sym})
 
 
     @staticmethod
-    def _add_Mises(S):
-        t = 'strain' if S['meta']['Unit'] == '1' else \
+    def _add_Mises(T_sym):
+        t = 'strain' if T_sym['meta']['Unit'] == '1' else \
             'stress'
 
         return {
-                'data':  mechanics.Mises_strain(S['data']) if t=='strain' else mechanics.Mises_stress(S['data']),
-                'label': '{}_vM'.format(S['label']),
+                'data':  mechanics.Mises_strain(T_sym['data']) if t=='strain' else mechanics.Mises_stress(T_sym['data']),
+                'label': '{}_vM'.format(T_sym['label']),
                 'meta':  {
-                          'Unit':        S['meta']['Unit'],
-                          'Description': 'Mises equivalent {} of {} ({})'.format(t,S['label'],S['meta']['Description']),
+                          'Unit':        T_sym['meta']['Unit'],
+                          'Description': 'Mises equivalent {} of {} ({})'.format(t,T_sym['label'],T_sym['meta']['Description']),
                           'Creator':     'result.py:add_Mises v{}'.format(version)
                           }
                 }
-    def add_Mises(self,S):
+    def add_Mises(self,T_sym):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
         Parameters
         ----------
-        S : str
+        T_sym : str
           Label of symmetric tensorial stress or strain dataset.
 
         """
-        self._add_generic_pointwise(self._add_Mises,{'S':S})
+        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym})
 
 
     @staticmethod
