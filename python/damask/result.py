@@ -143,36 +143,6 @@ class Result():
         self._manage_selection('set','increments',self.__time_to_inc(start,end))
 
 
-    def add_by_time(self,start,end):
-        """
-        Add to active increments based on start and end time.
-
-        Parameters
-        ----------
-        start : float
-          start time (included)
-        end : float
-          end time (included)
-
-        """
-        self._manage_selection('add','increments',self.__time_to_inc(start,end))
-
-
-    def del_by_time(self,start,end):
-        """
-        Delete from active increments based on start and end time.
-
-        Parameters
-        ----------
-        start : float
-          start time (included)
-        end : float
-          end time (included)
-
-        """
-        self._manage_selection('del','increments',self.__time_to_inc(start,end))
-
-
     def set_by_increment(self,start,end):
         """
         Set active time increments based on start and end increment.
@@ -189,42 +159,6 @@ class Result():
             self._manage_selection('set','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
         else:
             self._manage_selection('set','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
-
-
-    def add_by_increment(self,start,end):
-        """
-        Add to active time increments based on start and end increment.
-
-        Parameters
-        ----------
-        start : int
-          start increment (included)
-        end : int
-          end increment (included)
-
-        """
-        if self.version_minor >= 4:
-            self._manage_selection('add','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
-        else:
-            self._manage_selection('add','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
-
-
-    def del_by_increment(self,start,end):
-        """
-        Delet from active time increments based on start and end increment.
-
-        Parameters
-        ----------
-        start : int
-          start increment (included)
-        end : int
-          end increment (included)
-
-        """
-        if self.version_minor >= 4:
-            self._manage_selection('del','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
-        else:
-            self._manage_selection('del','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
 
 
     def iter_selection(self,what):
@@ -371,7 +305,7 @@ class Result():
         """Return the location of all active datasets with given label."""
         path = []
         with h5py.File(self.fname,'r') as f:
-          for i in self.iter_visible('increments'):
+          for i in self.iter_selection('increments'):
             k = '/'.join([i,'geometry',label])
             try:
               f[k]
@@ -379,8 +313,8 @@ class Result():
             except KeyError as e:
               pass
             for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-              for oo in self.iter_visible(o):
-                for pp in self.iter_visible(p):
+              for oo in self.iter_selection(o):
+                for pp in self.iter_selection(p):
                   k = '/'.join([i,o[:-1],oo,pp,label])
                   try:
                     f[k]
