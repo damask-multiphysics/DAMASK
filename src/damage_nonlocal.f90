@@ -42,16 +42,14 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_init
 
-  integer :: maxNinstance,NofMyHomog,h
+  integer :: Ninstance,NofMyHomog,h
 
   write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
 
-  maxNinstance = count(damage_type == DAMAGE_nonlocal_ID)
-  if (maxNinstance == 0) return
+  Ninstance = count(damage_type == DAMAGE_nonlocal_ID)
+  allocate(param(Ninstance))
 
-  allocate(param(maxNinstance))
-
-  do h = 1, size(damage_type)
+  do h = 1, size(config_homogenization)
     if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
     associate(prm => param(damage_typeInstance(h)),config => config_homogenization(h))
 
