@@ -17,11 +17,11 @@ from . import Orientation
 from . import Environment
 from . import grid_filters
 
-class DADF5():
+class Result():
     """
     Read and write to DADF5 files.
 
-    DADF5 files contain DAMASK results.
+    DADF5 (DAKMASK HDF5) files contain DAMASK results.
     """
 
     def __init__(self,fname):
@@ -454,7 +454,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
-                          'Creator':     'dadf5.py:add_abs v{}'.format(version)
+                          'Creator':     'result.py:add_abs v{}'.format(version)
                           }
                  }
     def add_absolute(self,x):
@@ -482,7 +482,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        kwargs['unit'],
                           'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
-                          'Creator':     'dadf5.py:add_calculation v{}'.format(version)
+                          'Creator':     'result.py:add_calculation v{}'.format(version)
                           }
                  }
     def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
@@ -521,7 +521,7 @@ class DADF5():
                           'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],
                                                                                          P['meta']['Description'])+\
                                          'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'dadf5.py:add_Cauchy v{}'.format(version)
+                          'Creator':     'result.py:add_Cauchy v{}'.format(version)
                           }
                 }
     def add_Cauchy(self,P='P',F='F'):
@@ -547,7 +547,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Determinant of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'dadf5.py:add_determinant v{}'.format(version)
+                          'Creator':     'result.py:add_determinant v{}'.format(version)
                           }
                 }
     def add_determinant(self,T):
@@ -574,7 +574,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Deviator of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'dadf5.py:add_deviator v{}'.format(version)
+                          'Creator':     'result.py:add_deviator v{}'.format(version)
                           }
                  }
     def add_deviator(self,T):
@@ -598,7 +598,7 @@ class DADF5():
                 'meta' : {
                           'Unit':         S['meta']['Unit'],
                           'Description': 'Eigenvalues of {} ({})'.format(S['label'],S['meta']['Description']),
-                          'Creator':     'dadf5.py:add_eigenvalues v{}'.format(version)
+                          'Creator':     'result.py:add_eigenvalues v{}'.format(version)
                          }
                 }
     def add_eigenvalues(self,S):
@@ -622,7 +622,7 @@ class DADF5():
                 'meta' : {
                           'Unit':        '1',
                           'Description': 'Eigenvectors of {} ({})'.format(S['label'],S['meta']['Description']),
-                          'Creator':     'dadf5.py:add_eigenvectors v{}'.format(version)
+                          'Creator':     'result.py:add_eigenvectors v{}'.format(version)
                          }
                 }
     def add_eigenvectors(self,S):
@@ -658,7 +658,7 @@ class DADF5():
                           'Unit':        'RGB (8bit)',
                           'Lattice':     lattice,
                           'Description': 'Inverse Pole Figure (IPF) colors for direction/plane [{} {} {})'.format(*m),
-                          'Creator':     'dadf5.py:add_IPFcolor v{}'.format(version)
+                          'Creator':     'result.py:add_IPFcolor v{}'.format(version)
                          }
                }
     def add_IPFcolor(self,q,l):
@@ -684,7 +684,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        S['meta']['Unit'],
                           'Description': 'Maximum shear component of {} ({})'.format(S['label'],S['meta']['Description']),
-                          'Creator':     'dadf5.py:add_maximum_shear v{}'.format(version)
+                          'Creator':     'result.py:add_maximum_shear v{}'.format(version)
                           }
                  }
     def add_maximum_shear(self,S):
@@ -711,7 +711,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        S['meta']['Unit'],
                           'Description': 'Mises equivalent {} of {} ({})'.format(t,S['label'],S['meta']['Description']),
-                          'Creator':     'dadf5.py:add_Mises v{}'.format(version)
+                          'Creator':     'result.py:add_Mises v{}'.format(version)
                           }
                 }
     def add_Mises(self,S):
@@ -747,7 +747,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': '{}-norm of {} {} ({})'.format(o,t,x['label'],x['meta']['Description']),
-                          'Creator':     'dadf5.py:add_norm v{}'.format(version)
+                          'Creator':     'result.py:add_norm v{}'.format(version)
                           }
                  }
     def add_norm(self,x,ord=None):
@@ -775,7 +775,7 @@ class DADF5():
                           'Description': '2. Kirchhoff stress calculated from {} ({}) '.format(P['label'],
                                                                                                P['meta']['Description'])+\
                                          'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'dadf5.py:add_PK2 v{}'.format(version)
+                          'Creator':     'result.py:add_PK2 v{}'.format(version)
                           }
                 }
     def add_PK2(self,P='P',F='F'):
@@ -813,7 +813,7 @@ class DADF5():
                           'Unit': '1',
                           'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
                                          .format('Polar' if polar else 'Cartesian'),
-                          'Creator' : 'dadf5.py:add_pole v{}'.format(version)
+                          'Creator' : 'result.py:add_pole v{}'.format(version)
                          }
                }
     def add_pole(self,q,p,polar=False):
@@ -843,7 +843,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': 'Rotational part of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'dadf5.py:add_rotational_part v{}'.format(version)
+                          'Creator':     'result.py:add_rotational_part v{}'.format(version)
                           }
                  }
     def add_rotational_part(self,F):
@@ -870,7 +870,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Spherical component of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'dadf5.py:add_spherical v{}'.format(version)
+                          'Creator':     'result.py:add_spherical v{}'.format(version)
                           }
                  }
     def add_spherical(self,T):
@@ -897,7 +897,7 @@ class DADF5():
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': 'Strain tensor of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'dadf5.py:add_strain_tensor v{}'.format(version)
+                          'Creator':     'result.py:add_strain_tensor v{}'.format(version)
                           }
                  }
     def add_strain_tensor(self,F='F',t='V',m=0.0):
@@ -932,7 +932,7 @@ class DADF5():
                           'Unit':        F['meta']['Unit'],
                           'Description': '{} stretch tensor of {} ({})'.format('Left' if t == 'V' else 'Right',
                                                                                F['label'],F['meta']['Description']),
-                          'Creator':     'dadf5.py:add_stretch_tensor v{}'.format(version)
+                          'Creator':     'result.py:add_stretch_tensor v{}'.format(version)
                           }
                  }
     def add_stretch_tensor(self,F='F',t='V'):
