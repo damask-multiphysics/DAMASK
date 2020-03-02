@@ -142,13 +142,6 @@ Pre_General:
     - master
     - release
 
-grid_geometryPacking:
-  stage: preprocessing
-  script: grid_geometryPacking/test.py
-  except:
-    - master
-    - release
-
 ###################################################################################################
 Post_AverageDown:
   stage: postprocessing
