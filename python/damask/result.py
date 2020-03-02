@@ -83,47 +83,48 @@ class Result():
         self.fname = fname
 
 
-    def __manage_visible(self,datasets,what,action):
+    def _manage_selection(self,action,what,datasets):
         """
         Manages the visibility of the groups.
 
         Parameters
         ----------
+        action : str
+          select from 'set', 'add', and 'del'
+        what : str
+          attribute to change (must be in self.selection)
         datasets : list of str or Boolean
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
-        what : str
-          attribute to change (must be in self.selection)
-        action : str
-          select from 'set', 'add', and 'del'
+
 
         """
         # allow True/False and string arguments
         if datasets is True:
-          datasets = ['*']
+            datasets = ['*']
         elif datasets is False:
-          datasets = []
+            datasets = []
         choice = [datasets] if isinstance(datasets,str) else datasets
 
         valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
         existing = set(self.selection[what])
 
         if   action == 'set':
-          self.selection[what] = valid
+            self.selection[what] = valid
         elif action == 'add':
-          add=existing.union(valid)
-          add_sorted=sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
-          self.selection[what] = add_sorted
+            add=existing.union(valid)
+            add_sorted=sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            self.selection[what] = add_sorted
         elif action == 'del':
-          diff=existing.difference(valid)
-          diff_sorted=sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
-          self.selection[what] = diff_sorted
+            diff=existing.difference(valid)
+            diff_sorted=sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            self.selection[what] = diff_sorted
 
     def __time_to_inc(self,start,end):
         selected = []
         for i,time in enumerate(self.times):
-          if start <= time <= end:
-            selected.append(self.increments[i])
+            if start <= time <= end:
+                selected.append(self.increments[i])
         return selected
 
 
@@ -139,7 +140,7 @@ class Result():
           end time (included)
 
         """
-        self.__manage_visible(self.__time_to_inc(start,end),'increments','set')
+        self._manage_selection('set','increments',self.__time_to_inc(start,end))
 
 
     def add_by_time(self,start,end):
@@ -154,7 +155,7 @@ class Result():
           end time (included)
 
         """
-        self.__manage_visible(self.__time_to_inc(start,end),'increments','add')
+        self._manage_selection('add','increments',self.__time_to_inc(start,end))
 
 
     def del_by_time(self,start,end):
@@ -169,7 +170,7 @@ class Result():
           end time (included)
 
         """
-        self.__manage_visible(self.__time_to_inc(start,end),'increments','del')
+        self._manage_selection('del','increments',self.__time_to_inc(start,end))
 
 
     def set_by_increment(self,start,end):
@@ -185,9 +186,9 @@ class Result():
 
         """
         if self.version_minor >= 4:
-          self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','set')
+            self._manage_selection('set','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
         else:
-          self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','set')
+            self._manage_selection('set','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
 
 
     def add_by_increment(self,start,end):
@@ -203,9 +204,9 @@ class Result():
 
         """
         if self.version_minor >= 4:
-          self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','add')
+            self._manage_selection('add','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
         else:
-          self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','add')
+            self._manage_selection('add','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
 
 
     def del_by_increment(self,start,end):
@@ -221,80 +222,84 @@ class Result():
 
         """
         if self.version_minor >= 4:
-          self.__manage_visible([    'inc{}'.format(i) for i in range(start,end+1)],'increments','del')
+            self._manage_selection('del','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
         else:
-          self.__manage_visible(['inc{:05d}'.format(i) for i in range(start,end+1)],'increments','del')
+            self._manage_selection('del','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
 
 
-    def iter_visible(self,what):
+    def iter_selection(self,what):
         """
-        Iterate over visible items by setting each one visible.
+        Iterate over selection items by setting each one selected.
 
         Parameters
         ----------
         what : str
-          attribute to change (must be in self.selection)
+          attribute to change (must be from self.selection)
 
         """
         datasets = self.selection[what]
         last_datasets = datasets.copy()
         for dataset in datasets:
           if last_datasets != self.selection[what]:
-            self.__manage_visible(datasets,what,'set')
+            self._manage_selection('set',what,datasets)
             raise Exception
-          self.__manage_visible(dataset,what,'set')
+          self._manage_selection('set',what,datasets)
           last_datasets = self.selection[what]
           yield dataset
-        self.__manage_visible(datasets,what,'set')
+        self._manage_selection('set',what,datasets)
 
 
-    def set_visible(self,what,datasets):
+    def pick(self,what,datasets):
         """
-        Set active groups.
+        Set selection.
 
         Parameters
         ----------
+        what : str
+          attribute to change (must be from self.selection)
         datasets : list of str or Boolean
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
-        what : str
-          attribute to change (must be in self.selection)
 
         """
-        self.__manage_visible(datasets,what,'set')
+        self._manage_selection('set',what,datasets)
 
 
-    def add_visible(self,what,datasets):
+    def pick_more(self,what,datasets):
         """
-        Add to active groups.
+        Add to selection.
 
         Parameters
         ----------
+        what : str
+          attribute to change (must be from self.selection)
         datasets : list of str or Boolean
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
-        what : str
-          attribute to change (must be in self.selection)
 
         """
-        self.__manage_visible(datasets,what,'add')
+        self._manage_selection('add',what,datasets)
 
 
-    def del_visible(self,what,datasets):
+    def pick_less(self,what,datasets):
         """
-        Delete from active groupe.
+        Delete from selection.
 
         Parameters
         ----------
+        what : str
+          attribute to change (must be from self.selection)
         datasets : list of str or Boolean
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
-        what : str
-          attribute to change (must be in self.selection)
 
         """
-        self.__manage_visible(datasets,what,'del')
+        self._manage_selection('del',what,datasets)
 
+####################################################################
+# for transition compatibility
+    iter_visible = iter_selection
+####################################################################
 
     def groups_with_datasets(self,datasets):
         """
@@ -1086,7 +1091,7 @@ class Result():
           vtk_data = []
 
           materialpoints_backup = self.selection['materialpoints'].copy()
-          self.set_visible('materialpoints',False)
+          self.pick('materialpoints',False)
           for label in (labels if isinstance(labels,list) else [labels]):
             for p in self.iter_visible('con_physics'):
               if p != 'generic':
@@ -1112,10 +1117,10 @@ class Result():
                   vtk_data[-1].SetName(dset_name)
                   vtk_geom.GetCellData().AddArray(vtk_data[-1])
 
-          self.set_visible('materialpoints',materialpoints_backup)
+          self.pick('materialpoints',materialpoints_backup)
 
           constituents_backup = self.selection['constituents'].copy()
-          self.set_visible('constituents',False)
+          self.pick('constituents',False)
           for label in (labels if isinstance(labels,list) else [labels]):
             for p in self.iter_visible('mat_physics'):
               if p != 'generic':
@@ -1137,7 +1142,7 @@ class Result():
                   vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
                   vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
                   vtk_geom.GetCellData().AddArray(vtk_data[-1])
-          self.set_visible('constituents',constituents_backup)
+          self.pick('constituents',constituents_backup)
 
           if mode.lower()=='cell':
               writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
