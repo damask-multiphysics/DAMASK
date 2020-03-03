@@ -177,7 +177,7 @@ class Result():
             if last_datasets != self.selection[what]:
                 self._manage_selection('set',what,datasets)
                 raise Exception
-            self._manage_selection('set',what,datasets)
+            self._manage_selection('set',what,dataset)
             last_datasets = self.selection[what]
             yield dataset
         self._manage_selection('set',what,datasets)
