@@ -155,46 +155,6 @@ class Result():
         return selected
 
 
-    def __time_to_inc(self,start,end):
-        selected = []
-        for i,time in enumerate(self.times):
-            if start <= time <= end:
-                selected.append(self.increments[i])
-        return selected
-
-
-    def set_by_time(self,start,end):
-        """
-        Set active increments based on start and end time.
-
-        Parameters
-        ----------
-        start : float
-          start time (included)
-        end : float
-          end time (included)
-
-        """
-        self._manage_selection('set','increments',self.__time_to_inc(start,end))
-
-
-    def set_by_increment(self,start,end):
-        """
-        Set active time increments based on start and end increment.
-
-        Parameters
-        ----------
-        start : int
-          start increment (included)
-        end : int
-          end increment (included)
-
-        """
-        if self.version_minor >= 4:
-            self._manage_selection('set','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
-        else:
-            self._manage_selection('set','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
-
 
     def iter_selection(self,what):
         """
@@ -265,10 +225,6 @@ class Result():
         """
         self._manage_selection('del',what,datasets)
 
-####################################################################
-# for transition compatibility
-    iter_visible = iter_selection
-####################################################################
 
     def groups_with_datasets(self,datasets):
         """
@@ -1136,3 +1092,49 @@ class Result():
           writer.SetInputData(vtk_geom)
 
           writer.Write()
+
+
+###################################################################################################
+# BEGIN DEPRECATED
+    iter_visible = iter_selection
+  
+
+    def _time_to_inc(self,start,end):
+        selected = []
+        for i,time in enumerate(self.times):
+            if start <= time <= end:
+                selected.append(self.increments[i])
+        return selected
+
+
+    def set_by_time(self,start,end):
+        """
+        Set active increments based on start and end time.
+
+        Parameters
+        ----------
+        start : float
+          start time (included)
+        end : float
+          end time (included)
+
+        """
+        self._manage_selection('set','increments',self._time_to_inc(start,end))
+
+
+    def set_by_increment(self,start,end):
+        """
+        Set active time increments based on start and end increment.
+
+        Parameters
+        ----------
+        start : int
+          start increment (included)
+        end : int
+          end increment (included)
+
+        """
+        if self.version_minor >= 4:
+            self._manage_selection('set','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
+        else:
+            self._manage_selection('set','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])
