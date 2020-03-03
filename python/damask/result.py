@@ -103,7 +103,25 @@ class Result():
             datasets = ['*']
         elif datasets is False:
             datasets = []
-        choice = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else [datasets]
+        choice = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
+                [datasets]
+
+        if   what == 'increments':
+            choice = [c if isinstance(c,str) and c.startswith('inc') else 
+                      'inc{}'.format(c) for c in choice]
+        elif what == 'times':
+            what = 'increments'
+            if choice == ['*']:
+                choice = self.increments
+            else:
+                iterator = map(float,choice)
+                choice = []
+                for c in iterator:
+                    idx=np.searchsorted(self.times,c)
+                    if   np.isclose(c,self.times[idx]):
+                        choice.append(self.increments[idx])
+                    elif np.isclose(c,self.times[idx+1]):
+                        choice.append(self.increments[idx+1])
 
         valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
         existing = set(self.selection[what])
@@ -282,8 +300,8 @@ class Result():
         """
         if datasets is False: return []
 
-        sets = datasets if isinstance(datasets,bool) or (hasattr(datasets,'__iter__') and not isinstance(datasets,str)) \
-          else [datasets]
+        sets = datasets if isinstance(datasets,bool) or (hasattr(datasets,'__iter__') and not isinstance(datasets,str)) else \
+              [datasets]
 
         groups = []
 
