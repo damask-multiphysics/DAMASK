@@ -107,7 +107,7 @@ class Result():
                 [datasets]
 
         if   what == 'increments':
-            choice = [c if isinstance(c,str) and c.startswith('inc') else 
+            choice = [c if isinstance(c,str) and c.startswith('inc') else
                       'inc{}'.format(c) for c in choice]
         elif what == 'times':
             what = 'increments'
@@ -306,16 +306,16 @@ class Result():
         groups = []
 
         with h5py.File(self.fname,'r') as f:
-          for i in self.iter_selection('increments'):
-            for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-              for oo in self.iter_selection(o):
-                for pp in self.iter_selection(p):
-                  group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
-                  if sets is True:
-                    groups.append(group)
-                  else:
-                    match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-                    if len(set(match)) == len(sets) : groups.append(group)
+            for i in self.iter_selection('increments'):
+                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                  for oo in self.iter_selection(o):
+                    for pp in self.iter_selection(p):
+                      group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
+                      if sets is True:
+                        groups.append(group)
+                      else:
+                        match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+                        if len(set(match)) == len(sets) : groups.append(group)
         return groups
 
 
@@ -323,21 +323,21 @@ class Result():
         """Return information on all active datasets in the file."""
         message = ''
         with h5py.File(self.fname,'r') as f:
-          for i in self.iter_selection('increments'):
-            message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
-            for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-              for oo in self.iter_selection(o):
-                message+='  {}\n'.format(oo)
-                for pp in self.iter_selection(p):
-                  message+='    {}\n'.format(pp)
-                  group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
-                  for d in f[group].keys():
-                    try:
-                      dataset = f['/'.join([group,d])]
-                      message+='      {} / ({}): {}\n'.\
-                                format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
-                    except KeyError:
-                      pass
+            for i in self.iter_selection('increments'):
+                message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
+                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                  for oo in self.iter_selection(o):
+                    message+='  {}\n'.format(oo)
+                    for pp in self.iter_selection(p):
+                      message+='    {}\n'.format(pp)
+                      group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
+                      for d in f[group].keys():
+                        try:
+                          dataset = f['/'.join([group,d])]
+                          message+='      {} / ({}): {}\n'.\
+                                    format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
+                        except KeyError:
+                          pass
         return message
 
 
@@ -345,36 +345,36 @@ class Result():
         """Return the location of all active datasets with given label."""
         path = []
         with h5py.File(self.fname,'r') as f:
-          for i in self.iter_selection('increments'):
-            k = '/'.join([i,'geometry',label])
-            try:
-              f[k]
-              path.append(k)
-            except KeyError as e:
-              pass
-            for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-              for oo in self.iter_selection(o):
-                for pp in self.iter_selection(p):
-                  k = '/'.join([i,o[:-1],oo,pp,label])
-                  try:
+            for i in self.iter_selection('increments'):
+                k = '/'.join([i,'geometry',label])
+                try:
                     f[k]
                     path.append(k)
-                  except KeyError as e:
+                except KeyError as e:
                     pass
+                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                    for oo in self.iter_selection(o):
+                        for pp in self.iter_selection(p):
+                            k = '/'.join([i,o[:-1],oo,pp,label])
+                            try:
+                                f[k]
+                                path.append(k)
+                            except KeyError as e:
+                                pass
         return path
 
 
     def get_constituent_ID(self,c=0):
         """Pointwise constituent ID."""
         with h5py.File(self.fname,'r') as f:
-          names = f['/mapping/cellResults/constituent']['Name'][:,c].astype('str')
+            names = f['/mapping/cellResults/constituent']['Name'][:,c].astype('str')
         return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
 
 
     def get_crystal_structure(self):                                                                # ToDo: extension to multi constituents/phase
         """Info about the crystal structure."""
         with h5py.File(self.fname,'r') as f:
-          return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')      # np.bytes_ to string
+            return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
 
 
     def read_dataset(self,path,c=0,plain=False):
@@ -388,32 +388,32 @@ class Result():
           if len(shape) == 1: shape = shape +(1,)
           dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
           for pa in path:
-            label = pa.split('/')[2]
+              label = pa.split('/')[2]
 
-            if (pa.split('/')[1] == 'geometry'):
-              dataset = np.array(f[pa])
-              continue
+              if (pa.split('/')[1] == 'geometry'):
+                  dataset = np.array(f[pa])
+                  continue
 
-            p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
-            if len(p)>0:
-              u = (f['mapping/cellResults/constituent']['Position'][p,c])
-              a = np.array(f[pa])
-              if len(a.shape) == 1:
-                a=a.reshape([a.shape[0],1])
-              dataset[p,:] = a[u,:]
+              p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+              if len(p)>0:
+                  u = (f['mapping/cellResults/constituent']['Position'][p,c])
+                  a = np.array(f[pa])
+                  if len(a.shape) == 1:
+                      a=a.reshape([a.shape[0],1])
+                  dataset[p,:] = a[u,:]
 
-            p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
-            if len(p)>0:
-              u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
-              a = np.array(f[pa])
-              if len(a.shape) == 1:
-                a=a.reshape([a.shape[0],1])
-              dataset[p,:] = a[u,:]
+              p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+              if len(p)>0:
+                  u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
+                  a = np.array(f[pa])
+                  if len(a.shape) == 1:
+                      a=a.reshape([a.shape[0],1])
+                  dataset[p,:] = a[u,:]
 
         if plain and dataset.dtype.names is not None:
-          return dataset.view(('float64',len(dataset.dtype.names)))
+            return dataset.view(('float64',len(dataset.dtype.names)))
         else:
-          return dataset
+            return dataset
 
 
     def cell_coordinates(self):
@@ -1004,47 +1004,44 @@ class Result():
         if mode.lower()=='cell':
 
           if self.structured:
+              coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
+              for dim in [0,1,2]:
+                  for c in np.linspace(0,self.size[dim],1+self.grid[dim]):
+                      coordArray[dim].InsertNextValue(c)
 
-            coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
-            for dim in [0,1,2]:
-              for c in np.linspace(0,self.size[dim],1+self.grid[dim]):
-                coordArray[dim].InsertNextValue(c)
-
-            vtk_geom = vtk.vtkRectilinearGrid()
-            vtk_geom.SetDimensions(*(self.grid+1))
-            vtk_geom.SetXCoordinates(coordArray[0])
-            vtk_geom.SetYCoordinates(coordArray[1])
-            vtk_geom.SetZCoordinates(coordArray[2])
-
+              vtk_geom = vtk.vtkRectilinearGrid()
+              vtk_geom.SetDimensions(*(self.grid+1))
+              vtk_geom.SetXCoordinates(coordArray[0])
+              vtk_geom.SetYCoordinates(coordArray[1])
+              vtk_geom.SetZCoordinates(coordArray[2])
           else:
+              nodes = vtk.vtkPoints()
+              with h5py.File(self.fname,'r') as f:
+                  nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
 
-            nodes = vtk.vtkPoints()
-            with h5py.File(self.fname,'r') as f:
-              nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
+                  vtk_geom = vtk.vtkUnstructuredGrid()
+                  vtk_geom.SetPoints(nodes)
+                  vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
 
-              vtk_geom = vtk.vtkUnstructuredGrid()
-              vtk_geom.SetPoints(nodes)
-              vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
+                  if self.version_major == 0 and self.version_minor <= 5:
+                      vtk_type = vtk.VTK_HEXAHEDRON
+                      n_nodes = 8
+                  else:
+                      if   f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TRIANGLE':
+                          vtk_type = vtk.VTK_TRIANGLE
+                          n_nodes = 3
+                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'QUAD':
+                          vtk_type = vtk.VTK_QUAD
+                          n_nodes = 4
+                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TETRA':                        # not tested
+                          vtk_type = vtk.VTK_TETRA
+                          n_nodes = 4
+                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'HEXAHEDRON':
+                          vtk_type = vtk.VTK_HEXAHEDRON
+                          n_nodes = 8
 
-              if self.version_major == 0 and self.version_minor <= 5:
-                vtk_type = vtk.VTK_HEXAHEDRON
-                n_nodes = 8
-              else:
-                if   f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TRIANGLE':
-                  vtk_type = vtk.VTK_TRIANGLE
-                  n_nodes = 3
-                elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'QUAD':
-                  vtk_type = vtk.VTK_QUAD
-                  n_nodes = 4
-                elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TETRA':                                  # not tested
-                  vtk_type = vtk.VTK_TETRA
-                  n_nodes = 4
-                elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'HEXAHEDRON':
-                  vtk_type = vtk.VTK_HEXAHEDRON
-                  n_nodes = 8
-
-              for i in f['/geometry/T_c']:
-                vtk_geom.InsertNextCell(vtk_type,n_nodes,i-1)
+                  for i in f['/geometry/T_c']:
+                      vtk_geom.InsertNextCell(vtk_type,n_nodes,i-1)
 
         elif mode.lower()=='point':
           Points   = vtk.vtkPoints()
