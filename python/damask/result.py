@@ -92,11 +92,10 @@ class Result():
         action : str
           select from 'set', 'add', and 'del'
         what : str
-          attribute to change (must be in self.selection)
+          attribute to change (must be from self.selection)
         datasets : list of str or Boolean
           name of datasets as list, supports ? and * wildcards.
           True is equivalent to [*], False is equivalent to []
-
 
         """
         # allow True/False and string arguments
@@ -104,7 +103,7 @@ class Result():
             datasets = ['*']
         elif datasets is False:
             datasets = []
-        choice = [datasets] if isinstance(datasets,str) else datasets
+        choice = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else [datasets]
 
         valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
         existing = set(self.selection[what])
@@ -119,6 +118,24 @@ class Result():
             diff=existing.difference(valid)
             diff_sorted=sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
             self.selection[what] = diff_sorted
+
+
+    def incs_in_range(self,start,end):
+        selected = []
+        for i,inc in enumerate([int(i[3:]) for i in self.increments]):
+            s,e = map(lambda x: int(x[3:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
+            if s <= inc <= e:
+                selected.append(self.increments[i])
+        return selected
+
+
+    def times_in_range(self,start,end):
+        selected = []
+        for i,time in enumerate(self.times):
+            if start <= time <= end:
+                selected.append(self.increments[i])
+        return selected
+
 
     def __time_to_inc(self,start,end):
         selected = []
@@ -237,17 +254,20 @@ class Result():
 
     def groups_with_datasets(self,datasets):
         """
-        Get groups that contain all requested datasets.
+        Return groups that contain all requested datasets.
 
-        Only groups within inc?????/constituent/*_*/* inc?????/materialpoint/*_*/*
-        are considered as they contain the data.
+        Only groups within
+          - inc?????/constituent/*_*/*
+          - inc?????/materialpoint/*_*/*
+          - inc?????/geometry/*
+        are considered as they contain user-relevant data.
         Single strings will be treated as list with one entry.
 
         Wild card matching is allowed, but the number of arguments need to fit.
 
         Parameters
         ----------
-          datasets : iterable or str or boolean
+          datasets : iterable or str or Boolean
 
         Examples
         --------
@@ -261,15 +281,17 @@ class Result():
 
         """
         if datasets is False: return []
-        sets = [datasets] if isinstance(datasets,str) else datasets
+
+        sets = datasets if isinstance(datasets,bool) or (hasattr(datasets,'__iter__') and not isinstance(datasets,str)) \
+          else [datasets]
 
         groups = []
 
         with h5py.File(self.fname,'r') as f:
-          for i in self.iter_visible('increments'):
+          for i in self.iter_selection('increments'):
             for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-              for oo in self.iter_visible(o):
-                for pp in self.iter_visible(p):
+              for oo in self.iter_selection(o):
+                for pp in self.iter_selection(p):
                   group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
                   if sets is True:
                     groups.append(group)
@@ -283,12 +305,12 @@ class Result():
         """Return information on all active datasets in the file."""
         message = ''
         with h5py.File(self.fname,'r') as f:
-          for i in self.iter_visible('increments'):
+          for i in self.iter_selection('increments'):
             message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
             for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-              for oo in self.iter_visible(o):
+              for oo in self.iter_selection(o):
                 message+='  {}\n'.format(oo)
-                for pp in self.iter_visible(p):
+                for pp in self.iter_selection(p):
                   message+='    {}\n'.format(pp)
                   group = '/'.join([i,o[:-1],oo,pp])                              # o[:-1]: plural/singular issue
                   for d in f[group].keys():
@@ -1021,15 +1043,15 @@ class Result():
 
         N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
 
-        for i,inc in enumerate(self.iter_visible('increments')):
+        for i,inc in enumerate(self.iter_selection('increments')):
           vtk_data = []
 
           materialpoints_backup = self.selection['materialpoints'].copy()
           self.pick('materialpoints',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iter_visible('con_physics'):
+            for p in self.iter_selection('con_physics'):
               if p != 'generic':
-                  for c in self.iter_visible('constituents'):
+                  for c in self.iter_selection('constituents'):
                       x = self.get_dataset_location(label)
                       if len(x) == 0:
                           continue
@@ -1056,9 +1078,9 @@ class Result():
           constituents_backup = self.selection['constituents'].copy()
           self.pick('constituents',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iter_visible('mat_physics'):
+            for p in self.iter_selection('mat_physics'):
               if p != 'generic':
-                  for m in self.iter_visible('materialpoints'):
+                  for m in self.iter_selection('materialpoints'):
                       x = self.get_dataset_location(label)
                       if len(x) == 0:
                           continue
