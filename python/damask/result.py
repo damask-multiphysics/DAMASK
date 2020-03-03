@@ -919,8 +919,7 @@ class Result():
           Arguments parsed to func.
 
         """
-        N_threads = int(Environment().options['DAMASK_NUM_THREADS'])
-        pool = multiprocessing.Pool(N_threads)
+        pool = multiprocessing.Pool(int(Environment().options['DAMASK_NUM_THREADS']))
         lock = multiprocessing.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
@@ -1097,7 +1096,7 @@ class Result():
 ###################################################################################################
 # BEGIN DEPRECATED
     iter_visible = iter_selection
-  
+
 
     def _time_to_inc(self,start,end):
         selected = []
