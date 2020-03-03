@@ -64,6 +64,14 @@ class ASCIItable():
       return str(string)
 
 # ------------------------------------------------------------------
+  def _quote(self,
+             what):
+    """Quote empty or white space-containing output."""
+    return '{quote}{content}{quote}'.format(
+             quote   = ('"' if str(what)=='' or re.search(r"\s",str(what)) else ''),
+             content = what)
+
+# ------------------------------------------------------------------
   def close(self,
             dismiss = False):
     if self.__IO__['in'] != sys.stdin: self.__IO__['in'].close()
@@ -153,7 +161,7 @@ class ASCIItable():
     head = ['{}\theader'.format(len(self.info)+self.__IO__['labeled'])] if header else []
     head.append(self.info)
     if self.__IO__['labeled']:
-      head.append('\t'.join(self.tags))
+      head.append('\t'.join(map(self._quote,self.tags)))
       if len(self.tags) == 0: raise ValueError('no labels present.')
 
     return self.output_write(head)
@@ -422,9 +430,9 @@ class ASCIItable():
     if len(self.data) == 0: return True
 
     if isinstance(self.data[0],list):
-      return self.output_write([delimiter.join(items) for items in self.data])
+      return self.output_write([delimiter.join(map(self._quote,items)) for items in self.data])
     else:
-      return self.output_write( delimiter.join(self.data))
+      return self.output_write( delimiter.join(map(self._quote,self.data)))
 
 # ------------------------------------------------------------------
   def data_writeArray(self,
