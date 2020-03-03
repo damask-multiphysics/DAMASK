@@ -67,12 +67,12 @@ class Result():
           self.con_physics  = []
           for c in self.constituents:
               self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
-          self.con_physics = list(set(self.con_physics))                                                # make unique
+          self.con_physics = list(set(self.con_physics))                                            # make unique
 
           self.mat_physics = []
           for m in self.materialpoints:
               self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
-          self.mat_physics = list(set(self.mat_physics))                                                # make unique
+          self.mat_physics = list(set(self.mat_physics))                                            # make unique
 
         self.selection= {'increments':     self.increments,
                          'constituents':   self.constituents,
@@ -174,12 +174,12 @@ class Result():
         datasets = self.selection[what]
         last_datasets = datasets.copy()
         for dataset in datasets:
-          if last_datasets != self.selection[what]:
+            if last_datasets != self.selection[what]:
+                self._manage_selection('set',what,datasets)
+                raise Exception
             self._manage_selection('set',what,datasets)
-            raise Exception
-          self._manage_selection('set',what,datasets)
-          last_datasets = self.selection[what]
-          yield dataset
+            last_datasets = self.selection[what]
+            yield dataset
         self._manage_selection('set',what,datasets)
 
 
