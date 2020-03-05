@@ -57,9 +57,7 @@ module crystallite
     crystallite_Li0, &                                                                              !< intermediate velocitiy grad at start of FE inc
     crystallite_partionedLi0                                                                        !< intermediate velocity grad at start of homog inc
   real(pReal),                dimension(:,:,:,:,:),    allocatable :: &
-    crystallite_invFp, &                                                                            !< inverse of current plastic def grad (end of converged time step)
     crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
-    crystallite_invFi, &                                                                            !< inverse of current intermediate def grad (end of converged time step)
     crystallite_subFi0,&                                                                            !< intermediate def grad at start of crystallite inc
     crystallite_subF,  &                                                                            !< def grad to be reached at end of crystallite inc
     crystallite_subF0, &                                                                            !< def grad at start of crystallite inc
@@ -145,12 +143,10 @@ subroutine crystallite_init
   allocate(crystallite_partionedFp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
   allocate(crystallite_subFp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
   allocate(crystallite_Fp(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_invFp(3,3,cMax,iMax,eMax),             source=0.0_pReal)
   allocate(crystallite_Fi0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
   allocate(crystallite_partionedFi0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
   allocate(crystallite_subFi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
   allocate(crystallite_Fi(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_invFi(3,3,cMax,iMax,eMax),             source=0.0_pReal)
   allocate(crystallite_Fe(3,3,cMax,iMax,eMax),                source=0.0_pReal)
   allocate(crystallite_Lp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
   allocate(crystallite_partionedLp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
@@ -408,9 +404,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
           else
             crystallite_subStep(c,i,e)       = num%subStepSizeCryst * crystallite_subStep(c,i,e)
             crystallite_Fp   (1:3,1:3,c,i,e) =            crystallite_subFp0(1:3,1:3,c,i,e)
-            crystallite_invFp(1:3,1:3,c,i,e) = math_inv33(crystallite_Fp    (1:3,1:3,c,i,e))
             crystallite_Fi   (1:3,1:3,c,i,e) =            crystallite_subFi0(1:3,1:3,c,i,e)
-            crystallite_invFi(1:3,1:3,c,i,e) = math_inv33(crystallite_Fi    (1:3,1:3,c,i,e))
             crystallite_S    (1:3,1:3,c,i,e) =            crystallite_S0    (1:3,1:3,c,i,e)
             if (crystallite_subStep(c,i,e) < 1.0_pReal) then                                        ! actual (not initial) cutback
               crystallite_Lp (1:3,1:3,c,i,e) =            crystallite_subLp0(1:3,1:3,c,i,e)
@@ -431,11 +425,11 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 !  prepare for integration
           if (crystallite_todo(c,i,e)) then
             crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
-                                            + crystallite_subStep(c,i,e) * (crystallite_partionedF (1:3,1:3,c,i,e) &
-                                                                          - crystallite_partionedF0(1:3,1:3,c,i,e))
-            crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF (1:3,1:3,c,i,e), &
-                                                          crystallite_invFp(1:3,1:3,c,i,e)), &
-                                                   crystallite_invFi(1:3,1:3,c,i,e))
+                                            + crystallite_subStep(c,i,e) *( crystallite_partionedF (1:3,1:3,c,i,e) &
+                                                                           -crystallite_partionedF0(1:3,1:3,c,i,e))
+            crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
+                                                          math_inv33(crystallite_Fp(1:3,1:3,c,i,e))), &
+                                                   math_inv33(crystallite_Fi(1:3,1:3,c,i,e)))
             crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
             crystallite_converged(c,i,e) = .false.
           endif
@@ -477,7 +471,9 @@ subroutine crystallite_stressTangent
     o, &
     p
 
-  real(pReal), dimension(3,3)     ::   temp_33_1, devNull,invSubFi0, temp_33_2, temp_33_3, temp_33_4
+  real(pReal), dimension(3,3)     ::   devNull, &
+                                       invSubFp0,invSubFi0,invFp,invFi, &
+                                       temp_33_1, temp_33_2, temp_33_3, temp_33_4
   real(pReal), dimension(3,3,3,3) ::   dSdFe, &
                                        dSdF, &
                                        dSdFi, &
@@ -493,7 +489,8 @@ subroutine crystallite_stressTangent
   real(pReal), dimension(9,9)::        temp_99
   logical :: error
 
-  !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFi,dLpdS,dLpdFi,dFpinvdF,dLidS,dLidFi,dFidS,invSubFi0,o,p, &
+  !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFi,dLpdS,dLpdFi,dFpinvdF,dLidS,dLidFi,dFidS,o,p, &
+  !$OMP                     invSubFp0,invSubFi0,invFp,invFi, &
   !$OMP                     rhs_3333,lhs_3333,temp_99,temp_33_1,temp_33_2,temp_33_3,temp_33_4,temp_3333,error)
   elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -507,16 +504,20 @@ subroutine crystallite_stressTangent
                                            crystallite_Fi(1:3,1:3,c,i,e), &
                                            c,i,e)
 
+        invFp = math_inv33(crystallite_Fp(1:3,1:3,c,i,e))
+        invFi = math_inv33(crystallite_Fi(1:3,1:3,c,i,e))
+        invSubFp0 = math_inv33(crystallite_subFp0(1:3,1:3,c,i,e))
+        invSubFi0 = math_inv33(crystallite_subFi0(1:3,1:3,c,i,e))
+
         if (sum(abs(dLidS)) < tol_math_check) then
           dFidS = 0.0_pReal
         else
-          invSubFi0 = math_inv33(crystallite_subFi0(1:3,1:3,c,i,e))
           lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
           do o=1,3; do p=1,3
             lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
                                   + crystallite_subdt(c,i,e)*matmul(invSubFi0,dLidFi(1:3,1:3,o,p))
             lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
-                                  + crystallite_invFi(1:3,1:3,c,i,e)*crystallite_invFi(p,o,c,i,e)
+                                  + invFi*invFi(p,o)
             rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
                                   - crystallite_subdt(c,i,e)*matmul(invSubFi0,dLidS(1:3,1:3,o,p))
           enddo; enddo
@@ -538,18 +539,13 @@ subroutine crystallite_stressTangent
 
 !--------------------------------------------------------------------------------------------------
 ! calculate dSdF
-        temp_33_1 = transpose(matmul(crystallite_invFp(1:3,1:3,c,i,e), &
-                                     crystallite_invFi(1:3,1:3,c,i,e)))
-        temp_33_2 = matmul(crystallite_subF(1:3,1:3,c,i,e), &
-                           math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)))
-        temp_33_3 = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
-                                  crystallite_invFp (1:3,1:3,c,i,e)), &
-                           math_inv33(crystallite_subFi0(1:3,1:3,c,i,e)))
+        temp_33_1 = transpose(matmul(invFp,invFi))
+        temp_33_2 = matmul(crystallite_subF(1:3,1:3,c,i,e),invSubFp0)
+        temp_33_3 = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e),invFp), invSubFi0)
 
         do o=1,3; do p=1,3
           rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
-          temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), &
-                                          crystallite_invFi(1:3,1:3,c,i,e)) &
+          temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
                                  + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
         enddo; enddo
         lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
@@ -569,15 +565,14 @@ subroutine crystallite_stressTangent
         temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
         do o=1,3; do p=1,3
           dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(c,i,e) &
-                                * matmul(math_inv33(crystallite_subFp0(1:3,1:3,c,i,e)), &
-                                         matmul(temp_3333(1:3,1:3,p,o),crystallite_invFi(1:3,1:3,c,i,e)))
+                                * matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi))
         enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
-        temp_33_1 = matmul(crystallite_S(1:3,1:3,c,i,e),transpose(crystallite_invFp(1:3,1:3,c,i,e)))
-        temp_33_2 = matmul(crystallite_invFp(1:3,1:3,c,i,e),temp_33_1)
-        temp_33_3 = matmul(crystallite_subF(1:3,1:3,c,i,e),crystallite_invFp(1:3,1:3,c,i,e))
+        temp_33_1 = matmul(crystallite_S(1:3,1:3,c,i,e),transpose(invFp))
+        temp_33_2 = matmul(invFp,temp_33_1)
+        temp_33_3 = matmul(crystallite_subF(1:3,1:3,c,i,e),invFp)
         temp_33_4 = matmul(temp_33_3,crystallite_S(1:3,1:3,c,i,e))
 
         crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
@@ -589,7 +584,7 @@ subroutine crystallite_stressTangent
                                               + matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
                                                        dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
                                               + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
-                                                       transpose(crystallite_invFp(1:3,1:3,c,i,e))) &
+                                                       transpose(invFp)) &
                                               + matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
         enddo; enddo
 
@@ -734,7 +729,7 @@ subroutine crystallite_results
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
     integer :: e,i,c,j
 
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIP))
 
     j=0
     do e = 1, size(material_phaseAt,2)
@@ -793,28 +788,28 @@ logical function integrateStress(ipc,ip,el,timeFraction)
 
   real(pReal), dimension(3,3)::       F, &                                                          ! deformation gradient at end of timestep
                                       Fp_new, &                                                     ! plastic deformation gradient at end of timestep
-                                      Fe_new, &                                                     ! elastic deformation gradient at end of timestep
                                       invFp_new, &                                                  ! inverse of Fp_new
-                                      Fi_new, &                                                     ! gradient of intermediate deformation stages
-                                      invFi_new, &
                                       invFp_current, &                                              ! inverse of Fp_current
-                                      invFi_current, &                                              ! inverse of Fp_current
                                       Lpguess, &                                                    ! current guess for plastic velocity gradient
                                       Lpguess_old, &                                                ! known last good guess for plastic velocity gradient
                                       Lp_constitutive, &                                            ! plastic velocity gradient resulting from constitutive law
                                       residuumLp, &                                                 ! current residuum of plastic velocity gradient
                                       residuumLp_old, &                                             ! last residuum of plastic velocity gradient
                                       deltaLp, &                                                    ! direction of next guess
+                                      Fi_new, &                                                     ! gradient of intermediate deformation stages
+                                      invFi_new, &
+                                      invFi_current, &                                              ! inverse of Fi_current
                                       Liguess, &                                                    ! current guess for intermediate velocity gradient
                                       Liguess_old, &                                                ! known last good guess for intermediate velocity gradient
                                       Li_constitutive, &                                            ! intermediate velocity gradient resulting from constitutive law
                                       residuumLi, &                                                 ! current residuum of intermediate velocity gradient
                                       residuumLi_old, &                                             ! last residuum of intermediate velocity gradient
                                       deltaLi, &                                                    ! direction of next guess
+                                      Fe, &                                                         ! elastic deformation gradient
+                                      Fe_new, &
                                       S, &                                                          ! 2nd Piola-Kirchhoff Stress in plastic (lattice) configuration
                                       A, &
                                       B, &
-                                      Fe, &                                                         ! elastic deformation gradient
                                       temp_33
   real(pReal), dimension(9) ::        temp_9                                                        ! needed for matrix inversion by LAPACK
   integer,     dimension(9) ::        devNull_9                                                     ! needed for matrix inversion by LAPACK
@@ -993,16 +988,13 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   Fe_new = matmul(matmul(F,invFp_new),invFi_new)
 
   integrateStress = .true.
-  crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new))) ! ToDo: We propably do not need to store P!
+  crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
   crystallite_S    (1:3,1:3,ipc,ip,el) = S
   crystallite_Lp   (1:3,1:3,ipc,ip,el) = Lpguess
   crystallite_Li   (1:3,1:3,ipc,ip,el) = Liguess
   crystallite_Fp   (1:3,1:3,ipc,ip,el) = Fp_new
   crystallite_Fi   (1:3,1:3,ipc,ip,el) = Fi_new
   crystallite_Fe   (1:3,1:3,ipc,ip,el) = Fe_new
-  crystallite_invFp(1:3,1:3,ipc,ip,el) = invFp_new
-  crystallite_invFi(1:3,1:3,ipc,ip,el) = invFi_new
-
 
 end function integrateStress
 

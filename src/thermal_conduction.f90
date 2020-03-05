@@ -15,15 +15,9 @@ module thermal_conduction
   implicit none
   private
 
-  enum, bind(c) 
-    enumerator :: &
-      undefined_ID, &
-      temperature_ID
-  end enum
-  
   type :: tParameters
-    integer(kind(undefined_ID)), dimension(:), allocatable :: &
-      outputID
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      output
   end type tParameters
   
   type(tparameters),             dimension(:), allocatable :: &
@@ -48,10 +42,9 @@ contains
 subroutine thermal_conduction_init
 
   
-  integer :: maxNinstance,o,NofMyHomog,h
-  character(len=pStringLen), dimension(:), allocatable :: outputs
+  integer :: maxNinstance,NofMyHomog,h
  
-  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'; flush(6)
   
   maxNinstance = count(thermal_type == THERMAL_conduction_ID)
   if (maxNinstance == 0) return
@@ -62,15 +55,7 @@ subroutine thermal_conduction_init
     if (thermal_type(h) /= THERMAL_conduction_ID) cycle
     associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
               
-    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
-    allocate(prm%outputID(0))
-
-    do o=1, size(outputs)
-      select case(outputs(o))
-        case('temperature')
-          prm%outputID = [prm%outputID, temperature_ID]
-      end select
-    enddo
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
   
     NofMyHomog=count(material_homogenizationAt==h)
     thermalState(h)%sizeState = 0
@@ -78,7 +63,6 @@ subroutine thermal_conduction_init
     allocate(thermalState(h)%subState0(0,NofMyHomog))
     allocate(thermalState(h)%state    (0,NofMyHomog))
  
-    nullify(thermalMapping(h)%p)
     thermalMapping(h)%p => material_homogenizationMemberAt
     deallocate(temperature    (h)%p)
     allocate  (temperature    (h)%p(NofMyHomog), source=thermal_initialT(h))
@@ -259,14 +243,13 @@ subroutine thermal_conduction_results(homog,group)
 
   integer,          intent(in) :: homog
   character(len=*), intent(in) :: group
+
   integer :: o
   
   associate(prm => param(damage_typeInstance(homog)))
-
-  outputsLoop: do o = 1,size(prm%outputID)
-    select case(prm%outputID(o))
-    
-      case (temperature_ID)
+  outputsLoop: do o = 1,size(prm%output)
+    select case(trim(prm%output(o)))
+      case('temperature')                                                                           ! ToDo: should be 'T'
         call results_writeDataset(group,temperature(homog)%p,'T',&
                                   'temperature','K')
     end select

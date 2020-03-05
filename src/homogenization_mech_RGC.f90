@@ -9,17 +9,6 @@
 submodule(homogenization) homogenization_mech_RGC
   use rotations
 
-  enum, bind(c) 
-    enumerator :: &
-      undefined_ID, &
-      constitutivework_ID, &
-      penaltyenergy_ID, &
-      volumediscrepancy_ID, &
-      averagerelaxrate_ID,&
-      maximumrelaxrate_ID,&
-      magnitudemismatch_ID
-  end enum
-  
   type :: tParameters
     integer, dimension(:), allocatable :: &
       Nconstituents
@@ -31,8 +20,8 @@ submodule(homogenization) homogenization_mech_RGC
       angles
     integer :: &
       of_debug = 0
-    integer(kind(undefined_ID)),  dimension(:),   allocatable   :: &
-      outputID
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      output
   end type tParameters
  
   type :: tRGCstate
@@ -71,23 +60,18 @@ module subroutine mech_RGC_init
 
   integer :: &
     Ninstance, &
-    h, i, &
+    h, &
     NofMyHomog, &
     sizeState, nIntFaceTot
  
-  integer(kind(undefined_ID)) :: &
-    outputID
-    
-  character(len=pStringLen), dimension(:), allocatable :: &
-    outputs
   
-  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'; flush(6)
  
-  write(6,'(/,a)')   ' Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
-  write(6,'(a)')     ' https://doi.org/10.1007/s12289-009-0619-1'
+  write(6,'(/,a)') ' Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
+  write(6,'(a)')   ' https://doi.org/10.1007/s12289-009-0619-1'
  
-  write(6,'(/,a)')   ' Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering 18:015006, 2010'
-  write(6,'(a)')     ' https://doi.org/10.1088/0965-0393/18/1/015006'
+  write(6,'(/,a)') ' Tjahjanto et al., Modelling and Simulation in Materials Science and Engineering 18:015006, 2010'
+  write(6,'(a)')   ' https://doi.org/10.1088/0965-0393/18/1/015006'
  
   Ninstance = count(homogenization_type == HOMOGENIZATION_RGC_ID)
   if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
@@ -123,34 +107,8 @@ module subroutine mech_RGC_init
     prm%dAlpha  = config%getFloats('grainsize',         requiredSize=3)
     prm%angles  = config%getFloats('clusterorientation',requiredSize=3)
  
-    outputs = config%getStrings('(output)',defaultVal=emptyStringArray)
-    allocate(prm%outputID(0))
- 
-    do i=1, size(outputs)
-      outputID = undefined_ID
-      select case(outputs(i))
-      
-        case('constitutivework')
-          outputID = constitutivework_ID
-        case('penaltyenergy')
-          outputID = penaltyenergy_ID
-        case('volumediscrepancy')
-          outputID = volumediscrepancy_ID
-        case('averagerelaxrate')
-          outputID = averagerelaxrate_ID
-        case('maximumrelaxrate')
-          outputID = maximumrelaxrate_ID
-        case('magnitudemismatch')
-          outputID = magnitudemismatch_ID
- 
-      end select
-      
-      if (outputID /= undefined_ID) then
-        prm%outputID = [prm%outputID , outputID]
-      endif
-      
-    enddo
- 
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
     NofMyHomog = count(material_homogenizationAt == h)
     nIntFaceTot = 3*(  (prm%Nconstituents(1)-1)*prm%Nconstituents(2)*prm%Nconstituents(3) &
                       + prm%Nconstituents(1)*(prm%Nconstituents(2)-1)*prm%Nconstituents(3) &
@@ -711,7 +669,7 @@ module procedure mech_RGC_updateState
        nDef = 0.0_pReal
        do i = 1,3; do j = 1,3
          do k = 1,3; do l = 1,3
-           nDef(i,j) = nDef(i,j) - nVect(k)*gDef(i,l)*math_civita(j,k,l)                            ! compute the interface mismatch tensor from the jump of deformation gradient
+           nDef(i,j) = nDef(i,j) - nVect(k)*gDef(i,l)*math_LeviCivita(j,k,l)                        ! compute the interface mismatch tensor from the jump of deformation gradient
          enddo; enddo
          nDefNorm = nDefNorm + nDef(i,j)**2.0_pReal                                                 ! compute the norm of the mismatch tensor
        enddo; enddo
@@ -731,7 +689,7 @@ module procedure mech_RGC_updateState
          rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xiAlpha &
                                                 *surfCorr(abs(intFace(1)))/prm%dAlpha(abs(intFace(1))) &
                                                 *cosh(prm%ciAlpha*nDefNorm) &
-                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
+                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_LeviCivita(k,l,j) &
                                                 *tanh(nDefNorm/xSmoo_RGC)
        enddo; enddo;enddo; enddo
      enddo interfaceLoop
@@ -934,26 +892,24 @@ module subroutine mech_RGC_results(instance,group)
   integer :: o
   
   associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
-
-  outputsLoop: do o = 1,size(prm%outputID)
-    select case(prm%outputID(o))
-    
-      case (constitutivework_ID)
+  outputsLoop: do o = 1,size(prm%output)
+    select case(trim(prm%output(o)))
+      case('constitutivework')
         call results_writeDataset(group,stt%work,'W',&
                                   'work density','J/m³')
-      case (magnitudemismatch_ID)
+      case('magnitudemismatch')
         call results_writeDataset(group,dst%mismatch,'N',&
                                   'average mismatch tensor','1')
-      case (penaltyenergy_ID)
+      case('penaltyenergy')
         call results_writeDataset(group,stt%penaltyEnergy,'R',&
                                   'mismatch penalty density','J/m³')
-      case (volumediscrepancy_ID)
+      case('volumediscrepancy')
         call results_writeDataset(group,dst%volumeDiscrepancy,'Delta_V',&
                                   'volume discrepancy','m³')
-      case (maximumrelaxrate_ID)
+      case('maximumrelaxrate')
         call results_writeDataset(group,dst%relaxationrate_max,'max_alpha_dot',&
                                   'maximum relaxation rate','m/s')
-      case (averagerelaxrate_ID)
+      case('averagerelaxrate')
         call results_writeDataset(group,dst%relaxationrate_avg,'avg_alpha_dot',&
                                   'average relaxation rate','m/s')
     end select

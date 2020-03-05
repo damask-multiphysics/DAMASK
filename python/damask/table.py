@@ -32,7 +32,7 @@ class Table():
         """Label data individually, e.g. v v v ==> 1_v 2_v 3_v."""
         labels = []
         for label,shape in self.shapes.items():
-            size = np.prod(shape)
+            size = int(np.prod(shape))
             labels += ['{}{}'.format('' if size == 1 else '{}_'.format(i+1),label) for i in range(size)]
         self.data.columns = labels
         
@@ -41,14 +41,14 @@ class Table():
         """Label data condensed, e.g. 1_v 2_v 3_v ==> v v v."""
         labels = []
         for label,shape in self.shapes.items():
-            labels += [label] * np.prod(shape)
+            labels += [label] * int(np.prod(shape))
         self.data.columns = labels
 
 
     def __add_comment(self,label,shape,info):
         if info is not None:
             self.comments.append('{}{}: {}'.format(label,
-                                                   ' '+str(shape) if np.prod(shape) > 1 else '',
+                                                   ' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',
                                                    info))
 
     

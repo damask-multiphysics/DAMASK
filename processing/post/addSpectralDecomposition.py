@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -33,69 +34,27 @@ parser.add_option('--no-check',
 
 parser.set_defaults(rh = True,
                     )
+
 (options,filenames) = parser.parse_args()
-
-if options.tensor is None:
-  parser.error('no data column specified.')
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              buffered = False)
-  except: continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
+    for tensor in options.tensor:
 
+        t = table.get(tensor).reshape(-1,3,3)
+        (u,v) = np.linalg.eigh(damask.mechanics.symmetric(t))
+        if options.rh: v[np.linalg.det(v) < 0.0,:,2] *= -1.0
 
-# ------------------------------------------ assemble header 1 ------------------------------------
+        for i,o in enumerate(['Min','Mid','Max']):
+            table.add('eigval{}({})'.format(o,tensor),u[:,i],
+                      scriptID+' '+' '.join(sys.argv[1:]))
 
-  items = {
-            'tensor': {'dim': 9, 'shape': [3,3], 'labels':options.tensor, 'column': []},
-          }
-  errors  = []
-  remarks = []
-  
-  for type, data in items.items():
-    for what in data['labels']:
-      dim = table.label_dimension(what)
-      if dim != data['dim']: remarks.append('column {} is not a {}...'.format(what,type))
-      else:
-        items[type]['column'].append(table.label_index(what))
-        for order in ['Min','Mid','Max']:
-          table.labels_append(['eigval{}({})'.format(order,what)])                                         # extend ASCII header with new labels
-        for order in ['Min','Mid','Max']:
-          table.labels_append(['{}_eigvec{}({})'.format(i+1,order,what) for i in range(3)])                # extend ASCII header with new labels
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header 2 ------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
-
-# ------------------------------------------ process data -----------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for type, data in items.items():
-      for column in data['column']:
-        (u,v) = np.linalg.eigh(np.array(list(map(float,table.data[column:column+data['dim']]))).reshape(data['shape']))
-        if options.rh and np.dot(np.cross(v[:,0], v[:,1]), v[:,2]) < 0.0 : v[:, 2] *= -1.0          # ensure right-handed eigenvector basis
-        table.data_append(list(u))                                                                  # vector of max,mid,min eigval
-        table.data_append(list(v.transpose().reshape(data['dim'])))                                 # 3x3=9 combo vector of max,mid,min eigvec coordinates
-    outputAlive = table.data_write()                                                                # output processed line in accordance with column labeling
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close input ASCII table (works for stdin)
+        for i,o in enumerate(['Min','Mid','Max']):
+            table.add('eigvec{}({})'.format(o,tensor),v[:,:,i],
+                      scriptID+' '+' '.join(sys.argv[1:]))
+        
+    table.to_ASCII(sys.stdout if name is None else name)

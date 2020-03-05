@@ -104,7 +104,7 @@ checkout:
     - release
 
 ###################################################################################################
-Pytest:
+Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
@@ -138,13 +138,6 @@ Pre_GeomModification:
 Pre_General:
   stage: preprocessing
   script: PreProcessing/test.py
-  except:
-    - master
-    - release
-
-grid_geometryPacking:
-  stage: preprocessing
-  script: grid_geometryPacking/test.py
   except:
     - master
     - release
@@ -381,6 +374,15 @@ Homogenization:
 Phenopowerlaw_singleSlip:
   stage: grid
   script: Phenopowerlaw_singleSlip/test.py
+  except:
+    - master
+    - release
+
+Pytest_grid:
+  stage: grid
+  script:
+    - cd pytest
+    - pytest
   except:
     - master
     - release

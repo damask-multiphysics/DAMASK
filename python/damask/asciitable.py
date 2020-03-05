@@ -11,12 +11,12 @@ class ASCIItable():
   """Read and write to ASCII tables."""
 
   tmpext = '_tmp'                                                                                   # filename extension for in-place access
-  
+
 # ------------------------------------------------------------------
   def __init__(self,
                name    = None,
                outname = None,
-               buffered  = False,                                                                   # flush writes
+               buffered  = False,                                                                   # is ignored, only exists for compatibility reasons
                labeled   = True,                                                                    # assume table has labels
                readonly  = False,                                                                   # no reading from file
               ):
@@ -52,7 +52,7 @@ class ASCIItable():
 
     if   self.__IO__['in']  is None \
       or self.__IO__['out'] is None: raise IOError                                                 # complain if any required file access not possible
-     
+
 
 # ------------------------------------------------------------------
   def _removeCRLF(self,
@@ -63,7 +63,6 @@ class ASCIItable():
     except AttributeError:
       return str(string)
 
-
 # ------------------------------------------------------------------
   def _quote(self,
              what):
@@ -71,6 +70,7 @@ class ASCIItable():
     return '{quote}{content}{quote}'.format(
              quote   = ('"' if str(what)=='' or re.search(r"\s",str(what)) else ''),
              content = what)
+
 # ------------------------------------------------------------------
   def close(self,
             dismiss = False):
@@ -110,7 +110,7 @@ class ASCIItable():
   def head_read(self):
     """
     Get column labels.
-    
+
     by either reading the first row or,
     if keyword "head[*]" is present, the last line of the header
     """
@@ -121,7 +121,7 @@ class ASCIItable():
 
     firstline = self.__IO__['in'].readline().strip()
     m = re.search(r'(\d+)\s+head', firstline.lower())                                                # search for "head" keyword
-    
+
     if m:                                                                                           # proper ASCIItable format
 
       if self.__IO__['labeled']:                                                                    # table features labels
@@ -145,7 +145,7 @@ class ASCIItable():
       if self.__IO__['labeled']:                                                                    # table features labels
         self.tags = self.data                                                                       # get tags from last line in "header"...
         self.data_read()                                                                            # ...and remove from buffer
-        
+
     if self.__IO__['labeled']:                                                                      # table features tags
       self.__IO__['tags'] = list(self.tags)                                                         # backup tags (make COPY, not link)
 
@@ -163,7 +163,7 @@ class ASCIItable():
     if self.__IO__['labeled']:
       head.append('\t'.join(map(self._quote,self.tags)))
       if len(self.tags) == 0: raise ValueError('no labels present.')
-    
+
     return self.output_write(head)
 
 # ------------------------------------------------------------------
@@ -178,15 +178,11 @@ class ASCIItable():
             'grid':            lambda x: int(x),
             'size':            lambda x: float(x),
             'origin':          lambda x: float(x),
-            'homogenization':  lambda x: int(x),
-            'microstructures': lambda x: int(x),
               }
     info = {
             'grid':            np.zeros(3,'i'),
             'size':            np.zeros(3,'d'),
             'origin':          np.zeros(3,'d'),
-            'homogenization':  0,
-            'microstructures': 0,
            }
     extra_header = []
 
@@ -234,7 +230,7 @@ class ASCIItable():
              raw = False):
     """
     Tell abstract labels.
-    
+
     "x" for "1_x","2_x",... unless raw output is requested.
     operates on object tags or given list.
     """
@@ -347,7 +343,7 @@ class ASCIItable():
     """
     start = self.label_index(labels)
     dim   = self.label_dimension(labels)
-  
+
     return np.hstack([range(s,s+d) for s,d in zip(start,dim)]).astype(int) \
         if isinstance(labels, Iterable) and not isinstance(labels, str)    \
       else range(start,start+dim)
@@ -374,15 +370,6 @@ class ASCIItable():
     self.__IO__['in'].seek(self.__IO__['dataStart'])                                                # position file to start of data section
     self.tags = list(self.__IO__['tags'])                                                           # restore label info found in header (as COPY, not link)
     self.__IO__['labeled'] = len(self.tags) > 0
-
-# ------------------------------------------------------------------
-  def data_skipLines(self,
-                     count):
-    """Wind forward by count number of lines."""
-    for i in range(count):
-      alive = self.data_read()
-
-    return alive
 
 # ------------------------------------------------------------------
   def data_read(self,
@@ -425,8 +412,8 @@ class ASCIItable():
       columns = []
       for i,(c,d) in enumerate(zip(indices[present],dimensions[present])):                          # for all valid labels ...
         # ... transparently add all components unless column referenced by number or with explicit dimension
-        columns += list(range(c,c + 
-                          (d if str(c) != str(labels[present[i]]) else 
+        columns += list(range(c,c +
+                          (d if str(c) != str(labels[present[i]]) else
                            1)))
       use = np.array(columns) if len(columns) > 0 else None
 
@@ -457,7 +444,7 @@ class ASCIItable():
         output = [fmt % value for value in row] if fmt else list(map(repr,row))
       except Exception:
         output = [fmt % row] if fmt else [repr(row)]
-      
+
       try:
         self.__IO__['out'].write(delimiter.join(output) + '\n')
       except Exception:
@@ -473,33 +460,3 @@ class ASCIItable():
         for item in what: self.data_append(item)
       except TypeError:
         self.data += [str(what)]
-
-# ------------------------------------------------------------------
-  def microstructure_read(self,
-                          grid,
-                          type = 'i',
-                          strict = False):
-    """Read microstructure data (from .geom format)."""
-    def datatype(item):
-      return int(item) if type.lower() == 'i' else float(item)
-      
-    N = grid.prod()                                                                          # expected number of microstructure indices in data
-    microstructure = np.zeros(N,type)                                                        # initialize as flat array
-
-    i = 0
-    while i < N and self.data_read():
-      items = self.data
-      if len(items) > 2:
-        if   items[1].lower() == 'of':
-          items = np.ones(datatype(items[0]))*datatype(items[2])
-        elif items[1].lower() == 'to':
-          items = np.linspace(datatype(items[0]),datatype(items[2]),
-                              abs(datatype(items[2])-datatype(items[0]))+1,dtype=int)
-        else:                          items = list(map(datatype,items))
-      else:                            items = list(map(datatype,items))
-
-      s = min(len(items), N-i)                                                              # prevent overflow of microstructure array
-      microstructure[i:i+s] = items[:s]
-      i += len(items)
-
-    return (microstructure, i == N and not self.data_read()) if strict else microstructure  # check for proper point count and end of file

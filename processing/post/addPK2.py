@@ -43,8 +43,8 @@ for name in filenames:
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     table.add('S',
-              damask.mechanics.PK2(table.get(options.defgrad).reshape(-1,3,3),
-                                   table.get(options.stress ).reshape(-1,3,3)).reshape(-1,9),
+              damask.mechanics.PK2(table.get(options.stress ).reshape(-1,3,3),
+                                   table.get(options.defgrad).reshape(-1,3,3)).reshape(-1,9),
               scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)
