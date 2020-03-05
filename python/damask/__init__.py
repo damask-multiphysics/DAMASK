@@ -13,7 +13,9 @@ from .asciitable  import ASCIItable       # noqa
     
 from .config      import Material         # noqa
 from .colormaps   import Colormap, Color  # noqa
-from .orientation import Symmetry, Lattice, Rotation, Orientation # noqa
+from .rotation    import Rotation         # noqa
+from .lattice     import Symmetry, Lattice# noqa
+from .orientation import Orientation      # noqa
 from .result      import Result           # noqa
 from .result      import Result as DADF5  # noqa
 
