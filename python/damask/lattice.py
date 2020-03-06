@@ -162,12 +162,12 @@ class Symmetry:
 
     def inFZ(self,rodrigues):
         """
-        Check whether given Rodriques-Frank vector falls into fundamental zone of own symmetry.
+        Check whether given Rodrigues-Frank vector falls into fundamental zone of own symmetry.
 
         Fundamental zone in Rodrigues space is point symmetric around origin.
         """
         if (len(rodrigues) != 3):
-            raise ValueError('Input is not a Rodriques-Frank vector.\n')
+            raise ValueError('Input is not a Rodrigues-Frank vector.\n')
 
         if np.any(rodrigues == np.inf): return False
 
@@ -195,7 +195,7 @@ class Symmetry:
 
     def inDisorientationSST(self,rodrigues):
         """
-        Check whether given Rodriques-Frank vector (of misorientation) falls into standard stereographic triangle of own symmetry.
+        Check whether given Rodrigues-Frank vector (of misorientation) falls into standard stereographic triangle of own symmetry.
 
         References
         ----------
@@ -204,7 +204,7 @@ class Symmetry:
 
         """
         if (len(rodrigues) != 3):
-            raise ValueError('Input is not a Rodriques-Frank vector.\n')
+            raise ValueError('Input is not a Rodrigues-Frank vector.\n')
         R = rodrigues
 
         epsilon = 0.0
