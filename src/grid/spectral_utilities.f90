@@ -9,6 +9,7 @@ module spectral_utilities
   use PETScSys
 
   use prec
+  use DAMASK_interface
   use math
   use rotations
   use IO
@@ -1101,7 +1102,7 @@ subroutine utilities_saveReferenceStiffness
 
   if (worldrank == 0) then
     write(6,'(a)') ' writing reference stiffness data required for restart to file'; flush(6)
-    fileUnit = IO_open_jobFile_binary('C_ref','w')
+    fileUnit = IO_open_binary(trim(getSolverJobName())//'.C_ref','w')
     write(fileUnit) C_ref
     close(fileUnit)
   endif

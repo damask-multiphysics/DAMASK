@@ -7,7 +7,6 @@
 !--------------------------------------------------------------------------------------------------
 module IO
   use prec
-  use DAMASK_interface
 
   implicit none
   private
@@ -25,7 +24,7 @@ module IO
   public :: &
     IO_init, &
     IO_read_ASCII, &
-    IO_open_jobFile_binary, &
+    IO_open_binary, &
     IO_isBlank, &
     IO_getTag, &
     IO_stringPos, &
@@ -114,24 +113,6 @@ function IO_read_ASCII(fileName) result(fileContent)
   enddo
 
 end function IO_read_ASCII
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief opens an existing file for reading or a new file for writing. Name is the job name
-!> @details replaces an existing file when writing
-!--------------------------------------------------------------------------------------------------
-integer function IO_open_jobFile_binary(extension,mode)
-
-  character(len=*), intent(in)           :: extension
-  character,        intent(in), optional :: mode
- 
-  if (present(mode)) then
-    IO_open_jobFile_binary = IO_open_binary(trim(getSolverJobName())//'.'//trim(extension),mode)
-  else
-    IO_open_jobFile_binary = IO_open_binary(trim(getSolverJobName())//'.'//trim(extension))
-  endif
-
-end function IO_open_jobFile_binary
 
 
 !--------------------------------------------------------------------------------------------------
