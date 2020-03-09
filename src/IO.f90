@@ -8,13 +8,15 @@
 module IO
   use prec
   use DAMASK_interface
-  
+
   implicit none
   private
   character(len=*), parameter, public :: &
-    IO_EOF = '#EOF#'                                                                                !< end of file string
+    IO_EOF = '#EOF#', &                                                                             !< end of file string
+    IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
   character, parameter, public :: &
-    IO_EOL = new_line(' ')                                                                          !< end of line str
+    IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
+    IO_COMMENT = '#'
   character(len=*), parameter, private :: &
     IO_DIVIDER = '───────────────────'//&
                  '───────────────────'//&
@@ -41,10 +43,10 @@ contains
 !> @brief does nothing.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
- 
+
   write(6,'(/,a)') ' <<<+-  IO init  -+>>>'; flush(6)
   call unitTest
- 
+
 end subroutine IO_init
 
 
@@ -66,7 +68,7 @@ function IO_read_ASCII(fileName) result(fileContent)
     l, &
     myStat
   logical :: warned
-  
+
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
   inquire(file = fileName, size=fileLength)
@@ -140,9 +142,9 @@ integer function IO_open_binary(fileName,mode)
 
   character(len=*), intent(in)           :: fileName
   character,        intent(in), optional :: mode
- 
+
   character :: m
-  integer   :: ierr 
+  integer   :: ierr
 
   if (present(mode)) then
     m = mode
@@ -172,14 +174,10 @@ logical pure function IO_isBlank(string)
 
   character(len=*), intent(in) :: string                                                            !< string to check for content
 
-  character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13)             ! whitespaces
-  character(len=*),  parameter :: comment = achar(35)                                               ! comment id '#'
+  integer :: posNonBlank
 
-  integer :: posNonBlank, posComment
-
-  posNonBlank = verify(string,blankChar)
-  posComment  = scan(string,comment)
-  IO_isBlank = posNonBlank == 0 .or. posNonBlank == posComment
+  posNonBlank = verify(string,IO_WHITESPACE)
+  IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(string,IO_COMMENT)
 
 end function IO_isBlank
 
@@ -193,19 +191,15 @@ pure function IO_getTag(string,openChar,closeChar)
   character,        intent(in)  :: openChar, &                                                      !< indicates beginning of tag
                                    closeChar                                                        !< indicates end of tag
   character(len=:), allocatable :: IO_getTag
- 
-  character(len=*), parameter   :: SEP=achar(32)//achar(9)//achar(10)//achar(13)                    ! whitespaces
+
   integer :: left,right
- 
-  if (openChar /= closeChar) then
-    left  = scan(string,openChar)
-    right = scan(string,closeChar)
-  else
-    left  = scan(string,openChar)
-    right = left + merge(scan(string(left+1:),openChar),0,len(string) > left)
-  endif
- 
-  foundTag: if (left == verify(string,SEP) .and. right > left) then
+
+  left  = scan(string,openChar)
+  right = merge(scan(string,closeChar), &
+                left + merge(scan(string(left+1:),openChar),0,len(string) > left), &
+                openChar /= closeChar)
+
+  foundTag: if (left == verify(string,IO_WHITESPACE) .and. right > left) then
     IO_getTag = string(left+1:right-1)
   else foundTag
     IO_getTag = ''
@@ -215,8 +209,8 @@ end function IO_getTag
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief locates all space-separated chunks in given string and returns array containing number
-!! them and the left/right position to be used by IO_xxxVal
+!> @brief locates all whitespace-separated chunks in given string and returns array containing
+!! number them and the left/right position to be used by IO_xxxVal
 !! Array size is dynamically adjusted to number of chunks found in string
 !! IMPORTANT: first element contains number of chunks!
 !--------------------------------------------------------------------------------------------------
@@ -224,17 +218,16 @@ pure function IO_stringPos(string)
 
   character(len=*),                  intent(in) :: string                                           !< string in which chunk positions are searched for
   integer, dimension(:), allocatable            :: IO_stringPos
- 
-  character(len=*), parameter  :: SEP=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)          ! comma and whitespaces
+
   integer                      :: left, right
- 
+
   allocate(IO_stringPos(1), source=0)
   right = 0
- 
-  do while (verify(string(right+1:),SEP)>0)
-    left  = right + verify(string(right+1:),SEP)
-    right = left + scan(string(left:),SEP) - 2
-    if ( string(left:left) == '#' ) exit
+
+  do while (verify(string(right+1:),IO_WHITESPACE)>0)
+    left  = right + verify(string(right+1:),IO_WHITESPACE)
+    right = left + scan(string(left:),IO_WHITESPACE) - 2
+    if ( string(left:left) == IO_COMMENT) exit
     IO_stringPos = [IO_stringPos,left,right]
     IO_stringPos(1) = IO_stringPos(1)+1
     endOfString: if (right < left) then
@@ -518,7 +511,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'unknown error number...'
 
   end select
- 
+
   !$OMP CRITICAL (write2out)
   write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
   write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
@@ -557,10 +550,10 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   integer,                    intent(in) :: warning_ID
   integer,          optional, intent(in) :: el,ip,g
   character(len=*), optional, intent(in) :: ext_msg
- 
+
   character(len=pStringLen)              :: msg
   character(len=pStringLen)              :: formatString
- 
+
   select case (warning_ID)
     case (1)
       msg = 'unknown key'
@@ -603,7 +596,7 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
     case default
       msg = 'unknown warning number'
     end select
- 
+
   !$OMP CRITICAL (write2out)
   write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
   write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
@@ -638,12 +631,12 @@ end subroutine IO_warning
 !> @brief returns verified integer value in given string
 !--------------------------------------------------------------------------------------------------
 integer function verifyIntValue(string)
- 
+
   character(len=*), intent(in) :: string                                                            !< string for conversion to int value
 
   integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
- 
+
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) verifyIntValue
     if (readStatus /= 0) call IO_error(111,ext_msg=string)
@@ -651,7 +644,7 @@ integer function verifyIntValue(string)
     verifyIntValue = 0
     call IO_error(111,ext_msg=string)
   endif valid
- 
+
 end function verifyIntValue
 
 
@@ -659,12 +652,12 @@ end function verifyIntValue
 !> @brief returns verified float value in given string
 !--------------------------------------------------------------------------------------------------
 real(pReal) function verifyFloatValue(string)
- 
+
   character(len=*), intent(in) :: string                                                            !< string for conversion to float value
-  
+
   integer                      :: readStatus
   character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
- 
+
   valid: if (verify(string,VALIDCHARS) == 0) then
     read(string,*,iostat=readStatus) verifyFloatValue
     if (readStatus /= 0) call IO_error(112,ext_msg=string)
@@ -672,7 +665,7 @@ real(pReal) function verifyFloatValue(string)
     verifyFloatValue = 0.0_pReal
     call IO_error(112,ext_msg=string)
   endif valid
- 
+
 end function verifyFloatValue
 
 
@@ -703,6 +696,10 @@ subroutine unitTest
   str='M 3112019 F'
   chunkPos = IO_stringPos(str)
   if(3112019 /= IO_intValue(str,chunkPos,2))        call IO_error(0,ext_msg='IO_intValue')
+
+  if(.not. IO_isBlank('  '))                        call IO_error(0,ext_msg='IO_isBlank/1')
+  if(.not. IO_isBlank('  #isBlank'))                call IO_error(0,ext_msg='IO_isBlank/2')
+  if(      IO_isBlank('  i#s'))                     call IO_error(0,ext_msg='IO_isBlank/3')
 
 end subroutine unitTest
 
