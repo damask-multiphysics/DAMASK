@@ -11,6 +11,7 @@ import numpy as np
 
 from . import util
 from . import version
+from . import table
 from . import mechanics
 from . import Rotation
 from . import Orientation
@@ -151,12 +152,11 @@ class Result():
         selected = []
         for i,time in enumerate(self.times):
             if start <= time <= end:
-                selected.append(self.increments[i])
+                selected.append(self.times[i])
         return selected
 
 
-
-    def iter_selection(self,what):
+    def iterate(self,what):
         """
         Iterate over selection items by setting each one selected.
 
@@ -226,6 +226,83 @@ class Result():
         self._manage_selection('del',what,datasets)
 
 
+  # def createGeometry4VTK():
+  #   """ reads geometry and fummels... to return VTK.XXXobject (pointcloud fallback)"""
+
+  # myVTK = new
+  # myVTK.geom = result.getGeom()
+  # myVTK.table/data = result.spatiocondense(['f','p']) # of type damask.Table
+  # myVTK.writeme
+
+  # def datamerger(regular expression to filter groups into one copy)
+
+
+    def place(self,datasets,component=0,tagged=False,split=True):
+        """
+        Distribute datasets onto geometry and return Table or (split) dictionary of Tables.
+    
+        Must not mix nodal end cell data.
+    
+        Only data within
+        - inc?????/constituent/*_*/*
+        - inc?????/materialpoint/*_*/*
+        - inc?????/geometry/*
+        are considered.
+    
+        Parameters
+        ----------
+          datasets : iterable or str
+          component : int
+            homogenization component to consider for constituent data
+          tagged : Boolean
+            tag Table.column name with '#component'
+            defaults to False
+          split : Boolean
+            split Table by increment and return dictionary of Tables
+            defaults to True
+
+        """
+        sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) \
+         else [datasets]
+        tag = f'#{component}' if tagged else ''
+        tbl = {} if split else None
+        inGeom = {}
+        inData = {}
+        with h5py.File(self.fname,'r') as f:
+            for dataset in sets:
+                for group in self.groups_with_datasets(dataset):
+                    path = os.path.join(group,dataset)
+                    inc,prop,name,cat,item = (path.split('/') + ['']*5)[:5]
+                    key = '/'.join([prop,name+tag])
+                    if key not in inGeom:
+                        if prop == 'geometry':
+                            inGeom[key] = inData[key] = np.arange(self.Nmaterialpoints)
+                        elif prop == 'constituent':
+                            inGeom[key] = np.where(f['mapping/cellResults/constituent'][:,component]['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/cellResults/constituent'][inGeom[key],component]['Position']
+                        else:
+                            inGeom[key] = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/cellResults/materialpoint'][inGeom[key].tolist()]['Position']
+                    shape = np.shape(f[path])
+                    data = np.full((self.Nmaterialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
+                                    np.nan,
+                                    dtype=np.dtype(f[path]))
+                    data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
+                    path = (os.path.join(*([prop,name]+([cat] if cat else [])+([item] if item else []))) if split else path)+tag
+                    if split:
+                        try:
+                            tbl[inc].add(path,data)
+                        except KeyError:
+                            tbl[inc] = table.Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                    else:
+                        try:
+                            tbl.add(path,data)
+                        except AttributeError:
+                            tbl = table.Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+
+        return tbl
+
+
     def groups_with_datasets(self,datasets):
         """
         Return groups that contain all requested datasets.
@@ -262,10 +339,10 @@ class Result():
         groups = []
 
         with h5py.File(self.fname,'r') as f:
-            for i in self.iter_selection('increments'):
+            for i in self.iterate('increments'):
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                  for oo in self.iter_selection(o):
-                    for pp in self.iter_selection(p):
+                  for oo in self.iterate(o):
+                    for pp in self.iterate(p):
                       group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
                       if sets is True:
                         groups.append(group)
@@ -279,12 +356,12 @@ class Result():
         """Return information on all active datasets in the file."""
         message = ''
         with h5py.File(self.fname,'r') as f:
-            for i in self.iter_selection('increments'):
+            for i in self.iterate('increments'):
                 message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                  for oo in self.iter_selection(o):
+                  for oo in self.iterate(o):
                     message+='  {}\n'.format(oo)
-                    for pp in self.iter_selection(p):
+                    for pp in self.iterate(p):
                       message+='    {}\n'.format(pp)
                       group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
                       for d in f[group].keys():
@@ -301,7 +378,7 @@ class Result():
         """Return the location of all active datasets with given label."""
         path = []
         with h5py.File(self.fname,'r') as f:
-            for i in self.iter_selection('increments'):
+            for i in self.iterate('increments'):
                 k = '/'.join([i,'geometry',label])
                 try:
                     f[k]
@@ -309,8 +386,8 @@ class Result():
                 except KeyError as e:
                     pass
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                    for oo in self.iter_selection(o):
-                        for pp in self.iter_selection(p):
+                    for oo in self.iterate(o):
+                        for pp in self.iterate(p):
                             k = '/'.join([i,o[:-1],oo,pp,label])
                             try:
                                 f[k]
@@ -1013,15 +1090,15 @@ class Result():
 
         N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
 
-        for i,inc in enumerate(self.iter_selection('increments')):
+        for i,inc in enumerate(self.iterate('increments')):
           vtk_data = []
 
           materialpoints_backup = self.selection['materialpoints'].copy()
           self.pick('materialpoints',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iter_selection('con_physics'):
+            for p in self.iterate('con_physics'):
               if p != 'generic':
-                  for c in self.iter_selection('constituents'):
+                  for c in self.iterate('constituents'):
                       x = self.get_dataset_location(label)
                       if len(x) == 0:
                           continue
@@ -1048,9 +1125,9 @@ class Result():
           constituents_backup = self.selection['constituents'].copy()
           self.pick('constituents',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iter_selection('mat_physics'):
+            for p in self.iterate('mat_physics'):
               if p != 'generic':
-                  for m in self.iter_selection('materialpoints'):
+                  for m in self.iterate('materialpoints'):
                       x = self.get_dataset_location(label)
                       if len(x) == 0:
                           continue
@@ -1095,7 +1172,8 @@ class Result():
 
 ###################################################################################################
 # BEGIN DEPRECATED
-    iter_visible = iter_selection
+    iter_visible   = iterate
+    iter_selection = iterate
 
 
     def _time_to_inc(self,start,end):
