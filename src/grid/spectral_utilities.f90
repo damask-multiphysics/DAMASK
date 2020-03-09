@@ -431,7 +431,7 @@ end subroutine utilities_updateGamma
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward
 
-  tensorField_real(1:3,1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
+  tensorField_real(1:3,1:3,grid(1)+1:grid1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
 end subroutine utilities_FFTtensorForward
@@ -455,7 +455,7 @@ end subroutine utilities_FFTtensorBackward
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward
 
-  scalarField_real(grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
+  scalarField_real(grid(1)+1:grid1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
 end subroutine utilities_FFTscalarForward
@@ -480,7 +480,7 @@ end subroutine utilities_FFTscalarBackward
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward
 
-  vectorField_real(1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
+  vectorField_real(1:3,grid(1)+1:grid1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
 
 end subroutine utilities_FFTvectorForward
@@ -1031,7 +1031,7 @@ subroutine utilities_updateCoords(F)
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
     if(any([i,j,k+grid3Offset] /= 1)) then
       vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
-                                     / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * wgt
+                                     / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * cmplx(wgt,0.0,pReal)
     else
       vectorField_fourier(1:3,i,j,k) = cmplx(0.0,0.0,pReal)
     endif
@@ -1083,7 +1083,7 @@ subroutine utilities_updateCoords(F)
  ! calculate cell center displacements
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
-                        + matmul(Favg,step*real([i,j,k+grid3Offset]-0.5_pReal,pReal))
+                        + matmul(Favg,step*(real([i,j,k+grid3Offset],pReal)-0.5_pReal))
   enddo; enddo; enddo
 
   call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
