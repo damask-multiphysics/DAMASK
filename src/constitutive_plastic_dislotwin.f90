@@ -544,7 +544,6 @@ module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
   real(pReal):: dot_gamma_sb
   real(pReal), dimension(3,3) :: eigVectors, P_sb
   real(pReal), dimension(3)   :: eigValues
-  logical :: error
   real(pReal), dimension(3,6), parameter :: &
     sb_sComposition = &
       reshape(real([&
@@ -589,7 +588,7 @@ module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
   shearBandingContribution: if(dNeq0(prm%sbVelocity)) then
 
     BoltzmannRatio = prm%sbQedge/(kB*T)
-    call math_eigenValuesVectorsSym(Mp,eigValues,eigVectors,error)
+    call math_eigh33(Mp,eigValues,eigVectors)                                                       ! is Mp symmetric by design?
 
     do i = 1,6
       P_sb = 0.5_pReal * math_outer(matmul(eigVectors,sb_sComposition(1:3,i)),&

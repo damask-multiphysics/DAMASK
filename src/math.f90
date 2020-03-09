@@ -74,9 +74,17 @@ module math
       ],[2,9])                                                                                      !< arrangement in Plain notation
 
 
+  interface math_eye
+    module procedure math_identity2nd
+  end interface math_eye
+
+!--------------------------
+! only for compatibility reasons
   interface math_mul33xx33
     module procedure math_tensordot
   end interface math_mul33xx33
+!--------------------------
+
 
 !---------------------------------------------------------------------------------------------------
  private :: &
@@ -883,22 +891,22 @@ end function math_sampleGaussVar
 !> @brief eigenvalues and eigenvectors of symmetric matrix m
 ! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
+subroutine math_eigh(m,w,v,error)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m
-  real(pReal), dimension(size(m,1)),            intent(out) :: values
-  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
+  real(pReal), dimension(size(m,1)),            intent(out) :: w
+  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v
   logical, intent(out) :: error
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
   external :: &
     dsyev
 
-  vectors = m                                                                                       ! copy matrix to input (doubles as output) array
-  call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,size(work,1),ierr)
+  v = m                                                                                             ! copy matrix to input (doubles as output) array
+  call dsyev('V','U',size(m,1),v,size(m,1),w,work,size(work,1),ierr)
   error = (ierr /= 0)
 
-end subroutine math_eigenValuesVectorsSym
+end subroutine math_eigh
 
 
 !--------------------------------------------------------------------------------------------------
@@ -909,77 +917,45 @@ end subroutine math_eigenValuesVectorsSym
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
 ! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigenValuesVectorsSym33(m,values,vectors)
+subroutine math_eigh33(m,w,v)
 
   real(pReal), dimension(3,3),intent(in)  :: m
-  real(pReal), dimension(3),  intent(out) :: values
-  real(pReal), dimension(3,3),intent(out) :: vectors
+  real(pReal), dimension(3),  intent(out) :: w
+  real(pReal), dimension(3,3),intent(out) :: v
   real(pReal) :: T, U, norm, threshold
   logical :: error
 
-  values = math_eigenvaluesSym33(m)
+  w = math_eigvalsh33(m)
 
-  vectors(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
-                     m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
-                     m(1, 2)**2]
+  v(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
+               m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
+               m(1, 2)**2]
 
-  T = maxval(abs(values))
+  T = maxval(abs(w))
   U = max(T, T**2)
   threshold = sqrt(5.68e-14_pReal * U**2)
 
- ! Calculate first eigenvector by the formula v[0] = (m - lambda[0]).e1 x (m - lambda[0]).e2
-  vectors(1:3,1) = [ vectors(1,2) + m(1, 3) * values(1), &
-                     vectors(2,2) + m(2, 3) * values(1), &
-                     (m(1,1) - values(1)) * (m(2,2) - values(1)) - vectors(3,2)]
-  norm = norm2(vectors(1:3, 1))
-
+  v(1:3,1) = [ v(1,2) + m(1, 3) * w(1), &
+               v(2,2) + m(2, 3) * w(1), &
+              (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
+  norm = norm2(v(1:3, 1))
   fallback1: if(norm < threshold) then
-    call math_eigenValuesVectorsSym(m,values,vectors,error)
-    return
+    call math_eigh(m,w,v,error)
+  else fallback1
+    v(1:3,1) = v(1:3, 1) / norm
+    v(1:3,2) = [ v(1,2) + m(1, 3) * w(2), &
+                 v(2,2) + m(2, 3) * w(2), &
+                (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
+    norm = norm2(v(1:3, 2))
+    fallback2: if(norm < threshold) then
+      call math_eigh(m,w,v,error)
+    else fallback2
+      v(1:3,2) = v(1:3, 2) / norm
+      v(1:3,3) = math_cross(v(1:3,1),v(1:3,2))
+     endif fallback2
   endif fallback1
 
-  vectors(1:3,1) = vectors(1:3, 1) / norm
-
- ! Calculate second eigenvector by the formula v[1] = (m - lambda[1]).e1 x (m - lambda[1]).e2
-  vectors(1:3,2) = [ vectors(1,2) + m(1, 3) * values(2), &
-                     vectors(2,2) + m(2, 3) * values(2), &
-                     (m(1,1) - values(2)) * (m(2,2) - values(2)) - vectors(3,2)]
-  norm = norm2(vectors(1:3, 2))
-
-  fallback2: if(norm < threshold) then
-    call math_eigenValuesVectorsSym(m,values,vectors,error)
-    return
-  endif fallback2
-  vectors(1:3,2) = vectors(1:3, 2) / norm
-
- ! Calculate third eigenvector according to  v[2] = v[0] x v[1]
-  vectors(1:3,3) = math_cross(vectors(1:3,1),vectors(1:3,2))
-
-end subroutine math_eigenValuesVectorsSym33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief eigenvector basis of symmetric matrix m
-!--------------------------------------------------------------------------------------------------
-function math_eigenvectorBasisSym(m)
-
-  real(pReal), dimension(:,:),      intent(in)  :: m
-  real(pReal), dimension(size(m,1))             :: values
-  real(pReal), dimension(size(m,1),size(m,1))   :: vectors
-  real(pReal), dimension(size(m,1),size(m,1))   :: math_eigenvectorBasisSym
-  logical :: error
-  integer :: i
-
-  math_eigenvectorBasisSym = 0.0_pReal
-  call math_eigenValuesVectorsSym(m,values,vectors,error)
-  if(error) return
-
-  do i=1, size(m,1)
-    math_eigenvectorBasisSym = math_eigenvectorBasisSym &
-                             + sqrt(values(i)) * math_outer(vectors(:,i),vectors(:,i))
-  enddo
-
-end function math_eigenvectorBasisSym
+end subroutine math_eigh33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1136,10 +1112,10 @@ end function math_rotationalPart33
 !> @brief Eigenvalues of symmetric matrix m
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
-function math_eigenvaluesSym(m)
+function math_eigvalsh(m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m
-  real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
+  real(pReal), dimension(size(m,1))                         :: math_eigvalsh
   real(pReal), dimension(size(m,1),size(m,1))               :: m_
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
@@ -1147,10 +1123,10 @@ function math_eigenvaluesSym(m)
    dsyev
 
   m_= m                                                                                             ! copy matrix to input (will be destroyed)
-  call dsyev('N','U',size(m,1),m_,size(m,1),math_eigenvaluesSym,work,size(work,1),ierr)
-  if (ierr /= 0) math_eigenvaluesSym = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
+  call dsyev('N','U',size(m,1),m_,size(m,1),math_eigvalsh,work,size(work,1),ierr)
+  if (ierr /= 0) math_eigvalsh = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
 
-end function math_eigenvaluesSym
+end function math_eigvalsh
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1160,31 +1136,34 @@ end function math_eigenvaluesSym
 !> but apparently more stable solution and has general LAPACK powered version for arbritrary sized
 !> matrices as fallback
 !--------------------------------------------------------------------------------------------------
-function math_eigenvaluesSym33(m)
+function math_eigvalsh33(m)
 
   real(pReal), intent(in), dimension(3,3) :: m
-  real(pReal), dimension(3) :: math_eigenvaluesSym33,invariants
+  real(pReal), dimension(3) :: math_eigvalsh33,invariants
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
 
   invariants = math_invariantsSym33(m)                                                              ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
   P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal                                              ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
-  Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+  Q = product(invariants(1:2))/3.0_pReal &
+    - 2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal &
+    - invariants(3)                                                                                 ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
   if(all(abs([P,Q]) < TOL)) then
-    math_eigenvaluesSym33 = math_eigenvaluesSym(m)
+    math_eigvalsh33 = math_eigvalsh(m)
   else
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-    math_eigenvaluesSym33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                          [cos(phi/3.0_pReal), &
-                           cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                           cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                          ] + invariants(1)/3.0_pReal
+    math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
+                                                            [cos(phi/3.0_pReal), &
+                                                             cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                                                             cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                                                            ] &
+                    + invariants(1)/3.0_pReal
   endif
 
-end function math_eigenvaluesSym33
+end function math_eigvalsh33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1344,7 +1323,6 @@ subroutine unitTest
 
    if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
     call IO_error(0,ext_msg='math_exp33(math_I3,1)')
-
   if(any(dNeq(math_exp33(math_I3,256),exp(1.0_pReal)*math_I3))) &
     call IO_error(0,ext_msg='math_exp33(math_I3,256)')
 
