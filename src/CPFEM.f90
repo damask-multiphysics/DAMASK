@@ -26,7 +26,7 @@ module CPFEM
 
   implicit none
   private
-  
+
   real(pReal),                      parameter,   private :: &
     CPFEM_odd_stress    = 1e15_pReal, &                                                             !< return value for stress in case of ping pong dummy cycle
     CPFEM_odd_jacobian  = 1e50_pReal                                                                !< return value for jacobian in case of ping pong dummy cycle
@@ -42,8 +42,8 @@ module CPFEM
     lastLovl     =  0_pInt                                                                          !< lovl in previous call to marc hypela2
   real(pReal),                                   public :: &
     theTime      = 0.0_pReal, &                                                                     !< needs description
-    theDelta     = 0.0_pReal    
-  logical,                                       public :: & 
+    theDelta     = 0.0_pReal
+  logical,                                       public :: &
     outdatedFFN1      = .false., &                                                                  !< needs description
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false.                                                                     !< needs description
@@ -72,31 +72,32 @@ contains
 !> @brief call (thread safe) all module initializations
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll(el,ip)
- integer(pInt), intent(in) ::                        el, &                                          !< FE el number
-                                                     ip                                             !< FE integration point number
+ 
+  integer(pInt), intent(in) :: el, &                                                                !< FE el number
+                               ip                                                                   !< FE integration point number
 
- !$OMP CRITICAL (init)
-   if (.not. CPFEM_init_done) then
-     call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
-     call prec_init
-     call IO_init
-     call numerics_init
-     call debug_init
-     call config_init
-     call math_init
-     call rotations_init
-     call HDF5_utilities_init
-     call results_init
-     call mesh_init(ip, el)
-     call lattice_init
-     call material_init
-     call constitutive_init
-     call crystallite_init
-     call homogenization_init
-     call CPFEM_init
-     CPFEM_init_done = .true.
-   endif
- !$OMP END CRITICAL (init)
+  !$OMP CRITICAL(init)
+  if (.not. CPFEM_init_done) then
+    call DAMASK_interface_init
+    call prec_init
+    call IO_init
+    call numerics_init
+    call debug_init
+    call config_init
+    call math_init
+    call rotations_init
+    call HDF5_utilities_init
+    call results_init
+    call mesh_init(ip, el)
+    call lattice_init
+    call material_init
+    call constitutive_init
+    call crystallite_init
+    call homogenization_init
+    call CPFEM_init
+    CPFEM_init_done = .true.
+  endif
+  !$OMP END CRITICAL(init)
 
 end subroutine CPFEM_initAll
 
@@ -174,35 +175,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
    CPFEM_dcsde = CPFEM_dcsde_knownGood
 
  !*** age results
- if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
-   crystallite_F0  = crystallite_partionedF                                                         ! crystallite deformation
-   crystallite_Fp0 = crystallite_Fp                                                                 ! crystallite plastic deformation
-   crystallite_Lp0 = crystallite_Lp                                                                 ! crystallite plastic velocity
-   crystallite_Fi0 = crystallite_Fi                                                                 ! crystallite intermediate deformation
-   crystallite_Li0 = crystallite_Li                                                                 ! crystallite intermediate velocity
-   crystallite_S0  = crystallite_S                                                                  ! crystallite 2nd Piola Kirchhoff stress
-
-   forall (i = 1:size(plasticState)) plasticState(i)%state0 = plasticState(i)%state
-   do i = 1, size(sourceState)
-     do mySource = 1,phase_Nsources(i)
-       sourceState(i)%p(mySource)%state0 = sourceState(i)%p(mySource)%state
-   enddo; enddo
-   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
-     write(6,'(a)') '<< CPFEM >> aging states'
-     if (debug_e <= discretization_nElem .and. debug_i <=discretization_nIP) then
-       write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') &
-             '<< CPFEM >> aged state of elFE ip grain',debug_e, debug_i, 1, &
-              plasticState(material_phaseAt(1,debug_e))%state(:,material_phasememberAt(1,debug_i,debug_e))
-       endif
-   endif
-
-   do homog = 1_pInt, material_Nhomogenization
-     homogState       (homog)%state0 =  homogState       (homog)%state
-     thermalState     (homog)%state0 =  thermalState     (homog)%state
-     damageState      (homog)%state0 =  damageState      (homog)%state
-   enddo
- endif
-
+ if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) call CPFEM_forward
 
 
  !*** collection of FEM input with returning of randomize odd stress and jacobian
@@ -358,9 +331,18 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
 
 end subroutine CPFEM_general
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data for new time increment.
+!--------------------------------------------------------------------------------------------------
+subroutine CPFEM_forward
+
+  call crystallite_forward
+
+end subroutine CPFEM_forward
+
 
 !--------------------------------------------------------------------------------------------------
-!> @brief triggers writing of the results
+!> @brief Trigger writing of results.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_results(inc,time)
 
