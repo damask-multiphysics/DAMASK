@@ -17,7 +17,7 @@ from . import Orientation
 from . import Environment
 from . import grid_filters
 
-class Result():
+class Result:
     """
     Read and write to DADF5 files.
 
@@ -925,10 +925,9 @@ class Result():
         groups = self.groups_with_datasets(datasets.values())
         default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
 
-        util.progressBar(iteration=0,total=len(groups))
-        for i,result in enumerate(pool.imap_unordered(default_arg,groups)):
-            util.progressBar(iteration=i+1,total=len(groups))
-            if not result: continue
+        for result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
+            if not result:
+                continue
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
                 try:
