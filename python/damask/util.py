@@ -233,10 +233,7 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
       Character length of bar. Defaults to 50.
 
     """
-    if N_iter:
-        status = _ProgressBar(N_iter,prefix,bar_length)
-    else:
-        status = _ProgressBar(len(iterable),prefix,bar_length)
+    status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
 
     for i,item in enumerate(iterable):
         yield item
