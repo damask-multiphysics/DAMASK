@@ -198,10 +198,10 @@ module subroutine plastic_dislotwin_init
 
       prm%n0_sl                = lattice_slip_normal(prm%N_sl,config%getString('lattice_structure'),&
                                                      config%getFloat('c/a',defaultVal=0.0_pReal))
-      prm%fccTwinTransNucleation = merge(.true., .false., lattice_structure(p) == LATTICE_FCC_ID) &
+      prm%fccTwinTransNucleation = merge(.true., .false., lattice_structure(p) == lattice_FCC_ID) &
                                  .and. (prm%N_sl(1) == 12)
       if(prm%fccTwinTransNucleation) &
-        prm%fcc_twinNucleationSlipPair = lattice_fcc_twinNucleationSlipPair
+        prm%fcc_twinNucleationSlipPair = lattice_FCC_TWINNUCLEATIONSLIPPAIR
 
       prm%rho_mob_0            = config%getFloats('rhoedge0',   requiredSize=size(prm%N_sl))
       prm%rho_dip_0            = config%getFloats('rhoedgedip0',requiredSize=size(prm%N_sl))
@@ -230,7 +230,7 @@ module subroutine plastic_dislotwin_init
       prm%omega                = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
                                * merge(12.0_pReal, &
                                        8.0_pReal, &
-                                       lattice_structure(p) == LATTICE_FCC_ID .or. lattice_structure(p) == LATTICE_HEX_ID)
+                                       lattice_structure(p) == lattice_FCC_ID .or. lattice_structure(p) == lattice_HEX_ID)
 
 
       ! expand: family => system
@@ -335,7 +335,7 @@ module subroutine plastic_dislotwin_init
                                    config%getFloat('a_bcc', defaultVal=0.0_pReal), &
                                    config%getFloat('a_fcc', defaultVal=0.0_pReal))
 
-      if (lattice_structure(p) /= LATTICE_fcc_ID) then
+      if (lattice_structure(p) /= lattice_FCC_ID) then
          prm%dot_N_0_tr = config%getFloats('ndot0_trans')
          prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,prm%N_tr)
       endif
