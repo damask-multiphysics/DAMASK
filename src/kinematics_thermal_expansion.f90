@@ -69,7 +69,7 @@ subroutine kinematics_thermal_expansion_init
     temp = config%getFloats('thermal_expansion33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
     prm%expansion(3,3,1:size(temp)) = temp
     do i=1, size(prm%expansion,3)
-      prm%expansion(1:3,1:3,i) = lattice_symmetrize33(prm%expansion(1:3,1:3,i),config%getString('lattice_structure'))
+      prm%expansion(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%expansion(1:3,1:3,i),config%getString('lattice_structure'))
     enddo
 
     end associate

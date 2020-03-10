@@ -421,7 +421,7 @@ module lattice
     LATTICE_BCT_ID, &
     LATTICE_HEX_ID, &
     LATTICE_ORT_ID, &
-    lattice_symmetrize33, &
+    lattice_applyLatticeSymmetry33, &
     lattice_SchmidMatrix_slip, &
     lattice_SchmidMatrix_twin, &
     lattice_SchmidMatrix_trans, &
@@ -500,7 +500,7 @@ subroutine lattice_init
         call IO_error(130,ext_msg='lattice_init: '//trim(structure))
     end select
 
-    lattice_C66(1:6,1:6,p) = symmetrizeC66(lattice_C66(1:6,1:6,p),structure)
+    lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),structure)
 
     ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
     lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p))
@@ -521,7 +521,7 @@ subroutine lattice_init
     lattice_thermalConductivity(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
     lattice_thermalConductivity(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
     lattice_thermalConductivity(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(1:3,1:3,p) = lattice_symmetrize33(lattice_thermalConductivity(1:3,1:3,p),structure)
+    lattice_thermalConductivity(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_thermalConductivity(1:3,1:3,p),structure)
 
     lattice_specificHeat(p) = config_phase(p)%getFloat('specific_heat',defaultVal=0.0_pReal)
     lattice_massDensity(p)  = config_phase(p)%getFloat('mass_density', defaultVal=0.0_pReal)
@@ -529,7 +529,7 @@ subroutine lattice_init
     lattice_DamageDiffusion(1,1,p) = config_phase(p)%getFloat('damage_diffusion11',defaultVal=0.0_pReal)
     lattice_DamageDiffusion(2,2,p) = config_phase(p)%getFloat('damage_diffusion22',defaultVal=0.0_pReal)
     lattice_DamageDiffusion(3,3,p) = config_phase(p)%getFloat('damage_diffusion33',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(1:3,1:3,p) = lattice_symmetrize33(lattice_DamageDiffusion(1:3,1:3,p),structure)
+    lattice_DamageDiffusion(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_DamageDiffusion(1:3,1:3,p),structure)
 
     lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
@@ -694,7 +694,7 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = symmetrizeC66(C_target_unrotated66,'hex')
+    C_target_unrotated66 = applyLatticeSymmetryC66(C_target_unrotated66,'hex')
   elseif (structure_target(1:3)  == 'bcc') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
       call IO_error(134,ext_msg='lattice_C66_trans: '//trim(structure_target))
@@ -1685,9 +1685,9 @@ end function lattice_labels_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Symmetrizes 2nd order tensor according to lattice type
+!> @brief Return 3x3 tensor with symmetry according to given crystal structure
 !--------------------------------------------------------------------------------------------------
-function lattice_symmetrize33(T,structure) result(T_sym)
+function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
 
   real(pReal), dimension(3,3) :: T_sym
 
@@ -1699,7 +1699,7 @@ function lattice_symmetrize33(T,structure) result(T_sym)
   T_sym = 0.0_pReal
 
   if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
+    call IO_error(137,ext_msg='lattice_applyLatticeSymmetry33: '//trim(structure))
 
   select case(structure)
     case('iso','fcc','bcc')
@@ -1715,17 +1715,17 @@ function lattice_symmetrize33(T,structure) result(T_sym)
       T_sym(2,2) = T(2,2)
       T_sym(3,3) = T(3,3)
     case default
-      call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
+      call IO_error(137,ext_msg='lattice_applyLatticeSymmetry33: '//trim(structure))
    end select
 
-end function lattice_symmetrize33
+end function lattice_applyLatticeSymmetry33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Symmetrizes stiffness matrix according to lattice type
+!> @brief Return stiffness matrix in 6x6 notation with symmetry according to given crystal structure
 !> @details J. A. Rayne and B. S. Chandrasekhar Phys. Rev. 120, 1658 Erratum Phys. Rev. 122, 1962
 !--------------------------------------------------------------------------------------------------
-function symmetrizeC66(C66,structure) result(C66_sym)
+function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
 
   real(pReal), dimension(6,6) :: C66_sym
 
@@ -1737,7 +1737,7 @@ function symmetrizeC66(C66,structure) result(C66_sym)
   C66_sym = 0.0_pReal
 
   if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_symmetrize33: '//trim(structure))
+    call IO_error(137,ext_msg='applyLatticeSymmetryC66: '//trim(structure))
 
   select case(structure)
     case ('iso')
@@ -1796,10 +1796,10 @@ function symmetrizeC66(C66,structure) result(C66_sym)
       C66_sym(5,5) = C66(4,4)
       C66_sym(6,6) = C66(6,6)
     case default
-      call IO_error(137,ext_msg='symmetrizeC66: '//trim(structure))
+      call IO_error(137,ext_msg='applyLatticeSymmetryC66: '//trim(structure))
    end select
 
-end function symmetrizeC66
+end function applyLatticeSymmetryC66
 
 
 !--------------------------------------------------------------------------------------------------
