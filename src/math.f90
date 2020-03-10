@@ -1314,8 +1314,12 @@ subroutine unitTest
   if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert t33')
 
-  t33_2 = transpose(math_rotationalPart33(t33))
-  if(any(dNeq0(matmul(t33_2,math_rotationalPart33(t33)) - MATH_I3,tol=5.0e-4_pReal))) &
+  do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
+    call random_number(t33)
+  enddo
+  t33_2 = math_rotationalPart33(transpose(t33))
+  t33   = math_rotationalPart33(t33)
+  if(any(dNeq0(matmul(t33_2,t33) - MATH_I3,tol=1.0e-10_pReal))) &
     call IO_error(0,ext_msg='math_rotationalPart33')
 
   call random_number(r)
