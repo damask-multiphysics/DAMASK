@@ -141,9 +141,9 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
   dLd_dTstar = 0.0_pReal
   do i = 1, prm%totalNslip
 
-    traction_d = math_mul33xx33(S,prm%P_d(3,3,i))
-    traction_t = math_mul33xx33(S,prm%P_t(3,3,i))
-    traction_n = math_mul33xx33(S,prm%P_n(3,3,i))
+    traction_d = math_tensordot(S,prm%P_d(1:3,1:3,i))
+    traction_t = math_tensordot(S,prm%P_t(1:3,1:3,i))
+    traction_n = math_tensordot(S,prm%P_n(1:3,1:3,i))
 
     traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)                                  ! degrading critical load carrying capacity by damage
 
