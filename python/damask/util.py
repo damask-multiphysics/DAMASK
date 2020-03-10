@@ -1,9 +1,9 @@
 import sys
-import time
+import datetime
 import os
 import subprocess
 import shlex
-from fractions import Fraction
+import fractions
 from functools import reduce
 from optparse import Option
 
@@ -11,10 +11,10 @@ import numpy as np
 
 class bcolors:
     """
-    ASCII Colors (Blender code).
+    ASCII Colors.
 
     https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
-    http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
+    https://stackoverflow.com/questions/287871
     """
 
     HEADER    = '\033[95m'
@@ -38,18 +38,18 @@ class bcolors:
         self.BOLD = ''
         self.UNDERLINE = ''
         self.CROSSOUT = ''
-    
+
 
 def srepr(arg,glue = '\n'):
     r"""
     Join arguments as individual lines.
-    
+
     Parameters
     ----------
     arg : iterable
       Items to join.
     glue : str, optional
-      Defaults to \n. 
+      Defaults to \n.
 
     """
     if (not hasattr(arg, "strip") and
@@ -62,13 +62,13 @@ def srepr(arg,glue = '\n'):
 def croak(what, newline = True):
     """
     Write formated to stderr.
-    
+
     Parameters
     ----------
     what : str or iterable
       Content to be displayed
     newline : bool, optional
-      Separate items of what by newline. Defaults to True. 
+      Separate items of what by newline. Defaults to True.
 
     """
     if not what:
@@ -165,63 +165,93 @@ class extendableOption(Option):
         Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-def progressBar(iteration, total, prefix='', bar_length=50):
+class _ProgressBar:
     """
-    Call in a loop to create terminal progress bar.
-    
-    From https://gist.github.com/aubricus/f91fb55dc6ba5557fbab06119420dd6a
+    Report progress of an interation as a status bar.
+
+    Works for 0-based loops, ETA is estimated by linear extrapolation.
+    """
+
+    def __init__(self,total,prefix,bar_length):
+        """
+        Inititalize a progress bar to current time as basis for ETA estimation.
+
+        Parameters
+        ----------
+        total : int
+          Total # of iterations.
+        prefix : str
+          Prefix string.
+        bar_length : int
+          Character length of bar.
+
+        """
+        self.total = total
+        self.prefix = prefix
+        self.bar_length = bar_length
+        self.start_time = datetime.datetime.now()
+        self.last_fraction = 0.0
+
+        sys.stderr.write('{} {}   0% ETA n/a'.format(self.prefix, '░'*self.bar_length))
+        sys.stderr.flush()
+
+    def update(self,iteration):
+
+        fraction = (iteration+1) / self.total
+
+        if int(self.bar_length * fraction) > int(self.bar_length *  self.last_fraction):
+            delta_time = datetime.datetime.now() - self.start_time
+            remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
+            remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)           # remove μs
+
+            filled_length = int(self.bar_length * fraction)
+            bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
+            sys.stderr.write('\r{} {} {:>4.0%} ETA {}'.format(self.prefix, bar, fraction, remaining_time))
+            sys.stderr.flush()
+
+        self.last_fraction = fraction
+
+        if iteration == self.total - 1:
+            sys.stderr.write('\n')
+            sys.stderr.flush()
+
+def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
+    """
+    Decorate a loop with a status bar.
+
+    Use similar like enumerate.
 
     Parameters
     ----------
-    iteration : int
-      Current iteration.
-    total : int
-      Total iterations.
-    prefix : str, optional
+    iterable : iterable/function with yield statement
+      Iterable (or function with yield statement) to be decorated.
+    N_iter : int
+      Total # of iterations. Needed if number of iterations can not be obtained as len(iterable).
+    prefix : str, optional.
       Prefix string.
     bar_length : int, optional
       Character length of bar. Defaults to 50.
 
     """
-    fraction = iteration / float(total)
-    if not hasattr(progressBar, "last_fraction"):                                                   # first call to function
-        progressBar.start_time    = time.time()
-        progressBar.last_fraction = -1.0
-        remaining_time = '   n/a'
-    else:
-        if fraction <= progressBar.last_fraction or iteration == 0:                                 # reset: called within a new loop
-            progressBar.start_time    = time.time()
-            progressBar.last_fraction = -1.0
-            remaining_time = '   n/a'
-        else:
-            progressBar.last_fraction = fraction
-            remainder = (total - iteration) * (time.time()-progressBar.start_time)/iteration
-            remaining_time = '{: 3d}:'.format(int( remainder//3600)) + \
-                             '{:02d}:'.format(int((remainder//60)%60)) + \
-                             '{:02d}' .format(int( remainder     %60))
+    status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
 
-    filled_length = int(round(bar_length * fraction))
-    bar = '█' * filled_length + '░' * (bar_length - filled_length)
-
-    sys.stderr.write('\r{} {} {}'.format(prefix, bar, remaining_time)),
-
-    if iteration == total:
-        sys.stderr.write('\n')
-    sys.stderr.flush()
+    for i,item in enumerate(iterable):
+        yield item
+        status.update(i)
  
 
 def scale_to_coprime(v):
     """Scale vector to co-prime (relatively prime) integers."""
     MAX_DENOMINATOR = 1000
-  
+
     def get_square_denominator(x):
         """Denominator of the square of a number."""
-        return Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
-  
+        return fractions.Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
+
     def lcm(a, b):
         """Least common multiple."""
         return a * b // np.gcd(a, b)
-  
+
     denominators = [int(get_square_denominator(i)) for i in v]
     s = reduce(lcm, denominators) ** 0.5
     m = (np.array(v)*s).astype(np.int)
@@ -230,7 +260,7 @@ def scale_to_coprime(v):
 
 class return_message():
     """Object with formatted return message."""
-    
+
     def __init__(self,message):
         """
         Sets return message.
@@ -242,7 +272,7 @@ class return_message():
 
         """
         self.message = message
-    
+
     def __repr__(self):
         """Return message suitable for interactive shells."""
         return srepr(self.message)
