@@ -80,7 +80,7 @@ class Geom():
         if size is not None:
             self.set_size(size)
         elif rescale:
-             self.set_size(self.get_grid()/grid_old*self.size)
+            self.set_size(self.get_grid()/grid_old*self.size)
 
         message = ['grid     a b c:      {}'.format(' x '.join(map(str,grid_old)))]
         if np.any(grid_old != self.get_grid()):
@@ -269,7 +269,7 @@ class Geom():
         comments = [] 
         for i,line in enumerate(content[:header_length]):
             items = line.lower().strip().split()
-            key = items[0] if len(items) > 0 else ''
+            key = items[0] if items else ''
             if   key == 'grid':
                 grid   = np.array([  int(dict(zip(items[1::2],items[2::2]))[i]) for i in ['a','b','c']])
             elif key == 'size':
@@ -524,7 +524,7 @@ class Geom():
         """Renumber sorted microstructure indices to 1,...,N."""
         renumbered = np.empty(self.get_grid(),dtype=self.microstructure.dtype)
         for i, oldID in enumerate(np.unique(self.microstructure)):
-          renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
+            renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
         return self.update(renumbered)
         #self.add_comments('tbd')

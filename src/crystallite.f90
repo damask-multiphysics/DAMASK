@@ -11,6 +11,8 @@
 module crystallite
   use prec
   use IO
+  use HDF5_utilities
+  use DAMASK_interface
   use config
   use debug
   use numerics
@@ -36,25 +38,25 @@ module crystallite
     crystallite_orientation                                                                         !< current orientation
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
     crystallite_Fe, &                                                                               !< current "elastic" def grad (end of converged time step)
-    crystallite_P                                                                                   !< 1st Piola-Kirchhoff stress per grain
+    crystallite_P, &                                                                                !< 1st Piola-Kirchhoff stress per grain
+    crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
+    crystallite_Fp0, &                                                                              !< plastic def grad at start of FE inc
+    crystallite_Fi0, &                                                                              !< intermediate def grad at start of FE inc
+    crystallite_F0, &                                                                               !< def grad at start of FE inc
+    crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
+    crystallite_Li0                                                                                 !< intermediate velocitiy grad at start of FE inc
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_S, &                                                                                !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
-    crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
     crystallite_partionedS0, &                                                                      !< 2nd Piola-Kirchhoff stress vector at start of homog inc
     crystallite_Fp, &                                                                               !< current plastic def grad (end of converged time step)
-    crystallite_Fp0, &                                                                              !< plastic def grad at start of FE inc
     crystallite_partionedFp0,&                                                                      !< plastic def grad at start of homog inc
     crystallite_Fi, &                                                                               !< current intermediate def grad (end of converged time step)
-    crystallite_Fi0, &                                                                              !< intermediate def grad at start of FE inc
     crystallite_partionedFi0,&                                                                      !< intermediate def grad at start of homog inc
-    crystallite_F0, &                                                                               !< def grad at start of FE inc
     crystallite_partionedF,  &                                                                      !< def grad to be reached at end of homog inc
     crystallite_partionedF0, &                                                                      !< def grad at start of homog inc
     crystallite_Lp, &                                                                               !< current plastic velocitiy grad (end of converged time step)
-    crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
     crystallite_partionedLp0, &                                                                     !< plastic velocity grad at start of homog inc
     crystallite_Li, &                                                                               !< current intermediate velocitiy grad (end of converged time step)
-    crystallite_Li0, &                                                                              !< intermediate velocitiy grad at start of FE inc
     crystallite_partionedLi0                                                                        !< intermediate velocity grad at start of homog inc
   real(pReal),                dimension(:,:,:,:,:),    allocatable :: &
     crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
@@ -104,7 +106,10 @@ module crystallite
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_results
+    crystallite_results, &
+    crystallite_restartWrite, &
+    crystallite_restartRead, &
+    crystallite_forward
 
 contains
 
@@ -130,38 +135,30 @@ subroutine crystallite_init
   iMax = discretization_nIP
   eMax = discretization_nElem
 
-  allocate(crystallite_S0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_partionedS0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
-  allocate(crystallite_S(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
-  allocate(crystallite_P(3,3,cMax,iMax,eMax),                 source=0.0_pReal)
-  allocate(crystallite_F0(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_partionedF0(3,3,cMax,iMax,eMax),       source=0.0_pReal)
-  allocate(crystallite_partionedF(3,3,cMax,iMax,eMax),        source=0.0_pReal)
-  allocate(crystallite_subF0(3,3,cMax,iMax,eMax),             source=0.0_pReal)
-  allocate(crystallite_subF(3,3,cMax,iMax,eMax),              source=0.0_pReal)
-  allocate(crystallite_Fp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedFp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subFp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Fp(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Fi0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedFi0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subFi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Fi(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Fe(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Lp0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedLp0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subLp0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Lp(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_Li0(3,3,cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_partionedLi0(3,3,cMax,iMax,eMax),      source=0.0_pReal)
-  allocate(crystallite_subLi0(3,3,cMax,iMax,eMax),            source=0.0_pReal)
-  allocate(crystallite_Li(3,3,cMax,iMax,eMax),                source=0.0_pReal)
-  allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),          source=0.0_pReal)
-  allocate(crystallite_dt(cMax,iMax,eMax),                    source=0.0_pReal)
-  allocate(crystallite_subdt(cMax,iMax,eMax),                 source=0.0_pReal)
-  allocate(crystallite_subFrac(cMax,iMax,eMax),               source=0.0_pReal)
-  allocate(crystallite_subStep(cMax,iMax,eMax),               source=0.0_pReal)
+  allocate(crystallite_partionedF(3,3,cMax,iMax,eMax),source=0.0_pReal)
+
+  allocate(crystallite_S0, &
+           crystallite_F0, crystallite_Fi0,crystallite_Fp0, &
+                           crystallite_Li0,crystallite_Lp0, &
+           crystallite_partionedS0, &
+           crystallite_partionedF0,crystallite_partionedFp0,crystallite_partionedFi0, &
+                                   crystallite_partionedLp0,crystallite_partionedLi0, &
+           crystallite_S,crystallite_P, &
+           crystallite_Fe,crystallite_Fi,crystallite_Fp, &
+                          crystallite_Li,crystallite_Lp, &
+           crystallite_subF,crystallite_subF0, &
+           crystallite_subFp0,crystallite_subFi0, &
+           crystallite_subLi0,crystallite_subLp0, &
+           source = crystallite_partionedF)
+
+  allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),source=0.0_pReal)
+
+  allocate(crystallite_dt(cMax,iMax,eMax),source=0.0_pReal)
+  allocate(crystallite_subdt,crystallite_subFrac,crystallite_subStep, &
+           source = crystallite_dt)
+
   allocate(crystallite_orientation(cMax,iMax,eMax))
+
   allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
@@ -1843,5 +1840,118 @@ logical function stateJump(ipc,ip,el)
  stateJump = .true.
 
 end function stateJump
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Write current  restart information (Field and constitutive data) to file.
+! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_restartWrite
+
+  integer :: i
+  integer(HID_T) :: fileHandle, groupHandle
+  character(len=pStringLen) :: fileName, datasetName
+
+  write(6,'(a)') ' writing field and constitutive data required for restart to file';flush(6)
+
+  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
+  fileHandle = HDF5_openFile(fileName,'a')
+
+  call HDF5_write(fileHandle,crystallite_partionedF,'F')
+  call HDF5_write(fileHandle,crystallite_Fp,        'Fp')
+  call HDF5_write(fileHandle,crystallite_Fi,        'Fi')
+  call HDF5_write(fileHandle,crystallite_Lp,        'Lp')
+  call HDF5_write(fileHandle,crystallite_Li,        'Li')
+  call HDF5_write(fileHandle,crystallite_S,         'S')
+
+  groupHandle = HDF5_addGroup(fileHandle,'constituent')
+  do i = 1,size(phase_plasticity)
+    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    call HDF5_write(groupHandle,plasticState(i)%state,datasetName)
+  enddo
+  call HDF5_closeGroup(groupHandle)
+
+  groupHandle = HDF5_addGroup(fileHandle,'materialpoint')
+  do i = 1, material_Nhomogenization
+    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+    call HDF5_write(groupHandle,homogState(i)%state,datasetName)
+  enddo
+  call HDF5_closeGroup(groupHandle)
+
+  call HDF5_closeFile(fileHandle)
+
+end subroutine crystallite_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Read data for restart
+! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_restartRead
+
+  integer :: i
+  integer(HID_T) :: fileHandle, groupHandle
+  character(len=pStringLen) :: fileName, datasetName
+
+  write(6,'(/,a,i0,a)') ' reading restart information of increment from file'
+
+  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
+  fileHandle = HDF5_openFile(fileName)
+
+  call HDF5_read(fileHandle,crystallite_F0, 'F')
+  call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
+  call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
+  call HDF5_read(fileHandle,crystallite_Lp0,'Lp')
+  call HDF5_read(fileHandle,crystallite_Li0,'Li')
+  call HDF5_read(fileHandle,crystallite_S0, 'S')
+
+  groupHandle = HDF5_openGroup(fileHandle,'constituent')
+  do i = 1,size(phase_plasticity)
+    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
+  enddo
+  call HDF5_closeGroup(groupHandle)
+
+  groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
+  do i = 1, material_Nhomogenization
+    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+    call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
+  enddo
+  call HDF5_closeGroup(groupHandle)
+
+  call HDF5_closeFile(fileHandle)
+
+end subroutine crystallite_restartRead
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data after successful increment.
+! ToDo: Any guessing for the current states possible?
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_forward
+
+  integer :: i, j
+
+  crystallite_F0  = crystallite_partionedF
+  crystallite_Fp0 = crystallite_Fp
+  crystallite_Lp0 = crystallite_Lp
+  crystallite_Fi0 = crystallite_Fi
+  crystallite_Li0 = crystallite_Li
+  crystallite_S0  = crystallite_S
+
+  do i = 1, size(plasticState)
+    plasticState(i)%state0 = plasticState(i)%state
+  enddo
+  do i = 1, size(sourceState)
+    do j = 1,phase_Nsources(i)
+      sourceState(i)%p(j)%state0 = sourceState(i)%p(j)%state
+  enddo; enddo
+  do i = 1, material_Nhomogenization
+    homogState  (i)%state0 = homogState  (i)%state
+    thermalState(i)%state0 = thermalState(i)%state
+    damageState (i)%state0 = damageState (i)%state
+  enddo
+
+end subroutine crystallite_forward
 
 end module crystallite

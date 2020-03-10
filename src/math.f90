@@ -72,7 +72,12 @@ module math
       3,2, &
       3,3  &
       ],[2,9])                                                                                      !< arrangement in Plain notation
-     
+
+
+  interface math_mul33xx33
+    module procedure math_tensordot
+  end interface math_mul33xx33
+
 !---------------------------------------------------------------------------------------------------
  private :: &
    unitTest
@@ -88,7 +93,7 @@ subroutine math_init
   real(pReal), dimension(4) :: randTest
   integer :: randSize
   integer, dimension(:), allocatable :: randInit
-  
+
   write(6,'(/,a)') ' <<<+-  math init  -+>>>'; flush(6)
 
   call random_seed(size=randSize)
@@ -140,7 +145,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   else
     e = ubound(a,2)
   endif
-  
+
   if(present(sortDim)) then
     d = sortDim
   else
@@ -160,12 +165,12 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   !> @brief Partitioning required for quicksort
   !-------------------------------------------------------------------------------------------------
   integer function qsort_partition(a, istart, iend, sort)
-  
+
     integer, dimension(:,:), intent(inout) :: a
     integer,                 intent(in)    :: istart,iend,sort
     integer, dimension(size(a,1))          :: tmp
     integer :: i,j
-   
+
     do
       ! find the first element on the right side less than or equal to the pivot point
       do j = iend, istart, -1
@@ -187,7 +192,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
         a(:,j) = tmp
       endif cross
     enddo
-  
+
   end function qsort_partition
 
 end subroutine math_sort
@@ -196,7 +201,7 @@ end subroutine math_sort
 !--------------------------------------------------------------------------------------------------
 !> @brief vector expansion
 !> @details takes a set of numbers (a,b,c,...) and corresponding multiples (x,y,z,...)
-!> to return a vector of x times a, y times b, z times c, ... 
+!> to return a vector of x times a, y times b, z times c, ...
 !--------------------------------------------------------------------------------------------------
 pure function math_expand(what,how)
 
@@ -204,9 +209,9 @@ pure function math_expand(what,how)
   integer,       dimension(:), intent(in) :: how
   real(pReal), dimension(sum(how)) ::  math_expand
   integer :: i
- 
+
   if (sum(how) == 0) return
- 
+
   do i = 1, size(how)
     math_expand(sum(how(1:i-1))+1:sum(how(1:i))) = what(mod(i-1,size(what))+1)
   enddo
@@ -266,31 +271,30 @@ end function math_identity4th
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief permutation tensor e_ijk used for computing cross product of two tensors
+!> @brief permutation tensor e_ijk
 ! e_ijk =  1 if even permutation of ijk
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_civita(i,j,k)
+real(pReal) pure function math_LeviCivita(i,j,k)
 
   integer, intent(in) :: i,j,k
 
-  math_civita = 0.0_pReal
-  if (((i == 1).and.(j == 2).and.(k == 3)) .or. &
-      ((i == 2).and.(j == 3).and.(k == 1)) .or. &
-      ((i == 3).and.(j == 1).and.(k == 2))) math_civita = 1.0_pReal
-  if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
-      ((i == 2).and.(j == 1).and.(k == 3)) .or. &
-      ((i == 3).and.(j == 2).and.(k == 1))) math_civita = -1.0_pReal
+  if     (all([i,j,k] == [1,2,3]) .or. all([i,j,k] == [2,3,1]) .or. all([i,j,k] == [3,1,2])) then
+    math_LeviCivita = +1.0_pReal
+  elseif (all([i,j,k] == [3,2,1]) .or. all([i,j,k] == [2,1,3]) .or. all([i,j,k] == [1,3,2])) then
+    math_LeviCivita = -1.0_pReal
+  else
+    math_LeviCivita =  0.0_pReal
+  endif
 
-end function math_civita
+end function math_LeviCivita
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief kronecker delta function d_ij
 ! d_ij = 1 if i = j
 ! d_ij = 0 otherwise
-! inspired by http://fortraninacworld.blogspot.de/2012/12/ternary-operator.html
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_delta(i,j)
 
@@ -317,7 +321,7 @@ end function math_cross
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief outer product A \otimes B of arbitrary sized vectors A and B
+!> @brief outer product of arbitrary sized vectors (A ⊗ B / i,j)
 !--------------------------------------------------------------------------------------------------
 pure function math_outer(A,B)
 
@@ -333,7 +337,7 @@ end function math_outer
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief outer product A \otimes B of arbitrary sized vectors A and B
+!> @brief inner product of arbitrary sized vectors (A · B / i,i)
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_inner(A,B)
 
@@ -346,31 +350,26 @@ end function math_inner
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 33xx33 = 1 (double contraction --> ij * ij)
+!> @brief double contraction of 3x3 matrices (A : B / ij,ij)
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function math_mul33xx33(A,B)
+real(pReal) pure function math_tensordot(A,B)
 
   real(pReal), dimension(3,3), intent(in) :: A,B
-  integer :: i,j
-  real(pReal), dimension(3,3) ::             C
 
-  do i=1,3; do j=1,3
-    C(i,j) = A(i,j) * B(i,j)
-  enddo; enddo
-  math_mul33xx33 = sum(C)
+  math_tensordot = sum(A*B)
 
-end function math_mul33xx33
+end function math_tensordot
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 3333x33 = 33 (double contraction --> ijkl *kl = ij)
+!> @brief matrix double contraction 3333x33 = 33 (ijkl,kl)
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx33(A,B)
 
   real(pReal), dimension(3,3,3,3), intent(in) :: A
   real(pReal), dimension(3,3),     intent(in) :: B
   real(pReal), dimension(3,3) :: math_mul3333xx33
-  integer :: i,j 
+  integer :: i,j
 
   do i=1,3; do j=1,3
     math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
@@ -380,7 +379,7 @@ end function math_mul3333xx33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 3333x3333 = 3333 (ijkl *klmn = ijmn)
+!> @brief matrix multiplication 3333x3333 = 3333 (ijkl,klmn)
 !--------------------------------------------------------------------------------------------------
 pure function math_mul3333xx3333(A,B)
 
@@ -402,8 +401,9 @@ end function math_mul3333xx3333
 pure function math_exp33(A,n)
 
   real(pReal), dimension(3,3), intent(in) :: A
-  integer, intent(in), optional :: n
+  integer,                     intent(in), optional :: n
   real(pReal), dimension(3,3) :: B, math_exp33
+
   real(pReal) :: invFac
   integer     :: n_,i
 
@@ -428,15 +428,16 @@ end function math_exp33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Cramer inversion of 33 matrix (function)
-!> @details Direct Cramer inversion of matrix A. Returns all zeroes if not possible, i.e. 
+!> @details Direct Cramer inversion of matrix A. Returns all zeroes if not possible, i.e.
 ! if determinant is close to zero
 !--------------------------------------------------------------------------------------------------
 pure function math_inv33(A)
 
-  real(pReal),dimension(3,3),intent(in)  :: A
-  real(pReal)                :: DetA
-  real(pReal),dimension(3,3) :: math_inv33
-  logical                    :: error
+  real(pReal), dimension(3,3), intent(in) :: A
+  real(pReal), dimension(3,3) :: math_inv33
+
+  real(pReal) :: DetA
+  logical     :: error
 
   call math_invert33(math_inv33,DetA,error,A)
   if(error) math_inv33 = 0.0_pReal
@@ -451,10 +452,10 @@ end function math_inv33
 !--------------------------------------------------------------------------------------------------
 pure subroutine math_invert33(InvA, DetA, error, A)
 
-  logical, intent(out) :: error
-  real(pReal),dimension(3,3),intent(in)  :: A
-  real(pReal),dimension(3,3),intent(out) :: InvA
-  real(pReal), intent(out) :: DetA
+  real(pReal), dimension(3,3), intent(out) :: InvA
+  real(pReal),                 intent(out) :: DetA
+  logical,                     intent(out) :: error
+  real(pReal), dimension(3,3), intent(in)  :: A
 
   InvA(1,1) =  A(2,2) * A(3,3) - A(2,3) * A(3,2)
   InvA(2,1) = -A(2,1) * A(3,3) + A(2,3) * A(3,1)
@@ -529,12 +530,12 @@ subroutine math_invert(InvA, error, A)
     dgetrf, &
     dgetri
 
-  invA = A 
+  invA = A
   call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
   error = (ierr /= 0)
   call dgetri(size(A,1),InvA,size(A,1),ipiv,work,size(work,1),ierr)
   error = error .or. (ierr /= 0)
- 
+
 end subroutine math_invert
 
 
@@ -621,7 +622,7 @@ end function math_trace33
 real(pReal) pure function math_det33(m)
 
   real(pReal), dimension(3,3), intent(in) :: m
-  
+
   math_det33 = m(1,1)* (m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
              - m(1,2)* (m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
              + m(1,3)* (m(2,1)*m(3,2)-m(2,2)*m(3,1))
@@ -635,7 +636,7 @@ end function math_det33
 real(pReal) pure function math_detSym33(m)
 
   real(pReal), dimension(3,3), intent(in) :: m
- 
+
   math_detSym33 = -(m(1,1)*m(2,3)**2 + m(2,2)*m(1,3)**2 + m(3,3)*m(1,2)**2) &
                   + m(1,1)*m(2,2)*m(3,3) + 2.0_pReal * m(1,2)*m(1,3)*m(2,3)
 
@@ -649,9 +650,9 @@ pure function math_33to9(m33)
 
   real(pReal), dimension(9)               :: math_33to9
   real(pReal), dimension(3,3), intent(in) :: m33
-  
+
   integer :: i
-  
+
   do i = 1, 9
     math_33to9(i) = m33(MAPPLAIN(1,i),MAPPLAIN(2,i))
   enddo
@@ -666,7 +667,7 @@ pure function math_9to33(v9)
 
   real(pReal), dimension(3,3)           :: math_9to33
   real(pReal), dimension(9), intent(in) :: v9
-  
+
   integer :: i
 
   do i = 1, 9
@@ -687,10 +688,10 @@ pure function math_sym33to6(m33,weighted)
   real(pReal), dimension(6)               :: math_sym33to6
   real(pReal), dimension(3,3), intent(in) :: m33                                                     !< symmetric matrix (no internal check)
   logical,     optional,       intent(in) :: weighted                                                !< weight according to Mandel (.true. by default)
-  
+
   real(pReal), dimension(6) :: w
   integer :: i
-  
+
   if(present(weighted)) then
     w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
@@ -699,7 +700,7 @@ pure function math_sym33to6(m33,weighted)
 
   do i = 1, 6
     math_sym33to6(i) = w(i)*m33(MAPNYE(1,i),MAPNYE(2,i))
-  enddo 
+  enddo
 
 end function math_sym33to6
 
@@ -718,7 +719,7 @@ pure function math_6toSym33(v6,weighted)
 
   real(pReal), dimension(6) :: w
   integer :: i
-  
+
   if(present(weighted)) then
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
@@ -781,7 +782,7 @@ pure function math_sym3333to66(m3333,weighted)
 
   real(pReal), dimension(6) :: w
   integer :: i,j
-  
+
   if(present(weighted)) then
     w = merge(NRMMANDEL,1.0_pReal,weighted)
   else
@@ -806,10 +807,10 @@ pure function math_66toSym3333(m66,weighted)
   real(pReal), dimension(3,3,3,3)            :: math_66toSym3333
   real(pReal), dimension(6,6),    intent(in) :: m66
   logical,     optional,          intent(in) :: weighted                                             !< weight according to Mandel (.true. by default)
-  
+
   real(pReal), dimension(6) :: w
   integer :: i,j
-  
+
   if(present(weighted)) then
     w = merge(INVNRMMANDEL,1.0_pReal,weighted)
   else
@@ -909,48 +910,48 @@ end subroutine math_eigenValuesVectorsSym
 ! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigenValuesVectorsSym33(m,values,vectors)
- 
+
   real(pReal), dimension(3,3),intent(in)  :: m
   real(pReal), dimension(3),  intent(out) :: values
   real(pReal), dimension(3,3),intent(out) :: vectors
   real(pReal) :: T, U, norm, threshold
   logical :: error
- 
+
   values = math_eigenvaluesSym33(m)
- 
+
   vectors(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
                      m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
                      m(1, 2)**2]
- 
+
   T = maxval(abs(values))
   U = max(T, T**2)
   threshold = sqrt(5.68e-14_pReal * U**2)
- 
+
  ! Calculate first eigenvector by the formula v[0] = (m - lambda[0]).e1 x (m - lambda[0]).e2
   vectors(1:3,1) = [ vectors(1,2) + m(1, 3) * values(1), &
                      vectors(2,2) + m(2, 3) * values(1), &
                      (m(1,1) - values(1)) * (m(2,2) - values(1)) - vectors(3,2)]
   norm = norm2(vectors(1:3, 1))
- 
+
   fallback1: if(norm < threshold) then
     call math_eigenValuesVectorsSym(m,values,vectors,error)
     return
   endif fallback1
- 
-  vectors(1:3,1) = vectors(1:3, 1) / norm 
-  
+
+  vectors(1:3,1) = vectors(1:3, 1) / norm
+
  ! Calculate second eigenvector by the formula v[1] = (m - lambda[1]).e1 x (m - lambda[1]).e2
   vectors(1:3,2) = [ vectors(1,2) + m(1, 3) * values(2), &
                      vectors(2,2) + m(2, 3) * values(2), &
                      (m(1,1) - values(2)) * (m(2,2) - values(2)) - vectors(3,2)]
   norm = norm2(vectors(1:3, 2))
- 
+
   fallback2: if(norm < threshold) then
     call math_eigenValuesVectorsSym(m,values,vectors,error)
     return
   endif fallback2
   vectors(1:3,2) = vectors(1:3, 2) / norm
- 
+
  ! Calculate third eigenvector according to  v[2] = v[0] x v[1]
   vectors(1:3,3) = math_cross(vectors(1:3,1),vectors(1:3,2))
 
@@ -968,11 +969,11 @@ function math_eigenvectorBasisSym(m)
   real(pReal), dimension(size(m,1),size(m,1))   :: math_eigenvectorBasisSym
   logical :: error
   integer :: i
- 
+
   math_eigenvectorBasisSym = 0.0_pReal
   call math_eigenValuesVectorsSym(m,values,vectors,error)
   if(error) return
-  
+
   do i=1, size(m,1)
     math_eigenvectorBasisSym = math_eigenvectorBasisSym &
                              + sqrt(values(i)) * math_outer(vectors(:,i),vectors(:,i))
@@ -992,13 +993,13 @@ pure function math_eigenvectorBasisSym33(m)
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
   real(pReal), dimension(3,3,3) :: N, EB
- 
+
   invariants = math_invariantsSym33(m)
   EB = 0.0_pReal
- 
+
   P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
   Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
- 
+
   threeSimilarEigenvalues: if(all(abs([P,Q]) < TOL)) then
     values = invariants(1)/3.0_pReal
   ! this is not really correct, but at least the basis is correct
@@ -1016,7 +1017,7 @@ pure function math_eigenvectorBasisSym33(m)
     N(1:3,1:3,1) = m-values(1)*math_I3
     N(1:3,1:3,2) = m-values(2)*math_I3
     N(1:3,1:3,3) = m-values(3)*math_I3
-    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then 
+    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then
       EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
                                                 ((values(3)-values(1))*(values(3)-values(2)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
@@ -1024,7 +1025,7 @@ pure function math_eigenvectorBasisSym33(m)
       EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
                                                 ((values(1)-values(2))*(values(1)-values(3)))
       EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
-    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues 
+    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues
       EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
                                                 ((values(2)-values(1))*(values(2)-values(3)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
@@ -1080,7 +1081,7 @@ pure function math_eigenvectorBasisSym33_log(m)
     N(1:3,1:3,1) = m-values(1)*math_I3
     N(1:3,1:3,2) = m-values(2)*math_I3
     N(1:3,1:3,3) = m-values(3)*math_I3
-    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then 
+    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then
       EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
                                                 ((values(3)-values(1))*(values(3)-values(2)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
@@ -1088,7 +1089,7 @@ pure function math_eigenvectorBasisSym33_log(m)
       EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
                                                 ((values(1)-values(2))*(values(1)-values(3)))
       EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
-    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues 
+    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues
       EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
                                                 ((values(2)-values(1))*(values(2)-values(3)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
@@ -1136,7 +1137,7 @@ end function math_rotationalPart33
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
 function math_eigenvaluesSym(m)
- 
+
   real(pReal), dimension(:,:),                  intent(in)  :: m
   real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
   real(pReal), dimension(size(m,1),size(m,1))               :: m_
@@ -1221,7 +1222,7 @@ integer pure function math_binomial(n,k)
 
   integer, intent(in) :: n, k
   integer :: i, k_, n_
- 
+
   k_ = min(k,n-k)
   n_ = n
   math_binomial = merge(1,0,k_>-1)                                                                  ! handling special cases k < 0 or k > n
@@ -1244,7 +1245,7 @@ integer pure function math_multinomial(alpha)
   math_multinomial = 1
   do i = 1, size(alpha)
     math_multinomial = math_multinomial*math_binomial(sum(alpha(1:i)),alpha(i))
-  enddo  
+  enddo
 
 end function math_multinomial
 
@@ -1307,6 +1308,7 @@ subroutine unitTest
     sort_out_  = reshape([-1,-1,  +1,+5,  +5,+6,  +3,-2],[2,4])
 
   integer,     dimension(5) :: range_out_ = [1,2,3,4,5]
+  integer,     dimension(3) :: ijk
 
   real(pReal)                 :: det
   real(pReal), dimension(3)   :: v3_1,v3_2,v3_3,v3_4
@@ -1349,7 +1351,7 @@ subroutine unitTest
   call random_number(v9)
   if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
     call IO_error(0,ext_msg='math_33to9/math_9to33')
-    
+
   call random_number(t99)
   if(any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
     call IO_error(0,ext_msg='math_3333to99/math_99to3333')
@@ -1378,7 +1380,7 @@ subroutine unitTest
   call random_number(t33)
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     call IO_error(0,ext_msg='math_det33/math_detSym33')
-  
+
   if(any(dNeq0(math_identity2nd(3),math_inv33(math_I3)))) &
     call IO_error(0,ext_msg='math_inv33(math_I3)')
 
@@ -1410,18 +1412,28 @@ subroutine unitTest
   if(any(dNeq0(txx_2,txx) .or. e)) &
     call IO_error(0,ext_msg='math_invert(txx)/math_identity2nd')
 
-  call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix 
+  call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix
   if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert(t99)')
 
   if(any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &
-     call IO_error(0,ext_msg='math_clip')
+    call IO_error(0,ext_msg='math_clip')
 
   if(math_factorial(10) /= 3628800) &
-     call IO_error(0,ext_msg='math_factorial')
+    call IO_error(0,ext_msg='math_factorial')
 
   if(math_binomial(49,6) /= 13983816) &
-     call IO_error(0,ext_msg='math_binomial')
+    call IO_error(0,ext_msg='math_binomial')
+
+  ijk = cshift([1,2,3],int(r*1.0e2_pReal))
+  if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),+1.0_pReal)) &
+    call IO_error(0,ext_msg='math_LeviCivita(even)')
+  ijk = cshift([3,2,1],int(r*2.0e2_pReal))
+  if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),-1.0_pReal)) &
+    call IO_error(0,ext_msg='math_LeviCivita(odd)')
+  ijk = cshift([2,2,1],int(r*2.0e2_pReal))
+  if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3))))&
+    call IO_error(0,ext_msg='math_LeviCivita')
 
 end subroutine unitTest
 

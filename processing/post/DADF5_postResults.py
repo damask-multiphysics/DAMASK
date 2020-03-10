@@ -52,15 +52,15 @@ for filename in options.filenames:
     table = damask.Table(np.ones(np.product(results.grid),dtype=int)*int(inc[3:]),{'inc':(1,)})
     table.add('pos',coords.reshape((-1,3)))
 
-    results.set_visible('materialpoints',False)
-    results.set_visible('constituents',  True)
+    results.pick('materialpoints',False)
+    results.pick('constituents',  True)
     for label in options.con:
       x = results.get_dataset_location(label)
       if len(x) != 0:
         table.add(label,results.read_dataset(x,0,plain=True).reshape((results.grid.prod(),-1)))
 
-    results.set_visible('constituents',  False)
-    results.set_visible('materialpoints',True)
+    results.pick('constituents',  False)
+    results.pick('materialpoints',True)
     for label in options.mat:
       x = results.get_dataset_location(label)
       if len(x) != 0:

@@ -1,359 +1,355 @@
 import numpy as np
 
 class Color():
-  """Color representation in and conversion between different color-spaces."""
+    """Color representation in and conversion between different color-spaces."""
 
-  __slots__ = [
-               'model',
-               'color',
-               '__dict__',
-              ]
-
-
-# ------------------------------------------------------------------
-  def __init__(self,
-               model = 'RGB',
-               color = np.zeros(3,'d')):
-    """
-    Create a Color object.
-    
-    Parameters
-    ----------
-    model : string
-        color model
-    color : numpy.ndarray
-        vector representing the color according to the selected model
-
-    """
-    self.__transforms__ = \
-                   {'HSV':    {'index': 0, 'next': self._HSV2HSL},
-                    'HSL':    {'index': 1, 'next': self._HSL2RGB,     'prev': self._HSL2HSV},
-                    'RGB':    {'index': 2, 'next': self._RGB2XYZ,     'prev': self._RGB2HSL},
-                    'XYZ':    {'index': 3, 'next': self._XYZ2CIELAB,  'prev': self._XYZ2RGB},
-                    'CIELAB': {'index': 4, 'next': self._CIELAB2MSH,  'prev': self._CIELAB2XYZ},
-                    'MSH':    {'index': 5, 'prev': self._MSH2CIELAB},
-                    }
-
-    model = model.upper()
-    if model not in list(self.__transforms__.keys()): model = 'RGB'
-    if model == 'RGB' and max(color) > 1.0:                                                         # are we RGB255 ?
-      for i in range(3):
-        color[i] /= 255.0                                                                           # rescale to RGB
-
-    if model == 'HSL':                                                                              # are we HSL ?
-      if abs(color[0]) > 1.0: color[0] /= 360.0                                                     # with angular hue?
-      while color[0] >= 1.0: color[0] -= 1.0                                                        # rewind to proper range
-      while color[0] < 0.0:  color[0] += 1.0                                                        # rewind to proper range
-
-    self.model = model
-    self.color = np.array(color,'d')
+    __slots__ = [
+                 'model',
+                 'color',
+                 '__dict__',
+                ]
 
 
-# ------------------------------------------------------------------
-  def __repr__(self):
-    """Color model and values."""
-    return 'Model: %s Color: %s'%(self.model,str(self.color))
+    def __init__(self,
+                 model = 'RGB',
+                 color = np.zeros(3,'d')):
+      """
+      Create a Color object.
+
+      Parameters
+      ----------
+      model : string
+          color model
+      color : numpy.ndarray
+          vector representing the color according to the selected model
+
+      """
+      self.__transforms__ = \
+                     {'HSV':    {'index': 0, 'next': self._HSV2HSL},
+                      'HSL':    {'index': 1, 'next': self._HSL2RGB,     'prev': self._HSL2HSV},
+                      'RGB':    {'index': 2, 'next': self._RGB2XYZ,     'prev': self._RGB2HSL},
+                      'XYZ':    {'index': 3, 'next': self._XYZ2CIELAB,  'prev': self._XYZ2RGB},
+                      'CIELAB': {'index': 4, 'next': self._CIELAB2MSH,  'prev': self._CIELAB2XYZ},
+                      'MSH':    {'index': 5, 'prev': self._MSH2CIELAB},
+                      }
+
+      model = model.upper()
+      if model not in list(self.__transforms__.keys()): model = 'RGB'
+      if model == 'RGB' and max(color) > 1.0:                                                       # are we RGB255 ?
+        for i in range(3):
+          color[i] /= 255.0                                                                         # rescale to RGB
+
+      if model == 'HSL':                                                                            # are we HSL ?
+        if abs(color[0]) > 1.0: color[0] /= 360.0                                                   # with angular hue?
+        while color[0] >= 1.0: color[0] -= 1.0                                                      # rewind to proper range
+        while color[0] < 0.0:  color[0] += 1.0                                                      # rewind to proper range
+
+      self.model = model
+      self.color = np.array(color,'d')
 
 
-# ------------------------------------------------------------------
-  def __str__(self):
-    """Color model and values."""
-    return self.__repr__()
+    def __repr__(self):
+      """Color model and values."""
+      return 'Model: %s Color: %s'%(self.model,str(self.color))
 
 
-# ------------------------------------------------------------------
-  def convertTo(self,toModel = 'RGB'):
-    """
-    Change the color model permanently.
-    
-    Parameters
-    ----------
-    toModel : string
-        color model
-
-    """
-    toModel = toModel.upper()
-    if toModel not in list(self.__transforms__.keys()): return
-
-    sourcePos = self.__transforms__[self.model]['index']
-    targetPos = self.__transforms__[toModel]['index']
-
-    while sourcePos < targetPos:
-      self.__transforms__[self.model]['next']()
-      sourcePos += 1
-
-    while sourcePos > targetPos:
-      self.__transforms__[self.model]['prev']()
-      sourcePos -= 1
-    return self
+    def __str__(self):
+      """Color model and values."""
+      return self.__repr__()
 
 
-# ------------------------------------------------------------------
-  def expressAs(self,asModel = 'RGB'):
-    """
-    Return the color in a different model.
-    
-    Parameters
-    ----------
-    asModel : string
-        color model
+    def convert_to(self,toModel = 'RGB'):
+      """
+      Change the color model permanently.
 
-    """
-    return self.__class__(self.model,self.color).convertTo(asModel)
+      Parameters
+      ----------
+      toModel : string
+          color model
+
+      """
+      toModel = toModel.upper()
+      if toModel not in list(self.__transforms__.keys()): return
+
+      sourcePos = self.__transforms__[self.model]['index']
+      targetPos = self.__transforms__[toModel]['index']
+
+      while sourcePos < targetPos:
+        self.__transforms__[self.model]['next']()
+        sourcePos += 1
+
+      while sourcePos > targetPos:
+        self.__transforms__[self.model]['prev']()
+        sourcePos -= 1
+      return self
+
+
+    def express_as(self,asModel = 'RGB'):
+      """
+      Return the color in a different model.
+
+      Parameters
+      ----------
+      asModel : string
+          color model
+
+      """
+      return self.__class__(self.model,self.color).convert_to(asModel)
 
 
 
-  def _HSV2HSL(self):
-    """
-    Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance).
+    def _HSV2HSL(self):
+      """
+      Convert H(ue) S(aturation) V(alue or brightness) to H(ue) S(aturation) L(uminance).
 
-    All values are in the range [0,1]
-    http://codeitdown.com/hsl-hsb-hsv-color
-    """
-    if self.model != 'HSV': return
+      All values are in the range [0,1]
+      http://codeitdown.com/hsl-hsb-hsv-color
+      """
+      if self.model != 'HSV': return
 
-    converted = Color('HSL',np.array([
-                                      self.color[0],
-                                      1. if self.color[2] == 0.0 or (self.color[1] == 0.0 and self.color[2] == 1.0) \
-                                      else self.color[1]*self.color[2]/(1.-abs(self.color[2]*(2.-self.color[1])-1.)),
-                                      0.5*self.color[2]*(2.-self.color[1]),
-                                     ]))
+      converted = Color('HSL',np.array([
+                                        self.color[0],
+                                        1. if self.color[2] == 0.0 or (self.color[1] == 0.0 and self.color[2] == 1.0) \
+                                        else self.color[1]*self.color[2]/(1.-abs(self.color[2]*(2.-self.color[1])-1.)),
+                                        0.5*self.color[2]*(2.-self.color[1]),
+                                       ]))
 
-    self.model = converted.model
-    self.color = converted.color
-
-
-  def _HSL2HSV(self):
-    """
-    Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness).
-
-    All values are in the range [0,1]
-    http://codeitdown.com/hsl-hsb-hsv-color
-    """
-    if self.model != 'HSL': return
-
-    h = self.color[0]
-    b = self.color[2]+0.5*(self.color[1]*(1.-abs(2*self.color[2]-1)))
-    s = 1.0 if b == 0.0 else 2.*(b-self.color[2])/b
-
-    converted = Color('HSV',np.array([h,s,b]))
-
-    self.model = converted.model
-    self.color = converted.color
+      self.model = converted.model
+      self.color = converted.color
 
 
-  def _HSL2RGB(self):
-    """
-    Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue).
+    def _HSL2HSV(self):
+      """
+      Convert H(ue) S(aturation) L(uminance) to H(ue) S(aturation) V(alue or brightness).
 
-    All values are in the range [0,1]
-    from http://en.wikipedia.org/wiki/HSL_and_HSV
-    """
-    if self.model != 'HSL': return
+      All values are in the range [0,1]
+      http://codeitdown.com/hsl-hsb-hsv-color
+      """
+      if self.model != 'HSL': return
 
-    sextant = self.color[0]*6.0
-    c = (1.0 - abs(2.0 * self.color[2] - 1.0))*self.color[1]
-    x = c*(1.0 - abs(sextant%2 - 1.0))
-    m = self.color[2] - 0.5*c
+      h = self.color[0]
+      b = self.color[2]+0.5*(self.color[1]*(1.-abs(2*self.color[2]-1)))
+      s = 1.0 if b == 0.0 else 2.*(b-self.color[2])/b
 
-    converted = Color('RGB',np.array([
-                                      [c+m, x+m, m],
-                                      [x+m, c+m, m],
-                                      [m, c+m, x+m],
-                                      [m, x+m, c+m],
-                                      [x+m, m, c+m],
-                                      [c+m, m, x+m],
-                                     ][int(sextant)],'d'))
-    self.model = converted.model
-    self.color = converted.color
+      converted = Color('HSV',np.array([h,s,b]))
+
+      self.model = converted.model
+      self.color = converted.color
 
 
-  def _RGB2HSL(self):
-    """
-    Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance).
+    def _HSL2RGB(self):
+      """
+      Convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue).
 
-    All values are in the range [0,1]
-    from http://130.113.54.154/~monger/hsl-rgb.html
-    """
-    if self.model != 'RGB': return
+      All values are in the range [0,1]
+      from http://en.wikipedia.org/wiki/HSL_and_HSV
+      """
+      if self.model != 'HSL': return
 
-    HSL = np.zeros(3,'d')
-    maxcolor = self.color.max()
-    mincolor = self.color.min()
-    HSL[2] = (maxcolor + mincolor)/2.0
-    if(mincolor == maxcolor):
-      HSL[0] = 0.0
-      HSL[1] = 0.0
-    else:
-      if (HSL[2]<0.5):
-        HSL[1] = (maxcolor - mincolor)/(maxcolor + mincolor)
+      sextant = self.color[0]*6.0
+      c = (1.0 - abs(2.0 * self.color[2] - 1.0))*self.color[1]
+      x = c*(1.0 - abs(sextant%2 - 1.0))
+      m = self.color[2] - 0.5*c
+
+      converted = Color('RGB',np.array([
+                                        [c+m, x+m, m],
+                                        [x+m, c+m, m],
+                                        [m, c+m, x+m],
+                                        [m, x+m, c+m],
+                                        [x+m, m, c+m],
+                                        [c+m, m, x+m],
+                                       ][int(sextant)],'d'))
+      self.model = converted.model
+      self.color = converted.color
+
+
+    def _RGB2HSL(self):
+      """
+      Convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance).
+
+      All values are in the range [0,1]
+      from http://130.113.54.154/~monger/hsl-rgb.html
+      """
+      if self.model != 'RGB': return
+
+      HSL = np.zeros(3,'d')
+      maxcolor = self.color.max()
+      mincolor = self.color.min()
+      HSL[2] = (maxcolor + mincolor)/2.0
+      if(mincolor == maxcolor):
+        HSL[0] = 0.0
+        HSL[1] = 0.0
       else:
-        HSL[1] = (maxcolor - mincolor)/(2.0 - maxcolor - mincolor)
-      if (maxcolor == self.color[0]):
-        HSL[0] = 0.0 + (self.color[1] - self.color[2])/(maxcolor - mincolor)
-      elif (maxcolor == self.color[1]):
-        HSL[0] = 2.0 + (self.color[2] - self.color[0])/(maxcolor - mincolor)
-      elif (maxcolor == self.color[2]):
-        HSL[0] = 4.0 + (self.color[0] - self.color[1])/(maxcolor - mincolor)
-      HSL[0] = HSL[0]*60.0                                                                           # scaling to 360 might be dangerous for small values
-      if (HSL[0] < 0.0):
-        HSL[0] = HSL[0] + 360.0
-    for i in range(2):
-      HSL[i+1] = min(HSL[i+1],1.0)
-      HSL[i+1] = max(HSL[i+1],0.0)
+        if (HSL[2]<0.5):
+          HSL[1] = (maxcolor - mincolor)/(maxcolor + mincolor)
+        else:
+          HSL[1] = (maxcolor - mincolor)/(2.0 - maxcolor - mincolor)
+        if (maxcolor == self.color[0]):
+          HSL[0] = 0.0 + (self.color[1] - self.color[2])/(maxcolor - mincolor)
+        elif (maxcolor == self.color[1]):
+          HSL[0] = 2.0 + (self.color[2] - self.color[0])/(maxcolor - mincolor)
+        elif (maxcolor == self.color[2]):
+          HSL[0] = 4.0 + (self.color[0] - self.color[1])/(maxcolor - mincolor)
+        HSL[0] = HSL[0]*60.0                                                                        # scaling to 360 might be dangerous for small values
+        if (HSL[0] < 0.0):
+          HSL[0] = HSL[0] + 360.0
+      for i in range(2):
+        HSL[i+1] = min(HSL[i+1],1.0)
+        HSL[i+1] = max(HSL[i+1],0.0)
 
-    converted = Color('HSL', HSL)
-    self.model = converted.model
-    self.color = converted.color
-
-
-
-  def _RGB2XYZ(self):
-    """
-    Convert R(ed) G(reen) B(lue) to CIE XYZ.
-
-    All values are in the range [0,1]
-    from http://www.cs.rit.edu/~ncs/color/t_convert.html
-    """
-    if self.model != 'RGB': return
-
-    XYZ     = np.zeros(3,'d')
-    RGB_lin = np.zeros(3,'d')
-    convert = np.array([[0.412453,0.357580,0.180423],
-                        [0.212671,0.715160,0.072169],
-                        [0.019334,0.119193,0.950227]])
-
-    for i in range(3):
-      if (self.color[i] > 0.04045): RGB_lin[i] = ((self.color[i]+0.0555)/1.0555)**2.4
-      else:                         RGB_lin[i] =   self.color[i]        /12.92
-    XYZ = np.dot(convert,RGB_lin)
-    for i in range(3):
-
-      XYZ[i] = max(XYZ[i],0.0)
-
-    converted = Color('XYZ', XYZ)
-    self.model = converted.model
-    self.color = converted.color
+      converted = Color('HSL', HSL)
+      self.model = converted.model
+      self.color = converted.color
 
 
 
-  def _XYZ2RGB(self):
-    """
-    Convert  CIE XYZ to R(ed) G(reen) B(lue).
+    def _RGB2XYZ(self):
+      """
+      Convert R(ed) G(reen) B(lue) to CIE XYZ.
 
-    All values are in the range [0,1]
-    from http://www.cs.rit.edu/~ncs/color/t_convert.html
-    """
-    if self.model != 'XYZ':
-      return
+      All values are in the range [0,1]
+      from http://www.cs.rit.edu/~ncs/color/t_convert.html
+      """
+      if self.model != 'RGB': return
 
-    convert = np.array([[ 3.240479,-1.537150,-0.498535],
-                        [-0.969256, 1.875992, 0.041556],
-                        [ 0.055648,-0.204043, 1.057311]])
-    RGB_lin = np.dot(convert,self.color)
-    RGB     = np.zeros(3,'d')
+      XYZ     = np.zeros(3,'d')
+      RGB_lin = np.zeros(3,'d')
+      convert = np.array([[0.412453,0.357580,0.180423],
+                          [0.212671,0.715160,0.072169],
+                          [0.019334,0.119193,0.950227]])
 
-    for i in range(3):
-      if (RGB_lin[i] > 0.0031308): RGB[i] = ((RGB_lin[i])**(1.0/2.4))*1.0555-0.0555
-      else:                        RGB[i] =   RGB_lin[i]             *12.92
-    for i in range(3):
-      RGB[i] = min(RGB[i],1.0)
-      RGB[i] = max(RGB[i],0.0)
+      for i in range(3):
+        if (self.color[i] > 0.04045): RGB_lin[i] = ((self.color[i]+0.0555)/1.0555)**2.4
+        else:                         RGB_lin[i] =   self.color[i]        /12.92
+      XYZ = np.dot(convert,RGB_lin)
+      for i in range(3):
 
-    maxVal = max(RGB)                                                                               # clipping colors according to the display gamut
-    if (maxVal > 1.0): RGB /= maxVal
+        XYZ[i] = max(XYZ[i],0.0)
 
-    converted = Color('RGB', RGB)
-    self.model = converted.model
-    self.color = converted.color
+      converted = Color('XYZ', XYZ)
+      self.model = converted.model
+      self.color = converted.color
 
 
 
-  def _CIELAB2XYZ(self):
-    """
-    Convert  CIE Lab to CIE XYZ.
+    def _XYZ2RGB(self):
+      """
+      Convert  CIE XYZ to R(ed) G(reen) B(lue).
 
-    All values are in the range [0,1]
-    from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
-    """
-    if self.model != 'CIELAB': return
+      All values are in the range [0,1]
+      from http://www.cs.rit.edu/~ncs/color/t_convert.html
+      """
+      if self.model != 'XYZ':
+        return
 
-    ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                            # Observer = 2, Illuminant = D65
-    XYZ       = np.zeros(3,'d')
+      convert = np.array([[ 3.240479,-1.537150,-0.498535],
+                          [-0.969256, 1.875992, 0.041556],
+                          [ 0.055648,-0.204043, 1.057311]])
+      RGB_lin = np.dot(convert,self.color)
+      RGB     = np.zeros(3,'d')
 
-    XYZ[1] = (self.color[0] + 16.0 ) / 116.0
-    XYZ[0] = XYZ[1]   + self.color[1]/ 500.0
-    XYZ[2] = XYZ[1]   - self.color[2]/ 200.0
+      for i in range(3):
+        if (RGB_lin[i] > 0.0031308): RGB[i] = ((RGB_lin[i])**(1.0/2.4))*1.0555-0.0555
+        else:                        RGB[i] =   RGB_lin[i]             *12.92
+      for i in range(3):
+        RGB[i] = min(RGB[i],1.0)
+        RGB[i] = max(RGB[i],0.0)
 
-    for i in range(len(XYZ)):
-      if (XYZ[i] > 6./29. ): XYZ[i] = XYZ[i]**3.
-      else:                  XYZ[i] = 108./841. * (XYZ[i] - 4./29.)
+      maxVal = max(RGB)                                                                             # clipping colors according to the display gamut
+      if (maxVal > 1.0): RGB /= maxVal
 
-    converted = Color('XYZ', XYZ*ref_white)
-    self.model = converted.model
-    self.color = converted.color
-
-  def _XYZ2CIELAB(self):
-    """
-    Convert CIE XYZ to CIE Lab.
-
-    All values are in the range [0,1]
-    from http://en.wikipedia.org/wiki/Lab_color_space,
-         http://www.cs.rit.edu/~ncs/color/t_convert.html
-    """
-    if self.model != 'XYZ': return
-
-    ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                            # Observer = 2, Illuminant = D65
-    XYZ = self.color/ref_white
-
-    for i in range(len(XYZ)):
-      if (XYZ[i] > 216./24389 ): XYZ[i] = XYZ[i]**(1.0/3.0)
-      else:                      XYZ[i] = (841./108. * XYZ[i]) + 16.0/116.0
-
-    converted = Color('CIELAB', np.array([ 116.0 *  XYZ[1] - 16.0,
-                                           500.0 * (XYZ[0] - XYZ[1]),
-                                           200.0 * (XYZ[1] - XYZ[2]) ]))
-    self.model = converted.model
-    self.color = converted.color
+      converted = Color('RGB', RGB)
+      self.model = converted.model
+      self.color = converted.color
 
 
-  def _CIELAB2MSH(self):
-    """
-    Convert CIE Lab to Msh colorspace.
 
-    from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
-    """
-    if self.model != 'CIELAB': return
+    def _CIELAB2XYZ(self):
+      """
+      Convert  CIE Lab to CIE XYZ.
 
-    Msh = np.zeros(3,'d')
-    Msh[0] = np.sqrt(np.dot(self.color,self.color))
-    if (Msh[0] > 0.001):
-      Msh[1] = np.arccos(self.color[0]/Msh[0])
-      if (self.color[1] != 0.0):
-        Msh[2] = np.arctan2(self.color[2],self.color[1])
+      All values are in the range [0,1]
+      from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
+      """
+      if self.model != 'CIELAB': return
 
-    converted = Color('MSH', Msh)
-    self.model = converted.model
-    self.color = converted.color
+      ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                          # Observer = 2, Illuminant = D65
+      XYZ       = np.zeros(3,'d')
+
+      XYZ[1] = (self.color[0] + 16.0 ) / 116.0
+      XYZ[0] = XYZ[1]   + self.color[1]/ 500.0
+      XYZ[2] = XYZ[1]   - self.color[2]/ 200.0
+
+      for i in range(len(XYZ)):
+        if (XYZ[i] > 6./29. ): XYZ[i] = XYZ[i]**3.
+        else:                  XYZ[i] = 108./841. * (XYZ[i] - 4./29.)
+
+      converted = Color('XYZ', XYZ*ref_white)
+      self.model = converted.model
+      self.color = converted.color
 
 
-  def _MSH2CIELAB(self):
-    """
-    Convert Msh colorspace to CIE Lab.
+    def _XYZ2CIELAB(self):
+      """
+      Convert CIE XYZ to CIE Lab.
 
-    with s,h in radians
-    from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
-    """
-    if self.model != 'MSH': return
+      All values are in the range [0,1]
+      from http://en.wikipedia.org/wiki/Lab_color_space,
+           http://www.cs.rit.edu/~ncs/color/t_convert.html
+      """
+      if self.model != 'XYZ': return
 
-    Lab = np.zeros(3,'d')
-    Lab[0] = self.color[0] * np.cos(self.color[1])
-    Lab[1] = self.color[0] * np.sin(self.color[1]) * np.cos(self.color[2])
-    Lab[2] = self.color[0] * np.sin(self.color[1]) * np.sin(self.color[2])
+      ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                          # Observer = 2, Illuminant = D65
+      XYZ = self.color/ref_white
 
-    converted = Color('CIELAB', Lab)
-    self.model = converted.model
-    self.color = converted.color
+      for i in range(len(XYZ)):
+        if (XYZ[i] > 216./24389 ): XYZ[i] = XYZ[i]**(1.0/3.0)
+        else:                      XYZ[i] = (841./108. * XYZ[i]) + 16.0/116.0
+
+      converted = Color('CIELAB', np.array([ 116.0 *  XYZ[1] - 16.0,
+                                             500.0 * (XYZ[0] - XYZ[1]),
+                                             200.0 * (XYZ[1] - XYZ[2]) ]))
+      self.model = converted.model
+      self.color = converted.color
+
+
+    def _CIELAB2MSH(self):
+      """
+      Convert CIE Lab to Msh colorspace.
+
+      from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
+      """
+      if self.model != 'CIELAB': return
+
+      Msh = np.zeros(3,'d')
+      Msh[0] = np.sqrt(np.dot(self.color,self.color))
+      if (Msh[0] > 0.001):
+        Msh[1] = np.arccos(self.color[0]/Msh[0])
+        if (self.color[1] != 0.0):
+          Msh[2] = np.arctan2(self.color[2],self.color[1])
+
+      converted = Color('MSH', Msh)
+      self.model = converted.model
+      self.color = converted.color
+
+
+    def _MSH2CIELAB(self):
+      """
+      Convert Msh colorspace to CIE Lab.
+
+      with s,h in radians
+      from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
+      """
+      if self.model != 'MSH': return
+
+      Lab = np.zeros(3,'d')
+      Lab[0] = self.color[0] * np.cos(self.color[1])
+      Lab[1] = self.color[0] * np.sin(self.color[1]) * np.cos(self.color[2])
+      Lab[2] = self.color[0] * np.sin(self.color[1]) * np.sin(self.color[2])
+
+      converted = Color('CIELAB', Lab)
+      self.model = converted.model
+      self.color = converted.color
 
 
 class Colormap():
@@ -416,7 +412,7 @@ class Colormap():
                ):
     """
     Create a Colormap object.
-    
+
     Parameters
     ----------
     left : Color
@@ -498,13 +494,13 @@ class Colormap():
     def interpolate_linear(lo, hi, frac):
       """Linear interpolation between lo and hi color at given fraction; output in model of lo color."""
       interpolation = (1.0 - frac) * np.array(lo.color[:]) \
-                           + frac  * np.array(hi.expressAs(lo.model).color[:])
+                           + frac  * np.array(hi.express_as(lo.model).color[:])
 
       return Color(lo.model,interpolation)
 
     if self.interpolate == 'perceptualuniform':
-      return interpolate_Msh(self.left.expressAs('MSH').color,
-                             self.right.expressAs('MSH').color,fraction)
+      return interpolate_Msh(self.left.express_as('MSH').color,
+                             self.right.express_as('MSH').color,fraction)
     elif self.interpolate == 'linear':
       return interpolate_linear(self.left,
                                 self.right,fraction)
@@ -528,7 +524,7 @@ class Colormap():
     """
     format = format.lower()                                                                         # consistent comparison basis
     frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
-    colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).expressAs(model).color for i in range(steps)]
+    colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).express_as(model).color for i in range(steps)]
     if   format == 'paraview':
       colormap = ['[\n {{\n  "ColorSpace": "RGB", "Name": "{}", "DefaultMap": true,\n  "RGBPoints" : ['.format(name)] \
                + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],) \
