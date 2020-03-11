@@ -4,8 +4,6 @@ import glob
 import os
 from functools import partial
 
-import vtk
-from vtk.util import numpy_support
 import h5py
 import numpy as np
 
@@ -77,10 +75,9 @@ class Result:
           self.mat_physics = list(set(self.mat_physics))                                            # make unique
 
         self.selection= {'increments':     self.increments,
-                         'constituents':   self.constituents,
-                         'materialpoints': self.materialpoints,
-                         'con_physics':    self.con_physics,
-                         'mat_physics':    self.mat_physics}
+                         'constituents':   self.constituents,'materialpoints': self.materialpoints,
+                         'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
+                        }
 
         self.fname = fname
 
@@ -230,15 +227,6 @@ class Result:
 
         """
         self._manage_selection('del',what,datasets)
-
-
-  # def createGeometry4VTK():
-  #   """ reads geometry and fummels... to return VTK.XXXobject (pointcloud fallback)"""
-
-  # myVTK = new
-  # myVTK.geom = result.getGeom()
-  # myVTK.table/data = result.spatiocondense(['f','p']) # of type damask.Table
-  # myVTK.writeme
 
   # def datamerger(regular expression to filter groups into one copy)
 
@@ -1050,12 +1038,9 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_polyData(self.cell_coordinates())
 
-        vtk_geom = v.geom
-
-        N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
+        N_digits = int(np.floor(np.log10(min(int(self.increments[-1][3:]),1))))+1
 
         for i,inc in enumerate(self.iterate('increments')):
-          vtk_data = []
 
           materialpoints_backup = self.selection['materialpoints'].copy()
           self.pick('materialpoints',False)
@@ -1067,23 +1052,15 @@ class Result:
                       if len(x) == 0:
                           continue
                       array = self.read_dataset(x,0)
-                      shape = [array.shape[0],np.product(array.shape[1:])]
-                      vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
-                      vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
-                      vtk_geom.GetCellData().AddArray(vtk_data[-1])
-
+                      v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
               else:
                   x = self.get_dataset_location(label)
                   if len(x) == 0:
                       continue
                   array = self.read_dataset(x,0)
-                  shape = [array.shape[0],np.product(array.shape[1:])]
-                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
                   ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')                   # identify  phase name
                   dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                       # removing phase name
-                  vtk_data[-1].SetName(dset_name)
-                  vtk_geom.GetCellData().AddArray(vtk_data[-1])
-
+                  v.add(array,dset_name)
           self.pick('materialpoints',materialpoints_backup)
 
           constituents_backup = self.selection['constituents'].copy()
@@ -1096,43 +1073,23 @@ class Result:
                       if len(x) == 0:
                           continue
                       array = self.read_dataset(x,0)
-                      shape = [array.shape[0],np.product(array.shape[1:])]
-                      vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
-                      vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
-                      vtk_geom.GetCellData().AddArray(vtk_data[-1])
+                      v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
               else:
                   x = self.get_dataset_location(label)
                   if len(x) == 0:
                       continue
                   array = self.read_dataset(x,0)
-                  shape = [array.shape[0],np.product(array.shape[1:])]
-                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
-                  vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-                  vtk_geom.GetCellData().AddArray(vtk_data[-1])
+                  v.add(array,'1_'+x[0].split('/',1)[1])
           self.pick('constituents',constituents_backup)
 
           if mode.lower()=='cell':
-              writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
-                       vtk.vtkXMLUnstructuredGridWriter()
-              x = self.get_dataset_location('u_n')
-              vtk_data.append(numpy_support.numpy_to_vtk(num_array=self.read_dataset(x,0),deep=True))
-              vtk_data[-1].SetName('u')
-              vtk_geom.GetPointData().AddArray(vtk_data[-1])
-          elif mode.lower()=='point':
-              writer = vtk.vtkXMLPolyDataWriter()
+              u = self.read_dataset(self.get_dataset_location('u_n'))
+              v.add(u,'u')
 
+          file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
+                                          inc[3:].zfill(N_digits))
 
-          file_out = '{}_inc{}.{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
-                                          inc[3:].zfill(N_digits),
-                                          writer.GetDefaultFileExtension())
-
-          writer.SetCompressorTypeToZLib()
-          writer.SetDataModeToBinary()
-          writer.SetFileName(file_out)
-          writer.SetInputData(vtk_geom)
-
-          writer.Write()
-
+          v.write(file_out)
 
 ###################################################################################################
 # BEGIN DEPRECATED

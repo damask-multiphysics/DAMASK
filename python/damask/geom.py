@@ -1,14 +1,11 @@
-import os
+import sys
 from io import StringIO
 
 import numpy as np
 from scipy import ndimage
-import vtk
-from vtk.util import numpy_support
 
 from . import VTK
 from . import util
-from . import version
 
 
 class Geom():
@@ -384,36 +381,12 @@ class Geom():
 
         """
         v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
-        rGrid = v.geom
+        v.add(self.microstructure.flatten(order='F'),'microstructure')
 
-        ms = numpy_support.numpy_to_vtk(num_array=self.microstructure.flatten(order='F'),
-                                        array_type=vtk.VTK_INT if self.microstructure.dtype == int else vtk.VTK_FLOAT)
-        ms.SetName('microstructure')
-        rGrid.GetCellData().AddArray(ms)
-
-
-        if fname is None:
-            writer = vtk.vtkDataSetWriter()
-            writer.SetHeader('damask.Geom '+version)
-            writer.WriteToOutputStringOn()
+        if fname:
+            v.write(fname)
         else:
-            writer = vtk.vtkXMLRectilinearGridWriter()
-            writer.SetCompressorTypeToZLib()
-            writer.SetDataModeToBinary()
-
-            ext = os.path.splitext(fname)[1]
-            if ext == '':
-                name = fname + '.' + writer.GetDefaultFileExtension()
-            elif ext[1:] == writer.GetDefaultFileExtension():
-                name = fname
-            else:
-                raise ValueError("unknown extension {}".format(ext))
-            writer.SetFileName(name)
-
-        writer.SetInputData(rGrid)
-        writer.Write()
-
-        if not fname: return writer.GetOutputString()
+            sys.stdout.write(v.__repr__())
 
 
     def show(self):

@@ -77,8 +77,40 @@ class VTK: # capitals needed/preferred?
 
         return VTK(geom)
 
+    @staticmethod
+    def from_file(fname,ftype=None):
+        ext = os.path.splitext(fname)[1]
+        if ext == '.vtk':
+            reader = vtk.vtkGenericDataObjectReader()
+            reader.SetFileName(fname)
+            reader.Update()
+            if   ftype.lower() == 'rectilineargrid':
+                geom = reader.GetRectilinearGridOutput()
+            elif ftype.lower() == 'unstructuredgrid':
+                geom = reader.GetUnstructuredGridOutput()
+            elif ftype.lower() == 'polydata':
+                geom = reader.GetPolyDataOutput()
+            else:
+                raise Exception
+        else:
+            if   ext == '.vtr':
+                reader = vtk.vtkXMLRectilinearGridReader()
+            elif ext == '.vtu':
+                reader = vtk.vtkXMLUnstructuredGridReader()
+            elif ext == '.vtp':
+                reader = vtk.vtkXMLPolyDataReader()
+            else:
+                raise Exception
 
-    def write(self,fname):                                              #ToDo: Discuss how to handle consistently filename extensions
+            reader.SetFileName(fname)
+            reader.Update()
+            geom = reader.GetOutput()
+
+        return VTK(geom)
+
+
+    def write(self,fname):
+        """ToDo: Check if given fileextension makes sense."""
         if  (isinstance(self.geom,vtk.vtkRectilinearGrid)):
             writer = vtk.vtkXMLRectilinearGridWriter()
         elif(isinstance(self.geom,vtk.vtkUnstructuredGrid)):
@@ -95,9 +127,19 @@ class VTK: # capitals needed/preferred?
         writer.Write()
 
 
-    def add(data,label=None):
+    def add(self,data,label=None):
+
+        Npoints = self.geom.GetNumberOfPoints()
+        Ncells  = self.geom.GetNumberOfCells()
+
         if   isinstance(data,np.ndarray):
-            pass
+            shape = [data.shape[0],np.product(data.shape[1:],dtype=np.int)]
+            d = nps.numpy_to_vtk(num_array=data.reshape(shape),deep=True)
+            d.SetName(label)
+            if   shape[0] == Ncells:
+                self.geom.GetCellData().AddArray(d)
+            elif shape[0] == Npoints:
+                self.geom.GetPointData().AddArray(d)
         elif isinstance(data,pd.DataFrame):
             pass
         elif isinstance(data,table):
