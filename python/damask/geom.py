@@ -6,6 +6,7 @@ from scipy import ndimage
 import vtk
 from vtk.util import numpy_support
 
+from . import VTK
 from . import util
 from . import version
 
@@ -36,7 +37,7 @@ class Geom():
         self.set_origin(origin)
         self.set_homogenization(homogenization)
         self.set_comments(comments)
-      
+
 
     def __repr__(self):
         """Basic information on geometry definition."""
@@ -70,7 +71,7 @@ class Geom():
         origin_old  = self.get_origin()
         unique_old  = len(np.unique(self.microstructure))
         max_old     = np.nanmax(self.microstructure)
-        
+
         if size is not None and rescale:
             raise ValueError('Either set size explicitly or rescale automatically')
 
@@ -108,7 +109,7 @@ class Geom():
         if max_old != np.nanmax(self.microstructure):
             message[-1] = util.delete(message[-1])
             message.append(util.emph('max microstructure:  {}'.format(np.nanmax(self.microstructure))))
-        
+
         return util.return_message(message)
 
     def set_comments(self,comments):
@@ -123,7 +124,7 @@ class Geom():
         """
         self.comments = []
         self.add_comments(comments)
-      
+
     def add_comments(self,comments):
         """
         Appends comments to existing comments.
@@ -241,7 +242,7 @@ class Geom():
         header.append('origin x {} y {} z {}'.format(*self.get_origin()))
         header.append('homogenization {}'.format(self.get_homogenization()))
         return header
-        
+
     @staticmethod
     def from_file(fname):
         """
@@ -266,7 +267,7 @@ class Geom():
         if not keyword.startswith('head') or header_length < 3:
             raise TypeError('Header length information missing or invalid')
 
-        comments = [] 
+        comments = []
         for i,line in enumerate(content[:header_length]):
             items = line.lower().strip().split()
             key = items[0] if items else ''
@@ -295,14 +296,14 @@ class Geom():
             else:                            items = list(map(float,items))
             microstructure[i:i+len(items)] = items
             i += len(items)
-        
+
         if i != grid.prod():
             raise TypeError('Invalid file: expected {} entries, found {}'.format(grid.prod(),i))
-        
+
         microstructure = microstructure.reshape(grid,order='F')
         if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                   # no float present
             microstructure = microstructure.astype('int')
-        
+
         return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
@@ -320,7 +321,7 @@ class Geom():
         """
         header = self.get_header()
         grid   = self.get_grid()
-        
+
         if pack is None:
             plain = grid.prod()/np.unique(self.microstructure).size < 250
         else:
@@ -371,7 +372,7 @@ class Geom():
             elif compressType == 'of':
                 f.write('{} of {}\n'.format(reps,former))
 
-                 
+
     def to_vtk(self,fname=None):
         """
         Generates vtk file.
@@ -382,28 +383,9 @@ class Geom():
             vtk file to write. If no file is given, a string is returned.
 
         """
-        grid = self.get_grid() + np.ones(3,dtype=int)
-        size = self.get_size()
-        origin = self.get_origin()
+        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+        rGrid = v.geom
 
-        coords = [
-                  np.linspace(0,size[0],grid[0]) + origin[0],
-                  np.linspace(0,size[1],grid[1]) + origin[1],
-                  np.linspace(0,size[2],grid[2]) + origin[2]
-                 ]
-        
-        rGrid = vtk.vtkRectilinearGrid()
-        coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
-
-        rGrid.SetDimensions(*grid)
-        for d,coord in enumerate(coords):
-            for c in coord:
-                coordArray[d].InsertNextValue(c)
-
-        rGrid.SetXCoordinates(coordArray[0])
-        rGrid.SetYCoordinates(coordArray[1])
-        rGrid.SetZCoordinates(coordArray[2])
-        
         ms = numpy_support.numpy_to_vtk(num_array=self.microstructure.flatten(order='F'),
                                         array_type=vtk.VTK_INT if self.microstructure.dtype == int else vtk.VTK_FLOAT)
         ms.SetName('microstructure')
@@ -418,7 +400,7 @@ class Geom():
             writer = vtk.vtkXMLRectilinearGridWriter()
             writer.SetCompressorTypeToZLib()
             writer.SetDataModeToBinary()
-            
+
             ext = os.path.splitext(fname)[1]
             if ext == '':
                 name = fname + '.' + writer.GetDefaultFileExtension()
@@ -427,13 +409,13 @@ class Geom():
             else:
                 raise ValueError("unknown extension {}".format(ext))
             writer.SetFileName(name)
-    
+
         writer.SetInputData(rGrid)
         writer.Write()
 
-        if fname is None: return writer.GetOutputString()
+        if not fname: return writer.GetOutputString()
 
-                 
+
     def show(self):
         """Show raw content (as in file)."""
         f=StringIO()
@@ -469,7 +451,7 @@ class Geom():
             ms = np.concatenate([ms,ms[:,limits[0]:limits[1]:-1,:]],1)
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
-     
+
         return self.update(ms,rescale=True)
         #self.add_comments('tbd')
 
