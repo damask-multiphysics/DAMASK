@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 import vtk
-from vtk.util import numpy_support
+from vtk.util import numpy_support as nps
 
 from . import table
 from . import version
@@ -24,11 +24,11 @@ class VTK: # capitals needed/preferred?
         """Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data."""
         coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
         for dim in [0,1,2]:
-            for c in np.linspace(0,size[dim],1+grid[dim]):
+            for c in np.linspace(origin[dim],origin[dim]+size[dim],grid[dim]):
                 coordArray[dim].InsertNextValue(c)
 
         geom = vtk.vtkRectilinearGrid()
-        geom.SetDimensions(*(grid+1))
+        geom.SetDimensions(*grid)
         geom.SetXCoordinates(coordArray[0])
         geom.SetYCoordinates(coordArray[1])
         geom.SetZCoordinates(coordArray[2])
@@ -37,35 +37,40 @@ class VTK: # capitals needed/preferred?
 
 
     @staticmethod
-    def from_unstructuredGrid(nodes,connectivity,elem):
+    def from_unstructuredGrid(nodes,connectivity,cell_type):
+        """
+        Create an unstructured grid (mesh).
+
+        connectivity: 1 based at the moment
+        cell_type: TRIANGLE, 'QUAD', 'TETRA','HEXAHEDRON'
+
+        """
+        vtk_nodes = vtk.vtkPoints()
+        vtk_nodes.SetData(nps.numpy_to_vtk(nodes))
+
+        cells = vtk.vtkCellArray()
+        cells.SetNumberOfCells(connectivity.shape[0])
+        T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
+                           connectivity),axis=1).ravel()
+        cells.SetCells(connectivity.shape[0],nps.numpy_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
+
         geom = vtk.vtkUnstructuredGrid()
-        geom.SetPoints(numpy_support.numpy_to_vtk(nodes)) #,deep=True)
-        geom.Allocate(connectivity.shape[0])
-
-        if   elem == 'TRIANGLE':
-            vtk_type = vtk.VTK_TRIANGLE
-            n_nodes = 3
-        elif elem == 'QUAD':
-            vtk_type = vtk.VTK_QUAD
-            n_nodes = 4
-        elif elem == 'TETRA':
-            vtk_type = vtk.VTK_TETRA
-            n_nodes = 4
-        elif elem == 'HEXAHEDRON':
-            vtk_type = vtk.VTK_HEXAHEDRON
-            n_nodes = 8
-
-        for i in connectivity:
-            geom.InsertNextCell(vtk_type,n_nodes,i-1)
+        geom.SetPoints(vtk_nodes)
+        geom.SetCells(eval('vtk.VTK_{}'.format(cell_type.upper())),cells)
 
         return VTK(geom)
+
+
+    @staticmethod
+    def from_points(nodes,connectivity,cell_type):
+        pass
 
 
     def write(self,fname):                                              #ToDo: Discuss how to handle consistently filename extensions
         if  (isinstance(self.geom,vtk.vtkRectilinearGrid)):
             writer = vtk.vtkXMLRectilinearGridWriter()
         elif(isinstance(self.geom,vtk.vtkUnstructuredGrid)):
-            writer = vtk.vtkUnstructuredGrid()
+            writer = vtk.vtkXMLUnstructuredGridWriter()
         elif(isinstance(self.geom,vtk.vtkPolyData)):
             writer = vtk.vtkXMLPolyDataWriter()
 

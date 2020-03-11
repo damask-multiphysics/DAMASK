@@ -1041,12 +1041,12 @@ class Result:
         if mode.lower()=='cell':
 
           if self.structured:
-              v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+              v = VTK.from_rectilinearGrid(self.grid+1,self.size,self.origin)
               vtk_geom = v.geom
           else:
               with h5py.File(self.fname,'r') as f:
                   v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
-                                                f['/geometry/T_c'],
+                                                f['/geometry/T_c'][()]-1,
                                                 f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
                   vtk_geom = v.geom
 
