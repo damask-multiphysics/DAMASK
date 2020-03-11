@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import vtk
-import vtkmodules
 #from vtk.util import numpy_support
 
 class VTK: # capitals needed/preferred?
@@ -58,11 +57,11 @@ class VTK: # capitals needed/preferred?
 
 
     def write(self,fname):                                              #ToDo: Discuss how to handle consistently filename extensions
-        if  (isinstance(self.geom,vtkmodules.vtkCommonDataModel.vtkRectilinearGrid)):
+        if  (isinstance(self.geom,vtk.vtkRectilinearGrid)):
             writer = vtk.vtkXMLRectilinearGridWriter()
-        elif(isinstance(self.geom,vtkmodules.vtkCommonDataModel.vtkUnstructuredGrid)):
+        elif(isinstance(self.geom,vtk.vtkUnstructuredGrid)):
             writer = vtk.vtkUnstructuredGrid()
-        elif(isinstance(self.geom,vtkmodules.vtkCommonDataModel.vtkPolyData)):
+        elif(isinstance(self.geom,vtk.vtkPolyData)):
             writer = vtk.vtkXMLPolyDataWriter()
 
         writer.SetFileName('{}.{}'.format(os.path.splitext(fname)[0],
