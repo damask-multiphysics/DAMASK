@@ -1,7 +1,12 @@
 import os
+
+import pandas as pd
 import numpy as np
 import vtk
-#from vtk.util import numpy_support
+from vtk.util import numpy_support
+
+from . import table
+from . import version
 
 class VTK: # capitals needed/preferred?
     """
@@ -34,7 +39,7 @@ class VTK: # capitals needed/preferred?
     @staticmethod
     def from_unstructuredGrid(nodes,connectivity,elem):
         geom = vtk.vtkUnstructuredGrid()
-        geom.SetPoints(nodes)
+        geom.SetPoints(numpy_support.numpy_to_vtk(nodes)) #,deep=True)
         geom.Allocate(connectivity.shape[0])
 
         if   elem == 'TRIANGLE':
@@ -72,10 +77,20 @@ class VTK: # capitals needed/preferred?
 
         writer.Write()
 
+
+    def add(data,label=None):
+        if   isinstance(data,np.ndarray):
+            pass
+        elif isinstance(data,pd.DataFrame):
+            pass
+        elif isinstance(data,table):
+            pass
+
+
     def __repr__(self):
         """ASCII representation of the VTK data."""
         writer = vtk.vtkDataSetWriter()
-        #writer.SetHeader('damask.Geom '+version)
+        writer.SetHeader('DAMASK.VTK v{}'.format(version))
         writer.WriteToOutputStringOn()
         writer.SetInputData(self.geom)
         writer.Write()
