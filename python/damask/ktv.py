@@ -41,13 +41,12 @@ class VTK: # capitals needed/preferred?
         """
         Create an unstructured grid (mesh).
 
-        connectivity: 1 based at the moment
+        connectivity: 0 based at the moment, shape Ncell x N nodes
         cell_type: TRIANGLE, 'QUAD', 'TETRA','HEXAHEDRON'
 
         """
         vtk_nodes = vtk.vtkPoints()
         vtk_nodes.SetData(nps.numpy_to_vtk(nodes))
-
         cells = vtk.vtkCellArray()
         cells.SetNumberOfCells(connectivity.shape[0])
         T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
@@ -62,8 +61,21 @@ class VTK: # capitals needed/preferred?
 
 
     @staticmethod
-    def from_points(nodes,connectivity,cell_type):
-        pass
+    def from_polyData(points):
+        vtk_points= vtk.vtkPoints()
+        vtk_points.SetData(nps.numpy_to_vtk(points))
+
+        vertices = vtk.vtkCellArray()
+        vertices.SetNumberOfCells(points.shape[0])
+        T = np.concatenate((np.ones((points.shape[0],1),dtype=np.int64),
+                           np.arange(points.shape[0],dtype=np.int64).reshape(-1,1)),axis=1).ravel()
+        vertices.SetCells(points.shape[0],nps.numpy_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
+
+        geom = vtk.vtkPolyData()
+        geom.SetPoints(vtk_points)
+        geom.SetVerts(vertices)
+
+        return VTK(geom)
 
 
     def write(self,fname):                                              #ToDo: Discuss how to handle consistently filename extensions
@@ -95,7 +107,7 @@ class VTK: # capitals needed/preferred?
     def __repr__(self):
         """ASCII representation of the VTK data."""
         writer = vtk.vtkDataSetWriter()
-        writer.SetHeader('DAMASK.VTK v{}'.format(version))
+        writer.SetHeader('# DAMASK.VTK v{}'.format(version))
         writer.WriteToOutputStringOn()
         writer.SetInputData(self.geom)
         writer.Write()

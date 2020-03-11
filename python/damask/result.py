@@ -975,11 +975,11 @@ class Result:
             datasets_in = {}
             lock.acquire()
             with h5py.File(self.fname,'r') as f:
-              for arg,label in datasets.items():
-                loc  = f[group+'/'+label]
-                datasets_in[arg]={'data' :loc[()],
-                                  'label':label,
-                                  'meta': {k:v.decode() for k,v in loc.attrs.items()}}
+                for arg,label in datasets.items():
+                    loc  = f[group+'/'+label]
+                    datasets_in[arg]={'data' :loc[()],
+                                      'label':label,
+                                      'meta': {k:v.decode() for k,v in loc.attrs.items()}}
             lock.release()
             r = func(**datasets_in,**args)
             return [group,r]
@@ -1042,26 +1042,15 @@ class Result:
 
           if self.structured:
               v = VTK.from_rectilinearGrid(self.grid+1,self.size,self.origin)
-              vtk_geom = v.geom
           else:
               with h5py.File(self.fname,'r') as f:
                   v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
                                                 f['/geometry/T_c'][()]-1,
                                                 f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
-                  vtk_geom = v.geom
-
         elif mode.lower()=='point':
-          Points   = vtk.vtkPoints()
-          Vertices = vtk.vtkCellArray()
-          for c in self.cell_coordinates():
-            pointID = Points.InsertNextPoint(c)
-            Vertices.InsertNextCell(1)
-            Vertices.InsertCellPoint(pointID)
+            v = VTK.from_polyData(self.cell_coordinates())
 
-          vtk_geom = vtk.vtkPolyData()
-          vtk_geom.SetPoints(Points)
-          vtk_geom.SetVerts(Vertices)
-          vtk_geom.Modified()
+        vtk_geom = v.geom
 
         N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
 
