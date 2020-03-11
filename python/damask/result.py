@@ -84,6 +84,11 @@ class Result:
         self.fname = fname
 
 
+    def __repr__(self):
+        """Show selected data."""
+        return util.srepr(self.list_data())
+
+
     def _manage_selection(self,action,what,datasets):
         """
         Manages the visibility of the groups.
