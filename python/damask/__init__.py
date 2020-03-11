@@ -9,20 +9,23 @@ with open(os.path.join(os.path.dirname(__file__),'VERSION')) as f:
 # classes
 from .environment import Environment      # noqa
 from .table       import Table            # noqa
-from .asciitable  import ASCIItable       # noqa
-    
-from .config      import Material         # noqa
+from .ktv         import VTK              # noqa
 from .colormaps   import Colormap, Color  # noqa
 from .rotation    import Rotation         # noqa
 from .lattice     import Symmetry, Lattice# noqa
 from .orientation import Orientation      # noqa
 from .result      import Result           # noqa
-from .result      import Result as DADF5  # noqa
-
 from .geom        import Geom             # noqa
 from .solver      import Solver           # noqa
-from .test        import Test             # noqa
+
+# compatibility hack
+from .result      import Result as DADF5  # noqa
+
+# deprecated
+from .asciitable  import ASCIItable       # noqa
 from .util        import extendableOption # noqa
+from .config      import Material         # noqa
+from .test        import Test             # noqa
 
 # functions in modules
 from .            import mechanics        # noqa
