@@ -9,6 +9,7 @@ from vtk.util import numpy_support
 import h5py
 import numpy as np
 
+from . import VTK
 from . import util
 from . import version
 from . import table
@@ -245,15 +246,15 @@ class Result:
     def place(self,datasets,component=0,tagged=False,split=True):
         """
         Distribute datasets onto geometry and return Table or (split) dictionary of Tables.
-    
+
         Must not mix nodal end cell data.
-    
+
         Only data within
         - inc?????/constituent/*_*/*
         - inc?????/materialpoint/*_*/*
         - inc?????/geometry/*
         are considered.
-    
+
         Parameters
         ----------
           datasets : iterable or str
@@ -1040,44 +1041,14 @@ class Result:
         if mode.lower()=='cell':
 
           if self.structured:
-              coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
-              for dim in [0,1,2]:
-                  for c in np.linspace(0,self.size[dim],1+self.grid[dim]):
-                      coordArray[dim].InsertNextValue(c)
-
-              vtk_geom = vtk.vtkRectilinearGrid()
-              vtk_geom.SetDimensions(*(self.grid+1))
-              vtk_geom.SetXCoordinates(coordArray[0])
-              vtk_geom.SetYCoordinates(coordArray[1])
-              vtk_geom.SetZCoordinates(coordArray[2])
+              v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+              vtk_geom = v.geom
           else:
-              nodes = vtk.vtkPoints()
               with h5py.File(self.fname,'r') as f:
-                  nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
-
-                  vtk_geom = vtk.vtkUnstructuredGrid()
-                  vtk_geom.SetPoints(nodes)
-                  vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
-
-                  if self.version_major == 0 and self.version_minor <= 5:
-                      vtk_type = vtk.VTK_HEXAHEDRON
-                      n_nodes = 8
-                  else:
-                      if   f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TRIANGLE':
-                          vtk_type = vtk.VTK_TRIANGLE
-                          n_nodes = 3
-                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'QUAD':
-                          vtk_type = vtk.VTK_QUAD
-                          n_nodes = 4
-                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TETRA':                        # not tested
-                          vtk_type = vtk.VTK_TETRA
-                          n_nodes = 4
-                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'HEXAHEDRON':
-                          vtk_type = vtk.VTK_HEXAHEDRON
-                          n_nodes = 8
-
-                  for i in f['/geometry/T_c']:
-                      vtk_geom.InsertNextCell(vtk_type,n_nodes,i-1)
+                  v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
+                                                f['/geometry/T_c'],
+                                                f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+                  vtk_geom = v.geom
 
         elif mode.lower()=='point':
           Points   = vtk.vtkPoints()
