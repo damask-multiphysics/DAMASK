@@ -8,9 +8,9 @@ def Cauchy(P,F):
 
     Parameters
     ----------
-    F : numpy.array of shape (:,3,3) or (3,3)
+    F : numpy.ndarray of shape (:,3,3) or (3,3)
       Deformation gradient.
-    P : numpy.array of shape (:,3,3) or (3,3)
+    P : numpy.ndarray of shape (:,3,3) or (3,3)
       1. Piola-Kirchhoff stress.
 
     """
@@ -27,7 +27,7 @@ def deviatoric_part(T):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the deviatoric part is computed.
 
     """
@@ -44,7 +44,7 @@ def eigenvalues(T_sym):
 
     Parameters
     ----------
-    T_sym : numpy.array of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
       Symmetric tensor of which the eigenvalues are computed.
 
     """
@@ -59,7 +59,7 @@ def eigenvectors(T_sym,RHS=False):
 
     Parameters
     ----------
-    T_sym : numpy.array of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
       Symmetric tensor of which the eigenvectors are computed.
     RHS: bool, optional
       Enforce right-handed coordinate system. Default is False.
@@ -81,7 +81,7 @@ def left_stretch(T):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the left stretch is computed.
 
     """
@@ -94,7 +94,7 @@ def maximum_shear(T_sym):
 
     Parameters
     ----------
-    T_sym : numpy.array of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
       Symmetric tensor of which the maximum shear is computed.
 
     """
@@ -109,7 +109,7 @@ def Mises_strain(epsilon):
 
     Parameters
     ----------
-    epsilon : numpy.array of shape (:,3,3) or (3,3)
+    epsilon : numpy.ndarray of shape (:,3,3) or (3,3)
       Symmetric strain tensor of which the von Mises equivalent is computed.
 
     """
@@ -122,7 +122,7 @@ def Mises_stress(sigma):
 
     Parameters
     ----------
-    sigma : numpy.array of shape (:,3,3) or (3,3)
+    sigma : numpy.ndarray of shape (:,3,3) or (3,3)
       Symmetric stress tensor of which the von Mises equivalent is computed.
 
     """
@@ -135,9 +135,9 @@ def PK2(P,F):
 
     Parameters
     ----------
-    P : numpy.array of shape (:,3,3) or (3,3)
+    P : numpy.ndarray of shape (:,3,3) or (3,3)
       1. Piola-Kirchhoff stress.
-    F : numpy.array of shape (:,3,3) or (3,3)
+    F : numpy.ndarray of shape (:,3,3) or (3,3)
       Deformation gradient.
 
     """
@@ -154,7 +154,7 @@ def right_stretch(T):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the right stretch is computed.
 
     """
@@ -167,7 +167,7 @@ def rotational_part(T):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the rotational part is computed.
 
     """
@@ -180,7 +180,7 @@ def spherical_part(T,tensor=False):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the hydrostatic part is computed.
     tensor : bool, optional
       Map spherical part onto identity tensor. Default is false
@@ -206,7 +206,7 @@ def strain_tensor(F,t,m):
 
     Parameters
     ----------
-    F : numpy.array of shape (:,3,3) or (3,3)
+    F : numpy.ndarray of shape (:,3,3) or (3,3)
       Deformation gradient.
     t : {‘V’, ‘U’}
       Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
@@ -241,7 +241,7 @@ def symmetric(T):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the symmetrized values are computed.
 
     """
@@ -254,7 +254,7 @@ def transpose(T):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the transpose is computed.
 
     """
@@ -268,7 +268,7 @@ def __polar_decomposition(T,requested):
 
     Parameters
     ----------
-    T : numpy.array of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (:,3,3) or (3,3)
       Tensor of which the singular values are computed.
     requested : iterable of str
       Requested outputs: ‘R’ for the rotation tensor,
@@ -296,7 +296,7 @@ def __Mises(T_sym,s):
 
     Parameters
     ----------
-    T_sym : numpy.array of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
       Symmetric tensor of which the von Mises equivalent is computed.
     s : float
       Scaling factor (2/3 for strain, 3/2 for stress).

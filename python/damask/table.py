@@ -5,22 +5,22 @@ import numpy as np
 
 from . import version
 
-class Table():
+class Table:
     """Store spreadsheet-like data."""
-  
+
     def __init__(self,data,shapes,comments=None):
         """
         New spreadsheet.
-        
+
         Parameters
         ----------
         data : numpy.ndarray or pandas.DataFrame
             Data. Column labels from a pandas.DataFrame will be replaced.
         shapes : dict with str:tuple pairs
-            Shapes of the columns. Example 'F':(3,3) for a deformation gradient. 
+            Shapes of the columns. Example 'F':(3,3) for a deformation gradient.
         comments : iterable of str, optional
             Additional, human-readable information.
-        
+
         """
         self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
@@ -35,8 +35,8 @@ class Table():
             size = int(np.prod(shape))
             labels += ['{}{}'.format('' if size == 1 else '{}_'.format(i+1),label) for i in range(size)]
         self.data.columns = labels
-        
-        
+
+
     def __label_condensed(self):
         """Label data condensed, e.g. 1_v 2_v 3_v ==> v v v."""
         labels = []
@@ -51,7 +51,7 @@ class Table():
                                                    ' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',
                                                    info))
 
-    
+
     @staticmethod
     def from_ASCII(fname):
         """
@@ -88,7 +88,7 @@ class Table():
                 comments.append(line.lstrip('#').strip())
                 line = f.readline().strip()
             labels = line.split()
-       
+
         shapes = {}
         for label in labels:
             tensor_column = re.search(r'[0-9,x]*?:[0-9]*?_',label)
@@ -101,7 +101,7 @@ class Table():
                     shapes[label.split('_',1)[1]] = (int(label.split('_',1)[0]),)
                 else:
                     shapes[label] = (1,)
-        
+
         data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
 
         return Table(data,shapes,comments)
@@ -133,7 +133,7 @@ class Table():
         except TypeError:
             f = fname
             f.seek(0)
-        
+
         content = f.readlines()
 
         comments = ['table.py:from_ang v {}'.format(version)]
@@ -142,7 +142,7 @@ class Table():
                 comments.append(line.strip())
             else:
                 break
-       
+
         data = np.loadtxt(content)
         for c in range(data.shape[1]-10):
             shapes['n/a_{}'.format(c+1)] = (1,)
@@ -168,7 +168,7 @@ class Table():
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
             data = self.data[key].to_numpy()[:,int(idx)-1].reshape((-1,1))
-        else: 
+        else:
             data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
 
         return data.astype(type(data.flatten()[0]))
@@ -194,7 +194,7 @@ class Table():
             idx,key = label.split('_',1)
             iloc = self.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
             self.data.iloc[:,iloc] = data
-        else: 
+        else:
             self.data[label]       = data.reshape(self.data[label].shape)
 
 
