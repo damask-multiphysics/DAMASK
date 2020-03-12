@@ -212,3 +212,31 @@ class VTK:
         writer.SetInputData(self.geom)
         writer.Write()
         return writer.GetOutputString()
+
+
+    def show(self):
+        """
+        Render.
+
+        See http://compilatrix.com/article/vtk-1 for further ideas.
+        """
+        mapper = vtk.vtkDataSetMapper()
+        mapper.SetInputData(self.geom)
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        ren = vtk.vtkRenderer()
+
+        renWin = vtk.vtkRenderWindow()
+        renWin.AddRenderer(ren)
+
+        ren.AddActor(actor)
+        ren.SetBackground(0.2,0.2,0.2)
+        renWin.SetSize(1024, 1024)
+
+        iren = vtk.vtkRenderWindowInteractor()
+        iren.SetRenderWindow(renWin)
+
+        iren.Initialize()
+        renWin.Render()
+        iren.Start()
