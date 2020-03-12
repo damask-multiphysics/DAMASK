@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 import vtk
-from vtk.util import numpy_support as nps
+from vtk.util.numpy_support import numpy_to_vtk as np_to_vtk
 
 from . import table
 from . import version
@@ -47,8 +47,8 @@ class VTK:
         """
         coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
         for dim in [0,1,2]:
-            for c in np.linspace(origin[dim],origin[dim]+size[dim],grid[dim]+1):
-                coordArray[dim].InsertNextValue(c)
+            coords = np.linspace(origin[dim],origin[dim]+size[dim],grid[dim]+1)
+            coordArray[dim].SetArray(np_to_vtk(coords),grid[dim]+1,1)
 
         geom = vtk.vtkRectilinearGrid()
         geom.SetDimensions(*(grid+1))
@@ -77,16 +77,16 @@ class VTK:
 
         """
         vtk_nodes = vtk.vtkPoints()
-        vtk_nodes.SetData(nps.numpy_to_vtk(nodes))
+        vtk_nodes.SetData(np_to_vtk(nodes))
         cells = vtk.vtkCellArray()
         cells.SetNumberOfCells(connectivity.shape[0])
         T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
-                           connectivity),axis=1).ravel()
-        cells.SetCells(connectivity.shape[0],nps.numpy_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
+                            connectivity),axis=1).ravel()
+        cells.SetCells(connectivity.shape[0],np_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
 
         geom = vtk.vtkUnstructuredGrid()
         geom.SetPoints(vtk_nodes)
-        geom.SetCells(eval('vtk.VTK_{}'.format(cell_type.upper())),cells)
+        geom.SetCells(eval('vtk.VTK_{}'.format(cell_type.split('_',1)[-1].upper())),cells)
 
         return VTK(geom)
 
@@ -105,13 +105,13 @@ class VTK:
 
         """
         vtk_points= vtk.vtkPoints()
-        vtk_points.SetData(nps.numpy_to_vtk(points))
+        vtk_points.SetData(np_to_vtk(points))
 
         vertices = vtk.vtkCellArray()
         vertices.SetNumberOfCells(points.shape[0])
         T = np.concatenate((np.ones((points.shape[0],1),dtype=np.int64),
-                           np.arange(points.shape[0],dtype=np.int64).reshape(-1,1)),axis=1).ravel()
-        vertices.SetCells(points.shape[0],nps.numpy_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
+                            np.arange(points.shape[0],dtype=np.int64).reshape(-1,1)),axis=1).ravel()
+        vertices.SetCells(points.shape[0],np_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
 
         geom = vtk.vtkPolyData()
         geom.SetPoints(vtk_points)
@@ -119,8 +119,9 @@ class VTK:
 
         return VTK(geom)
 
+
     @staticmethod
-    def from_file(fname,ftype=None):
+    def from_file(fname,dataset_type=None):
         """
         Create VTK from file.
 
@@ -128,7 +129,7 @@ class VTK:
         ----------
         fname : str
           Filename for reading. Valid extensions are .vtk, .vtr, .vtu, and .vtp.
-        ftype : str, optional
+        dataset_type : str, optional
           Name of the vtk.vtkDataSet subclass when opening an .vtk file. Valid types are vtkRectilinearGrid,
           vtkUnstructuredGrid, and vtkPolyData.
 
@@ -138,14 +139,14 @@ class VTK:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(fname)
             reader.Update()
-            if 'rectilineargrid' in    ftype.lower():
+            if 'rectilineargrid' in    dataset_type.lower():
                 geom = reader.GetRectilinearGridOutput()
-            elif 'unstructuredgrid' in ftype.lower():
+            elif 'unstructuredgrid' in dataset_type.lower():
                 geom = reader.GetUnstructuredGridOutput()
-            elif 'polydata' in         ftype.lower():
+            elif 'polydata' in         dataset_type.lower():
                 geom = reader.GetPolyDataOutput()
             else:
-                raise Exception
+                raise TypeError('Unknown dataset type for vtk file {}'.format(dataset_type))
         else:
             if   ext == '.vtr':
                 reader = vtk.vtkXMLRectilinearGridReader()
@@ -154,7 +155,7 @@ class VTK:
             elif ext == '.vtp':
                 reader = vtk.vtkXMLPolyDataReader()
             else:
-                raise Exception
+                raise TypeError('Unknown file extension {}'.format(ext))
 
             reader.SetFileName(fname)
             reader.Update()
@@ -198,7 +199,7 @@ class VTK:
         N_cells  = self.geom.GetNumberOfCells()
 
         if   isinstance(data,np.ndarray):
-            d = nps.numpy_to_vtk(num_array=data.reshape(data.shape[0],-1),deep=True)
+            d = np_to_vtk(num_array=data.reshape(data.shape[0],-1),deep=True)
             d.SetName(label)
             if   data.shape[0] == N_cells:
                 self.geom.GetCellData().AddArray(d)
