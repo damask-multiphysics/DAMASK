@@ -8,14 +8,15 @@ import h5py
 import numpy as np
 
 from . import VTK
-from . import util
-from . import version
-from . import table
-from . import mechanics
+from . import Table
 from . import Rotation
 from . import Orientation
 from . import Environment
 from . import grid_filters
+from . import mechanics
+from . import util
+from . import version
+
 
 class Result:
     """
@@ -287,12 +288,12 @@ class Result:
                         try:
                             tbl[inc].add(path,data)
                         except KeyError:
-                            tbl[inc] = table.Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                            tbl[inc] = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
                     else:
                         try:
                             tbl.add(path,data)
                         except AttributeError:
-                            tbl = table.Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                            tbl = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
 
         return tbl
 

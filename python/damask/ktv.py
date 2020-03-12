@@ -5,8 +5,10 @@ import numpy as np
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk as np_to_vtk
 
-from . import table
+from . import Table
+from . import Environment
 from . import version
+
 
 class VTK:
     """
@@ -200,7 +202,7 @@ class VTK:
                 self.geom.GetPointData().AddArray(d)
         elif isinstance(data,pd.DataFrame):
             pass
-        elif isinstance(data,table):
+        elif isinstance(data,Table):
             pass
 
 
@@ -232,7 +234,8 @@ class VTK:
 
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
-        renWin.SetSize(1024, 1024)
+
+        renWin.SetSize(Environment().screen_width,Environment().screen_height)
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(renWin)
