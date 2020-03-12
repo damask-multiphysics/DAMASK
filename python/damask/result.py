@@ -1040,7 +1040,7 @@ class Result:
 
         N_digits = int(np.floor(np.log10(min(int(self.increments[-1][3:]),1))))+1
 
-        for i,inc in enumerate(self.iterate('increments')):
+        for i,inc in enumerate(util.show_progress(self.iterate('increments'),len(self.selection['increments']))):
 
           materialpoints_backup = self.selection['materialpoints'].copy()
           self.pick('materialpoints',False)
