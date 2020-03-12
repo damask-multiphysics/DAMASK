@@ -107,15 +107,8 @@ class VTK:
         vtk_points= vtk.vtkPoints()
         vtk_points.SetData(np_to_vtk(points))
 
-        vertices = vtk.vtkCellArray()
-        vertices.SetNumberOfCells(points.shape[0])
-        T = np.concatenate((np.ones((points.shape[0],1),dtype=np.int64),
-                            np.arange(points.shape[0],dtype=np.int64).reshape(-1,1)),axis=1).ravel()
-        vertices.SetCells(points.shape[0],np_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
-
         geom = vtk.vtkPolyData()
         geom.SetPoints(vtk_points)
-        geom.SetVerts(vertices)
 
         return VTK(geom)
 

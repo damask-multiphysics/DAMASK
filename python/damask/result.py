@@ -446,7 +446,7 @@ class Result:
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.cell_coord0(self.grid,self.size,self.origin)
+            return grid_filters.cell_coord0(self.grid,self.size,self.origin).reshape(-1,3)
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
@@ -1045,14 +1045,14 @@ class Result:
           materialpoints_backup = self.selection['materialpoints'].copy()
           self.pick('materialpoints',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iterate('con_physics'):
-              if p != 'generic':
-                  for c in self.iterate('constituents'):
-                      x = self.get_dataset_location(label)
-                      if len(x) == 0:
-                          continue
-                      array = self.read_dataset(x,0)
-                      v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
+              for p in self.iterate('con_physics'):
+                  if p != 'generic':
+                      for c in self.iterate('constituents'):
+                          x = self.get_dataset_location(label)
+                          if len(x) == 0:
+                              continue
+                          array = self.read_dataset(x,0)
+                          v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
               else:
                   x = self.get_dataset_location(label)
                   if len(x) == 0:
@@ -1066,14 +1066,14 @@ class Result:
           constituents_backup = self.selection['constituents'].copy()
           self.pick('constituents',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iterate('mat_physics'):
-              if p != 'generic':
-                  for m in self.iterate('materialpoints'):
-                      x = self.get_dataset_location(label)
-                      if len(x) == 0:
-                          continue
-                      array = self.read_dataset(x,0)
-                      v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
+              for p in self.iterate('mat_physics'):
+                  if p != 'generic':
+                      for m in self.iterate('materialpoints'):
+                          x = self.get_dataset_location(label)
+                          if len(x) == 0:
+                              continue
+                          array = self.read_dataset(x,0)
+                          v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
               else:
                   x = self.get_dataset_location(label)
                   if len(x) == 0:
@@ -1082,9 +1082,8 @@ class Result:
                   v.add(array,'1_'+x[0].split('/',1)[1])
           self.pick('constituents',constituents_backup)
 
-          if mode.lower()=='cell':
-              u = self.read_dataset(self.get_dataset_location('u_n'))
-              v.add(u,'u')
+          u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
+          v.add(u,'u')
 
           file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
                                           inc[3:].zfill(N_digits))
