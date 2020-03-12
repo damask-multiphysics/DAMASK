@@ -26,12 +26,12 @@ class Result:
 
     def __init__(self,fname):
         """
-        Opens an existing DADF5 file.
+        Open an existing DADF5 file.
 
         Parameters
         ----------
         fname : str
-            name of the DADF5 file to be openend.
+          name of the DADF5 file to be openend.
 
         """
         with h5py.File(fname,'r') as f:
@@ -1029,7 +1029,7 @@ class Result:
         if mode.lower()=='cell':
 
           if self.structured:
-              v = VTK.from_rectilinearGrid(self.grid+1,self.size,self.origin)
+              v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
           else:
               with h5py.File(self.fname,'r') as f:
                   v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
