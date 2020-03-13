@@ -10,7 +10,7 @@ module quaternions
   use IO
 
   implicit none
-  public
+  private
 
   real(pReal), parameter, public :: P = -1.0_pReal                                                  !< parameter for orientation conversion.
 
@@ -95,9 +95,13 @@ module quaternions
   interface aimag
     module procedure aimag__
   end interface aimag
-  
-  private :: &
-    unitTest
+ 
+  public :: &
+    quaternions_init, &
+    assignment(=), &
+    conjg, aimag, &
+    log, exp, &
+    real
 
 contains
 
@@ -511,6 +515,7 @@ subroutine unitTest
     q_2 = conjg(q_2) - inverse(q_2)
     if(any(dNeq0(q_2%asArray(),1.0e-15_pReal)))        call IO_error(0,ext_msg='inverse/conjg')
   endif
+  if(dNeq(dot_product(qu,qu),dot_product(q,q)))        call IO_error(0,ext_msg='dot_product')
 
 #if !(defined(__GFORTRAN__) &&  __GNUC__ < 9)
   if (norm2(aimag(q)) > 0.0_pReal) then

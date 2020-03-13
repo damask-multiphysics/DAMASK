@@ -11,30 +11,31 @@ module prec
 
   implicit none
   public
+
   ! https://software.intel.com/en-us/blogs/2017/03/27/doctor-fortran-in-it-takes-all-kinds
-  integer,     parameter, public :: pReal      = IEEE_selected_real_kind(15,307)                    !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
+  integer,     parameter :: pReal      = IEEE_selected_real_kind(15,307)                            !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
 #if(INT==8)
-  integer,     parameter, public :: pInt       = selected_int_kind(18)                              !< number with at least up to +-1e18 (typically 64 bit)
+  integer,     parameter :: pInt       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
 #else
-  integer,     parameter, public :: pInt       = selected_int_kind(9)                               !< number with at least up to +-1e9 (typically 32 bit)
+  integer,     parameter :: pInt       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
 #endif
-  integer,     parameter, public :: pLongInt   = selected_int_kind(18)                              !< number with at least up to +-1e18 (typically 64 bit)
-  integer,     parameter, public :: pStringLen = 256                                                !< default string length
-  integer,     parameter, public :: pPathLen   = 4096                                               !< maximum length of a path name on linux
+  integer,     parameter :: pLongInt   = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
+  integer,     parameter :: pStringLen = 256                                                        !< default string length
+  integer,     parameter :: pPathLen   = 4096                                                       !< maximum length of a path name on linux
 
-  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                   !< tolerance for internal math self-checks (rotation)
+  real(pReal), parameter :: tol_math_check = 1.0e-8_pReal                                           !< tolerance for internal math self-checks (rotation)
 
 
-  type, public :: group_float                                                                       !< variable length datatype used for storage of state
+  type :: group_float                                                                               !< variable length datatype used for storage of state
     real(pReal), dimension(:), pointer :: p
   end type group_float
 
-  type, public :: group_int
+  type :: group_int
     integer, dimension(:), pointer :: p
   end type group_int
 
   ! http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
-  type, public :: tState
+  type :: tState
     integer :: &
       sizeState        = 0, &                                                                       !< size of state
       sizeDotState     = 0, &                                                                       !< size of dot state, i.e. state(1:sizeDot) follows time evolution by dotState rates
@@ -57,7 +58,7 @@ module prec
       RKCK45dotState
   end type
 
-  type, extends(tState), public :: tPlasticState
+  type, extends(tState) :: tPlasticState
     logical :: &
       nonlocal = .false.
     real(pReal), pointer,     dimension(:,:) :: &
@@ -65,22 +66,22 @@ module prec
       accumulatedSlip                                                                               !< accumulated plastic slip
   end type
 
-  type, public :: tSourceState
+  type :: tSourceState
     type(tState), dimension(:), allocatable :: p                                                    !< tState for each active source mechanism in a phase
   end type
 
-  type, public :: tHomogMapping
+  type :: tHomogMapping
     integer, pointer, dimension(:,:) :: p
   end type
 
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
   real(pReal), private, parameter :: PREAL_MIN     = tiny(0.0_pReal)                                !< smallest normalized floating point number
 
-  integer,                   dimension(0), parameter, public :: &
+  integer,                   dimension(0), parameter :: &
     emptyIntArray    = [integer::]
-  real(pReal),               dimension(0), parameter, public :: &
+  real(pReal),               dimension(0), parameter :: &
     emptyRealArray   = [real(pReal)::]
-  character(len=pStringLen), dimension(0), parameter, public :: &
+  character(len=pStringLen), dimension(0), parameter :: &
     emptyStringArray = [character(len=pStringLen)::]
 
   private :: &
