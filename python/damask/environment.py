@@ -1,4 +1,3 @@
-import tkinter
 import os
 
 class Environment():
@@ -6,10 +5,14 @@ class Environment():
     def __init__(self):
         """Read and provide values of DAMASK configuration."""
         self.options = self._get_options()
-        tk = tkinter.Tk()
-        self.screen_width  = tk.winfo_screenwidth()
-        self.screen_height = tk.winfo_screenheight()
-
+        try:
+            import tkinter
+            tk = tkinter.Tk()
+            self.screen_width  = tk.winfo_screenwidth()
+            self.screen_height = tk.winfo_screenheight()
+        except Exception:
+            self.screen_width  = 1024
+            self.screen_height =  768
 
     def relPath(self,relative = '.'):
         """Return absolute path from path relative to DAMASK root."""
