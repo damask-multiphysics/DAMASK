@@ -7,11 +7,8 @@ module thermal_isothermal
   use material
 
   implicit none
-  private
+  public
   
-  public :: &
-    thermal_isothermal_init
-
 contains
 
 !--------------------------------------------------------------------------------------------------

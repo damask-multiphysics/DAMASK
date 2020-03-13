@@ -252,8 +252,8 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    vectorField_real(1:3,i,j,k) = matmul(thermal_conduction_getConductivity33(1,cell) - K_ref, &
-                                               vectorField_real(1:3,i,j,k))
+    vectorField_real(1:3,i,j,k) = matmul(thermal_conduction_getConductivity(1,cell) - K_ref, &
+                                         vectorField_real(1:3,i,j,k))
   enddo; enddo; enddo
   call utilities_FFTvectorForward
   call utilities_fourierVectorDivergence                                                            !< calculate temperature divergence in fourier field
@@ -294,9 +294,8 @@ subroutine updateReference
   mu_ref = 0.0_pReal
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    K_ref  = K_ref  + thermal_conduction_getConductivity33(1,cell)
-    mu_ref = mu_ref + thermal_conduction_getMassDensity(1,cell)* &
-                      thermal_conduction_getSpecificHeat(1,cell)
+    K_ref  = K_ref  + thermal_conduction_getConductivity(1,cell)
+    mu_ref = mu_ref + thermal_conduction_getMassDensity(1,cell)* thermal_conduction_getSpecificHeat(1,cell)
   enddo; enddo; enddo
   K_ref = K_ref*wgt
   call MPI_Allreduce(MPI_IN_PLACE,K_ref,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)

@@ -8,7 +8,7 @@ module damage_none
 
   implicit none
   public
-  
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -28,10 +28,10 @@ subroutine damage_none_init
     allocate(damageState(h)%state0   (0,NofMyHomog))
     allocate(damageState(h)%subState0(0,NofMyHomog))
     allocate(damageState(h)%state    (0,NofMyHomog))
-    
+
     deallocate(damage(h)%p)
     allocate  (damage(h)%p(1), source=damage_initialPhi(h))
-      
+
   enddo
 
 end subroutine damage_none_init
