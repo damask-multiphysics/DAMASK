@@ -2347,7 +2347,7 @@ function getlabels(active,potential,system) result(labels)
       i = 1
       label(i:i) = '['
       direction: do j = 1, size(system,1)/2
-        write(label(i+1:i+2),"(I2.1)") int(system(j,p))
+        write(label(i+1:i+2),'(I2.1)') int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
       enddo direction
@@ -2356,7 +2356,7 @@ function getlabels(active,potential,system) result(labels)
       i = i +1
       label(i:i) = '('
       normal: do j = size(system,1)/2+1, size(system,1)
-        write(label(i+1:i+2),"(I2.1)") int(system(j,p))
+        write(label(i+1:i+2),'(I2.1)') int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
       enddo normal
@@ -2369,5 +2369,65 @@ function getlabels(active,potential,system) result(labels)
 
 end function getlabels
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Equivalent Poisson's ratio (ν)
+!> @details https://doi.org/10.1143/JPSJ.20.635
+!--------------------------------------------------------------------------------------------------
+function equivalent_nu(C,assumption) result(nu)
+
+  real, dimension(6,6), intent(in) :: C                                                             !< Stiffness tensor (Voigt notation)
+  character(len=*),     intent(in) :: assumption                                                    !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+
+  real    :: K, mu, nu
+  logical :: error
+  real, dimension(6,6) :: S
+
+  if    (IO_lc(assumption) == 'voigt') then
+    K = (C(1,1)+C(2,2)+C(3,3) +2.0_pReal*(C(1,2)+C(2,3)+C(1,3))) &
+      / 9.0_pReal
+  elseif(IO_lc(assumption) == 'reuss') then
+    call math_invert(S,error,C)
+    if(error) call IO_error(0)
+    K = 1.0_pReal &
+      / (S(1,1)+S(2,2)+S(3,3) +2.0_pReal*(S(1,2)+S(2,3)+S(1,3)))
+  else
+    call IO_error(0)
+    K = 0.0_pReal
+  endif
+
+  mu = equivalent_mu(C,assumption)
+  nu = (1.5_pReal*K -mu)/(3.0_pReal*K+mu)
+
+end function equivalent_nu
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Equivalent shear modulus (μ)
+!> @details https://doi.org/10.1143/JPSJ.20.635
+!--------------------------------------------------------------------------------------------------
+function equivalent_mu(C,assumption) result(mu)
+
+  real, dimension(6,6), intent(in) :: C                                                             !< Stiffness tensor (Voigt notation)
+  character(len=*),     intent(in) :: assumption                                                    !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+
+  real    :: mu
+  logical :: error
+  real, dimension(6,6) :: S
+
+  if    (IO_lc(assumption) == 'voigt') then
+    mu = (1.0_pReal*(C(1,1)+C(2,2)+C(3,3)) -1.0_pReal*(C(1,2)+C(2,3)+C(1,3)) +3.0_pReal*(C(4,4)+C(5,5)+C(6,6))) &
+       / 15.0_pReal
+  elseif(IO_lc(assumption) == 'reuss') then
+    call math_invert(S,error,C)
+    if(error) call IO_error(0)
+    mu = 15.0_pReal &
+       / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
+  else
+    call IO_error(0)
+    mu = 0.0_pReal
+  endif
+
+end function equivalent_mu
 
 end module lattice
