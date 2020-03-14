@@ -40,7 +40,7 @@ module DAMASK_interface
   implicit none
   private
 
-  logical,                     public :: symmetricSolver
+  logical,          protected, public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
 
   public :: &
