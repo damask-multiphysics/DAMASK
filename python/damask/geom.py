@@ -36,7 +36,7 @@ class Geom():
         self.set_origin(origin)
         self.set_homogenization(homogenization)
         self.set_comments(comments)
-      
+
 
     def __repr__(self):
         """Basic information on geometry definition."""
@@ -48,6 +48,7 @@ class Geom():
                '# microstructures:   {}'.format(len(np.unique(self.microstructure))),
                'max microstructure:  {}'.format(np.nanmax(self.microstructure)),
               ])
+
 
     def update(self,microstructure=None,size=None,origin=None,rescale=False):
         """
@@ -70,7 +71,7 @@ class Geom():
         origin_old  = self.get_origin()
         unique_old  = len(np.unique(self.microstructure))
         max_old     = np.nanmax(self.microstructure)
-        
+
         if size is not None and rescale:
             raise ValueError('Either set size explicitly or rescale automatically')
 
@@ -108,8 +109,9 @@ class Geom():
         if max_old != np.nanmax(self.microstructure):
             message[-1] = util.delete(message[-1])
             message.append(util.emph('max microstructure:  {}'.format(np.nanmax(self.microstructure))))
-        
+
         return util.return_message(message)
+
 
     def set_comments(self,comments):
         """
@@ -123,7 +125,8 @@ class Geom():
         """
         self.comments = []
         self.add_comments(comments)
-      
+
+
     def add_comments(self,comments):
         """
         Appends comments to existing comments.
@@ -135,6 +138,7 @@ class Geom():
 
         """
         self.comments += [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
+
 
     def set_microstructure(self,microstructure):
         """
@@ -153,6 +157,7 @@ class Geom():
                 raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
             else:
                 self.microstructure = np.copy(microstructure)
+
 
     def set_size(self,size):
         """
@@ -173,6 +178,7 @@ class Geom():
             else:
                 self.size = np.array(size)
 
+
     def set_origin(self,origin):
         """
         Replaces the existing origin information.
@@ -188,6 +194,7 @@ class Geom():
                 raise ValueError('Invalid origin {}'.format(origin))
             else:
                 self.origin = np.array(origin)
+
 
     def set_homogenization(self,homogenization):
         """
@@ -205,33 +212,41 @@ class Geom():
             else:
                 self.homogenization = homogenization
 
+
     @property
     def grid(self):
         return self.get_grid()
+
 
     def get_microstructure(self):
         """Return the microstructure representation."""
         return np.copy(self.microstructure)
 
+
     def get_size(self):
         """Return the physical size in meter."""
         return np.copy(self.size)
+
 
     def get_origin(self):
         """Return the origin in meter."""
         return np.copy(self.origin)
 
+
     def get_grid(self):
         """Return the grid discretization."""
         return np.array(self.microstructure.shape)
+
 
     def get_homogenization(self):
         """Return the homogenization index."""
         return self.homogenization
 
+
     def get_comments(self):
         """Return the comments."""
         return self.comments[:]
+
 
     def get_header(self):
         """Return the full header (grid, size, origin, homogenization, comments)."""
@@ -241,7 +256,8 @@ class Geom():
         header.append('origin x {} y {} z {}'.format(*self.get_origin()))
         header.append('homogenization {}'.format(self.get_homogenization()))
         return header
-        
+
+
     @staticmethod
     def from_file(fname):
         """
@@ -266,7 +282,7 @@ class Geom():
         if not keyword.startswith('head') or header_length < 3:
             raise TypeError('Header length information missing or invalid')
 
-        comments = [] 
+        comments = []
         for i,line in enumerate(content[:header_length]):
             items = line.lower().strip().split()
             key = items[0] if items else ''
@@ -295,14 +311,14 @@ class Geom():
             else:                            items = list(map(float,items))
             microstructure[i:i+len(items)] = items
             i += len(items)
-        
+
         if i != grid.prod():
             raise TypeError('Invalid file: expected {} entries, found {}'.format(grid.prod(),i))
-        
+
         microstructure = microstructure.reshape(grid,order='F')
         if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                   # no float present
             microstructure = microstructure.astype('int')
-        
+
         return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
@@ -320,7 +336,7 @@ class Geom():
         """
         header = self.get_header()
         grid   = self.get_grid()
-        
+
         if pack is None:
             plain = grid.prod()/np.unique(self.microstructure).size < 250
         else:
@@ -371,7 +387,7 @@ class Geom():
             elif compressType == 'of':
                 f.write('{} of {}\n'.format(reps,former))
 
-                 
+
     def to_vtk(self,fname=None):
         """
         Generates vtk file.
@@ -391,7 +407,7 @@ class Geom():
                   np.linspace(0,size[1],grid[1]) + origin[1],
                   np.linspace(0,size[2],grid[2]) + origin[2]
                  ]
-        
+
         rGrid = vtk.vtkRectilinearGrid()
         coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
 
@@ -403,7 +419,7 @@ class Geom():
         rGrid.SetXCoordinates(coordArray[0])
         rGrid.SetYCoordinates(coordArray[1])
         rGrid.SetZCoordinates(coordArray[2])
-        
+
         ms = numpy_support.numpy_to_vtk(num_array=self.microstructure.flatten(order='F'),
                                         array_type=vtk.VTK_INT if self.microstructure.dtype == int else vtk.VTK_FLOAT)
         ms.SetName('microstructure')
@@ -418,7 +434,7 @@ class Geom():
             writer = vtk.vtkXMLRectilinearGridWriter()
             writer.SetCompressorTypeToZLib()
             writer.SetDataModeToBinary()
-            
+
             ext = os.path.splitext(fname)[1]
             if ext == '':
                 name = fname + '.' + writer.GetDefaultFileExtension()
@@ -427,13 +443,13 @@ class Geom():
             else:
                 raise ValueError("unknown extension {}".format(ext))
             writer.SetFileName(name)
-    
+
         writer.SetInputData(rGrid)
         writer.Write()
 
         if fname is None: return writer.GetOutputString()
 
-                 
+
     def show(self):
         """Show raw content (as in file)."""
         f=StringIO()
@@ -469,9 +485,9 @@ class Geom():
             ms = np.concatenate([ms,ms[:,limits[0]:limits[1]:-1,:]],1)
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
-     
+
+        #self.add_comments('geom.py:mirror v{}'.format(version)
         return self.update(ms,rescale=True)
-        #self.add_comments('tbd')
 
 
     def scale(self,grid):
@@ -484,6 +500,7 @@ class Geom():
             new grid dimension
 
         """
+        #self.add_comments('geom.py:scale v{}'.format(version)
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
@@ -494,7 +511,6 @@ class Geom():
                                                       prefilter=False
                                                      )
                           )
-        #self.add_comments('tbd')
 
 
     def clean(self,stencil=3):
@@ -511,13 +527,13 @@ class Geom():
             unique, inverse = np.unique(arr, return_inverse=True)
             return unique[np.argmax(np.bincount(inverse))]
 
+        #self.add_comments('geom.py:clean v{}'.format(version)
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
                                                           size=(stencil,)*3
                                                          ).astype(self.microstructure.dtype)
                           )
-        #self.add_comments('tbd')
 
 
     def renumber(self):
@@ -526,5 +542,5 @@ class Geom():
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
+        #self.add_comments('geom.py:renumber v{}'.format(version)
         return self.update(renumbered)
-        #self.add_comments('tbd')

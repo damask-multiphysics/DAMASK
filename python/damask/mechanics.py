@@ -9,9 +9,9 @@ def Cauchy(P,F):
     Parameters
     ----------
     F : numpy.ndarray of shape (:,3,3) or (3,3)
-      Deformation gradient.
+        Deformation gradient.
     P : numpy.ndarray of shape (:,3,3) or (3,3)
-      1. Piola-Kirchhoff stress.
+        First Piola-Kirchhoff stress.
 
     """
     if np.shape(F) == np.shape(P) == (3,3):
@@ -28,7 +28,7 @@ def deviatoric_part(T):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the deviatoric part is computed.
+        Tensor of which the deviatoric part is computed.
 
     """
     return T - np.eye(3)*spherical_part(T) if np.shape(T) == (3,3) else \
@@ -45,7 +45,7 @@ def eigenvalues(T_sym):
     Parameters
     ----------
     T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
-      Symmetric tensor of which the eigenvalues are computed.
+        Symmetric tensor of which the eigenvalues are computed.
 
     """
     return np.linalg.eigvalsh(symmetric(T_sym))
@@ -60,9 +60,9 @@ def eigenvectors(T_sym,RHS=False):
     Parameters
     ----------
     T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
-      Symmetric tensor of which the eigenvectors are computed.
+        Symmetric tensor of which the eigenvectors are computed.
     RHS: bool, optional
-      Enforce right-handed coordinate system. Default is False.
+        Enforce right-handed coordinate system. Default is False.
 
     """
     (u,v) = np.linalg.eigh(symmetric(T_sym))
@@ -82,7 +82,7 @@ def left_stretch(T):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the left stretch is computed.
+        Tensor of which the left stretch is computed.
 
     """
     return __polar_decomposition(T,'V')[0]
@@ -95,7 +95,7 @@ def maximum_shear(T_sym):
     Parameters
     ----------
     T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
-      Symmetric tensor of which the maximum shear is computed.
+        Symmetric tensor of which the maximum shear is computed.
 
     """
     w = eigenvalues(T_sym)
@@ -110,7 +110,7 @@ def Mises_strain(epsilon):
     Parameters
     ----------
     epsilon : numpy.ndarray of shape (:,3,3) or (3,3)
-      Symmetric strain tensor of which the von Mises equivalent is computed.
+        Symmetric strain tensor of which the von Mises equivalent is computed.
 
     """
     return __Mises(epsilon,2.0/3.0)
@@ -123,7 +123,7 @@ def Mises_stress(sigma):
     Parameters
     ----------
     sigma : numpy.ndarray of shape (:,3,3) or (3,3)
-      Symmetric stress tensor of which the von Mises equivalent is computed.
+        Symmetric stress tensor of which the von Mises equivalent is computed.
 
     """
     return __Mises(sigma,3.0/2.0)
@@ -136,9 +136,9 @@ def PK2(P,F):
     Parameters
     ----------
     P : numpy.ndarray of shape (:,3,3) or (3,3)
-      1. Piola-Kirchhoff stress.
+        First Piola-Kirchhoff stress.
     F : numpy.ndarray of shape (:,3,3) or (3,3)
-      Deformation gradient.
+        Deformation gradient.
 
     """
     if np.shape(F) == np.shape(P) == (3,3):
@@ -155,7 +155,7 @@ def right_stretch(T):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the right stretch is computed.
+        Tensor of which the right stretch is computed.
 
     """
     return __polar_decomposition(T,'U')[0]
@@ -168,7 +168,7 @@ def rotational_part(T):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the rotational part is computed.
+        Tensor of which the rotational part is computed.
 
     """
     return __polar_decomposition(T,'R')[0]
@@ -181,9 +181,9 @@ def spherical_part(T,tensor=False):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the hydrostatic part is computed.
+        Tensor of which the hydrostatic part is computed.
     tensor : bool, optional
-      Map spherical part onto identity tensor. Default is false
+        Map spherical part onto identity tensor. Default is false
 
     """
     if T.shape == (3,3):
@@ -207,11 +207,11 @@ def strain_tensor(F,t,m):
     Parameters
     ----------
     F : numpy.ndarray of shape (:,3,3) or (3,3)
-      Deformation gradient.
+        Deformation gradient.
     t : {‘V’, ‘U’}
-      Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+        Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
     m : float
-      Order of the strain.
+        Order of the strain.
 
     """
     F_ = F.reshape((1,3,3)) if F.shape == (3,3) else F
@@ -242,7 +242,7 @@ def symmetric(T):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the symmetrized values are computed.
+        Tensor of which the symmetrized values are computed.
 
     """
     return (T+transpose(T))*0.5
@@ -255,7 +255,7 @@ def transpose(T):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the transpose is computed.
+        Tensor of which the transpose is computed.
 
     """
     return T.T if np.shape(T) == (3,3) else \
@@ -269,10 +269,10 @@ def __polar_decomposition(T,requested):
     Parameters
     ----------
     T : numpy.ndarray of shape (:,3,3) or (3,3)
-      Tensor of which the singular values are computed.
+        Tensor of which the singular values are computed.
     requested : iterable of str
-      Requested outputs: ‘R’ for the rotation tensor,
-      ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+        Requested outputs: ‘R’ for the rotation tensor,
+        ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
 
     """
     u, s, vh = np.linalg.svd(T)
@@ -297,9 +297,9 @@ def __Mises(T_sym,s):
     Parameters
     ----------
     T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
-      Symmetric tensor of which the von Mises equivalent is computed.
+        Symmetric tensor of which the von Mises equivalent is computed.
     s : float
-      Scaling factor (2/3 for strain, 3/2 for stress).
+        Scaling factor (2/3 for strain, 3/2 for stress).
 
     """
     d = deviatoric_part(T_sym)

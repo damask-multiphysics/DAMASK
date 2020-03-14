@@ -287,7 +287,7 @@ class Table:
         Parameters
         ----------
         other : Table
-            Table to append
+            Table to append.
 
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
@@ -305,7 +305,7 @@ class Table:
         Parameters
         ----------
         other : Table
-            Table to join
+            Table to join.
 
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
