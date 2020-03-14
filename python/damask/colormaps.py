@@ -12,7 +12,7 @@ class Color:
 
     def __init__(self,
                  model = 'RGB',
-                 color = np.zeros(3,'d')):
+                 color = np.zeros(3)):
         """
         Create a Color object.
 
@@ -157,7 +157,7 @@ class Color:
                                           [m, x+m, c+m],
                                           [x+m, m, c+m],
                                           [c+m, m, x+m],
-                                         ][int(sextant)],'d'))
+                                         ][int(sextant)]))
         self.model = converted.model
         self.color = converted.color
 
@@ -171,7 +171,7 @@ class Color:
         """
         if self.model != 'RGB': return
 
-        HSL = np.zeros(3,'d')
+        HSL = np.zeros(3)
         maxcolor = self.color.max()
         mincolor = self.color.min()
         HSL[2] = (maxcolor + mincolor)/2.0
@@ -210,8 +210,8 @@ class Color:
         """
         if self.model != 'RGB': return
 
-        XYZ     = np.zeros(3,'d')
-        RGB_lin = np.zeros(3,'d')
+        XYZ     = np.zeros(3)
+        RGB_lin = np.zeros(3)
         convert = np.array([[0.412453,0.357580,0.180423],
                             [0.212671,0.715160,0.072169],
                             [0.019334,0.119193,0.950227]])
@@ -241,7 +241,7 @@ class Color:
                             [-0.969256, 1.875992, 0.041556],
                             [ 0.055648,-0.204043, 1.057311]])
         RGB_lin = np.dot(convert,self.color)
-        RGB     = np.zeros(3,'d')
+        RGB     = np.zeros(3)
 
         for i in range(3):
           if (RGB_lin[i] > 0.0031308): RGB[i] = ((RGB_lin[i])**(1.0/2.4))*1.0555-0.0555
@@ -267,8 +267,8 @@ class Color:
         """
         if self.model != 'CIELAB': return
 
-        ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                        # Observer = 2, Illuminant = D65
-        XYZ       = np.zeros(3,'d')
+        ref_white = np.array([.95047, 1.00000, 1.08883])                                            # Observer = 2, Illuminant = D65
+        XYZ       = np.zeros(3)
 
         XYZ[1] = (self.color[0] + 16.0 ) / 116.0
         XYZ[0] = XYZ[1]   + self.color[1]/ 500.0
@@ -293,7 +293,7 @@ class Color:
         """
         if self.model != 'XYZ': return
 
-        ref_white = np.array([.95047, 1.00000, 1.08883],'d')                                        # Observer = 2, Illuminant = D65
+        ref_white = np.array([.95047, 1.00000, 1.08883])                                            # Observer = 2, Illuminant = D65
         XYZ = self.color/ref_white
 
         for i in range(len(XYZ)):
@@ -315,7 +315,7 @@ class Color:
         """
         if self.model != 'CIELAB': return
 
-        Msh = np.zeros(3,'d')
+        Msh = np.zeros(3)
         Msh[0] = np.sqrt(np.dot(self.color,self.color))
         if (Msh[0] > 0.001):
           Msh[1] = np.arccos(self.color[0]/Msh[0])
@@ -336,7 +336,7 @@ class Color:
         """
         if self.model != 'MSH': return
 
-        Lab = np.zeros(3,'d')
+        Lab = np.zeros(3)
         Lab[0] = self.color[0] * np.cos(self.color[1])
         Lab[1] = self.color[0] * np.sin(self.color[1]) * np.cos(self.color[2])
         Lab[2] = self.color[0] * np.sin(self.color[1]) * np.sin(self.color[2])
@@ -397,7 +397,6 @@ class Colormap:
                       }
 
 
-  # ------------------------------------------------------------------
     def __init__(self,
                  left  = Color('RGB',[1,1,1]),
                  right = Color('RGB',[0,0,0]),
@@ -434,32 +433,28 @@ class Colormap:
       self.interpolate = interpolate
 
 
-  # ------------------------------------------------------------------
     def __repr__(self):
       """Left and right value of colormap."""
       return 'Left: %s Right: %s'%(self.left,self.right)
 
 
-  # ------------------------------------------------------------------
     def invert(self):
       """Switch left/minimum with right/maximum."""
       (self.left, self.right) = (self.right, self.left)
       return self
 
 
-  # ------------------------------------------------------------------
     def show_predefined(self):
       """Show the labels of the predefined colormaps."""
       print('\n'.join(self.__predefined__.keys()))
 
-  # ------------------------------------------------------------------
     def color(self,fraction = 0.5):
 
       def interpolate_Msh(lo, hi, frac):
 
         def rad_diff(a,b):
           return abs(a[2]-b[2])
-  # if saturation of one of the two colors is too less than the other, hue of the less
+        # if saturation of one of the two colors is too less than the other, hue of the less
         def adjust_hue(Msh_sat, Msh_unsat):
           if Msh_sat[0] >= Msh_unsat[0]:
             return Msh_sat[2]
@@ -474,10 +469,10 @@ class Colormap:
         if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > np.pi/3.0):
           M_mid = max(Msh1[0],Msh2[0],88.0)
           if frac < 0.5:
-            Msh2 = np.array([M_mid,0.0,0.0],'d')
+            Msh2 = np.array([M_mid,0.0,0.0])
             frac *= 2.0
           else:
-            Msh1 = np.array([M_mid,0.0,0.0],'d')
+            Msh1 = np.array([M_mid,0.0,0.0])
             frac = 2.0*frac - 1.0
         if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
         elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
@@ -501,7 +496,7 @@ class Colormap:
       else:
         raise NameError('unknown color interpolation method')
 
-  # ------------------------------------------------------------------
+
     def export(self,name = 'uniformPerceptualColorMap',\
                     format = 'paraview',\
                     steps = 2,\
