@@ -53,8 +53,8 @@ submodule(constitutive) plastic_nonlocal
       atomicVolume, &                                                                               !< atomic volume
       Dsd0, &                                                                                       !< prefactor for self-diffusion coefficient
       selfDiffusionEnergy, &                                                                        !< activation enthalpy for diffusion
-      aTolRho, &                                                                                    !< absolute tolerance for dislocation density in state integration
-      aTolShear, &                                                                                  !< absolute tolerance for accumulated shear in state integration
+      atol_rho, &                                                                                   !< absolute tolerance for dislocation density in state integration
+      atol_gamma, &                                                                                 !< absolute tolerance for accumulated shear in state integration
       significantRho, &                                                                             !< density considered significant
       significantN, &                                                                               !< number of dislocations considered significant
       doublekinkwidth, &                                                                            !< width of a doubkle kink in multiples of the burgers vector length b
@@ -182,7 +182,7 @@ module subroutine plastic_nonlocal_init
     structure
   integer :: NofMyPhase
 
-  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_LABEL//' init  -+>>>'; flush(6)
 
   write(6,'(/,a)') ' Reuber et al., Acta Materialia 71:333–348, 2014'
   write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2014.03.012'
@@ -214,8 +214,8 @@ module subroutine plastic_nonlocal_init
               dst => microstructure(phase_plasticityInstance(p)), &
               config => config_phase(p))
 
-    prm%aTolRho    = config%getFloat('atol_rho',   defaultVal=0.0_pReal)
-    prm%aTolShear  = config%getFloat('atol_shear', defaultVal=0.0_pReal)
+    prm%atol_rho   = config%getFloat('atol_rho',   defaultVal=0.0_pReal)
+    prm%atol_gamma = config%getFloat('atol_shear', defaultVal=0.0_pReal)
 
     structure      = config%getString('lattice_structure')
 
@@ -351,8 +351,8 @@ module subroutine plastic_nonlocal_init
 
       if (prm%significantN         < 0.0_pReal)   extmsg = trim(extmsg)//' significantN'
       if (prm%significantrho       < 0.0_pReal)   extmsg = trim(extmsg)//' significantrho'
-      if (prm%atolshear           <= 0.0_pReal)   extmsg = trim(extmsg)//' atolshear'
-      if (prm%atolrho             <= 0.0_pReal)   extmsg = trim(extmsg)//' atolrho'
+      if (prm%atol_rho            <= 0.0_pReal)   extmsg = trim(extmsg)//' atol_rho'
+      if (prm%atol_gamma          <= 0.0_pReal)   extmsg = trim(extmsg)//' atol_gamma'
       if (prm%CFLfactor            < 0.0_pReal)   extmsg = trim(extmsg)//' CFLfactor'
 
       if (prm%p <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p'
@@ -405,7 +405,7 @@ module subroutine plastic_nonlocal_init
     stt%rho => plasticState(p)%state                              (0*prm%totalNslip+1:10*prm%totalNslip,:)
     dot%rho => plasticState(p)%dotState                           (0*prm%totalNslip+1:10*prm%totalNslip,:)
     del%rho => plasticState(p)%deltaState                         (0*prm%totalNslip+1:10*prm%totalNslip,:)
-    plasticState(p)%aTolState(1:10*prm%totalNslip) = prm%aTolRho
+    plasticState(p)%atolState(1:10*prm%totalNslip) = prm%atol_rho
 
       stt%rhoSgl => plasticState(p)%state                         (0*prm%totalNslip+1: 8*prm%totalNslip,:)
       dot%rhoSgl => plasticState(p)%dotState                      (0*prm%totalNslip+1: 8*prm%totalNslip,:)
@@ -466,7 +466,7 @@ module subroutine plastic_nonlocal_init
     stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%aTolState(10*prm%totalNslip + 1:11*prm%totalNslip )  = prm%aTolShear
+    plasticState(p)%atolState(10*prm%totalNslip + 1:11*prm%totalNslip )  = prm%atol_gamma
     plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
 
     stt%rho_forest => plasticState(p)%state                 (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)
@@ -537,7 +537,7 @@ module subroutine plastic_nonlocal_init
         enddo
       enddo
       if (iD(param(phase_plasticityInstance(p))%totalNslip,2,phase_plasticityInstance(p)) /= plasticState(p)%sizeState) &
-        call IO_error(0, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
+        call IO_error(0, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_LABEL//')')
 
 
     endif myPhase2
@@ -1665,8 +1665,8 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
 #endif
 
 
-  if (    any(rho(:,mob) + rhoDot(1:ns,1:4)  * timestep < -prm%aTolRho) &
-     .or. any(rho(:,dip) + rhoDot(1:ns,9:10) * timestep < -prm%aTolRho)) then
+  if (    any(rho(:,mob) + rhoDot(1:ns,1:4)  * timestep < -prm%atol_rho) &
+     .or. any(rho(:,dip) + rhoDot(1:ns,9:10) * timestep < -prm%atol_rho)) then
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then
       write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
