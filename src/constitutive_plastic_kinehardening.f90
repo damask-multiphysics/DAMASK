@@ -10,9 +10,7 @@ submodule(constitutive) plastic_kinehardening
   type :: tParameters
     real(pReal) :: &
       gdot0, &                                                                                      !< reference shear strain rate for slip
-      n, &                                                                                          !< stress exponent for slip
-      aTolResistance, &
-      aTolShear
+      n                                                                                             !< stress exponent for slip
     real(pReal),              allocatable, dimension(:) :: &
       crss0, &                                                                                      !< initial critical shear stress for slip
       theta0, &                                                                                     !< initial hardening rate of forward stress for each slip
@@ -74,7 +72,7 @@ module subroutine plastic_kinehardening_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_plasticity == PLASTICITY_KINEHARDENING_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
@@ -93,20 +91,13 @@ module subroutine plastic_kinehardening_init
               stt => state(phase_plasticityInstance(p)),&
               config => config_phase(p))
 
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
 #ifdef DEBUG
     if  (p==material_phaseAt(debug_g,debug_e)) then
       prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
     endif
 #endif
-
-!--------------------------------------------------------------------------------------------------
-!  optional parameters that need to be defined
-    prm%aTolResistance = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
-    prm%aTolShear      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
-
-    ! sanity checks
-    if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//' aTolresistance'
-    if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' aTolShear'
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -164,15 +155,6 @@ module subroutine plastic_kinehardening_init
     endif slipActive
 
 !--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-    if (extmsg /= '') &
-      call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_KINEHARDENING_label//')')
-
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
-
-!--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
     sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%totalNslip
@@ -182,27 +164,31 @@ module subroutine plastic_kinehardening_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and aTolState
+! locally defined state aliases and initialization of state0 and atolState
     startIndex = 1
     endIndex   = prm%totalNslip
     stt%crss => plasticState(p)%state   (startIndex:endIndex,:)
     stt%crss = spread(prm%crss0, 2, NipcMyPhase)
     dot%crss => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
+    if(any(plasticState(p)%atolState(startIndex:endIndex) <= 0.0_pReal)) &
+      extmsg = trim(extmsg)//' atol_crss'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%totalNslip
     stt%crss_back => plasticState(p)%state   (startIndex:endIndex,:)
     dot%crss_back => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%totalNslip
     stt%accshear => plasticState(p)%state   (startIndex:endIndex,:)
     dot%accshear => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(p)%atolState(startIndex:endIndex) <= 0.0_pReal)) &
+      extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
-    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
+    plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)
 
     o = plasticState(p)%offsetDeltaState
     startIndex = endIndex + 1
@@ -224,7 +210,12 @@ module subroutine plastic_kinehardening_init
 
     end associate
 
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_KINEHARDENING_LABEL//')')
+
   enddo
+
 
 end subroutine plastic_kinehardening_init
 

@@ -23,8 +23,7 @@ module source_damage_isoDuctile
   type, private :: tParameters                                                                      !< container type for internal constitutive parameters
     real(pReal) :: &
       critPlasticStrain, &
-      N, &
-      aTol
+      N
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -73,30 +72,28 @@ subroutine source_damage_isoDuctile_init
     associate(prm => param(source_damage_isoDuctile_instance(p)), &
               config => config_phase(p))
 
-    prm%aTol              = config%getFloat('isoductile_atol',defaultVal = 1.0e-3_pReal)
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
     prm%N                 = config%getFloat('isoductile_ratesensitivity')
     prm%critPlasticStrain = config%getFloat('isoductile_criticalplasticstrain')
 
     ! sanity checks
-    if (prm%aTol              <  0.0_pReal) extmsg = trim(extmsg)//' isoductile_atol'
     if (prm%N                 <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_ratesensitivity'
     if (prm%critPlasticStrain <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_criticalplasticstrain'
 
-!--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-    if (extmsg /= '') &
-      call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISODUCTILE_LABEL//')')
-
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
-
     NofMyPhase=count(material_phaseAt==p) * discretization_nIP
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
-    sourceState(p)%p(sourceOffset)%aTolState=prm%aTol
+    sourceState(p)%p(sourceOffset)%atolState = config%getFloat('isoductile_atol',defaultVal=1.0e-3_pReal)
+    if(any(sourceState(p)%p(sourceOffset)%atolState <= 0.0_pReal)) &
+      extmsg = trim(extmsg)//' isoductile_atol'
 
     end associate
-  enddo
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISODUCTILE_LABEL//')')
+
+enddo
 
 end subroutine source_damage_isoDuctile_init
 

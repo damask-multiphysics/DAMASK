@@ -24,7 +24,6 @@ module source_damage_anisoBrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      aTol, &
       sdot_0, &
       N
     real(pReal), dimension(:), allocatable :: &
@@ -84,10 +83,11 @@ subroutine source_damage_anisoBrittle_init
     associate(prm => param(source_damage_anisoBrittle_instance(p)), &
               config => config_phase(p))
 
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
     prm%Ncleavage = config%getInts('ncleavage',defaultVal=emptyIntArray)
     prm%totalNcleavage = sum(prm%Ncleavage)
 
-    prm%aTol      = config%getFloat('anisobrittle_atol',defaultVal = 1.0e-3_pReal)
     prm%N         = config%getFloat('anisobrittle_ratesensitivity')
     prm%sdot_0    = config%getFloat('anisobrittle_sdot0')
 
@@ -102,26 +102,24 @@ subroutine source_damage_anisoBrittle_init
     prm%critLoad = math_expand(prm%critLoad, prm%Ncleavage)
 
     ! sanity checks
-    if (prm%aTol         <  0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_atol'
     if (prm%N            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_n'
     if (prm%sdot_0       <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_sdot0'
     if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critLoad'
     if (any(prm%critDisp <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critDisp'
 
+    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
+    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
+    sourceState(p)%p(sourceOffset)%atolState = config%getFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
+    if(any(sourceState(p)%p(sourceOffset)%atolState <= 0.0_pReal)) &
+      extmsg = trim(extmsg)//' anisobrittle_atol'
+
+    end associate
+
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
     if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//')')
 
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
-
-    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
-    sourceState(p)%p(sourceOffset)%aTolState=prm%aTol
-
-    end associate
-  enddo
+enddo
 
 end subroutine source_damage_anisoBrittle_init
 

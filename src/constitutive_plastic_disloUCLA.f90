@@ -12,7 +12,6 @@ submodule(constitutive) plastic_disloUCLA
 
   type :: tParameters
     real(pReal) :: &
-      aTol_rho, &
       D, &                                                                                          !< grain size
       mu, &
       D_0, &                                                                                        !< prefactor for self-diffusion coefficient
@@ -92,7 +91,7 @@ module subroutine plastic_disloUCLA_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_LABEL//' init  -+>>>'; flush(6)
 
   write(6,'(/,a)') ' Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   write(6,'(a)')   ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
@@ -115,14 +114,10 @@ module subroutine plastic_disloUCLA_init
               dst => dependentState(phase_plasticityInstance(p)), &
               config => config_phase(p))
 
-!--------------------------------------------------------------------------------------------------
-!  optional parameters that need to be defined
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
+    ! This data is read in already in lattice
     prm%mu = lattice_mu(p)
-
-    prm%aTol_rho = config%getFloat('atol_rho')
-
-    ! sanity checks
-    if (prm%aTol_rho <= 0.0_pReal) extmsg = trim(extmsg)//' atol_rho'
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -210,15 +205,6 @@ module subroutine plastic_disloUCLA_init
     endif slipActive
 
 !--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-    if (extmsg /= '') &
-      call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_DISLOUCLA_label//')')
-
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
-
-!--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
@@ -227,26 +213,28 @@ module subroutine plastic_disloUCLA_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and aTolState
+! locally defined state aliases and initialization of state0 and atolState
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
     dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_rho')
+    if (any(plasticState(p)%atolState(startIndex:endIndex) <= 0.0_pReal)) &
+      extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_dip= spread(prm%rho_dip_0,2,NipcMyPhase)
     dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_rho')
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
     dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal                                    ! Don't use for convergence check
+    plasticState(p)%atolState(startIndex:endIndex) = 1.0e6_pReal                                    ! Don't use for convergence check
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
 
@@ -256,6 +244,10 @@ module subroutine plastic_disloUCLA_init
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 
     end associate
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_DISLOUCLA_LABEL//')')
 
   enddo
 

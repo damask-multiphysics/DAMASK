@@ -22,9 +22,7 @@ submodule(constitutive) plastic_isotropic
       c_1, &
       c_4, &
       c_3, &
-      c_2, &
-      aTol_xi, &
-      aTol_gamma
+      c_2
     integer :: &
       of_debug = 0
     logical :: &
@@ -63,7 +61,7 @@ module subroutine plastic_isotropic_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_LABEL//' init  -+>>>'; flush(6)
 
   write(6,'(/,a)') ' Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
   write(6,'(a)')   ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
@@ -83,6 +81,8 @@ module subroutine plastic_isotropic_init
               stt => state(phase_plasticityInstance(p)), &
               config => config_phase(p))
 
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
 #ifdef DEBUG
     if  (p==material_phaseAt(debug_g,debug_e)) &
       prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
@@ -100,31 +100,16 @@ module subroutine plastic_isotropic_init
     prm%c_3             = config%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
     prm%c_2             = config%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
     prm%a               = config%getFloat('a')
-    prm%aTol_xi         = config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
-    prm%aTol_gamma      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
 
     prm%dilatation      = config%keyExists('/dilatation/')
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-    extmsg = ''
-    if (prm%aTol_gamma     <= 0.0_pReal) extmsg = trim(extmsg)//' aTol_gamma'
     if (prm%xi_0           <  0.0_pReal) extmsg = trim(extmsg)//' xi_0'
     if (prm%dot_gamma_0    <= 0.0_pReal) extmsg = trim(extmsg)//' dot_gamma_0'
     if (prm%n              <= 0.0_pReal) extmsg = trim(extmsg)//' n'
     if (prm%a              <= 0.0_pReal) extmsg = trim(extmsg)//' a'
     if (prm%M              <= 0.0_pReal) extmsg = trim(extmsg)//' m'
-    if (prm%aTol_xi        <= 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
-    if (prm%aTol_gamma     <= 0.0_pReal) extmsg = trim(extmsg)//' atol_shear'
-
-!--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-    if (extmsg /= '') &
-      call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_label//')')
-
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -135,21 +120,28 @@ module subroutine plastic_isotropic_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and aTolState
+! locally defined state aliases and initialization of state0 and atolState
     stt%xi  => plasticState(p)%state   (1,:)
     stt%xi  = prm%xi_0
     dot%xi  => plasticState(p)%dotState(1,:)
-    plasticState(p)%aTolState(1) = prm%aTol_xi
+    plasticState(p)%atolState(1) = config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
+    if (plasticState(p)%atolState(1) <= 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
 
     stt%gamma  => plasticState(p)%state   (2,:)
     dot%gamma  => plasticState(p)%dotState(2,:)
-    plasticState(p)%aTolState(2) = prm%aTol_gamma
+    plasticState(p)%atolState(2) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+    if (plasticState(p)%atolState(2) <= 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
+
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
 
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 
     end associate
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_ISOTROPIC_LABEL//')')
 
   enddo
 
