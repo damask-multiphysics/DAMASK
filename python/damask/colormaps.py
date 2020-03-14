@@ -399,98 +399,97 @@ class Colormap:
                  interpolate = 'perceptualuniform',
                  predefined = None
                  ):
-      """
-      Create a Colormap object.
+        """
+        Create a Colormap object.
 
-      Parameters
-      ----------
-      left : Color
-          left color (minimum value)
-      right : Color
-          right color (maximum value)
-      interpolate : str
-          interpolation scheme (either 'perceptualuniform' or 'linear')
-      predefined : bool
-           ignore other arguments and use predefined definition
+        Parameters
+        ----------
+        left : Color
+            left color (minimum value)
+        right : Color
+            right color (maximum value)
+        interpolate : str
+            interpolation scheme (either 'perceptualuniform' or 'linear')
+        predefined : bool
+             ignore other arguments and use predefined definition
 
-      """
-      if predefined is not None:
-        left = self.__predefined__[predefined.lower()]['left']
-        right= self.__predefined__[predefined.lower()]['right']
-        interpolate = self.__predefined__[predefined.lower()]['interpolate']
+        """
+        if predefined is not None:
+            left = self.__predefined__[predefined.lower()]['left']
+            right= self.__predefined__[predefined.lower()]['right']
+            interpolate = self.__predefined__[predefined.lower()]['interpolate']
 
-      if left.__class__.__name__ != 'Color':
-        left = Color()
-      if right.__class__.__name__ != 'Color':
-        right = Color()
+        if left.__class__.__name__ != 'Color':
+            left = Color()
+        if right.__class__.__name__ != 'Color':
+            right = Color()
 
-      self.left  = left
-      self.right = right
-      self.interpolate = interpolate
+        self.left  = left
+        self.right = right
+        self.interpolate = interpolate
 
 
     def __repr__(self):
-      """Left and right value of colormap."""
-      return 'Left: %s Right: %s'%(self.left,self.right)
+        """Left and right value of colormap."""
+        return 'Left: %s Right: %s'%(self.left,self.right)
 
 
     def invert(self):
-      """Switch left/minimum with right/maximum."""
-      (self.left, self.right) = (self.right, self.left)
-      return self
+        """Switch left/minimum with right/maximum."""
+        (self.left, self.right) = (self.right, self.left)
+        return self
 
 
     def show_predefined(self):
-      """Show the labels of the predefined colormaps."""
-      print('\n'.join(self.__predefined__.keys()))
+        """Show the labels of the predefined colormaps."""
+        print('\n'.join(self.__predefined__.keys()))
 
     def color(self,fraction = 0.5):
 
-      def interpolate_Msh(lo, hi, frac):
+        def interpolate_Msh(lo, hi, frac):
 
-        def rad_diff(a,b):
-          return abs(a[2]-b[2])
-        # if saturation of one of the two colors is too less than the other, hue of the less
-        def adjust_hue(Msh_sat, Msh_unsat):
-          if Msh_sat[0] >= Msh_unsat[0]:
-            return Msh_sat[2]
-          else:
-            hSpin = Msh_sat[1]/np.sin(Msh_sat[1])*np.sqrt(Msh_unsat[0]**2.0-Msh_sat[0]**2)/Msh_sat[0]
-            if Msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
-            return Msh_sat[2] + hSpin
+            def rad_diff(a,b):
+              return abs(a[2]-b[2])
+            # if saturation of one of the two colors is too less than the other, hue of the less
+            def adjust_hue(Msh_sat, Msh_unsat):
+              if Msh_sat[0] >= Msh_unsat[0]:
+                return Msh_sat[2]
+              else:
+                hSpin = Msh_sat[1]/np.sin(Msh_sat[1])*np.sqrt(Msh_unsat[0]**2.0-Msh_sat[0]**2)/Msh_sat[0]
+                if Msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
+                return Msh_sat[2] + hSpin
 
-        Msh1 = np.array(lo[:])
-        Msh2 = np.array(hi[:])
+            Msh1 = np.array(lo[:])
+            Msh2 = np.array(hi[:])
 
-        if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > np.pi/3.0):
-          M_mid = max(Msh1[0],Msh2[0],88.0)
-          if frac < 0.5:
-            Msh2 = np.array([M_mid,0.0,0.0])
-            frac *= 2.0
-          else:
-            Msh1 = np.array([M_mid,0.0,0.0])
-            frac = 2.0*frac - 1.0
-        if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
-        elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
-        Msh = (1.0 - frac) * Msh1 + frac * Msh2
+            if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > np.pi/3.0):
+              M_mid = max(Msh1[0],Msh2[0],88.0)
+              if frac < 0.5:
+                Msh2 = np.array([M_mid,0.0,0.0])
+                frac *= 2.0
+              else:
+                Msh1 = np.array([M_mid,0.0,0.0])
+                frac = 2.0*frac - 1.0
+            if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
+            elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
+            Msh = (1.0 - frac) * Msh1 + frac * Msh2
 
-        return Color('MSH',Msh)
+            return Color('MSH',Msh)
 
-      def interpolate_linear(lo, hi, frac):
-        """Linear interpolation between lo and hi color at given fraction; output in model of lo color."""
-        interpolation = (1.0 - frac) * np.array(lo.color[:]) \
-                             + frac  * np.array(hi.express_as(lo.model).color[:])
+        def interpolate_linear(lo, hi, frac):
+            """Linear interpolation between lo and hi color at given fraction; output in model of lo color."""
+            interpolation = (1.0 - frac) * np.array(lo.color[:]) \
+                                 + frac  * np.array(hi.express_as(lo.model).color[:])
 
-        return Color(lo.model,interpolation)
+            return Color(lo.model,interpolation)
 
-      if self.interpolate == 'perceptualuniform':
-        return interpolate_Msh(self.left.express_as('MSH').color,
-                               self.right.express_as('MSH').color,fraction)
-      elif self.interpolate == 'linear':
-        return interpolate_linear(self.left,
-                                  self.right,fraction)
-      else:
-        raise NameError('unknown color interpolation method')
+        if self.interpolate == 'perceptualuniform':
+            return interpolate_Msh(self.left.express_as('MSH').color,
+                                   self.right.express_as('MSH').color,fraction)
+        elif self.interpolate == 'linear':
+            return interpolate_linear(self.left,self.right,fraction)
+        else:
+            raise NameError('unknown color interpolation method')
 
 
     def export(self,name = 'uniformPerceptualColorMap',\
@@ -498,44 +497,44 @@ class Colormap:
                     steps = 2,\
                     crop = [-1.0,1.0],
                     model = 'RGB'):
-      """
-      [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
+        """
+        [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
 
-      Arguments: name, format, steps, crop.
-      Format is one of (paraview, gmsh, raw, list).
-      Crop selects a (sub)range in [-1.0,1.0].
-      Generates sequential map if one limiting color is either white or black,
-      diverging map otherwise.
-      """
-      format = format.lower()                                                                         # consistent comparison basis
-      frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
-      colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).express_as(model).color for i in range(steps)]
-      if   format == 'paraview':
-        colormap = ['[\n {{\n  "ColorSpace": "RGB", "Name": "{}", "DefaultMap": true,\n  "RGBPoints" : ['.format(name)] \
-                 + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],) \
-                                                                          for i,color in enumerate(colors[:-1])] \
-                 + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)] \
-                 + ['   ]\n }\n]']
+        Arguments: name, format, steps, crop.
+        Format is one of (paraview, gmsh, raw, list).
+        Crop selects a (sub)range in [-1.0,1.0].
+        Generates sequential map if one limiting color is either white or black,
+        diverging map otherwise.
+        """
+        format = format.lower()                                                                         # consistent comparison basis
+        frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
+        colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).express_as(model).color for i in range(steps)]
+        if   format == 'paraview':
+            colormap = ['[\n {{\n  "ColorSpace": "RGB", "Name": "{}", "DefaultMap": true,\n  "RGBPoints" : ['.format(name)] \
+                     + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],) \
+                                                                              for i,color in enumerate(colors[:-1])] \
+                     + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)] \
+                     + ['   ]\n }\n]']
 
-      elif format == 'gmsh':
-        colormap = ['View.ColorTable = {'] \
-                 + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
-                 + ['}']
+        elif format == 'gmsh':
+            colormap = ['View.ColorTable = {'] \
+                     + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
+                     + ['}']
 
-      elif format == 'gom':
-        colormap = ['1 1 ' + str(name)
-                   + ' 9 ' + str(name)
-                   + ' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
-                   + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
-                   + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
+        elif format == 'gom':
+            colormap = ['1 1 ' + str(name)
+                       + ' 9 ' + str(name)
+                       + ' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
+                       + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
+                       + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
 
-      elif format == 'raw':
-        colormap = ['\t'.join(map(str,color)) for color in colors]
+        elif format == 'raw':
+            colormap = ['\t'.join(map(str,color)) for color in colors]
 
-      elif format == 'list':
-        colormap = colors
+        elif format == 'list':
+            colormap = colors
 
-      else:
-        raise NameError('unknown color export format')
+        else:
+            raise NameError('unknown color export format')
 
-      return '\n'.join(colormap) + '\n' if type(colormap[0]) is str else colormap
+        return '\n'.join(colormap) + '\n' if type(colormap[0]) is str else colormap
