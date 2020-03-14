@@ -192,9 +192,7 @@ class Color:
           HSL[0] = HSL[0]*60.0                                                                      # scaling to 360 might be dangerous for small values
           if (HSL[0] < 0.0):
             HSL[0] = HSL[0] + 360.0
-
-        HSL[1:] = np.mimimum(HSL[1:],1.0)
-        HSL[1:] = np.maximum(HSL[1:],0.0)
+        HSL[1:] = np.clip(HSL[1:],0.0,1.0)
 
         converted = Color('HSL', HSL)
         self.model = converted.model
@@ -220,7 +218,7 @@ class Color:
           if (self.color[i] > 0.04045): RGB_lin[i] = ((self.color[i]+0.0555)/1.0555)**2.4
           else:                         RGB_lin[i] =   self.color[i]        /12.92
         XYZ = np.dot(convert,RGB_lin)
-        XYZ = np.maximum(XYZ,0.0)
+        XYZ = np.clip(XYZ,0.0)
 
         converted = Color('XYZ', XYZ)
         self.model = converted.model
@@ -246,8 +244,7 @@ class Color:
           if (RGB_lin[i] > 0.0031308): RGB[i] = ((RGB_lin[i])**(1.0/2.4))*1.0555-0.0555
           else:                        RGB[i] =   RGB_lin[i]             *12.92
 
-        RGB = np.minimum(RGB,1.0)
-        RGB = np.maximum(RGB,0.0)
+        RGB = np.clip(RGB,0.0,1.0)
 
         maxVal = max(RGB)                                                                           # clipping colors according to the display gamut
         if (maxVal > 1.0): RGB /= maxVal
