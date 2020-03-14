@@ -450,8 +450,9 @@ class Colormap:
 
             def rad_diff(a,b):
               return abs(a[2]-b[2])
-            # if saturation of one of the two colors is too less than the other, hue of the less
+            
             def adjust_hue(Msh_sat, Msh_unsat):
+              """If saturation of one of the two colors is too less than the other, hue of the less."""
               if Msh_sat[0] >= Msh_unsat[0]:
                 return Msh_sat[2]
               else:
