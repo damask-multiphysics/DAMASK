@@ -2236,12 +2236,12 @@ end function getlabels
 !--------------------------------------------------------------------------------------------------
 function equivalent_nu(C,assumption) result(nu)
 
-  real, dimension(6,6), intent(in) :: C                                                             !< Stiffness tensor (Voigt notation)
-  character(len=*),     intent(in) :: assumption                                                    !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+  real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
 
-  real    :: K, mu, nu
-  logical :: error
-  real, dimension(6,6) :: S
+  real(pReal)                 :: K, mu, nu
+  logical                     :: error
+  real(pReal), dimension(6,6) :: S
 
   if    (IO_lc(assumption) == 'voigt') then
     K = (C(1,1)+C(2,2)+C(3,3) +2.0_pReal*(C(1,2)+C(2,3)+C(1,3))) &
@@ -2268,12 +2268,12 @@ end function equivalent_nu
 !--------------------------------------------------------------------------------------------------
 function equivalent_mu(C,assumption) result(mu)
 
-  real, dimension(6,6), intent(in) :: C                                                             !< Stiffness tensor (Voigt notation)
-  character(len=*),     intent(in) :: assumption                                                    !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+  real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
 
-  real    :: mu
-  logical :: error
-  real, dimension(6,6) :: S
+  real(pReal)                 :: mu
+  logical                     :: error
+  real(pReal), dimension(6,6) :: S
 
   if    (IO_lc(assumption) == 'voigt') then
     mu = (1.0_pReal*(C(1,1)+C(2,2)+C(3,3)) -1.0_pReal*(C(1,2)+C(2,3)+C(1,3)) +3.0_pReal*(C(4,4)+C(5,5)+C(6,6))) &
