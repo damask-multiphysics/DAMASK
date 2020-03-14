@@ -1213,7 +1213,7 @@ end function math_clip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of (some) math functions
+!> @brief check correctness of some math functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 

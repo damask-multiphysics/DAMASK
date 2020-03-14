@@ -241,7 +241,7 @@ end function cNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of (some) prec functions
+!> @brief check correctness of some prec functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 

@@ -455,7 +455,7 @@ end function inverse
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of (some) quaternions functions
+!> @brief check correctness of some quaternions functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 

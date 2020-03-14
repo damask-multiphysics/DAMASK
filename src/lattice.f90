@@ -502,15 +502,10 @@ subroutine lattice_init
 
     lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),structure)
 
-    ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-    lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p))
-
-    ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-    lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
-                  / (4.0_pReal*lattice_C66(1,1,p) +6.0_pReal*lattice_C66(1,2,p) +2.0_pReal*lattice_C66(4,4,p))
+    lattice_mu(p) = equivalent_mu(lattice_C66(1:6,1:6,p),'voigt')
+    lattice_nu(p) = equivalent_nu(lattice_C66(1:6,1:6,p),'voigt')
 
     lattice_C66(1:6,1:6,p) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,p)))           ! Literature data is in Voigt notation
-
     do i = 1, 6
       if (abs(lattice_C66(i,i,p))<tol_math_check) &
         call IO_error(135,el=i,ip=p,ext_msg='matrix diagonal "el"ement of phase "ip"')
@@ -531,8 +526,10 @@ subroutine lattice_init
     lattice_DamageDiffusion(3,3,p) = config_phase(p)%getFloat('damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageDiffusion(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_DamageDiffusion(1:3,1:3,p),structure)
 
-    lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
+    lattice_DamageMobility(p) = config_phase(p)%getFloat('damage_mobility',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
+
+    call unitTest
 
   enddo
 
@@ -739,7 +736,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
 
   coordinateSystem  = buildCoordinateSystem(Nslip,BCC_NSLIPSYSTEM,BCC_SYSTEMSLIP,&
                                             'bcc',0.0_pReal)
-  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip)) *real(sense,pReal)    ! convert unidirectional coordinate system
+  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip))*real(sense,pReal)     ! convert unidirectional coordinate system
   nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'bcc',0.0_pReal)                                ! Schmid contribution
 
   do i = 1,sum(Nslip)
@@ -2289,5 +2286,41 @@ function equivalent_mu(C,assumption) result(mu)
   endif
 
 end function equivalent_mu
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of some lattice functions
+!--------------------------------------------------------------------------------------------------
+subroutine unitTest
+
+  real(pReal), dimension(:,:,:), allocatable :: CoSy
+  real(pReal), dimension(:,:),   allocatable :: system
+
+  real(pReal), dimension(6,6) :: C
+  real(pReal), dimension(2)   :: r
+  real(pReal)                 :: lambda
+
+  call random_number(r)
+
+  system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
+  CoSy   = buildCoordinateSystem([1],[1],system,'fcc',0.0_pReal)
+
+  if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) &
+    call IO_error(0)
+
+  call random_number(C)
+  C(1,1) = C(1,1) + 1.0_pReal
+  C = applyLatticeSymmetryC66(C,'iso')
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_mu/voigt')
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_mu/reuss')
+  lambda = C(1,2)
+  if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'voigt')),equivalent_nu(C,'voigt'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_nu/voigt')
+  if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'reuss')),equivalent_nu(C,'reuss'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_nu/reuss')
+
+end subroutine unitTest
 
 end module lattice

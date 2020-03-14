@@ -44,6 +44,7 @@ contains
 subroutine IO_init
 
   write(6,'(/,a)') ' <<<+-  IO init  -+>>>'; flush(6)
+
   call unitTest
 
 end subroutine IO_init
@@ -651,7 +652,7 @@ end function verifyFloatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of IO functions
+!> @brief check correctness of some IO functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 
