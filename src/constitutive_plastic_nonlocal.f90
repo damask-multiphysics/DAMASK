@@ -214,6 +214,8 @@ module subroutine plastic_nonlocal_init
               dst => microstructure(phase_plasticityInstance(p)), &
               config => config_phase(p))
 
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
     prm%atol_rho   = config%getFloat('atol_rho',   defaultVal=0.0_pReal)
     prm%atol_gamma = config%getFloat('atol_shear', defaultVal=0.0_pReal)
 
@@ -222,7 +224,6 @@ module subroutine plastic_nonlocal_init
     ! This data is read in already in lattice
     prm%mu = lattice_mu(p)
     prm%nu = lattice_nu(p)
-
 
     prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
     prm%totalNslip = sum(prm%Nslip)
@@ -372,11 +373,9 @@ module subroutine plastic_nonlocal_init
                                                         extmsg = trim(extmsg)//' surfaceTransmissivity'
 
       if (prm%fEdgeMultiplication  <  0.0_pReal .or. prm%fEdgeMultiplication  > 1.0_pReal) &
-      extmsg = trim(extmsg)//' fEdgeMultiplication'
+        extmsg = trim(extmsg)//' fEdgeMultiplication'
 
     endif slipActive
-
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -482,6 +481,10 @@ module subroutine plastic_nonlocal_init
 
     if (NofMyPhase > 0) call stateInit(p,NofMyPhase)
     plasticState(p)%state0 = plasticState(p)%state
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_NONLOCAL_LABEL//')')
 
   enddo
 
