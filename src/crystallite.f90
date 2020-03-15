@@ -1089,7 +1089,7 @@ subroutine integrateStateFPI
 
            crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState), &
                                                     plasticState(p)%state(1:sizeDotState,c), &
-                                                    plasticState(p)%atolState(1:sizeDotState))
+                                                    plasticState(p)%atol(1:sizeDotState))
 
 
            do s = 1, phase_Nsources(p)
@@ -1113,7 +1113,7 @@ subroutine integrateStateFPI
              crystallite_converged(g,i,e) = &
              crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState), &
                                                           sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                          sourceState(p)%p(s)%atolState(1:sizeDotState))
+                                                          sourceState(p)%p(s)%atol(1:sizeDotState))
            enddo
          endif
    enddo; enddo; enddo
@@ -1269,7 +1269,7 @@ subroutine integrateStateAdaptiveEuler
 
          crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
                                                   plasticState(p)%state(1:sizeDotState,c), &
-                                                  plasticState(p)%atolState(1:sizeDotState))
+                                                  plasticState(p)%atol(1:sizeDotState))
 
          do s = 1, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
@@ -1280,7 +1280,7 @@ subroutine integrateStateAdaptiveEuler
            crystallite_converged(g,i,e) = &
            crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
                                                         sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                        sourceState(p)%p(s)%atolState(1:sizeDotState))
+                                                        sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
 
        endif
@@ -1497,7 +1497,7 @@ subroutine integrateStateRKCK45
 
          crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
                                              plasticState(p)%state(1:sizeDotState,cc), &
-                                             plasticState(p)%atolState(1:sizeDotState))
+                                             plasticState(p)%atol(1:sizeDotState))
 
          do s = 1, phase_Nsources(p)
            sizeDotState = sourceState(p)%p(s)%sizeDotState
@@ -1505,7 +1505,7 @@ subroutine integrateStateRKCK45
                   crystallite_todo(g,i,e) = &
                   crystallite_todo(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
                                                           sourceState(p)%p(s)%state(1:sizeDotState,cc), &
-                                                          sourceState(p)%p(s)%atolState(1:sizeDotState))
+                                                          sourceState(p)%p(s)%atol(1:sizeDotState))
          enddo
      endif
    enddo; enddo; enddo

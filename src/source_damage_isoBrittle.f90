@@ -84,8 +84,8 @@ subroutine source_damage_isoBrittle_init
 
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,1)
-    sourceState(p)%p(sourceOffset)%atolState = config%getFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
-    if(any(sourceState(p)%p(sourceOffset)%atolState <= 0.0_pReal)) &
+    sourceState(p)%p(sourceOffset)%atol = config%getFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
+    if(any(sourceState(p)%p(sourceOffset)%atol <= 0.0_pReal)) &
       extmsg = trim(extmsg)//' isobrittle_atol'
 
     end associate

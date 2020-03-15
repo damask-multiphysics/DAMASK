@@ -164,28 +164,28 @@ module subroutine plastic_kinehardening_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and atolState
+! locally defined state aliases and initialization of state0 and atol
     startIndex = 1
     endIndex   = prm%totalNslip
     stt%crss => plasticState(p)%state   (startIndex:endIndex,:)
     stt%crss = spread(prm%crss0, 2, NipcMyPhase)
     dot%crss => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atolState(startIndex:endIndex) <= 0.0_pReal)) &
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
+    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_crss'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%totalNslip
     stt%crss_back => plasticState(p)%state   (startIndex:endIndex,:)
     dot%crss_back => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%totalNslip
     stt%accshear => plasticState(p)%state   (startIndex:endIndex,:)
     dot%accshear => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atolState(startIndex:endIndex) <= 0.0_pReal)) &
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
     plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)

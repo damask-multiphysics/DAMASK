@@ -109,8 +109,8 @@ subroutine source_damage_anisoBrittle_init
 
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
     call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
-    sourceState(p)%p(sourceOffset)%atolState = config%getFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
-    if(any(sourceState(p)%p(sourceOffset)%atolState <= 0.0_pReal)) &
+    sourceState(p)%p(sourceOffset)%atol = config%getFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
+    if(any(sourceState(p)%p(sourceOffset)%atol <= 0.0_pReal)) &
       extmsg = trim(extmsg)//' anisobrittle_atol'
 
     end associate

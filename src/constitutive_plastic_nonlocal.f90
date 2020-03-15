@@ -401,7 +401,7 @@ module subroutine plastic_nonlocal_init
     stt%rho => plasticState(p)%state                              (0*prm%totalNslip+1:10*prm%totalNslip,:)
     dot%rho => plasticState(p)%dotState                           (0*prm%totalNslip+1:10*prm%totalNslip,:)
     del%rho => plasticState(p)%deltaState                         (0*prm%totalNslip+1:10*prm%totalNslip,:)
-    plasticState(p)%atolState(1:10*prm%totalNslip) = prm%atol_rho
+    plasticState(p)%atol(1:10*prm%totalNslip) = prm%atol_rho
 
       stt%rhoSgl => plasticState(p)%state                         (0*prm%totalNslip+1: 8*prm%totalNslip,:)
       dot%rhoSgl => plasticState(p)%dotState                      (0*prm%totalNslip+1: 8*prm%totalNslip,:)
@@ -462,8 +462,8 @@ module subroutine plastic_nonlocal_init
     stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%atolState(10*prm%totalNslip+1:11*prm%totalNslip )  = config%getFloat('atol_shear', defaultVal=0.0_pReal)
-    if(any(plasticState(p)%atolState(10*prm%totalNslip+1:11*prm%totalNslip)<=0.0_pReal)) &
+    plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip )  = config%getFloat('atol_shear', defaultVal=0.0_pReal)
+    if(any(plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip)<=0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
     plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
 

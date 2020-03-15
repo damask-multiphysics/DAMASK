@@ -724,7 +724,7 @@ subroutine material_allocatePlasticState(phase,NofMyPhase,&
   plasticState(phase)%sizeDeltaState   = sizeDeltaState
   plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                   ! deltaState occupies latter part of state by definition
 
-  allocate(plasticState(phase)%aTolState           (sizeState),               source=0.0_pReal)
+  allocate(plasticState(phase)%atol                (sizeState),               source=0.0_pReal)
   allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
   allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
   allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)
@@ -762,7 +762,7 @@ subroutine material_allocateSourceState(phase,of,NofMyPhase,&
   sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
   sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                              ! deltaState occupies latter part of state by definition
  
-  allocate(sourceState(phase)%p(of)%aTolState           (sizeState),               source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%atol                (sizeState),               source=0.0_pReal)
   allocate(sourceState(phase)%p(of)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
   allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
   allocate(sourceState(phase)%p(of)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)

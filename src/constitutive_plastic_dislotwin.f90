@@ -420,26 +420,26 @@ module subroutine plastic_dislotwin_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and atolState
+! locally defined state aliases and initialization of state0 and atol
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
     dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
+    plasticState(p)%atol(startIndex:endIndex) = prm%aTol_rho
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_dip= spread(prm%rho_dip_0,2,NipcMyPhase)
     dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_rho
+    plasticState(p)%atol(startIndex:endIndex) = prm%aTol_rho
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
     dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
+    plasticState(p)%atol(startIndex:endIndex) = 1.0e6_pReal  !ToDo: better make optional parameter
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
 
@@ -447,13 +447,13 @@ module subroutine plastic_dislotwin_init
     endIndex   = endIndex + prm%sum_N_tw
     stt%f_tw=>plasticState(p)%state(startIndex:endIndex,:)
     dot%f_tw=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_f_tw
+    plasticState(p)%atol(startIndex:endIndex) = prm%aTol_f_tw
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tr
     stt%f_tr=>plasticState(p)%state(startIndex:endIndex,:)
     dot%f_tr=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTol_f_tr
+    plasticState(p)%atol(startIndex:endIndex) = prm%aTol_f_tr
 
     allocate(dst%Lambda_sl             (prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)
     allocate(dst%tau_pass              (prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)

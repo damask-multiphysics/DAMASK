@@ -213,14 +213,14 @@ module subroutine plastic_disloUCLA_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and atolState
+! locally defined state aliases and initialization of state0 and atol
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
     dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_rho')
-    if (any(plasticState(p)%atolState(startIndex:endIndex) <= 0.0_pReal)) &
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho')
+    if (any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
@@ -228,13 +228,13 @@ module subroutine plastic_disloUCLA_init
     stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_dip= spread(prm%rho_dip_0,2,NipcMyPhase)
     dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_rho')
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho')
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
     dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atolState(startIndex:endIndex) = 1.0e6_pReal                                    ! Don't use for convergence check
+    plasticState(p)%atol(startIndex:endIndex) = 1.0e6_pReal                                         ! Don't use for convergence check
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
 
