@@ -724,7 +724,7 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
   real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    FArray, &                                                                                      !< elastic deformation gradient
+    FArray, &                                                                                       !< elastic deformation gradient
     FpArray                                                                                         !< plastic deformation gradient
   real(pReal),  intent(in), dimension(3,3) :: &
     Fi                                                                                              !< intermediate deformation gradient

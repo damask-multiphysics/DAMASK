@@ -694,8 +694,8 @@ end function math_9to33
 pure function math_sym33to6(m33,weighted)
 
   real(pReal), dimension(6)               :: math_sym33to6
-  real(pReal), dimension(3,3), intent(in) :: m33                                                     !< symmetric matrix (no internal check)
-  logical,     optional,       intent(in) :: weighted                                                !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(3,3), intent(in) :: m33                                                    !< symmetric 3x3 matrix (no internal check)
+  logical,     optional,       intent(in) :: weighted                                               !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i
@@ -722,8 +722,8 @@ end function math_sym33to6
 pure function math_6toSym33(v6,weighted)
 
   real(pReal), dimension(3,3)           :: math_6toSym33
-  real(pReal), dimension(6), intent(in) :: v6
-  logical,     optional,     intent(in) :: weighted                                                  !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(6), intent(in) :: v6                                                       !< 6 vector
+  logical,     optional,     intent(in) :: weighted                                                 !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i
@@ -780,13 +780,13 @@ end function math_99to3333
 !> @brief convert symmetric 3333 matrix into 66 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only changes order according to Nye
+! Unweighted conversion only rearranges order according to Nye
 !--------------------------------------------------------------------------------------------------
 pure function math_sym3333to66(m3333,weighted)
 
   real(pReal), dimension(6,6)                 :: math_sym3333to66
-  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                               !< symmetric matrix (no internal check)
-  logical,     optional,           intent(in) :: weighted                                            !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                              !< symmetric 3x3x3x3 matrix (no internal check)
+  logical,     optional,           intent(in) :: weighted                                           !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i,j
@@ -808,13 +808,13 @@ end function math_sym3333to66
 !> @brief convert 66 matrix into symmetric 3333 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only changes order according to Nye
+! Unweighted conversion only rearranges order according to Nye
 !--------------------------------------------------------------------------------------------------
 pure function math_66toSym3333(m66,weighted)
 
   real(pReal), dimension(3,3,3,3)            :: math_66toSym3333
-  real(pReal), dimension(6,6),    intent(in) :: m66
-  logical,     optional,          intent(in) :: weighted                                             !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(6,6),    intent(in) :: m66                                                 !< 6x6 matrix
+  logical,     optional,          intent(in) :: weighted                                            !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i,j
@@ -841,7 +841,7 @@ end function math_66toSym3333
 pure function math_Voigt66to3333(m66)
 
   real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
-  real(pReal), dimension(6,6), intent(in) :: m66
+  real(pReal), dimension(6,6), intent(in) :: m66                                                    !< 6x6 matrix
   integer :: i,j
 
   do i=1,6; do j=1, 6
@@ -859,9 +859,10 @@ end function math_Voigt66to3333
 !--------------------------------------------------------------------------------------------------
 real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
 
-  real(pReal), intent(in) ::            meanvalue, &                                                ! meanvalue of gauss distribution
-                                        stddev                                                      ! standard deviation of gauss distribution
-  real(pReal), intent(in), optional ::  width                                                       ! width of considered values as multiples of standard deviation
+  real(pReal), intent(in) ::            meanvalue, &                                                !< meanvalue of gauss distribution
+                                        stddev                                                      !< standard deviation of gauss distribution
+  real(pReal), intent(in), optional ::  width                                                       !< width of considered values as multiples of standard deviation
+
   real(pReal), dimension(2) ::          rnd                                                         ! random numbers
   real(pReal) ::                        scatter, &                                                  ! normalized scatter around meanvalue
                                         width_
@@ -893,9 +894,10 @@ end function math_sampleGaussVar
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigh(m,w,v,error)
 
-  real(pReal), dimension(:,:),                  intent(in)  :: m
-  real(pReal), dimension(size(m,1)),            intent(out) :: w
-  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v
+  real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
+  real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
+  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v                                    !< eigenvectors
+
   logical, intent(out) :: error
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
@@ -919,9 +921,10 @@ end subroutine math_eigh
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigh33(m,w,v)
 
-  real(pReal), dimension(3,3),intent(in)  :: m
-  real(pReal), dimension(3),  intent(out) :: w
-  real(pReal), dimension(3,3),intent(out) :: v
+  real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
+  real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
+  real(pReal), dimension(3,3),intent(out) :: v                                                      !< eigenvectors
+
   real(pReal) :: T, U, norm, threshold
   logical :: error
 
@@ -963,9 +966,10 @@ end subroutine math_eigh33
 !--------------------------------------------------------------------------------------------------
 pure function math_eigenvectorBasisSym33(m)
 
-  real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33
-  real(pReal), dimension(3)                :: invariants, values
-  real(pReal), dimension(3,3), intent(in) :: m
+  real(pReal), dimension(3,3)             :: math_eigenvectorBasisSym33
+  real(pReal), dimension(3,3), intent(in) :: m                                                      !< quadratic matrix of which the eigenvector basis is computed
+
+  real(pReal), dimension(3)               :: invariants, v
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
   real(pReal), dimension(3,3,3) :: N, EB
@@ -977,7 +981,7 @@ pure function math_eigenvectorBasisSym33(m)
   Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
 
   threeSimilarEigenvalues: if(all(abs([P,Q]) < TOL)) then
-    values = invariants(1)/3.0_pReal
+    v = invariants(1)/3.0_pReal
   ! this is not really correct, but at least the basis is correct
     EB(1,1,1)=1.0_pReal
     EB(2,2,2)=1.0_pReal
@@ -985,39 +989,38 @@ pure function math_eigenvectorBasisSym33(m)
   else threeSimilarEigenvalues
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-    values = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                              [cos(phi/3.0_pReal), &
-                               cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                               cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                              ] + invariants(1)/3.0_pReal
-    N(1:3,1:3,1) = m-values(1)*math_I3
-    N(1:3,1:3,2) = m-values(2)*math_I3
-    N(1:3,1:3,3) = m-values(3)*math_I3
-    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then
+    v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos(phi/3.0_pReal), &
+                                               cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                                               cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                                              ] + invariants(1)/3.0_pReal
+    N(1:3,1:3,1) = m-v(1)*math_I3
+    N(1:3,1:3,2) = m-v(2)*math_I3
+    N(1:3,1:3,3) = m-v(3)*math_I3
+    twoSimilarEigenvalues: if(abs(v(1)-v(2)) < TOL) then
       EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((values(3)-values(1))*(values(3)-values(2)))
+                                                ((v(3)-v(1))*(v(3)-v(2)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
-    elseif(abs(values(2)-values(3)) < TOL) then twoSimilarEigenvalues
+    elseif(abs(v(2)-v(3)) < TOL) then twoSimilarEigenvalues
       EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((values(1)-values(2))*(values(1)-values(3)))
+                                                ((v(1)-v(2))*(v(1)-v(3)))
       EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
-    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues
+    elseif(abs(v(3)-v(1)) < TOL) then twoSimilarEigenvalues
       EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((values(2)-values(1))*(values(2)-values(3)))
+                                                ((v(2)-v(1))*(v(2)-v(3)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
     else twoSimilarEigenvalues
       EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((values(1)-values(2))*(values(1)-values(3)))
+                                                ((v(1)-v(2))*(v(1)-v(3)))
       EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((values(2)-values(1))*(values(2)-values(3)))
+                                                ((v(2)-v(1))*(v(2)-v(3)))
       EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((values(3)-values(1))*(values(3)-values(2)))
+                                                ((v(3)-v(1))*(v(3)-v(2)))
     endif twoSimilarEigenvalues
   endif threeSimilarEigenvalues
 
- math_eigenvectorBasisSym33 = sqrt(values(1)) * EB(1:3,1:3,1) &
-                            + sqrt(values(2)) * EB(1:3,1:3,2) &
-                            + sqrt(values(3)) * EB(1:3,1:3,3)
+ math_eigenvectorBasisSym33 = sqrt(v(1)) * EB(1:3,1:3,1) &
+                            + sqrt(v(2)) * EB(1:3,1:3,2) &
+                            + sqrt(v(3)) * EB(1:3,1:3,3)
 
 end function math_eigenvectorBasisSym33
 
@@ -1050,8 +1053,9 @@ end function math_rotationalPart33
 !--------------------------------------------------------------------------------------------------
 function math_eigvalsh(m)
 
-  real(pReal), dimension(:,:),                  intent(in)  :: m
+  real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< symmetric matrix to compute eigenvalues of
   real(pReal), dimension(size(m,1))                         :: math_eigvalsh
+
   real(pReal), dimension(size(m,1),size(m,1))               :: m_
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
@@ -1074,7 +1078,7 @@ end function math_eigvalsh
 !--------------------------------------------------------------------------------------------------
 function math_eigvalsh33(m)
 
-  real(pReal), intent(in), dimension(3,3) :: m
+  real(pReal), intent(in), dimension(3,3) :: m                                                      !< 3x3 symmetric matrix to compute eigenvalues of
   real(pReal), dimension(3) :: math_eigvalsh33,invariants
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
