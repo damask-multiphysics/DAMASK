@@ -962,12 +962,12 @@ end subroutine math_eigh33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvector basis of symmetric 3x3 matrix
+!> @brief eigenvector basis of positive-definite 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_eigenvectorBasisSym33(m)
 
   real(pReal), dimension(3,3)             :: math_eigenvectorBasisSym33
-  real(pReal), dimension(3,3), intent(in) :: m                                                      !< quadratic matrix of which the eigenvector basis is computed
+  real(pReal), dimension(3,3), intent(in) :: m                                                      !< positive-definite matrix of which the basis is computed
 
   real(pReal), dimension(3)               :: I, v
   real(pReal) :: P, Q, rho, phi
