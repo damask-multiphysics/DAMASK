@@ -301,9 +301,9 @@ end subroutine plastic_disloUCLA_LpAndItsTangent
 module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
 
   real(pReal), dimension(3,3),  intent(in) :: &
-    Mp                                                                                               !< Mandel stress
+    Mp                                                                                              !< Mandel stress
   real(pReal),                  intent(in) :: &
-    T                                                                                                !< temperature
+    T                                                                                               !< temperature
   integer,                      intent(in) :: &
     instance, &
     of
@@ -333,14 +333,14 @@ module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
     dot_rho_dip_climb     = 0.0_pReal
   else where
     dip_distance = math_clip(3.0_pReal*prm%mu*prm%b_sl/(16.0_pReal*PI*abs(tau_pos)), &
-                             prm%D_a, &                                                          ! lower limit
-                             dst%Lambda_sl(:,of))                                                ! upper limit
+                             prm%D_a, &                                                             ! lower limit
+                             dst%Lambda_sl(:,of))                                                   ! upper limit
     dot_rho_dip_formation = merge(2.0_pReal*dip_distance* stt%rho_mob(:,of)*abs(dot%gamma_sl(:,of))/prm%b_sl, & ! ToDo: ignore region of spontaneous annihilation
                                   0.0_pReal, &
                                   prm%dipoleformation)
     v_cl = (3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume/(2.0_pReal*pi*kB*T)) &
                   * (1.0_pReal/(dip_distance+prm%D_a))
-    dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,of))/(dip_distance-prm%D_a)               ! ToDo: Discuss with Franz: Stress dependency?
+    dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,of))/(dip_distance-prm%D_a)                   ! ToDo: Discuss with Franz: Stress dependency?
   end where
 
   dot%rho_mob(:,of) = abs(dot%gamma_sl(:,of))/(prm%b_sl*dst%Lambda_sl(:,of)) &                      ! multiplication
