@@ -13,7 +13,7 @@ submodule(constitutive) plastic_nonlocal
     IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0
 
   real(pReal), parameter :: &
-    KB = 1.38e-23_pReal                                                                             !< Physical parameter, Boltzmann constant in J/Kelvin
+    kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
 
   ! storage order of dislocation types
   integer, dimension(8), parameter :: &
@@ -215,7 +215,7 @@ module subroutine plastic_nonlocal_init
 
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
-    prm%atol_rho   = config%getFloat('atol_rho',   defaultVal=0.0_pReal)
+    prm%atol_rho   = config%getFloat('atol_rho',defaultVal=1.0e4_pReal)
 
     structure      = config%getString('lattice_structure')
 
@@ -350,7 +350,7 @@ module subroutine plastic_nonlocal_init
 
       if (prm%significantN         < 0.0_pReal)   extmsg = trim(extmsg)//' significantN'
       if (prm%significantrho       < 0.0_pReal)   extmsg = trim(extmsg)//' significantrho'
-      if (prm%atol_rho            <= 0.0_pReal)   extmsg = trim(extmsg)//' atol_rho'
+      if (prm%atol_rho             < 0.0_pReal)   extmsg = trim(extmsg)//' atol_rho'
       if (prm%CFLfactor            < 0.0_pReal)   extmsg = trim(extmsg)//' CFLfactor'
 
       if (prm%p <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p'
@@ -462,8 +462,8 @@ module subroutine plastic_nonlocal_init
     stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip )  = config%getFloat('atol_shear', defaultVal=0.0_pReal)
-    if(any(plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip)<=0.0_pReal)) &
+    plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip )  = config%getFloat('atol_gamma', defaultVal = 1.0e-20_pReal)
+    if(any(plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
     plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
 

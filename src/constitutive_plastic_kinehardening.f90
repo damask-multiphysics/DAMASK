@@ -29,8 +29,6 @@ submodule(constitutive) plastic_kinehardening
     integer :: &
       sum_N_sl, &                                                                                   !< total number of active slip system
       of_debug = 0
-    integer,                   allocatable, dimension(:) :: &
-      Nslip                                                                                         !< number of active slip systems for each family
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -68,7 +66,8 @@ module subroutine plastic_kinehardening_init
     NipcMyPhase, &
     sizeState, sizeDeltaState, sizeDotState, &
     startIndex, endIndex
-
+  integer, dimension(:), allocatable :: &
+    N_sl
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -101,44 +100,44 @@ module subroutine plastic_kinehardening_init
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    prm%Nslip    = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%sum_N_sl = sum(prm%Nslip)
+    N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
+    prm%sum_N_sl = sum(N_sl)
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%P = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
+      prm%P = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
                                         config%getFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(config%getString('lattice_structure')) == 'bcc') then
         prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
                                                defaultVal = emptyRealArray)
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%Nslip,prm%nonSchmidCoeff,-1)
+        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,+1)
+        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,-1)
       else
         prm%nonSchmid_pos  = prm%P
         prm%nonSchmid_neg  = prm%P
       endif
-      prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(prm%Nslip, &
+      prm%interaction_SlipSlip = lattice_interaction_SlipBySlip(N_sl, &
                                                                 config%getFloats('interaction_slipslip'), &
                                                                 config%getString('lattice_structure'))
 
-      prm%crss0    = config%getFloats('crss0',    requiredSize=size(prm%Nslip))
-      prm%tau1     = config%getFloats('tau1',     requiredSize=size(prm%Nslip))
-      prm%tau1_b   = config%getFloats('tau1_b',   requiredSize=size(prm%Nslip))
-      prm%theta0   = config%getFloats('theta0',   requiredSize=size(prm%Nslip))
-      prm%theta1   = config%getFloats('theta1',   requiredSize=size(prm%Nslip))
-      prm%theta0_b = config%getFloats('theta0_b', requiredSize=size(prm%Nslip))
-      prm%theta1_b = config%getFloats('theta1_b', requiredSize=size(prm%Nslip))
+      prm%crss0    = config%getFloats('crss0',    requiredSize=size(N_sl))
+      prm%tau1     = config%getFloats('tau1',     requiredSize=size(N_sl))
+      prm%tau1_b   = config%getFloats('tau1_b',   requiredSize=size(N_sl))
+      prm%theta0   = config%getFloats('theta0',   requiredSize=size(N_sl))
+      prm%theta1   = config%getFloats('theta1',   requiredSize=size(N_sl))
+      prm%theta0_b = config%getFloats('theta0_b', requiredSize=size(N_sl))
+      prm%theta1_b = config%getFloats('theta1_b', requiredSize=size(N_sl))
 
       prm%gdot0    = config%getFloat('gdot0')
       prm%n        = config%getFloat('n_slip')
 
       ! expand: family => system
-      prm%crss0    = math_expand(prm%crss0,   prm%Nslip)
-      prm%tau1     = math_expand(prm%tau1,    prm%Nslip)
-      prm%tau1_b   = math_expand(prm%tau1_b,  prm%Nslip)
-      prm%theta0   = math_expand(prm%theta0,  prm%Nslip)
-      prm%theta1   = math_expand(prm%theta1,  prm%Nslip)
-      prm%theta0_b = math_expand(prm%theta0_b,prm%Nslip)
-      prm%theta1_b = math_expand(prm%theta1_b,prm%Nslip)
+      prm%crss0    = math_expand(prm%crss0,   N_sl)
+      prm%tau1     = math_expand(prm%tau1,    N_sl)
+      prm%tau1_b   = math_expand(prm%tau1_b,  N_sl)
+      prm%theta0   = math_expand(prm%theta0,  N_sl)
+      prm%theta1   = math_expand(prm%theta1,  N_sl)
+      prm%theta0_b = math_expand(prm%theta0_b,N_sl)
+      prm%theta1_b = math_expand(prm%theta1_b,N_sl)
 
 
 
@@ -164,29 +163,27 @@ module subroutine plastic_kinehardening_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and atol
+! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%crss => plasticState(p)%state   (startIndex:endIndex,:)
     stt%crss = spread(prm%crss0, 2, NipcMyPhase)
     dot%crss => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) &
-      extmsg = trim(extmsg)//' atol_crss'
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
+    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%crss_back => plasticState(p)%state   (startIndex:endIndex,:)
     dot%crss_back => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%accshear => plasticState(p)%state   (startIndex:endIndex,:)
     dot%accshear => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) &
-      extmsg = trim(extmsg)//' atol_gamma'
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
     plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)
 

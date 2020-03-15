@@ -120,7 +120,7 @@ module subroutine plastic_isotropic_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and atol
+! state aliases and initialization
     stt%xi  => plasticState(p)%state   (1,:)
     stt%xi  = prm%xi_0
     dot%xi  => plasticState(p)%dotState(1,:)
@@ -131,7 +131,6 @@ module subroutine plastic_isotropic_init
     dot%gamma  => plasticState(p)%dotState(2,:)
     plasticState(p)%atol(2) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
     if (plasticState(p)%atol(2) <= 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
-
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
 

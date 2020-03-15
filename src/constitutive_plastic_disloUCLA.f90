@@ -13,7 +13,7 @@ submodule(constitutive) plastic_disloUCLA
   type :: tParameters
     real(pReal) :: &
       D, &                                                                                          !< grain size
-      mu, &
+      mu, &                                                                                         !< equivalent shear modulus
       D_0, &                                                                                        !< prefactor for self-diffusion coefficient
       Q_cl                                                                                          !< activation energy for dislocation climb
     real(pReal),               allocatable, dimension(:) :: &
@@ -43,8 +43,6 @@ submodule(constitutive) plastic_disloUCLA
       nonSchmid_neg
     integer :: &
       sum_N_sl                                                                                      !< total number of active slip system
-    integer,                   allocatable, dimension(:) :: &
-      N_sl                                                                                          !< number of active slip systems for each family
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
     logical :: &
@@ -87,7 +85,8 @@ module subroutine plastic_disloUCLA_init
     NipcMyPhase, &
     sizeState, sizeDotState, &
     startIndex, endIndex
-
+  integer, dimension(:), allocatable :: &
+    N_sl
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -121,46 +120,46 @@ module subroutine plastic_disloUCLA_init
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    prm%N_sl      = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%sum_N_sl = sum(prm%N_sl)
+    N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
+    prm%sum_N_sl = sum(N_sl)
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%Schmid = lattice_SchmidMatrix_slip(prm%N_sl,config%getString('lattice_structure'),&
+      prm%Schmid = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
                                              config%getFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(config%getString('lattice_structure')) == 'bcc') then
         prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
                                                defaultVal = emptyRealArray)
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(prm%N_sl,prm%nonSchmidCoeff,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(prm%N_sl,prm%nonSchmidCoeff,-1)
+        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,+1)
+        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,-1)
       else
         allocate(prm%nonSchmidCoeff(0))
         prm%nonSchmid_pos  = prm%Schmid
         prm%nonSchmid_neg  = prm%Schmid
       endif
 
-      prm%h_sl_sl     = lattice_interaction_SlipBySlip(prm%N_sl, &
+      prm%h_sl_sl     = lattice_interaction_SlipBySlip(N_sl, &
                                                        config%getFloats('interaction_slipslip'), &
                                                        config%getString('lattice_structure'))
-      prm%forestProjectionEdge = lattice_forestProjection_edge(prm%N_sl,config%getString('lattice_structure'),&
+      prm%forestProjectionEdge = lattice_forestProjection_edge(N_sl,config%getString('lattice_structure'),&
                                                                config%getFloat('c/a',defaultVal=0.0_pReal))
       prm%forestProjectionEdge = transpose(prm%forestProjectionEdge)
 
-      prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(prm%N_sl))
-      prm%rho_dip_0   = config%getFloats('rhoedgedip0',    requiredSize=size(prm%N_sl))
-      prm%v0          = config%getFloats('v0',             requiredSize=size(prm%N_sl))
-      prm%b_sl        = config%getFloats('slipburgers',    requiredSize=size(prm%N_sl))
-      prm%delta_F     = config%getFloats('qedge',          requiredSize=size(prm%N_sl))
+      prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(N_sl))
+      prm%rho_dip_0   = config%getFloats('rhoedgedip0',    requiredSize=size(N_sl))
+      prm%v0          = config%getFloats('v0',             requiredSize=size(N_sl))
+      prm%b_sl        = config%getFloats('slipburgers',    requiredSize=size(N_sl))
+      prm%delta_F     = config%getFloats('qedge',          requiredSize=size(N_sl))
 
-      prm%i_sl        = config%getFloats('clambdaslip',    requiredSize=size(prm%N_sl))
-      prm%tau_0       = config%getFloats('tau_peierls',    requiredSize=size(prm%N_sl))
-      prm%p           = config%getFloats('p_slip',         requiredSize=size(prm%N_sl), &
-                                         defaultVal=[(1.0_pReal,i=1,size(prm%N_sl))])
-      prm%q           = config%getFloats('q_slip',         requiredSize=size(prm%N_sl), &
-                                         defaultVal=[(1.0_pReal,i=1,size(prm%N_sl))])
-      prm%kink_height = config%getFloats('kink_height',    requiredSize=size(prm%N_sl))
-      prm%w           = config%getFloats('kink_width',     requiredSize=size(prm%N_sl))
-      prm%omega       = config%getFloats('omega',          requiredSize=size(prm%N_sl))
-      prm%B           = config%getFloats('friction_coeff', requiredSize=size(prm%N_sl))
+      prm%i_sl        = config%getFloats('clambdaslip',    requiredSize=size(N_sl))
+      prm%tau_0       = config%getFloats('tau_peierls',    requiredSize=size(N_sl))
+      prm%p           = config%getFloats('p_slip',         requiredSize=size(N_sl), &
+                                         defaultVal=[(1.0_pReal,i=1,size(N_sl))])
+      prm%q           = config%getFloats('q_slip',         requiredSize=size(N_sl), &
+                                         defaultVal=[(1.0_pReal,i=1,size(N_sl))])
+      prm%kink_height = config%getFloats('kink_height',    requiredSize=size(N_sl))
+      prm%w           = config%getFloats('kink_width',     requiredSize=size(N_sl))
+      prm%omega       = config%getFloats('omega',          requiredSize=size(N_sl))
+      prm%B           = config%getFloats('friction_coeff', requiredSize=size(N_sl))
 
       prm%D                   = config%getFloat('grainsize')
       prm%D_0                 = config%getFloat('d0')
@@ -170,21 +169,21 @@ module subroutine plastic_disloUCLA_init
       prm%dipoleformation     = config%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default, ToDo: change to /key/-type key
 
       ! expand: family => system
-      prm%rho_mob_0      = math_expand(prm%rho_mob_0,      prm%N_sl)
-      prm%rho_dip_0      = math_expand(prm%rho_dip_0,      prm%N_sl)
-      prm%q              = math_expand(prm%q,              prm%N_sl)
-      prm%p              = math_expand(prm%p,              prm%N_sl)
-      prm%delta_F        = math_expand(prm%delta_F,        prm%N_sl)
-      prm%b_sl           = math_expand(prm%b_sl,           prm%N_sl)
-      prm%kink_height    = math_expand(prm%kink_height,    prm%N_sl)
-      prm%w              = math_expand(prm%w,              prm%N_sl)
-      prm%omega          = math_expand(prm%omega,          prm%N_sl)
-      prm%tau_0          = math_expand(prm%tau_0,          prm%N_sl)
-      prm%v0             = math_expand(prm%v0,             prm%N_sl)
-      prm%B              = math_expand(prm%B,              prm%N_sl)
-      prm%i_sl           = math_expand(prm%i_sl,           prm%N_sl)
-      prm%atomicVolume   = math_expand(prm%atomicVolume,   prm%N_sl)
-      prm%D_a            = math_expand(prm%D_a,            prm%N_sl)
+      prm%rho_mob_0      = math_expand(prm%rho_mob_0,      N_sl)
+      prm%rho_dip_0      = math_expand(prm%rho_dip_0,      N_sl)
+      prm%q              = math_expand(prm%q,              N_sl)
+      prm%p              = math_expand(prm%p,              N_sl)
+      prm%delta_F        = math_expand(prm%delta_F,        N_sl)
+      prm%b_sl           = math_expand(prm%b_sl,           N_sl)
+      prm%kink_height    = math_expand(prm%kink_height,    N_sl)
+      prm%w              = math_expand(prm%w,              N_sl)
+      prm%omega          = math_expand(prm%omega,          N_sl)
+      prm%tau_0          = math_expand(prm%tau_0,          N_sl)
+      prm%v0             = math_expand(prm%v0,             N_sl)
+      prm%B              = math_expand(prm%B,              N_sl)
+      prm%i_sl           = math_expand(prm%i_sl,           N_sl)
+      prm%atomicVolume   = math_expand(prm%atomicVolume,   N_sl)
+      prm%D_a            = math_expand(prm%D_a,            N_sl)
 
 
       ! sanity checks
@@ -213,15 +212,14 @@ module subroutine plastic_disloUCLA_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and atol
+! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
     dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho')
-    if (any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) &
-      extmsg = trim(extmsg)//' atol_rho'
+    if (any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
@@ -234,7 +232,7 @@ module subroutine plastic_disloUCLA_init
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
     dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = 1.0e6_pReal                                         ! Don't use for convergence check
+    plasticState(p)%atol(startIndex:endIndex) = 1.0e6_pReal                                         ! ARRG
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
 
