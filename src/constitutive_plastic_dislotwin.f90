@@ -32,7 +32,7 @@ submodule(constitutive) plastic_dislotwin
       V_cs, &                                                                                       !< cross slip volume
       sbResistance, &                                                                               !< value for shearband resistance (might become an internal state variable at some point)
       sbVelocity, &                                                                                 !< value for shearband velocity_0
-      sbQedge, &                                                                                    !< activation energy for shear bands
+      E_sb, &                                                                                       !< activation energy for shear bands
       SFE_0K, &                                                                                     !< stacking fault energy at zero K
       dSFE_dT, &                                                                                    !< temperature dependance of stacking fault energy
       aTol_rho, &                                                                                   !< absolute tolerance for integration of dislocation density
@@ -144,7 +144,7 @@ module subroutine plastic_dislotwin_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_LABEL//' init  -+>>>'; flush(6)
 
   write(6,'(/,a)') ' Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
   write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2004.04.012'
@@ -176,6 +176,8 @@ module subroutine plastic_dislotwin_init
     prm%aTol_rho  = config%getFloat('atol_rho',       defaultVal=0.0_pReal)
     prm%aTol_f_tw = config%getFloat('atol_twinfrac',  defaultVal=0.0_pReal)
     prm%aTol_f_tr = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
+
+    prm%output = config%getStrings('(output)', defaultVal=emptyStringArray)
 
     ! This data is read in already in lattice
     prm%mu = lattice_mu(p)
@@ -226,12 +228,11 @@ module subroutine plastic_dislotwin_init
       endif
 
       ! multiplication factor according to crystal structure (nearest neighbors bcc vs fcc/hex)
-      !@details: Refer: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
-      prm%omega                = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
-                               * merge(12.0_pReal, &
-                                       8.0_pReal, &
-                                       lattice_structure(p) == lattice_FCC_ID .or. lattice_structure(p) == lattice_HEX_ID)
-
+      ! details: Argon & Moffat, Acta Metallurgica, Vol. 29, pg 293 to 299, 1981
+      prm%omega = config%getFloat('omega',  defaultVal = 1000.0_pReal) &
+                * merge(12.0_pReal, &
+                        8.0_pReal, &
+                        any(lattice_structure(p) == [lattice_FCC_ID,lattice_HEX_ID]))
 
       ! expand: family => system
       prm%rho_mob_0    = math_expand(prm%rho_mob_0,   prm%N_sl)
@@ -375,13 +376,13 @@ module subroutine plastic_dislotwin_init
     prm%sbVelocity = config%getFloat('shearbandvelocity',defaultVal=0.0_pReal)
     if (prm%sbVelocity > 0.0_pReal) then
       prm%sbResistance = config%getFloat('shearbandresistance')
-      prm%sbQedge      = config%getFloat('qedgepersbsystem')
+      prm%E_sb         = config%getFloat('qedgepersbsystem')
       prm%p_sb         = config%getFloat('p_shearband')
       prm%q_sb         = config%getFloat('q_shearband')
 
       ! sanity checks
       if (prm%sbResistance  <  0.0_pReal) extmsg = trim(extmsg)//' shearbandresistance'
-      if (prm%sbQedge       <  0.0_pReal) extmsg = trim(extmsg)//' qedgepersbsystem'
+      if (prm%E_sb          <  0.0_pReal) extmsg = trim(extmsg)//' qedgepersbsystem'
       if (prm%p_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' p_shearband'
       if (prm%q_sb          <= 0.0_pReal) extmsg = trim(extmsg)//' q_shearband'
     endif
@@ -393,10 +394,10 @@ module subroutine plastic_dislotwin_init
 
 
     !if (Ndot0PerTwinFamily(f,p) < 0.0_pReal) &
-    ! call IO_error(211,el=p,ext_msg='dot_N_0_tw ('//PLASTICITY_DISLOTWIN_label//')')
+    ! call IO_error(211,el=p,ext_msg='dot_N_0_tw ('//PLASTICITY_DISLOTWIN_LABEL//')')
 
     if (any(prm%atomicVolume <= 0.0_pReal)) &
-      call IO_error(211,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_label//')')
+      call IO_error(211,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_LABEL//')')
     if (prm%sum_N_tw > 0) then
       if (prm%aTol_rho <= 0.0_pReal) &
         call IO_error(211,el=p,ext_msg='aTol_rho ('//PLASTICITY_DISLOTWIN_label//')')
@@ -407,8 +408,6 @@ module subroutine plastic_dislotwin_init
       if (prm%aTol_f_tr <= 0.0_pReal) &
         call IO_error(211,el=p,ext_msg='aTol_f_tr ('//PLASTICITY_DISLOTWIN_label//')')
     endif
-
-    prm%output = config%getStrings('(output)', defaultVal=emptyStringArray)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -421,7 +420,7 @@ module subroutine plastic_dislotwin_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and aTolState
+! locally defined state aliases and initialization of state0 and atolState
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
@@ -470,9 +469,13 @@ module subroutine plastic_dislotwin_init
     allocate(dst%V_tr                  (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
 
 
-    plasticState(p)%state0 = plasticState(p)%state                                                   ! ToDo: this could be done centrally
+    plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 
     end associate
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_DISLOTWIN_LABEL//')')
 
   enddo
 
@@ -587,7 +590,7 @@ module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
 
   shearBandingContribution: if(dNeq0(prm%sbVelocity)) then
 
-    BoltzmannRatio = prm%sbQedge/(kB*T)
+    BoltzmannRatio = prm%E_sb/(kB*T)
     call math_eigh33(Mp,eigValues,eigVectors)                                                       ! is Mp symmetric by design?
 
     do i = 1,6
