@@ -435,7 +435,7 @@ end function math_exp33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Cramer inversion of 33 matrix (function)
+!> @brief Cramer inversion of 3x3 matrix (function)
 !> @details Direct Cramer inversion of matrix A. Returns all zeroes if not possible, i.e.
 ! if determinant is close to zero
 !--------------------------------------------------------------------------------------------------
@@ -454,7 +454,7 @@ end function math_inv33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Cramer inversion of 33 matrix (subroutine)
+!> @brief Cramer inversion of 3x3 matrix (subroutine)
 !> @details Direct Cramer inversion of matrix A. Also returns determinant
 !  Returns an error if not possible, i.e. if determinant is close to zero
 !--------------------------------------------------------------------------------------------------
@@ -491,7 +491,7 @@ end subroutine math_invert33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Inversion of symmetriced 3x3x3x3 tensor.
+!> @brief Inversion of symmetriced 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
 function math_invSym3333(A)
 
@@ -548,7 +548,7 @@ end subroutine math_invert
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrize a 33 matrix
+!> @brief symmetrize a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric33(m)
 
@@ -561,7 +561,7 @@ end function math_symmetric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrize a 66 matrix
+!> @brief symmetrize a 6x6 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric66(m)
 
@@ -574,7 +574,7 @@ end function math_symmetric66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief skew part of a 33 matrix
+!> @brief skew part of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_skew33(m)
 
@@ -587,7 +587,7 @@ end function math_skew33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief hydrostatic part of a 33 matrix
+!> @brief hydrostatic part of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_spherical33(m)
 
@@ -600,7 +600,7 @@ end function math_spherical33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief deviatoric part of a 33 matrix
+!> @brief deviatoric part of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_deviatoric33(m)
 
@@ -613,7 +613,7 @@ end function math_deviatoric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief trace of a 33 matrix
+!> @brief trace of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_trace33(m)
 
@@ -625,7 +625,7 @@ end function math_trace33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determinant of a 33 matrix
+!> @brief determinant of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_det33(m)
 
@@ -639,7 +639,7 @@ end function math_det33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determinant of a symmetric 33 matrix
+!> @brief determinant of a symmetric 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_detSym33(m)
 
@@ -652,7 +652,7 @@ end function  math_detSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 33 matrix into vector 9
+!> @brief convert 3x3 matrix into vector 9
 !--------------------------------------------------------------------------------------------------
 pure function math_33to9(m33)
 
@@ -669,7 +669,7 @@ end function math_33to9
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 9 vector into 33 matrix
+!> @brief convert 9 vector into 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_9to33(v9)
 
@@ -686,7 +686,7 @@ end function math_9to33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 33 matrix into 6 vector
+!> @brief convert symmetric 3x3 matrix into 6 vector
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -714,7 +714,7 @@ end function math_sym33to6
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 6 vector into symmetric 33 matrix
+!> @brief convert 6 vector into symmetric 3x3 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -743,7 +743,7 @@ end function math_6toSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 3333 matrix into 99 matrix
+!> @brief convert 3x3x3x3 matrix into 9x9 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_3333to99(m3333)
 
@@ -760,7 +760,7 @@ end function math_3333to99
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 99 matrix into 3333 matrix
+!> @brief convert 9x9 matrix into 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_99to3333(m99)
 
@@ -777,7 +777,7 @@ end function math_99to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 3333 matrix into 66 matrix
+!> @brief convert symmetric 3x3x3x3 matrix into 6x6 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only rearranges order according to Nye
@@ -805,7 +805,7 @@ end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 matrix into symmetric 3333 matrix
+!> @brief convert 66 matrix into symmetric 3x3x3x3 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only rearranges order according to Nye
@@ -836,7 +836,7 @@ end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 Voigt matrix into symmetric 3333 matrix
+!> @brief convert 66 Voigt matrix into symmetric 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 
@@ -889,7 +889,7 @@ end function math_sampleGaussVar
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues and eigenvectors of symmetric matrix m
+!> @brief eigenvalues and eigenvectors of symmetric matrix
 ! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
 subroutine math_eigh(m,w,v,error)
@@ -912,7 +912,7 @@ end subroutine math_eigh
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues and eigenvectors of symmetric 33 matrix m using an analytical expression
+!> @brief eigenvalues and eigenvectors of symmetric 3x3 matrix using an analytical expression
 !> and the general LAPACK powered version for arbritrary sized matrices as fallback
 !> @author Joachim Kopp, Max-Planck-Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
@@ -962,26 +962,26 @@ end subroutine math_eigh33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvector basis of symmetric 33 matrix m
+!> @brief eigenvector basis of symmetric 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_eigenvectorBasisSym33(m)
 
   real(pReal), dimension(3,3)             :: math_eigenvectorBasisSym33
   real(pReal), dimension(3,3), intent(in) :: m                                                      !< quadratic matrix of which the eigenvector basis is computed
 
-  real(pReal), dimension(3)               :: invariants, v
+  real(pReal), dimension(3)               :: I, v
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
   real(pReal), dimension(3,3,3) :: N, EB
 
-  invariants = math_invariantsSym33(m)
+  I = math_invariantsSym33(m)
   EB = 0.0_pReal
 
-  P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
-  Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
+  P = I(2)-I(1)**2.0_pReal/3.0_pReal
+  Q = -2.0_pReal/27.0_pReal*I(1)**3.0_pReal+product(I(1:2))/3.0_pReal-I(3)
 
   threeSimilarEigVals: if(all(abs([P,Q]) < TOL)) then
-    v = invariants(1)/3.0_pReal
+    v = I(1)/3.0_pReal
   ! this is not really correct, but at least the basis is correct
     EB(1,1,1)=1.0_pReal
     EB(2,2,2)=1.0_pReal
@@ -992,7 +992,7 @@ pure function math_eigenvectorBasisSym33(m)
     v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos((phi             )/3.0_pReal), &
                                                cos((phi+2.0_pReal*PI)/3.0_pReal), &
                                                cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                                              ] + invariants(1)/3.0_pReal
+                                              ] + I(1)/3.0_pReal
     N(1:3,1:3,1) = m-v(1)*math_I3
     N(1:3,1:3,2) = m-v(2)*math_I3
     N(1:3,1:3,3) = m-v(3)*math_I3
@@ -1020,7 +1020,7 @@ end function math_eigenvectorBasisSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief rotational part from polar decomposition of 33 tensor m
+!> @brief rotational part from polar decomposition of 3x3 tensor
 !--------------------------------------------------------------------------------------------------
 function math_rotationalPart33(m)
 
@@ -1042,7 +1042,7 @@ end function math_rotationalPart33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric matrix m
+!> @brief Eigenvalues of symmetric matrix
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
 function math_eigvalsh(m)
@@ -1064,7 +1064,7 @@ end function math_eigvalsh
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues of symmetric 33 matrix m using an analytical expression
+!> @brief eigenvalues of symmetric 3x3 matrix using an analytical expression
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details similar to http://arxiv.org/abs/physics/0610206 (DSYEVC3)
 !> but apparently more stable solution and has general LAPACK powered version for arbritrary sized
@@ -1073,16 +1073,16 @@ end function math_eigvalsh
 function math_eigvalsh33(m)
 
   real(pReal), intent(in), dimension(3,3) :: m                                                      !< 3x3 symmetric matrix to compute eigenvalues of
-  real(pReal), dimension(3) :: math_eigvalsh33,invariants
+  real(pReal), dimension(3) :: math_eigvalsh33,I
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
 
-  invariants = math_invariantsSym33(m)                                                              ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
+  I = math_invariantsSym33(m)                                                                       ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
-  P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal                                              ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
-  Q = product(invariants(1:2))/3.0_pReal &
-    - 2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal &
-    - invariants(3)                                                                                 ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+  P = I(2)-I(1)**2.0_pReal/3.0_pReal                                                                ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+  Q = product(I(1:2))/3.0_pReal &
+    - 2.0_pReal/27.0_pReal*I(1)**3.0_pReal &
+    - I(3)                                                                                          ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
   if(all(abs([P,Q]) < TOL)) then
     math_eigvalsh33 = math_eigvalsh(m)
@@ -1094,14 +1094,14 @@ function math_eigvalsh33(m)
                                                              cos((phi+2.0_pReal*PI)/3.0_pReal), &
                                                              cos((phi+4.0_pReal*PI)/3.0_pReal) &
                                                             ] &
-                    + invariants(1)/3.0_pReal
+                    + I(1)/3.0_pReal
   endif
 
 end function math_eigvalsh33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief invariants of symmetrix 33 matrix m
+!> @brief invariants of symmetrix 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_invariantsSym33(m)
 
