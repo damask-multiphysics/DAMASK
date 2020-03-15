@@ -961,65 +961,6 @@ subroutine math_eigh33(m,w,v)
 end subroutine math_eigh33
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief eigenvector basis of positive-definite 3x3 matrix
-!--------------------------------------------------------------------------------------------------
-pure function math_eigenvectorBasisSym33(m)
-
-  real(pReal), dimension(3,3)             :: math_eigenvectorBasisSym33
-  real(pReal), dimension(3,3), intent(in) :: m                                                      !< positive-definite matrix of which the basis is computed
-
-  real(pReal), dimension(3)               :: I, v
-  real(pReal) :: P, Q, rho, phi
-  real(pReal), parameter :: TOL=1.e-14_pReal
-  real(pReal), dimension(3,3,3) :: N, EB
-
-  I = math_invariantsSym33(m)
-
-  P = I(2)-I(1)**2.0_pReal/3.0_pReal
-  Q = -2.0_pReal/27.0_pReal*I(1)**3.0_pReal+product(I(1:2))/3.0_pReal-I(3)
-
-  threeSimilarEigVals: if(all(abs([P,Q]) < TOL)) then
-    v = I(1)/3.0_pReal
-    ! this is not really correct, but at least the basis is correct
-    EB = 0.0_pReal
-    EB(1,1,1)=1.0_pReal
-    EB(2,2,2)=1.0_pReal
-    EB(3,3,3)=1.0_pReal
-  else threeSimilarEigVals
-    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-    phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-    v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos((phi             )/3.0_pReal), &
-                                               cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                                               cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                                              ] + I(1)/3.0_pReal
-    N(1:3,1:3,1) = m-v(1)*math_I3
-    N(1:3,1:3,2) = m-v(2)*math_I3
-    N(1:3,1:3,3) = m-v(3)*math_I3
-    twoSimilarEigVals: if(abs(v(1)-v(2)) < TOL) then
-      EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
-      EB(1:3,1:3,1) = math_I3-EB(1:3,1:3,3)
-      EB(1:3,1:3,2) = 0.0_pReal
-    elseif               (abs(v(2)-v(3)) < TOL) then twoSimilarEigVals
-      EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
-      EB(1:3,1:3,2) = math_I3-EB(1:3,1:3,1)
-      EB(1:3,1:3,3) = 0.0_pReal
-    elseif               (abs(v(3)-v(1)) < TOL) then twoSimilarEigVals
-      EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
-      EB(1:3,1:3,3) = math_I3-EB(1:3,1:3,2)
-      EB(1:3,1:3,1) = 0.0_pReal
-    else twoSimilarEigVals
-      EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
-      EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
-      EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
-    endif twoSimilarEigVals
-  endif threeSimilarEigVals
-
- math_eigenvectorBasisSym33 = sqrt(v(1)) * EB(1:3,1:3,1) &
-                            + sqrt(v(2)) * EB(1:3,1:3,2) &
-                            + sqrt(v(3)) * EB(1:3,1:3,3)
-
-end function math_eigenvectorBasisSym33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1031,7 +972,7 @@ function math_rotationalPart(m)
   real(pReal), dimension(3,3) :: math_rotationalPart
   real(pReal), dimension(3,3) :: U , Uinv
 
-  U = math_eigenvectorBasisSym33(matmul(transpose(m),m))
+  U = eigenvectorBasis(matmul(transpose(m),m))
   Uinv = math_inv33(U)
 
   inversionFailed: if (all(dEq0(Uinv))) then
@@ -1040,6 +981,67 @@ function math_rotationalPart(m)
   else inversionFailed
     math_rotationalPart = matmul(m,Uinv)
   endif inversionFailed
+
+contains
+  !--------------------------------------------------------------------------------------------------
+  !> @brief eigenvector basis of positive-definite 3x3 matrix
+  !--------------------------------------------------------------------------------------------------
+  pure function eigenvectorBasis(m)
+
+    real(pReal), dimension(3,3)             :: eigenvectorBasis
+    real(pReal), dimension(3,3), intent(in) :: m                                                      !< positive-definite matrix of which the basis is computed
+
+    real(pReal), dimension(3)               :: I, v
+    real(pReal) :: P, Q, rho, phi
+    real(pReal), parameter :: TOL=1.e-14_pReal
+    real(pReal), dimension(3,3,3) :: N, EB
+
+    I = math_invariantsSym33(m)
+
+    P = I(2)-I(1)**2.0_pReal/3.0_pReal
+    Q = -2.0_pReal/27.0_pReal*I(1)**3.0_pReal+product(I(1:2))/3.0_pReal-I(3)
+
+    threeSimilarEigVals: if(all(abs([P,Q]) < TOL)) then
+      v = I(1)/3.0_pReal
+      ! this is not really correct, but at least the basis is correct
+      EB = 0.0_pReal
+      EB(1,1,1)=1.0_pReal
+      EB(2,2,2)=1.0_pReal
+      EB(3,3,3)=1.0_pReal
+    else threeSimilarEigVals
+      rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+      phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+      v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos((phi             )/3.0_pReal), &
+                                                 cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                                                 cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                                                ] + I(1)/3.0_pReal
+      N(1:3,1:3,1) = m-v(1)*math_I3
+      N(1:3,1:3,2) = m-v(2)*math_I3
+      N(1:3,1:3,3) = m-v(3)*math_I3
+      twoSimilarEigVals: if(abs(v(1)-v(2)) < TOL) then
+        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
+        EB(1:3,1:3,1) = math_I3-EB(1:3,1:3,3)
+        EB(1:3,1:3,2) = 0.0_pReal
+      elseif               (abs(v(2)-v(3)) < TOL) then twoSimilarEigVals
+        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
+        EB(1:3,1:3,2) = math_I3-EB(1:3,1:3,1)
+        EB(1:3,1:3,3) = 0.0_pReal
+      elseif               (abs(v(3)-v(1)) < TOL) then twoSimilarEigVals
+        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
+        EB(1:3,1:3,3) = math_I3-EB(1:3,1:3,2)
+        EB(1:3,1:3,1) = 0.0_pReal
+      else twoSimilarEigVals
+        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
+        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
+        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
+      endif twoSimilarEigVals
+    endif threeSimilarEigVals
+
+   eigenvectorBasis = sqrt(v(1)) * EB(1:3,1:3,1) &
+                    + sqrt(v(2)) * EB(1:3,1:3,2) &
+                    + sqrt(v(3)) * EB(1:3,1:3,3)
+
+  end function eigenvectorBasis
 
 end function math_rotationalPart
 
