@@ -980,13 +980,13 @@ pure function math_eigenvectorBasisSym33(m)
   P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
   Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
 
-  threeSimilarEigenvalues: if(all(abs([P,Q]) < TOL)) then
+  threeSimilarEigVals: if(all(abs([P,Q]) < TOL)) then
     v = invariants(1)/3.0_pReal
   ! this is not really correct, but at least the basis is correct
     EB(1,1,1)=1.0_pReal
     EB(2,2,2)=1.0_pReal
     EB(3,3,3)=1.0_pReal
-  else threeSimilarEigenvalues
+  else threeSimilarEigVals
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos(phi/3.0_pReal), &
@@ -996,27 +996,21 @@ pure function math_eigenvectorBasisSym33(m)
     N(1:3,1:3,1) = m-v(1)*math_I3
     N(1:3,1:3,2) = m-v(2)*math_I3
     N(1:3,1:3,3) = m-v(3)*math_I3
-    twoSimilarEigenvalues: if(abs(v(1)-v(2)) < TOL) then
-      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((v(3)-v(1))*(v(3)-v(2)))
+    twoSimilarEigVals: if(abs(v(1)-v(2)) < TOL) then
+      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
-    elseif(abs(v(2)-v(3)) < TOL) then twoSimilarEigenvalues
-      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((v(1)-v(2))*(v(1)-v(3)))
+    elseif               (abs(v(2)-v(3)) < TOL) then twoSimilarEigVals
+      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
       EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
-    elseif(abs(v(3)-v(1)) < TOL) then twoSimilarEigenvalues
-      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((v(2)-v(1))*(v(2)-v(3)))
+    elseif               (abs(v(3)-v(1)) < TOL) then twoSimilarEigVals
+      EB(1:3,1:3,2)=matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
-    else twoSimilarEigenvalues
-      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((v(1)-v(2))*(v(1)-v(3)))
-      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((v(2)-v(1))*(v(2)-v(3)))
-      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((v(3)-v(1))*(v(3)-v(2)))
-    endif twoSimilarEigenvalues
-  endif threeSimilarEigenvalues
+    else twoSimilarEigVals
+      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
+      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/((v(2)-v(1))*(v(2)-v(3)))
+      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
+    endif twoSimilarEigVals
+  endif threeSimilarEigVals
 
  math_eigenvectorBasisSym33 = sqrt(v(1)) * EB(1:3,1:3,1) &
                             + sqrt(v(2)) * EB(1:3,1:3,2) &
