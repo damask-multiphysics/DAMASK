@@ -54,7 +54,6 @@ submodule(constitutive) plastic_nonlocal
       Dsd0, &                                                                                       !< prefactor for self-diffusion coefficient
       selfDiffusionEnergy, &                                                                        !< activation enthalpy for diffusion
       atol_rho, &                                                                                   !< absolute tolerance for dislocation density in state integration
-      atol_gamma, &                                                                                 !< absolute tolerance for accumulated shear in state integration
       significantRho, &                                                                             !< density considered significant
       significantN, &                                                                               !< number of dislocations considered significant
       doublekinkwidth, &                                                                            !< width of a doubkle kink in multiples of the burgers vector length b
@@ -217,7 +216,6 @@ module subroutine plastic_nonlocal_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
     prm%atol_rho   = config%getFloat('atol_rho',   defaultVal=0.0_pReal)
-    prm%atol_gamma = config%getFloat('atol_shear', defaultVal=0.0_pReal)
 
     structure      = config%getString('lattice_structure')
 
@@ -353,7 +351,6 @@ module subroutine plastic_nonlocal_init
       if (prm%significantN         < 0.0_pReal)   extmsg = trim(extmsg)//' significantN'
       if (prm%significantrho       < 0.0_pReal)   extmsg = trim(extmsg)//' significantrho'
       if (prm%atol_rho            <= 0.0_pReal)   extmsg = trim(extmsg)//' atol_rho'
-      if (prm%atol_gamma          <= 0.0_pReal)   extmsg = trim(extmsg)//' atol_gamma'
       if (prm%CFLfactor            < 0.0_pReal)   extmsg = trim(extmsg)//' CFLfactor'
 
       if (prm%p <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p'
@@ -465,7 +462,9 @@ module subroutine plastic_nonlocal_init
     stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
     del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    plasticState(p)%atolState(10*prm%totalNslip + 1:11*prm%totalNslip )  = prm%atol_gamma
+    plasticState(p)%atolState(10*prm%totalNslip+1:11*prm%totalNslip )  = config%getFloat('atol_shear', defaultVal=0.0_pReal)
+    if(any(plasticState(p)%atolState(10*prm%totalNslip+1:11*prm%totalNslip)<=0.0_pReal)) &
+      extmsg = trim(extmsg)//' atol_gamma'
     plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
 
     stt%rho_forest => plasticState(p)%state                 (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)

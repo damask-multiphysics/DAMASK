@@ -20,10 +20,7 @@ submodule(constitutive) plastic_phenopowerlaw
       h0_SlipSlip, &                                                                                !< reference hardening slip - slip
       h0_TwinSlip, &                                                                                !< reference hardening twin - slip
       h0_TwinTwin, &                                                                                !< reference hardening twin - twin
-      a_slip, &
-      aTolResistance, &                                                                             !< absolute tolerance for integration of xi
-      aTolShear, &                                                                                  !< absolute tolerance for integration of gamma
-      aTolTwinfrac                                                                                  !< absolute tolerance for integration of f
+      a_slip
     real(pReal),               allocatable, dimension(:) :: &
       xi_slip_0, &                                                                                  !< initial critical shear stress for slip
       xi_twin_0, &                                                                                  !< initial critical shear stress for twin
@@ -85,7 +82,7 @@ module subroutine plastic_phenopowerlaw_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
@@ -108,15 +105,6 @@ module subroutine plastic_phenopowerlaw_init
     prm%c_2            = config%getFloat('twin_b',defaultVal=1.0_pReal)
     prm%c_3            = config%getFloat('twin_e',defaultVal=0.0_pReal)
     prm%c_4            = config%getFloat('twin_d',defaultVal=0.0_pReal)
-
-    prm%aTolResistance = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
-    prm%aTolShear      = config%getFloat('atol_shear',     defaultVal=1.0e-6_pReal)
-    prm%aTolTwinfrac   = config%getFloat('atol_twinfrac',  defaultVal=1.0e-6_pReal)
-
-    ! sanity checks
-    if (prm%aTolResistance <= 0.0_pReal) extmsg = trim(extmsg)//' aTolresistance'
-    if (prm%aTolShear      <= 0.0_pReal) extmsg = trim(extmsg)//' aTolShear'
-    if (prm%aTolTwinfrac   <= 0.0_pReal) extmsg = trim(extmsg)//' atoltwinfrac'
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -215,11 +203,6 @@ module subroutine plastic_phenopowerlaw_init
     endif slipAndTwinActive
 
 !--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-    if (extmsg /= '') &
-      call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_PHENOPOWERLAW_label//')')
-
-!--------------------------------------------------------------------------------------------------
 !  output pararameters
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
@@ -233,26 +216,30 @@ module subroutine plastic_phenopowerlaw_init
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
-! locally defined state aliases and initialization of state0 and aTolState
+! locally defined state aliases and initialization of state0 and atolState
     startIndex = 1
     endIndex   = prm%totalNslip
     stt%xi_slip => plasticState(p)%state   (startIndex:endIndex,:)
     stt%xi_slip = spread(prm%xi_slip_0, 2, NipcMyPhase)
     dot%xi_slip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
+    if(any(plasticState(p)%atolState(startIndex:endIndex)<=0.0_pReal)) &
+      extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%totalNtwin
     stt%xi_twin => plasticState(p)%state   (startIndex:endIndex,:)
     stt%xi_twin = spread(prm%xi_twin_0, 2, NipcMyPhase)
     dot%xi_twin => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolResistance
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%totalNslip
     stt%gamma_slip => plasticState(p)%state   (startIndex:endIndex,:)
     dot%gamma_slip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(p)%atolState(startIndex:endIndex)<=0.0_pReal)) &
+      extmsg = trim(extmsg)//' atol_gamma_slip'
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
 
@@ -260,11 +247,17 @@ module subroutine plastic_phenopowerlaw_init
     endIndex   = endIndex + prm%totalNtwin
     stt%gamma_twin => plasticState(p)%state   (startIndex:endIndex,:)
     dot%gamma_twin => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%aTolState(startIndex:endIndex) = prm%aTolShear
+    plasticState(p)%atolState(startIndex:endIndex) = config%getFloat('atol_twinfrac',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(p)%atolState(startIndex:endIndex)<=0.0_pReal)) &
+      extmsg = trim(extmsg)//' atol_gamma_twin'
 
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 
     end associate
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_PHENOPOWERLAW_LABEL//')')
 
   enddo
 
