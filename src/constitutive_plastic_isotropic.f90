@@ -125,12 +125,12 @@ module subroutine plastic_isotropic_init
     stt%xi  = prm%xi_0
     dot%xi  => plasticState(p)%dotState(1,:)
     plasticState(p)%atol(1) = config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
-    if (plasticState(p)%atol(1) <= 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
+    if (plasticState(p)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
 
     stt%gamma  => plasticState(p)%state   (2,:)
     dot%gamma  => plasticState(p)%dotState(2,:)
     plasticState(p)%atol(2) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
-    if (plasticState(p)%atol(2) <= 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
+    if (plasticState(p)%atol(2) < 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
 

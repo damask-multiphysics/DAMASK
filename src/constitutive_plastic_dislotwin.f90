@@ -173,9 +173,9 @@ module subroutine plastic_dislotwin_init
               dst => dependentState(phase_plasticityInstance(p)), &
               config   => config_phase(p))
 
-    prm%aTol_rho  = config%getFloat('atol_rho',       defaultVal=0.0_pReal)
-    prm%aTol_f_tw = config%getFloat('atol_twinfrac',  defaultVal=0.0_pReal)
-    prm%aTol_f_tr = config%getFloat('atol_transfrac', defaultVal=0.0_pReal)
+    prm%aTol_rho  = config%getFloat('atol_rho',       defaultVal=1.0_pReal)
+    prm%aTol_f_tw = config%getFloat('atol_twinfrac',  defaultVal=1.0e-7_pReal)
+    prm%aTol_f_tr = config%getFloat('atol_transfrac', defaultVal=1.0e-6_pReal)
 
     prm%output = config%getStrings('(output)', defaultVal=emptyStringArray)
 
@@ -399,13 +399,13 @@ module subroutine plastic_dislotwin_init
     if (any(prm%atomicVolume <= 0.0_pReal)) &
       call IO_error(211,el=p,ext_msg='cAtomicVolume ('//PLASTICITY_DISLOTWIN_LABEL//')')
     if (prm%sum_N_tw > 0) then
-      if (prm%aTol_rho <= 0.0_pReal) &
+      if (prm%aTol_rho < 0.0_pReal) &
         call IO_error(211,el=p,ext_msg='aTol_rho ('//PLASTICITY_DISLOTWIN_label//')')
-      if (prm%aTol_f_tw <= 0.0_pReal) &
+      if (prm%aTol_f_tw < 0.0_pReal) &
         call IO_error(211,el=p,ext_msg='aTol_f_tw ('//PLASTICITY_DISLOTWIN_label//')')
     endif
     if (prm%sum_N_tr > 0) then
-      if (prm%aTol_f_tr <= 0.0_pReal) &
+      if (prm%aTol_f_tr < 0.0_pReal) &
         call IO_error(211,el=p,ext_msg='aTol_f_tr ('//PLASTICITY_DISLOTWIN_label//')')
     endif
 

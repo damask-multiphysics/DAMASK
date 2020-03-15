@@ -218,15 +218,15 @@ module subroutine plastic_disloUCLA_init
     stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
     dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho')
-    if (any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho',defaultVal=1.0_pReal)
+    if (any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_dip= spread(prm%rho_dip_0,2,NipcMyPhase)
     dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho')
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
@@ -401,7 +401,7 @@ module subroutine plastic_disloUCLA_results(instance,group)
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,'rho_dip',&
                                                      'dislocation dipole density''1/m²')
       case('shear_rate_slip')                                                                       ! should be gamma
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&   ! this is not dot!!
+        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&            ! this is not dot!!
                                                      'plastic shear','1')
       case('mfp_slip')                                                                              !ToDo: should be Lambda
         if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&

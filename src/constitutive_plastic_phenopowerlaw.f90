@@ -207,8 +207,8 @@ module subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
     NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
-    sizeDotState = size(['tau_slip  ','gamma_slip']) * prm%sum_N_sl &
-                 + size(['tau_twin  ','gamma_twin']) * prm%sum_N_tw
+    sizeDotState = size(['xi_sl   ','gamma_sl']) * prm%sum_N_sl &
+                 + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
 
     call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
@@ -220,31 +220,32 @@ module subroutine plastic_phenopowerlaw_init
     stt%xi_slip => plasticState(p)%state   (startIndex:endIndex,:)
     stt%xi_slip = spread(prm%xi_slip_0, 2, NipcMyPhase)
     dot%xi_slip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex)<=0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
+    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     stt%xi_twin => plasticState(p)%state   (startIndex:endIndex,:)
     stt%xi_twin = spread(prm%xi_twin_0, 2, NipcMyPhase)
     dot%xi_twin => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_resistance',defaultVal=1.0_pReal)
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
+    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_slip => plasticState(p)%state   (startIndex:endIndex,:)
     dot%gamma_slip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex)<=0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma_slip'
+    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_gamma',defaultVal=1.0e-6_pReal)
+    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
-    plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
+    plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     stt%gamma_twin => plasticState(p)%state   (startIndex:endIndex,:)
     dot%gamma_twin => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex)<=0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
 
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 

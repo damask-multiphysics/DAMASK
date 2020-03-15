@@ -170,7 +170,7 @@ module subroutine plastic_kinehardening_init
     stt%crss = spread(prm%crss0, 2, NipcMyPhase)
     dot%crss => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
+    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
@@ -183,7 +183,7 @@ module subroutine plastic_kinehardening_init
     stt%accshear => plasticState(p)%state   (startIndex:endIndex,:)
     dot%accshear => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_gamma',defaultVal=1.0e-6_pReal)
-    if(any(plasticState(p)%atol(startIndex:endIndex) <= 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
+    if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
     plasticState(p)%slipRate => plasticState(p)%dotState(startIndex:endIndex,:)
 
