@@ -132,7 +132,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 recursive function read_materialConfig(fileName,cnt) result(fileContent)
 
-  character(len=*),          intent(in)                :: fileName
+  character(len=*),          intent(in)                :: fileName                                  !< name of the material configuration file
   integer,                   intent(in), optional      :: cnt                                       !< recursion counter
   character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
   character(len=pStringLen), dimension(:), allocatable :: includedContent

@@ -30,7 +30,7 @@ module HDF5_utilities
     module procedure HDF5_read_real5
     module procedure HDF5_read_real6
     module procedure HDF5_read_real7
- 
+
     module procedure HDF5_read_int1
     module procedure HDF5_read_int2
     module procedure HDF5_read_int3
@@ -38,7 +38,7 @@ module HDF5_utilities
     module procedure HDF5_read_int5
     module procedure HDF5_read_int6
     module procedure HDF5_read_int7
- 
+
   end interface HDF5_read
 
 !--------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ module HDF5_utilities
     module procedure HDF5_write_real5
     module procedure HDF5_write_real6
     module procedure HDF5_write_real7
- 
+
     module procedure HDF5_write_int1
     module procedure HDF5_write_int2
     module procedure HDF5_write_int3
@@ -61,11 +61,11 @@ module HDF5_utilities
     module procedure HDF5_write_int5
     module procedure HDF5_write_int6
     module procedure HDF5_write_int7
-    
+
     module procedure HDF5_write_rotation
- 
+
   end interface HDF5_write
- 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief attached attributes of type char, integer or real to a file/dataset/group
 !--------------------------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ module HDF5_utilities
     module procedure HDF5_addAttribute_int_array
     module procedure HDF5_addAttribute_real_array
   end interface HDF5_addAttribute
- 
+
 contains
 
 
@@ -116,17 +116,17 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   character(len=*), intent(in)           :: fileName
   character,        intent(in), optional :: mode
   logical,          intent(in), optional :: parallel
- 
+
   character                              :: m
   integer(HID_T)                         :: plist_id
   integer                 :: hdferr
- 
+
   if (present(mode)) then
     m = mode
   else
     m = 'r'
   endif
- 
+
   call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_openFile: h5pcreate_f')
 
@@ -149,7 +149,7 @@ integer(HID_T) function HDF5_openFile(fileName,mode,parallel)
   else
     call IO_error(1,ext_msg='HDF5_openFile: h5fopen_f unknown access mode: '//trim(m))
   endif
- 
+
   call h5pclose_f(plist_id, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_openFile: h5pclose_f')
 
@@ -162,9 +162,9 @@ end function HDF5_openFile
 subroutine HDF5_closeFile(fileHandle)
 
   integer(HID_T), intent(in) :: fileHandle
- 
+
   integer     :: hdferr
- 
+
   call h5fclose_f(fileHandle,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_closeFile: h5fclose_f')
 
@@ -178,7 +178,7 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
 
   integer(HID_T), intent(in)   :: fileHandle
   character(len=*), intent(in) :: groupName
- 
+
   integer        :: hdferr
   integer(HID_T) :: aplist_id
 
@@ -193,7 +193,7 @@ integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
   call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_addGroup: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
 #endif
- 
+
 !-------------------------------------------------------------------------------------------------
 ! Create group
   call h5gcreate_f(fileHandle, trim(groupName), HDF5_addGroup, hdferr, OBJECT_NAMELEN_DEFAULT_F,gapl_id = aplist_id)
@@ -211,13 +211,13 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
 
   integer(HID_T),   intent(in) :: fileHandle
   character(len=*), intent(in) :: groupName
- 
- 
+
+
   integer        :: hdferr
   integer(HID_T) :: aplist_id
   logical        :: is_collective
- 
- 
+
+
  !-------------------------------------------------------------------------------------------------
  ! creating a property list for data access properties
   call h5pcreate_f(H5P_GROUP_ACCESS_F, aplist_id, hdferr)
@@ -229,7 +229,7 @@ integer(HID_T) function HDF5_openGroup(fileHandle,groupName)
   call h5pget_all_coll_metadata_ops_f(aplist_id, is_collective, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_openGroup: h5pset_all_coll_metadata_ops_f ('//trim(groupName)//')')
 #endif
- 
+
  !-------------------------------------------------------------------------------------------------
  ! opening the group
   call h5gopen_f(fileHandle, trim(groupName), HDF5_openGroup, hdferr, gapl_id = aplist_id)
@@ -247,7 +247,7 @@ subroutine HDF5_closeGroup(group_id)
 
   integer(HID_T), intent(in) :: group_id
   integer                    :: hdferr
- 
+
   call h5gclose_f(group_id, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(group_id))
 
@@ -261,19 +261,19 @@ logical function HDF5_objectExists(loc_id,path)
 
   integer(HID_T),   intent(in)            :: loc_id
   character(len=*), intent(in), optional  :: path
-  
+
   integer                   :: hdferr
   character(len=pStringLen) :: p
-  
+
   if (present(path)) then
     p = trim(path)
   else
     p = '.'
   endif
- 
+
   call h5lexists_f(loc_id, p, HDF5_objectExists, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_objectExists: h5oexists_by_name_f')
-  
+
   if(HDF5_objectExists) then
     call h5oexists_by_name_f(loc_id, p, HDF5_objectExists, hdferr)
     if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_objectExists: h5oexists_by_name_f')
@@ -290,18 +290,18 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   integer(HID_T),   intent(in)           :: loc_id
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
-  
+
   integer                   :: hdferr
   integer(HID_T)            :: attr_id, space_id, type_id
   logical                   :: attrExists
   character(len=pStringLen) :: p
-  
+
   if (present(path)) then
     p = trim(path)
   else
     p = '.'
   endif
- 
+
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5screate_f')
   call h5tcopy_f(H5T_NATIVE_CHARACTER, type_id, hdferr)
@@ -337,18 +337,18 @@ subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)            :: attrLabel
   integer,          intent(in)            :: attrValue
   character(len=*), intent(in), optional  :: path
-  
+
   integer                   :: hdferr
   integer(HID_T)            :: attr_id, space_id
   logical                   :: attrExists
   character(len=pStringLen) :: p
-  
+
   if (present(path)) then
     p = trim(path)
   else
     p = '.'
   endif
- 
+
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int: h5screate_f')
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
@@ -378,18 +378,18 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)           :: attrLabel
   real(pReal),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
-  
+
   integer                   :: hdferr
   integer(HID_T)            :: attr_id, space_id
   logical                   :: attrExists
   character(len=pStringLen) :: p
-  
+
   if (present(path)) then
     p = trim(path)
   else
     p = '.'
   endif
- 
+
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_real: h5screate_f')
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
@@ -419,21 +419,21 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)               :: attrLabel
   integer,          intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
-  
+
   integer                       :: hdferr
   integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
   logical                       :: attrExists
   character(len=pStringLen)     :: p
-  
+
   if (present(path)) then
     p = trim(path)
   else
     p = '.'
   endif
-  
+
   array_size = size(attrValue,kind=HSIZE_T)
- 
+
   call h5screate_simple_f(1, array_size, space_id, hdferr, array_size)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5screate_f')
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
@@ -463,21 +463,21 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)               :: attrLabel
   real(pReal),      intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
-  
+
   integer                       :: hdferr
   integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
   logical                       :: attrExists
   character(len=pStringLen)     :: p
-  
+
   if (present(path)) then
     p = trim(path)
   else
     p = '.'
   endif
-  
+
   array_size = size(attrValue,kind=HSIZE_T)
- 
+
   call h5screate_simple_f(1, array_size, space_id, hdferr, array_size)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5screate_f')
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
@@ -507,7 +507,7 @@ subroutine HDF5_setLink(loc_id,target_name,link_name)
   integer(HID_T),   intent(in) :: loc_id
   integer                      :: hdferr
   logical                      :: linkExists
- 
+
   call h5lexists_f(loc_id, link_name,linkExists, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_setLink: h5lexists_soft_f ('//trim(link_name)//')')
   if (linkExists) then
@@ -525,11 +525,11 @@ end subroutine HDF5_setLink
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real1(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:) :: dataset
+  real(pReal),      intent(out), dimension(:) :: dataset                                            !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &                                            ! ToDo: Fortran 2018 size(shape(A)) = rank(A)
     myStart, &
@@ -551,13 +551,13 @@ subroutine HDF5_read_real1(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_real1: h5dread_f')
- 
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
-   
+
 end subroutine HDF5_read_real1
 
 !--------------------------------------------------------------------------------------------------
@@ -565,11 +565,11 @@ end subroutine HDF5_read_real1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real2(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:) :: dataset
+  real(pReal),      intent(out), dimension(:,:) :: dataset                                          !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -591,11 +591,11 @@ subroutine HDF5_read_real2(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_real2: h5dread_f')
- 
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_real2
@@ -605,11 +605,11 @@ end subroutine HDF5_read_real2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real3(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:) :: dataset
+  real(pReal),      intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -631,7 +631,7 @@ subroutine HDF5_read_real3(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
-  
+
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_real3: h5dread_f')
@@ -645,10 +645,10 @@ end subroutine HDF5_read_real3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real4(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:) :: dataset
+  real(pReal),      intent(out), dimension(:,:,:,:) :: dataset                                      !< read data
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -671,11 +671,11 @@ subroutine HDF5_read_real4(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_real4: h5dread_f')
- 
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_real4
@@ -685,11 +685,11 @@ end subroutine HDF5_read_real4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real5(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:) :: dataset
+  real(pReal),      intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -711,11 +711,11 @@ subroutine HDF5_read_real5(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_real5: h5dread_f')
- 
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_real5
@@ -725,11 +725,11 @@ end subroutine HDF5_read_real5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real6(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:,:) :: dataset
+  real(pReal),      intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -765,10 +765,10 @@ end subroutine HDF5_read_real6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_real7(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:,:,:) :: dataset
+  real(pReal),      intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -791,11 +791,11 @@ subroutine HDF5_read_real7(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_DOUBLE,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_real7: h5dread_f')
- 
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_real7
@@ -806,11 +806,12 @@ end subroutine HDF5_read_real7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_int1(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:) :: dataset
+  integer,          intent(out), dimension(:) :: dataset                                            !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -838,7 +839,7 @@ subroutine HDF5_read_int1(loc_id,dataset,datasetName,parallel)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_int1: h5dread_f')
 
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
-  
+
 end subroutine HDF5_read_int1
 
 !--------------------------------------------------------------------------------------------------
@@ -846,10 +847,10 @@ end subroutine HDF5_read_int1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_int2(loc_id,dataset,datasetName,parallel)
 
-  integer,           intent(inout), dimension(:,:) :: dataset
+  integer,          intent(out), dimension(:,:) :: dataset                                          !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -872,11 +873,11 @@ subroutine HDF5_read_int2(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_int2: h5dread_f')
-  
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_int2
@@ -886,10 +887,10 @@ end subroutine HDF5_read_int2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_int3(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:) :: dataset
+  integer,          intent(out), dimension(:,:,:) :: dataset                                        !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -912,11 +913,11 @@ subroutine HDF5_read_int3(loc_id,dataset,datasetName,parallel)
    call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                         myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_int3: h5dread_f')
-   
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_int3
@@ -926,11 +927,11 @@ end subroutine HDF5_read_int3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_int4(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:) :: dataset
+  integer,          intent(out), dimension(:,:,:,:) :: dataset                                      !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -952,11 +953,11 @@ subroutine HDF5_read_int4(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_int4: h5dread_f')
-   
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_int4
@@ -966,11 +967,11 @@ end subroutine HDF5_read_int4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_int5(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:) :: dataset
+  integer,          intent(out), dimension(:,:,:,:,:) :: dataset                                    !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -996,7 +997,7 @@ subroutine HDF5_read_int5(loc_id,dataset,datasetName,parallel)
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_int5: h5dread_f')
-   
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_int5
@@ -1006,10 +1007,10 @@ end subroutine HDF5_read_int5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_int6(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:,:) :: dataset
+  integer,          intent(out), dimension(:,:,:,:,:,:) :: dataset                                  !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
@@ -1032,11 +1033,11 @@ subroutine HDF5_read_int6(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_int6: h5dread_f')
-   
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_int6
@@ -1046,11 +1047,11 @@ end subroutine HDF5_read_int6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_read_int7(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:,:,:) :: dataset
+  integer,          intent(out), dimension(:,:,:,:,:,:,:) :: dataset                                !< data read from file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
- 
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
+
   integer(HID_T)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer(HSIZE_T), dimension(size(shape(dataset))) :: &
     myStart, &
@@ -1072,11 +1073,11 @@ subroutine HDF5_read_int7(loc_id,dataset,datasetName,parallel)
     call initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id, &
                          myStart, totalShape, loc_id,myShape,datasetName,.false.)
   endif
- 
+
   call h5dread_f(dset_id, H5T_NATIVE_INTEGER,dataset,totalShape, hdferr,&
                  file_space_id = filespace_id, xfer_prp = plist_id, mem_space_id = memspace_id)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_read_int7: h5dread_f')
-   
+
   call finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
 end subroutine HDF5_read_int7
@@ -1087,10 +1088,10 @@ end subroutine HDF5_read_int7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real1(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:) ::    dataset
+  real(pReal),      intent(inout), dimension(:) :: dataset                                          !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1128,10 +1129,10 @@ end subroutine HDF5_write_real1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real2(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:) ::    dataset
+  real(pReal),      intent(inout), dimension(:,:) :: dataset                                        !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1169,10 +1170,10 @@ end subroutine HDF5_write_real2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real3(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:) ::    dataset
+  real(pReal),      intent(inout), dimension(:,:,:) :: dataset                                      !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1210,10 +1211,10 @@ end subroutine HDF5_write_real3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real4(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:) ::    dataset
+  real(pReal),      intent(inout), dimension(:,:,:,:) :: dataset                                    !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1227,7 +1228,7 @@ subroutine HDF5_write_real4(loc_id,dataset,datasetName,parallel)
 ! determine shape of dataset
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
- 
+
   if (present(parallel)) then
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
@@ -1235,13 +1236,13 @@ subroutine HDF5_write_real4(loc_id,dataset,datasetName,parallel)
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
   endif
- 
+
   if (product(totalShape) /= 0) then
     call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     if (hdferr < 0) call IO_error(1,ext_msg='HDF5_write_real4: h5dwrite_f')
   endif
-  
+
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_real4
@@ -1252,10 +1253,10 @@ end subroutine HDF5_write_real4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real5(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:) ::    dataset
+  real(pReal),      intent(inout), dimension(:,:,:,:,:) :: dataset                                  !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1269,7 +1270,7 @@ subroutine HDF5_write_real5(loc_id,dataset,datasetName,parallel)
 ! determine shape of dataset
   myShape = int(shape(dataset),HSIZE_T)
   if (any(myShape(1:size(myShape)-1) == 0)) return                                                  !< empty dataset (last dimension can be empty)
- 
+
   if (present(parallel)) then
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,parallel)
@@ -1277,13 +1278,13 @@ subroutine HDF5_write_real5(loc_id,dataset,datasetName,parallel)
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                           myStart, totalShape, loc_id,myShape,datasetName,H5T_NATIVE_DOUBLE,.false.)
   endif
- 
+
   if (product(totalShape) /= 0) then
     call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE,dataset,int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     if (hdferr < 0) call IO_error(1,ext_msg='HDF5_write_real5: h5dwrite_f')
   endif
-  
+
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_real5
@@ -1293,10 +1294,10 @@ end subroutine HDF5_write_real5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real6(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:,:) ::    dataset
+  real(pReal),      intent(inout), dimension(:,:,:,:,:,:) :: dataset                                !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1324,7 +1325,7 @@ subroutine HDF5_write_real6(loc_id,dataset,datasetName,parallel)
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     if (hdferr < 0) call IO_error(1,ext_msg='HDF5_write_real6: h5dwrite_f')
   endif
-  
+
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_real6
@@ -1334,10 +1335,10 @@ end subroutine HDF5_write_real6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_real7(loc_id,dataset,datasetName,parallel)
 
-  real(pReal),      intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
+  real(pReal),      intent(inout), dimension(:,:,:,:,:,:,:) :: dataset                              !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1365,7 +1366,7 @@ subroutine HDF5_write_real7(loc_id,dataset,datasetName,parallel)
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     if (hdferr < 0) call IO_error(1,ext_msg='HDF5_write_real7: h5dwrite_f')
   endif
-  
+
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_real7
@@ -1376,10 +1377,10 @@ end subroutine HDF5_write_real7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int1(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:) ::    dataset
+  integer,          intent(inout), dimension(:) :: dataset                                          !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1407,7 +1408,7 @@ subroutine HDF5_write_int1(loc_id,dataset,datasetName,parallel)
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     if (hdferr < 0) call IO_error(1,ext_msg='HDF5_write_int1: h5dwrite_f')
   endif
-  
+
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_int1
@@ -1417,10 +1418,10 @@ end subroutine HDF5_write_int1
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int2(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:) ::    dataset
+  integer,          intent(inout), dimension(:,:) :: dataset                                        !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1458,10 +1459,10 @@ end subroutine HDF5_write_int2
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int3(loc_id,dataset,datasetName,parallel)
 
-  integer,           intent(inout), dimension(:,:,:) ::    dataset
+  integer,          intent(inout), dimension(:,:,:) :: dataset                                      !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1489,7 +1490,7 @@ subroutine HDF5_write_int3(loc_id,dataset,datasetName,parallel)
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     if (hdferr < 0) call IO_error(1,ext_msg='HDF5_write_int3: h5dwrite_f')
   endif
-  
+
   call finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine HDF5_write_int3
@@ -1499,10 +1500,10 @@ end subroutine HDF5_write_int3
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int4(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:) ::    dataset
+  integer,          intent(inout), dimension(:,:,:,:) :: dataset                                    !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1540,10 +1541,10 @@ end subroutine HDF5_write_int4
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int5(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:) ::    dataset
+  integer,          intent(inout), dimension(:,:,:,:,:) :: dataset                                  !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1581,10 +1582,10 @@ end subroutine HDF5_write_int5
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int6(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:,:) ::    dataset
+  integer,          intent(inout), dimension(:,:,:,:,:,:) :: dataset                                !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1622,10 +1623,10 @@ end subroutine HDF5_write_int6
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_int7(loc_id,dataset,datasetName,parallel)
 
-  integer,          intent(inout), dimension(:,:,:,:,:,:,:) ::    dataset
+  integer,          intent(inout), dimension(:,:,:,:,:,:,:) :: dataset                              !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
-  logical, intent(in), optional :: parallel
+  logical, intent(in), optional :: parallel                                                         !< dataset is distributed over multiple processes
 
 
   integer :: hdferr
@@ -1666,7 +1667,7 @@ end subroutine HDF5_write_int7
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_write_rotation(loc_id,dataset,datasetName,parallel)
 
-  type(rotation),   intent(in), dimension(:) :: dataset
+  type(rotation),   intent(in), dimension(:) :: dataset                                             !< data written to file
   integer(HID_T),   intent(in) :: loc_id                                                            !< file or group handle
   character(len=*), intent(in) :: datasetName                                                       !< name of the dataset in the file
   logical,          intent(in), optional :: parallel
@@ -1688,17 +1689,17 @@ subroutine HDF5_write_rotation(loc_id,dataset,datasetName,parallel)
 !---------------------------------------------------------------------------------------------------
 ! determine shape of dataset
    myShape = int(shape(dataset),HSIZE_T)
-  
+
 !---------------------------------------------------------------------------------------------------
 ! compound type: name of each quaternion component
   call h5tget_size_f(H5T_NATIVE_DOUBLE, type_size_real, hdferr)
-  
+
   call h5tcreate_f(H5T_COMPOUND_F, type_size_real*4_SIZE_T, dtype_id, hdferr)
   call h5tinsert_f(dtype_id, "w",  type_size_real*0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
   call h5tinsert_f(dtype_id, "x",  type_size_real*1_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
   call h5tinsert_f(dtype_id, "y",  type_size_real*2_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
   call h5tinsert_f(dtype_id, "z",  type_size_real*3_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
-  
+
   if (present(parallel)) then
     call initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
                           myStart, totalShape, loc_id,myShape,datasetName,dtype_id,parallel)
@@ -1708,7 +1709,7 @@ subroutine HDF5_write_rotation(loc_id,dataset,datasetName,parallel)
   endif
 
   call h5pset_preserve_f(plist_id, .TRUE., hdferr)
- 
+
   if (product(totalShape) /= 0) then
     call h5tcreate_f(H5T_COMPOUND_F, type_size_real, x_id, hdferr)
     call h5tinsert_f(x_id, "x", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
@@ -1718,7 +1719,7 @@ subroutine HDF5_write_rotation(loc_id,dataset,datasetName,parallel)
     call h5tinsert_f(y_id, "y", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
     call h5tcreate_f(H5T_COMPOUND_F, type_size_real, z_id, hdferr)
     call h5tinsert_f(z_id, "z", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdferr)
-    
+
     call h5dwrite_f(dset_id, w_id,dataset_asArray(1,:),int(totalShape,HSIZE_T), hdferr,&
                    file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
     call h5dwrite_f(dset_id, x_id,dataset_asArray(2,:),int(totalShape,HSIZE_T), hdferr,&
@@ -1746,17 +1747,17 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
   character(len=*),  intent(in) :: datasetName                                                      !< name of the dataset in the file
   logical,           intent(in) :: parallel
   integer(HSIZE_T),  intent(in),   dimension(:) :: &
-    localShape   
+    localShape
   integer(HSIZE_T),  intent(out), dimension(size(localShape,1)):: &
     myStart, &
     globalShape                                                                                    !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
-     
+
   integer, dimension(worldsize) :: &
     readSize                                                                                        !< contribution of all processes
   integer :: ierr
   integer :: hdferr
- 
+
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective for MPI)
   call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
@@ -1784,7 +1785,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 
 !--------------------------------------------------------------------------------------------------
 ! creating a property list for IO and set it to collective
-  call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr) 
+  call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
     if (hdferr < 0) call IO_error(1,ext_msg='initialize_read: h5pcreate_f')
 #ifdef PETSc
   call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
@@ -1840,12 +1841,12 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   logical,           intent(in) :: parallel
   integer(HID_T),    intent(in) :: datatype
   integer(HSIZE_T),  intent(in),   dimension(:) :: &
-    myShape   
+    myShape
   integer(HSIZE_T),  intent(out), dimension(size(myShape,1)):: &
     myStart, &
     totalShape                                                                                      !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
-     
+
   integer, dimension(worldsize) :: &
     writeSize                                                                                       !< contribution of all processes
   integer :: ierr

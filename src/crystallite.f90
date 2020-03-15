@@ -1522,7 +1522,7 @@ end subroutine integrateStateRKCK45
 
 !--------------------------------------------------------------------------------------------------
 !> @brief sets convergence flag for nonlocal calculations
-!> @detail one non-converged nonlocal sets all other nonlocals to non-converged to trigger cut back
+!> @details one non-converged nonlocal sets all other nonlocals to non-converged to trigger cut back
 !--------------------------------------------------------------------------------------------------
 subroutine nonlocalConvergenceCheck
 
