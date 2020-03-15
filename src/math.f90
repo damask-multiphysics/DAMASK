@@ -1006,8 +1006,8 @@ pure function math_eigenvectorBasisSym33(m)
       EB(1:3,1:3,3) = 0.0_pReal
     elseif               (abs(v(3)-v(1)) < TOL) then twoSimilarEigVals
       EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
-      EB(1:3,1:3,1) = math_I3-EB(1:3,1:3,2)
-      EB(1:3,1:3,3) = 0.0_pReal
+      EB(1:3,1:3,3) = math_I3-EB(1:3,1:3,2)
+      EB(1:3,1:3,1) = 0.0_pReal
     else twoSimilarEigVals
       EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
       EB(1:3,1:3,2) = matmul(N(1:3,1:3,1),N(1:3,1:3,3))/((v(2)-v(3))*(v(2)-v(1)))
