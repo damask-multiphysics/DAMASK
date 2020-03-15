@@ -989,7 +989,7 @@ pure function math_eigenvectorBasisSym33(m)
   else threeSimilarEigVals
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-    v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos(phi/3.0_pReal), &
+    v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos((phi             )/3.0_pReal), &
                                                cos((phi+2.0_pReal*PI)/3.0_pReal), &
                                                cos((phi+4.0_pReal*PI)/3.0_pReal) &
                                               ] + invariants(1)/3.0_pReal
@@ -1007,7 +1007,7 @@ pure function math_eigenvectorBasisSym33(m)
       EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
     else twoSimilarEigVals
       EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
-      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/((v(2)-v(1))*(v(2)-v(3)))
+      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/((v(2)-v(3))*(v(2)-v(1)))
       EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
     endif twoSimilarEigVals
   endif threeSimilarEigVals
