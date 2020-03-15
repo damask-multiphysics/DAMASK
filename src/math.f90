@@ -1022,7 +1022,7 @@ end function math_eigenvectorBasisSym33
 !--------------------------------------------------------------------------------------------------
 !> @brief rotational part from polar decomposition of 3x3 tensor
 !--------------------------------------------------------------------------------------------------
-function math_rotationalPart33(m)
+function math_rotationalPart(m)
 
   real(pReal), intent(in), dimension(3,3) :: m
   real(pReal), dimension(3,3) :: math_rotationalPart33
@@ -1038,7 +1038,7 @@ function math_rotationalPart33(m)
     math_rotationalPart33 = matmul(m,Uinv)
   endif inversionFailed
 
-end function math_rotationalPart33
+end function math_rotationalPart
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1315,10 +1315,10 @@ subroutine unitTest
   do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
     call random_number(t33)
   enddo
-  t33_2 = math_rotationalPart33(transpose(t33))
-  t33   = math_rotationalPart33(t33)
-  if(any(dNeq0(matmul(t33_2,t33) - MATH_I3,tol=1.0e-10_pReal))) &
-    call IO_error(0,ext_msg='math_rotationalPart33')
+  t33_2 = math_rotationalPart(transpose(t33))
+  t33   = math_rotationalPart(t33)
+  if(any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
+    call IO_error(0,ext_msg='math_rotationalPart')
 
   call random_number(r)
   d = int(r*5.0_pReal) + 1

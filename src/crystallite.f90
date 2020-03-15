@@ -606,7 +606,7 @@ subroutine crystallite_orientations
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        call crystallite_orientation(c,i,e)%fromMatrix(transpose(math_rotationalPart33(crystallite_Fe(1:3,1:3,c,i,e))))
+        call crystallite_orientation(c,i,e)%fromMatrix(transpose(math_rotationalPart(crystallite_Fe(1:3,1:3,c,i,e))))
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
