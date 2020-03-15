@@ -71,9 +71,9 @@ submodule(constitutive) plastic_dislotwin
       forestProjection, &
       C66
     real(pReal),               allocatable, dimension(:,:,:) :: &
-      P_tr, &
       P_sl, &
       P_tw, &
+      P_tr, &
       C66_tw, &
       C66_tr
     integer :: &
