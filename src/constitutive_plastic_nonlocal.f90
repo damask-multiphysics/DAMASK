@@ -1700,53 +1700,49 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
   my_compatibility = 0.0_pReal
   forall(s1 = 1:ns) my_compatibility(:,s1,s1,:) = 1.0_pReal
 
-  !*** Loop thrugh neighbors and check whether there is any compatibility.
-
   neighbors: do n = 1,nIPneighbors
     neighbor_e = IPneighborhood(1,n,i,e)
     neighbor_i = IPneighborhood(2,n,i,e)
 
-
-    !* FREE SURFACE
-    !* Set surface transmissivity to the value specified in the material.config
-    if (neighbor_e <= 0 .or. neighbor_i <= 0) then
-      forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%surfaceTransmissivity)
-      cycle
-    endif
-
     neighbor_phase = material_phaseAt(1,neighbor_e)
 
-    !* PHASE BOUNDARY
-    !* If we encounter a different nonlocal phase at the neighbor,
-    !* we consider this to be a real "physical" phase boundary, so completely incompatible.
-    !* If one of the two phases has a local plasticity law,
-    !* we do not consider this to be a phase boundary, so completely compatible.
-    if (neighbor_phase /= ph) then
-      if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph))&
-        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
-      cycle
+    if (neighbor_e <= 0 .or. neighbor_i <= 0) then
+      !* FREE SURFACE
+      !* Set surface transmissivity to the value specified in the material.config
+      forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%surfaceTransmissivity)
+      cycle neighbors
     endif
 
-    !* GRAIN BOUNDARY !
-    !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
+    if (neighbor_phase /= ph) then
+      !* PHASE BOUNDARY
+      !* If we encounter a different nonlocal phase at the neighbor,
+      !* we consider this to be a real "physical" phase boundary, so completely incompatible.
+      !* If one of the two phases has a local plasticity law,
+      !* we do not consider this to be a phase boundary, so completely compatible.
+      if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph)) &
+        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
+      cycle neighbors
+    endif
+
     if (prm%grainboundaryTransmissivity >= 0.0_pReal) then
+      !* GRAIN BOUNDARY !
+      !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
       if (material_texture(1,i,e) /= material_texture(1,neighbor_i,neighbor_e)) then
         if (.not. phase_localPlasticity(neighbor_phase)) then
           forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%grainboundaryTransmissivity)
         endif
-        cycle
+        cycle neighbors
       endif
-
-    !* GRAIN BOUNDARY ?
-    !* Compatibility defined by relative orientation of slip systems:
-    !* The my_compatibility value is defined as the product of the slip normal projection and the slip direction projection.
-    !* Its sign is always positive for screws, for edges it has the same sign as the slip normal projection.
-    !* Since the sum for each slip system can easily exceed one (which would result in a transmissivity larger than one),
-    !* only values above or equal to a certain threshold value are considered. This threshold value is chosen, such that
-    !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one.
-    !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one.
-    !* All values below the threshold are set to zero.
     else
+      !* GRAIN BOUNDARY ?
+      !* Compatibility defined by relative orientation of slip systems:
+      !* The my_compatibility value is defined as the product of the slip normal projection and the slip direction projection.
+      !* Its sign is always positive for screws, for edges it has the same sign as the slip normal projection.
+      !* Since the sum for each slip system can easily exceed one (which would result in a transmissivity larger than one),
+      !* only values above or equal to a certain threshold value are considered. This threshold value is chosen, such that
+      !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one.
+      !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one.
+      !* All values below the threshold are set to zero.
       mis = orientation(1,i,e)%misorientation(orientation(1,neighbor_i,neighbor_e))
       mySlipSystems: do s1 = 1,ns
         neighborSlipSystems: do s2 = 1,ns
