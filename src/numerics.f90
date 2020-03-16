@@ -75,18 +75,6 @@ module numerics
    structOrder                =  2                                                                 !< order of displacement shape functions
  logical, protected, public :: &
    BBarStabilisation          = .false.
- character(len=*), parameter, public :: &
-   petsc_defaultOptions    = '-mech_snes_type newtonls &
-                             &-mech_snes_linesearch_type cp &
-                             &-mech_snes_ksp_ew &
-                             &-mech_snes_ksp_ew_rtol0 0.01 &
-                             &-mech_snes_ksp_ew_rtolmax 0.01 &
-                             &-mech_ksp_type fgmres &
-                             &-mech_ksp_max_it 25 &
-                             &-mech_pc_type ml &
-                             &-mech_mg_levels_ksp_type chebyshev &
-                             &-mech_mg_levels_pc_type sor &
-                             &-mech_pc_ml_nullspace user'
  character(len=pStringLen), protected, public :: &
    petsc_options           = ''
 #endif
@@ -303,7 +291,7 @@ subroutine numerics_init
 #ifdef FEM
  write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
  write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
+ write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
  write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
 
