@@ -73,25 +73,20 @@ else:
   parser.error('unsupported VTK file type extension.')
 
 Npoints   = Polydata.GetNumberOfPoints()
-Ncells    = Polydata.GetNumberOfCells()
-Nvertices = Polydata.GetNumberOfVerts()
 
-if Npoints != Ncells or Npoints != Nvertices:
-  parser.error('number of points, cells, and vertices in VTK differ from each other.')
-
-damask.util.croak('{}: {} points/vertices/cells...'.format(options.vtk,Npoints))
+damask.util.croak('{}: {} points...'.format(options.vtk,Npoints))
 
 for name in filenames:
   damask.util.report(scriptName,name)
 
   table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  
+
   VTKarray = {}
   for data in options.data:
     VTKarray[data] = numpy_support.numpy_to_vtk(table.get(data).copy(),
                                                 deep=True,array_type=vtk.VTK_DOUBLE)
     VTKarray[data].SetName(data)
-  
+
   for color in options.color:
     VTKarray[color] = numpy_support.numpy_to_vtk((table.get(color)*255).astype(int).copy(),
                                                 deep=True,array_type=vtk.VTK_UNSIGNED_CHAR)

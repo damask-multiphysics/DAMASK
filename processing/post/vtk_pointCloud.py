@@ -40,22 +40,17 @@ for name in filenames:
 
   table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-# ------------------------------------------ process data ---------------------------------------  
-
+# ------------------------------------------ process data ---------------------------------------
   Polydata = vtk.vtkPolyData()
   Points   = vtk.vtkPoints()
-  Vertices = vtk.vtkCellArray()
 
   for p in table.get(options.pos):
     pointID = Points.InsertNextPoint(p)
-    Vertices.InsertNextCell(1)
-    Vertices.InsertCellPoint(pointID)
 
   Polydata.SetPoints(Points)
-  Polydata.SetVerts(Vertices)
   Polydata.Modified()
- 
-# ------------------------------------------ output result ---------------------------------------  
+
+# ------------------------------------------ output result ---------------------------------------
 
   if name:
     writer = vtk.vtkXMLPolyDataWriter()
@@ -68,8 +63,8 @@ for name in filenames:
     writer = vtk.vtkDataSetWriter()
     writer.SetHeader('# powered by '+scriptID)
     writer.WriteToOutputStringOn()
-  
-  
+
+
   writer.SetInputData(Polydata)
 
   writer.Write()
