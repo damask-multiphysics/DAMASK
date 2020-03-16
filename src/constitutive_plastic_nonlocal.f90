@@ -852,145 +852,6 @@ end subroutine plastic_nonlocal_dependentState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates kinetics
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
-                                     tauThreshold, c, Temperature, instance, of)
-  integer, intent(in) :: &
-    c, &                                                                                            !< dislocation character (1:edge, 2:screw)
-    instance, of
-  real(pReal), intent(in) :: &
-    Temperature                                                                                     !< temperature
-  real(pReal), dimension(param(instance)%totalNslip), intent(in) :: &
-    tau, &                                                                                          !< resolved external shear stress (without non Schmid effects)
-    tauNS, &                                                                                        !< resolved external shear stress (including non Schmid effects)
-    tauThreshold                                                                                    !< threshold shear stress
-
-  real(pReal), dimension(param(instance)%totalNslip), intent(out) ::  &
-    v, &                                                                                            !< velocity
-    dv_dtau, &                                                                                      !< velocity derivative with respect to resolved shear stress (without non Schmid contributions)
-    dv_dtauNS                                                                                       !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
-
-  integer :: &
-    ns, &                                                                                           !< short notation for the total number of active slip systems
-    s                                                                                               !< index of my current slip system
-  real(pReal) :: &
-    tauRel_P, &
-    tauRel_S, &
-    tauEff, &                                                                                       !< effective shear stress
-    tPeierls, &                                                                                     !< waiting time in front of a peierls barriers
-    tSolidSolution, &                                                                               !< waiting time in front of a solid solution obstacle
-    vViscous, &                                                                                     !< viscous glide velocity
-    dtPeierls_dtau, &                                                                               !< derivative with respect to resolved shear stress
-    dtSolidSolution_dtau, &                                                                         !< derivative with respect to resolved shear stress
-    meanfreepath_S, &                                                                               !< mean free travel distance for dislocations between two solid solution obstacles
-    meanfreepath_P, &                                                                               !< mean free travel distance for dislocations between two Peierls barriers
-    jumpWidth_P, &                                                                                  !< depth of activated area
-    jumpWidth_S, &                                                                                  !< depth of activated area
-    activationLength_P, &                                                                           !< length of activated dislocation line
-    activationLength_S, &                                                                           !< length of activated dislocation line
-    activationVolume_P, &                                                                           !< volume that needs to be activated to overcome barrier
-    activationVolume_S, &                                                                           !< volume that needs to be activated to overcome barrier
-    activationEnergy_P, &                                                                           !< energy that is needed to overcome barrier
-    activationEnergy_S, &                                                                           !< energy that is needed to overcome barrier
-    criticalStress_P, &                                                                             !< maximum obstacle strength
-    criticalStress_S, &                                                                             !< maximum obstacle strength
-    mobility                                                                                        !< dislocation mobility
-
-  associate(prm => param(instance))
-  ns = prm%totalNslip
-  v = 0.0_pReal
-  dv_dtau = 0.0_pReal
-  dv_dtauNS = 0.0_pReal
-
-
-  if (Temperature > 0.0_pReal) then
-    do s = 1,ns
-      if (abs(tau(s)) > tauThreshold(s)) then
-
-        !* Peierls contribution
-        !* Effective stress includes non Schmid constributions
-        !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
-
-        tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))                                    ! ensure that the effective stress is positive
-        meanfreepath_P = prm%burgers(s)
-        jumpWidth_P = prm%burgers(s)
-        activationLength_P = prm%doublekinkwidth *prm%burgers(s)
-        activationVolume_P = activationLength_P * jumpWidth_P * prm%burgers(s)
-        criticalStress_P = prm%peierlsStress(s,c)
-        activationEnergy_P = criticalStress_P * activationVolume_P
-        tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                        ! ensure that the activation probability cannot become greater than one
-        tPeierls = 1.0_pReal / prm%fattack &
-                 * exp(activationEnergy_P / (KB * Temperature) &
-                       * (1.0_pReal - tauRel_P**prm%p)**prm%q)
-        if (tauEff < criticalStress_P) then
-          dtPeierls_dtau = tPeierls * prm%p * prm%q * activationVolume_P / (KB * Temperature) &
-                         * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) &
-                                      * tauRel_P**(prm%p-1.0_pReal)
-        else
-          dtPeierls_dtau = 0.0_pReal
-        endif
-
-
-        !* Contribution from solid solution strengthening
-        !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
-
-        tauEff = abs(tau(s)) - tauThreshold(s)
-        meanfreepath_S = prm%burgers(s) / sqrt(prm%solidSolutionConcentration)
-        jumpWidth_S = prm%solidSolutionSize * prm%burgers(s)
-        activationLength_S = prm%burgers(s) / sqrt(prm%solidSolutionConcentration)
-        activationVolume_S = activationLength_S * jumpWidth_S * prm%burgers(s)
-        activationEnergy_S = prm%solidSolutionEnergy
-        criticalStress_S = activationEnergy_S / activationVolume_S
-        tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)                                        ! ensure that the activation probability cannot become greater than one
-        tSolidSolution = 1.0_pReal /  prm%fattack &
-                       * exp(activationEnergy_S / (KB * Temperature) &
-                             * (1.0_pReal - tauRel_S**prm%p)**prm%q)
-        if (tauEff < criticalStress_S) then
-          dtSolidSolution_dtau = tSolidSolution * prm%p * prm%q &
-                               * activationVolume_S / (KB * Temperature) &
-                               * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal) &
-                                              * tauRel_S**(prm%p-1.0_pReal)
-        else
-          dtSolidSolution_dtau = 0.0_pReal
-        endif
-
-
-        !* viscous glide velocity
-
-        tauEff = abs(tau(s)) - tauThreshold(s)
-        mobility = prm%burgers(s) / prm%viscosity
-        vViscous = mobility * tauEff
-
-
-        !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of
-        !* free flight at glide velocity in between.
-        !* adopt sign from resolved stress
-
-        v(s) = sign(1.0_pReal,tau(s)) &
-             / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous)
-        dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / meanfreepath_S + mobility /vViscous**2.0_pReal)
-        dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / meanfreepath_P
-      endif
-    enddo
-  endif
-
-
-#ifdef DEBUGTODO
-  write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold * 1e-6_pReal
-  write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau * 1e-6_pReal
-  write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauNS / MPa', tauNS * 1e-6_pReal
-  write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / mm/s', v * 1e3
-  write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtau', dv_dtau
-  write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtauNS', dv_dtauNS
-#endif
-
-  end associate
-
-end subroutine plastic_nonlocal_kinetics
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
@@ -1009,7 +870,6 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   real(pReal), dimension(3,3,3,3), intent(out) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to Tstar (9x9 matrix)
 
-
   integer :: &
     instance, &                                                                                     !< current instance of this plasticity
     ns, &                                                                                           !< short notation for the total number of active slip systems
@@ -1017,7 +877,6 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
     j, &
     k, &
     l, &
-    ph, &                                                                                           !phase number
     of, &                                                                                           !offset
     t, &                                                                                            !< dislocation type
     s                                                                                               !< index of my current slip system
@@ -1035,10 +894,9 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
     gdotTotal                                                                                       !< shear rate
 
   !*** shortcut for mapping
-  ph = material_phaseAt(1,el)
   of = material_phasememberAt(1,ip,el)
 
-  instance = phase_plasticityInstance(ph)
+  instance = phase_plasticityInstance(material_phaseAt(1,el))
   associate(prm => param(instance),dst=>microstructure(instance),stt=>state(instance))
   ns = prm%totalNslip
 
@@ -1063,9 +921,8 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
   tau = tau + dst%tau_back(:,of)
 
   ! edges
-  call plastic_nonlocal_kinetics(v(:,1), dv_dtau(:,1), dv_dtauNS(:,1), &
-                                 tau, tauNS(:,1), dst%tau_pass(:,of), &
-                                 1, Temperature, instance, of)
+  call kinetics(v(:,1), dv_dtau(:,1), dv_dtauNS(:,1), &
+                tau, tauNS(:,1), dst%tau_pass(:,of),1,Temperature, instance, of)
   v(:,2)         = v(:,1)
   dv_dtau(:,2)   = dv_dtau(:,1)
   dv_dtauNS(:,2) = dv_dtauNS(:,1)
@@ -1079,9 +936,8 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
     endforall
   else
     do t = 3,4
-      call plastic_nonlocal_kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
-                                     tau, tauNS(:,t), dst%tau_pass(:,of), &
-                                     2, Temperature, instance, of)
+      call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
+                    tau, tauNS(:,t), dst%tau_pass(:,of),2,Temperature, instance, of)
     enddo
   endif
 
@@ -1302,10 +1158,6 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
     lineLength, &                                                                                   !< dislocation line length leaving the current interface
     selfDiffusion                                                                                   !< self diffusion
 
-  logical :: &
-    considerEnteringFlux, &
-    considerLeavingFlux
-
   ph = material_phaseAt(1,el)
   if (timestep <= 0.0_pReal) then
     plasticState(ph)%dotState = 0.0_pReal
@@ -1436,6 +1288,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
         Favg = my_F
       endif
 
+      neighbor_v0 = 0.0_pReal        ! needed for check of sign change in flux density below
 
       !* FLUX FROM MY NEIGHBOR TO ME
       !* This is only considered, if I have a neighbor of nonlocal plasticity
@@ -1445,16 +1298,10 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
       !* my neighbor's interface.
       !* The entering flux from my neighbor will be distributed on my slip systems according to the
       !* compatibility
-
-      considerEnteringFlux = .false.
-      neighbor_v0 = 0.0_pReal        ! needed for check of sign change in flux density below
       if (neighbor_n > 0) then
-        if (phase_plasticity(material_phaseAt(1,neighbor_el)) == PLASTICITY_NONLOCAL_ID &
-            .and. any(compatibility(:,:,:,n,ip,el) > 0.0_pReal)) &
-          considerEnteringFlux = .true.
-      endif
+      if (phase_plasticity(material_phaseAt(1,neighbor_el)) == PLASTICITY_NONLOCAL_ID .and. &
+          any(compatibility(:,:,:,n,ip,el) > 0.0_pReal)) then
 
-      enteringFlux: if (considerEnteringFlux) then
         forall (s = 1:ns, t = 1:4)
           neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,neighbor_instance),no)
           neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,neighbor_instance),no),0.0_pReal)
@@ -1464,7 +1311,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
           .or. neighbor_rhoSgl0 < prm%significantRho) &
           neighbor_rhoSgl0 = 0.0_pReal
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
-                                     IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
+                                     IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! normal of the interface in (average) deformed configuration (pointing neighbor => me)
         normal_neighbor2me = matmul(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
                            / math_det33(neighbor_Fe)                                                ! interface normal in the lattice configuration of my neighbor
         area = IParea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
@@ -1480,7 +1327,6 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
               where (compatibility(c,:,s,n,ip,el) > 0.0_pReal) &
                 rhoDotFlux(:,t) = rhoDotFlux(1:ns,t) &
                                 + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2.0_pReal    ! transferring to equally signed mobile dislocation type
-
               where (compatibility(c,:,s,n,ip,el) < 0.0_pReal) &
                 rhoDotFlux(:,topp) = rhoDotFlux(:,topp) &
                                    + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2.0_pReal ! transferring to opposite signed mobile dislocation type
@@ -1488,7 +1334,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
             endif
           enddo
         enddo
-      endif enteringFlux
+      endif; endif
 
 
       !* FLUX FROM ME TO MY NEIGHBOR
@@ -1498,17 +1344,11 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
       !*    leaving flux to neighbor == entering flux from opposite neighbor
       !* In case of reduced transmissivity, part of the leaving flux is stored as dead dislocation density.
       !* That means for an interface of zero transmissivity the leaving flux is fully converted to dead dislocations.
-
-      considerLeavingFlux = .true.
       if (opposite_n > 0) then
-        if (phase_plasticity(material_phaseAt(1,opposite_el)) /= PLASTICITY_NONLOCAL_ID) &
-          considerLeavingFlux = .false.
-      endif
+      if (phase_plasticity(material_phaseAt(1,opposite_el)) == PLASTICITY_NONLOCAL_ID) then
 
-      leavingFlux: if (considerLeavingFlux) then
         normal_me2neighbor_defConf = math_det33(Favg) &
-                                   * matmul(math_inv33(transpose(Favg)), &
-                                                             IPareaNormal(1:3,n,ip,el))             ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
+                                   * matmul(math_inv33(transpose(Favg)),IPareaNormal(1:3,n,ip,el))  ! normal of the interface in (average) deformed configuration (pointing me => neighbor)
         normal_me2neighbor = matmul(transpose(my_Fe), normal_me2neighbor_defConf) &
                            / math_det33(my_Fe)                                                      ! interface normal in my lattice configuration
         area = IParea(n,ip,el) * norm2(normal_me2neighbor)
@@ -1531,7 +1371,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
             endif
           enddo
         enddo
-      endif leavingFlux
+      endif; endif
 
     enddo neighbors
   endif
@@ -1583,10 +1423,9 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   !*** thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
-  selfDiffusion = prm%Dsd0 * exp(-prm%selfDiffusionEnergy / (KB * Temperature))
-  vClimb =  prm%atomicVolume * selfDiffusion / ( KB * Temperature ) &
-            * prm%mu / ( 2.0_pReal * PI * (1.0_pReal-prm%nu) ) &
-            * 2.0_pReal / ( dUpper(:,1) + dLower(:,1) )
+  selfDiffusion = prm%Dsd0 * exp(-prm%selfDiffusionEnergy / (kB * Temperature))
+  vClimb = prm%atomicVolume * selfDiffusion * prm%mu &
+         / ( kB * Temperature  * PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)))
   forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
     rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
@@ -1639,6 +1478,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   end associate
 
 end subroutine plastic_nonlocal_dotState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Compatibility update
@@ -1826,6 +1666,120 @@ module subroutine plastic_nonlocal_results(instance,group)
   end associate
 
 end subroutine plastic_nonlocal_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates kinetics
+!--------------------------------------------------------------------------------------------------
+subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Temperature, instance, of)
+  integer, intent(in) :: &
+    c, &                                                                                            !< dislocation character (1:edge, 2:screw)
+    instance, of
+  real(pReal), intent(in) :: &
+    Temperature                                                                                     !< temperature
+  real(pReal), dimension(param(instance)%totalNslip), intent(in) :: &
+    tau, &                                                                                          !< resolved external shear stress (without non Schmid effects)
+    tauNS, &                                                                                        !< resolved external shear stress (including non Schmid effects)
+    tauThreshold                                                                                    !< threshold shear stress
+  real(pReal), dimension(param(instance)%totalNslip), intent(out) ::  &
+    v, &                                                                                            !< velocity
+    dv_dtau, &                                                                                      !< velocity derivative with respect to resolved shear stress (without non Schmid contributions)
+    dv_dtauNS                                                                                       !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
+
+  integer :: &
+    ns, &                                                                                           !< short notation for the total number of active slip systems
+    s                                                                                               !< index of my current slip system
+  real(pReal) :: &
+    tauRel_P, &
+    tauRel_S, &
+    tauEff, &                                                                                       !< effective shear stress
+    tPeierls, &                                                                                     !< waiting time in front of a peierls barriers
+    tSolidSolution, &                                                                               !< waiting time in front of a solid solution obstacle
+    vViscous, &                                                                                     !< viscous glide velocity
+    dtPeierls_dtau, &                                                                               !< derivative with respect to resolved shear stress
+    dtSolidSolution_dtau, &                                                                         !< derivative with respect to resolved shear stress
+    meanfreepath_S, &                                                                               !< mean free travel distance for dislocations between two solid solution obstacles
+    meanfreepath_P, &                                                                               !< mean free travel distance for dislocations between two Peierls barriers
+    jumpWidth_P, &                                                                                  !< depth of activated area
+    jumpWidth_S, &                                                                                  !< depth of activated area
+    activationLength_P, &                                                                           !< length of activated dislocation line
+    activationLength_S, &                                                                           !< length of activated dislocation line
+    activationVolume_P, &                                                                           !< volume that needs to be activated to overcome barrier
+    activationVolume_S, &                                                                           !< volume that needs to be activated to overcome barrier
+    activationEnergy_P, &                                                                           !< energy that is needed to overcome barrier
+    activationEnergy_S, &                                                                           !< energy that is needed to overcome barrier
+    criticalStress_P, &                                                                             !< maximum obstacle strength
+    criticalStress_S, &                                                                             !< maximum obstacle strength
+    mobility                                                                                        !< dislocation mobility
+
+  associate(prm => param(instance))
+  ns = prm%totalNslip
+  v = 0.0_pReal
+  dv_dtau = 0.0_pReal
+  dv_dtauNS = 0.0_pReal
+
+
+  do s = 1,ns
+    if (abs(tau(s)) > tauThreshold(s)) then
+
+      !* Peierls contribution
+      !* Effective stress includes non Schmid constributions
+      !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
+      tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))                                      ! ensure that the effective stress is positive
+      meanfreepath_P = prm%burgers(s)
+      jumpWidth_P = prm%burgers(s)
+      activationLength_P = prm%doublekinkwidth *prm%burgers(s)
+      activationVolume_P = activationLength_P * jumpWidth_P * prm%burgers(s)
+      criticalStress_P = prm%peierlsStress(s,c)
+      activationEnergy_P = criticalStress_P * activationVolume_P
+      tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                          ! ensure that the activation probability cannot become greater than one
+      tPeierls = 1.0_pReal / prm%fattack &
+               * exp(activationEnergy_P / (kB * Temperature) &
+                     * (1.0_pReal - tauRel_P**prm%p)**prm%q)
+      if (tauEff < criticalStress_P) then
+        dtPeierls_dtau = tPeierls * prm%p * prm%q * activationVolume_P / (kB * Temperature) &
+                       * (1.0_pReal - tauRel_P**prm%p)**(prm%q-1.0_pReal) * tauRel_P**(prm%p-1.0_pReal)
+      else
+        dtPeierls_dtau = 0.0_pReal
+      endif
+
+      !* Contribution from solid solution strengthening
+      !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
+      tauEff = abs(tau(s)) - tauThreshold(s)
+      meanfreepath_S = prm%burgers(s) / sqrt(prm%solidSolutionConcentration)
+      jumpWidth_S = prm%solidSolutionSize * prm%burgers(s)
+      activationLength_S = prm%burgers(s) / sqrt(prm%solidSolutionConcentration)
+      activationVolume_S = activationLength_S * jumpWidth_S * prm%burgers(s)
+      activationEnergy_S = prm%solidSolutionEnergy
+      criticalStress_S = activationEnergy_S / activationVolume_S
+      tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)                                          ! ensure that the activation probability cannot become greater than one
+      tSolidSolution = 1.0_pReal /  prm%fattack &
+                     * exp(activationEnergy_S / (kB * Temperature)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
+      if (tauEff < criticalStress_S) then
+        dtSolidSolution_dtau = tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * Temperature) &
+                             * (1.0_pReal - tauRel_S**prm%p)**(prm%q-1.0_pReal)* tauRel_S**(prm%p-1.0_pReal)
+      else
+        dtSolidSolution_dtau = 0.0_pReal
+      endif
+
+      !* viscous glide velocity
+      tauEff = abs(tau(s)) - tauThreshold(s)
+      mobility = prm%burgers(s) / prm%viscosity
+      vViscous = mobility * tauEff
+
+      !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of
+      !* free flight at glide velocity in between.
+      !* adopt sign from resolved stress
+      v(s) = sign(1.0_pReal,tau(s)) &
+           / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous)
+      dv_dtau(s)   = v(s)**2.0_pReal * (dtSolidSolution_dtau / meanfreepath_S + mobility /vViscous**2.0_pReal)
+      dv_dtauNS(s) = v(s)**2.0_pReal * dtPeierls_dtau / meanfreepath_P
+    endif
+  enddo
+
+  end associate
+
+end subroutine kinetics
 
 
 !--------------------------------------------------------------------------------------------------
