@@ -892,8 +892,8 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
       tauNS(s,4) = math_mul33xx33(Mp, -prm%nonSchmid_pos(1:3,1:3,s))
     endif
   enddo
-  forall (t = 1:4) tauNS(:,t) = tauNS(:,t) + dst%tau_back(:,of)
-  tau = tau + dst%tau_back(:,of)
+  tauNS = tauNS + spread(dst%tau_back(:,of),2,4)
+  tau   = tau   + dst%tau_back(:,of)
 
   ! edges
   call kinetics(v(:,1), dv_dtau(:,1), dv_dtauNS(:,1), &
@@ -904,11 +904,9 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
 
   !screws
   if (size(prm%nonSchmidCoeff) == 0) then
-    forall(t = 3:4)
-      v(:,t)         = v(:,1)
-      dv_dtau(:,t)   = dv_dtau(:,1)
-      dv_dtauNS(:,t) = dv_dtauNS(:,1)
-    endforall
+    v(:,3:4)         = spread(v(:,1),2,2)
+    dv_dtau(:,3:4)   = spread(dv_dtau(:,1),2,2)
+    dv_dtauNS(:,3:4) = spread(dv_dtauNS(:,1),2,2)
   else
     do t = 3,4
       call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
@@ -1155,7 +1153,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)
-  forall (t = 1:4) gdot(:,t) = rhoSgl(:,t) *  prm%burgers * v(:,t)
+  gdot = rhoSgl(:,1:4) * v * spread(prm%burgers,2,4)
 
 #ifdef DEBUG
     if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0 &
@@ -1447,7 +1445,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
     plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
   else
     dot%rho(:,of) = pack(rhoDot,.true.)
-    forall (s = 1:ns) dot%gamma(s,of) = sum(gdot(s,1:4))
+    dot%gamma(:,of) = sum(gdot,2)
   endif
 
   end associate
