@@ -557,7 +557,6 @@ module subroutine plastic_nonlocal_init
    real(pReal), dimension(NofMyPhase) :: &
      volume
 
-
    instance = phase_plasticityInstance(phase)
    associate(prm => param(instance), stt => state(instance))
 
@@ -613,23 +612,21 @@ end subroutine plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
+module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
 
-  integer, intent(in) :: &
-    ip, &
-    el
   real(pReal), dimension(3,3), intent(in) :: &
     F, &
     Fp
+  integer, intent(in) :: &
+    instance, &
+    of, &
+    ip, &
+    el
 
   integer :: &
-    ph, &                                                                                           !< phase
-    of, &                                                                                           !< offset
     no, &                                                                                           !< neighbor offset
-    ns, &
     neighbor_el, &                                                                                  ! element number of neighboring material point
     neighbor_ip, &                                                                                  ! integration point of neighboring material point
-    instance, &                                                                                     ! my instance of this plasticity
     neighbor_instance, &                                                                            ! instance of this plasticity of neighboring material point
     c, &                                                                                            ! index of dilsocation character (edge, screw)
     s, &                                                                                            ! slip system index
@@ -654,34 +651,27 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
     invConnections
   real(pReal), dimension(3,nIPneighbors) :: &
     connection_latticeConf
-  real(pReal), dimension(2,totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
+  real(pReal), dimension(2,param(instance)%totalNslip) :: &
     rhoExcess
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
+  real(pReal), dimension(param(instance)%totalNslip) :: &
     rho_edg_delta, &
     rho_scr_delta
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),10) :: &
+  real(pReal), dimension(param(instance)%totalNslip,10) :: &
     rho, &
     rho0, &
     rho_neighbor0
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))), &
-                         totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
+  real(pReal), dimension(param(instance)%totalNslip,param(instance)%totalNslip) :: &
     myInteractionMatrix                                                                             ! corrected slip interaction matrix
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),nIPneighbors) :: &
+  real(pReal), dimension(param(instance)%totalNslip,nIPneighbors) :: &
     rho_edg_delta_neighbor, &
     rho_scr_delta_neighbor
-  real(pReal), dimension(2,maxval(totalNslip),nIPneighbors) :: &
+  real(pReal), dimension(2,maxval(param(:)%totalNslip),nIPneighbors) :: &
     neighbor_rhoExcess, &                                                                           ! excess density at neighboring material point
     neighbor_rhoTotal                                                                               ! total density at neighboring material point
-  real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),2) :: &
+  real(pReal), dimension(3,param(instance)%totalNslip,2) :: &
     m                                                                                               ! direction of dislocation motion
 
-  ph = material_phaseAt(1,el)
-  of = material_phasememberAt(1,ip,el)
-  instance = phase_plasticityInstance(ph)
-
   associate(prm => param(instance),dst => microstructure(instance), stt => state(instance))
-
-  ns = prm%totalNslip
 
   rho = getRho(instance,of,ip,el)
 
@@ -696,7 +686,7 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
                         * spread((  1.0_pReal - prm%linetensionEffect &
                                    + prm%linetensionEffect &
                                    * log(0.35_pReal * prm%burgers * sqrt(max(stt%rho_forest(:,of),prm%significantRho))) &
-                                   / log(0.35_pReal * prm%burgers * 1e6_pReal))** 2.0_pReal,2,ns)
+                                   / log(0.35_pReal * prm%burgers * 1e6_pReal))** 2.0_pReal,2,prm%totalNslip)
   else
     myInteractionMatrix = prm%interactionSlipSlip
   endif
@@ -773,7 +763,7 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
     m(1:3,:,1) =  prm%slip_direction
     m(1:3,:,2) = -prm%slip_transverse
 
-    do s = 1,ns
+    do s = 1,prm%totalNslip
 
       ! gradient from interpolation of neighboring excess density ...
       do c = 1,2
@@ -803,10 +793,9 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
       where(rhoTotal > 0.0_pReal) rhoExcessGradient_over_rho = rhoExcessGradient / rhoTotal
 
         ! ... gives the local stress correction when multiplied with a factor
-      dst%tau_back(s,of) = - prm%mu * prm%burgers(s) / (2.0_pReal * pi) &
-                         * (rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) &
-                         + rhoExcessGradient_over_rho(2))
-
+      dst%tau_back(s,of) = - prm%mu * prm%burgers(s) / (2.0_pReal * PI) &
+                         * (  rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) &
+                            + rhoExcessGradient_over_rho(2))
     enddo
   endif
 
@@ -829,56 +818,50 @@ end subroutine plastic_nonlocal_dependentState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
-                                                   Mp, Temperature, volume, ip, el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< current integration point
-    el                                                                                              !< current element number
-  real(pReal), intent(in) :: &
-    Temperature, &                                                                                  !< temperature
-    volume                                                                                          !< volume of the materialpoint
-  real(pReal), dimension(3,3), intent(in) :: &
-    Mp
+module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
+                                                   Mp,Temperature,instance,of,ip,el)
   real(pReal), dimension(3,3), intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
-    dLp_dMp                                                                                         !< derivative of Lp with respect to Tstar (9x9 matrix)
+    dLp_dMp
+  integer, intent(in) :: &
+    instance, &
+    of, &
+    ip, &                                                                                           !< current integration point
+    el                                                                                              !< current element number
+  real(pReal), intent(in) :: &
+    Temperature                                                                                     !< temperature
 
+  real(pReal), dimension(3,3), intent(in) :: &
+    Mp
+                                                                                                    !< derivative of Lp with respect to Mp
   integer :: &
-    instance, &                                                                                     !< current instance of this plasticity
     ns, &                                                                                           !< short notation for the total number of active slip systems
     i, &
     j, &
     k, &
     l, &
-    of, &                                                                                           !offset
     t, &                                                                                            !< dislocation type
     s                                                                                               !< index of my current slip system
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),8) :: &
+  real(pReal), dimension(param(instance)%totalNslip,8) :: &
     rhoSgl                                                                                          !< single dislocation densities (including blocked)
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),10) :: &
+  real(pReal), dimension(param(instance)%totalNslip,10) :: &
     rho
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),4) :: &
+  real(pReal), dimension(param(instance)%totalNslip,4) :: &
     v, &                                                                                            !< velocity
     tauNS, &                                                                                        !< resolved shear stress including non Schmid and backstress terms
     dv_dtau, &                                                                                      !< velocity derivative with respect to the shear stress
     dv_dtauNS                                                                                       !< velocity derivative with respect to the shear stress
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
+  real(pReal), dimension(param(instance)%totalNslip) :: &
     tau, &                                                                                          !< resolved shear stress including backstress terms
     gdotTotal                                                                                       !< shear rate
 
-  !*** shortcut for mapping
-  of = material_phasememberAt(1,ip,el)
-
-  instance = phase_plasticityInstance(material_phaseAt(1,el))
   associate(prm => param(instance),dst=>microstructure(instance),stt=>state(instance))
   ns = prm%totalNslip
 
   !*** shortcut to state variables
   rho = getRho(instance,of,ip,el)
   rhoSgl = rho(:,sgl)
-
 
   do s = 1,ns
     tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s))
@@ -943,40 +926,38 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_deltaState(Mp,ip,el)
+module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
 
-  integer, intent(in) :: &
-    ip, &
-    el
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
+  integer, intent(in) :: &
+    instance, &                                                                                     ! current instance of this plasticity
+    of, &                                                                                           !< offset
+    ip, &
+    el
 
   integer :: &
     ph, &                                                                                           !< phase
-    of, &                                                                                           !< offset
-    instance, &                                                                                     ! current instance of this plasticity
     ns, &                                                                                           ! short notation for the total number of active slip systems
     c, &                                                                                            ! character of dislocation
     t, &                                                                                            ! type of dislocation
     s                                                                                               ! index of my current slip system
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),10) :: &
+  real(pReal), dimension(param(instance)%totalNslip,10) :: &
     deltaRhoRemobilization, &                                                                       ! density increment by remobilization
     deltaRhoDipole2SingleStress                                                                     ! density increment by dipole dissociation (by stress change)
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),10) :: &
+  real(pReal), dimension(param(instance)%totalNslip,10) :: &
     rho                                                                                             ! current  dislocation densities
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),4) :: &
+  real(pReal), dimension(param(instance)%totalNslip,4) :: &
     v                                                                                               ! dislocation glide velocity
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
+  real(pReal), dimension(param(instance)%totalNslip) :: &
     tau                                                                                             ! current resolved shear stress
-  real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),2) :: &
+  real(pReal), dimension(param(instance)%totalNslip,2) :: &
     rhoDip, &                                                                                       ! current dipole dislocation densities (screw and edge dipoles)
     dUpper, &                                                                                       ! current maximum stable dipole distance for edges and screws
     dUpperOld, &                                                                                    ! old maximum stable dipole distance for edges and screws
     deltaDUpper                                                                                     ! change in maximum stable dipole distance for edges and screws
 
    ph = material_phaseAt(1,el)
-   of = material_phasememberAt(1,ip,el)
-   instance = phase_plasticityInstance(ph)
 
    associate(prm => param(instance),dst => microstructure(instance),del => deltaState(instance))
    ns = totalNslip(instance)

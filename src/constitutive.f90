@@ -126,8 +126,8 @@ module constitutive
         of
     end subroutine plastic_disloUCLA_LpAndItsTangent
 
-    module subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dMp, &
-                                                       Mp, Temperature, volume, ip, el)
+    module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
+                                                       Mp,Temperature,instance,of,ip,el)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -136,9 +136,10 @@ module constitutive
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp                                                                                          !< Mandel stress
       real(pReal),                     intent(in) :: &
-        Temperature, &
-        volume
-      integer,                          intent(in) :: &
+        Temperature
+      integer,                         intent(in) :: &
+        instance, &
+        of, &
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
     end subroutine plastic_nonlocal_LpAndItsTangent
@@ -234,13 +235,15 @@ module constitutive
         of
     end subroutine plastic_disloUCLA_dependentState
 
-    module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
-      integer, intent(in) :: &
-        ip, &
-        el
+    module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
       real(pReal), dimension(3,3), intent(in) :: &
         F, &
         Fp
+      integer, intent(in) :: &
+        instance, &
+        of, &
+        ip, &
+        el
     end subroutine plastic_nonlocal_dependentState
 
 
@@ -252,12 +255,14 @@ module constitutive
         of
     end subroutine plastic_kinehardening_deltaState
 
-    module subroutine plastic_nonlocal_deltaState(Mp,ip,el)
-      integer, intent(in) :: &
-        ip, &
-        el
+    module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp
+      integer, intent(in) :: &
+        instance, &
+        of, &
+        ip, &
+        el
     end subroutine plastic_nonlocal_deltaState
 
 
@@ -429,20 +434,18 @@ subroutine constitutive_dependentState(F, Fp, ipc, ip, el)
     tme, &                                                                                          !< thermal member position
     instance, of
 
-  ho = material_homogenizationAt(el)
+  ho  = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
+  of  = material_phasememberAt(ipc,ip,el)
+  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,of)
     case (PLASTICITY_DISLOUCLA_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_disloUCLA_dependentState(instance,of)
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dependentState (F,Fp,ip,el)
+      call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
   end select plasticityType
 
 end subroutine constitutive_dependentState
@@ -480,7 +483,9 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
 
-  Mp  = matmul(matmul(transpose(Fi),Fi),S)
+  Mp = matmul(matmul(transpose(Fi),Fi),S)
+  of = material_phasememberAt(ipc,ip,el)
+  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
 
@@ -489,33 +494,22 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       dLp_dMp = 0.0_pReal
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
-      call plastic_isotropic_LpAndItsTangent       (Lp,dLp_dMp,Mp,instance,of)
+      call plastic_isotropic_LpAndItsTangent   (Lp,dLp_dMp,Mp,instance,of)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
-      call plastic_phenopowerlaw_LpAndItsTangent   (Lp,dLp_dMp,Mp,instance,of)
+      call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
-      call plastic_kinehardening_LpAndItsTangent   (Lp,dLp_dMp, Mp,instance,of)
+      call plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_LpAndItsTangent        (Lp,dLp_dMp,Mp, &
-                                                    temperature(ho)%p(tme),geometry_plastic_nonlocal_IPvolume0(ip,el),ip,el)
+      call plastic_nonlocal_LpAndItsTangent     (Lp,dLp_dMp,Mp, temperature(ho)%p(tme),instance,of,ip,el)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
-      call plastic_dislotwin_LpAndItsTangent       (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_dislotwin_LpAndItsTangent    (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_DISLOUCLA_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
-      call plastic_disloucla_LpAndItsTangent       (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_disloucla_LpAndItsTangent    (Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
   end select plasticityType
 
@@ -814,16 +808,16 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
     instance, of
 
   Mp  = matmul(matmul(transpose(Fi),Fi),S)
+  of = material_phasememberAt(ipc,ip,el)
+  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_kinehardening_deltaState(Mp,instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_deltaState(Mp,ip,el)
+      call plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
 
   end select plasticityType
 
