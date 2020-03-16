@@ -111,7 +111,6 @@ submodule(constitutive) plastic_nonlocal
     logical :: &
       shortRangeStressCorrection, &                                                                 !< flag indicating the use of the short range stress correction by a excess density gradient term
       probabilisticMultiplication
-
   end type tParameters
 
   type :: tNonlocalMicrostructure
@@ -694,16 +693,16 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
   ! (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
   if (any(lattice_structure(material_phaseAt(1,el)) == [LATTICE_bcc_ID,LATTICE_fcc_ID])) then
     myInteractionMatrix = prm%interactionSlipSlip &
-                        * transpose(spread((  1.0_pReal - prm%linetensionEffect &
+                        * spread((  1.0_pReal - prm%linetensionEffect &
                                    + prm%linetensionEffect &
                                    * log(0.35_pReal * prm%burgers * sqrt(max(stt%rho_forest(:,of),prm%significantRho))) &
-                                   / log(0.35_pReal * prm%burgers * 1e6_pReal))** 2.0_pReal,2,ns))
+                                   / log(0.35_pReal * prm%burgers * 1e6_pReal))** 2.0_pReal,2,ns)
   else
     myInteractionMatrix = prm%interactionSlipSlip
   endif
 
   dst%tau_pass(:,of) = prm%mu * prm%burgers &
-                     * sqrt(matmul(transpose(myInteractionMatrix),sum(abs(rho),2)))                 ! ToDo: MD the transpose seems wrong here (cf other laws)
+                     * sqrt(matmul(myInteractionMatrix,sum(abs(rho),2)))
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
 !*** zero for material points of local plasticity
