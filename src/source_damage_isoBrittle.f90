@@ -47,7 +47,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoBrittle_init
 
-  integer :: Ninstance,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
@@ -82,8 +82,8 @@ subroutine source_damage_isoBrittle_init
     if (prm%N                <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
     if (prm%critStrainEnergy <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
 
-    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,1)
+    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,1)
     sourceState(p)%p(sourceOffset)%atol = config%getFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
     if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 

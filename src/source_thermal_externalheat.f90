@@ -43,7 +43,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_thermal_externalheat_init
 
-  integer :: Ninstance,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,sourceOffset,NipcMyPhase,p
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'; flush(6)
 
@@ -73,8 +73,8 @@ subroutine source_thermal_externalheat_init
 
     prm%heat_rate = config%getFloats('externalheat_rate',requiredSize = size(prm%time))
 
-    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
+    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,0)
 
     end associate
   enddo

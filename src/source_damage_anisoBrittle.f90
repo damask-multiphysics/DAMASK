@@ -57,7 +57,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_anisoBrittle_init
 
-  integer :: Ninstance,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
@@ -107,8 +107,8 @@ subroutine source_damage_anisoBrittle_init
     if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critLoad'
     if (any(prm%critDisp <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critDisp'
 
-    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
+    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,0)
     sourceState(p)%p(sourceOffset)%atol = config%getFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
     if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
 

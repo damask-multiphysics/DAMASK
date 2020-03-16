@@ -17,7 +17,7 @@ module material
 
   implicit none
   private
- 
+
   character(len=*), parameter, public :: &
     ELASTICITY_hooke_label               = 'hooke', &
     PLASTICITY_none_label                = 'none', &
@@ -46,9 +46,9 @@ module material
     HOMOGENIZATION_none_label            = 'none', &
     HOMOGENIZATION_isostrain_label       = 'isostrain', &
     HOMOGENIZATION_rgc_label             = 'rgc'
- 
- 
- 
+
+
+
   enum, bind(c)
     enumerator :: ELASTICITY_undefined_ID, &
                   ELASTICITY_hooke_ID, &
@@ -84,7 +84,7 @@ module material
                   HOMOGENIZATION_isostrain_ID, &
                   HOMOGENIZATION_rgc_ID
   end enum
- 
+
   integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
     phase_elasticity                                                                                !< elasticity of each phase
   integer(kind(PLASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
@@ -95,19 +95,19 @@ module material
     damage_type                                                                                     !< nonlocal damage model
   integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
     homogenization_type                                                                             !< type of each homogenization
- 
+
   integer, public, protected :: &
     material_Nphase, &                                                                              !< number of phases
     material_Nhomogenization                                                                        !< number of homogenizations
- 
+
   integer(kind(SOURCE_undefined_ID)),         dimension(:,:), allocatable, public, protected :: &
     phase_source, &                                                                                 !< active sources mechanisms of each phase
     phase_kinematics, &                                                                             !< active kinematic mechanisms of each phase
     phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
- 
+
   integer, public, protected :: &
     homogenization_maxNgrains                                                                       !< max number of grains in any USED homogenization
- 
+
   integer, dimension(:), allocatable, public, protected :: &
     phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
     phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
@@ -118,12 +118,12 @@ module material
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
- 
+
   real(pReal), dimension(:), allocatable, public, protected :: &
     thermal_initialT, &                                                                             !< initial temperature per each homogenization
     damage_initialPhi                                                                               !< initial damage per each homogenization
 
-! NEW MAPPINGS 
+! NEW MAPPINGS
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt                                                                       !< homogenization ID of each element (copy of discretization_homogenizationAt)
   integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
@@ -142,26 +142,26 @@ module material
     homogState, &
     thermalState, &
     damageState
- 
+
   integer, dimension(:,:,:), allocatable, public, protected :: &
     material_texture                                                                                !< texture (index) of each grain,IP,element. Only used by plastic_nonlocal
- 
+
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
- 
+
   logical, dimension(:), allocatable, public, protected :: &
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
- 
+
   integer, dimension(:), allocatable, private :: &
     microstructure_Nconstituents                                                                    !< number of constituents in each microstructure
- 
+
   integer, dimension(:,:), allocatable, private :: &
     microstructure_phase, &                                                                         !< phase IDs of each microstructure
     microstructure_texture                                                                          !< texture IDs of each microstructure
- 
+
   type(Rotation), dimension(:), allocatable, private :: &
     texture_orientation                                                                             !< Euler angles in material.config (possibly rotated for alignment)
- 
+
 
 ! BEGIN DEPRECATED
   integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst             !< mapping from material points to offset in constant state/field
@@ -170,12 +170,12 @@ module material
   type(tHomogMapping), allocatable, dimension(:), public :: &
     thermalMapping, &                                                                               !< mapping for thermal state/fields
     damageMapping                                                                                   !< mapping for damage state/fields
- 
+
   type(group_float),  allocatable, dimension(:), public :: &
     temperature, &                                                                                  !< temperature field
     damage, &                                                                                       !< damage field
     temperatureRate                                                                                 !< temperature change rate field
- 
+
   public :: &
     material_init, &
     material_allocatePlasticState, &
@@ -219,43 +219,43 @@ subroutine material_init
   integer, dimension(:), allocatable :: &
    CounterPhase, &
    CounterHomogenization
- 
+
   myDebug = debug_level(debug_material)
- 
+
   write(6,'(/,a)') ' <<<+-  material init  -+>>>'; flush(6)
- 
+
   call material_parsePhase()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Phase          parsed'; flush(6)
-  
+
   call material_parseMicrostructure()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Microstructure parsed'; flush(6)
-  
+
   call material_parseHomogenization()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Homogenization parsed'; flush(6)
-  
+
   call material_parseTexture()
   if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Texture        parsed'; flush(6)
-  
+
   material_Nphase          = size(config_phase)
   material_Nhomogenization = size(config_homogenization)
- 
- 
+
+
   allocate(plasticState(material_Nphase))
   allocate(sourceState (material_Nphase))
   do myPhase = 1,material_Nphase
     allocate(sourceState(myPhase)%p(phase_Nsources(myPhase)))
   enddo
- 
+
   allocate(homogState      (material_Nhomogenization))
   allocate(thermalState    (material_Nhomogenization))
   allocate(damageState     (material_Nhomogenization))
- 
+
   allocate(thermalMapping  (material_Nhomogenization))
   allocate(damageMapping   (material_Nhomogenization))
- 
+
   allocate(temperature     (material_Nhomogenization))
   allocate(damage          (material_Nhomogenization))
- 
+
   allocate(temperatureRate (material_Nhomogenization))
 
   do m = 1,size(config_microstructure)
@@ -269,7 +269,7 @@ subroutine material_init
          call IO_error(151,m)
   enddo
   if(homogenization_maxNgrains > size(microstructure_phase,1)) call IO_error(148)
- 
+
   debugOut: if (iand(myDebug,debug_levelExtensive) /= 0) then
     write(6,'(/,a,/)') ' MATERIAL configuration'
     write(6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
@@ -314,15 +314,15 @@ subroutine material_init
        enddo
      enddo
    enddo
- 
+
   deallocate(microstructure_phase)
   deallocate(microstructure_texture)
   deallocate(texture_orientation)
- 
-  
+
+
   allocate(material_homogenizationAt,source=discretization_homogenizationAt)
   allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
- 
+
   allocate(CounterHomogenization(size(config_homogenization)),source=0)
   do e = 1, discretization_nElem
     do i = 1, discretization_nIP
@@ -331,9 +331,9 @@ subroutine material_init
       material_homogenizationMemberAt(i,e) = CounterHomogenization(material_homogenizationAt(e))
     enddo
   enddo
- 
+
   allocate(material_phaseMemberAt(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)
-  
+
   allocate(CounterPhase(size(config_phase)),source=0)
   do e = 1, discretization_nElem
     do i = 1, discretization_nIP
@@ -344,7 +344,7 @@ subroutine material_init
       enddo
     enddo
   enddo
-  
+
   call config_deallocate('material.config/microstructure')
   call config_deallocate('material.config/texture')
 
@@ -379,7 +379,7 @@ subroutine material_parseHomogenization
   character(len=pStringLen) :: tag
 
   logical, dimension(:), allocatable :: homogenization_active
- 
+
   allocate(homogenization_type(size(config_homogenization)),           source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(size(config_homogenization)),                  source=THERMAL_isothermal_ID)
   allocate(damage_type (size(config_homogenization)),                  source=DAMAGE_none_ID)
@@ -390,13 +390,13 @@ subroutine material_parseHomogenization
   allocate(homogenization_active(size(config_homogenization)),         source=.false.)  !!!!!!!!!!!!!!!
   allocate(thermal_initialT(size(config_homogenization)),              source=300.0_pReal)
   allocate(damage_initialPhi(size(config_homogenization)),             source=1.0_pReal)
- 
+
   forall (h = 1:size(config_homogenization)) &
     homogenization_active(h) = any(discretization_homogenizationAt == h)
- 
- 
+
+
   do h=1, size(config_homogenization)
- 
+
     tag = config_homogenization(h)%getString('mech')
     select case (trim(tag))
       case(HOMOGENIZATION_NONE_label)
@@ -411,12 +411,12 @@ subroutine material_parseHomogenization
       case default
         call IO_error(500,ext_msg=trim(tag))
     end select
-    
+
     homogenization_typeInstance(h) = count(homogenization_type==homogenization_type(h))
- 
+
     if (config_homogenization(h)%keyExists('thermal')) then
       thermal_initialT(h) =  config_homogenization(h)%getFloat('t0',defaultVal=300.0_pReal)
- 
+
       tag = config_homogenization(h)%getString('thermal')
       select case (trim(tag))
         case(THERMAL_isothermal_label)
@@ -428,12 +428,12 @@ subroutine material_parseHomogenization
         case default
           call IO_error(500,ext_msg=trim(tag))
       end select
- 
+
     endif
- 
+
     if (config_homogenization(h)%keyExists('damage')) then
       damage_initialPhi(h) =  config_homogenization(h)%getFloat('initialdamage',defaultVal=1.0_pReal)
- 
+
       tag = config_homogenization(h)%getString('damage')
       select case (trim(tag))
         case(DAMAGE_NONE_label)
@@ -445,17 +445,17 @@ subroutine material_parseHomogenization
         case default
           call IO_error(500,ext_msg=trim(tag))
       end select
- 
+
     endif
- 
+
   enddo
- 
+
   do h=1, size(config_homogenization)
     homogenization_typeInstance(h)  = count(homogenization_type(1:h) == homogenization_type(h))
     thermal_typeInstance(h)         = count(thermal_type       (1:h) == thermal_type       (h))
     damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
   enddo
- 
+
   homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
 
 end subroutine material_parseHomogenization
@@ -476,30 +476,30 @@ subroutine material_parseMicrostructure
     microstructure_fraction                                                                         !< vol fraction of each constituent in microstructure
   integer :: &
     maxNconstituents                                                                                !< max number of constituents in any phase
- 
+
   allocate(microstructure_Nconstituents(size(config_microstructure)), source=0)
- 
+
   if(any(discretization_microstructureAt > size(config_microstructure))) &
    call IO_error(155,ext_msg='More microstructures in geometry than sections in material.config')
- 
+
   do m=1, size(config_microstructure)
     microstructure_Nconstituents(m) =  config_microstructure(m)%countKeys('(constituent)')
   enddo
- 
+
   maxNconstituents = maxval(microstructure_Nconstituents)
   allocate(microstructure_phase   (maxNconstituents,size(config_microstructure)),source=0)
   allocate(microstructure_texture (maxNconstituents,size(config_microstructure)),source=0)
   allocate(microstructure_fraction(maxNconstituents,size(config_microstructure)),source=0.0_pReal)
- 
+
   allocate(strings(1))                                                                              ! Intel 16.0 Bug
   do m=1, size(config_microstructure)
     strings = config_microstructure(m)%getStrings('(constituent)',raw=.true.)
     do c = 1, size(strings)
       chunkPos = IO_stringPos(strings(c))
- 
+
       do i = 1,5,2
          tag = IO_stringValue(strings(c),chunkPos,i)
- 
+
          select case (tag)
            case('phase')
              microstructure_phase(c,m) =    IO_intValue(strings(c),chunkPos,i+1)
@@ -508,13 +508,13 @@ subroutine material_parseMicrostructure
            case('fraction')
              microstructure_fraction(c,m) = IO_floatValue(strings(c),chunkPos,i+1)
          end select
-      
+
       enddo
     enddo
     if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg=config_name_microstructure(m))
   enddo
 
- 
+
 end subroutine material_parseMicrostructure
 
 
@@ -524,29 +524,29 @@ end subroutine material_parseMicrostructure
 subroutine material_parsePhase
 
   integer :: sourceCtr, kinematicsCtr, stiffDegradationCtr, p
-  character(len=pStringLen), dimension(:), allocatable ::  str 
- 
- 
+  character(len=pStringLen), dimension(:), allocatable ::  str
+
+
   allocate(phase_elasticity(size(config_phase)),source=ELASTICITY_undefined_ID)
   allocate(phase_plasticity(size(config_phase)),source=PLASTICITY_undefined_ID)
   allocate(phase_Nsources(size(config_phase)),              source=0)
   allocate(phase_Nkinematics(size(config_phase)),           source=0)
   allocate(phase_NstiffnessDegradations(size(config_phase)),source=0)
   allocate(phase_localPlasticity(size(config_phase)),       source=.false.)
- 
+
   do p=1, size(config_phase)
     phase_Nsources(p) =                config_phase(p)%countKeys('(source)')
     phase_Nkinematics(p) =             config_phase(p)%countKeys('(kinematics)')
     phase_NstiffnessDegradations(p) =  config_phase(p)%countKeys('(stiffness_degradation)')
     phase_localPlasticity(p) = .not.   config_phase(p)%KeyExists('/nonlocal/')
- 
+
     select case (config_phase(p)%getString('elasticity'))
       case (ELASTICITY_HOOKE_label)
         phase_elasticity(p) = ELASTICITY_HOOKE_ID
       case default
         call IO_error(200,ext_msg=trim(config_phase(p)%getString('elasticity')))
     end select
- 
+
     select case (config_phase(p)%getString('plasticity'))
       case (PLASTICITY_NONE_label)
         phase_plasticity(p) = PLASTICITY_NONE_ID
@@ -565,9 +565,9 @@ subroutine material_parsePhase
       case default
         call IO_error(201,ext_msg=trim(config_phase(p)%getString('plasticity')))
     end select
- 
+
   enddo
- 
+
   allocate(phase_source(maxval(phase_Nsources),size(config_phase)), source=SOURCE_undefined_ID)
   allocate(phase_kinematics(maxval(phase_Nkinematics),size(config_phase)), source=KINEMATICS_undefined_ID)
   allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),size(config_phase)), &
@@ -628,10 +628,10 @@ subroutine material_parsePhase
       end select
     enddo
   enddo
- 
+
   allocate(phase_plasticityInstance(size(config_phase)),source=0)
   allocate(phase_elasticityInstance(size(config_phase)),source=0)
- 
+
   do p=1, size(config_phase)
     phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
     phase_plasticityInstance(p) = count(phase_plasticity(1:p) == phase_plasticity(p))
@@ -646,7 +646,7 @@ end subroutine material_parsePhase
 subroutine material_parseTexture
 
   integer :: j,t
-  character(len=pStringLen), dimension(:), allocatable ::  strings                                  ! Values for given key in material config 
+  character(len=pStringLen), dimension(:), allocatable ::  strings                                  ! Values for given key in material config
   integer, dimension(:), allocatable :: chunkPos
   real(pReal), dimension(3,3) :: transformation                                                     ! maps texture to microstructure coordinate system
   real(pReal), dimension(3)   :: Eulers                                                             ! Euler angles in degrees from file
@@ -662,7 +662,7 @@ subroutine material_parseTexture
   allocate(texture_orientation(size(config_texture)))
 
   do t=1, size(config_texture)
-    
+
     strings = config_texture(t)%getStrings('(gauss)',raw= .true.)
     chunkPos = IO_stringPos(strings(1))
     do j = 1,5,2
@@ -700,21 +700,21 @@ subroutine material_parseTexture
       call transformation_%fromMatrix(transformation)
       texture_orientation(t) = texture_orientation(t) * transformation_
     endif
-    
-  enddo 
-  
+
+  enddo
+
 end subroutine material_parseTexture
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates the plastic state of a phase
 !--------------------------------------------------------------------------------------------------
-subroutine material_allocatePlasticState(phase,NofMyPhase,&
+subroutine material_allocatePlasticState(phase,NipcMyPhase,&
                                          sizeState,sizeDotState,sizeDeltaState)
 
   integer, intent(in) :: &
     phase, &
-    NofMyPhase, &
+    NipcMyPhase, &
     sizeState, &
     sizeDotState, &
     sizeDeltaState
@@ -725,22 +725,22 @@ subroutine material_allocatePlasticState(phase,NofMyPhase,&
   plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                   ! deltaState occupies latter part of state by definition
 
   allocate(plasticState(phase)%atol                (sizeState),               source=0.0_pReal)
-  allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
-  allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
-  allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)
-  allocate(plasticState(phase)%state               (sizeState,NofMyPhase),    source=0.0_pReal)
+  allocate(plasticState(phase)%state0              (sizeState,NipcMyPhase),   source=0.0_pReal)
+  allocate(plasticState(phase)%partionedState0     (sizeState,NipcMyPhase),   source=0.0_pReal)
+  allocate(plasticState(phase)%subState0           (sizeState,NipcMyPhase),   source=0.0_pReal)
+  allocate(plasticState(phase)%state               (sizeState,NipcMyPhase),   source=0.0_pReal)
 
-  allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase), source=0.0_pReal)
+  allocate(plasticState(phase)%dotState            (sizeDotState,NipcMyPhase),source=0.0_pReal)
   if (numerics_integrator == 1) then
-    allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase), source=0.0_pReal)
-    allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(plasticState(phase)%previousDotState  (sizeDotState,NipcMyPhase),source=0.0_pReal)
+    allocate(plasticState(phase)%previousDotState2 (sizeDotState,NipcMyPhase),source=0.0_pReal)
   endif
   if (numerics_integrator == 4) &
-    allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(plasticState(phase)%RK4dotState       (sizeDotState,NipcMyPhase),source=0.0_pReal)
   if (numerics_integrator == 5) &
-    allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NipcMyPhase),source=0.0_pReal)
 
-  allocate(plasticState(phase)%deltaState        (sizeDeltaState,NofMyPhase), source=0.0_pReal)
+  allocate(plasticState(phase)%deltaState        (sizeDeltaState,NipcMyPhase),source=0.0_pReal)
 
 end subroutine material_allocatePlasticState
 
@@ -748,37 +748,37 @@ end subroutine material_allocatePlasticState
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates the source state of a phase
 !--------------------------------------------------------------------------------------------------
-subroutine material_allocateSourceState(phase,of,NofMyPhase,&
+subroutine material_allocateSourceState(phase,of,NipcMyPhase,&
                                         sizeState,sizeDotState,sizeDeltaState)
 
   integer, intent(in) :: &
     phase, &
     of, &
-    NofMyPhase, &
+    NipcMyPhase, &
     sizeState, sizeDotState,sizeDeltaState
- 
+
   sourceState(phase)%p(of)%sizeState        = sizeState
   sourceState(phase)%p(of)%sizeDotState     = sizeDotState
   sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
   sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                              ! deltaState occupies latter part of state by definition
- 
+
   allocate(sourceState(phase)%p(of)%atol                (sizeState),               source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%state0              (sizeState,NofMyPhase),    source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NofMyPhase),    source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%subState0           (sizeState,NofMyPhase),    source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%state               (sizeState,NofMyPhase),    source=0.0_pReal)
- 
-  allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NofMyPhase), source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%state0              (sizeState,NipcMyPhase),   source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NipcMyPhase),   source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%subState0           (sizeState,NipcMyPhase),   source=0.0_pReal)
+  allocate(sourceState(phase)%p(of)%state               (sizeState,NipcMyPhase),   source=0.0_pReal)
+
+  allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NipcMyPhase),source=0.0_pReal)
   if (numerics_integrator == 1) then
-    allocate(sourceState(phase)%p(of)%previousDotState  (sizeDotState,NofMyPhase), source=0.0_pReal)
-    allocate(sourceState(phase)%p(of)%previousDotState2 (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(sourceState(phase)%p(of)%previousDotState  (sizeDotState,NipcMyPhase),source=0.0_pReal)
+    allocate(sourceState(phase)%p(of)%previousDotState2 (sizeDotState,NipcMyPhase),source=0.0_pReal)
   endif
   if (numerics_integrator == 4) &
-    allocate(sourceState(phase)%p(of)%RK4dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
+    allocate(sourceState(phase)%p(of)%RK4dotState       (sizeDotState,NipcMyPhase),source=0.0_pReal)
   if (numerics_integrator == 5) &
-    allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NofMyPhase), source=0.0_pReal)
- 
-  allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NofMyPhase), source=0.0_pReal)
+    allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NipcMyPhase),source=0.0_pReal)
+
+  allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NipcMyPhase),source=0.0_pReal)
 
 end subroutine material_allocateSourceState
 

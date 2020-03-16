@@ -165,7 +165,7 @@ module subroutine plastic_nonlocal_init
 
   integer :: &
     sizeState, sizeDotState,sizeDependentState, sizeDeltaState, &
-    maxNinstances, &
+    Ninstance, &
     p, &
     l, &
     s1, s2, &
@@ -174,7 +174,7 @@ module subroutine plastic_nonlocal_init
     c
   character(len=pStringLen) :: &
     extmsg  = ''
-  integer :: NofMyPhase
+  integer :: NipcMyPhase
 
   write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_LABEL//' init  -+>>>'; flush(6)
 
@@ -184,17 +184,17 @@ module subroutine plastic_nonlocal_init
   write(6,'(/,a)') ' Kords, Dissertation RWTH Aachen, 2014'
   write(6,'(a)')   ' http://publications.rwth-aachen.de/record/229993'
 
-  maxNinstances = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
+  Ninstance = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstances
+    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
-  allocate(param(maxNinstances))
-  allocate(state(maxNinstances))
-  allocate(state0(maxNinstances))
-  allocate(dotState(maxNinstances))
-  allocate(deltaState(maxNinstances))
-  allocate(microstructure(maxNinstances))
-  allocate(totalNslip(maxNinstances), source=0)
+  allocate(param(Ninstance))
+  allocate(state(Ninstance))
+  allocate(state0(Ninstance))
+  allocate(dotState(Ninstance))
+  allocate(deltaState(Ninstance))
+  allocate(microstructure(Ninstance))
+  allocate(totalNslip(Ninstance), source=0)
 
 
   do p=1, size(config_phase)
@@ -339,7 +339,7 @@ module subroutine plastic_nonlocal_init
       if (prm%fattack             <= 0.0_pReal)   extmsg = trim(extmsg)//' fattack'
       if (prm%doublekinkwidth     <= 0.0_pReal)   extmsg = trim(extmsg)//' doublekinkwidth'
       if (prm%Dsd0                < 0.0_pReal)    extmsg = trim(extmsg)//' Dsd0'
-      if (prm%atomicVolume        <= 0.0_pReal)   extmsg = trim(extmsg)//' atomicVolume'            ! ToDo: in disloUCLA/dislotwin, the atomic volume is given as a factor
+      if (prm%atomicVolume        <= 0.0_pReal)   extmsg = trim(extmsg)//' atomicVolume'            ! ToDo: in disloUCLA, the atomic volume is given as a factor
 
       if (prm%significantN         < 0.0_pReal)   extmsg = trim(extmsg)//' significantN'
       if (prm%significantrho       < 0.0_pReal)   extmsg = trim(extmsg)//' significantrho'
@@ -369,13 +369,13 @@ module subroutine plastic_nonlocal_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NofMyPhase   = count(material_phaseAt==p) * discretization_nIP
-    sizeDotState =     size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
-                                'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
-                                'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
-                                'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
-                                'rhoDipEdge            ','rhoDipScrew           ', &
-                                'gamma                 ' ]) * prm%totalNslip                        !< "basic" microstructural state variables that are independent from other state variables
+    NipcMyPhase  = count(material_phaseAt==p) * discretization_nIP
+    sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
+                            'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
+                            'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
+                            'rhoSglScrewPosImmobile','rhoSglScrewNegImmobile', &
+                            'rhoDipEdge            ','rhoDipScrew           ', &
+                            'gamma                 ' ]) * prm%totalNslip                            !< "basic" microstructural state variables that are independent from other state variables
     sizeDependentState = size([ 'rhoForest   ']) * prm%totalNslip                                   !< microstructural state variables that depend on other state variables
     sizeState          = sizeDotState + sizeDependentState &
                        + size([ 'velocityEdgePos     ','velocityEdgeNeg     ', &
@@ -383,7 +383,7 @@ module subroutine plastic_nonlocal_init
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%totalNslip   !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
-    call material_allocatePlasticState(p,NofMyPhase,sizeState,sizeDotState,sizeDeltaState)
+    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
@@ -452,26 +452,26 @@ module subroutine plastic_nonlocal_init
         dot%rho_dip_scr => plasticState(p)%dotState               (9*prm%totalNslip+1:10*prm%totalNslip,:)
         del%rho_dip_scr => plasticState(p)%deltaState             (9*prm%totalNslip+1:10*prm%totalNslip,:)
 
-    stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
-    del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    stt%gamma => plasticState(p)%state                      (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NipcMyPhase)
+    dot%gamma => plasticState(p)%dotState                   (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NipcMyPhase)
+    del%gamma => plasticState(p)%deltaState                 (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NipcMyPhase)
     plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip )  = config%getFloat('atol_gamma', defaultVal = 1.0e-20_pReal)
     if(any(plasticState(p)%atol(10*prm%totalNslip+1:11*prm%totalNslip) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
-    plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NofMyPhase)
+    plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%totalNslip + 1:11*prm%totalNslip ,1:NipcMyPhase)
 
-    stt%rho_forest => plasticState(p)%state                 (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NofMyPhase)
-    stt%v          => plasticState(p)%state                 (12*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
-        stt%v_edg_pos  => plasticState(p)%state             (12*prm%totalNslip + 1:13*prm%totalNslip ,1:NofMyPhase)
-        stt%v_edg_neg  => plasticState(p)%state             (13*prm%totalNslip + 1:14*prm%totalNslip ,1:NofMyPhase)
-        stt%v_scr_pos  => plasticState(p)%state             (14*prm%totalNslip + 1:15*prm%totalNslip ,1:NofMyPhase)
-        stt%v_scr_neg  => plasticState(p)%state             (15*prm%totalNslip + 1:16*prm%totalNslip ,1:NofMyPhase)
+    stt%rho_forest => plasticState(p)%state                 (11*prm%totalNslip + 1:12*prm%totalNslip ,1:NipcMyPhase)
+    stt%v          => plasticState(p)%state                 (12*prm%totalNslip + 1:16*prm%totalNslip ,1:NipcMyPhase)
+        stt%v_edg_pos  => plasticState(p)%state             (12*prm%totalNslip + 1:13*prm%totalNslip ,1:NipcMyPhase)
+        stt%v_edg_neg  => plasticState(p)%state             (13*prm%totalNslip + 1:14*prm%totalNslip ,1:NipcMyPhase)
+        stt%v_scr_pos  => plasticState(p)%state             (14*prm%totalNslip + 1:15*prm%totalNslip ,1:NipcMyPhase)
+        stt%v_scr_neg  => plasticState(p)%state             (15*prm%totalNslip + 1:16*prm%totalNslip ,1:NipcMyPhase)
 
-    allocate(dst%tau_pass(prm%totalNslip,NofMyPhase),source=0.0_pReal)
-    allocate(dst%tau_back(prm%totalNslip,NofMyPhase),source=0.0_pReal)
+    allocate(dst%tau_pass(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
+    allocate(dst%tau_back(prm%totalNslip,NipcMyPhase),source=0.0_pReal)
     end associate
 
-    if (NofMyPhase > 0) call stateInit(p,NofMyPhase)
+    if (NipcMyPhase > 0) call stateInit(p,NipcMyPhase)
     plasticState(p)%state0 = plasticState(p)%state
 
 !--------------------------------------------------------------------------------------------------
@@ -484,12 +484,12 @@ module subroutine plastic_nonlocal_init
                          discretization_nIP,discretization_nElem), source=0.0_pReal)
 
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
-  allocate(iRhoU(maxval(param%totalNslip),4,maxNinstances), source=0)
-  allocate(iV(maxval(param%totalNslip),4,maxNinstances),    source=0)
-  allocate(iD(maxval(param%totalNslip),2,maxNinstances),    source=0)
+  allocate(iRhoU(maxval(param%totalNslip),4,Ninstance), source=0)
+  allocate(iV(maxval(param%totalNslip),4,Ninstance),    source=0)
+  allocate(iD(maxval(param%totalNslip),2,Ninstance),    source=0)
 
   initializeInstances: do p = 1, size(phase_plasticity)
-    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
+    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
     myPhase2: if (phase_plasticity(p) == PLASTICITY_NONLOCAL_ID) then
 
       !*** determine indices to state array
@@ -532,11 +532,11 @@ module subroutine plastic_nonlocal_init
   !--------------------------------------------------------------------------------------------------
   !> @brief populates the initial dislocation density
   !--------------------------------------------------------------------------------------------------
-  subroutine stateInit(phase,NofMyPhase)
+  subroutine stateInit(phase,NipcMyPhase)
 
    integer,intent(in) ::&
      phase, &
-     NofMyPhase
+     NipcMyPhase
    integer :: &
      e, &
      i, &
@@ -554,7 +554,7 @@ module subroutine plastic_nonlocal_init
      totalVolume, &
      densityBinning, &
      minimumIpVolume
-   real(pReal), dimension(NofMyPhase) :: &
+   real(pReal), dimension(NipcMyPhase) :: &
      volume
 
    instance = phase_plasticityInstance(phase)
@@ -577,14 +577,14 @@ module subroutine plastic_nonlocal_init
     meanDensity = 0.0_pReal
     do while(meanDensity < prm%rhoSglRandom)
       call random_number(rnd)
-      phasemember = nint(rnd(1)*real(NofMyPhase,pReal) + 0.5_pReal)
+      phasemember = nint(rnd(1)*real(NipcMyPhase,pReal) + 0.5_pReal)
       s           = nint(rnd(2)*real(prm%totalNslip,pReal)*4.0_pReal + 0.5_pReal)
       meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
       stt%rhoSglMobile(s,phasemember) = densityBinning
     enddo
    ! homogeneous distribution of density with some noise
    else
-     do e = 1, NofMyPhase
+     do e = 1, NipcMyPhase
        do f = 1,size(prm%Nslip,1)
          from = 1 + sum(prm%Nslip(1:f-1))
          upto = sum(prm%Nslip(1:f))

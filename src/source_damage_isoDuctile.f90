@@ -46,7 +46,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoDuctile_init
 
-  integer :: Ninstance,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'; flush(6)
@@ -81,8 +81,8 @@ subroutine source_damage_isoDuctile_init
     if (prm%N                 <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_ratesensitivity'
     if (prm%critPlasticStrain <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_criticalplasticstrain'
 
-    NofMyPhase=count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,0)
+    NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
+    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,0)
     sourceState(p)%p(sourceOffset)%atol = config%getFloat('isoductile_atol',defaultVal=1.0e-3_pReal)
     if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
 
