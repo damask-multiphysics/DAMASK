@@ -153,7 +153,6 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
   associate(prm => param(source_damage_anisoBrittle_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal
   do i = 1, prm%sum_N_cl
-
     traction_d    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
     traction_n    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
@@ -166,7 +165,6 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
       * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%n + &
          (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%n + &
          (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%n)
-
   enddo
   end associate
 
