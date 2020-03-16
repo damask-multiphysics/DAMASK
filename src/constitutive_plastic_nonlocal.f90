@@ -1830,56 +1830,6 @@ end subroutine plastic_nonlocal_updateCompatibility
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns copy of current dislocation densities from state
-!> @details raw values is rectified
-!--------------------------------------------------------------------------------------------------
-function getRho(instance,of,ip,el)
-
-  integer, intent(in) :: instance, of,ip,el
-  real(pReal), dimension(param(instance)%totalNslip,10) :: getRho
-
-  associate(prm => param(instance))
-
-  getRho = reshape(state(instance)%rho(:,of),[prm%totalNslip,10])
-
-  ! ensure positive densities (not for imm, they have a sign)
-  getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
-  getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
-
-  where(abs(getRho) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
-    getRho = 0.0_pReal
-
-  end associate
-
-end function getRho
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns copy of current dislocation densities from state
-!> @details raw values is rectified
-!--------------------------------------------------------------------------------------------------
-function getRho0(instance,of,ip,el)
-
-  integer, intent(in) :: instance, of,ip,el
-  real(pReal), dimension(param(instance)%totalNslip,10) :: getRho0
-
-  associate(prm => param(instance))
-
-  getRho0 = reshape(state0(instance)%rho(:,of),[prm%totalNslip,10])
-
-  ! ensure positive densities (not for imm, they have a sign)
-  getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
-  getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
-
-  where(abs(getRho0) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
-    getRho0 = 0.0_pReal
-
-  end associate
-
-end function getRho0
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_results(instance,group)
@@ -1948,5 +1898,55 @@ module subroutine plastic_nonlocal_results(instance,group)
   end associate
 
 end subroutine plastic_nonlocal_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns copy of current dislocation densities from state
+!> @details raw values is rectified
+!--------------------------------------------------------------------------------------------------
+function getRho(instance,of,ip,el)
+
+  integer, intent(in) :: instance, of,ip,el
+  real(pReal), dimension(param(instance)%totalNslip,10) :: getRho
+
+  associate(prm => param(instance))
+
+  getRho = reshape(state(instance)%rho(:,of),[prm%totalNslip,10])
+
+  ! ensure positive densities (not for imm, they have a sign)
+  getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
+  getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
+
+  where(abs(getRho) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
+    getRho = 0.0_pReal
+
+  end associate
+
+end function getRho
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns copy of current dislocation densities from state
+!> @details raw values is rectified
+!--------------------------------------------------------------------------------------------------
+function getRho0(instance,of,ip,el)
+
+  integer, intent(in) :: instance, of,ip,el
+  real(pReal), dimension(param(instance)%totalNslip,10) :: getRho0
+
+  associate(prm => param(instance))
+
+  getRho0 = reshape(state0(instance)%rho(:,of),[prm%totalNslip,10])
+
+  ! ensure positive densities (not for imm, they have a sign)
+  getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
+  getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
+
+  where(abs(getRho0) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
+    getRho0 = 0.0_pReal
+
+  end associate
+
+end function getRho0
 
 end submodule plastic_nonlocal
