@@ -177,7 +177,7 @@ module subroutine plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
     N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%sum_N_sl = sum(N_sl)
+    prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
       prm%P_sl    = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
                                               config%getFloat('c/a',defaultVal=0.0_pReal))
@@ -253,7 +253,7 @@ module subroutine plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
     N_tw         = config%getInts('ntwin', defaultVal=emptyIntArray)
-    prm%sum_N_tw = sum(N_tw)
+    prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
       prm%P_tw  = lattice_SchmidMatrix_twin(N_tw,config%getString('lattice_structure'),&
                                                    config%getFloat('c/a',defaultVal=0.0_pReal))
@@ -303,7 +303,7 @@ module subroutine plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 ! transformation related parameters
     N_tr         = config%getInts('ntrans', defaultVal=emptyIntArray)
-    prm%sum_N_tr = sum(N_tr)
+    prm%sum_N_tr = sum(abs(N_tr))
     transActive: if (prm%sum_N_tr > 0) then
       prm%b_tr = config%getFloats('transburgers')
       prm%b_tr = math_expand(prm%b_tr,N_tr)
@@ -328,8 +328,8 @@ module subroutine plastic_dislotwin_init
                                                config%getFloat('a_fcc', defaultVal=0.0_pReal))
 
       if (lattice_structure(p) /= lattice_FCC_ID) then
-         prm%dot_N_0_tr = config%getFloats('ndot0_trans')
-         prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,N_tr)
+        prm%dot_N_0_tr = config%getFloats('ndot0_trans')
+        prm%dot_N_0_tr = math_expand(prm%dot_N_0_tr,N_tr)
       endif
       prm%t_tr = config%getFloats('lamellarsize')
       prm%t_tr = math_expand(prm%t_tr,N_tr)
@@ -452,7 +452,6 @@ module subroutine plastic_dislotwin_init
     allocate(dst%tau_hat_tr            (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
     allocate(dst%tau_r_tr              (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
     allocate(dst%V_tr                  (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
-
 
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 

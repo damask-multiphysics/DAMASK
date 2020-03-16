@@ -82,9 +82,9 @@ module subroutine plastic_disloUCLA_init
     NipcMyPhase, &
     sizeState, sizeDotState, &
     startIndex, endIndex
-  integer, dimension(:), allocatable :: &
+  integer,    dimension(:), allocatable :: &
     N_sl
-  real,    dimension(:), allocatable :: &
+  real(pReal),dimension(:), allocatable :: &
     rho_mob_0, &                                                                                    !< initial dislocation density
     rho_dip_0, &                                                                                    !< initial dipole density
     a                                                                                               !< non-Schmid coefficients
@@ -121,7 +121,7 @@ module subroutine plastic_disloUCLA_init
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
     N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%sum_N_sl = sum(N_sl)
+    prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
                                            config%getFloat('c/a',defaultVal=0.0_pReal))

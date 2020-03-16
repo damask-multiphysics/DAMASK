@@ -74,9 +74,9 @@ module subroutine plastic_phenopowerlaw_init
     NipcMyPhase, &
     sizeState, sizeDotState, &
     startIndex, endIndex
-  integer, dimension(:), allocatable :: &
+  integer,     dimension(:), allocatable :: &
     N_sl, N_tw
-  real,    dimension(:), allocatable :: &
+  real(pReal), dimension(:), allocatable :: &
     xi_slip_0, &                                                                                    !< initial critical shear stress for slip
     xi_twin_0, &                                                                                    !< initial critical shear stress for twin
     a                                                                                               !< non-Schmid coefficients
@@ -103,7 +103,7 @@ module subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
     N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%sum_N_sl = sum(N_sl)
+    prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
                                            config%getFloat('c/a',defaultVal=0.0_pReal))
@@ -152,7 +152,7 @@ module subroutine plastic_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 ! twin related parameters
     N_tw         = config%getInts('ntwin', defaultVal=emptyIntArray)
-    prm%sum_N_tw = sum(N_tw)
+    prm%sum_N_tw = sum(abs(N_tw))
     twinActive: if (prm%sum_N_tw > 0) then
       prm%P_tw                 = lattice_SchmidMatrix_twin(N_tw,config%getString('lattice_structure'),&
                                                            config%getFloat('c/a',defaultVal=0.0_pReal))
