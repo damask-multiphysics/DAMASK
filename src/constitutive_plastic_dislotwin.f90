@@ -243,6 +243,8 @@ module subroutine plastic_dislotwin_init
       if (any(prm%q< 1.0_pReal .or. prm%q>2.0_pReal)) extmsg = trim(extmsg)//' q'
 
     else slipActive
+      allocate(prm%rho_mob_0(0))
+      allocate(prm%rho_dip_0(0))
       allocate(prm%b_sl(0))
     endif slipActive
 
@@ -388,9 +390,7 @@ module subroutine plastic_dislotwin_init
     endif
 
     prm%D               = config%getFloat('grainsize')
-
     prm%dipoleformation = .not. config%keyExists('/nodipoleformation/')
-
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -638,7 +638,6 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
   integer :: i
   real(pReal) :: &
     f_unrotated, &
-    VacancyDiffusion, &
     rho_dip_distance, &
     v_cl, &                                                                                         !< climb velocity
     Gamma, &                                                                                        !< stacking fault energy
@@ -661,7 +660,6 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
   f_unrotated = 1.0_pReal &
               - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
               - sum(stt%f_tr(1:prm%sum_N_tr,of))
-  VacancyDiffusion = prm%D0*exp(-prm%Qsd/(kB*T))
 
   call kinetics_slip(Mp,T,instance,of,dot_gamma_sl)
   dot%gamma_sl(:,of) = abs(dot_gamma_sl)
