@@ -20,9 +20,7 @@ module kinematics_slipplane_opening
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
-      totalNslip
-    integer, dimension(:),   allocatable :: &
-      Nslip                                                                                         !< active number of slip systems per family
+      sum_N_sl
     real(pReal) :: &
       sdot0, &
       n
@@ -51,11 +49,12 @@ subroutine kinematics_slipplane_opening_init
 
   integer :: Ninstance,p,i
   character(len=pStringLen) :: extmsg = ''
+  integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_slipplane_opening_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'; flush(6)
 
-  Ninstance = count(phase_kinematics == KINEMATICS_slipplane_opening_ID)
+  Ninstance = count(phase_kinematics == KINEMATICS_SLIPPLANE_OPENING_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
@@ -63,21 +62,21 @@ subroutine kinematics_slipplane_opening_init
   allocate(param(Ninstance))
 
   do p = 1, size(config_phase)
-    kinematics_slipplane_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_slipplane_opening_ID)
-    if (all(phase_kinematics(:,p) /= KINEMATICS_slipplane_opening_ID)) cycle
+    kinematics_slipplane_opening_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_SLIPPLANE_OPENING_ID)
+    if (all(phase_kinematics(:,p) /= KINEMATICS_SLIPPLANE_OPENING_ID)) cycle
     associate(prm => param(kinematics_slipplane_opening_instance(p)), &
              config => config_phase(p))
 
     prm%sdot0    = config%getFloat('anisoductile_sdot0')
     prm%n        = config%getFloat('anisoductile_ratesensitivity')
-    prm%Nslip    = config%getInts('nslip')
-    prm%totalNslip = sum(prm%Nslip)
+    N_sl         = config%getInts('nslip')
+    prm%sum_N_sl = sum(abs(N_sl))
 
-    d = lattice_slip_direction (prm%Nslip,config%getString('lattice_structure'),&
+    d = lattice_slip_direction (N_sl,config%getString('lattice_structure'),&
                                 config%getFloat('c/a',defaultVal=0.0_pReal))
-    t = lattice_slip_transverse(prm%Nslip,config%getString('lattice_structure'),&
+    t = lattice_slip_transverse(N_sl,config%getString('lattice_structure'),&
                                 config%getFloat('c/a',defaultVal=0.0_pReal))
-    n = lattice_slip_normal    (prm%Nslip,config%getString('lattice_structure'),&
+    n = lattice_slip_normal    (N_sl,config%getString('lattice_structure'),&
                                 config%getFloat('c/a',defaultVal=0.0_pReal))
     allocate(prm%P_d(3,3,size(d,2)),prm%P_t(3,3,size(t,2)),prm%P_n(3,3,size(n,2)))
 
@@ -87,10 +86,10 @@ subroutine kinematics_slipplane_opening_init
       prm%P_n(1:3,1:3,i) = math_outer(n(1:3,i), n(1:3,i))
     enddo
 
-    prm%critLoad = config%getFloats('anisoductile_criticalload',requiredSize=size(prm%Nslip))
+    prm%critLoad = config%getFloats('anisoductile_criticalload',requiredSize=size(N_sl))
 
     ! expand: family => system
-    prm%critLoad = math_expand(prm%critLoad, prm%Nslip)
+    prm%critLoad = math_expand(prm%critLoad,N_sl)
 
     ! sanity checks
     if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_n'
@@ -99,7 +98,7 @@ subroutine kinematics_slipplane_opening_init
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISODUCTILE_LABEL//')')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//KINEMATICS_SLIPPLANE_OPENING_LABEL//')')
 
     end associate
   enddo
@@ -139,7 +138,7 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
   associate(prm => param(instance))
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
-  do i = 1, prm%totalNslip
+  do i = 1, prm%sum_N_sl
 
     traction_d = math_tensordot(S,prm%P_d(1:3,1:3,i))
     traction_t = math_tensordot(S,prm%P_t(1:3,1:3,i))

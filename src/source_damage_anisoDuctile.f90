@@ -23,13 +23,11 @@ module source_damage_anisoDuctile
 
   type, private :: tParameters                                                                       !< container type for internal constitutive parameters
     real(pReal) :: &
-      N
+      n
     real(pReal), dimension(:), allocatable :: &
       critPlasticStrain
     integer :: &
-      totalNslip
-    integer, dimension(:), allocatable :: &
-      Nslip
+      sum_N_slip
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -53,6 +51,7 @@ contains
 subroutine source_damage_anisoDuctile_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
+  integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'; flush(6)
@@ -80,18 +79,17 @@ subroutine source_damage_anisoDuctile_init
 
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
-    prm%Nslip = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%totalNslip = sum(prm%Nslip)
+    N_sl = config%getInts('nslip',defaultVal=emptyIntArray)
+    prm%sum_N_slip = sum(abs(N_sl))
 
-    prm%N                 = config%getFloat('anisoductile_ratesensitivity')
-
-    prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(prm%Nslip))
+    prm%n                 = config%getFloat('anisoductile_ratesensitivity')
+    prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(N_sl))
 
     ! expand: family => system
-    prm%critPlasticStrain = math_expand(prm%critPlasticStrain,  prm%Nslip)
+    prm%critPlasticStrain = math_expand(prm%critPlasticStrain,N_sl)
 
     ! sanity checks
-    if (prm%N                     <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
+    if (prm%n                     <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
     if (any(prm%critPlasticStrain <  0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_criticalplasticstrain'
 
     NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
@@ -135,10 +133,10 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
   damageOffset = damageMapping(homog)%p(ip,el)
 
   associate(prm => param(source_damage_anisoDuctile_instance(phase)))
-  do i = 1, prm%totalNslip
+  do i = 1, prm%sum_N_slip
     sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
     = sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    + plasticState(phase)%slipRate(i,constituent)/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain(i)
+    + plasticState(phase)%slipRate(i,constituent)/(damage(homog)%p(damageOffset)**prm%n)/prm%critPlasticStrain(i)
   enddo
   end associate
 

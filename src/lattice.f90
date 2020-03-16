@@ -1991,7 +1991,7 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
   real(pReal),                 intent(in) :: &
     cOverA
   real(pReal), dimension(3,3,sum(active)) :: &
-   buildCoordinateSystem
+    buildCoordinateSystem
 
   real(pReal), dimension(3) :: &
     direction, normal

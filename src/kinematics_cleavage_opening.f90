@@ -20,9 +20,7 @@ module kinematics_cleavage_opening
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
-      totalNcleavage
-    integer, dimension(:),   allocatable :: &
-      Ncleavage                                                                                     !< active number of cleavage systems per family
+      sum_N_cl
     real(pReal) :: &
       sdot0, &
       n
@@ -48,11 +46,12 @@ contains
 subroutine kinematics_cleavage_opening_init
 
   integer :: Ninstance,p
+  integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_cleavage_opening_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_CLEAVAGE_OPENING_LABEL//' init  -+>>>'; flush(6)
 
-  Ninstance = count(phase_kinematics == KINEMATICS_cleavage_opening_ID)
+  Ninstance = count(phase_kinematics == KINEMATICS_CLEAVAGE_OPENING_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
@@ -60,25 +59,25 @@ subroutine kinematics_cleavage_opening_init
   allocate(param(Ninstance))
 
   do p = 1, size(config_phase)
-    kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == kinematics_cleavage_opening_ID)
-    if (all(phase_kinematics(:,p) /= KINEMATICS_cleavage_opening_ID)) cycle
+    kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_CLEAVAGE_OPENING_ID)
+    if (all(phase_kinematics(:,p) /= KINEMATICS_CLEAVAGE_OPENING_ID)) cycle
 
     associate(prm => param(kinematics_cleavage_opening_instance(p)), &
               config => config_phase(p))
 
-    prm%Ncleavage = config%getInts('ncleavage')
-    prm%totalNcleavage = sum(prm%Ncleavage)
+    N_cl = config%getInts('ncleavage')
+    prm%sum_N_cl = sum(abs(N_cl))
 
     prm%n         = config%getFloat('anisobrittle_ratesensitivity')
     prm%sdot0     = config%getFloat('anisobrittle_sdot0')
 
-    prm%critLoad  = config%getFloats('anisobrittle_criticalload',requiredSize=size(prm%Ncleavage))
+    prm%critLoad  = config%getFloats('anisobrittle_criticalload',requiredSize=size(N_cl))
 
-    prm%cleavage_systems  = lattice_SchmidMatrix_cleavage(prm%Ncleavage,config%getString('lattice_structure'),&
+    prm%cleavage_systems  = lattice_SchmidMatrix_cleavage(N_cl,config%getString('lattice_structure'),&
                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
     ! expand: family => system
-    prm%critLoad = math_expand(prm%critLoad, prm%Ncleavage)
+    prm%critLoad = math_expand(prm%critLoad,N_cl)
 
     ! sanity checks
     if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_n'
@@ -87,7 +86,7 @@ subroutine kinematics_cleavage_opening_init
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//')')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//KINEMATICS_CLEAVAGE_OPENING_LABEL//')')
 
     end associate
   enddo
@@ -124,7 +123,7 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
   associate(prm => param(kinematics_cleavage_opening_instance(material_phaseAt(ipc,el))))
-  do i = 1,prm%totalNcleavage
+  do i = 1,prm%sum_N_cl
     traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)**2.0_pReal
 
     traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
