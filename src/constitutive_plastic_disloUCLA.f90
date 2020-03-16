@@ -35,7 +35,7 @@ submodule(constitutive) plastic_disloUCLA
       h_sl_sl, &                                                                                    !< slip resistance from slip activity
       forestProjection
     real(pReal),               allocatable, dimension(:,:,:) :: &
-      Schmid, &
+      P_sl, &
       nonSchmid_pos, &
       nonSchmid_neg
     integer :: &
@@ -123,16 +123,16 @@ module subroutine plastic_disloUCLA_init
     N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(N_sl)
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%Schmid = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
-                                             config%getFloat('c/a',defaultVal=0.0_pReal))
+      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
+                                           config%getFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(config%getString('lattice_structure')) == 'bcc') then
         a = config%getFloats('nonschmid_coefficients',defaultVal = emptyRealArray)
         prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        prm%nonSchmid_pos = prm%Schmid
-        prm%nonSchmid_neg = prm%Schmid
+        prm%nonSchmid_pos = prm%P_sl
+        prm%nonSchmid_neg = prm%P_sl
       endif
 
       prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,config%getFloats('interaction_slipslip'), &
@@ -283,11 +283,11 @@ pure module subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp, &
 
   call kinetics(Mp,T,instance,of,dot_gamma_pos,dot_gamma_neg,ddot_gamma_dtau_pos,ddot_gamma_dtau_neg)
   do i = 1, prm%sum_N_sl
-    Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%Schmid(1:3,1:3,i)
+    Lp = Lp + (dot_gamma_pos(i)+dot_gamma_neg(i))*prm%P_sl(1:3,1:3,i)
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
       dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_pos(i) * prm%Schmid(k,l,i) * prm%nonSchmid_pos(m,n,i) &
-                       + ddot_gamma_dtau_neg(i) * prm%Schmid(k,l,i) * prm%nonSchmid_neg(m,n,i)
+                       + ddot_gamma_dtau_pos(i) * prm%P_sl(k,l,i) * prm%nonSchmid_pos(m,n,i) &
+                       + ddot_gamma_dtau_neg(i) * prm%P_sl(k,l,i) * prm%nonSchmid_neg(m,n,i)
   enddo
 
   end associate

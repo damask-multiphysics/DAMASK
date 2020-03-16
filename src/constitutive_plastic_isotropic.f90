@@ -124,12 +124,12 @@ module subroutine plastic_isotropic_init
     stt%xi  => plasticState(p)%state   (1,:)
     stt%xi  =  xi_0
     dot%xi  => plasticState(p)%dotState(1,:)
-    plasticState(p)%atol(1) = config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
+    plasticState(p)%atol(1) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
     if (plasticState(p)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
 
     stt%gamma  => plasticState(p)%state   (2,:)
     dot%gamma  => plasticState(p)%dotState(2,:)
-    plasticState(p)%atol(2) = config%getFloat('atol_shear',defaultVal=1.0e-6_pReal)
+    plasticState(p)%atol(2) = config%getFloat('atol_gamma',defaultVal=1.0e-6_pReal)
     if (plasticState(p)%atol(2) < 0.0_pReal) extmsg = trim(extmsg)//' atol_gamma'
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(2:2,:)
@@ -213,14 +213,14 @@ end subroutine plastic_isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 
-  real(pReal), dimension(3,3), intent(out) :: &
+  real(pReal), dimension(3,3),     intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out)  :: &
     dLi_dMi                                                                                         !< derivative of Li with respect to Mandel stress
 
-  real(pReal), dimension(3,3),   intent(in) :: &
+  real(pReal), dimension(3,3), intent(in) :: &
     Mi                                                                                              !< Mandel stress
-  integer,                       intent(in) :: &
+  integer,                     intent(in) :: &
     instance, &
     of
 
