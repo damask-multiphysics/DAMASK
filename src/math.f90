@@ -89,7 +89,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine math_init
 
-  integer :: i
   real(pReal), dimension(4) :: randTest
   integer :: randSize
   integer, dimension(:), allocatable :: randInit
@@ -106,11 +105,8 @@ subroutine math_init
     randInit(2:randSize) = randInit(1)
   endif
 
-  call random_seed(put=randInit)
-
-  do i = 1, 4
-    call random_number(randTest(i))
-  enddo
+  call random_seed(put = randInit)
+  call random_number(randTest)
 
   write(6,'(a,i2)')                ' size  of random seed:     ', randSize
   write(6,'(a,i0)')                ' value of random seed:     ', randInit(1)
