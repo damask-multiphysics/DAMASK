@@ -1933,7 +1933,7 @@ end function coordinateSystem_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Populates reduced interaction matrix
+!> @brief Populate reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
 function buildInteraction(reacting_used,acting_used,reacting_max,acting_max,values,matrix)
 
@@ -1976,7 +1976,7 @@ end function buildInteraction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief build a local coordinate system on slip, twin, trans, cleavage systems
+!> @brief Build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 function buildCoordinateSystem(active,potential,system,structure,cOverA)
