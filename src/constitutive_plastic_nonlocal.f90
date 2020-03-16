@@ -34,11 +34,9 @@ submodule(constitutive) plastic_nonlocal
     mob_scr_pos = 3, &                                                                              !< mobile screw positive
     mob_scr_neg = 4                                                                                 !< mobile screw positive
 
-  ! BEGIN DEPRECATES
+  ! BEGIN DEPRECATED
   integer, dimension(:,:,:), allocatable :: &
     iRhoU, &                                                                                        !< state indices for unblocked density
-    iRhoB, &                                                                                        !< state indices for blocked density
-    iRhoD, &                                                                                        !< state indices for dipole density
     iV, &                                                                                           !< state indices for dislcation velocities
     iD                                                                                              !< state indices for stable dipole height
   integer, dimension(:), allocatable :: &
@@ -131,12 +129,12 @@ submodule(constitutive) plastic_nonlocal
             rho_sgl_mob_edg_neg, &
             rho_sgl_mob_scr_pos, &
             rho_sgl_mob_scr_neg, &
-          rhoSglImmobile, &                     ! iRhoB
+          rhoSglImmobile, &
             rho_sgl_imm_edg_pos, &
             rho_sgl_imm_edg_neg, &
             rho_sgl_imm_scr_pos, &
             rho_sgl_imm_scr_neg, &
-        rhoDip, &                               ! iRhoD
+        rhoDip, &
           rho_dip_edg, &
           rho_dip_scr, &
         rho_forest, &
@@ -175,10 +173,8 @@ module subroutine plastic_nonlocal_init
     s, &
     t, &
     c
-
   character(len=pStringLen) :: &
-    extmsg    = '', &
-    structure
+    extmsg  = ''
   integer :: NofMyPhase
 
   write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_LABEL//' init  -+>>>'; flush(6)
@@ -217,14 +213,12 @@ module subroutine plastic_nonlocal_init
 
     prm%atol_rho   = config%getFloat('atol_rho',defaultVal=1.0e4_pReal)
 
-    structure      = config%getString('lattice_structure')
-
     ! This data is read in already in lattice
     prm%mu = lattice_mu(p)
     prm%nu = lattice_nu(p)
 
     prm%Nslip      = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%totalNslip = sum(prm%Nslip)
+    prm%totalNslip = sum(abs(prm%Nslip))
     slipActive: if (prm%totalNslip > 0) then
       prm%Schmid = lattice_SchmidMatrix_slip(prm%Nslip,config%getString('lattice_structure'),&
                                              config%getFloat('c/a',defaultVal=0.0_pReal))
@@ -487,15 +481,13 @@ module subroutine plastic_nonlocal_init
 
   enddo
 
-  allocate(compatibility(2,maxval(totalNslip),maxval(totalNslip),nIPneighbors,&
+  allocate(compatibility(2,maxval(param%totalNslip),maxval(param%totalNslip),nIPneighbors,&
                          discretization_nIP,discretization_nElem), source=0.0_pReal)
 
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
-  allocate(iRhoU(maxval(totalNslip),4,maxNinstances), source=0)
-  allocate(iRhoB(maxval(totalNslip),4,maxNinstances), source=0)
-  allocate(iRhoD(maxval(totalNslip),2,maxNinstances), source=0)
-  allocate(iV(maxval(totalNslip),4,maxNinstances),    source=0)
-  allocate(iD(maxval(totalNslip),2,maxNinstances),    source=0)
+  allocate(iRhoU(maxval(param%totalNslip),4,maxNinstances), source=0)
+  allocate(iV(maxval(param%totalNslip),4,maxNinstances),    source=0)
+  allocate(iD(maxval(param%totalNslip),2,maxNinstances),    source=0)
 
   initializeInstances: do p = 1, size(phase_plasticity)
     NofMyPhase = count(material_phaseAt==p) * discretization_nIP
@@ -510,21 +502,10 @@ module subroutine plastic_nonlocal_init
           iRhoU(s,t,phase_plasticityInstance(p)) = l
         enddo
       enddo
-      do t = 1,4
-        do s = 1,param(phase_plasticityInstance(p))%totalNslip
-          l = l + 1
-          iRhoB(s,t,phase_plasticityInstance(p)) = l
-        enddo
-      enddo
-      do c = 1,2
-        do s = 1,param(phase_plasticityInstance(p))%totalNslip
-          l = l + 1
-          iRhoD(s,c,phase_plasticityInstance(p)) = l
-        enddo
-      enddo
-
-      l = l + param(phase_plasticityInstance(p))%totalNslip ! shear(rates)
-      l = l + param(phase_plasticityInstance(p))%totalNslip ! rho_forest
+      l = l + 4*param(phase_plasticityInstance(p))%totalNslip ! immobile
+      l = l + 2*param(phase_plasticityInstance(p))%totalNslip ! dipole
+      l = l +   param(phase_plasticityInstance(p))%totalNslip ! shear(rates)
+      l = l +   param(phase_plasticityInstance(p))%totalNslip ! rho_forest
 
       do t = 1,4
         do s = 1,param(phase_plasticityInstance(p))%totalNslip
