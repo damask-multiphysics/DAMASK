@@ -12,7 +12,6 @@ submodule(constitutive) plastic_isotropic
   type :: tParameters
     real(pReal) :: &
       M, &                                                                                          !< Taylor factor
-      xi_0, &                                                                                       !< initial critical stress
       dot_gamma_0, &                                                                                !< reference strain rate
       n, &                                                                                          !< stress exponent
       h0, &
@@ -57,7 +56,8 @@ module subroutine plastic_isotropic_init
     p, &
     NipcMyPhase, &
     sizeState, sizeDotState
-
+  real(pReal) :: &
+    xi_0                                                                                            !< initial critical stress
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -88,28 +88,28 @@ module subroutine plastic_isotropic_init
       prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
 #endif
 
-    prm%xi_0            = config%getFloat('tau0')
-    prm%xi_inf          = config%getFloat('tausat')
-    prm%dot_gamma_0     = config%getFloat('gdot0')
-    prm%n               = config%getFloat('n')
-    prm%h0              = config%getFloat('h0')
-    prm%M               = config%getFloat('m')
-    prm%h_ln            = config%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
-    prm%c_1             = config%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
-    prm%c_4             = config%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
-    prm%c_3             = config%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
-    prm%c_2             = config%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
-    prm%a               = config%getFloat('a')
+    xi_0            = config%getFloat('tau0')
+    prm%xi_inf      = config%getFloat('tausat')
+    prm%dot_gamma_0 = config%getFloat('gdot0')
+    prm%n           = config%getFloat('n')
+    prm%h0          = config%getFloat('h0')
+    prm%M           = config%getFloat('m')
+    prm%h_ln        = config%getFloat('h0_slopelnrate', defaultVal=0.0_pReal)
+    prm%c_1         = config%getFloat('tausat_sinhfita',defaultVal=0.0_pReal)
+    prm%c_4         = config%getFloat('tausat_sinhfitb',defaultVal=0.0_pReal)
+    prm%c_3         = config%getFloat('tausat_sinhfitc',defaultVal=0.0_pReal)
+    prm%c_2         = config%getFloat('tausat_sinhfitd',defaultVal=0.0_pReal)
+    prm%a           = config%getFloat('a')
 
-    prm%dilatation      = config%keyExists('/dilatation/')
+    prm%dilatation  = config%keyExists('/dilatation/')
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-    if (prm%xi_0           <  0.0_pReal) extmsg = trim(extmsg)//' xi_0'
-    if (prm%dot_gamma_0    <= 0.0_pReal) extmsg = trim(extmsg)//' dot_gamma_0'
-    if (prm%n              <= 0.0_pReal) extmsg = trim(extmsg)//' n'
-    if (prm%a              <= 0.0_pReal) extmsg = trim(extmsg)//' a'
-    if (prm%M              <= 0.0_pReal) extmsg = trim(extmsg)//' m'
+    if (xi_0            <  0.0_pReal) extmsg = trim(extmsg)//' xi_0'
+    if (prm%dot_gamma_0 <= 0.0_pReal) extmsg = trim(extmsg)//' dot_gamma_0'
+    if (prm%n           <= 0.0_pReal) extmsg = trim(extmsg)//' n'
+    if (prm%a           <= 0.0_pReal) extmsg = trim(extmsg)//' a'
+    if (prm%M           <= 0.0_pReal) extmsg = trim(extmsg)//' M'
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -122,7 +122,7 @@ module subroutine plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     stt%xi  => plasticState(p)%state   (1,:)
-    stt%xi  = prm%xi_0
+    stt%xi  =  xi_0
     dot%xi  => plasticState(p)%dotState(1,:)
     plasticState(p)%atol(1) = config%getFloat('atol_flowstress',defaultVal=1.0_pReal)
     if (plasticState(p)%atol(1) < 0.0_pReal) extmsg = trim(extmsg)//' atol_xi'
