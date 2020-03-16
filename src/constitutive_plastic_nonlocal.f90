@@ -1710,10 +1710,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
       !* FREE SURFACE
       !* Set surface transmissivity to the value specified in the material.config
       forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%surfaceTransmissivity)
-      cycle neighbors
-    endif
-
-    if (neighbor_phase /= ph) then
+    elseif (neighbor_phase /= ph) then
       !* PHASE BOUNDARY
       !* If we encounter a different nonlocal phase at the neighbor,
       !* we consider this to be a real "physical" phase boundary, so completely incompatible.
@@ -1721,18 +1718,12 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
       !* we do not consider this to be a phase boundary, so completely compatible.
       if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph)) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
-      cycle neighbors
-    endif
-
-    if (prm%grainboundaryTransmissivity >= 0.0_pReal) then
+    elseif (prm%grainboundaryTransmissivity >= 0.0_pReal) then
       !* GRAIN BOUNDARY !
       !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
-      if (material_texture(1,i,e) /= material_texture(1,neighbor_i,neighbor_e)) then
-        if (.not. phase_localPlasticity(neighbor_phase)) then
-          forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%grainboundaryTransmissivity)
-        endif
-        cycle neighbors
-      endif
+      if (material_texture(1,i,e) /= material_texture(1,neighbor_i,neighbor_e) .and. &
+          (.not. phase_localPlasticity(neighbor_phase))) &
+        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%grainboundaryTransmissivity)
     else
       !* GRAIN BOUNDARY ?
       !* Compatibility defined by relative orientation of slip systems:
@@ -1768,8 +1759,10 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
                                                  my_compatibility(:,:,s1,n))
           my_compatibilitySum = my_compatibilitySum + nThresholdValues * thresholdValue
         enddo
+
         where(belowThreshold) my_compatibility(1,:,s1,n) = 0.0_pReal
         where(belowThreshold) my_compatibility(2,:,s1,n) = 0.0_pReal
+
       enddo mySlipSystems
     endif
 
