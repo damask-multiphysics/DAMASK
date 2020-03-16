@@ -706,9 +706,8 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
     myInteractionMatrix = prm%interactionSlipSlip
   endif
 
-  forall (s = 1:ns) dst%tau_pass(s,of) = prm%mu * prm%burgers(s) &
-                                       * sqrt(dot_product(sum(abs(rho),2), myInteractionMatrix(:,s)))
-
+  dst%tau_pass(:,of) = prm%mu * prm%burgers &
+                     * sqrt(matmul(transpose(myInteractionMatrix),sum(abs(rho),2)))                 ! ToDo: MD the transpose seems wrong here (cf other laws)
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
 !*** zero for material points of local plasticity
@@ -754,8 +753,8 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
             connection_latticeConf(1:3,n) = matmul(invFe, discretization_IPcoords(1:3,neighbor_el+neighbor_ip-1) &
                                           - discretization_IPcoords(1:3,el+neighbor_ip-1))
             normal_latticeConf = matmul(transpose(invFp), IPareaNormal(1:3,n,ip,el))
-            if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &        ! neighboring connection points in opposite direction to face normal: must be periodic image
-              connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/IParea(n,ip,el) ! instead take the surface normal scaled with the diameter of the cell
+            if (math_inner(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) &         ! neighboring connection points in opposite direction to face normal: must be periodic image
+              connection_latticeConf(1:3,n) = normal_latticeConf * IPvolume(ip,el)/IParea(n,ip,el)  ! instead take the surface normal scaled with the diameter of the cell
         else
           ! local neighbor or different lattice structure or different constitution instance -> use central values instead
           connection_latticeConf(1:3,n) = 0.0_pReal
