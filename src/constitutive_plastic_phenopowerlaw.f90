@@ -437,8 +437,8 @@ pure subroutine kinetics_slip(Mp,instance,of, &
   associate(prm => param(instance), stt => state(instance))
 
   do i = 1, prm%sum_N_sl
-    tau_slip_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
-    tau_slip_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)), &
+    tau_slip_pos(i) =       math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,i))
+    tau_slip_neg(i) = merge(math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,i)), &
                             0.0_pReal, prm%nonSchmidActive)
   enddo
 
@@ -503,7 +503,7 @@ pure subroutine kinetics_twin(Mp,instance,of,&
   associate(prm => param(instance), stt => state(instance))
 
   do i = 1, prm%sum_N_tw
-    tau_twin(i)  = math_mul33xx33(Mp,prm%P_tw(1:3,1:3,i))
+    tau_twin(i)  = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
   enddo
 
   where(tau_twin > 0.0_pReal)

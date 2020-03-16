@@ -175,7 +175,7 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
   associate(prm => param(instance), stt => state(instance))
 
   Mp_dev = math_deviatoric33(Mp)
-  squarenorm_Mp_dev = math_mul33xx33(Mp_dev,Mp_dev)
+  squarenorm_Mp_dev = math_tensordot(Mp_dev,Mp_dev)
   norm_Mp_dev = sqrt(squarenorm_Mp_dev)
 
   if (norm_Mp_dev > 0.0_pReal) then
@@ -279,9 +279,9 @@ module subroutine plastic_isotropic_dotState(Mp,instance,of)
   associate(prm => param(instance), stt => state(instance), dot => dotState(instance))
 
   if (prm%dilatation) then
-    norm_Mp = sqrt(math_mul33xx33(Mp,Mp))
+    norm_Mp = sqrt(math_tensordot(Mp,Mp))
   else
-    norm_Mp = sqrt(math_mul33xx33(math_deviatoric33(Mp),math_deviatoric33(Mp)))
+    norm_Mp = sqrt(math_tensordot(math_deviatoric33(Mp),math_deviatoric33(Mp)))
   endif
 
   dot_gamma = prm%dot_gamma_0 * (sqrt(1.5_pReal) * norm_Mp /(prm%M*stt%xi(of))) **prm%n

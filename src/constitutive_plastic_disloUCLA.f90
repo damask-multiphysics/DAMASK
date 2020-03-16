@@ -453,8 +453,8 @@ pure subroutine kinetics(Mp,T,instance,of, &
   associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
   do j = 1, prm%sum_N_sl
-    tau_pos(j) = math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,j))
-    tau_neg(j) = math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,j))
+    tau_pos(j) = math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,j))
+    tau_neg(j) = math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,j))
   enddo
 
 

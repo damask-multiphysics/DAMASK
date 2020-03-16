@@ -73,17 +73,9 @@ module math
       3,3  &
       ],[2,9])                                                                                      !< arrangement in Plain notation
 
-
   interface math_eye
     module procedure math_identity2nd
   end interface math_eye
-
-!--------------------------
-! only for compatibility reasons
-  interface math_mul33xx33
-    module procedure math_tensordot
-  end interface math_mul33xx33
-!--------------------------
 
 
 !---------------------------------------------------------------------------------------------------

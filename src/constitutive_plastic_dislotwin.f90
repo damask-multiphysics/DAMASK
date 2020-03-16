@@ -580,7 +580,7 @@ module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
     do i = 1,6
       P_sb = 0.5_pReal * math_outer(matmul(eigVectors,sb_sComposition(1:3,i)),&
                                     matmul(eigVectors,sb_mComposition(1:3,i)))
-      tau = math_mul33xx33(Mp,P_sb)
+      tau = math_tensordot(Mp,P_sb)
 
       significantShearBandStress: if (abs(tau) > tol_math_check) then
         StressRatio_p = (abs(tau)/prm%sbResistance)**prm%p_sb
@@ -665,7 +665,7 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
   rho_dip_distance_min = prm%CEdgeDipMinDistance*prm%b_sl
 
   slipState: do i = 1, prm%sum_N_sl
-    tau = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,i))
+    tau = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
 
     significantSlipStress: if (dEq0(tau)) then
       dot_rho_dip_formation(i) = 0.0_pReal
@@ -906,7 +906,7 @@ pure subroutine kinetics_slip(Mp,T,instance,of, &
   associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
   do i = 1, prm%sum_N_sl
-    tau(i) = math_mul33xx33(Mp,prm%P_sl(1:3,1:3,i))
+    tau(i) = math_tensordot(Mp,prm%P_sl(1:3,1:3,i))
   enddo
 
   tau_eff = abs(tau)-dst%tau_pass(:,of)
@@ -977,7 +977,7 @@ pure subroutine kinetics_twin(Mp,T,dot_gamma_sl,instance,of,&
   associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
   do i = 1, prm%sum_N_tw
-    tau(i) = math_mul33xx33(Mp,prm%P_tw(1:3,1:3,i))
+    tau(i) = math_tensordot(Mp,prm%P_tw(1:3,1:3,i))
     isFCC: if (prm%fccTwinTransNucleation) then
       s1=prm%fcc_twinNucleationSlipPair(1,i)
       s2=prm%fcc_twinNucleationSlipPair(2,i)
@@ -1045,7 +1045,7 @@ pure subroutine kinetics_trans(Mp,T,dot_gamma_sl,instance,of,&
   associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
 
   do i = 1, prm%sum_N_tr
-    tau(i) = math_mul33xx33(Mp,prm%P_tr(1:3,1:3,i))
+    tau(i) = math_tensordot(Mp,prm%P_tr(1:3,1:3,i))
     isFCC: if (prm%fccTwinTransNucleation) then
       s1=prm%fcc_twinNucleationSlipPair(1,i)
       s2=prm%fcc_twinNucleationSlipPair(2,i)

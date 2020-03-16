@@ -864,15 +864,15 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   rhoSgl = rho(:,sgl)
 
   do s = 1,ns
-    tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s))
+    tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s))
     tauNS(s,1) = tau(s)
     tauNS(s,2) = tau(s)
     if (tau(s) > 0.0_pReal) then
-      tauNS(s,3) = math_mul33xx33(Mp, +prm%nonSchmid_pos(1:3,1:3,s))
-      tauNS(s,4) = math_mul33xx33(Mp, -prm%nonSchmid_neg(1:3,1:3,s))
+      tauNS(s,3) = math_tensordot(Mp, +prm%nonSchmid_pos(1:3,1:3,s))
+      tauNS(s,4) = math_tensordot(Mp, -prm%nonSchmid_neg(1:3,1:3,s))
     else
-      tauNS(s,3) = math_mul33xx33(Mp, +prm%nonSchmid_neg(1:3,1:3,s))
-      tauNS(s,4) = math_mul33xx33(Mp, -prm%nonSchmid_pos(1:3,1:3,s))
+      tauNS(s,3) = math_tensordot(Mp, +prm%nonSchmid_neg(1:3,1:3,s))
+      tauNS(s,4) = math_tensordot(Mp, -prm%nonSchmid_pos(1:3,1:3,s))
     endif
   enddo
   tauNS = tauNS + spread(dst%tau_back(:,of),2,4)
@@ -987,7 +987,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
 
   !*** calculate limits for stable dipole height
   do s = 1,prm%totalNslip
-    tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) +dst%tau_back(s,of)
+    tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s)) +dst%tau_back(s,of)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   enddo
 
@@ -1148,7 +1148,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   !****************************************************************************
   !*** limits for stable dipole height
   do s = 1,ns
-    tau(s) = math_mul33xx33(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,of)
+    tau(s) = math_tensordot(Mp, prm%Schmid(1:3,1:3,s)) + dst%tau_back(s,of)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   enddo
 

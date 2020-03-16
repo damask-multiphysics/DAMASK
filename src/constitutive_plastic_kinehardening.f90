@@ -421,8 +421,8 @@ pure subroutine kinetics(Mp,instance,of, &
   nonSchmidActive = size(prm%nonSchmidCoeff) > 0
 
   do i = 1, prm%sum_N_sl
-    tau_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,of)
-    tau_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)) - stt%crss_back(i,of), &
+    tau_pos(i) =       math_tensordot(Mp,prm%nonSchmid_pos(1:3,1:3,i)) - stt%crss_back(i,of)
+    tau_neg(i) = merge(math_tensordot(Mp,prm%nonSchmid_neg(1:3,1:3,i)) - stt%crss_back(i,of), &
                        0.0_pReal, nonSchmidActive)
   enddo
 

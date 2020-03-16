@@ -155,9 +155,9 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal
   do i = 1, prm%totalNcleavage
 
-    traction_d    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,1,i))
-    traction_t    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,2,i))
-    traction_n    = math_mul33xx33(S,prm%cleavage_systems(1:3,1:3,3,i))
+    traction_d    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
+    traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
+    traction_n    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
     traction_crit = prm%critLoad(i)*damage(homog)%p(damageOffset)**2.0_pReal
 
