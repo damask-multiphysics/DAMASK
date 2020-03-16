@@ -372,9 +372,7 @@ subroutine constitutive_init
 
   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'; flush(6)
 
-  constitutive_plasticity_maxSizeDotState = 0
   constitutive_source_maxSizeDotState = 0
-
   PhaseLoop2:do ph = 1,material_Nphase
 !--------------------------------------------------------------------------------------------------
 ! partition and inititalize state
@@ -385,12 +383,11 @@ subroutine constitutive_init
       sourceState(ph)%p(s)%state           = sourceState(ph)%p(s)%partionedState0
     end forall
 !--------------------------------------------------------------------------------------------------
-! determine max size of state and output
-    constitutive_plasticity_maxSizeDotState    = max(constitutive_plasticity_maxSizeDotState,    &
-                                                     plasticState(ph)%sizeDotState)
-    constitutive_source_maxSizeDotState        = max(constitutive_source_maxSizeDotState, &
-                                                     maxval(sourceState(ph)%p(:)%sizeDotState))
+! determine max size of source state
+    constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
+                                                maxval(sourceState(ph)%p%sizeDotState))
   enddo PhaseLoop2
+  constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine constitutive_init
 
