@@ -8,24 +8,21 @@ submodule(constitutive) plastic_phenopowerlaw
 
   type :: tParameters
     real(pReal) :: &
-      gdot0_slip, &                                                                                 !< reference shear strain rate for slip
-      gdot0_twin, &                                                                                 !< reference shear strain rate for twin
-      n_slip, &                                                                                     !< stress exponent for slip
-      n_twin, &                                                                                     !< stress exponent for twin
-      spr, &                                                                                        !< push-up factor for slip saturation due to twinning
-      c_1, &
-      c_2, &
-      c_3, &
-      c_4, &
-      h0_SlipSlip, &                                                                                !< reference hardening slip - slip
-      h0_TwinSlip, &                                                                                !< reference hardening twin - slip
-      h0_TwinTwin, &                                                                                !< reference hardening twin - twin
-      a_slip
+      gdot0_slip  = 1.0_pReal, &                                                                    !< reference shear strain rate for slip
+      gdot0_twin  = 1.0_pReal, &                                                                    !< reference shear strain rate for twin
+      n_slip      = 1.0_pReal, &                                                                    !< stress exponent for slip
+      n_twin      = 1.0_pReal, &                                                                    !< stress exponent for twin
+      spr         = 1.0_pReal, &                                                                    !< push-up factor for slip saturation due to twinning
+      c_1         = 1.0_pReal, &
+      c_2         = 1.0_pReal, &
+      c_3         = 1.0_pReal, &
+      c_4         = 1.0_pReal, &
+      h0_SlipSlip = 1.0_pReal, &                                                                    !< reference hardening slip - slip
+      h0_TwinSlip = 1.0_pReal, &                                                                    !< reference hardening twin - slip
+      h0_TwinTwin = 1.0_pReal, &                                                                    !< reference hardening twin - twin
+      a_slip      = 1.0_pReal
     real(pReal),               allocatable, dimension(:) :: &
-      xi_slip_0, &                                                                                  !< initial critical shear stress for slip
-      xi_twin_0, &                                                                                  !< initial critical shear stress for twin
       xi_slip_sat, &                                                                                !< maximum critical shear stress for slip
-      nonSchmidCoeff, &
       H_int, &                                                                                      !< per family hardening activity (optional)
       gamma_twin_char                                                                               !< characteristic shear for twins
     real(pReal),               allocatable, dimension(:,:) :: &
@@ -41,6 +38,8 @@ submodule(constitutive) plastic_phenopowerlaw
     integer :: &
       sum_N_sl, &                                                                                   !< total number of active slip system
       sum_N_tw                                                                                      !< total number of active twin systems
+    logical :: &
+      nonSchmidActive = .false.
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -77,6 +76,10 @@ module subroutine plastic_phenopowerlaw_init
     startIndex, endIndex
   integer, dimension(:), allocatable :: &
     N_sl, N_tw
+  real,    dimension(:), allocatable :: &
+    xi_slip_0, &                                                                                    !< initial critical shear stress for slip
+    xi_twin_0, &                                                                                    !< initial critical shear stress for twin
+    a                                                                                               !< non-Schmid coefficients
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -98,13 +101,6 @@ module subroutine plastic_phenopowerlaw_init
               config => config_phase(p))
 
 !--------------------------------------------------------------------------------------------------
-!  optional parameters that need to be defined
-    prm%c_1            = config%getFloat('twin_c',defaultVal=0.0_pReal)
-    prm%c_2            = config%getFloat('twin_b',defaultVal=1.0_pReal)
-    prm%c_3            = config%getFloat('twin_e',defaultVal=0.0_pReal)
-    prm%c_4            = config%getFloat('twin_d',defaultVal=0.0_pReal)
-
-!--------------------------------------------------------------------------------------------------
 ! slip related parameters
     N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(N_sl)
@@ -113,12 +109,11 @@ module subroutine plastic_phenopowerlaw_init
                                            config%getFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(config%getString('lattice_structure')) == 'bcc') then
-        prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
-                                              defaultVal = emptyRealArray)
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,-1)
+        a = config%getFloats('nonschmid_coefficients',defaultVal = emptyRealArray)
+        if(size(a) > 0) prm%nonSchmidActive = .true.
+        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
+        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        allocate(prm%nonSchmidCoeff(0))
         prm%nonSchmid_pos  = prm%P_sl
         prm%nonSchmid_neg  = prm%P_sl
       endif
@@ -126,7 +121,7 @@ module subroutine plastic_phenopowerlaw_init
                                                                 config%getFloats('interaction_slipslip'), &
                                                                 config%getString('lattice_structure'))
 
-      prm%xi_slip_0   = config%getFloats('tau0_slip',   requiredSize=size(N_sl))
+      xi_slip_0       = config%getFloats('tau0_slip',   requiredSize=size(N_sl))
       prm%xi_slip_sat = config%getFloats('tausat_slip', requiredSize=size(N_sl))
       prm%H_int       = config%getFloats('h_int',       requiredSize=size(N_sl), &
                                          defaultVal=[(0.0_pReal,i=1,size(N_sl))])
@@ -137,7 +132,7 @@ module subroutine plastic_phenopowerlaw_init
       prm%h0_SlipSlip = config%getFloat('h0_slipslip')
 
       ! expand: family => system
-      prm%xi_slip_0   = math_expand(prm%xi_slip_0,  N_sl)
+      xi_slip_0       = math_expand(xi_slip_0,      N_sl)
       prm%xi_slip_sat = math_expand(prm%xi_slip_sat,N_sl)
       prm%H_int       = math_expand(prm%H_int,      N_sl)
 
@@ -145,11 +140,13 @@ module subroutine plastic_phenopowerlaw_init
       if (    prm%gdot0_slip  <= 0.0_pReal)      extmsg = trim(extmsg)//' gdot0_slip'
       if (    prm%a_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' a_slip'
       if (    prm%n_slip      <= 0.0_pReal)      extmsg = trim(extmsg)//' n_slip'
-      if (any(prm%xi_slip_0   <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_slip_0'
+      if (any(xi_slip_0       <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_slip_0'
       if (any(prm%xi_slip_sat <= 0.0_pReal))     extmsg = trim(extmsg)//' xi_slip_sat'
+
     else slipActive
+      xi_slip_0 = emptyRealArray
+      allocate(prm%xi_slip_sat,prm%H_int,source=emptyRealArray)
       allocate(prm%interaction_SlipSlip(0,0))
-      allocate(prm%xi_slip_0(0))
     endif slipActive
 
 !--------------------------------------------------------------------------------------------------
@@ -165,23 +162,28 @@ module subroutine plastic_phenopowerlaw_init
       prm%gamma_twin_char      = lattice_characteristicShear_twin(N_tw,config%getString('lattice_structure'),&
                                                                   config%getFloat('c/a'))
 
-      prm%xi_twin_0            = config%getFloats('tau0_twin',requiredSize=size(N_tw))
+      xi_twin_0       = config%getFloats('tau0_twin',requiredSize=size(N_tw))
 
-      prm%gdot0_twin           = config%getFloat('gdot0_twin')
-      prm%n_twin               = config%getFloat('n_twin')
-      prm%spr                  = config%getFloat('s_pr')
-      prm%h0_TwinTwin          = config%getFloat('h0_twintwin')
+      prm%c_1         = config%getFloat('twin_c',defaultVal=0.0_pReal)
+      prm%c_2         = config%getFloat('twin_b',defaultVal=1.0_pReal)
+      prm%c_3         = config%getFloat('twin_e',defaultVal=0.0_pReal)
+      prm%c_4         = config%getFloat('twin_d',defaultVal=0.0_pReal)
+      prm%gdot0_twin  = config%getFloat('gdot0_twin')
+      prm%n_twin      = config%getFloat('n_twin')
+      prm%spr         = config%getFloat('s_pr')
+      prm%h0_TwinTwin = config%getFloat('h0_twintwin')
 
       ! expand: family => system
-      prm%xi_twin_0   = math_expand(prm%xi_twin_0,  N_tw)
+      xi_twin_0       = math_expand(xi_twin_0,N_tw)
 
       ! sanity checks
       if (prm%gdot0_twin <= 0.0_pReal)  extmsg = trim(extmsg)//' gdot0_twin'
       if (prm%n_twin     <= 0.0_pReal)  extmsg = trim(extmsg)//' n_twin'
+
     else twinActive
+      xi_twin_0 = emptyRealArray
+      allocate(prm%gamma_twin_char,source=emptyRealArray)
       allocate(prm%interaction_TwinTwin(0,0))
-      allocate(prm%xi_twin_0(0))
-      allocate(prm%gamma_twin_char(0))
     endif twinActive
 
 !--------------------------------------------------------------------------------------------------
@@ -218,7 +220,7 @@ module subroutine plastic_phenopowerlaw_init
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%xi_slip => plasticState(p)%state   (startIndex:endIndex,:)
-    stt%xi_slip = spread(prm%xi_slip_0, 2, NipcMyPhase)
+    stt%xi_slip =  spread(xi_slip_0, 2, NipcMyPhase)
     dot%xi_slip => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
@@ -226,7 +228,7 @@ module subroutine plastic_phenopowerlaw_init
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     stt%xi_twin => plasticState(p)%state   (startIndex:endIndex,:)
-    stt%xi_twin = spread(prm%xi_twin_0, 2, NipcMyPhase)
+    stt%xi_twin =  spread(xi_twin_0, 2, NipcMyPhase)
     dot%xi_twin => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
@@ -431,20 +433,17 @@ pure subroutine kinetics_slip(Mp,instance,of, &
     tau_slip_pos, &
     tau_slip_neg
   integer :: i
-  logical :: nonSchmidActive
 
   associate(prm => param(instance), stt => state(instance))
-
-  nonSchmidActive = size(prm%nonSchmidCoeff) > 0
 
   do i = 1, prm%sum_N_sl
     tau_slip_pos(i) =       math_mul33xx33(Mp,prm%nonSchmid_pos(1:3,1:3,i))
     tau_slip_neg(i) = merge(math_mul33xx33(Mp,prm%nonSchmid_neg(1:3,1:3,i)), &
-                            0.0_pReal, nonSchmidActive)
+                            0.0_pReal, prm%nonSchmidActive)
   enddo
 
   where(dNeq0(tau_slip_pos))
-    gdot_slip_pos = prm%gdot0_slip * merge(0.5_pReal,1.0_pReal, nonSchmidActive) &                  ! 1/2 if non-Schmid active
+    gdot_slip_pos = prm%gdot0_slip * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &              ! 1/2 if non-Schmid active
                   * sign(abs(tau_slip_pos/stt%xi_slip(:,of))**prm%n_slip,  tau_slip_pos)
   else where
     gdot_slip_pos = 0.0_pReal

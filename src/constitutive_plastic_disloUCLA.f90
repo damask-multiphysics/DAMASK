@@ -12,15 +12,12 @@ submodule(constitutive) plastic_disloUCLA
 
   type :: tParameters
     real(pReal) :: &
-      D, &                                                                                          !< grain size
-      mu, &                                                                                         !< equivalent shear modulus
-      D_0, &                                                                                        !< prefactor for self-diffusion coefficient
-      Q_cl                                                                                          !< activation energy for dislocation climb
+      D    = 1.0_pReal, &                                                                           !< grain size
+      mu   = 1.0_pReal, &                                                                           !< equivalent shear modulus
+      D_0  = 1.0_pReal, &                                                                           !< prefactor for self-diffusion coefficient
+      Q_cl = 1.0_pReal                                                                              !< activation energy for dislocation climb
     real(pReal),               allocatable, dimension(:) :: &
-      rho_mob_0, &                                                                                  !< initial dislocation density
-      rho_dip_0, &                                                                                  !< initial dipole density
       b_sl, &                                                                                       !< magnitude of burgers vector [m]
-      nonSchmidCoeff, &
       D_a, &
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations
       atomicVolume, &
@@ -36,7 +33,7 @@ submodule(constitutive) plastic_disloUCLA
       omega                                                                                         !< attempt frequency for kink pair nucleation
     real(pReal),               allocatable, dimension(:,:) :: &
       h_sl_sl, &                                                                                    !< slip resistance from slip activity
-      forestProjectionEdge
+      forestProjection
     real(pReal),               allocatable, dimension(:,:,:) :: &
       Schmid, &
       nonSchmid_pos, &
@@ -87,6 +84,10 @@ module subroutine plastic_disloUCLA_init
     startIndex, endIndex
   integer, dimension(:), allocatable :: &
     N_sl
+  real,    dimension(:), allocatable :: &
+    rho_mob_0, &                                                                                    !< initial dislocation density
+    rho_dip_0, &                                                                                    !< initial dipole density
+    a                                                                                               !< non-Schmid coefficients
   character(len=pStringLen) :: &
     extmsg = ''
 
@@ -103,7 +104,6 @@ module subroutine plastic_disloUCLA_init
   allocate(state(Ninstance))
   allocate(dotState(Ninstance))
   allocate(dependentState(Ninstance))
-
 
   do p = 1, size(phase_plasticity)
     if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
@@ -127,25 +127,22 @@ module subroutine plastic_disloUCLA_init
                                              config%getFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(config%getString('lattice_structure')) == 'bcc') then
-        prm%nonSchmidCoeff = config%getFloats('nonschmid_coefficients',&
-                                               defaultVal = emptyRealArray)
-        prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,+1)
-        prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,prm%nonSchmidCoeff,-1)
+        a = config%getFloats('nonschmid_coefficients',defaultVal = emptyRealArray)
+        prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
+        prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
-        allocate(prm%nonSchmidCoeff(0))
-        prm%nonSchmid_pos  = prm%Schmid
-        prm%nonSchmid_neg  = prm%Schmid
+        prm%nonSchmid_pos = prm%Schmid
+        prm%nonSchmid_neg = prm%Schmid
       endif
 
-      prm%h_sl_sl     = lattice_interaction_SlipBySlip(N_sl, &
-                                                       config%getFloats('interaction_slipslip'), &
-                                                       config%getString('lattice_structure'))
-      prm%forestProjectionEdge = lattice_forestProjection_edge(N_sl,config%getString('lattice_structure'),&
-                                                               config%getFloat('c/a',defaultVal=0.0_pReal))
-      prm%forestProjectionEdge = transpose(prm%forestProjectionEdge)
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,config%getFloats('interaction_slipslip'), &
+                                                   config%getString('lattice_structure'))
+      prm%forestProjection = lattice_forestProjection_edge(N_sl,config%getString('lattice_structure'),&
+                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
+      prm%forestProjection = transpose(prm%forestProjection)
 
-      prm%rho_mob_0   = config%getFloats('rhoedge0',       requiredSize=size(N_sl))
-      prm%rho_dip_0   = config%getFloats('rhoedgedip0',    requiredSize=size(N_sl))
+      rho_mob_0       = config%getFloats('rhoedge0',       requiredSize=size(N_sl))
+      rho_dip_0       = config%getFloats('rhoedgedip0',    requiredSize=size(N_sl))
       prm%v0          = config%getFloats('v0',             requiredSize=size(N_sl))
       prm%b_sl        = config%getFloats('slipburgers',    requiredSize=size(N_sl))
       prm%delta_F     = config%getFloats('qedge',          requiredSize=size(N_sl))
@@ -161,16 +158,16 @@ module subroutine plastic_disloUCLA_init
       prm%omega       = config%getFloats('omega',          requiredSize=size(N_sl))
       prm%B           = config%getFloats('friction_coeff', requiredSize=size(N_sl))
 
-      prm%D                   = config%getFloat('grainsize')
-      prm%D_0                 = config%getFloat('d0')
-      prm%Q_cl                = config%getFloat('qsd')
-      prm%atomicVolume        = config%getFloat('catomicvolume')       * prm%b_sl**3.0_pReal
-      prm%D_a                 = config%getFloat('cedgedipmindistance') * prm%b_sl
-      prm%dipoleformation     = config%getFloat('dipoleformationfactor') > 0.0_pReal !should be on by default, ToDo: change to /key/-type key
+      prm%D               = config%getFloat('grainsize')
+      prm%D_0             = config%getFloat('d0')
+      prm%Q_cl            = config%getFloat('qsd')
+      prm%atomicVolume    = config%getFloat('catomicvolume')       * prm%b_sl**3.0_pReal
+      prm%D_a             = config%getFloat('cedgedipmindistance') * prm%b_sl
+      prm%dipoleformation = config%getFloat('dipoleformationfactor') > 0.0_pReal                    !should be on by default, ToDo: change to /key/-type key
 
       ! expand: family => system
-      prm%rho_mob_0      = math_expand(prm%rho_mob_0,      N_sl)
-      prm%rho_dip_0      = math_expand(prm%rho_dip_0,      N_sl)
+      rho_mob_0          = math_expand(rho_mob_0,          N_sl)
+      rho_dip_0          = math_expand(rho_dip_0,          N_sl)
       prm%q              = math_expand(prm%q,              N_sl)
       prm%p              = math_expand(prm%p,              N_sl)
       prm%delta_F        = math_expand(prm%delta_F,        N_sl)
@@ -185,22 +182,25 @@ module subroutine plastic_disloUCLA_init
       prm%atomicVolume   = math_expand(prm%atomicVolume,   N_sl)
       prm%D_a            = math_expand(prm%D_a,            N_sl)
 
-
       ! sanity checks
-      if (    prm%D_0            <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
-      if (    prm%Q_cl           <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
-      if (any(prm%rho_mob_0      <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
-      if (any(prm%rho_dip_0      <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
-      if (any(prm%v0             <  0.0_pReal)) extmsg = trim(extmsg)//' v0'
-      if (any(prm%b_sl           <= 0.0_pReal)) extmsg = trim(extmsg)//' slipb_sl'
-      if (any(prm%delta_F        <= 0.0_pReal)) extmsg = trim(extmsg)//' qedge'
-      if (any(prm%tau_0          <  0.0_pReal)) extmsg = trim(extmsg)//' tau_0'
-      if (any(prm%D_a            <= 0.0_pReal)) extmsg = trim(extmsg)//' cedgedipmindistance or slipb_sl'
-      if (any(prm%atomicVolume   <= 0.0_pReal)) extmsg = trim(extmsg)//' catomicvolume or slipb_sl'
+      if (    prm%D_0          <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
+      if (    prm%Q_cl         <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
+      if (any(rho_mob_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
+      if (any(rho_dip_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
+      if (any(prm%v0           <  0.0_pReal)) extmsg = trim(extmsg)//' v0'
+      if (any(prm%b_sl         <= 0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
+      if (any(prm%delta_F      <= 0.0_pReal)) extmsg = trim(extmsg)//' qedge'
+      if (any(prm%tau_0        <  0.0_pReal)) extmsg = trim(extmsg)//' tau_0'
+      if (any(prm%D_a          <= 0.0_pReal)) extmsg = trim(extmsg)//' cedgedipmindistance or b_sl'
+      if (any(prm%atomicVolume <= 0.0_pReal)) extmsg = trim(extmsg)//' catomicvolume or b_sl'
 
     else slipActive
-      allocate(prm%rho_mob_0(0))
-      allocate(prm%rho_dip_0(0))
+      rho_mob_0= emptyRealArray; rho_dip_0 = emptyRealArray
+      allocate(prm%b_sl,prm%D_a,prm%i_sl,prm%atomicVolume,prm%tau_0, &
+               prm%delta_F,prm%v0,prm%p,prm%q,prm%B,prm%kink_height,prm%w,prm%omega, &
+               source = emptyRealArray)
+      allocate(prm%forestProjection(0,0))
+      allocate(prm%h_sl_sl         (0,0))
     endif slipActive
 
 !--------------------------------------------------------------------------------------------------
@@ -215,23 +215,23 @@ module subroutine plastic_disloUCLA_init
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
-    stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
-    stt%rho_mob= spread(prm%rho_mob_0,2,NipcMyPhase)
-    dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
+    stt%rho_mob => plasticState(p)%state(startIndex:endIndex,:)
+    stt%rho_mob =  spread(rho_mob_0,2,NipcMyPhase)
+    dot%rho_mob => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
-    stt%rho_dip= spread(prm%rho_dip_0,2,NipcMyPhase)
-    dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
+    stt%rho_dip => plasticState(p)%state(startIndex:endIndex,:)
+    stt%rho_dip =  spread(rho_dip_0,2,NipcMyPhase)
+    dot%rho_dip => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
-    stt%gamma_sl=>plasticState(p)%state(startIndex:endIndex,:)
-    dot%gamma_sl=>plasticState(p)%dotState(startIndex:endIndex,:)
+    stt%gamma_sl => plasticState(p)%state(startIndex:endIndex,:)
+    dot%gamma_sl => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = 1.0e6_pReal                                         ! ARRG
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
@@ -256,7 +256,7 @@ end subroutine plastic_disloUCLA_init
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
 pure module subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp, &
-                                                  Mp,T,instance,of)
+                                                         Mp,T,instance,of)
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -369,8 +369,7 @@ module subroutine plastic_disloUCLA_dependentState(instance,of)
 
   associate(prm => param(instance), stt => state(instance),dst => dependentState(instance))
 
-  dislocationSpacing = sqrt(matmul(prm%forestProjectionEdge, &
-                                   stt%rho_mob(:,of)+stt%rho_dip(:,of)))
+  dislocationSpacing = sqrt(matmul(prm%forestProjection,stt%rho_mob(:,of)+stt%rho_dip(:,of)))
   dst%threshold_stress(:,of) = prm%mu*prm%b_sl &
                              * sqrt(matmul(prm%h_sl_sl,stt%rho_mob(:,of)+stt%rho_dip(:,of)))
 
