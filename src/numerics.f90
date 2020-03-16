@@ -18,7 +18,6 @@ module numerics
 
  integer, protected, public :: &
    iJacoStiffness             =  1, &                                                               !< frequency of stiffness update
-   nMPstate                   = 10, &                                                               !< materialpoint state loop limit
    randomSeed                 =  0, &                                                               !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
    worldsize                  =  1, &                                                               !< MPI worldsize (/=1 for MPI simulations only)
@@ -27,9 +26,6 @@ module numerics
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
    defgradTolerance           =  1.0e-7_pReal, &                                                    !< deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
-   subStepMinHomog            =  1.0e-3_pReal, &                                                    !< minimum (relative) size of sub-step allowed during cutback in homogenization
-   subStepSizeHomog           =  0.25_pReal, &                                                      !< size of first substep when cutback in homogenization
-   stepIncreaseHomog          =  1.5_pReal, &                                                       !< increase of next substep size when previous substep converged in homogenization
    numerics_unitlength        =  1.0_pReal, &                                                       !< determines the physical length of one computational length unit
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage
@@ -138,14 +134,6 @@ subroutine numerics_init
          defgradTolerance = IO_floatValue(line,chunkPos,2)
        case ('ijacostiffness')
          iJacoStiffness = IO_intValue(line,chunkPos,2)
-       case ('nmpstate')
-         nMPstate = IO_intValue(line,chunkPos,2)
-       case ('substepminhomog')
-         subStepMinHomog = IO_floatValue(line,chunkPos,2)
-       case ('substepsizehomog')
-         subStepSizeHomog = IO_floatValue(line,chunkPos,2)
-       case ('stepincreasehomog')
-         stepIncreaseHomog = IO_floatValue(line,chunkPos,2)
        case ('integrator')
          numerics_integrator = IO_intValue(line,chunkPos,2)
        case ('usepingpong')
@@ -239,11 +227,6 @@ subroutine numerics_init
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
- write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
- write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
- write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
- write(6,'(a24,1x,i8,/)')   ' nMPstate:               ',nMPstate
-
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
  write(6,'(a16,1x,i16,/)')    ' random_seed:    ',randomSeed
@@ -299,10 +282,6 @@ subroutine numerics_init
 ! sanity checks
  if (defgradTolerance <= 0.0_pReal)        call IO_error(301,ext_msg='defgradTolerance')
  if (iJacoStiffness < 1)                   call IO_error(301,ext_msg='iJacoStiffness')
- if (nMPstate < 1)                         call IO_error(301,ext_msg='nMPstate')
- if (subStepMinHomog <= 0.0_pReal)         call IO_error(301,ext_msg='subStepMinHomog')
- if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301,ext_msg='subStepSizeHomog')
- if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301,ext_msg='stepIncreaseHomog')
  if (numerics_integrator <= 0 .or. numerics_integrator >= 6) &
                                            call IO_error(301,ext_msg='integrator')
  if (numerics_unitlength <= 0.0_pReal)     call IO_error(301,ext_msg='unitlength')

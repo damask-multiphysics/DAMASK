@@ -43,7 +43,7 @@ submodule(homogenization) homogenization_mech_RGC
       orientation
   end type tRGCdependentState
 
-  type :: tNumerics
+  type :: tNumerics_RGC
     real(pReal) :: &
      atol, &                                                                                        !< absolute tolerance of RGC residuum
      rtol, &                                                                                        !< relative tolerance of RGC residuum
@@ -58,7 +58,7 @@ submodule(homogenization) homogenization_mech_RGC
      maxVolDiscr, &                                                                                 !< threshold of maximum volume discrepancy allowed
      volDiscrMod, &                                                                                 !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
      volDiscrPow                                                                                    !< powerlaw penalty for volume discrepancy
-  end type tNumerics
+  end type tNumerics_RGC
 
   type(tparameters),          dimension(:), allocatable :: &
     param
@@ -67,7 +67,7 @@ submodule(homogenization) homogenization_mech_RGC
     state0
   type(tRGCdependentState),   dimension(:), allocatable :: &
     dependentState
-  type(tNumerics) :: &
+  type(tNumerics_RGC) :: &
     num                                                                                             ! numerics parameters. Better name?
 
 contains

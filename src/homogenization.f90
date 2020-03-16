@@ -23,7 +23,7 @@ module homogenization
   use damage_local
   use damage_nonlocal
   use results
- 
+
   implicit none
   private
 
@@ -48,24 +48,35 @@ module homogenization
     materialpoint_converged
   logical,       dimension(:,:,:),       allocatable :: &
     materialpoint_doneAndHappy
-    
+
+  type :: tNumerics
+    integer :: &
+      nMPstate                                                                                     !< materialpoint state loop limit
+    real(pReal) :: &
+      subStepMinHomog, &                                                                            !< minimum (relative) size of sub-step allowed during cutback in homogenization
+      subStepSizeHomog, &                                                                           !< size of first substep when cutback in homogenization
+      stepIncreaseHomog                                                                             !< increase of next substep size when previous substep converged in homogenization
+  end type tNumerics
+
+  type(tNumerics) :: num
+
   interface
 
     module subroutine mech_none_init
     end subroutine mech_none_init
-    
+
     module subroutine mech_isostrain_init
     end subroutine mech_isostrain_init
-    
+
     module subroutine mech_RGC_init
     end subroutine mech_RGC_init
-    
-    
+
+
     module subroutine mech_isostrain_partitionDeformation(F,avgF)
       real(pReal),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
       real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
     end subroutine mech_isostrain_partitionDeformation
-    
+
     module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
       real(pReal),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
       real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
@@ -73,30 +84,30 @@ module homogenization
         instance, &
         of
     end subroutine mech_RGC_partitionDeformation
-    
-    
+
+
     module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
       real(pReal),   dimension (3,3),       intent(out) :: avgP                                     !< average stress at material point
       real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                               !< average stiffness at material point
-  
+
       real(pReal),   dimension (:,:,:),     intent(in)  :: P                                        !< partitioned stresses
       real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                     !< partitioned stiffnesses
-      integer,                              intent(in)  :: instance 
+      integer,                              intent(in)  :: instance
     end subroutine mech_isostrain_averageStressAndItsTangent
-    
+
     module subroutine mech_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
       real(pReal),   dimension (3,3),       intent(out) :: avgP                                     !< average stress at material point
       real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                               !< average stiffness at material point
-  
+
       real(pReal),   dimension (:,:,:),     intent(in)  :: P                                        !< partitioned stresses
       real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                     !< partitioned stiffnesses
-      integer,                              intent(in)  :: instance 
+      integer,                              intent(in)  :: instance
     end subroutine mech_RGC_averageStressAndItsTangent
-    
-    
+
+
     module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
       logical, dimension(2) :: mech_RGC_updateState
-      real(pReal), dimension(:,:,:),     intent(in)    :: & 
+      real(pReal), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
         F,&                                                                                         !< partitioned deformation gradients
         F0                                                                                          !< partitioned initial deformation gradients
@@ -113,7 +124,7 @@ module homogenization
       integer,          intent(in) :: instance                                                      !< homogenization instance
       character(len=*), intent(in) :: group                                                         !< group name in HDF5 file
     end subroutine mech_RGC_results
-   
+
   end interface
 
   public ::  &
@@ -179,6 +190,15 @@ subroutine homogenization_init
   if (debug_g < 1 .or. debug_g > homogenization_Ngrains(material_homogenizationAt(debug_e))) &
     call IO_error(602,ext_msg='constituent', el=debug_e, g=debug_g)
 
+  num%nMPstate          = config_numerics%getInt(  'nmpstate',          defaultVal=10)
+  num%subStepMinHomog   = config_numerics%getFloat('substepminhomog',   defaultVal=1.0e-3_pReal)
+  num%subStepSizeHomog  = config_numerics%getFloat('substepsizehomog',  defaultVal=0.25_pReal)
+  num%stepIncreaseHomog = config_numerics%getFloat('stepincreasehomog', defaultVal=1.5_pReal)
+  if (num%nMPstate < 1)                   call IO_error(301,ext_msg='nMPstate')
+  if (num%subStepMinHomog <= 0.0_pReal)   call IO_error(301,ext_msg='subStepMinHomog')
+  if (num%subStepSizeHomog <= 0.0_pReal)  call IO_error(301,ext_msg='subStepSizeHomog')
+  if (num%stepIncreaseHomog <= 0.0_pReal) call IO_error(301,ext_msg='stepIncreaseHomog')
+
 end subroutine homogenization_init
 
 
@@ -235,10 +255,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
       materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)
       materialpoint_subFrac(i,e) = 0.0_pReal
-      materialpoint_subStep(i,e) = 1.0_pReal/subStepSizeHomog                                       ! <<added to adopt flexibility in cutback size>>
+      materialpoint_subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                   ! <<added to adopt flexibility in cutback size>>
       materialpoint_converged(i,e) = .false.                                                        ! pretend failed step of twice the required size
       materialpoint_requested(i,e) = .true.                                                         ! everybody requires calculation
-    
+
       if (homogState(material_homogenizationAt(e))%sizeState > 0) &
           homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
           homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))        ! ...internal homogenization state
@@ -246,17 +266,17 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
       if (thermalState(material_homogenizationAt(e))%sizeState > 0) &
           thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
           thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))      ! ...internal thermal state
-        
+
       if (damageState(material_homogenizationAt(e))%sizeState > 0) &
           damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
           damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))       ! ...internal damage state
     enddo
   enddo
-  
+
   NiterationHomog = 0
 
   cutBackLooping: do while (.not. terminallyIll .and. &
-       any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog))
+       any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
     !$OMP PARALLEL DO PRIVATE(myNgrains)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -278,9 +298,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! calculate new subStep and new subFrac
           materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
           materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), &
-                                           stepIncreaseHomog*materialpoint_subStep(i,e))            ! introduce flexibility for step increase/acceleration
+                                           num%stepIncreaseHomog*materialpoint_subStep(i,e))        ! introduce flexibility for step increase/acceleration
 
-          steppingNeeded: if (materialpoint_subStep(i,e) > subStepMinHomog) then
+          steppingNeeded: if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
 
             ! wind forward grain starting point of...
             crystallite_partionedF0  (1:3,1:3,1:myNgrains,i,e) =  &
@@ -319,14 +339,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             if(damageState(material_homogenizationAt(e))%sizeState > 0) &
                 damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
                 damageState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
-                
+
             materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)
 
           endif steppingNeeded
 
         else converged
           if ( (myNgrains == 1 .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                     ! single grain already tried internal subStepping in crystallite
-               subStepSizeHomog * materialpoint_subStep(i,e) <=  subStepMinHomog ) then             ! would require too small subStep
+               num%subStepSizeHomog * materialpoint_subStep(i,e) <=  num%subStepMinHomog ) then     ! would require too small subStep
                                                                                                     ! cutback makes no sense
             !$OMP FLUSH(terminallyIll)
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
@@ -336,7 +356,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             endif
             terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
-            materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)              ! crystallite had severe trouble, so do a significant cutback
+            materialpoint_subStep(i,e) = num%subStepSizeHomog * materialpoint_subStep(i,e)          ! crystallite had severe trouble, so do a significant cutback
 
 #ifdef DEBUG
             if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0 &
@@ -382,7 +402,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
           endif
         endif converged
 
-        if (materialpoint_subStep(i,e) > subStepMinHomog) then
+        if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
           materialpoint_requested(i,e) = .true.
           materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) &
                                           + materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) &
@@ -400,7 +420,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
               any(            materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                   .and. .not. materialpoint_doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  ) .and. &
-              NiterationMPstate < nMPstate)
+              NiterationMPstate < num%nMPstate)
       NiterationMPstate = NiterationMPstate + 1
 
 !--------------------------------------------------------------------------------------------------
@@ -427,7 +447,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! crystallite integration
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-    
+
       materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
@@ -447,15 +467,15 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
         enddo IpLooping3
       enddo elementLooping3
       !$OMP END PARALLEL DO
- 
+
     enddo convergenceLooping
- 
+
     NiterationHomog = NiterationHomog + 1
- 
+
   enddo cutBackLooping
-  
+
   if(updateJaco) call crystallite_stressTangent
- 
+
   if (.not. terminallyIll ) then
     call crystallite_orientations()                                                                 ! calculate crystal orientations
     !$OMP PARALLEL DO
@@ -589,25 +609,25 @@ end subroutine averageStressAndItsTangent
 subroutine homogenization_results
   use material, only: &
     material_homogenization_type => homogenization_type
-    
+
   integer :: p
   character(len=pStringLen) :: group_base,group
-  
+
   !real(pReal), dimension(:,:,:), allocatable :: temp
-                                             
+
   do p=1,size(config_name_homogenization)
     group_base = 'current/materialpoint/'//trim(config_name_homogenization(p))
     call results_closeGroup(results_addGroup(group_base))
-    
+
     group = trim(group_base)//'/generic'
     call results_closeGroup(results_addGroup(group))
     !temp = reshape(materialpoint_F,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'F',&
-    !                          'deformation gradient','1')  
+    !                          'deformation gradient','1')
     !temp = reshape(materialpoint_P,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'P',&
-    !                          '1st Piola-Kirchoff stress','Pa')  
-    
+    !                          '1st Piola-Kirchoff stress','Pa')
+
     group = trim(group_base)//'/mech'
     call results_closeGroup(results_addGroup(group))
     select case(material_homogenization_type(p))
@@ -623,7 +643,7 @@ subroutine homogenization_results
       case(DAMAGE_NONLOCAL_ID)
         call damage_nonlocal_results(p,group)
     end select
-    
+
     group = trim(group_base)//'/thermal'
     call results_closeGroup(results_addGroup(group))
     select case(thermal_type(p))
@@ -632,7 +652,7 @@ subroutine homogenization_results
       case(THERMAL_CONDUCTION_ID)
         call thermal_conduction_results(p,group)
     end select
-    
+
  enddo
 
 end subroutine homogenization_results
