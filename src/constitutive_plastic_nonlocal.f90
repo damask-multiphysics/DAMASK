@@ -638,7 +638,6 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
     n
   real(pReal) :: &
     FVsize, &
-    correction, &
     nRealNeighbors                                                                                  ! number of really existing neighbors
   integer, dimension(2) :: &
     neighbors
@@ -668,7 +667,6 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))), &
                          totalNslip(phase_plasticityInstance(material_phaseAt(1,el)))) :: &
     myInteractionMatrix                                                                             ! corrected slip interaction matrix
-
   real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phaseAt(1,el))),nIPneighbors) :: &
     rho_edg_delta_neighbor, &
     rho_scr_delta_neighbor
@@ -695,13 +693,11 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, ip, el)
   ! coefficients are corrected for the line tension effect
   ! (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
   if (any(lattice_structure(material_phaseAt(1,el)) == [LATTICE_bcc_ID,LATTICE_fcc_ID])) then
-    do s = 1,ns
-      correction = (  1.0_pReal - prm%linetensionEffect &
-                    + prm%linetensionEffect &
-                    * log(0.35_pReal * prm%burgers(s) * sqrt(max(stt%rho_forest(s,of),prm%significantRho))) &
-                    / log(0.35_pReal * prm%burgers(s) * 1e6_pReal)) ** 2.0_pReal
-      myInteractionMatrix(:,s) = correction * prm%interactionSlipSlip(:,s)
-    enddo
+    myInteractionMatrix = prm%interactionSlipSlip &
+                        * transpose(spread((  1.0_pReal - prm%linetensionEffect &
+                                   + prm%linetensionEffect &
+                                   * log(0.35_pReal * prm%burgers * sqrt(max(stt%rho_forest(:,of),prm%significantRho))) &
+                                   / log(0.35_pReal * prm%burgers * 1e6_pReal))** 2.0_pReal,2,ns))
   else
     myInteractionMatrix = prm%interactionSlipSlip
   endif
