@@ -614,8 +614,9 @@ subroutine crystallite_orientations
     !$OMP PARALLEL DO
     do e = FEsolving_execElem(1),FEsolving_execElem(2)
       do i = FEsolving_execIP(1),FEsolving_execIP(2)
-        if (plasticState(material_phaseAt(1,e))%nonLocal) &                                         ! if nonlocal model
-          call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
+        if (plasticState(material_phaseAt(1,e))%nonLocal) &
+          call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
+                                                    phase_plasticityInstance(material_phaseAt(i,e)),i,e)
     enddo; enddo
     !$OMP END PARALLEL DO
   endif nonlocalPresent

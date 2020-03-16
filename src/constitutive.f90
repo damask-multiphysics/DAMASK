@@ -202,19 +202,21 @@ module constitutive
         of
     end subroutine plastic_disloUCLA_dotState
 
-    module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature, &
-                                                timestep,ip,el)
-      integer, intent(in) :: &
-        ip, &                                                                                       !< current integration point
-        el                                                                                          !< current element number
-      real(pReal), intent(in) :: &
-        Temperature, &                                                                              !< temperature
-        timestep                                                                                    !< substepped crystallite time increment
+    module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
+                                                instance,of,ip,el)
       real(pReal), dimension(3,3), intent(in) ::&
         Mp                                                                                          !< MandelStress
       real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
         F, &                                                                                        !< deformation gradient
         Fp                                                                                          !< plastic deformation gradient
+      real(pReal), intent(in) :: &
+        Temperature, &                                                                              !< temperature
+        timestep                                                                                    !< substepped crystallite time increment
+      integer, intent(in) :: &
+        instance, &
+        of, &
+        ip, &                                                                                       !< current integration point
+        el                                                                                          !< current element number
     end subroutine plastic_nonlocal_dotState
 
 
@@ -268,8 +270,9 @@ module constitutive
         el                                                                                          !< element
     end function plastic_dislotwin_homogenizedC
 
-    module subroutine plastic_nonlocal_updateCompatibility(orientation,i,e)
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
       integer, intent(in) :: &
+        instance, &
         i, &
         e
       type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
@@ -740,39 +743,31 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
 
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
+  of = material_phasememberAt(ipc,ip,el)
+  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
-  Mp  = matmul(matmul(transpose(Fi),Fi),S)
+  Mp = matmul(matmul(transpose(Fi),Fi),S)
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_isotropic_dotState    (Mp,instance,of)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_phenopowerlaw_dotState(Mp,instance,of)
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_kinehardening_dotState(Mp,instance,of)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_dislotwin_dotState    (Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_DISLOUCLA_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
       call plastic_disloucla_dotState    (Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme), &
-                                          subdt,ip,el)
+      call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
+                                          instance,of,ip,el)
   end select plasticityType
 
   SourceLoop: do i = 1, phase_Nsources(material_phaseAt(ipc,el))
@@ -783,13 +778,12 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
         call source_damage_anisoBrittle_dotState (S, ipc, ip, el) !< correct stress?
 
       case (SOURCE_damage_isoDuctile_ID) sourceType
-        call source_damage_isoDuctile_dotState   (         ipc, ip, el)
+        call source_damage_isoDuctile_dotState   (   ipc, ip, el)
 
       case (SOURCE_damage_anisoDuctile_ID) sourceType
-        call source_damage_anisoDuctile_dotState (         ipc, ip, el)
+        call source_damage_anisoDuctile_dotState (   ipc, ip, el)
 
       case (SOURCE_thermal_externalheat_ID) sourceType
-        of = material_phasememberAt(ipc,ip,el)
         call source_thermal_externalheat_dotState(material_phaseAt(ipc,el),of)
 
     end select sourceType
