@@ -43,6 +43,7 @@ for name in filenames:
 # ------------------------------------------ process data ---------------------------------------
   Polydata = vtk.vtkPolyData()
   Points   = vtk.vtkPoints()
+  Points.SetDataTypeToDouble()
 
   for p in table.get(options.pos):
     pointID = Points.InsertNextPoint(p)
