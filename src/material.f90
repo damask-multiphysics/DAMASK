@@ -123,7 +123,6 @@ module material
     thermal_initialT, &                                                                             !< initial temperature per each homogenization
     damage_initialPhi                                                                               !< initial damage per each homogenization
 
-! NEW MAPPINGS
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt                                                                       !< homogenization ID of each element (copy of discretization_homogenizationAt)
   integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
@@ -132,7 +131,6 @@ module material
     material_phaseAt                                                                                !< phase ID of each element
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
-! END NEW MAPPINGS
 
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
@@ -288,9 +286,6 @@ subroutine material_init
       endif
     enddo
   endif debugOut
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! new mappings
 
   allocate(material_phaseAt(homogenization_maxNgrains,discretization_nElem),                   source=0)
   allocate(material_texture(homogenization_maxNgrains,discretization_nIP,discretization_nElem),source=0)   !this is only needed by plasticity nonlocal
