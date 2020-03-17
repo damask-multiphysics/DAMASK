@@ -168,8 +168,7 @@ module subroutine plastic_nonlocal_init
     l, &
     s1, s2, &
     s, &
-    t, &
-    c
+    t
   character(len=pStringLen) :: &
     extmsg  = ''
   integer :: NipcMyPhase
@@ -485,8 +484,6 @@ module subroutine plastic_nonlocal_init
   initializeInstances: do p = 1, size(phase_plasticity)
     NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
     myPhase2: if (phase_plasticity(p) == PLASTICITY_NONLOCAL_ID) then
-
-      !*** determine indices to state array
       l = 0
       do t = 1,4
         do s = 1,param(phase_plasticityInstance(p))%sum_N_sl
@@ -494,106 +491,23 @@ module subroutine plastic_nonlocal_init
           iRhoU(s,t,phase_plasticityInstance(p)) = l
         enddo
       enddo
-      l = l + 4*param(phase_plasticityInstance(p))%sum_N_sl ! immobile
-      l = l + 2*param(phase_plasticityInstance(p))%sum_N_sl ! dipole
-      l = l +   param(phase_plasticityInstance(p))%sum_N_sl ! shear(rates)
-      l = l +   param(phase_plasticityInstance(p))%sum_N_sl ! rho_forest
+      l = l + (4+2+1+1)*param(phase_plasticityInstance(p))%sum_N_sl ! immobile(4), dipole(2), shear, forest
       do t = 1,4
         do s = 1,param(phase_plasticityInstance(p))%sum_N_sl
           l = l + 1
           iV(s,t,phase_plasticityInstance(p)) = l
         enddo
       enddo
-      do c = 1,2
+      do t = 1,2
         do s = 1,param(phase_plasticityInstance(p))%sum_N_sl
           l = l + 1
-          iD(s,c,phase_plasticityInstance(p)) = l
+          iD(s,t,phase_plasticityInstance(p)) = l
         enddo
       enddo
       if (iD(param(phase_plasticityInstance(p))%sum_N_sl,2,phase_plasticityInstance(p)) /= plasticState(p)%sizeState) &
         call IO_error(0, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_LABEL//')')
     endif myPhase2
   enddo initializeInstances
-! END DEPRECATED------------------------------------------------------------------------------------
-
-
-  contains
-  !--------------------------------------------------------------------------------------------------
-  !> @brief populates the initial dislocation density
-  !--------------------------------------------------------------------------------------------------
-  subroutine stateInit(phase,NipcMyPhase)
-
-   integer,intent(in) ::&
-     phase, &
-     NipcMyPhase
-   integer :: &
-     e, &
-     i, &
-     f, &
-     from, &
-     upto, &
-     s, &
-     instance, &
-     phasemember
-   real(pReal), dimension(2) :: &
-     noise, &
-     rnd
-   real(pReal) :: &
-     meanDensity, &
-     totalVolume, &
-     densityBinning, &
-     minimumIpVolume
-   real(pReal), dimension(NipcMyPhase) :: &
-     volume
-
-   instance = phase_plasticityInstance(phase)
-   associate(prm => param(instance), stt => state(instance))
-
-   ! randomly distribute dislocation segments on random slip system and of random type in the volume
-   if (prm%rhoSglRandom > 0.0_pReal) then
-
-    ! get the total volume of the instance
-    do e = 1,discretization_nElem
-      do i = 1,discretization_nIP
-        if (material_phaseAt(1,e) == phase) volume(material_phasememberAt(1,i,e)) = IPvolume(i,e)
-      enddo
-    enddo
-    totalVolume = sum(volume)
-    minimumIPVolume = minval(volume)
-    densityBinning = prm%rhoSglRandomBinning / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
-
-    ! subsequently fill random ips with dislocation segments until we reach the desired overall density
-    meanDensity = 0.0_pReal
-    do while(meanDensity < prm%rhoSglRandom)
-      call random_number(rnd)
-      phasemember = nint(rnd(1)*real(NipcMyPhase,pReal) + 0.5_pReal)
-      s           = nint(rnd(2)*real(prm%sum_N_sl,pReal)*4.0_pReal + 0.5_pReal)
-      meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
-      stt%rhoSglMobile(s,phasemember) = densityBinning
-    enddo
-   ! homogeneous distribution of density with some noise
-   else
-     do e = 1, NipcMyPhase
-       do f = 1,size(prm%Nslip,1)
-         from = 1 + sum(prm%Nslip(1:f-1))
-         upto = sum(prm%Nslip(1:f))
-         do s = from,upto
-           noise = [math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter), &
-                    math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter)]
-           stt%rho_sgl_mob_edg_pos(s,e) = prm%rhoSglEdgePos0(f)  + noise(1)
-           stt%rho_sgl_mob_edg_neg(s,e) = prm%rhoSglEdgeNeg0(f)  + noise(1)
-           stt%rho_sgl_mob_scr_pos(s,e) = prm%rhoSglScrewPos0(f) + noise(2)
-           stt%rho_sgl_mob_scr_neg(s,e) = prm%rhoSglScrewNeg0(f) + noise(2)
-         enddo
-         stt%rho_dip_edg(from:upto,e)   = prm%rhoDipEdge0(f)
-         stt%rho_dip_scr(from:upto,e)   = prm%rhoDipScrew0(f)
-       enddo
-     enddo
-    endif
-
-    end associate
-
-  end subroutine stateInit
 
 end subroutine plastic_nonlocal_init
 
@@ -869,7 +783,7 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
 
   ! edges
   call kinetics(v(:,1), dv_dtau(:,1), dv_dtauNS(:,1), &
-                tau, tauNS(:,1), dst%tau_pass(:,of),1,Temperature, instance, of)
+                tau, tauNS(:,1), dst%tau_pass(:,of),1,Temperature, instance)
   v(:,2)         = v(:,1)
   dv_dtau(:,2)   = dv_dtau(:,1)
   dv_dtauNS(:,2) = dv_dtauNS(:,1)
@@ -882,7 +796,7 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   else
     do t = 3,4
       call kinetics(v(:,t), dv_dtau(:,t), dv_dtauNS(:,t), &
-                    tau, tauNS(:,t), dst%tau_pass(:,of),2,Temperature, instance, of)
+                    tau, tauNS(:,t), dst%tau_pass(:,of),2,Temperature, instance)
     enddo
   endif
 
@@ -1613,14 +1527,87 @@ end subroutine plastic_nonlocal_results
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief populates the initial dislocation density
+!--------------------------------------------------------------------------------------------------
+subroutine stateInit(phase,NipcMyPhase)
+
+  integer,intent(in) ::&
+    phase, &
+    NipcMyPhase
+  integer :: &
+    e, &
+    i, &
+    f, &
+    from, &
+    upto, &
+    s, &
+    instance, &
+    phasemember
+  real(pReal), dimension(2) :: &
+    noise, &
+    rnd
+  real(pReal) :: &
+    meanDensity, &
+    totalVolume, &
+    densityBinning, &
+    minimumIpVolume
+  real(pReal), dimension(NipcMyPhase) :: &
+    volume
+
+  instance = phase_plasticityInstance(phase)
+  associate(prm => param(instance), stt => state(instance))
+
+  if (prm%rhoSglRandom > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
+    do e = 1,discretization_nElem
+      do i = 1,discretization_nIP
+        if (material_phaseAt(1,e) == phase) volume(material_phasememberAt(1,i,e)) = IPvolume(i,e)
+      enddo
+    enddo
+    totalVolume = sum(volume)
+    minimumIPVolume = minval(volume)
+    densityBinning = prm%rhoSglRandomBinning / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
+
+    ! fill random material points with dislocation segments until the desired overall density is reached
+    meanDensity = 0.0_pReal
+    do while(meanDensity < prm%rhoSglRandom)
+      call random_number(rnd)
+      phasemember = nint(rnd(1)*real(NipcMyPhase,pReal) + 0.5_pReal)
+      s           = nint(rnd(2)*real(prm%sum_N_sl,pReal)*4.0_pReal + 0.5_pReal)
+      meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
+      stt%rhoSglMobile(s,phasemember) = densityBinning
+    enddo
+  else                                ! homogeneous distribution with noise
+    do e = 1, NipcMyPhase
+      do f = 1,size(prm%Nslip,1)
+        from = 1 + sum(prm%Nslip(1:f-1))
+        upto = sum(prm%Nslip(1:f))
+        do s = from,upto
+          noise = [math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter), &
+                   math_sampleGaussVar(0.0_pReal, prm%rhoSglScatter)]
+          stt%rho_sgl_mob_edg_pos(s,e) = prm%rhoSglEdgePos0(f)  + noise(1)
+          stt%rho_sgl_mob_edg_neg(s,e) = prm%rhoSglEdgeNeg0(f)  + noise(1)
+          stt%rho_sgl_mob_scr_pos(s,e) = prm%rhoSglScrewPos0(f) + noise(2)
+          stt%rho_sgl_mob_scr_neg(s,e) = prm%rhoSglScrewNeg0(f) + noise(2)
+        enddo
+        stt%rho_dip_edg(from:upto,e)   = prm%rhoDipEdge0(f)
+        stt%rho_dip_scr(from:upto,e)   = prm%rhoDipScrew0(f)
+      enddo
+    enddo
+  endif
+
+  end associate
+
+end subroutine stateInit
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief calculates kinetics
 !--------------------------------------------------------------------------------------------------
-subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Temperature, instance, of)
+subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Temperature, instance)
 
   integer, intent(in) :: &
     c, &                                                                                            !< dislocation character (1:edge, 2:screw)
-    instance, &
-    of
+    instance
   real(pReal), intent(in) :: &
     Temperature                                                                                     !< temperature
   real(pReal), dimension(param(instance)%sum_N_sl), intent(in) :: &
