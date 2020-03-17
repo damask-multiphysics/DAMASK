@@ -15,7 +15,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def Laguerre_tesselation(grid, coords, weights, grains, periodic = True, cpus = 2):
+def Laguerre_tessellation(grid, coords, weights, grains, periodic = True, cpus = 2):
 
   def findClosestSeed(fargs):
     point, seeds, myWeights = fargs

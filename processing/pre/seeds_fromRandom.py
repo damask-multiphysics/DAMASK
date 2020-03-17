@@ -3,7 +3,6 @@
 import os
 import sys
 import random
-from io import StringIO
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
