@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,random
-import numpy as np
-import damask
+import os
+import sys
+import random
+from io import StringIO
 from optparse import OptionParser,OptionGroup
+
+import numpy as np
 from scipy import spatial
+
+import damask
 
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
-# ------------------------------------------ aux functions ---------------------------------
 
 def kdtree_search(cloud, queryPoints):
   """Find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)."""
@@ -116,32 +119,26 @@ parser.set_defaults(randomSeed = None,
 (options,filenames) = parser.parse_args()
 if filenames == []: filenames = [None]
 
-options.fraction = np.array(options.fraction)
-options.grid = np.array(options.grid)
-gridSize = options.grid.prod()
+fraction = np.array(options.fraction)
+grid     = np.array(options.grid)
 
 if options.randomSeed is None: options.randomSeed = int(os.urandom(4).hex(), 16)
 np.random.seed(options.randomSeed)                                                                  # init random generators
 random.seed(options.randomSeed)
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(outname = name)
-  except IOError:
-    continue
   damask.util.report(scriptName,name)
 
 # --- sanity checks -------------------------------------------------------------------------
-
   remarks = []
   errors  = []
-  if gridSize == 0:
-    errors.append('zero grid dimension for {}.'.format(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
-  if options.N > gridSize/10.:
+  if any(grid==0):
+    errors.append('zero grid dimension for {}.'.format(', '.join([['a','b','c'][x] for x in np.where(grid == 0)[0]])))
+  if options.N > grid.prod()/10.:
     remarks.append('seed count exceeds 0.1 of grid points.')
-  if options.selective and 4./3.*math.pi*(options.distance/2.)**3*options.N > 0.5:
-    remarks.append('maximum recommended seed point count for given distance is {}.{}'.
-                   format(int(3./8./math.pi/(options.distance/2.)**3)))
+  if options.selective and 4./3.*np.pi*(options.distance/2.)**3*options.N > 0.5:
+    remarks.append('maximum recommended seed point count for given distance is {}'.
+                   format(int(3./8./np.pi/(options.distance/2.)**3)))
 
   if remarks != []: damask.util.croak(remarks)
   if errors  != []:
@@ -149,24 +146,23 @@ for name in filenames:
     sys.exit()
 
 # --- do work ------------------------------------------------------------------------------------
-
   grainEuler = np.random.rand(3,options.N)                                                          # create random Euler triplets
   grainEuler[0,:] *= 360.0                                                                          # phi_1    is uniformly distributed
   grainEuler[1,:] = np.degrees(np.arccos(2*grainEuler[1,:]-1))                                      # cos(Phi) is uniformly distributed
   grainEuler[2,:] *= 360.0                                                                          # phi_2    is uniformly distributed
 
   if not options.selective:
-    n = np.maximum(np.ones(3),np.array(options.grid*options.fraction),
+    n = np.maximum(np.ones(3),np.array(grid*fraction),
                    dtype=int,casting='unsafe')                                                      # find max grid indices within fraction
     meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                         # create a meshgrid within fraction
     coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(3,n.prod()).T                 # assemble list of 3D coordinates
     seeds = ((random.sample(list(coords),options.N)+np.random.random(options.N*3).reshape(options.N,3))\
               / \
-             (n/options.fraction)).T                                                                # pick options.N of those, rattle position,
+             (n/fraction)).T                                                                        # pick options.N of those, rattle position,
                                                                                                     # and rescale to fall within fraction
   else:
     seeds = np.zeros((options.N,3),dtype=float)                                                     # seed positions array
-    seeds[0] = np.random.random(3)*options.grid/max(options.grid)
+    seeds[0] = np.random.random(3)*grid/max(grid)
     i = 1                                                                                           # start out with one given point
     if i%(options.N/100.) < 1: damask.util.croak('.',False)
 
@@ -194,26 +190,12 @@ for name in filenames:
                                  )))
 
   comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
-              'grid\ta {}\tb {}\tc {}'.format(*options.grid),
+              'grid\ta {}\tb {}\tc {}'.format(*grid),
               'randomSeed\t{}'.format(options.randomSeed),
              ]
 
-# ------------------------------------------ assemble header ---------------------------------------
-  table.info_clear()
-  table.info_append(comments)
-  table.labels_clear()
-  table.labels_append( ['{dim}_{label}'.format(dim = 1+k,label = 'pos')   for k in range(3)] +
-                       ['{dim}_{label}'.format(dim = 1+k,label = 'euler') for k in range(3)] +
-                       ['microstructure'] +
-                      (['weight'] if options.weights else []))
-  table.head_write()
-  table.output_flush()
+  shapes = {'pos':(3,),'euler':(3,),'microstructure':(1,)}
+  if options.weights: shapes['weight'] = (1,)
 
-# --- write seeds information ------------------------------------------------------------
-
-  table.data = data
-  table.data_writeArray()
-
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+  table = damask.Table(data,shapes,comments)
+  table.to_ASCII(sys.stdout if name is None else name)
