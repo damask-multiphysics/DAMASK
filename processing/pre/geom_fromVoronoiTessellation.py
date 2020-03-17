@@ -15,7 +15,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, cpus = 2):
+def Laguerre_tesselation(grid, coords, weights, grains, periodic = True, cpus = 2):
 
   def findClosestSeed(fargs):
     point, seeds, myWeights = fargs
@@ -62,26 +62,29 @@ def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, c
     try: seeds = np.append(seeds, coords+vec, axis=0)                                               # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
     except NameError: seeds = coords+vec
 
-  if (repeatweights == 0.0).all():                                                                  # standard Voronoi (no weights, KD tree)
-    myKDTree = spatial.cKDTree(seeds)
-    devNull,closestSeeds = myKDTree.query(undeformed)
-  else:
-    damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-    arguments = [[arg,seeds,repeatweights] for arg in list(undeformed)]
+  damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
+  arguments = [[arg,seeds,repeatweights] for arg in list(grid)]
 
-    if cpus > 1:                                                                                    # use multithreading
-      pool = multiprocessing.Pool(processes = cpus)                                                 # initialize workers
-      result = pool.map_async(findClosestSeed, arguments)                                           # evaluate function in parallel
-      pool.close()
-      pool.join()
-      closestSeeds = np.array(result.get()).flatten()
-    else:
-      closestSeeds = np.zeros(len(arguments),dtype='i')
-      for i,arg in enumerate(arguments):
-        closestSeeds[i] = findClosestSeed(arg)
+  if cpus > 1:                                                                                      # use multithreading
+    pool = multiprocessing.Pool(processes = cpus)                                                   # initialize workers
+    result = pool.map_async(findClosestSeed, arguments)                                             # evaluate function in parallel
+    pool.close()
+    pool.join()
+    closestSeeds = np.array(result.get()).flatten()
+  else:
+    closestSeeds = np.zeros(len(arguments),dtype='i')
+    for i,arg in enumerate(arguments):
+      closestSeeds[i] = findClosestSeed(arg)
 
 # closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
   return grains[closestSeeds%coords.shape[0]]
+
+
+def Voronoi_tessellation(grid, coords, grains, size, periodic = True):
+
+  KDTree = spatial.cKDTree(coords,boxsize=size) if periodic else spatial.cKDTree(coords)
+  devNull,closestSeeds = KDTree.query(grid)
+  return grains[closestSeeds]
 
 
 # --------------------------------------------------------------------
@@ -221,7 +224,8 @@ for name in filenames:
 
   hasGrains  = table.label_dimension(options.microstructure) == 1
   hasEulers  = table.label_dimension(options.eulers) == 3
-  hasWeights = table.label_dimension(options.weight) == 1 and options.laguerre
+  if options.laguerre and table.label_dimension(options.weight) != 1:
+    errors.append('missing seed weights...')
 
   for i in range(3):
     if info['size'][i] <= 0.0:                                                                      # any invalid size?
@@ -239,8 +243,6 @@ for name in filenames:
   else: labels += [options.eulers]
   if not hasGrains:                        remarks.append('missing seed microstructure indices...')
   else: labels += [options.microstructure]
-  if options.laguerre and not hasWeights:  remarks.append('missing seed weights...')
-  else: labels += [options.weight]
 
   if remarks != []: damask.util.croak(remarks)
   if errors != []:
@@ -257,15 +259,18 @@ for name in filenames:
               else np.zeros(3*len(coords))
   grains    = table.data[:,table.label_indexrange(options.microstructure)].astype(int) if hasGrains \
               else np.arange(len(coords))+1
-  weights   = table.data[:,table.label_indexrange(options.weight)] if hasWeights \
-              else np.zeros(len(coords))
+
   grainIDs  = np.unique(grains).astype('i')
   NgrainIDs = len(grainIDs)
 
 # --- tessellate microstructure ------------------------------------------------------------
   grid = damask.grid_filters.cell_coord0(info['grid'],info['size']).reshape(-1,3)
   damask.util.croak('tessellating...')
-  indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
+  if options.laguerre:
+    weights = table.data[:,table.label_indexrange(options.weight)]
+    indices = Laguerre_tessellation(grid, coords, weights, grains, options.periodic, options.cpus)
+  else:
+    indices = Voronoi_tessellation(grid, coords, grains, info['size'], options.periodic)
 
   config_header = []
   if options.config:

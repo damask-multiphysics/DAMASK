@@ -3,4 +3,6 @@
 *.xdmf
 *.sta
 *.vt*
+*.geom
+*.seeds
 postProc
