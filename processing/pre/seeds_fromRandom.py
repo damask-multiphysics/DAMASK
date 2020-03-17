@@ -185,23 +185,22 @@ for name in filenames:
   if options.weights:
     weights = [np.random.uniform(low = 0, high = options.max, size = options.N)] if options.max > 0.0 \
          else [np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)]
-  else:
-    weights = []
-  seeds = np.transpose(np.vstack(tuple([seeds,
-                                        grainEuler,
-                                        np.arange(options.microstructure,
-                                                  options.microstructure + options.N),
-                                       ] + weights
+
+
+  data = np.transpose(np.vstack(tuple([seeds,
+                                       grainEuler,
+                                       np.arange(options.microstructure,options.microstructure + options.N),
+                                      ] + (weights if options.weights else [])
                                  )))
 
-# ------------------------------------------ assemble header ---------------------------------------
+  comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
+              'grid\ta {}\tb {}\tc {}'.format(*options.grid),
+              'randomSeed\t{}'.format(options.randomSeed),
+             ]
 
+# ------------------------------------------ assemble header ---------------------------------------
   table.info_clear()
-  table.info_append([
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {}\tb {}\tc {}".format(*options.grid),
-    "randomSeed\t{}".format(options.randomSeed),
-    ])
+  table.info_append(comments)
   table.labels_clear()
   table.labels_append( ['{dim}_{label}'.format(dim = 1+k,label = 'pos')   for k in range(3)] +
                        ['{dim}_{label}'.format(dim = 1+k,label = 'euler') for k in range(3)] +
@@ -212,7 +211,7 @@ for name in filenames:
 
 # --- write seeds information ------------------------------------------------------------
 
-  table.data = seeds
+  table.data = data
   table.data_writeArray()
 
 # --- output finalization --------------------------------------------------------------------------
