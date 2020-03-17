@@ -381,14 +381,14 @@ module lattice
       ],pReal),shape(ORT_SYSTEMCLEAVAGE))
 
 
-  enum, bind(c)
-    enumerator :: lattice_UNDEFINED_ID, &
-                  lattice_ISO_ID, &
-                  lattice_FCC_ID, &
-                  lattice_BCC_ID, &
-                  lattice_BCT_ID, &
-                  lattice_HEX_ID, &
-                  lattice_ORT_ID
+  enum, bind(c); enumerator :: &
+    lattice_UNDEFINED_ID, &
+    lattice_ISO_ID, &
+    lattice_FCC_ID, &
+    lattice_BCC_ID, &
+    lattice_BCT_ID, &
+    lattice_HEX_ID, &
+    lattice_ORT_ID
   end enum
 
 ! SHOULD NOT BE PART OF LATTICE BEGIN

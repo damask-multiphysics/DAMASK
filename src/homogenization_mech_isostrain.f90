@@ -6,10 +6,9 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech_isostrain
 
-  enum, bind(c) 
-    enumerator :: &
-      parallel_ID, &
-      average_ID
+  enum, bind(c); enumerator :: &
+    parallel_ID, &
+    average_ID
   end enum
  
   type :: tParameters                                                                               !< container type for internal constitutive parameters
@@ -36,7 +35,7 @@ module subroutine mech_isostrain_init
   character(len=pStringLen) :: &
     tag  = ''
  
-  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_LABEL//' init  -+>>>'
  
   Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
   if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
@@ -58,7 +57,7 @@ module subroutine mech_isostrain_init
       case ('avg')
         prm%mapping = average_ID
       case default
-        call IO_error(211,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
+        call IO_error(211,ext_msg=trim(tag)//' ('//HOMOGENIZATION_ISOSTRAIN_LABEL//')')
     end select
  
     NofMyHomog = count(material_homogenizationAt == h)

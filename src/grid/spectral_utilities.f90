@@ -27,12 +27,11 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
-  enum, bind(c)
-    enumerator :: &
-      FIELD_UNDEFINED_ID, &
-      FIELD_MECH_ID, &
-      FIELD_THERMAL_ID, &
-      FIELD_DAMAGE_ID
+  enum, bind(c); enumerator :: &
+    FIELD_UNDEFINED_ID, &
+    FIELD_MECH_ID, &
+    FIELD_THERMAL_ID, &
+    FIELD_DAMAGE_ID
   end enum
 
 !--------------------------------------------------------------------------------------------------
@@ -126,11 +125,10 @@ module spectral_utilities
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  enum, bind(c)
-    enumerator :: &
-      DERIVATIVE_CONTINUOUS_ID, &
-      DERIVATIVE_CENTRAL_DIFF_ID, &
-      DERIVATIVE_FWBW_DIFF_ID
+  enum, bind(c); enumerator :: &
+    DERIVATIVE_CONTINUOUS_ID, &
+    DERIVATIVE_CENTRAL_DIFF_ID, &
+    DERIVATIVE_FWBW_DIFF_ID
   end enum
 
   integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &

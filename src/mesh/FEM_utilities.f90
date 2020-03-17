@@ -37,15 +37,15 @@ module FEM_utilities
   character(len=*),                         parameter,            public :: &
     FIELD_MECH_label     = 'mechanical'
  
-  enum, bind(c)
-    enumerator :: FIELD_UNDEFINED_ID, &
-                  FIELD_MECH_ID
+  enum, bind(c); enumerator :: &
+    FIELD_UNDEFINED_ID, &
+    FIELD_MECH_ID
   end enum
-  enum, bind(c)
-    enumerator :: COMPONENT_UNDEFINED_ID, &
-                  COMPONENT_MECH_X_ID, &
-                  COMPONENT_MECH_Y_ID, &
-                  COMPONENT_MECH_Z_ID
+  enum, bind(c); enumerator :: &
+    COMPONENT_UNDEFINED_ID, &
+    COMPONENT_MECH_X_ID, &
+    COMPONENT_MECH_Y_ID, &
+    COMPONENT_MECH_Z_ID
   end enum
  
 !--------------------------------------------------------------------------------------------------

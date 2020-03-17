@@ -47,42 +47,40 @@ module material
     HOMOGENIZATION_isostrain_label       = 'isostrain', &
     HOMOGENIZATION_rgc_label             = 'rgc'
 
-
-
-  enum, bind(c)
-    enumerator :: ELASTICITY_undefined_ID, &
-                  ELASTICITY_hooke_ID, &
-                  PLASTICITY_undefined_ID, &
-                  PLASTICITY_none_ID, &
-                  PLASTICITY_isotropic_ID, &
-                  PLASTICITY_phenopowerlaw_ID, &
-                  PLASTICITY_kinehardening_ID, &
-                  PLASTICITY_dislotwin_ID, &
-                  PLASTICITY_disloucla_ID, &
-                  PLASTICITY_nonlocal_ID, &
-                  SOURCE_undefined_ID, &
-                  SOURCE_thermal_dissipation_ID, &
-                  SOURCE_thermal_externalheat_ID, &
-                  SOURCE_damage_isoBrittle_ID, &
-                  SOURCE_damage_isoDuctile_ID, &
-                  SOURCE_damage_anisoBrittle_ID, &
-                  SOURCE_damage_anisoDuctile_ID, &
-                  KINEMATICS_undefined_ID, &
-                  KINEMATICS_cleavage_opening_ID, &
-                  KINEMATICS_slipplane_opening_ID, &
-                  KINEMATICS_thermal_expansion_ID, &
-                  STIFFNESS_DEGRADATION_undefined_ID, &
-                  STIFFNESS_DEGRADATION_damage_ID, &
-                  THERMAL_isothermal_ID, &
-                  THERMAL_adiabatic_ID, &
-                  THERMAL_conduction_ID, &
-                  DAMAGE_none_ID, &
-                  DAMAGE_local_ID, &
-                  DAMAGE_nonlocal_ID, &
-                  HOMOGENIZATION_undefined_ID, &
-                  HOMOGENIZATION_none_ID, &
-                  HOMOGENIZATION_isostrain_ID, &
-                  HOMOGENIZATION_rgc_ID
+  enum, bind(c); enumerator :: &
+    ELASTICITY_UNDEFINED_ID ,&
+    ELASTICITY_HOOKE_ID ,&
+    PLASTICITY_UNDEFINED_ID ,&
+    PLASTICITY_NONE_ID, &
+    PLASTICITY_ISOTROPIC_ID, &
+    PLASTICITY_PHENOPOWERLAW_ID, &
+    PLASTICITY_KINEHARDENING_ID, &
+    PLASTICITY_DISLOTWIN_ID, &
+    PLASTICITY_DISLOUCLA_ID, &
+    PLASTICITY_NONLOCAL_ID, &
+    SOURCE_UNDEFINED_ID ,&
+    SOURCE_THERMAL_DISSIPATION_ID, &
+    SOURCE_THERMAL_EXTERNALHEAT_ID, &
+    SOURCE_DAMAGE_ISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ISODUCTILE_ID, &
+    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ANISODUCTILE_ID, &
+    KINEMATICS_UNDEFINED_ID ,&
+    KINEMATICS_CLEAVAGE_OPENING_ID, &
+    KINEMATICS_SLIPPLANE_OPENING_ID, &
+    KINEMATICS_THERMAL_EXPANSION_ID, &
+    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
+    STIFFNESS_DEGRADATION_DAMAGE_ID, &
+    THERMAL_ISOTHERMAL_ID, &
+    THERMAL_ADIABATIC_ID, &
+    THERMAL_CONDUCTION_ID, &
+    DAMAGE_NONE_ID, &
+    DAMAGE_LOCAL_ID, &
+    DAMAGE_NONLOCAL_ID, &
+    HOMOGENIZATION_UNDEFINED_ID, &
+    HOMOGENIZATION_NONE_ID, &
+    HOMOGENIZATION_ISOSTRAIN_ID, &
+    HOMOGENIZATION_RGC_ID
   end enum
 
   integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
@@ -178,32 +176,32 @@ module material
     material_init, &
     material_allocatePlasticState, &
     material_allocateSourceState, &
-    ELASTICITY_hooke_ID ,&
-    PLASTICITY_none_ID, &
-    PLASTICITY_isotropic_ID, &
-    PLASTICITY_phenopowerlaw_ID, &
-    PLASTICITY_kinehardening_ID, &
-    PLASTICITY_dislotwin_ID, &
-    PLASTICITY_disloucla_ID, &
-    PLASTICITY_nonlocal_ID, &
-    SOURCE_thermal_dissipation_ID, &
-    SOURCE_thermal_externalheat_ID, &
-    SOURCE_damage_isoBrittle_ID, &
-    SOURCE_damage_isoDuctile_ID, &
-    SOURCE_damage_anisoBrittle_ID, &
-    SOURCE_damage_anisoDuctile_ID, &
-    KINEMATICS_cleavage_opening_ID, &
-    KINEMATICS_slipplane_opening_ID, &
-    KINEMATICS_thermal_expansion_ID, &
-    STIFFNESS_DEGRADATION_damage_ID, &
-    THERMAL_isothermal_ID, &
-    THERMAL_adiabatic_ID, &
-    THERMAL_conduction_ID, &
-    DAMAGE_none_ID, &
-    DAMAGE_local_ID, &
-    DAMAGE_nonlocal_ID, &
-    HOMOGENIZATION_none_ID, &
-    HOMOGENIZATION_isostrain_ID, &
+    ELASTICITY_HOOKE_ID ,&
+    PLASTICITY_NONE_ID, &
+    PLASTICITY_ISOTROPIC_ID, &
+    PLASTICITY_PHENOPOWERLAW_ID, &
+    PLASTICITY_KINEHARDENING_ID, &
+    PLASTICITY_DISLOTWIN_ID, &
+    PLASTICITY_DISLOUCLA_ID, &
+    PLASTICITY_NONLOCAL_ID, &
+    SOURCE_THERMAL_DISSIPATION_ID, &
+    SOURCE_THERMAL_EXTERNALHEAT_ID, &
+    SOURCE_DAMAGE_ISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ISODUCTILE_ID, &
+    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ANISODUCTILE_ID, &
+    KINEMATICS_CLEAVAGE_OPENING_ID, &
+    KINEMATICS_SLIPPLANE_OPENING_ID, &
+    KINEMATICS_THERMAL_EXPANSION_ID, &
+    STIFFNESS_DEGRADATION_DAMAGE_ID, &
+    THERMAL_ISOTHERMAL_ID, &
+    THERMAL_ADIABATIC_ID, &
+    THERMAL_CONDUCTION_ID, &
+    DAMAGE_NONE_ID, &
+    DAMAGE_LOCAL_ID, &
+    DAMAGE_NONLOCAL_ID, &
+    HOMOGENIZATION_NONE_ID, &
+    HOMOGENIZATION_ISOSTRAIN_ID, &
     HOMOGENIZATION_RGC_ID
 
 contains
