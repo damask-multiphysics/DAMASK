@@ -104,7 +104,7 @@ for name in filenames:
     VTKarray[color].SetName(color)
 
   for tensor in options.tensor:
-    data = damask.mechanics.symmetric(table.get(tensor).reshape((-1,3,3))).reshape((-1,9))
+    data = damask.mechanics.symmetric(table.get(tensor).reshape(-1,3,3)).reshape(-1,9)
     VTKarray[tensor] = numpy_support.numpy_to_vtk(data.copy(),
                                                 deep=True,array_type=vtk.VTK_DOUBLE)
     VTKarray[tensor].SetName(tensor)

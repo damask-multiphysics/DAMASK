@@ -54,7 +54,7 @@ for name in filenames:
                           np.in1d(microstructure,options.blacklist,invert=True)  if options.blacklist else \
                           np.full(geom.grid.prod(),True,dtype=bool))
    
-    seeds = np.concatenate((damask.grid_filters.cell_coord0(geom.grid,geom.size).reshape((-1,3)),
+    seeds = np.concatenate((damask.grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3),
                             microstructure),
                             axis=1)[mask]
     

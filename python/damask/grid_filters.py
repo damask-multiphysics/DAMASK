@@ -399,5 +399,5 @@ def regrid(size,F,new_grid):
         c[np.where(c[:,:,:,d]<0)]        += outer[d]
         c[np.where(c[:,:,:,d]>outer[d])] -= outer[d]
 
-    tree = spatial.cKDTree(c.reshape((-1,3)),boxsize=outer)
+    tree = spatial.cKDTree(c.reshape(-1,3),boxsize=outer)
     return tree.query(cell_coord0(new_grid,outer))[1].flatten()

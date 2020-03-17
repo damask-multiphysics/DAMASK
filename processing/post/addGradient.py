@@ -51,7 +51,7 @@ for name in filenames:
         shape = (1,) if np.prod(field.shape)//np.prod(grid) == 1 else (3,)                          # scalar or vector
         field = field.reshape(np.append(grid[::-1],shape))
         table.add('gradFFT({})'.format(label),
-                  damask.grid_filters.gradient(size[::-1],field).reshape((-1,np.prod(shape)*3)),
+                  damask.grid_filters.gradient(size[::-1],field).reshape(-1,np.prod(shape)*3),
                   scriptID+' '+' '.join(sys.argv[1:]))
     
     table.to_ASCII(sys.stdout if name is None else name)

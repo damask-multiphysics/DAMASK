@@ -91,7 +91,7 @@ for name in filenames:
   table = damask.Table(averagedDown,table.shapes,table.comments)
 
   coords = damask.grid_filters.cell_coord0(packedGrid,size,shift/packedGrid*size+origin)
-  table.set(options.pos, coords.reshape((-1,3)))
+  table.set(options.pos, coords.reshape(-1,3))
 
 
   outname = os.path.join(os.path.dirname(name),prefix+os.path.basename(name))

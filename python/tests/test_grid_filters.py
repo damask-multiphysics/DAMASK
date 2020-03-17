@@ -31,7 +31,7 @@ class TestGridFilters:
          size   = np.random.random(3)
          origin = np.random.random(3)
          coord0 = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))                     # noqa
-         _grid,_size,_origin = eval('grid_filters.{}_coord0_gridSizeOrigin(coord0.reshape((-1,3)))'.format(mode))
+         _grid,_size,_origin = eval('grid_filters.{}_coord0_gridSizeOrigin(coord0.reshape(-1,3))'.format(mode))
          assert np.allclose(grid,_grid) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
     def test_displacement_fluct_equivalence(self):

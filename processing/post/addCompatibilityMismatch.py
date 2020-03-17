@@ -40,7 +40,7 @@ def volTetrahedron(coords):
 
   # Get all the squares of all side lengths from the differences between
   # the 6 different pairs of vertex positions
-  vertices =  np.concatenate((coords[0],coords[1],coords[2],coords[3])).reshape([4,3])
+  vertices =  np.concatenate((coords[0],coords[1],coords[2],coords[3])).reshape(4,3)
   vertex1, vertex2 = vertex_pair_indexes[:,0], vertex_pair_indexes[:,1]
   sides_squared = np.sum((vertices[vertex1] - vertices[vertex2])**2,axis=-1)
 
@@ -185,13 +185,13 @@ for name in filenames:
     centers = damask.grid_filters.cell_coord(size,F)
     shapeMismatch = shapeMismatch(  size,table.get(options.defgrad).reshape(grid[2],grid[1],grid[0],3,3),nodes,centers)
     table.add('shapeMismatch(({}))'.format(options.defgrad),
-              shapeMismatch.reshape((-1,1)),
+              shapeMismatch.reshape(-1,1),
               scriptID+' '+' '.join(sys.argv[1:]))
     
   if options.volume:
     volumeMismatch = volumeMismatch(size,table.get(options.defgrad).reshape(grid[2],grid[1],grid[0],3,3),nodes)
     table.add('volMismatch(({}))'.format(options.defgrad),
-              volumeMismatch.reshape((-1,1)),
+              volumeMismatch.reshape(-1,1),
               scriptID+' '+' '.join(sys.argv[1:]))
 
   table.to_ASCII(sys.stdout if name is None else name)

@@ -61,7 +61,7 @@ class TestResult:
         default.add_determinant('P')
         loc = {'P':     default.get_dataset_location('P'),
                'det(P)':default.get_dataset_location('det(P)')}
-        in_memory = np.linalg.det(default.read_dataset(loc['P'],0)).reshape((-1,1))
+        in_memory = np.linalg.det(default.read_dataset(loc['P'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['det(P)'],0)
         assert np.allclose(in_memory,in_file)
 

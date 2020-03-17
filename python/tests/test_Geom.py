@@ -18,7 +18,7 @@ def default():
     x=np.concatenate((np.ones(40,dtype=int),
                       np.arange(2,42),
                       np.ones(40,dtype=int)*2,
-                      np.arange(1,41))).reshape((8,5,4))
+                      np.arange(1,41))).reshape(8,5,4)
     return Geom(x,[8e-6,5e-6,4e-6])
 
 @pytest.fixture

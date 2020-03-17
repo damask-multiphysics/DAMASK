@@ -51,7 +51,7 @@ for name in filenames:
         shape = (3,) if np.prod(field.shape)//np.prod(grid) == 3 else (3,3)                         # vector or tensor
         field = field.reshape(np.append(grid[::-1],shape))
         table.add('divFFT({})'.format(label),
-                  damask.grid_filters.divergence(size[::-1],field).reshape((-1,np.prod(shape)//3)),
+                  damask.grid_filters.divergence(size[::-1],field).reshape(-1,np.prod(shape)//3),
                   scriptID+' '+' '.join(sys.argv[1:]))
     
     table.to_ASCII(sys.stdout if name is None else name)

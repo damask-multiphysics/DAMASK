@@ -68,7 +68,7 @@ for name in filenames:
 
     for label in options.labels:
         table.add('Gauss{}({})'.format(options.sigma,label),
-                  ndimage.filters.gaussian_filter(table.get(label).reshape((-1)),
+                  ndimage.filters.gaussian_filter(table.get(label).reshape(-1),
                                                   options.sigma,options.order,
                                                   mode = 'wrap' if options.periodic else 'nearest'),
                   scriptID+' '+' '.join(sys.argv[1:]))

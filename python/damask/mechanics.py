@@ -214,7 +214,7 @@ def strain_tensor(F,t,m):
         Order of the strain.
 
     """
-    F_ = F.reshape((1,3,3)) if F.shape == (3,3) else F
+    F_ = F.reshape(1,3,3) if F.shape == (3,3) else F
     if   t == 'V':
         B   = np.matmul(F_,transpose(F_))
         w,n = np.linalg.eigh(B)
@@ -231,7 +231,7 @@ def strain_tensor(F,t,m):
     else:
         eps = np.matmul(n,np.einsum('ij,ikj->ijk',0.5*np.log(w),n))
 
-    return eps.reshape((3,3)) if np.shape(F) == (3,3) else \
+    return eps.reshape(3,3) if np.shape(F) == (3,3) else \
            eps
 
 

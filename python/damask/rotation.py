@@ -304,7 +304,7 @@ class Rotation:
                   reciprocal = False,
                  ):
 
-        om = basis if isinstance(basis, np.ndarray) else np.array(basis).reshape((3,3))
+        om = basis if isinstance(basis, np.ndarray) else np.array(basis).reshape(3,3)
         if reciprocal:
             om = np.linalg.inv(om.T/np.pi)                                                          # transform reciprocal basis set
             orthonormal = False                                                                     # contains stretch

@@ -173,4 +173,4 @@ class TestTable:
                   ['test data'])
         t.add('s',np.array(['b','a']))
         t.sort_by('s')
-        assert np.all(t.get('1_v') == np.array([2,0]).reshape((2,1)))
+        assert np.all(t.get('1_v') == np.array([2,0]).reshape(2,1))

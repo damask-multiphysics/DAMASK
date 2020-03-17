@@ -112,8 +112,8 @@ for filename in options.filenames:
         
         # Data CrystalStructures
         o[ensemble_label + '/CrystalStructures'] = np.uint32(np.array([999,\
-                                                       Crystal_structures[f.get_crystal_structure()]])).reshape((2,1))
-        o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999,Phase_types['Primary']])).reshape((2,1))    # ToDo
+                                                       Crystal_structures[f.get_crystal_structure()]])).reshape(2,1)
+        o[ensemble_label + '/PhaseTypes']        = np.uint32(np.array([999,Phase_types['Primary']])).reshape(2,1)    # ToDo
      
         # Attributes Ensemble Matrix
         o[ensemble_label].attrs['AttributeMatrixType'] = np.array([11],np.uint32)
