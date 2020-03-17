@@ -196,8 +196,6 @@ parser.set_defaults(pos            = 'pos',
                   )
 
 (options,filenames) = parser.parse_args()
-
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
@@ -226,8 +224,8 @@ for name in filenames:
   hasWeights = table.label_dimension(options.weight) == 1 and options.laguerre
 
   for i in range(3):
-    if info['size'][i] <= 0.0:                                                                        # any invalid size?
-      info['size'][i] = float(info['grid'][i])/max(info['grid'])                                      # normalize to grid
+    if info['size'][i] <= 0.0:                                                                      # any invalid size?
+      info['size'][i] = float(info['grid'][i])/max(info['grid'])                                    # normalize to grid
       remarks.append('rescaling size {} to {}...'.format(['x','y','z'][i],info['size'][i]))
 
   if table.label_dimension(options.pos) != 3:
@@ -258,20 +256,14 @@ for name in filenames:
   eulers    = table.data[:,table.label_indexrange(options.eulers)] if hasEulers \
               else np.zeros(3*len(coords))
   grains    = table.data[:,table.label_indexrange(options.microstructure)].astype(int) if hasGrains \
-              else 1+np.arange(len(coords))
+              else np.arange(len(coords))+1
   weights   = table.data[:,table.label_indexrange(options.weight)] if hasWeights \
               else np.zeros(len(coords))
   grainIDs  = np.unique(grains).astype('i')
   NgrainIDs = len(grainIDs)
 
 # --- tessellate microstructure ------------------------------------------------------------
-
-  x = (np.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
-  y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
-  z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
-  X,Y,Z = np.meshgrid(x, y, z,indexing='ij')
-  grid = np.stack((X,Y,Z),axis=-1).reshape((np.prod(info['grid']),3),order='F')
-
+  grid = damask.grid_filters.cell_coord0(info['grid'],info['size']).reshape(-1,3)
   damask.util.croak('tessellating...')
   indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
 
