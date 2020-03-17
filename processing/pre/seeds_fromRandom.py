@@ -18,7 +18,7 @@ def kdtree_search(cloud, queryPoints):
   n = queryPoints.shape[0]
   distances = np.zeros(n,dtype=float)
   tree = spatial.cKDTree(cloud)
-  
+
   for i in range(n):
     distances[i], index = tree.query(queryPoints[i])
 
@@ -58,9 +58,6 @@ parser.add_option('-r',
                   '--rnd',
                   dest = 'randomSeed', type = 'int', metavar = 'int',
                   help = 'seed of random number generator [%default]')
-parser.add_option('--format',
-                  dest = 'format', type = 'string', metavar = 'string',
-                  help = 'output number format [auto]')
 
 group = OptionGroup(parser, "Laguerre Tessellation",
                    "Parameters determining shape of weight distribution of seed points"
@@ -99,7 +96,7 @@ group.add_option( '--distance',
 group.add_option( '--numCandidates',
                   dest = 'numCandidates',
                   type = 'int', metavar = 'int',
-                  help = 'size of point group to select best distance from [%default]')    
+                  help = 'size of point group to select best distance from [%default]')
 parser.add_option_group(group)
 
 parser.set_defaults(randomSeed = None,
@@ -114,10 +111,10 @@ parser.set_defaults(randomSeed = None,
                     selective = False,
                     distance = 0.2,
                     numCandidates = 10,
-                    format = None,
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 options.fraction = np.array(options.fraction)
 options.grid = np.array(options.grid)
@@ -126,11 +123,6 @@ gridSize = options.grid.prod()
 if options.randomSeed is None: options.randomSeed = int(os.urandom(4).hex(), 16)
 np.random.seed(options.randomSeed)                                                                  # init random generators
 random.seed(options.randomSeed)
-
-
-# --- loop over output files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
@@ -157,7 +149,7 @@ for name in filenames:
     sys.exit()
 
 # --- do work ------------------------------------------------------------------------------------
- 
+
   grainEuler = np.random.rand(3,options.N)                                                          # create random Euler triplets
   grainEuler[0,:] *= 360.0                                                                          # phi_1    is uniformly distributed
   grainEuler[1,:] = np.degrees(np.arccos(2*grainEuler[1,:]-1))                                      # cos(Phi) is uniformly distributed
@@ -208,22 +200,21 @@ for name in filenames:
   table.info_append([
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta {}\tb {}\tc {}".format(*options.grid),
-    "microstructures\t{}".format(options.N),
     "randomSeed\t{}".format(options.randomSeed),
     ])
   table.labels_clear()
   table.labels_append( ['{dim}_{label}'.format(dim = 1+k,label = 'pos')   for k in range(3)] +
-                       ['{dim}_{label}'.format(dim = 1+k,label = 'euler') for k in range(3)] + 
+                       ['{dim}_{label}'.format(dim = 1+k,label = 'euler') for k in range(3)] +
                        ['microstructure'] +
                       (['weight'] if options.weights else []))
   table.head_write()
   table.output_flush()
-  
+
 # --- write seeds information ------------------------------------------------------------
 
   table.data = seeds
-  table.data_writeArray(fmt = options.format)
-    
+  table.data_writeArray()
+
 # --- output finalization --------------------------------------------------------------------------
 
   table.close()                                                                                     # close ASCII table
