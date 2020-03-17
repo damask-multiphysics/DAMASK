@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -72,18 +72,15 @@ parser.set_defaults(label = None,
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.dimension == []: parser.error('dimension of data array missing')
 if options.pixelsize > 1: (options.pixelsizex,options.pixelsizey) = [options.pixelsize]*2
 
 # --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name, readonly = True,
-                              labeled = options.label is not None)
+    table = damask.ASCIItable(name = name, labeled = options.label is not None, readonly = True)
   except IOError:
     continue
   damask.util.report(scriptName,name)

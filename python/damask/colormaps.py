@@ -218,7 +218,7 @@ class Color:
           if (self.color[i] > 0.04045): RGB_lin[i] = ((self.color[i]+0.0555)/1.0555)**2.4
           else:                         RGB_lin[i] =   self.color[i]        /12.92
         XYZ = np.dot(convert,RGB_lin)
-        XYZ = np.clip(XYZ,0.0)
+        XYZ = np.clip(XYZ,0.0,None)
 
         converted = Color('XYZ', XYZ)
         self.model = converted.model
