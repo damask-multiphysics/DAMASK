@@ -327,7 +327,7 @@ class Geom:
         return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
-    def to_file(self,fname,pack=False):
+    def to_file(self,fname,pack=None):
         """
         Writes a geom file.
 
@@ -342,7 +342,7 @@ class Geom:
         header = self.get_header()
         grid   = self.get_grid()
 
-        if not pack:
+        if pack is None:
             plain = grid.prod()/np.unique(self.microstructure).size < 250
         else:
             plain = not pack
