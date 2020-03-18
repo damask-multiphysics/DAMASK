@@ -10,7 +10,7 @@ from . import util
 from . import version
 
 
-class Geom():
+class Geom:
     """Geometry definition for grid solvers."""
 
     def __init__(self,microstructure,size,origin=[0.0,0.0,0.0],homogenization=1,comments=[]):
@@ -218,6 +218,11 @@ class Geom():
         return self.get_grid()
 
 
+    @property
+    def N_microstructure(self):
+        return len(np.unique(self.microstructure))
+
+
     def get_microstructure(self):
         """Return the microstructure representation."""
         return np.copy(self.microstructure)
@@ -322,7 +327,7 @@ class Geom():
         return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
 
 
-    def to_file(self,fname,pack=None):
+    def to_file(self,fname,pack=False):
         """
         Writes a geom file.
 
@@ -337,7 +342,7 @@ class Geom():
         header = self.get_header()
         grid   = self.get_grid()
 
-        if pack is None:
+        if not pack:
             plain = grid.prod()/np.unique(self.microstructure).size < 250
         else:
             plain = not pack
@@ -426,7 +431,7 @@ class Geom():
         rGrid.GetCellData().AddArray(ms)
 
 
-        if fname is None:
+        if not fname:
             writer = vtk.vtkDataSetWriter()
             writer.SetHeader('damask.Geom '+version)
             writer.WriteToOutputStringOn()
@@ -447,7 +452,7 @@ class Geom():
         writer.SetInputData(rGrid)
         writer.Write()
 
-        if fname is None: return writer.GetOutputString()
+        if not fname: return writer.GetOutputString()
 
 
     def show(self):

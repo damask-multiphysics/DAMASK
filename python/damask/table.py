@@ -25,10 +25,10 @@ class Table:
         self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
-        self.__label_condensed()
+        self._label_condensed()
 
 
-    def __label_flat(self):
+    def _label_flat(self):
         """Label data individually, e.g. v v v ==> 1_v 2_v 3_v."""
         labels = []
         for label,shape in self.shapes.items():
@@ -37,7 +37,7 @@ class Table:
         self.data.columns = labels
 
 
-    def __label_condensed(self):
+    def _label_condensed(self):
         """Label data condensed, e.g. 1_v 2_v 3_v ==> v v v."""
         labels = []
         for label,shape in self.shapes.items():
@@ -45,11 +45,10 @@ class Table:
         self.data.columns = labels
 
 
-    def __add_comment(self,label,shape,info):
-        if info is not None:
-            self.comments.append('{}{}: {}'.format(label,
-                                                   ' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',
-                                                   info))
+    def _add_comment(self,label,shape,info):
+        if info:
+            c = '{}{}: {}'.format(label,' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',info)
+            self.comments.append(c)
 
 
     @staticmethod
@@ -57,7 +56,8 @@ class Table:
         """
         Create table from ASCII file.
 
-        The first line needs to indicate the number of subsequent header lines as 'n header'.
+        The first line can indicate the number of subsequent header lines as 'n header',
+        alternatively first line is the header and comments are marked by '#' ('new style').
         Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
         Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
 
@@ -188,7 +188,7 @@ class Table:
             Human-readable information about the new data.
 
         """
-        self.__add_comment(label,data.shape[1:],info)
+        self._add_comment(label,data.shape[1:],info)
 
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
@@ -212,7 +212,7 @@ class Table:
             Human-readable information about the modified data.
 
         """
-        self.__add_comment(label,data.shape[1:],info)
+        self._add_comment(label,data.shape[1:],info)
 
         self.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
         size = np.prod(data.shape[1:],dtype=int)
@@ -251,12 +251,8 @@ class Table:
 
         """
         self.data.rename(columns={label_old:label_new},inplace=True)
-
-        self.comments.append('{} => {}{}'.format(label_old,
-                                                 label_new,
-                                                 '' if info is None else ': {}'.format(info),
-                                                 ))
-
+        c = '{} => {}{}'.format(label_old,label_new,'' if not info else ': {}'.format(info))
+        self.comments.append(c)
         self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
@@ -272,9 +268,9 @@ class Table:
             Set sort order.
 
         """
-        self.__label_flat()
+        self._label_flat()
         self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
-        self.__label_condensed()
+        self._label_condensed()
         self.comments.append('sorted by [{}]'.format(', '.join(labels)))
 
 
@@ -316,14 +312,16 @@ class Table:
                 self.shapes[key] = other.shapes[key]
 
 
-    def to_ASCII(self,fname,new=False):
+    def to_ASCII(self,fname,new_style=False):
         """
         Store as plain text file.
 
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file for writing.
+        new_style : Boolean, optional
+            Write table in new style, indicating header lines by comment sign ('#') only.
 
         """
         seen = set()
@@ -338,7 +336,7 @@ class Table:
                 labels += ['{}:{}_{}'.format('x'.join([str(d) for d in self.shapes[l]]),i+1,l) \
                           for i in range(np.prod(self.shapes[l]))]
 
-        if new:
+        if new_style:
             header = ['# {}'.format(comment) for comment in self.comments]
         else:
             header = ['{} header'.format(len(self.comments)+1)] \
