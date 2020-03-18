@@ -203,13 +203,11 @@ for name in filenames:
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['{id}_'
-                       'S[{direction[0]:.1g}_{direction[1]:.1g}_{direction[2]:.1g}]'
+  table.labels_append(['S[{direction[0]:.1g}_{direction[1]:.1g}_{direction[2]:.1g}]'
                        '({normal[0]:.1g}_{normal[1]:.1g}_{normal[2]:.1g})'\
-                       .format(       id = i+1,
-                                  normal = theNormal,
+                       .format(normal = theNormal,
                                direction = theDirection,
-                              ) for i,(theNormal,theDirection) in enumerate(zip(slip_normal,slip_direction))])
+                              ) for theNormal,theDirection in zip(slip_normal,slip_direction)])
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
