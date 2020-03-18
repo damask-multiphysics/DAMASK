@@ -282,12 +282,10 @@ class Test():
 
     import numpy as np
     logging.info('\n '.join(['comparing',File1,File2]))
-    table1 = damask.ASCIItable(name=File1,readonly=True)
-    table1.head_read()
-    len1=len(table1.info)+2
-    table2 = damask.ASCIItable(name=File2,readonly=True)
-    table2.head_read()
-    len2=len(table2.info)+2
+    table = damask.Table.from_ASCII(File1)
+    len1=len(table.comments)+2
+    table = damask.Table.from_ASCII(File2)
+    len2=len(table.comments)+2
 
     refArray = np.nan_to_num(np.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
     curArray = np.nan_to_num(np.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
@@ -445,15 +443,15 @@ class Test():
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 
-    tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
+    tables = [damask.Table.from_ASCII(filename) for filename in files]
     for table in tables:
-      table.head_read()
+      table._label_flat()
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files
 
     for i,column in enumerate(columns):
-      if column is None: columns[i] = tables[i].labels(raw = True)             # if no column is given, read all
+      if column is None: columns[i] = list(tables[i].data.columns)             # if no column is given, read all
 
     logging.info('comparing ASCIItables statistically')
     for i in range(len(columns)):
@@ -467,9 +465,8 @@ class Test():
 
     data = []
     for table,labels in zip(tables,columns):
-      table.data_readArray(labels)
-      data.append(table.data)
-      table.close()
+      table._label_condensed()
+      data.append(np.hstack(list(table.get(label) for label in labels)))
 
 
     for i in range(1,len(data)):

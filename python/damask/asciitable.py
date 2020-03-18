@@ -14,11 +14,9 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def __init__(self,
-               name    = None,
-               outname = None,
-               buffered  = False,                                                                   # is ignored, only exists for compatibility reasons
-               labeled   = True,                                                                    # assume table has labels
-               readonly  = False,                                                                   # no reading from file
+               name,
+               labeled  = True,                                                                     # assume table has labels
+               readonly = False,                                                                    # no reading from file
               ):
     """Read and write to ASCII tables."""
     self.__IO__ = {'output': [],
@@ -27,8 +25,9 @@ class ASCIItable():
                    'dataStart': 0,
                   }
 
-    self.__IO__['inPlace'] = not outname and name and not readonly
-    if self.__IO__['inPlace']: outname = name + self.tmpext                                         # transparently create tmp file
+    self.__IO__['inPlace'] = name and not readonly
+    outname = name + self.tmpext if self.__IO__['inPlace'] else None                                # transparently create tmp file
+
     try:
       self.__IO__['in'] = (open(   name,'r') if os.access(   name, os.R_OK) else None) if name else sys.stdin
     except TypeError:
@@ -424,29 +423,26 @@ class ASCIItable():
     return labels_missing
 
 # ------------------------------------------------------------------
-  def data_write(self,
-                 delimiter = '\t'):
+  def data_write(self):
     """Write current data array and report alive output back."""
     if len(self.data) == 0: return True
 
     if isinstance(self.data[0],list):
-      return self.output_write([delimiter.join(map(self._quote,items)) for items in self.data])
+      return self.output_write(['\t'.join(map(self._quote,items)) for items in self.data])
     else:
-      return self.output_write( delimiter.join(map(self._quote,self.data)))
+      return self.output_write( '\t'.join(map(self._quote,self.data)))
 
 # ------------------------------------------------------------------
-  def data_writeArray(self,
-                      fmt = None,
-                      delimiter = '\t'):
+  def data_writeArray(self):
     """Write whole numpy array data."""
     for row in self.data:
       try:
-        output = [fmt % value for value in row] if fmt else list(map(repr,row))
+        output = list(map(repr,row))
       except Exception:
-        output = [fmt % row] if fmt else [repr(row)]
+        output = [repr(row)]
 
       try:
-        self.__IO__['out'].write(delimiter.join(output) + '\n')
+        self.__IO__['out'].write('\t'.join(output) + '\n')
       except Exception:
         pass
 
