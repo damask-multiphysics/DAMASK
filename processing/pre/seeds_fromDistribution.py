@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
-import threading,time,os,sys,random
-import numpy as np
+import threading
+import time
+import os
+import sys
+import random
 from optparse import OptionParser
 from io import StringIO
+
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -35,11 +41,11 @@ class myThread (threading.Thread):
     s.acquire()
     bestMatch = match
     s.release()
-    
+
     random.seed(options.randomSeed+self.threadID)                                                   # initializes to given seeds
     knownSeedsUpdate = bestSeedsUpdate -1.0                                                         # trigger update of local best seeds
     randReset = True                                                                                # aquire new direction
-    
+
     myBestSeedsVFile    = StringIO()                                                                # store local copy of best seeds file
     perturbedSeedsVFile = StringIO()                                                                # perturbed best seeds file
     perturbedGeomVFile  = StringIO()                                                                # tessellated geom file
@@ -49,14 +55,14 @@ class myThread (threading.Thread):
       s.acquire()                                                                                   # ensure only one thread acces global data
       if bestSeedsUpdate > knownSeedsUpdate:                                                        # write best fit to virtual file
         knownSeedsUpdate = bestSeedsUpdate
-        bestSeedsVFile.reset()
+        bestSeedsVFile.seek(0)
         myBestSeedsVFile.close()
         myBestSeedsVFile = StringIO()
         i=0
         for line in bestSeedsVFile:
           myBestSeedsVFile.write(line)
       s.release()
-      
+
       if randReset:                                                                                 # new direction because current one led to worse fit
 
         randReset = False
@@ -67,46 +73,38 @@ class myThread (threading.Thread):
         for i in range(NmoveGrains):
           selectedMs.append(random.randrange(1,nMicrostructures))
 
-          direction.append(np.array(((random.random()-0.5)*delta[0],
-                                     (random.random()-0.5)*delta[1],
-                                     (random.random()-0.5)*delta[2])))
-        
+          direction.append((np.random.random()-0.5)*delta)
+
       perturbedSeedsVFile.close()                                                                   # reset virtual file
       perturbedSeedsVFile = StringIO()
-      myBestSeedsVFile.reset()
+      myBestSeedsVFile.seek(0)
 
-      perturbedSeedsTable = damask.ASCIItable(myBestSeedsVFile,perturbedSeedsVFile,labeled=True)    # write best fit to perturbed seed file
-      perturbedSeedsTable.head_read()
-      perturbedSeedsTable.head_write()
-      outputAlive=True
-      ms = 1
+      perturbedSeedsTable = damask.Table.from_ASCII(myBestSeedsVFile)
+      coords = perturbedSeedsTable.get('pos')
       i = 0
-      while outputAlive and perturbedSeedsTable.data_read():                                        # perturbe selected microstructure
+      for ms,coord in enumerate(coords):
         if ms in selectedMs:
-          newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction[i])
+          newCoords=coord+direction[i]
           newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)                                # ensure that the seeds remain in the box
           newCoords=np.where(newCoords <0.0,newCoords+1.0,newCoords)
-          perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
+          coords[i]=newCoords
           direction[i]*=2.
           i+= 1
-        ms+=1
-        perturbedSeedsTable.data_write()
-#--- do tesselation with perturbed seed file ----------------------------------------------------------
+      perturbedSeedsTable.set('pos',coords)
+      perturbedSeedsTable.to_ASCII(perturbedSeedsVFile)
+
+#--- do tesselation with perturbed seed file ------------------------------------------------------
       perturbedGeomVFile.close()
       perturbedGeomVFile = StringIO()
-      perturbedSeedsVFile.reset()
+      perturbedSeedsVFile.seek(0)
       perturbedGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
                      ' -g '+' '.join(list(map(str, options.grid))),streamIn=perturbedSeedsVFile)[0])
-      perturbedGeomVFile.reset()
+      perturbedGeomVFile.seek(0)
 
-#--- evaluate current seeds file ----------------------------------------------------------------------
-      perturbedGeomTable = damask.ASCIItable(perturbedGeomVFile,None,labeled=False,readonly=True)
-      perturbedGeomTable.head_read()
-      for i in perturbedGeomTable.info:
-        if i.startswith('microstructures'): myNmicrostructures = int(i.split('\t')[1])
-      perturbedGeomTable.data_readArray()
-      perturbedGeomTable.output_flush()
-      currentData=np.bincount(perturbedGeomTable.data.astype(int).ravel())[1:]/points
+#--- evaluate current seeds file ------------------------------------------------------------------
+      perturbedGeom = damask.Geom.from_file(perturbedGeomVFile)
+      myNmicrostructures = len(np.unique(perturbedGeom.microstructure))
+      currentData=np.bincount(perturbedGeom.microstructure.ravel())[1:]/points
       currentError=[]
       currentHist=[]
       for i in range(nMicrostructures):                                                             # calculate the deviation in all bins per histogram
@@ -114,8 +112,8 @@ class myThread (threading.Thread):
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
 
 # as long as not all grains are within the range of the target, use the deviation to left and right as error
-      if currentError[0]>0.0:                                                                       
-        currentError[0] *=((target[0]['bins'][0]-np.min(currentData))**2.0+                        
+      if currentError[0]>0.0:
+        currentError[0] *=((target[0]['bins'][0]-np.min(currentData))**2.0+
                            (target[0]['bins'][1]-np.max(currentData))**2.0)**0.5                    # norm of deviations by number of usual bin deviation
       s.acquire()                                                                                   # do the evaluation serially
       bestMatch = match
@@ -137,7 +135,7 @@ class myThread (threading.Thread):
             damask.util.croak('          target: '+np.array_str(target[i]['histogram']))
             damask.util.croak('          best:   '+np.array_str(currentHist[i]))
             currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')                   # name of new seed file (use time as unique identifier)
-            perturbedSeedsVFile.reset()
+            perturbedSeedsVFile.seek(0)
             bestSeedsVFile.close()
             bestSeedsVFile = StringIO()
             sys.stdout.flush()
@@ -154,7 +152,7 @@ class myThread (threading.Thread):
             break
           if i == min(nMicrostructures,myMatch+options.bins)-1:                                     # same quality as before: take it to keep on moving
             bestSeedsUpdate = time.time()
-            perturbedSeedsVFile.reset()
+            perturbedSeedsVFile.seek(0)
             bestSeedsVFile.close()
             bestSeedsVFile = StringIO()
             for line in perturbedSeedsVFile:
@@ -167,7 +165,7 @@ class myThread (threading.Thread):
                                                          .format(self.threadID,myNmicrostructures))
         randReset = True
 
-      
+
       s.release()
 
 
@@ -192,7 +190,7 @@ parser.add_option('--target',        dest='target', metavar='string',
                                      help='name of the geom file with target distribution [%default]')
 parser.add_option('--tolerance',     dest='threshold', type='int', metavar='int',
                                      help='stopping criterion (bin number) [%default]')
-parser.add_option('--scale',         dest='scale',type='float', metavar='float',                                     
+parser.add_option('--scale',         dest='scale',type='float', metavar='float',
                                      help='maximum moving distance of perturbed seed in pixel [%default]')
 parser.add_option('--bins',          dest='bins', type='int', metavar='int',
                                      help='bins to sort beyond current best fit [%default]')
@@ -216,7 +214,7 @@ damask.util.report(scriptName,options.seedFile)
 if options.randomSeed is None:
   options.randomSeed = int(os.urandom(4).hex(),16)
 damask.util.croak(options.randomSeed)
-delta = (options.scale/options.grid[0],options.scale/options.grid[1],options.scale/options.grid[2])
+delta = options.scale/np.array(options.grid)
 baseFile=os.path.splitext(os.path.basename(options.seedFile))[0]
 points = np.array(options.grid).prod().astype('float')
 
@@ -257,7 +255,7 @@ for i in range(nMicrostructures):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
 
-# as long as not all grain sizes are within the range, the error is the deviation to left and right 
+# as long as not all grain sizes are within the range, the error is the deviation to left and right
 if target[0]['error'] > 0.0:
   target[0]['error'] *=((target[0]['bins'][0]-np.min(initialData))**2.0+
                         (target[0]['bins'][1]-np.max(initialData))**2.0)**0.5
@@ -267,7 +265,7 @@ for i in range(nMicrostructures):
   match = i+1
 
 
-if options.maxseeds < 1: 
+if options.maxseeds < 1:
   maxSeeds = len(np.unique(initialGeom.microstructure))
 else:
   maxSeeds = options.maxseeds

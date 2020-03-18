@@ -255,8 +255,8 @@ for name in filenames:
   table.data_readArray(labels)
   coords    = table.data[:,table.label_indexrange(options.pos)] * info['size'] if options.normalized \
         else  table.data[:,table.label_indexrange(options.pos)] - info['origin']
-  eulers    = table.data[:,table.label_indexrange(options.eulers)] if hasEulers \
-              else np.zeros(3*len(coords))
+  if hasEulers:
+    eulers  = table.data[:,table.label_indexrange(options.eulers)]
   grains    = table.data[:,table.label_indexrange(options.microstructure)].astype(int) if hasGrains \
               else np.arange(len(coords))+1
 

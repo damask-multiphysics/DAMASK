@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -71,60 +72,30 @@ parser.set_defaults(bins = (10,10),
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
-minmax = np.array([np.array(options.xrange),
-                   np.array(options.yrange),
-                   np.array(options.zrange)])
-grid   = np.zeros(options.bins,'f')
-result = np.zeros((options.bins[0],options.bins[1],3),'f')
+minmax = np.array([options.xrange,options.yrange,options.zrange])
+result = np.empty((options.bins[0],options.bins[1],3),'f')
 
 if options.data is None: parser.error('no data columns specified.')
 
-labels = list(options.data)
-
-
-if options.weight is not None: labels += [options.weight]                                               # prevent character splitting of single string value
-
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name,
-                              outname = os.path.join(os.path.dirname(name),
-                                                    'binned-{}-{}_'.format(*options.data) +
-                                                   ('weighted-{}_'.format(options.weight) if options.weight else '') +
-                                                    os.path.basename(name)) if name else name)
-  except IOError:
-    continue
   damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
-
-  table.head_read()
-
-# ------------------------------------------ sanity checks ----------------------------------------
-
-  missing_labels = table.data_readArray(labels)
-
-  if len(missing_labels) > 0:
-    damask.util.croak('column{} {} not found.'.format('s' if len(missing_labels) > 1 else '',', '.join(missing_labels)))
-    table.close(dismiss = True)
-    continue
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  data = np.hstack((table.get(options.data[0]),table.get(options.data[1])))
 
   for c in (0,1):                                                                                   # check data minmax for x and y (i = 0 and 1)
-    if (minmax[c] == 0.0).all(): minmax[c] = [table.data[:,c].min(),table.data[:,c].max()]
+    if (minmax[c] == 0.0).all(): minmax[c] = [data[:,c].min(),data[:,c].max()]
     if options.type[c].lower() == 'log':                                                            # if log scale
-      table.data[:,c] = np.log(table.data[:,c])                                                     # change x,y coordinates to log
+      data[:,c] = np.log(data[:,c])                                                                 # change x,y coordinates to log
       minmax[c] = np.log(minmax[c])                                                                 # change minmax to log, too
 
   delta = minmax[:,1]-minmax[:,0]
-  (grid,xedges,yedges) = np.histogram2d(table.data[:,0],table.data[:,1],
+  (grid,xedges,yedges) = np.histogram2d(data[:,0],data[:,1],
                                         bins=options.bins,
                                         range=minmax[:2],
-                                        weights=None if options.weight is None else table.data[:,2])
-
+                                        weights=table.get(options.weight) if options.weight else None)
   if options.normCol:
     for x in range(options.bins[0]):
       sum = np.sum(grid[x,:])
@@ -153,24 +124,20 @@ for name in filenames:
     for y in range(options.bins[1]):
       result[x,y,:] = [minmax[0,0]+delta[0]/options.bins[0]*(x+0.5),
                        minmax[1,0]+delta[1]/options.bins[1]*(y+0.5),
-                       min(1.0,max(0.0,(grid[x,y]-minmax[2,0])/delta[2]))]
+                       np.clip((grid[x,y]-minmax[2,0])/delta[2],0.0,1.0)]
 
   for c in (0,1):
     if options.type[c].lower() == 'log': result[:,:,c] = np.exp(result[:,:,c])
 
   if options.invert: result[:,:,2] = 1.0 - result[:,:,2]
 
-# --- assemble header -------------------------------------------------------------------------------
-
-  table.info_clear()
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_clear()
-  table.labels_append(['bin_%s'%options.data[0],'bin_%s'%options.data[1],'z'])
-  table.head_write()
-
-# --- output result ---------------------------------------------------------------------------------
-
-  table.data = result.reshape(options.bins[0]*options.bins[1],3)
-  table.data_writeArray()
-
-  table.close()
+  comments = scriptID + '\t' + ' '.join(sys.argv[1:])
+  shapes = {'bin_%s'%options.data[0]:(1,),'bin_%s'%options.data[1]:(1,),'z':(1,)}
+  table  = damask.Table(result.reshape(options.bins[0]*options.bins[1],3),shapes,[comments])
+  if name:
+    outname = os.path.join(os.path.dirname(name),'binned-{}-{}_'.format(*options.data) +
+                                                ('weighted-{}_'.format(options.weight) if options.weight else '') +
+                                                 os.path.basename(name))
+    table.to_ASCII(outname)
+  else:
+    table.to_ASCII(sys.stdout)
