@@ -48,10 +48,12 @@ Phase_types = {'Primary': 0} #further additions to these can be done by looking 
 #                                MAIN
 # --------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='Creating a file for DREAM3D from DAMASK data')
-parser.add_argument('filenames',nargs='+',help='HDF5 based output file')
-parser.add_argument('--inc',nargs='+',help='Increment for which DREAM3D to be used, eg. 25',type=int)
+parser.add_argument('filenames', nargs='+',
+                    help='DADF5 files')
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
-                    help='name of subdirectory to hold output')
+                    help='name of subdirectory relative to the location of the DADF5 file to hold output')
+parser.add_argument('--inc',nargs='+',
+                    help='Increment for which DREAM3D to be used, eg. 25',type=int)
 
 options = parser.parse_args()
 
@@ -78,10 +80,8 @@ for filename in options.filenames:
         data_container_label = 'DataContainers/ImageDataContainer'        
         cell_data_label      = data_container_label + '/CellData'
 
-
         # Phase information of DREAM.3D is constituent ID in DAMASK
         o[cell_data_label + '/Phases'] = f.get_constituent_ID().reshape(tuple(f.grid)+(1,))  
-        # Data quaternions
         DAMASK_quaternion = f.read_dataset(f.get_dataset_location('orientation'))
         # Convert: DAMASK uses P = -1, DREAM.3D uses P = +1. Also change position of imagninary part
         DREAM_3D_quaternion = np.hstack((-DAMASK_quaternion['x'],-DAMASK_quaternion['y'],-DAMASK_quaternion['z'],
@@ -97,12 +97,10 @@ for filename in options.filenames:
             o[cell_data_label + group].attrs['DataArrayVersion']      = np.array([2],np.int32)
             o[cell_data_label + group].attrs['Tuple Axis Dimensions'] = 'x={},y={},z={}'.format(*f.grid)
           
-        # phase attributes
         o[cell_data_label + '/Phases'].attrs['ComponentDimensions'] = np.array([1],np.uint64)
         o[cell_data_label + '/Phases'].attrs['ObjectType']          = 'DataArray<int32_t>'
         o[cell_data_label + '/Phases'].attrs['TupleDimensions']     = f.grid.astype(np.uint64)
         
-        # Quats attributes
         o[cell_data_label + '/Quats'].attrs['ComponentDimensions'] = np.array([4],np.uint64)
         o[cell_data_label + '/Quats'].attrs['ObjectType']          = 'DataArray<float>'        
         o[cell_data_label + '/Quats'].attrs['TupleDimensions']     = f.grid.astype(np.uint64)
@@ -127,8 +125,6 @@ for filename in options.filenames:
             o[ensemble_label+'/'+group].attrs['ObjectType']            = 'DataArray<uint32_t>'
             o[ensemble_label+'/'+group].attrs['TupleDimensions']       = np.array([2],np.uint64)
           
-    
-        # Create geometry info
         geom_label = data_container_label + '/_SIMPL_GEOMETRY'
         
         o[geom_label + '/DIMENSIONS'] = np.int64(f.grid)

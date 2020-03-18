@@ -15,10 +15,6 @@ scriptID   = ' '.join([scriptName,damask.version])
 # --------------------------------------------------------------------
 parser = argparse.ArgumentParser()
 
-#ToDo:  We need to decide on a way of handling arguments of variable lentght
-#https://stackoverflow.com/questions/15459997/passing-integer-lists-to-python
-
-#parser.add_argument('--version', action='version', version='%(prog)s {}'.format(scriptID))
 parser.add_argument('filenames', nargs='+',
                     help='DADF5 files')
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
@@ -32,8 +28,6 @@ options = parser.parse_args()
 
 if options.mat is None: options.mat=[]
 if options.con is None: options.con=[]
-
-# --- loop over input files ------------------------------------------------------------------------
 
 for filename in options.filenames:
     results = damask.Result(filename)
