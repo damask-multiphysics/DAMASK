@@ -4,6 +4,7 @@ import os
 import sys
 import math
 import random
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
