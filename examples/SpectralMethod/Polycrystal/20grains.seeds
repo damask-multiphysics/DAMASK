@@ -1,6 +1,5 @@
-4 header
+3 header
 grid  a 16    b 16    c 16
-microstructures       20
 random seed        0
 1_pos      2_pos      3_pos    1_euler 2_euler 3_euler
 0.375488   0.161813   0.891040 197.572861  16.816409 129.422844
