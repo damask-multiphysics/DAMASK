@@ -1,11 +1,16 @@
-import os,sys,shutil
-import logging,logging.config
-import damask
-import numpy as np
+import os
+import sys
+import shutil
+import logging
+import logging.config
 from collections.abc import Iterable
 from optparse import OptionParser
 
-class Test():
+import numpy as np
+
+import damask
+
+class Test:
   """
   General class for testing.
 
@@ -13,7 +18,7 @@ class Test():
   """
 
   variants = []
-  
+
   def __init__(self, **kwargs):
     """New test."""
     defaults = {'description': '',
@@ -25,7 +30,7 @@ class Test():
                 }
     for arg in defaults.keys():
       setattr(self,arg,kwargs.get(arg) if kwargs.get(arg) else defaults[arg])
-    
+
     fh = logging.FileHandler('test.log')                                                            # create file handler which logs even debug messages
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s'))
@@ -73,7 +78,7 @@ class Test():
                              select = self.select,
                             )
 
-    
+
   def variantName(self,variant):
     """Generate name of (numerical) variant."""
     return str(variant)
@@ -99,7 +104,7 @@ class Test():
             self.run(variant)
 
           self.postprocess(variant)
-          
+
           if self.options.update:
             if self.update(variant) != 0: logging.critical('update for "{}" failed.'.format(name))
           elif not (self.options.accept or self.compare(variant)):                                    # no update, do comparison
@@ -109,7 +114,7 @@ class Test():
           logging.critical('exception during variant execution: "{}"'.format(str(e)))
           return variant+1                                                                            # return culprit
     return 0
-  
+
   def feasible(self):
     """Check whether test is possible or not (e.g. no license available)."""
     return True
@@ -127,7 +132,7 @@ class Test():
     except FileExistsError:
       logging.critical('creation of directory "{}" failed.'.format(self.dirCurrent()))
       return False
-    
+
   def prepareAll(self):
     """Do all necessary preparations for the whole test."""
     return True
@@ -494,15 +499,13 @@ class Test():
 
     if len(files) < 2: return True                                             # single table is always close to itself...
 
-    tables = [damask.ASCIItable(name = filename,readonly = True) for filename in files]
-    for table in tables:
-      table.head_read()
+    tables = [damask.Table.from_ASCII(filename) for filename in files]
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files
 
     for i,column in enumerate(columns):
-      if column is None: columns[i] = tables[i].labels(raw = False)            # if no column is given, use all
+      if column is None: columns[i] = list(tables[i].shapes.keys())           # if no column is given, use all
 
     logging.info('comparing ASCIItables')
     for i in range(len(columns)):
@@ -512,22 +515,20 @@ class Test():
                  )
       logging.info(files[i]+': '+','.join(columns[i]))
 
-    dimensions = tables[0].label_dimension(columns[0])                         # width of each requested column
+    dimensions = [np.prod(tables[0].shapes[c]) for c in columns[0]]            # width of each requested column
     maximum = np.zeros_like(columns[0],dtype=float)                            # one magnitude per column entry
     data = []                                                                  # list of feature table extracted from each file (ASCII table)
 
     for i,(table,labels) in enumerate(zip(tables,columns)):
-      if np.any(dimensions != table.label_dimension(labels)):                  # check data object consistency
+      if np.any(dimensions != [np.prod(table.shapes[c]) for c in labels]):     # check data object consistency
         logging.critical('Table {} differs in data layout.'.format(files[i]))
         return False
-      table.data_readArray(labels)                                             # read data, ...
-      data.append(table.data)                                                  # ... store, ...
-      table.close()                                                            # ... close
+      data.append(np.hstack(list(table.get(label) for label in labels)))       # store
 
       for j,label in enumerate(labels):                                        # iterate over object labels
         maximum[j] = np.maximum(
                        maximum[j],
-                       np.amax(np.linalg.norm(table.data[:,table.label_indexrange(label)],
+                       np.amax(np.linalg.norm(table.get(label),
                                               axis=1))
                       )                                                        # find maximum Euclidean norm across rows
 
@@ -549,8 +550,6 @@ class Test():
           logging.info('data     : {}'.format(np.absolute(data[1][j])[culprits]))
           logging.info('deviation: {}'.format(np.absolute(data[0][j]-data[1][j])[goodguys]))
           logging.info('data     : {}'.format(np.absolute(data[1][j])[goodguys]))
-#      for ok,valA,valB in zip(allclose,data[0],data[1]):
-#        logging.debug('{}:\n{}\n{}'.format(ok,valA,valB))
 
     allclose = True                                                            # start optimistic
     for i in range(1,len(data)):
