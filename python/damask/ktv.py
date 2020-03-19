@@ -177,8 +177,8 @@ class VTK:
 
         default_ext = writer.GetDefaultFileExtension()
         name, ext = os.path.splitext(fname)
-        if ext and ext != default_ext:
-            raise ValueError('Given extension {} is not {}'.format(ext,default_ext))
+        if ext and ext != '.'+default_ext:
+            raise ValueError('Given extension {} is not .{}'.format(ext,default_ext))
         writer.SetFileName('{}.{}'.format(name,default_ext))
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
@@ -196,15 +196,17 @@ class VTK:
 
         if   isinstance(data,np.ndarray):
             d = np_to_vtk(num_array=data.reshape(data.shape[0],-1),deep=True)
+            if not label:
+                raise ValueError('No label defined for numpy.ndarray')
             d.SetName(label)
             if   data.shape[0] == N_cells:
                 self.geom.GetCellData().AddArray(d)
             elif data.shape[0] == N_points:
                 self.geom.GetPointData().AddArray(d)
         elif isinstance(data,pd.DataFrame):
-            raise NotImplementedError
+            raise NotImplementedError('pd.DataFrame')
         elif isinstance(data,Table):
-            raise NotImplementedError
+            raise NotImplementedError('damask.Table')
         else:
             raise TypeError
 
