@@ -1100,8 +1100,6 @@ class Result:
 
 ###################################################################################################
 # BEGIN DEPRECATED
-    iter_visible   = iterate
-
 
     def _time_to_inc(self,start,end):
         selected = []
