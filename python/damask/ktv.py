@@ -24,11 +24,12 @@ class VTK:
         Parameters
         ----------
         geom : subclass of vtk.vtkDataSet
-          Description of geometry and topology. Valid types are vtk.vtkRectilinearGrid,
-          vtk.vtkUnstructuredGrid, or vtk.vtkPolyData.
+            Description of geometry and topology. Valid types are vtk.vtkRectilinearGrid,
+            vtk.vtkUnstructuredGrid, or vtk.vtkPolyData.
 
         """
         self.geom = geom
+
 
     @staticmethod
     def from_rectilinearGrid(grid,size,origin=np.zeros(3)):
@@ -40,11 +41,11 @@ class VTK:
         Parameters
         ----------
         grid : numpy.ndarray of shape (3) of np.dtype = int
-          Number of cells.
+            Number of cells.
         size : numpy.ndarray of shape (3)
-          Physical length.
+            Physical length.
         origin : numpy.ndarray of shape (3), optional
-          Spatial origin.
+            Spatial origin.
 
         """
         coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
@@ -71,11 +72,11 @@ class VTK:
         Parameters
         ----------
         nodes : numpy.ndarray of shape (:,3)
-          Spatial position of the nodes.
+            Spatial position of the nodes.
         connectivity : numpy.ndarray of np.dtype = int
-          Cell connectivity (0-based), first dimension determines #Cells, second dimension determines #Nodes/Cell.
+            Cell connectivity (0-based), first dimension determines #Cells, second dimension determines #Nodes/Cell.
         cell_type : str
-          Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, and HEXAHEDRON.
+            Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, and HEXAHEDRON.
 
         """
         vtk_nodes = vtk.vtkPoints()
@@ -103,7 +104,7 @@ class VTK:
         Parameters
         ----------
         points : numpy.ndarray of shape (:,3)
-          Spatial position of the points.
+            Spatial position of the points.
 
         """
         vtk_points= vtk.vtkPoints()
@@ -123,10 +124,10 @@ class VTK:
         Parameters
         ----------
         fname : str
-          Filename for reading. Valid extensions are .vtk, .vtr, .vtu, and .vtp.
+            Filename for reading. Valid extensions are *.vtr, *.vtu, *.vtp, and *.vtk.
         dataset_type : str, optional
-          Name of the vtk.vtkDataSet subclass when opening an .vtk file. Valid types are vtkRectilinearGrid,
-          vtkUnstructuredGrid, and vtkPolyData.
+            Name of the vtk.vtkDataSet subclass when opening an *.vtk file. Valid types are vtkRectilinearGrid,
+            vtkUnstructuredGrid, and vtkPolyData.
 
         """
         ext = os.path.splitext(fname)[1]
@@ -134,11 +135,13 @@ class VTK:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(fname)
             reader.Update()
-            if 'rectilineargrid' in    dataset_type.lower():
+            if not dataset_type:
+                raise TypeError('Dataset type for *.vtk file not given.')
+            elif dataset_type.lower().endswith('rectilineargrid'):
                 geom = reader.GetRectilinearGridOutput()
-            elif 'unstructuredgrid' in dataset_type.lower():
+            elif dataset_type.lower().endswith('unstructuredgrid'):
                 geom = reader.GetUnstructuredGridOutput()
-            elif 'polydata' in         dataset_type.lower():
+            elif dataset_type.lower().endswith('polydata'):
                 geom = reader.GetPolyDataOutput()
             else:
                 raise TypeError('Unknown dataset type for vtk file {}'.format(dataset_type))
@@ -167,7 +170,7 @@ class VTK:
         Parameters
         ----------
         fname : str
-          Filename for writing.
+            Filename for writing.
 
         """
         if  (isinstance(self.geom,vtk.vtkRectilinearGrid)):
