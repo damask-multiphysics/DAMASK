@@ -126,75 +126,65 @@ np.random.seed(options.randomSeed)                                              
 random.seed(options.randomSeed)
 
 for name in filenames:
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# --- sanity checks -------------------------------------------------------------------------
-  remarks = []
-  errors  = []
-  if any(grid==0):
-    errors.append('zero grid dimension for {}.'.format(', '.join([['a','b','c'][x] for x in np.where(grid == 0)[0]])))
-  if options.N > grid.prod()/10.:
-    remarks.append('seed count exceeds 0.1 of grid points.')
-  if options.selective and 4./3.*np.pi*(options.distance/2.)**3*options.N > 0.5:
-    remarks.append('maximum recommended seed point count for given distance is {}'.
-                   format(int(3./8./np.pi/(options.distance/2.)**3)))
+    remarks = []
+    errors  = []
+    if any(grid==0):
+        errors.append('zero grid dimension for {}.'.format(', '.join([['a','b','c'][x] for x in np.where(grid == 0)[0]])))
+    if options.N > grid.prod()/10.:
+        remarks.append('seed count exceeds 0.1 of grid points.')
+    if options.selective and 4./3.*np.pi*(options.distance/2.)**3*options.N > 0.5:
+        remarks.append('maximum recommended seed point count for given distance is {}'.
+                       format(int(3./8./np.pi/(options.distance/2.)**3)))
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    sys.exit()
+    if remarks != []: damask.util.croak(remarks)
+    if errors  != []:
+        damask.util.croak(errors)
+        sys.exit()
 
-# --- do work ------------------------------------------------------------------------------------
-  grainEuler = np.random.rand(3,options.N)                                                          # create random Euler triplets
-  grainEuler[0,:] *= 360.0                                                                          # phi_1    is uniformly distributed
-  grainEuler[1,:] = np.degrees(np.arccos(2*grainEuler[1,:]-1))                                      # cos(Phi) is uniformly distributed
-  grainEuler[2,:] *= 360.0                                                                          # phi_2    is uniformly distributed
+    eulers = np.random.rand(options.N,3)                                                            # create random Euler triplets
+    eulers[:,0] *= 360.0                                                                            # phi_1    is uniformly distributed
+    eulers[:,1] = np.degrees(np.arccos(2*eulers[:,1]-1))                                            # cos(Phi) is uniformly distributed
+    eulers[:,2] *= 360.0                                                                            # phi_2    is uniformly distributed
 
-  if not options.selective:
-    n = np.maximum(np.ones(3),np.array(grid*fraction),
-                   dtype=int,casting='unsafe')                                                      # find max grid indices within fraction
-    meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                         # create a meshgrid within fraction
-    coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(3,n.prod()).T                 # assemble list of 3D coordinates
-    seeds = ((random.sample(list(coords),options.N)+np.random.random(options.N*3).reshape(options.N,3))\
-              / \
-             (n/fraction)).T                                                                        # pick options.N of those, rattle position,
+    if not options.selective:
+        n = np.maximum(np.ones(3),np.array(grid*fraction),dtype=int,casting='unsafe')               # find max grid indices within fraction
+        meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                     # create a meshgrid within fraction
+        coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(n.prod(),3)               # assemble list of 3D coordinates
+        seeds = (random.sample(coords.tolist(),options.N)+np.random.rand(options.N,3))\
+                  / \
+                 (n/fraction)                                                                       # pick options.N of those, rattle position,
                                                                                                     # and rescale to fall within fraction
-  else:
-    seeds = np.zeros((options.N,3),dtype=float)                                                     # seed positions array
-    seeds[0] = np.random.random(3)*grid/max(grid)
-    i = 1                                                                                           # start out with one given point
-    if i%(options.N/100.) < 1: damask.util.croak('.',False)
-
-    while i < options.N:
-      candidates = np.random.random(options.numCandidates*3).reshape(options.numCandidates,3)
-      distances  = kdtree_search(seeds[:i],candidates)
-      best = distances.argmax()
-      if distances[best] > options.distance:                                                        # require minimum separation
-        seeds[i] = candidates[best]                                                                 # maximum separation to existing point cloud
-        i += 1
+    else:
+        seeds = np.zeros((options.N,3))                                                             # seed positions array
+        seeds[0] = np.random.random(3)*grid/max(grid)
+        i = 1                                                                                       # start out with one given point
         if i%(options.N/100.) < 1: damask.util.croak('.',False)
 
-    damask.util.croak('')
-    seeds = seeds.T                                                                                 # prepare shape for stacking
+        while i < options.N:
+          candidates = np.random.rand(options.numCandidates,3)
+          distances  = kdtree_search(seeds[:i],candidates)
+          best = distances.argmax()
+          if distances[best] > options.distance:                                                    # require minimum separation
+              seeds[i] = candidates[best]                                                           # maximum separation to existing point cloud
+              i += 1
+              if i%(options.N/100.) < 1: damask.util.croak('.',False)
 
-  if options.weights:
-    weights = [np.random.uniform(low = 0, high = options.max, size = options.N)] if options.max > 0.0 \
-         else [np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)]
+        damask.util.croak('')
 
 
-  data = np.transpose(np.vstack(tuple([seeds,
-                                       grainEuler,
-                                       np.arange(options.microstructure,options.microstructure + options.N),
-                                      ] + (weights if options.weights else [])
-                                 )))
+    comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
+                'grid\ta {}\tb {}\tc {}'.format(*grid),
+                'randomSeed\t{}'.format(options.randomSeed),
+               ]
 
-  comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
-              'grid\ta {}\tb {}\tc {}'.format(*grid),
-              'randomSeed\t{}'.format(options.randomSeed),
-             ]
+    table = damask.Table(np.hstack((seeds,eulers)),{'pos':(3,),'euler':(3,)},comments)
+    table.add('microstructure',np.arange(options.microstructure,options.microstructure + options.N,dtype=int))
 
-  shapes = {'pos':(3,),'euler':(3,),'microstructure':(1,)}
-  if options.weights: shapes['weight'] = (1,)
+    if options.weights:
+        weights = np.random.uniform(low = 0, high = options.max, size = options.N) if options.max > 0.0 \
+             else np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)
+        table.add('weight',weights)
 
-  table = damask.Table(data,shapes,comments)
-  table.to_ASCII(sys.stdout if name is None else name)
+    table.to_ASCII(sys.stdout if name is None else name)
