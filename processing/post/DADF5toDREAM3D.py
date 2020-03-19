@@ -70,7 +70,7 @@ for filename in options.filenames:
             pass
 
         o = h5py.File(dirname + '/' + os.path.splitext(filename)[0] \
-          + 'inc_{}.dream3D'.format(inc[3:].zfill(N_digits)),'w')
+          + '_inc_{}.dream3D'.format(inc[3:].zfill(N_digits)),'w')
         o.attrs['DADF5toDREAM3D'] = '1.0'
         o.attrs['FileVersion']    = '7.0'
 

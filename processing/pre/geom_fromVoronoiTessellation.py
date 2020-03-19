@@ -3,6 +3,7 @@
 import os
 import sys
 import multiprocessing
+from io import StringIO
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
@@ -15,7 +16,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def Laguerre_tessellation(grid, seeds, weights, grains, periodic = True, cpus = 2):
+def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
 
   def findClosestSeed(fargs):
     point, seeds, myWeights = fargs
@@ -52,10 +53,10 @@ def Laguerre_tessellation(grid, seeds, weights, grains, periodic = True, cpus = 
               [ -1, 1, 1 ],
               [  0, 1, 1 ],
               [  1, 1, 1 ],
-             ]).astype(float)*info['size'] if periodic else \
+             ],dtype=np.float)*size if periodic else \
     np.array([
               [  0, 0, 0 ],
-             ]).astype(float)
+             ],dtype=np.float)
 
   repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                   # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
   for vec in copies:                                                                                # periodic copies of seed points ...
@@ -237,9 +238,10 @@ for name in filenames:
 
     damask.util.croak('tessellating...')
     if options.laguerre:
-        indices = Laguerre_tessellation(coords,seeds,table.get(options.weight),grains,options.periodic,options.cpus)
+        indices = Laguerre_tessellation(coords,seeds,grains,size,options.periodic,
+                                        table.get(options.weight),options.cpus)
     else:
-        indices = Voronoi_tessellation(coords,seeds,grains,size,options.periodic)
+        indices = Voronoi_tessellation (coords,seeds,grains,size,options.periodic)
 
     config_header = []
     if options.config:

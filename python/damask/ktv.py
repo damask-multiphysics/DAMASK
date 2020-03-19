@@ -49,7 +49,6 @@ class VTK:
             Spatial origin.
 
         """
-
         geom = vtk.vtkRectilinearGrid()
         geom.SetDimensions(*(grid+1))
         geom.SetXCoordinates(np_to_vtk(np.linspace(origin[0],origin[0]+size[0],grid[0]+1),deep=True))

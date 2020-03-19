@@ -5,6 +5,8 @@ import sys
 from io import StringIO
 from optparse import OptionParser
 
+import numpy as np
+
 import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
