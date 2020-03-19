@@ -166,42 +166,6 @@ class ASCIItable():
     return self.output_write(head)
 
 # ------------------------------------------------------------------
-  def head_getGeom(self):
-    """Interpret geom header."""
-    identifiers = {
-            'grid':    ['a','b','c'],
-            'size':    ['x','y','z'],
-            'origin':  ['x','y','z'],
-              }
-    mappings = {
-            'grid':            lambda x: int(x),
-            'size':            lambda x: float(x),
-            'origin':          lambda x: float(x),
-              }
-    info = {
-            'grid':            np.zeros(3,'i'),
-            'size':            np.zeros(3,'d'),
-            'origin':          np.zeros(3,'d'),
-           }
-    extra_header = []
-
-    for header in self.info:
-      headitems = list(map(str.lower,header.split()))
-      if len(headitems) == 0: continue                                                              # skip blank lines
-      if headitems[0] in list(mappings.keys()):
-        if headitems[0] in list(identifiers.keys()):
-          for i in range(len(identifiers[headitems[0]])):
-            info[headitems[0]][i] = \
-              mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-        else:
-          info[headitems[0]] = mappings[headitems[0]](headitems[1])
-      else:
-        extra_header.append(header)
-
-    return info,extra_header
-
-
-# ------------------------------------------------------------------
   def labels_append(self,
                     what,
                     reset = False):
