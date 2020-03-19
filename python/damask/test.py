@@ -523,7 +523,7 @@ class Test:
       if np.any(dimensions != [np.prod(table.shapes[c]) for c in labels]):     # check data object consistency
         logging.critical('Table {} differs in data layout.'.format(files[i]))
         return False
-      data.append(np.hstack(list(table.get(label) for label in labels)))       # store
+      data.append(np.hstack(list(table.get(label) for label in labels)).astype(np.float))           # store
 
       for j,label in enumerate(labels):                                        # iterate over object labels
         maximum[j] = np.maximum(
