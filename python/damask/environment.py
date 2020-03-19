@@ -1,16 +1,20 @@
 import os
+try:
+    import tkinter
+except:
+    tkinter = None
 
-class Environment():
+class Environment:
 
     def __init__(self):
         """Read and provide values of DAMASK configuration."""
         self.options = self._get_options()
-        try:
-            import tkinter
+        if tkinter:
             tk = tkinter.Tk()
             self.screen_width  = tk.winfo_screenwidth()
             self.screen_height = tk.winfo_screenheight()
-        except Exception:
+            tk.destroy()
+        else:
             self.screen_width  = 1024
             self.screen_height =  768
 
