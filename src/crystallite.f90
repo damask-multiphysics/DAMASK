@@ -688,11 +688,11 @@ subroutine crystallite_results
         case('p')
           selected_tensors = select_tensors(crystallite_P,p)
           call results_writeDataset(group,selected_tensors,'P',&
-                                   '1st Piola-Kirchoff stress','Pa')
+                                   'First Piola-Kirchoff stress','Pa')
         case('s')
           selected_tensors = select_tensors(crystallite_S,p)
           call results_writeDataset(group,selected_tensors,'S',&
-                                   '2nd Piola-Kirchoff stress','Pa')
+                                   'Second Piola-Kirchoff stress','Pa')
         case('orientation')
           select case(lattice_structure(p))
             case(lattice_ISO_ID)

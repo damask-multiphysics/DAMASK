@@ -85,7 +85,14 @@ class Result:
 
     def __repr__(self):
         """Show selected data."""
-        return util.srepr(self.list_data())
+        all_selected_increments = self.selection['increments']
+        self.pick('increments',all_selected_increments[0:1])
+        first = self.list_data()
+        self.pick('increments',all_selected_increments[-1:])
+        last  = self.list_data()
+        self.pick('increments',all_selected_increments)
+        in_between = ''.join(['\n{}\n  ...\n'.format(inc) for inc in all_selected_increments[1:-2]])
+        return util.srepr(first+ in_between + last)
 
 
     def _manage_selection(self,action,what,datasets):
@@ -171,13 +178,13 @@ class Result:
 
         """
         datasets = self.selection[what]
-        last_datasets = datasets.copy()
+        last_selection = datasets.copy()
         for dataset in datasets:
-            if last_datasets != self.selection[what]:
+            if last_selection != self.selection[what]:
                 self._manage_selection('set',what,datasets)
                 raise Exception
             self._manage_selection('set',what,dataset)
-            last_datasets = self.selection[what]
+            last_selection = self.selection[what]
             yield dataset
         self._manage_selection('set',what,datasets)
 
@@ -664,7 +671,7 @@ class Result:
                 'meta' : {
                           'Unit':        'RGB (8bit)',
                           'Lattice':     lattice,
-                          'Description': 'Inverse Pole Figure (IPF) colors for direction/plane [{} {} {})'.format(*m),
+                          'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
                           'Creator':     'result.py:add_IPFcolor v{}'.format(version)
                          }
                }
@@ -1014,13 +1021,13 @@ class Result:
         pool.join()
 
 
-    def to_vtk(self,labels,mode='cell'):
+    def to_vtk(self,labels=[],mode='cell'):
         """
         Export to vtk cell/point data.
 
         Parameters
         ----------
-        labels : str or list of
+        labels : str or list of, optional
             Labels of the datasets to be exported.
         mode : str, either 'cell' or 'point'
             Export in cell format or point format.
