@@ -18,9 +18,6 @@ from .result      import Result           # noqa
 from .geom        import Geom             # noqa
 from .solver      import Solver           # noqa
 
-# compatibility hack
-from .result      import Result as DADF5  # noqa
-
 # deprecated
 from .asciitable  import ASCIItable       # noqa
 from .util        import extendableOption # noqa

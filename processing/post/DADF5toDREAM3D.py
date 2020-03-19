@@ -60,8 +60,7 @@ options = parser.parse_args()
 for filename in options.filenames:
     f = damask.Result(filename)
     f.pick('increments',options.inc)
-    for increment in damask.util.show_progress(f.iter_selection('increments'),len(f.selection['increments'])):
-        #-------output file creation-------------------------------------
+    for increment in damask.util.show_progress(f.iterate('increments'),len(f.selection['increments'])):
         dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
         try:
             os.mkdir(dirname)
@@ -69,10 +68,8 @@ for filename in options.filenames:
             pass
 
         o = h5py.File(dirname + '/' + os.path.splitext(filename)[0] + '_{}.dream3D'.format(increment),'w')
-        #-----------------------------------------------------------------
         o.attrs['DADF5toDREAM3D'] = '1.0'
         o.attrs['FileVersion']    = '7.0' 
-        #-----------------------------------------------------------------
         
         for g in ['DataContainerBundles','Pipeline']: # empty groups (needed)
             o.create_group(g)

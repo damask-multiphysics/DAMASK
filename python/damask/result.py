@@ -1094,7 +1094,6 @@ class Result:
 ###################################################################################################
 # BEGIN DEPRECATED
     iter_visible   = iterate
-    iter_selection = iterate
 
 
     def _time_to_inc(self,start,end):
@@ -1118,21 +1117,3 @@ class Result:
 
         """
         self._manage_selection('set','increments',self._time_to_inc(start,end))
-
-
-    def set_by_increment(self,start,end):
-        """
-        Set active time increments based on start and end increment.
-
-        Parameters
-        ----------
-        start : int
-          start increment (included)
-        end : int
-          end increment (included)
-
-        """
-        if self.version_minor >= 4:
-            self._manage_selection('set','increments',[    'inc{}'.format(i) for i in range(start,end+1)])
-        else:
-            self._manage_selection('set','increments',['inc{:05d}'.format(i) for i in range(start,end+1)])

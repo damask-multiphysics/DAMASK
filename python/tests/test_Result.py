@@ -27,7 +27,7 @@ class TestResult:
     def test_time_increments(self,default):
         shape = default.read_dataset(default.get_dataset_location('F'),0).shape
         default.set_by_time(0.0,20.0)
-        for i in default.iter_visible('increments'):
+        for i in default.iterate('increments'):
            assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
 
 
