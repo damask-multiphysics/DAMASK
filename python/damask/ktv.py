@@ -158,7 +158,6 @@ class VTK:
         return VTK(geom)
 
 
-    # ToDo: If extension is given, check for consistency.
     def write(self,fname):
         """
         Write to file.
@@ -176,8 +175,11 @@ class VTK:
         elif(isinstance(self.geom,vtk.vtkPolyData)):
             writer = vtk.vtkXMLPolyDataWriter()
 
-        writer.SetFileName('{}.{}'.format(os.path.splitext(fname)[0],
-                                          writer.GetDefaultFileExtension()))
+        default_ext = writer.GetDefaultFileExtension()
+        name, ext = os.path.splitext(fname)
+        if ext and ext != default_ext:
+            raise ValueError('Given extension {} is not {}'.format(ext,default_ext))
+        writer.SetFileName('{}.{}'.format(name,default_ext))
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
         writer.SetInputData(self.geom)
