@@ -3,7 +3,8 @@ import os
 import pandas as pd
 import numpy as np
 import vtk
-from vtk.util.numpy_support import numpy_to_vtk as np_to_vtk
+from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
+from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 
 from . import Table
 from . import Environment
@@ -48,16 +49,12 @@ class VTK:
             Spatial origin.
 
         """
-        coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
-        for dim in [0,1,2]:
-            coords = np.linspace(origin[dim],origin[dim]+size[dim],grid[dim]+1)
-            coordArray[dim].SetArray(np_to_vtk(coords),grid[dim]+1,1)
 
         geom = vtk.vtkRectilinearGrid()
         geom.SetDimensions(*(grid+1))
-        geom.SetXCoordinates(coordArray[0])
-        geom.SetYCoordinates(coordArray[1])
-        geom.SetZCoordinates(coordArray[2])
+        geom.SetXCoordinates(np_to_vtk(np.linspace(origin[0],origin[0]+size[0],grid[0]+1),deep=True))
+        geom.SetYCoordinates(np_to_vtk(np.linspace(origin[1],origin[1]+size[1],grid[1]+1),deep=True))
+        geom.SetZCoordinates(np_to_vtk(np.linspace(origin[2],origin[2]+size[2],grid[2]+1),deep=True))
 
         return VTK(geom)
 
@@ -85,7 +82,7 @@ class VTK:
         cells.SetNumberOfCells(connectivity.shape[0])
         T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
                             connectivity),axis=1).ravel()
-        cells.SetCells(connectivity.shape[0],np_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
+        cells.SetCells(connectivity.shape[0],np_to_vtkIdTypeArray(T,deep=True))
 
         geom = vtk.vtkUnstructuredGrid()
         geom.SetPoints(vtk_nodes)
