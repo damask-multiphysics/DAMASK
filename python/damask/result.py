@@ -4,18 +4,19 @@ import glob
 import os
 from functools import partial
 
-import vtk
-from vtk.util import numpy_support
 import h5py
 import numpy as np
 
-from . import util
-from . import version
-from . import mechanics
+from . import VTK
+from . import Table
 from . import Rotation
 from . import Orientation
 from . import Environment
 from . import grid_filters
+from . import mechanics
+from . import util
+from . import version
+
 
 class Result:
     """
@@ -26,12 +27,12 @@ class Result:
 
     def __init__(self,fname):
         """
-        Opens an existing DADF5 file.
+        Open an existing DADF5 file.
 
         Parameters
         ----------
         fname : str
-            name of the DADF5 file to be openend.
+          name of the DADF5 file to be openend.
 
         """
         with h5py.File(fname,'r') as f:
@@ -75,12 +76,16 @@ class Result:
           self.mat_physics = list(set(self.mat_physics))                                            # make unique
 
         self.selection= {'increments':     self.increments,
-                         'constituents':   self.constituents,
-                         'materialpoints': self.materialpoints,
-                         'con_physics':    self.con_physics,
-                         'mat_physics':    self.mat_physics}
+                         'constituents':   self.constituents,'materialpoints': self.materialpoints,
+                         'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
+                        }
 
         self.fname = fname
+
+
+    def __repr__(self):
+        """Show selected data."""
+        return util.srepr(self.list_data())
 
 
     def _manage_selection(self,action,what,datasets):
@@ -151,12 +156,11 @@ class Result:
         selected = []
         for i,time in enumerate(self.times):
             if start <= time <= end:
-                selected.append(self.increments[i])
+                selected.append(self.times[i])
         return selected
 
 
-
-    def iter_selection(self,what):
+    def iterate(self,what):
         """
         Iterate over selection items by setting each one selected.
 
@@ -225,6 +229,74 @@ class Result:
         """
         self._manage_selection('del',what,datasets)
 
+  # def datamerger(regular expression to filter groups into one copy)
+
+
+    def place(self,datasets,component=0,tagged=False,split=True):
+        """
+        Distribute datasets onto geometry and return Table or (split) dictionary of Tables.
+
+        Must not mix nodal end cell data.
+
+        Only data within
+        - inc?????/constituent/*_*/*
+        - inc?????/materialpoint/*_*/*
+        - inc?????/geometry/*
+        are considered.
+
+        Parameters
+        ----------
+          datasets : iterable or str
+          component : int
+            homogenization component to consider for constituent data
+          tagged : Boolean
+            tag Table.column name with '#component'
+            defaults to False
+          split : Boolean
+            split Table by increment and return dictionary of Tables
+            defaults to True
+
+        """
+        sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) \
+         else [datasets]
+        tag = f'#{component}' if tagged else ''
+        tbl = {} if split else None
+        inGeom = {}
+        inData = {}
+        with h5py.File(self.fname,'r') as f:
+            for dataset in sets:
+                for group in self.groups_with_datasets(dataset):
+                    path = os.path.join(group,dataset)
+                    inc,prop,name,cat,item = (path.split('/') + ['']*5)[:5]
+                    key = '/'.join([prop,name+tag])
+                    if key not in inGeom:
+                        if prop == 'geometry':
+                            inGeom[key] = inData[key] = np.arange(self.Nmaterialpoints)
+                        elif prop == 'constituent':
+                            inGeom[key] = np.where(f['mapping/cellResults/constituent'][:,component]['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/cellResults/constituent'][inGeom[key],component]['Position']
+                        else:
+                            inGeom[key] = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/cellResults/materialpoint'][inGeom[key].tolist()]['Position']
+                    shape = np.shape(f[path])
+                    data = np.full((self.Nmaterialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
+                                    np.nan,
+                                    dtype=np.dtype(f[path]))
+                    data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
+                    path = (os.path.join(*([prop,name]+([cat] if cat else [])+([item] if item else []))) if split else path)+tag
+                    if split:
+                        try:
+                            tbl[inc].add(path,data)
+                        except KeyError:
+                            tbl[inc] = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                    else:
+                        try:
+                            tbl.add(path,data)
+                        except AttributeError:
+                            tbl = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+
+        return tbl
+
 
     def groups_with_datasets(self,datasets):
         """
@@ -262,10 +334,10 @@ class Result:
         groups = []
 
         with h5py.File(self.fname,'r') as f:
-            for i in self.iter_selection('increments'):
+            for i in self.iterate('increments'):
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                  for oo in self.iter_selection(o):
-                    for pp in self.iter_selection(p):
+                  for oo in self.iterate(o):
+                    for pp in self.iterate(p):
                       group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
                       if sets is True:
                         groups.append(group)
@@ -279,12 +351,12 @@ class Result:
         """Return information on all active datasets in the file."""
         message = ''
         with h5py.File(self.fname,'r') as f:
-            for i in self.iter_selection('increments'):
+            for i in self.iterate('increments'):
                 message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                  for oo in self.iter_selection(o):
+                  for oo in self.iterate(o):
                     message+='  {}\n'.format(oo)
-                    for pp in self.iter_selection(p):
+                    for pp in self.iterate(p):
                       message+='    {}\n'.format(pp)
                       group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
                       for d in f[group].keys():
@@ -301,7 +373,7 @@ class Result:
         """Return the location of all active datasets with given label."""
         path = []
         with h5py.File(self.fname,'r') as f:
-            for i in self.iter_selection('increments'):
+            for i in self.iterate('increments'):
                 k = '/'.join([i,'geometry',label])
                 try:
                     f[k]
@@ -309,8 +381,8 @@ class Result:
                 except KeyError as e:
                     pass
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                    for oo in self.iter_selection(o):
-                        for pp in self.iter_selection(p):
+                    for oo in self.iterate(o):
+                        for pp in self.iterate(p):
                             k = '/'.join([i,o[:-1],oo,pp,label])
                             try:
                                 f[k]
@@ -375,7 +447,7 @@ class Result:
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.cell_coord0(self.grid,self.size,self.origin)
+            return grid_filters.cell_coord0(self.grid,self.size,self.origin).reshape(-1,3)
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
@@ -892,11 +964,11 @@ class Result:
             datasets_in = {}
             lock.acquire()
             with h5py.File(self.fname,'r') as f:
-              for arg,label in datasets.items():
-                loc  = f[group+'/'+label]
-                datasets_in[arg]={'data' :loc[()],
-                                  'label':label,
-                                  'meta': {k:v.decode() for k,v in loc.attrs.items()}}
+                for arg,label in datasets.items():
+                    loc  = f[group+'/'+label]
+                    datasets_in[arg]={'data' :loc[()],
+                                      'label':label,
+                                      'meta': {k:v.decode() for k,v in loc.attrs.items()}}
             lock.release()
             r = func(**datasets_in,**args)
             return [group,r]
@@ -958,143 +1030,71 @@ class Result:
         if mode.lower()=='cell':
 
           if self.structured:
-              coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
-              for dim in [0,1,2]:
-                  for c in np.linspace(0,self.size[dim],1+self.grid[dim]):
-                      coordArray[dim].InsertNextValue(c)
-
-              vtk_geom = vtk.vtkRectilinearGrid()
-              vtk_geom.SetDimensions(*(self.grid+1))
-              vtk_geom.SetXCoordinates(coordArray[0])
-              vtk_geom.SetYCoordinates(coordArray[1])
-              vtk_geom.SetZCoordinates(coordArray[2])
+              v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
           else:
-              nodes = vtk.vtkPoints()
               with h5py.File(self.fname,'r') as f:
-                  nodes.SetData(numpy_support.numpy_to_vtk(f['/geometry/x_n'][()],deep=True))
-
-                  vtk_geom = vtk.vtkUnstructuredGrid()
-                  vtk_geom.SetPoints(nodes)
-                  vtk_geom.Allocate(f['/geometry/T_c'].shape[0])
-
-                  if self.version_major == 0 and self.version_minor <= 5:
-                      vtk_type = vtk.VTK_HEXAHEDRON
-                      n_nodes = 8
-                  else:
-                      if   f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TRIANGLE':
-                          vtk_type = vtk.VTK_TRIANGLE
-                          n_nodes = 3
-                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'QUAD':
-                          vtk_type = vtk.VTK_QUAD
-                          n_nodes = 4
-                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'TETRA':                        # not tested
-                          vtk_type = vtk.VTK_TETRA
-                          n_nodes = 4
-                      elif f['/geometry/T_c'].attrs['VTK_TYPE'] == b'HEXAHEDRON':
-                          vtk_type = vtk.VTK_HEXAHEDRON
-                          n_nodes = 8
-
-                  for i in f['/geometry/T_c']:
-                      vtk_geom.InsertNextCell(vtk_type,n_nodes,i-1)
-
+                  v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
+                                                f['/geometry/T_c'][()]-1,
+                                                f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-          Points   = vtk.vtkPoints()
-          Vertices = vtk.vtkCellArray()
-          for c in self.cell_coordinates():
-            pointID = Points.InsertNextPoint(c)
-            Vertices.InsertNextCell(1)
-            Vertices.InsertCellPoint(pointID)
+            v = VTK.from_polyData(self.cell_coordinates())
 
-          vtk_geom = vtk.vtkPolyData()
-          vtk_geom.SetPoints(Points)
-          vtk_geom.SetVerts(Vertices)
-          vtk_geom.Modified()
+        N_digits = int(np.floor(np.log10(min(int(self.increments[-1][3:]),1))))+1
 
-        N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
-
-        for i,inc in enumerate(self.iter_selection('increments')):
-          vtk_data = []
+        for i,inc in enumerate(util.show_progress(self.iterate('increments'),len(self.selection['increments']))):
 
           materialpoints_backup = self.selection['materialpoints'].copy()
           self.pick('materialpoints',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iter_selection('con_physics'):
-              if p != 'generic':
-                  for c in self.iter_selection('constituents'):
-                      x = self.get_dataset_location(label)
-                      if len(x) == 0:
-                          continue
-                      array = self.read_dataset(x,0)
-                      shape = [array.shape[0],np.product(array.shape[1:])]
-                      vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
-                      vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
-                      vtk_geom.GetCellData().AddArray(vtk_data[-1])
-
+              for p in self.iterate('con_physics'):
+                  if p != 'generic':
+                      for c in self.iterate('constituents'):
+                          x = self.get_dataset_location(label)
+                          if len(x) == 0:
+                              continue
+                          array = self.read_dataset(x,0)
+                          v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
               else:
                   x = self.get_dataset_location(label)
                   if len(x) == 0:
                       continue
                   array = self.read_dataset(x,0)
-                  shape = [array.shape[0],np.product(array.shape[1:])]
-                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
                   ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')                   # identify  phase name
                   dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                       # removing phase name
-                  vtk_data[-1].SetName(dset_name)
-                  vtk_geom.GetCellData().AddArray(vtk_data[-1])
-
+                  v.add(array,dset_name)
           self.pick('materialpoints',materialpoints_backup)
 
           constituents_backup = self.selection['constituents'].copy()
           self.pick('constituents',False)
           for label in (labels if isinstance(labels,list) else [labels]):
-            for p in self.iter_selection('mat_physics'):
-              if p != 'generic':
-                  for m in self.iter_selection('materialpoints'):
-                      x = self.get_dataset_location(label)
-                      if len(x) == 0:
-                          continue
-                      array = self.read_dataset(x,0)
-                      shape = [array.shape[0],np.product(array.shape[1:])]
-                      vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
-                      vtk_data[-1].SetName('1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
-                      vtk_geom.GetCellData().AddArray(vtk_data[-1])
+              for p in self.iterate('mat_physics'):
+                  if p != 'generic':
+                      for m in self.iterate('materialpoints'):
+                          x = self.get_dataset_location(label)
+                          if len(x) == 0:
+                              continue
+                          array = self.read_dataset(x,0)
+                          v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
               else:
                   x = self.get_dataset_location(label)
                   if len(x) == 0:
                       continue
                   array = self.read_dataset(x,0)
-                  shape = [array.shape[0],np.product(array.shape[1:])]
-                  vtk_data.append(numpy_support.numpy_to_vtk(num_array=array.reshape(shape),deep=True))
-                  vtk_data[-1].SetName('1_'+x[0].split('/',1)[1])
-                  vtk_geom.GetCellData().AddArray(vtk_data[-1])
+                  v.add(array,'1_'+x[0].split('/',1)[1])
           self.pick('constituents',constituents_backup)
 
-          if mode.lower()=='cell':
-              writer = vtk.vtkXMLRectilinearGridWriter() if self.structured else \
-                       vtk.vtkXMLUnstructuredGridWriter()
-              x = self.get_dataset_location('u_n')
-              vtk_data.append(numpy_support.numpy_to_vtk(num_array=self.read_dataset(x,0),deep=True))
-              vtk_data[-1].SetName('u')
-              vtk_geom.GetPointData().AddArray(vtk_data[-1])
-          elif mode.lower()=='point':
-              writer = vtk.vtkXMLPolyDataWriter()
+          u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
+          v.add(u,'u')
 
+          file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
+                                          inc[3:].zfill(N_digits))
 
-          file_out = '{}_inc{}.{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
-                                          inc[3:].zfill(N_digits),
-                                          writer.GetDefaultFileExtension())
-
-          writer.SetCompressorTypeToZLib()
-          writer.SetDataModeToBinary()
-          writer.SetFileName(file_out)
-          writer.SetInputData(vtk_geom)
-
-          writer.Write()
-
+          v.write(file_out)
 
 ###################################################################################################
 # BEGIN DEPRECATED
-    iter_visible = iter_selection
+    iter_visible   = iterate
+    iter_selection = iterate
 
 
     def _time_to_inc(self,start,end):

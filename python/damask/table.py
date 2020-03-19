@@ -348,4 +348,4 @@ class Table:
             f = fname
 
         for line in header + [' '.join(labels)]: f.write(line+'\n')
-        self.data.to_csv(f,sep=' ',index=False,header=False)
+        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)

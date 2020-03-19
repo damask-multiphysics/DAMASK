@@ -1,24 +1,35 @@
 import os
 
 class Environment():
-    __slots__ = [ \
-                  'options',
-                ]
 
     def __init__(self):
         """Read and provide values of DAMASK configuration."""
-        self.options = {}
-        self.__get_options()
+        self.options = self._get_options()
+        try:
+            import tkinter
+            tk = tkinter.Tk()
+            self.screen_width  = tk.winfo_screenwidth()
+            self.screen_height = tk.winfo_screenheight()
+        except Exception:
+            self.screen_width  = 1024
+            self.screen_height =  768
 
     def relPath(self,relative = '.'):
+        """Return absolute path from path relative to DAMASK root."""
         return os.path.join(self.rootDir(),relative)
 
+
     def rootDir(self):
+        """Return DAMASK root path."""
         return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
 
-    def __get_options(self):
+
+    def _get_options(self):
+        options = {}
         for item in ['DAMASK_NUM_THREADS',
                      'MSC_ROOT',
                      'MARC_VERSION',
                      ]:
-            self.options[item] = os.environ[item] if item in os.environ else None
+            options[item] = os.environ[item] if item in os.environ else None
+
+        return options
