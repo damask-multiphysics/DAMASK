@@ -1,7 +1,7 @@
 import numpy as np
 
-from .lattice  import Lattice
-from .rotation import Rotation
+from . import Lattice
+from . import Rotation
 
 class Orientation:
   """

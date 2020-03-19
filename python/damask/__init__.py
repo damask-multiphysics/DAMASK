@@ -8,18 +8,18 @@ with open(_os.path.join(_os.path.dirname(__file__),'VERSION')) as _f:
 
 # classes
 from ._environment import Environment      # noqa
-from .table        import Table            # noqa
+from ._table       import Table            # noqa
 from ._vtk         import VTK              # noqa
-from .colormaps    import Colormap, Color  # noqa
-from .rotation     import Rotation         # noqa
-from .lattice      import Symmetry, Lattice# noqa
-from .orientation  import Orientation      # noqa
+from ._colormaps   import Colormap, Color  # noqa
+from ._rotation    import Rotation         # noqa
+from ._lattice     import Symmetry, Lattice# noqa
+from ._orientation import Orientation      # noqa
 from ._result      import Result           # noqa
 from ._geom        import Geom             # noqa
-from .solver       import Solver           # noqa
+from ._solver      import Solver           # noqa
 
 # deprecated
-from .asciitable  import ASCIItable       # noqa
+from ._asciitable import ASCIItable       # noqa
+from ._config     import Material         # noqa
+from ._test       import Test             # noqa
 from .util        import extendableOption # noqa
-from .config      import Material         # noqa
-from .test        import Test             # noqa
