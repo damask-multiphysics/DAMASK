@@ -258,7 +258,7 @@ def scale_to_coprime(v):
     return m//reduce(np.gcd,m)
 
 
-class return_message():
+class return_message:
     """Object with formatted return message."""
 
     def __init__(self,message):

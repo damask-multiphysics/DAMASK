@@ -1039,7 +1039,7 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_polyData(self.cell_coordinates())
 
-        N_digits = int(np.floor(np.log10(min(int(self.increments[-1][3:]),1))))+1
+        N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
 
         for i,inc in enumerate(util.show_progress(self.iterate('increments'),len(self.selection['increments']))):
 
