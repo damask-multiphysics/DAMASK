@@ -204,9 +204,11 @@ class VTK:
             elif data.shape[0] == N_points:
                 self.geom.GetPointData().AddArray(d)
         elif isinstance(data,pd.DataFrame):
-            pass
+            raise NotImplementedError
         elif isinstance(data,Table):
-            pass
+            raise NotImplementedError
+        else:
+            raise TypeError
 
 
     def __repr__(self):
