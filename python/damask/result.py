@@ -22,7 +22,7 @@ class Result:
     """
     Read and write to DADF5 files.
 
-    DADF5 (DAKMASK HDF5) files contain DAMASK results.
+    DADF5 (DAMASK HDF5) files contain DAMASK results.
     """
 
     def __init__(self,fname):
@@ -32,7 +32,7 @@ class Result:
         Parameters
         ----------
         fname : str
-          name of the DADF5 file to be openend.
+            name of the DADF5 file to be openend.
 
         """
         with h5py.File(fname,'r') as f:
@@ -95,12 +95,12 @@ class Result:
         Parameters
         ----------
         action : str
-          select from 'set', 'add', and 'del'
+            select from 'set', 'add', and 'del'
         what : str
-          attribute to change (must be from self.selection)
+            attribute to change (must be from self.selection)
         datasets : list of str or Boolean
-          name of datasets as list, supports ? and * wildcards.
-          True is equivalent to [*], False is equivalent to []
+           name of datasets as list, supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to []
 
         """
         # allow True/False and string arguments
@@ -167,7 +167,7 @@ class Result:
         Parameters
         ----------
         what : str
-          attribute to change (must be from self.selection)
+            attribute to change (must be from self.selection)
 
         """
         datasets = self.selection[what]
@@ -189,10 +189,10 @@ class Result:
         Parameters
         ----------
         what : str
-          attribute to change (must be from self.selection)
+            attribute to change (must be from self.selection)
         datasets : list of str or Boolean
-          name of datasets as list, supports ? and * wildcards.
-          True is equivalent to [*], False is equivalent to []
+            name of datasets as list, supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to []
 
         """
         self._manage_selection('set',what,datasets)
@@ -205,10 +205,10 @@ class Result:
         Parameters
         ----------
         what : str
-          attribute to change (must be from self.selection)
+            attribute to change (must be from self.selection)
         datasets : list of str or Boolean
-          name of datasets as list, supports ? and * wildcards.
-          True is equivalent to [*], False is equivalent to []
+            name of datasets as list, supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to []
 
         """
         self._manage_selection('add',what,datasets)
@@ -221,10 +221,10 @@ class Result:
         Parameters
         ----------
         what : str
-          attribute to change (must be from self.selection)
+            attribute to change (must be from self.selection)
         datasets : list of str or Boolean
-          name of datasets as list, supports ? and * wildcards.
-          True is equivalent to [*], False is equivalent to []
+            name of datasets as list, supports ? and * wildcards.
+            True is equivalent to [*], False is equivalent to []
 
         """
         self._manage_selection('del',what,datasets)
@@ -248,13 +248,13 @@ class Result:
         ----------
           datasets : iterable or str
           component : int
-            homogenization component to consider for constituent data
+              homogenization component to consider for constituent data
           tagged : Boolean
-            tag Table.column name with '#component'
-            defaults to False
+              tag Table.column name with '#component'
+              defaults to False
           split : Boolean
-            split Table by increment and return dictionary of Tables
-            defaults to True
+              split Table by increment and return dictionary of Tables
+              defaults to True
 
         """
         sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) \
@@ -313,17 +313,17 @@ class Result:
 
         Parameters
         ----------
-          datasets : iterable or str or Boolean
+            datasets : iterable or str or Boolean
 
         Examples
         --------
-          datasets = False matches no group
-          datasets = True matches all groups
-          datasets = ['F','P'] matches a group with ['F','P','sigma']
-          datasets = ['*','P'] matches a group with ['F','P']
-          datasets = ['*'] does not match a group with ['F','P','sigma']
-          datasets = ['*','*'] does not match a group with ['F','P','sigma']
-          datasets = ['*','*','*'] matches a group with ['F','P','sigma']
+            datasets = False matches no group
+            datasets = True matches all groups
+            datasets = ['F','P'] matches a group with ['F','P','sigma']
+            datasets = ['*','P'] matches a group with ['F','P']
+            datasets = ['*'] does not match a group with ['F','P','sigma']
+            datasets = ['*','*'] does not match a group with ['F','P','sigma']
+            datasets = ['*','*','*'] matches a group with ['F','P','sigma']
 
         """
         if datasets is False: return []
@@ -471,7 +471,7 @@ class Result:
         Parameters
         ----------
         x : str
-          Label of scalar, vector, or tensor dataset to take absolute value of.
+            Label of scalar, vector, or tensor dataset to take absolute value of.
 
         """
         self._add_generic_pointwise(self._add_absolute,{'x':x})
@@ -501,13 +501,13 @@ class Result:
         label : str
           Label of resulting dataset.
         formula : str
-          Formula to calculate resulting dataset. Existing datasets are referenced by ‘#TheirLabel#‘.
+            Formula to calculate resulting dataset. Existing datasets are referenced by ‘#TheirLabel#‘.
         unit : str, optional
-          Physical unit of the result.
+            Physical unit of the result.
         description : str, optional
-          Human-readable description of the result.
+            Human-readable description of the result.
         vectorized : bool, optional
-          Indicate whether the formula can be used in vectorized form. Defaults to ‘True’.
+            Indicate whether the formula can be used in vectorized form. Defaults to ‘True’.
 
         """
         if not vectorized:
@@ -538,9 +538,9 @@ class Result:
         Parameters
         ----------
         P : str, optional
-          Label of the dataset containing the first Piola-Kirchhoff stress. Defaults to ‘P’.
+            Label of the dataset containing the first Piola-Kirchhoff stress. Defaults to ‘P’.
         F : str, optional
-          Label of the dataset containing the deformation gradient. Defaults to ‘F’.
+            Label of the dataset containing the deformation gradient. Defaults to ‘F’.
 
         """
         self._add_generic_pointwise(self._add_Cauchy,{'P':P,'F':F})
@@ -564,7 +564,7 @@ class Result:
         Parameters
         ----------
         T : str
-          Label of tensor dataset.
+            Label of tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_determinant,{'T':T})
@@ -591,7 +591,7 @@ class Result:
         Parameters
         ----------
         T : str
-          Label of tensor dataset.
+            Label of tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_deviator,{'T':T})
@@ -615,7 +615,7 @@ class Result:
         Parameters
         ----------
         T_sym : str
-          Label of symmetric tensor dataset.
+            Label of symmetric tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym})
@@ -639,7 +639,7 @@ class Result:
         Parameters
         ----------
         T_sym : str
-          Label of symmetric tensor dataset.
+            Label of symmetric tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym})
@@ -675,9 +675,9 @@ class Result:
         Parameters
         ----------
         q : str
-          Label of the dataset containing the crystallographic orientation as quaternions.
+            Label of the dataset containing the crystallographic orientation as quaternions.
         l : numpy.array of shape (3)
-          Lab frame direction for inverse pole figure.
+            Lab frame direction for inverse pole figure.
 
         """
         self._add_generic_pointwise(self._add_IPFcolor,{'q':q},{'l':l})
@@ -701,7 +701,7 @@ class Result:
         Parameters
         ----------
         T_sym : str
-          Label of symmetric tensor dataset.
+            Label of symmetric tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_maximum_shear,{'T_sym':T_sym})
@@ -728,7 +728,7 @@ class Result:
         Parameters
         ----------
         T_sym : str
-          Label of symmetric tensorial stress or strain dataset.
+            Label of symmetric tensorial stress or strain dataset.
 
         """
         self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym})
@@ -764,9 +764,9 @@ class Result:
         Parameters
         ----------
         x : str
-          Label of vector or tensor dataset.
+            Label of vector or tensor dataset.
         ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
-          Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
+            Order of the norm. inf means NumPy’s inf object. For details refer to numpy.linalg.norm.
 
         """
         self._add_generic_pointwise(self._add_norm,{'x':x},{'ord':ord})
@@ -792,9 +792,9 @@ class Result:
         Parameters
         ----------
         P : str, optional
-          Label first  Piola-Kirchhoff stress dataset. Defaults to ‘P’.
+            Label first  Piola-Kirchhoff stress dataset. Defaults to ‘P’.
         F : str, optional
-          Label of deformation gradient dataset. Defaults to ‘F’.
+            Label of deformation gradient dataset. Defaults to ‘F’.
 
         """
         self._add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
@@ -830,11 +830,11 @@ class Result:
         Parameters
         ----------
         q : str
-          Label of the dataset containing the crystallographic orientation as quaternions.
+            Label of the dataset containing the crystallographic orientation as quaternions.
         p : numpy.array of shape (3)
-          Crystallographic direction or plane.
+            Crystallographic direction or plane.
         polar : bool, optional
-          Give pole in polar coordinates. Defaults to False.
+            Give pole in polar coordinates. Defaults to False.
 
         """
         self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
@@ -860,7 +860,7 @@ class Result:
         Parameters
         ----------
         F : str, optional
-          Label of deformation gradient dataset.
+            Label of deformation gradient dataset.
 
         """
         self._add_generic_pointwise(self._add_rotational_part,{'F':F})
@@ -887,7 +887,7 @@ class Result:
         Parameters
         ----------
         T : str
-          Label of tensor dataset.
+            Label of tensor dataset.
 
         """
         self._add_generic_pointwise(self._add_spherical,{'T':T})
@@ -916,12 +916,12 @@ class Result:
         Parameters
         ----------
         F : str, optional
-          Label of deformation gradient dataset. Defaults to ‘F’.
+            Label of deformation gradient dataset. Defaults to ‘F’.
         t : {‘V’, ‘U’}, optional
-          Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
-          Defaults to ‘V’.
+            Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+            Defaults to ‘V’.
         m : float, optional
-          Order of the strain calculation. Defaults to ‘0.0’.
+            Order of the strain calculation. Defaults to ‘0.0’.
 
         """
         self._add_generic_pointwise(self._add_strain_tensor,{'F':F},{'t':t,'m':m})
@@ -949,10 +949,10 @@ class Result:
         Parameters
         ----------
         F : str, optional
-          Label of deformation gradient dataset. Defaults to ‘F’.
+            Label of deformation gradient dataset. Defaults to ‘F’.
         t : {‘V’, ‘U’}, optional
-          Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
-          Defaults to ‘V’.
+            Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
+            Defaults to ‘V’.
 
         """
         self._add_generic_pointwise(self._add_stretch_tensor,{'F':F},{'t':t})
@@ -984,11 +984,11 @@ class Result:
         Parameters
         ----------
         func : function
-          Callback function that calculates a new dataset from one or more datasets per HDF5 group.
+            Callback function that calculates a new dataset from one or more datasets per HDF5 group.
         datasets : dictionary
-          Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+            Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
         args : dictionary, optional
-          Arguments parsed to func.
+            Arguments parsed to func.
 
         """
         pool = multiprocessing.Pool(int(Environment().options['DAMASK_NUM_THREADS']))
@@ -1021,10 +1021,10 @@ class Result:
         Parameters
         ----------
         labels : str or list of
-          Labels of the datasets to be exported.
+            Labels of the datasets to be exported.
         mode : str, either 'cell' or 'point'
-          Export in cell format or point format.
-          Defaults to 'cell'.
+            Export in cell format or point format.
+            Defaults to 'cell'.
 
         """
         if mode.lower()=='cell':
