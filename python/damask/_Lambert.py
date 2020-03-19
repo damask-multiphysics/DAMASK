@@ -36,7 +36,7 @@ sc   = np.pi**(1./6.)/6.**(1./6.)
 beta = np.pi**(5./6.)/6.**(1./6.)/2.
 R1   = (3.*np.pi/4.)**(1./3.)
 
-def CubeToBall(cube):
+def cube_to_ball(cube):
     """
     Map a point in a uniform refinable cubical grid to a point on a uniform refinable grid on a ball.
 
@@ -87,7 +87,7 @@ def CubeToBall(cube):
     return ball
 
 
-def BallToCube(ball):
+def ball_to_cube(ball):
     """
     Map a point on a uniform refinable grid on a ball to a point in a uniform refinable cubical grid.
 
