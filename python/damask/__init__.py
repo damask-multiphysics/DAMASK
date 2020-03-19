@@ -1,10 +1,10 @@
 """Main aggregator."""
-import os
-import re
+import os as _os
+import re as _re
 
 name = 'damask'
-with open(os.path.join(os.path.dirname(__file__),'VERSION')) as f:
-    version = re.sub(r'^v','',f.readline().strip())
+with open(_os.path.join(_os.path.dirname(__file__),'VERSION')) as _f:
+    version = _re.sub(r'^v','',_f.readline().strip())
 
 # classes
 from .environment import Environment      # noqa
@@ -23,12 +23,3 @@ from .asciitable  import ASCIItable       # noqa
 from .util        import extendableOption # noqa
 from .config      import Material         # noqa
 from .test        import Test             # noqa
-
-# functions in modules
-from .            import mechanics        # noqa
-from .            import grid_filters     # noqa
-
-# clean temporary variables
-del os
-del re
-del f
