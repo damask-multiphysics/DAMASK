@@ -1,6 +1,6 @@
 import numpy as np
 
-from . import Lambert
+from ._Lambert import *
 
 P = -1
 
@@ -802,7 +802,7 @@ class Rotation:
     @staticmethod
     def ho2cu(ho):
         """Homochoric vector to cubochoric vector."""
-        return Lambert.BallToCube(ho)
+        return BallToCube(ho)
 
 
     #---------- Cubochoric ----------
@@ -834,4 +834,4 @@ class Rotation:
     @staticmethod
     def cu2ho(cu):
         """Cubochoric vector to homochoric vector."""
-        return Lambert.CubeToBall(cu)
+        return CubeToBall(cu)
