@@ -59,7 +59,7 @@ def cube_to_ball(cube):
         ball = np.zeros(3)
     else:
         # get pyramide and scale by grid parameter ratio
-        p = get_order(cube)
+        p = _get_order(cube)
         XYZ = cube[p] * sc
 
         # intercept all the points along the z-axis
@@ -109,7 +109,7 @@ def ball_to_cube(ball):
     if np.allclose(ball,0.0,rtol=0.0,atol=1.0e-300):
         cube = np.zeros(3)
     else:
-        p = get_order(ball)
+        p = _get_order(ball)
         xyz3 = ball[p]
 
         # inverse M_3
@@ -137,7 +137,7 @@ def ball_to_cube(ball):
     return cube
 
 
-def get_order(xyz):
+def _get_order(xyz):
     """
     Get order of the coordinates.
 
