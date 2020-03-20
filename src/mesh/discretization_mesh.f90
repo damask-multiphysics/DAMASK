@@ -18,7 +18,7 @@ module mesh
  use discretization
  use numerics
  use FEsolving
- use FEM_Zoo
+ use FEM_quadrature
  use prec
  
  implicit none
@@ -152,11 +152,11 @@ subroutine mesh_init
   call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
   CHKERRQ(ierr)
 
-  FE_Nips(FE_geomtype(1)) = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
+  FE_Nips(FE_geomtype(1)) = FEM_nQuadrature(dimPlex,integrationOrder)
   mesh_maxNips = FE_Nips(1)
   
   write(6,*) 'mesh_maxNips',mesh_maxNips
-  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p)
+  call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,integrationOrder)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
   
   allocate (mesh_element (4,mesh_NcpElems)); mesh_element = 0

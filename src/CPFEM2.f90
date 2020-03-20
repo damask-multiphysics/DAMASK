@@ -22,7 +22,7 @@ module CPFEM2
   use constitutive
   use crystallite
 #if    defined(FEM)
-  use FEM_Zoo
+  use FEM_quadrature
   use mesh
 #elif defined(Grid)
   use discretization_grid
@@ -43,7 +43,7 @@ subroutine CPFEM_initAll
   call prec_init
   call IO_init
 #ifdef FEM
-  call FEM_Zoo_init
+  call FEM_quadrature_init
 #endif
   call numerics_init
   call debug_init
