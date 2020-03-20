@@ -232,7 +232,7 @@ module subroutine plastic_disloUCLA_init
     endIndex   = endIndex + prm%sum_N_sl
     stt%gamma_sl => plasticState(p)%state(startIndex:endIndex,:)
     dot%gamma_sl => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = 1.0e6_pReal                                         ! ARRG
+    plasticState(p)%atol(startIndex:endIndex) = 1.0e-2_pReal
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
 

@@ -454,7 +454,7 @@ module subroutine plastic_nonlocal_init
     stt%gamma => plasticState(p)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
     dot%gamma => plasticState(p)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
     del%gamma => plasticState(p)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
-    plasticState(p)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = config%getFloat('atol_gamma', defaultVal = 1.0e-20_pReal)
+    plasticState(p)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = config%getFloat('atol_gamma', defaultVal = 1.0e-2_pReal)
     if(any(plasticState(p)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
     plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
