@@ -98,14 +98,12 @@ def cell_coord0(grid,size,origin=np.zeros(3)):
     size : numpy.ndarray
         physical size of the periodic field.
     origin : numpy.ndarray, optional
-        physical origin of the periodic field. Default is [0.0,0.0,0.0].
+        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
-    start = origin + size/grid*.5
-    end   = origin - size/grid*.5 + size
-    x, y, z = np.meshgrid(np.linspace(start[2],end[2],grid[2]),
-                          np.linspace(start[1],end[1],grid[1]),
-                          np.linspace(start[0],end[0],grid[0]),
+    start = origin        + size/grid*.5
+    end   = origin + size - size/grid*.5
+    x, y, z = np.meshgrid(*(np.linspace(start[i],end[i],grid[i]) for i in [2,1,0]),
                           indexing = 'ij')
 
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3)
@@ -180,7 +178,7 @@ def cell_coord(size,F,origin=np.zeros(3)):
     F : numpy.ndarray
         deformation gradient field.
     origin : numpy.ndarray, optional
-        physical origin of the periodic field. Default is [0.0,0.0,0.0].
+        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
     return cell_coord0(F.shape[:3][::-1],size,origin) + cell_displacement(size,F)
@@ -251,12 +249,10 @@ def node_coord0(grid,size,origin=np.zeros(3)):
     size : numpy.ndarray
         physical size of the periodic field.
     origin : numpy.ndarray, optional
-        physical origin of the periodic field. Default is [0.0,0.0,0.0].
+        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
-    x, y, z = np.meshgrid(np.linspace(origin[2],size[2]+origin[2],1+grid[2]),
-                          np.linspace(origin[1],size[1]+origin[1],1+grid[1]),
-                          np.linspace(origin[0],size[0]+origin[0],1+grid[0]),
+    x, y, z = np.meshgrid(*(np.linspace(origin[i],size[i]+origin[i],grid[i]+1) for i in [2,1,0]),
                           indexing = 'ij')
 
     return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3)
@@ -319,7 +315,7 @@ def node_coord(size,F,origin=np.zeros(3)):
     F : numpy.ndarray
         deformation gradient field.
     origin : numpy.ndarray, optional
-        physical origin of the periodic field. Default is [0.0,0.0,0.0].
+        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
     return node_coord0(F.shape[:3][::-1],size,origin) + node_displacement(size,F)
