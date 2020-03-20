@@ -178,7 +178,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  use numerics
  use FEsolving
  use debug
- use mesh
+ use discretization_marc
  use CPFEM
 
  implicit none
@@ -378,7 +378,7 @@ end subroutine hypela2
 subroutine flux(f,ts,n,time)
   use prec
   use thermal_conduction
-  use mesh
+  use discretization_marc
 
   implicit none
   real(pReal), dimension(6),           intent(in) :: &

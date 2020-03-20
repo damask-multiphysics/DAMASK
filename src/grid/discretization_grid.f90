@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parse geometry file to set up discretization and geometry for nonlocal model
 !--------------------------------------------------------------------------------------------------
-module mesh_grid
+module discretization_grid
 #include <petsc/finclude/petscsys.h>
   use PETScsys
 
@@ -34,7 +34,7 @@ module mesh_grid
     size3offset                                                                                     !< (local) size offset in 3rd direction
 
   public :: &
-    mesh_init
+    discretization_grid_init
 
 contains
 
@@ -42,7 +42,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief reads the geometry file to obtain information on discretization
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init
+subroutine discretization_grid_init
 
   include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
@@ -59,7 +59,7 @@ subroutine mesh_init
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
-  write(6,'(/,a)') ' <<<+-  mesh_grid init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  discretization_grid init  -+>>>'; flush(6)
 
   call readGeom(grid,geomSize,origin,microstructureAt,homogenizationAt)
 
@@ -120,7 +120,7 @@ subroutine mesh_init
   if (debug_e < 1 .or. debug_e > product(myGrid)) call IO_error(602,ext_msg='element')              ! selected element does not exist
   if (debug_i /= 1)                               call IO_error(602,ext_msg='IP')                   ! selected IP does not exist
 
-end subroutine mesh_init
+end subroutine discretization_grid_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -434,4 +434,4 @@ pure function IPneighborhood(grid)
 end function IPneighborhood
 
 
-end module mesh_grid
+end module discretization_grid

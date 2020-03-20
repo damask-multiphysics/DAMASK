@@ -20,7 +20,7 @@ module grid_mech_spectral_polarisation
   use config
   use numerics
   use homogenization
-  use mesh_grid
+  use discretization_grid
   use debug
 
   implicit none

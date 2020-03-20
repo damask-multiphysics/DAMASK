@@ -19,7 +19,7 @@ module grid_mech_FEM
   use numerics
   use homogenization
   use discretization
-  use mesh_grid
+  use discretization_grid
   use debug
 
   implicit none

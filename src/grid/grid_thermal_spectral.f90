@@ -12,7 +12,7 @@ module grid_thermal_spectral
 
   use prec
   use spectral_utilities
-  use mesh_grid
+  use discretization_grid
   use thermal_conduction
   use numerics
   use material

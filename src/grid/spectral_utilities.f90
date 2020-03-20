@@ -13,7 +13,7 @@ module spectral_utilities
   use math
   use rotations
   use IO
-  use mesh_grid
+  use discretization_grid
   use numerics
   use debug
   use config

@@ -19,7 +19,7 @@ module grid_mech_spectral_basic
   use config
   use numerics
   use homogenization
-  use mesh_grid
+  use discretization_grid
   use debug
 
   implicit none

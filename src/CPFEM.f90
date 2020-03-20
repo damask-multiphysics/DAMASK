@@ -10,7 +10,7 @@ module CPFEM
   use FEsolving
   use math
   use rotations
-  use mesh
+  use discretization_marc
   use material
   use config
   use crystallite
@@ -85,7 +85,7 @@ subroutine CPFEM_initAll(el,ip)
     call rotations_init
     call HDF5_utilities_init
     call results_init
-    call mesh_init(ip, el)
+    call discretization_march_init(ip, el)
     call lattice_init
     call material_init
     call constitutive_init
