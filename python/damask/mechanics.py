@@ -85,7 +85,7 @@ def left_stretch(T):
         Tensor of which the left stretch is computed.
 
     """
-    return __polar_decomposition(T,'V')[0]
+    return _polar_decomposition(T,'V')[0]
 
 
 def maximum_shear(T_sym):
@@ -113,7 +113,7 @@ def Mises_strain(epsilon):
         Symmetric strain tensor of which the von Mises equivalent is computed.
 
     """
-    return __Mises(epsilon,2.0/3.0)
+    return _Mises(epsilon,2.0/3.0)
 
 
 def Mises_stress(sigma):
@@ -126,7 +126,7 @@ def Mises_stress(sigma):
         Symmetric stress tensor of which the von Mises equivalent is computed.
 
     """
-    return __Mises(sigma,3.0/2.0)
+    return _Mises(sigma,3.0/2.0)
 
 
 def PK2(P,F):
@@ -158,7 +158,7 @@ def right_stretch(T):
         Tensor of which the right stretch is computed.
 
     """
-    return __polar_decomposition(T,'U')[0]
+    return _polar_decomposition(T,'U')[0]
 
 
 def rotational_part(T):
@@ -171,7 +171,7 @@ def rotational_part(T):
         Tensor of which the rotational part is computed.
 
     """
-    return __polar_decomposition(T,'R')[0]
+    return _polar_decomposition(T,'R')[0]
 
 
 def spherical_part(T,tensor=False):
@@ -262,7 +262,7 @@ def transpose(T):
            np.transpose(T,(0,2,1))
 
 
-def __polar_decomposition(T,requested):
+def _polar_decomposition(T,requested):
     """
     Singular value decomposition.
 
@@ -290,7 +290,7 @@ def __polar_decomposition(T,requested):
     return tuple(output)
 
 
-def __Mises(T_sym,s):
+def _Mises(T_sym,s):
     """
     Base equation for Mises equivalent of a stres or strain tensor.
 

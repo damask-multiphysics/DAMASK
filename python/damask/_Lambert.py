@@ -36,7 +36,7 @@ sc   = np.pi**(1./6.)/6.**(1./6.)
 beta = np.pi**(5./6.)/6.**(1./6.)/2.
 R1   = (3.*np.pi/4.)**(1./3.)
 
-def CubeToBall(cube):
+def cube_to_ball(cube):
     """
     Map a point in a uniform refinable cubical grid to a point on a uniform refinable grid on a ball.
 
@@ -59,7 +59,7 @@ def CubeToBall(cube):
         ball = np.zeros(3)
     else:
         # get pyramide and scale by grid parameter ratio
-        p = get_order(cube)
+        p = _get_order(cube)
         XYZ = cube[p] * sc
 
         # intercept all the points along the z-axis
@@ -87,7 +87,7 @@ def CubeToBall(cube):
     return ball
 
 
-def BallToCube(ball):
+def ball_to_cube(ball):
     """
     Map a point on a uniform refinable grid on a ball to a point in a uniform refinable cubical grid.
 
@@ -109,7 +109,7 @@ def BallToCube(ball):
     if np.allclose(ball,0.0,rtol=0.0,atol=1.0e-300):
         cube = np.zeros(3)
     else:
-        p = get_order(ball)
+        p = _get_order(ball)
         xyz3 = ball[p]
 
         # inverse M_3
@@ -137,7 +137,7 @@ def BallToCube(ball):
     return cube
 
 
-def get_order(xyz):
+def _get_order(xyz):
     """
     Get order of the coordinates.
 

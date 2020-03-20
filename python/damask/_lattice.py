@@ -1,10 +1,8 @@
 import numpy as np
 
-from .rotation import Rotation
+from . import Rotation
 
-P = -1
 
-# ******************************************************************************************
 class Symmetry:
     """
     Symmetry operations for lattice systems.
