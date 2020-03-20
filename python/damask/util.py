@@ -71,7 +71,7 @@ def croak(what, newline = True):
         Separate items of what by newline. Defaults to True.
 
     """
-    if what:
+    if what is not None:
         sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
     sys.stderr.flush()
 
