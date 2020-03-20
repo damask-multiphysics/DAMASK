@@ -59,8 +59,7 @@ class myThread (threading.Thread):
         myBestSeedsVFile.close()
         myBestSeedsVFile = StringIO()
         i=0
-        for line in bestSeedsVFile:
-          myBestSeedsVFile.write(line)
+        myBestSeedsVFile.writelines(bestSeedsVFile.readlines())
       s.release()
 
       if randReset:                                                                                 # new direction because current one led to worse fit
@@ -155,8 +154,7 @@ class myThread (threading.Thread):
             perturbedSeedsVFile.seek(0)
             bestSeedsVFile.close()
             bestSeedsVFile = StringIO()
-            for line in perturbedSeedsVFile:
-              bestSeedsVFile.write(line)
+            bestSeedsVFile.writelines(perturbedSeedsVFile.readlines())
             for j in range(nMicrostructures):
               target[j]['error'] = currentError[j]
             randReset = True
