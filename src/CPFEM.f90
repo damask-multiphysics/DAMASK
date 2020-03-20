@@ -85,7 +85,7 @@ subroutine CPFEM_initAll(el,ip)
     call rotations_init
     call HDF5_utilities_init
     call results_init
-    call discretization_march_init(ip, el)
+    call discretization_marc_init(ip, el)
     call lattice_init
     call material_init
     call constitutive_init
