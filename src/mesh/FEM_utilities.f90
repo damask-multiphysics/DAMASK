@@ -17,7 +17,7 @@ module FEM_utilities
   use numerics
   use debug
   use math
-  use mesh
+  use discretization_mesh
 
   implicit none
   private

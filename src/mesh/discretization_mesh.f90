@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !--------------------------------------------------------------------------------------------------
-module mesh     
+module discretization_mesh
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
@@ -52,7 +52,7 @@ module mesh
    mesh_boundaries
 
  public :: &
-   mesh_init, &
+   discretization_mesh_init, &
    mesh_FEM_build_ipVolumes, &
    mesh_FEM_build_ipCoordinates
 
@@ -63,7 +63,7 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init
+subroutine discretization_mesh_init
 
   integer, dimension(1), parameter:: FE_geomtype = [1]                                              !< geometry type of particular element type
   integer, dimension(1) :: FE_Nips                                                                  !< number of IPs in a specific type of element
@@ -182,7 +182,7 @@ subroutine mesh_init
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
  
-end subroutine mesh_init
+end subroutine discretization_mesh_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -248,4 +248,4 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
 
 end subroutine mesh_FEM_build_ipCoordinates
 
-end module mesh
+end module discretization_mesh

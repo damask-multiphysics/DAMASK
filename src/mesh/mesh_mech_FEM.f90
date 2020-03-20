@@ -16,7 +16,7 @@ module mesh_mech_FEM
 
   use prec
   use FEM_utilities
-  use mesh
+  use discretization_mesh
   use IO
   use DAMASK_interface
   use numerics

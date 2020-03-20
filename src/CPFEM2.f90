@@ -23,7 +23,7 @@ module CPFEM2
   use crystallite
 #if    defined(FEM)
   use FEM_quadrature
-  use mesh
+  use discretization_mesh
 #elif defined(Grid)
   use discretization_grid
 #endif
@@ -54,7 +54,7 @@ subroutine CPFEM_initAll
   call HDF5_utilities_init
   call results_init
 #if    defined(FEM)
-  call mesh_init
+  call discretization_mesh_init
 #elif defined(Grid)
   call discretization_grid_init
 #endif
