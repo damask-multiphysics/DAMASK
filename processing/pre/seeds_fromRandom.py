@@ -145,19 +145,17 @@ for name in filenames:
 
     eulers = np.random.rand(options.N,3)                                                            # create random Euler triplets
     eulers[:,0] *= 360.0                                                                            # phi_1    is uniformly distributed
-    eulers[:,1] = np.degrees(np.arccos(2*eulers[:,1]-1))                                            # cos(Phi) is uniformly distributed
+    eulers[:,1] = np.degrees(np.arccos(2*eulers[:,1]-1.0))                                          # cos(Phi) is uniformly distributed
     eulers[:,2] *= 360.0                                                                            # phi_2    is uniformly distributed
 
     if not options.selective:
         n = np.maximum(np.ones(3),np.array(grid*fraction),dtype=int,casting='unsafe')               # find max grid indices within fraction
         meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                     # create a meshgrid within fraction
         coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(n.prod(),3)               # assemble list of 3D coordinates
-        seeds = (random.sample(coords.tolist(),options.N)+np.random.rand(options.N,3))\
-                  / \
-                 (n/fraction)                                                                       # pick options.N of those, rattle position,
+        seeds = (random.sample(coords.tolist(),options.N)+np.random.rand(options.N,3))/(n/fraction) # pick options.N of those, rattle position,
                                                                                                     # and rescale to fall within fraction
-    else:
-        seeds = np.zeros((options.N,3))                                                             # seed positions array
+    else:                                                                                           # and rescale to fall within fraction
+        seeds = np.empty((options.N,3))                                                             # seed positions array
         seeds[0] = np.random.random(3)*grid/max(grid)
         i = 1                                                                                       # start out with one given point
         if i%(options.N/100.) < 1: damask.util.croak('.',False)
