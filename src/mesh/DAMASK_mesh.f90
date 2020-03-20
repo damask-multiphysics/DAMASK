@@ -18,7 +18,7 @@ program DAMASK_FEM
   use numerics
   use mesh
   use FEM_Utilities
-  use FEM_mech
+  use mesh_mech_FEM
   
   implicit none
 

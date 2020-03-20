@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
-module FEM_mech
+module mesh_mech_FEM
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petsc.h>
@@ -670,4 +670,4 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
 
 end subroutine FEM_mech_converged
 
-end module FEM_mech
+end module mesh_mech_FEM
