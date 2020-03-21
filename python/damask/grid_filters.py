@@ -103,10 +103,7 @@ def cell_coord0(grid,size,origin=np.zeros(3)):
     """
     start = origin        + size/grid*.5
     end   = origin + size - size/grid*.5
-    x, y, z = np.meshgrid(*(np.linspace(start[i],end[i],grid[i]) for i in [2,1,0]),
-                          indexing = 'ij')
-
-    return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3)
+    return np.mgrid[start[0]:end[0]:grid[0]*1j,start[1]:end[1]:grid[1]*1j,start[2]:end[2]:grid[2]*1j].T
 
 
 def cell_displacement_fluct(size,F):
@@ -252,10 +249,9 @@ def node_coord0(grid,size,origin=np.zeros(3)):
         physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
-    x, y, z = np.meshgrid(*(np.linspace(origin[i],size[i]+origin[i],grid[i]+1) for i in [2,1,0]),
-                          indexing = 'ij')
-
-    return np.concatenate((z[:,:,:,None],y[:,:,:,None],x[:,:,:,None]),axis = 3)
+    return np.mgrid[origin[0]:size[0]+origin[0]:(grid[0]+1)*1j,
+                    origin[1]:size[1]+origin[1]:(grid[1]+1)*1j,
+                    origin[2]:size[2]+origin[2]:(grid[2]+1)*1j].T
 
 
 def node_displacement_fluct(size,F):
