@@ -131,7 +131,7 @@ class VTK:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(fname)
             reader.Update()
-            if not dataset_type:
+            if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
             elif dataset_type.lower().endswith('rectilineargrid'):
                 geom = reader.GetRectilinearGridOutput()
@@ -196,7 +196,7 @@ class VTK:
 
         if   isinstance(data,np.ndarray):
             d = np_to_vtk(num_array=data.reshape(data.shape[0],-1),deep=True)
-            if not label:
+            if label is None:
                 raise ValueError('No label defined for numpy.ndarray')
             d.SetName(label)
             if   data.shape[0] == N_cells:

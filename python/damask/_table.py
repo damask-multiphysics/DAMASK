@@ -46,7 +46,7 @@ class Table:
 
 
     def _add_comment(self,label,shape,info):
-        if info:
+        if info is not None:
             c = '{}{}: {}'.format(label,' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',info)
             self.comments.append(c)
 
@@ -251,7 +251,7 @@ class Table:
 
         """
         self.data.rename(columns={label_old:label_new},inplace=True)
-        c = '{} => {}{}'.format(label_old,label_new,'' if not info else ': {}'.format(info))
+        c = '{} => {}{}'.format(label_old,label_new,'' if info is None else ': {}'.format(info))
         self.comments.append(c)
         self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
 
