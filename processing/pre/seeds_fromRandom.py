@@ -5,7 +5,6 @@ import sys
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
-from numpy import ma
 from scipy import spatial
 
 import damask
@@ -115,6 +114,9 @@ for name in filenames:
     if options.N > np.prod(grid):
         damask.util.croak('More seeds than grid positions.')
         sys.exit()
+    if options.selective and options.distance < min(size/grid):
+        damask.util.croak('Distance must be larger than grid spacing.')
+        sys.exit()
     if options.selective and options.distance**3*options.N > 0.5*np.prod(size):
         damask.util.croak('Number of seeds for given size and distance should be < {}.'\
                           .format(int(0.5*np.prod(size)/options.distance**3)))
@@ -127,29 +129,24 @@ for name in filenames:
     coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
     if not options.selective:
-        seeds = coords[np.random.choice(coords.shape[0], options.N, replace=False)]
+        seeds = coords[np.random.choice(coords.shape[0], options.N, replace=False)] \
+              + np.broadcast_to(size/grid,(options.N,3))*(np.random.rand(options.N,3)*.5-.25)     # wobble without leaving grid
     else:
         seeds = np.empty((options.N,3))
-        unpicked = ma.array(np.arange(coords.shape[0]),mask=np.zeros(coords.shape[0],dtype=bool))
-        first_pick = np.random.randint(coords.shape[0])
-        seeds[0] = coords[first_pick]
-        unpicked.mask[first_pick]=True
+        seeds[0] = np.random.random(3) * size
 
         i = 1
         progress = damask.util._ProgressBar(options.N,'',50)
         while i < options.N:
-            candidates = np.random.choice(unpicked[np.logical_not(unpicked.mask)],replace=False,
-                                          size=min(np.count_nonzero(unpicked.mask),options.numCandidates))
+            candidates = np.random.rand(options.numCandidates,3)*np.broadcast_to(size,(options.numCandidates,3))
             tree = spatial.cKDTree(seeds[:i])
-            distances, dev_null = tree.query(coords[candidates])
+            distances, dev_null = tree.query(candidates)
             best = distances.argmax()
             if distances[best] > options.distance:                                                  # require minimum separation
-                seeds[i] = coords[candidates[best]]                                                 # maximum separation to existing point cloud
-                unpicked.mask[candidates[best]]=True
+                seeds[i] = candidates[best]                                                         # maximum separation to existing point cloud
                 i += 1
                 progress.update(i)
 
-    seeds += np.broadcast_to(size/grid,seeds.shape)*(np.random.random(seeds.shape)*.5-.25)          # wobble without leaving grid
 
     comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
                 'grid\ta {}\tb {}\tc {}'.format(*grid),
