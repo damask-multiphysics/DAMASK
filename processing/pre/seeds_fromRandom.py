@@ -6,6 +6,7 @@ import random
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
+from numpy import ma
 from scipy import spatial
 
 import damask
@@ -15,24 +16,12 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def kdtree_search(cloud, queryPoints):
-  """Find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)."""
-  n = queryPoints.shape[0]
-  distances = np.zeros(n,dtype=float)
-  tree = spatial.cKDTree(cloud)
-
-  for i in range(n):
-    distances[i], index = tree.query(queryPoints[i])
-
-  return distances
-
-
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options', description = """
-Distribute given number of points randomly within (a fraction of) the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
+Distribute given number of points randomly within rectangular cuboid.
 Reports positions with random crystal orientations in seeds file format to STDOUT.
 
 """, version = scriptID)
@@ -41,11 +30,11 @@ parser.add_option('-N',
                   dest = 'N',
                   type = 'int', metavar = 'int',
                   help = 'number of seed points [%default]')
-parser.add_option('-f',
-                  '--fraction',
-                  dest = 'fraction',
+parser.add_option('-s',
+                  '--size',
+                  dest = 'size',
                   type = 'float', nargs = 3, metavar = 'float float float',
-                  help='fractions along x,y,z of unit cube to fill %default')
+                  help='size x,y,z of unit cube to fill %default')
 parser.add_option('-g',
                   '--grid',
                   dest = 'grid',
@@ -86,8 +75,7 @@ parser.add_option_group(group)
 group = OptionGroup(parser, "Selective Seeding",
                     "More uniform distribution of seed points using Mitchell's Best Candidate Algorithm"
                    )
-group.add_option( '-s',
-                  '--selective',
+group.add_option( '--selective',
                   action = 'store_true',
                   dest   = 'selective',
                   help   = 'selective picking of seed points from random seed points')
@@ -103,7 +91,7 @@ parser.add_option_group(group)
 
 parser.set_defaults(randomSeed = None,
                     grid = (16,16,16),
-                    fraction = (1.0,1.0,1.0),
+                    size = (1.0,1.0,1.0),
                     N = 20,
                     weights = False,
                     max = 0.0,
@@ -118,62 +106,55 @@ parser.set_defaults(randomSeed = None,
 (options,filenames) = parser.parse_args()
 if filenames == []: filenames = [None]
 
-fraction = np.array(options.fraction)
-grid     = np.array(options.grid)
-
-if options.randomSeed is None: options.randomSeed = int(os.urandom(4).hex(), 16)
-np.random.seed(options.randomSeed)                                                                  # init random generators
-random.seed(options.randomSeed)
+size = np.array(options.size)
+grid = np.array(options.grid)
+np.random.seed(int(os.urandom(4).hex(),16) if options.randomSeed is None else options.randomSeed)
 
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    remarks = []
-    errors  = []
-    if any(grid==0):
-        errors.append('zero grid dimension for {}.'.format(', '.join([['a','b','c'][x] for x in np.where(grid == 0)[0]])))
-    if options.N > grid.prod()/10.:
-        remarks.append('seed count exceeds 0.1 of grid points.')
-    if options.selective and 4./3.*np.pi*(options.distance/2.)**3*options.N > 0.5:
-        remarks.append('maximum recommended seed point count for given distance is {}'.
-                       format(int(3./8./np.pi/(options.distance/2.)**3)))
-
-    if remarks != []: damask.util.croak(remarks)
-    if errors  != []:
-        damask.util.croak(errors)
+    if options.N > np.prod(grid):
+        damask.util.croak('More seeds than grid positions.')
         sys.exit()
+    if options.selective and 4./3.*np.pi*(options.distance/2.)**3*options.N > 0.5*np.prod(size):
+        vol =                4./3.*np.pi*(options.distance/2.)**3
+        damask.util.croak('Recommended # of seeds is {}.'.format(int(0.5*np.prod(size)/vol)))
 
     eulers = np.random.rand(options.N,3)                                                            # create random Euler triplets
     eulers[:,0] *= 360.0                                                                            # phi_1    is uniformly distributed
     eulers[:,1] = np.degrees(np.arccos(2*eulers[:,1]-1.0))                                          # cos(Phi) is uniformly distributed
     eulers[:,2] *= 360.0                                                                            # phi_2    is uniformly distributed
 
+    coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3)
+
     if not options.selective:
-        n = np.maximum(np.ones(3),np.array(grid*fraction),dtype=int,casting='unsafe')               # find max grid indices within fraction
-        meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                     # create a meshgrid within fraction
-        coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(n.prod(),3)               # assemble list of 3D coordinates
-        seeds = (random.sample(coords.tolist(),options.N)+np.random.rand(options.N,3))/(n/fraction) # ... pick N of those, rattle position,
-                                                                                                    # ... and rescale to fall within fraction
+        seeds = coords[np.random.choice(coords.shape[0], options.N, replace=False)]
     else:
-        seeds = np.empty((options.N,3))                                                             # seed positions array
-        seeds[0] = np.random.random(3)*grid/max(grid)
-        i = 1                                                                                       # start out with one given point
-        if i%(options.N/100.) < 1: damask.util.croak('.',False)
+        seeds = np.empty((options.N,3))
+        unpicked = ma.array(np.arange(coords.shape[0]),mask=np.zeros(coords.shape[0],dtype=bool))
+        first_pick = np.random.randint(coords.shape[0])
+        seeds[0] = coords[first_pick]
+        unpicked.mask[first_pick]=True
 
+        i = 1
+        progress = damask.util._ProgressBar(options.N,'',50)
         while i < options.N:
-          candidates = np.random.rand(options.numCandidates,3)
-          distances  = kdtree_search(seeds[:i],candidates)
-          best = distances.argmax()
-          if distances[best] > options.distance:                                                    # require minimum separation
-              seeds[i] = candidates[best]                                                           # maximum separation to existing point cloud
-              i += 1
-              if i%(options.N/100.) < 1: damask.util.croak('.',False)
+            candidates = np.random.choice(unpicked[unpicked.mask==False],replace=False,
+                                          size=min(len(unpicked[unpicked.mask==False]),options.numCandidates))
+            tree = spatial.cKDTree(seeds[:i])
+            distances, dev_null = tree.query(coords[candidates])
+            best = distances.argmax()
+            if distances[best] > options.distance:                                                  # require minimum separation
+                seeds[i] = coords[candidates[best]]                                                 # maximum separation to existing point cloud
+                unpicked.mask[candidates[best]]=True
+                i += 1
+                progress.update(i)
 
-        damask.util.croak('')
-
+    seeds += np.broadcast_to(size/grid,seeds.shape)*(np.random.random(seeds.shape)*.5-.25)          # wobble without leaving grid
 
     comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
                 'grid\ta {}\tb {}\tc {}'.format(*grid),
+                'size\tx {}\ty {}\tz {}'.format(*size),
                 'randomSeed\t{}'.format(options.randomSeed),
                ]
 

@@ -229,7 +229,6 @@ for name in filenames:
 
     coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
 
-    damask.util.croak('tessellating...')
     if options.laguerre:
         indices = Laguerre_tessellation(coords,seeds,grains,size,options.periodic,
                                         table.get(options.weight),options.cpus)
