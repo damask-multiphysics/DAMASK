@@ -127,16 +127,12 @@ group.add_option('-s',
                  '--size',
                  dest = 'size',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                 help = 'x,y,z size of hexahedral box')
+                 help = 'x,y,z size of hexahedral box [1.0 1.0 1.0]')
 group.add_option('-o',
                  '--origin',
                  dest = 'origin',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                 help = 'origin of grid')
-group.add_option('--nonnormalized',
-                 dest = 'normalized',
-                 action = 'store_false',
-                 help = 'seed coordinates are not normalized to a unit cube')
+                 help = 'origin of grid [0.0 0.0 0.0]')
 
 parser.add_option_group(group)
 
@@ -195,7 +191,6 @@ parser.set_defaults(pos            = 'pos',
                     cpus           = 2,
                     laguerre       = False,
                     periodic       = True,
-                    normalized     = True,
                     config         = True,
                   )
 
@@ -206,7 +201,8 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    size   = np.zeros(3)
+
+    size   = np.ones(3)
     origin = np.zeros(3)
     for line in table.comments:
         items = line.lower().strip().split()
@@ -217,24 +213,21 @@ for name in filenames:
             size   = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
         elif key == 'origin':
             origin = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
-
     if options.grid:   grid   = np.array(options.grid)
     if options.size:   size   = np.array(options.size)
     if options.origin: origin = np.array(options.origin)
-    
-    size = np.where(size <= 0.0,grid/grid.max(),size)
 
-    seeds = table.get(options.pos) * size if options.normalized else table.get(options.pos) - origin
 
-    if options.eulers in table.labels:
-        eulers = table.get(options.eulers)
-    
+    seeds  = table.get(options.pos)
+
     grains = table.get(options.microstructure) if options.microstructure in table.labels else np.arange(len(seeds))+1
-
     grainIDs  = np.unique(grains).astype('i')
     NgrainIDs = len(grainIDs)
 
-    coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3)
+    if options.eulers in table.labels:
+        eulers = table.get(options.eulers)
+
+    coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
 
     damask.util.croak('tessellating...')
     if options.laguerre:
@@ -249,7 +242,7 @@ for name in filenames:
         if options.eulers in table.labels:
             config_header += ['<texture>']
             for ID in grainIDs:
-                eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
+                eulerID = np.nonzero(grains == ID)[0][0]                                            # find first occurrence of this grain id
                 config_header += ['[Grain{}]'.format(ID),
                                   '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*eulers[eulerID])
                                  ]
@@ -265,7 +258,7 @@ for name in filenames:
 
     header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
            + config_header
-    geom = damask.Geom(indices.reshape(grid,order='F'),size,origin,
+    geom = damask.Geom(indices.reshape(grid),size,origin,
                        homogenization=options.homogenization,comments=header)
     damask.util.croak(geom)
 
