@@ -16,7 +16,7 @@ from ._lattice     import Symmetry, Lattice# noqa
 from ._orientation import Orientation      # noqa
 from ._result      import Result           # noqa
 from ._geom        import Geom             # noqa
-from ._solver      import Solver           # noqa
+from .             import solver           # noqa
 
 # deprecated
 from ._asciitable import ASCIItable       # noqa

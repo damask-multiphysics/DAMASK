@@ -3,7 +3,7 @@ import subprocess
 import shlex
 import string
 
-from .solver import Solver
+from ._solver import Solver
 import damask
 
 class Marc(Solver):
