@@ -3,10 +3,9 @@ import subprocess
 import shlex
 import string
 
-from ._solver import Solver
 from .._environment import Environment
 
-class Marc(Solver):
+class Marc:
     """Wrapper to run DAMASK with MSCMarc."""
 
     def __init__(self,version=Environment().options['MARC_VERSION']):
