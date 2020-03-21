@@ -130,7 +130,7 @@ for name in filenames:
 
     if not options.selective:
         seeds = coords[np.random.choice(coords.shape[0], options.N, replace=False)] \
-              + np.broadcast_to(size/grid,(options.N,3))*(np.random.rand(options.N,3)*.5-.25)     # wobble without leaving grid
+              + np.broadcast_to(size/grid,(options.N,3))*(np.random.rand(options.N,3)*.5-.25)       # wobble without leaving grid
     else:
         seeds = np.empty((options.N,3))
         seeds[0] = np.random.random(3) * size

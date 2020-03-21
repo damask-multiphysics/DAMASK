@@ -19,7 +19,7 @@ from ._geom        import Geom             # noqa
 from .             import solver           # noqa
 
 # deprecated
-from ._asciitable import ASCIItable       # noqa
-from ._config     import Material         # noqa
-from ._test       import Test             # noqa
-from .util        import extendableOption # noqa
+from ._asciitable  import ASCIItable       # noqa
+from ._test        import Test             # noqa
+from .config       import Material         # noqa
+from .util         import extendableOption # noqa
