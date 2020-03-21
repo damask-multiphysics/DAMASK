@@ -24,47 +24,16 @@ def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
     dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
     return np.argmin(dist)                                                                          # seed point closest to point
 
-  copies = \
-    np.array([
-              [ -1,-1,-1 ],
-              [  0,-1,-1 ],
-              [  1,-1,-1 ],
-              [ -1, 0,-1 ],
-              [  0, 0,-1 ],
-              [  1, 0,-1 ],
-              [ -1, 1,-1 ],
-              [  0, 1,-1 ],
-              [  1, 1,-1 ],
-              [ -1,-1, 0 ],
-              [  0,-1, 0 ],
-              [  1,-1, 0 ],
-              [ -1, 0, 0 ],
-              [  0, 0, 0 ],
-              [  1, 0, 0 ],
-              [ -1, 1, 0 ],
-              [  0, 1, 0 ],
-              [  1, 1, 0 ],
-              [ -1,-1, 1 ],
-              [  0,-1, 1 ],
-              [  1,-1, 1 ],
-              [ -1, 0, 1 ],
-              [  0, 0, 1 ],
-              [  1, 0, 1 ],
-              [ -1, 1, 1 ],
-              [  0, 1, 1 ],
-              [  1, 1, 1 ],
-             ],dtype=np.float)*size if periodic else \
-    np.array([
-              [  0, 0, 0 ],
-             ],dtype=np.float)
+  if periodic:
+    weights_p = np.tile(weights,27).flatten(order='F')                                              # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+    seeds_p = np.vstack((seeds  +np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
+    seeds_p = np.vstack((seeds_p+np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
+    seeds_p = np.vstack((seeds_p+np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
+  else:
+    weights_p = weights.flatten()
+    seeds_p   = seeds
 
-  repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                   # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
-  for vec in copies:                                                                                # periodic copies of seed points ...
-    try: seeds = np.append(seeds, seeds+vec, axis=0)                                                # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
-    except NameError: seeds = seeds+vec
-
-  damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-  arguments = [[arg,seeds,repeatweights] for arg in list(grid)]
+  arguments = [[arg,seeds_p,weights_p] for arg in list(grid)]
 
   if cpus > 1:                                                                                      # use multithreading
     pool = multiprocessing.Pool(processes = cpus)                                                   # initialize workers
@@ -77,7 +46,6 @@ def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
     for i,arg in enumerate(arguments):
       closestSeeds[i] = findClosestSeed(arg)
 
-# closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
   return grains[closestSeeds%seeds.shape[0]]
 
 
