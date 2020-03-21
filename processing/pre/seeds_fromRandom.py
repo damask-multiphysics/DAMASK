@@ -2,7 +2,6 @@
 
 import os
 import sys
-import random
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
@@ -139,8 +138,8 @@ for name in filenames:
         i = 1
         progress = damask.util._ProgressBar(options.N,'',50)
         while i < options.N:
-            candidates = np.random.choice(unpicked[unpicked.mask==False],replace=False,
-                                          size=min(len(unpicked[unpicked.mask==False]),options.numCandidates))
+            candidates = np.random.choice(unpicked[not unpicked.mask],replace=False,
+                                          size=min(len(unpicked[not unpicked.mask]),options.numCandidates))
             tree = spatial.cKDTree(seeds[:i])
             distances, dev_null = tree.query(coords[candidates])
             best = distances.argmax()
