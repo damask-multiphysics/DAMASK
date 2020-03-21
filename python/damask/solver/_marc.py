@@ -4,15 +4,15 @@ import shlex
 import string
 
 from ._solver import Solver
-import damask
+from .._environment import Environment
 
 class Marc(Solver):
     """Wrapper to run DAMASK with MSCMarc."""
 
-    def __init__(self,version=damask.Environment().options['MARC_VERSION']):
+    def __init__(self,version=Environment().options['MARC_VERSION']):
         """
         Create a Marc solver object.
-    
+
         Parameters
         ----------
         version : float
@@ -29,7 +29,7 @@ class Marc(Solver):
 #--------------------------
     def libraryPath(self):
 
-        path_MSC = damask.Environment().options['MSC_ROOT']   
+        path_MSC = Environment().options['MSC_ROOT']
         path_lib = '{}/mentat{}/shlib/linux64'.format(path_MSC,self.version)
 
         return path_lib if os.path.exists(path_lib) else ''
@@ -38,7 +38,7 @@ class Marc(Solver):
 #--------------------------
     def toolsPath(self):
 
-        path_MSC   = damask.Environment().options['MSC_ROOT']
+        path_MSC   = Environment().options['MSC_ROOT']
         path_tools = '{}/marc{}/tools'.format(path_MSC,self.version)
 
         return path_tools if os.path.exists(path_tools) else ''
@@ -54,15 +54,15 @@ class Marc(Solver):
                   ):
 
 
-        damaskEnv = damask.Environment()
-   
+        damaskEnv = Environment()
+
         user = os.path.join(damaskEnv.relPath('src'),'DAMASK_marc{}.{}'.format(self.version,'f90' if compile else 'marc'))
         if not os.path.isfile(user):
             raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),user))
 
         # Define options [see Marc Installation and Operation Guide, pp 23]
         script = 'run_damask_{}mp'.format(optimization)
-    
+
         cmd = os.path.join(self.toolsPath(),script) + \
               ' -jid ' + model + '_' + job + \
               ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
@@ -76,7 +76,7 @@ class Marc(Solver):
         process = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
         log.close()
         process.wait()
-      
+
 #--------------------------
     def exit_number_from_outFile(self,outFile=None):
         exitnumber = -1
