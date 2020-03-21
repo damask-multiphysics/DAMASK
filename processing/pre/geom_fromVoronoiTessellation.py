@@ -11,18 +11,18 @@ from scipy import spatial
 
 import damask
 
+def findClosestSeed(fargs):
+  seeds, myWeights, point = fargs
+  tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
+  dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
+  return np.argmin(dist)                                                                          # seed point closest to point
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
 def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
-
-  def findClosestSeed(fargs):
-    point, seeds, myWeights = fargs
-    tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
-    dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
-    return np.argmin(dist)                                                                          # seed point closest to point
 
   if periodic:
     weights_p = np.tile(weights,27).flatten(order='F')                                              # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
@@ -33,7 +33,7 @@ def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
     weights_p = weights.flatten()
     seeds_p   = seeds
 
-  arguments = [[arg,seeds_p,weights_p] for arg in list(grid)]
+  arguments = [[seeds_p,weights_p,arg] for arg in list(grid)]
 
   if cpus > 1:                                                                                      # use multithreading
     pool = multiprocessing.Pool(processes = cpus)                                                   # initialize workers
