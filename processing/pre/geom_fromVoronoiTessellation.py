@@ -4,6 +4,7 @@ import os
 import sys
 import multiprocessing
 from io import StringIO
+from functools import partial
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
@@ -11,12 +12,9 @@ from scipy import spatial
 
 import damask
 
-def findClosestSeed(fargs):
-  seeds, myWeights, point = fargs
-  tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
-  dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
-  return np.argmin(dist)                                                                          # seed point closest to point
 
+def findClosestSeed(seeds, weights, point):
+  return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -26,25 +24,22 @@ def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
 
   if periodic:
     weights_p = np.tile(weights,27).flatten(order='F')                                              # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
-    seeds_p = np.vstack((seeds  +np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
-    seeds_p = np.vstack((seeds_p+np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
-    seeds_p = np.vstack((seeds_p+np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
+    seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
+    seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
+    seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
   else:
     weights_p = weights.flatten()
     seeds_p   = seeds
 
-  arguments = [[seeds_p,weights_p,arg] for arg in list(grid)]
-
-  if cpus > 1:                                                                                      # use multithreading
+  if cpus > 1:
+    default_args = partial(findClosestSeed,seeds_p,weights_p)
     pool = multiprocessing.Pool(processes = cpus)                                                   # initialize workers
-    result = pool.map_async(findClosestSeed, arguments)                                             # evaluate function in parallel
+    result = pool.map_async(default_args, [point for point in grid])                                # evaluate function in parallel
     pool.close()
     pool.join()
     closestSeeds = np.array(result.get()).flatten()
   else:
-    closestSeeds = np.zeros(len(arguments),dtype='i')
-    for i,arg in enumerate(arguments):
-      closestSeeds[i] = findClosestSeed(arg)
+    closestSeeds= np.array([findClosestSeed(seeds_p,weights_p,point) for point in grid])
 
   return grains[closestSeeds%seeds.shape[0]]
 
@@ -53,6 +48,7 @@ def Voronoi_tessellation(grid, seeds, grains, size, periodic = True):
 
   KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
   devNull,closestSeeds = KDTree.query(grid)
+
   return grains[closestSeeds]
 
 
@@ -184,7 +180,6 @@ for name in filenames:
     if options.grid:   grid   = np.array(options.grid)
     if options.size:   size   = np.array(options.size)
     if options.origin: origin = np.array(options.origin)
-
 
     seeds  = table.get(options.pos)
 
