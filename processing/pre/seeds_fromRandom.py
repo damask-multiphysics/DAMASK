@@ -115,9 +115,9 @@ for name in filenames:
     if options.N > np.prod(grid):
         damask.util.croak('More seeds than grid positions.')
         sys.exit()
-    if options.selective and 4./3.*np.pi*(options.distance/2.)**3*options.N > 0.5*np.prod(size):
-        vol =                4./3.*np.pi*(options.distance/2.)**3
-        damask.util.croak('Recommended # of seeds is {}.'.format(int(0.5*np.prod(size)/vol)))
+    if options.selective and options.distance**3*options.N > 0.5*np.prod(size):
+        damask.util.croak('Number of seeds for given size and distance should be < {}.'\
+                          .format(int(0.5*np.prod(size)/options.distance**3)))
 
     eulers = np.random.rand(options.N,3)                                                            # create random Euler triplets
     eulers[:,0] *= 360.0                                                                            # phi_1    is uniformly distributed
@@ -138,8 +138,8 @@ for name in filenames:
         i = 1
         progress = damask.util._ProgressBar(options.N,'',50)
         while i < options.N:
-            candidates = np.random.choice(unpicked[not unpicked.mask],replace=False,
-                                          size=min(len(unpicked[not unpicked.mask]),options.numCandidates))
+            candidates = np.random.choice(unpicked[np.logical_not(unpicked.mask)],replace=False,
+                                          size=min(np.count_nonzero(unpicked.mask),options.numCandidates))
             tree = spatial.cKDTree(seeds[:i])
             distances, dev_null = tree.query(coords[candidates])
             best = distances.argmax()
