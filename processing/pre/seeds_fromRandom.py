@@ -126,10 +126,10 @@ for name in filenames:
     eulers[:,1] = np.degrees(np.arccos(2*eulers[:,1]-1.0))                                          # cos(Phi) is uniformly distributed
     eulers[:,2] *= 360.0                                                                            # phi_2    is uniformly distributed
 
-    coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
     if not options.selective:
-        seeds = coords[np.random.choice(coords.shape[0], options.N, replace=False)] \
+        coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3)
+        seeds = coords[np.random.choice(np.prod(grid), options.N, replace=False)] \
               + np.broadcast_to(size/grid,(options.N,3))*(np.random.rand(options.N,3)*.5-.25)       # wobble without leaving grid
     else:
         seeds = np.empty((options.N,3))
