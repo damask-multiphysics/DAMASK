@@ -1038,29 +1038,31 @@ subroutine integrateStateFPI
    ! store previousDotState and previousDotState2
 
    !$OMP PARALLEL DO PRIVATE(p,c)
-     do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       do i = FEsolving_execIP(1),FEsolving_execIP(2)
-         do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-           if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-             p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)
+     do i = FEsolving_execIP(1),FEsolving_execIP(2)
+       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-             plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
-                                                            0.0_pReal,&
-                                                            NiterationState > 1)
-             plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
-             do s = 1, phase_Nsources(p)
-               sourceState(p)%p(s)%previousDotState2(:,c) = merge(sourceState(p)%p(s)%previousDotState(:,c),&
-                                                                  0.0_pReal, &
-                                                                  NiterationState > 1)
-               sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
-             enddo
-           endif
+           plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
+                                                          0.0_pReal,&
+                                                          NiterationState > 1)
+           plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
+           do s = 1, phase_Nsources(p)
+             sourceState(p)%p(s)%previousDotState2(:,c) = merge(sourceState(p)%p(s)%previousDotState(:,c),&
+                                                                0.0_pReal, &
+                                                                NiterationState > 1)
+             sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
+           enddo
+           call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                            crystallite_Fp(1:3,1:3,g,i,e), &
+                                            g, i, e)
+         endif
        enddo
      enddo
    enddo
    !$OMP END PARALLEL DO
 
-   call update_dependentState
    call update_stress(1.0_pReal)
    call update_dotState(1.0_pReal)
 
