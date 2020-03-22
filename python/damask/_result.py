@@ -1061,14 +1061,14 @@ class Result:
                               continue
                           array = self.read_dataset(x,0)
                           v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
-              else:
-                  x = self.get_dataset_location(label)
-                  if len(x) == 0:
-                      continue
-                  array = self.read_dataset(x,0)
-                  ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')                   # identify  phase name
-                  dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                       # removing phase name
-                  v.add(array,dset_name)
+                  else:
+                      x = self.get_dataset_location(label)
+                      if len(x) == 0:
+                          continue
+                      array = self.read_dataset(x,0)
+                      ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')               # identify  phase name
+                      dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                   # removing phase name
+                      v.add(array,dset_name)
           self.pick('materialpoints',materialpoints_backup)
 
           constituents_backup = self.selection['constituents'].copy()
@@ -1082,12 +1082,12 @@ class Result:
                               continue
                           array = self.read_dataset(x,0)
                           v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
-              else:
-                  x = self.get_dataset_location(label)
-                  if len(x) == 0:
-                      continue
-                  array = self.read_dataset(x,0)
-                  v.add(array,'1_'+x[0].split('/',1)[1])
+                  else:
+                      x = self.get_dataset_location(label)
+                      if len(x) == 0:
+                          continue
+                      array = self.read_dataset(x,0)
+                      v.add(array,'1_'+x[0].split('/',1)[1])
           self.pick('constituents',constituents_backup)
 
           u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
