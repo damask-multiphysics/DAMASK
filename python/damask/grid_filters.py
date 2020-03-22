@@ -41,10 +41,10 @@ def curl(size,field):
     e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
 
     field_fourier = np.fft.rfftn(field,axes=(0,1,2))
-    curl = (np.einsum('slm,ijkl,ijkm ->ijks', e,k_s,field_fourier)*2.0j*np.pi if n == 3 else        # vector, 3   -> 3
-            np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*2.0j*np.pi)                      # tensor, 3x3 -> 3x3
+    curl_ = (np.einsum('slm,ijkl,ijkm ->ijks', e,k_s,field_fourier)*2.0j*np.pi if n == 3 else       # vector, 3   -> 3
+             np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*2.0j*np.pi)                     # tensor, 3x3 -> 3x3
 
-    return np.fft.irfftn(curl,axes=(0,1,2),s=field.shape[:3])
+    return np.fft.irfftn(curl_,axes=(0,1,2),s=field.shape[:3])
 
 
 def divergence(size,field):
@@ -61,10 +61,10 @@ def divergence(size,field):
     k_s = _ks(size,field.shape[:3],True)
 
     field_fourier = np.fft.rfftn(field,axes=(0,1,2))
-    divergence = (np.einsum('ijkl,ijkl ->ijk', k_s,field_fourier)*2.0j*np.pi if n == 3 else         # vector, 3   -> 1
-                  np.einsum('ijkm,ijklm->ijkl',k_s,field_fourier)*2.0j*np.pi)                       # tensor, 3x3 -> 3
+    div_ = (np.einsum('ijkl,ijkl ->ijk', k_s,field_fourier)*2.0j*np.pi if n == 3 else               # vector, 3   -> 1
+            np.einsum('ijkm,ijklm->ijkl',k_s,field_fourier)*2.0j*np.pi)                             # tensor, 3x3 -> 3
 
-    return np.fft.irfftn(divergence,axes=(0,1,2),s=field.shape[:3])
+    return np.fft.irfftn(div_,axes=(0,1,2),s=field.shape[:3])
 
 
 def gradient(size,field):
@@ -81,10 +81,10 @@ def gradient(size,field):
     k_s = _ks(size,field.shape[:3],True)
 
     field_fourier = np.fft.rfftn(field,axes=(0,1,2))
-    gradient = (np.einsum('ijkl,ijkm->ijkm', field_fourier,k_s)*2.0j*np.pi if n == 1 else           # scalar, 1 -> 3
-                np.einsum('ijkl,ijkm->ijklm',field_fourier,k_s)*2.0j*np.pi)                         # vector, 3 -> 3x3
+    grad_ = (np.einsum('ijkl,ijkm->ijkm', field_fourier,k_s)*2.0j*np.pi if n == 1 else              # scalar, 1 -> 3
+             np.einsum('ijkl,ijkm->ijklm',field_fourier,k_s)*2.0j*np.pi)                            # vector, 3 -> 3x3
 
-    return np.fft.irfftn(gradient,axes=(0,1,2),s=field.shape[:3])
+    return np.fft.irfftn(grad_,axes=(0,1,2),s=field.shape[:3])
 
 
 def cell_coord0(grid,size,origin=np.zeros(3)):
