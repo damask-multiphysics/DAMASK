@@ -103,7 +103,7 @@ class VTK:
             Spatial position of the points.
 
         """
-        vtk_points= vtk.vtkPoints()
+        vtk_points = vtk.vtkPoints()
         vtk_points.SetData(np_to_vtk(points))
 
         geom = vtk.vtkPolyData()
@@ -168,11 +168,11 @@ class VTK:
             Filename for writing.
 
         """
-        if  (isinstance(self.geom,vtk.vtkRectilinearGrid)):
+        if   isinstance(self.geom,vtk.vtkRectilinearGrid):
             writer = vtk.vtkXMLRectilinearGridWriter()
-        elif(isinstance(self.geom,vtk.vtkUnstructuredGrid)):
+        elif isinstance(self.geom,vtk.vtkUnstructuredGrid):
             writer = vtk.vtkXMLUnstructuredGridWriter()
-        elif(isinstance(self.geom,vtk.vtkPolyData)):
+        elif isinstance(self.geom,vtk.vtkPolyData):
             writer = vtk.vtkXMLPolyDataWriter()
 
         default_ext = writer.GetDefaultFileExtension()
@@ -234,17 +234,17 @@ class VTK:
 
         ren = vtk.vtkRenderer()
 
-        renWin = vtk.vtkRenderWindow()
-        renWin.AddRenderer(ren)
+        window = vtk.vtkRenderWindow()
+        window.AddRenderer(ren)
 
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
 
-        renWin.SetSize(Environment().screen_width,Environment().screen_height)
+        window.SetSize(Environment().screen_width,Environment().screen_height)
 
         iren = vtk.vtkRenderWindowInteractor()
-        iren.SetRenderWindow(renWin)
+        iren.SetRenderWindow(window)
 
         iren.Initialize()
-        renWin.Render()
+        window.Render()
         iren.Start()

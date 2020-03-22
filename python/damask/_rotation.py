@@ -365,8 +365,7 @@ class Rotation:
 
 
     @staticmethod
-    def fromAverage(rotations,
-                    weights = []):
+    def fromAverage(rotations,weights = None):
         """
         Average rotation.
 
@@ -387,7 +386,7 @@ class Rotation:
             raise TypeError("Only instances of Rotation can be averaged.")
 
         N = len(rotations)
-        if weights == [] or not weights:
+        if not weights:
             weights = np.ones(N,dtype='i')
 
         for i,(r,n) in enumerate(zip(rotations,weights)):

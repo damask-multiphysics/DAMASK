@@ -327,9 +327,9 @@ class Table:
         seen = set()
         labels = []
         for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
-            if(self.shapes[l] == (1,)):
+            if self.shapes[l] == (1,):
                 labels.append('{}'.format(l))
-            elif(len(self.shapes[l]) == 1):
+            elif len(self.shapes[l]) == 1:
                 labels += ['{}_{}'.format(i+1,l) \
                           for i in range(self.shapes[l][0])]
             else:

@@ -65,7 +65,7 @@ class Result:
             self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
             self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
 
-            self.con_physics  = []
+            self.con_physics = []
             for c in self.constituents:
                 self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
             self.con_physics = list(set(self.con_physics))                                            # make unique
@@ -75,10 +75,10 @@ class Result:
                 self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
             self.mat_physics = list(set(self.mat_physics))                                            # make unique
 
-        self.selection= {'increments':     self.increments,
-                         'constituents':   self.constituents,'materialpoints': self.materialpoints,
-                         'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
-                        }
+        self.selection = {'increments':     self.increments,
+                          'constituents':   self.constituents,'materialpoints': self.materialpoints,
+                          'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
+                         }
 
         self.fname = fname
 
@@ -129,7 +129,7 @@ class Result:
                 iterator = map(float,choice)
                 choice = []
                 for c in iterator:
-                    idx=np.searchsorted(self.times,c)
+                    idx = np.searchsorted(self.times,c)
                     if   np.isclose(c,self.times[idx]):
                         choice.append(self.increments[idx])
                     elif np.isclose(c,self.times[idx+1]):
@@ -141,12 +141,12 @@ class Result:
         if   action == 'set':
             self.selection[what] = valid
         elif action == 'add':
-            add=existing.union(valid)
-            add_sorted=sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            add = existing.union(valid)
+            add_sorted = sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
             self.selection[what] = add_sorted
         elif action == 'del':
-            diff=existing.difference(valid)
-            diff_sorted=sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            diff = existing.difference(valid)
+            diff_sorted = sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
             self.selection[what] = diff_sorted
 
 
@@ -287,8 +287,8 @@ class Result:
                             inData[key] =          f['mapping/cellResults/materialpoint'][inGeom[key].tolist()]['Position']
                     shape = np.shape(f[path])
                     data = np.full((self.Nmaterialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
-                                    np.nan,
-                                    dtype=np.dtype(f[path]))
+                                   np.nan,
+                                   dtype=np.dtype(f[path]))
                     data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
                     path = (os.path.join(*([prop,name]+([cat] if cat else [])+([item] if item else []))) if split else path)+tag
                     if split:
@@ -350,7 +350,7 @@ class Result:
                                 groups.append(group)
                             else:
                                 match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-                                if len(set(match)) == len(sets) : groups.append(group)
+                                if len(set(match)) == len(sets): groups.append(group)
         return groups
 
 
@@ -359,18 +359,18 @@ class Result:
         message = ''
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
-                message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
+                message += '\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
                     for oo in self.iterate(o):
-                        message+='  {}\n'.format(oo)
+                        message += '  {}\n'.format(oo)
                         for pp in self.iterate(p):
-                            message+='    {}\n'.format(pp)
+                            message += '    {}\n'.format(pp)
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    message+='      {} / ({}): {}\n'.\
-                                              format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
+                                    message += '      {} / ({}): {}\n'.\
+                                               format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
                                 except KeyError:
                                     pass
         return message
@@ -425,7 +425,7 @@ class Result:
             for pa in path:
                 label = pa.split('/')[2]
 
-                if (pa.split('/')[1] == 'geometry'):
+                if pa.split('/')[1] == 'geometry':
                     dataset = np.array(f[pa])
                     continue
 
