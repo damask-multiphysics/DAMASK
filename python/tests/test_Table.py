@@ -49,7 +49,7 @@ class TestTable:
 
     def test_write_read_new_style(self,default,tmpdir):
         with open(tmpdir.join('new_style.txt'),'w') as f:
-            default.to_ASCII(f,new=True)
+            default.to_ASCII(f,new_style=True)
         with open(tmpdir.join('new_style.txt')) as f:
             new = Table.from_ASCII(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
@@ -173,4 +173,4 @@ class TestTable:
                   ['test data'])
         t.add('s',np.array(['b','a']))
         t.sort_by('s')
-        assert np.all(t.get('1_v') == np.array([2,0]).reshape((2,1)))
+        assert np.all(t.get('1_v') == np.array([2,0]).reshape(2,1))

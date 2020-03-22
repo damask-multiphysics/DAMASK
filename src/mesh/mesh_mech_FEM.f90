@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief FEM PETSc solver
 !--------------------------------------------------------------------------------------------------
-module FEM_mech
+module mesh_mech_FEM
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscdm.h>
 #include <petsc/finclude/petsc.h>
@@ -16,11 +16,11 @@ module FEM_mech
 
   use prec
   use FEM_utilities
-  use mesh
+  use discretization_mesh
   use IO
   use DAMASK_interface
   use numerics
-  use FEM_Zoo
+  use FEM_quadrature
   use FEsolving
   use homogenization
   use math
@@ -105,10 +105,10 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
-  qPoints = FEM_Zoo_QuadraturePoints(dimPlex,integrationOrder)%p
-  qWeights = FEM_Zoo_QuadratureWeights(dimPlex,integrationOrder)%p
-  nQuadrature = FEM_Zoo_nQuadrature(dimPlex,integrationOrder)
-  qPointsP => qPoints
+  qPoints  = FEM_quadrature_points( dimPlex,integrationOrder)%p
+  qWeights = FEM_quadrature_weights(dimPlex,integrationOrder)%p
+  nQuadrature = FEM_nQuadrature(    dimPlex,integrationOrder)
+  qPointsP  => qPoints
   qWeightsP => qWeights
   call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
   CHKERRQ(ierr)
@@ -670,4 +670,4 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
 
 end subroutine FEM_mech_converged
 
-end module FEM_mech
+end module mesh_mech_FEM

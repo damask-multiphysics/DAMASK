@@ -5,8 +5,6 @@ import sys
 from io import StringIO
 from optparse import OptionParser
 
-import vtk
-
 import damask
 
 
@@ -36,42 +34,12 @@ parser.set_defaults(pos = 'pos',
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    v = damask.VTK.from_polyData(table.get(options.pos))
 
-# ------------------------------------------ process data ---------------------------------------  
-
-  Polydata = vtk.vtkPolyData()
-  Points   = vtk.vtkPoints()
-  Vertices = vtk.vtkCellArray()
-
-  for p in table.get(options.pos):
-    pointID = Points.InsertNextPoint(p)
-    Vertices.InsertNextCell(1)
-    Vertices.InsertCellPoint(pointID)
-
-  Polydata.SetPoints(Points)
-  Polydata.SetVerts(Vertices)
-  Polydata.Modified()
- 
-# ------------------------------------------ output result ---------------------------------------  
-
-  if name:
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetCompressorTypeToZLib()
-    writer.SetDataModeToBinary()
-    writer.SetFileName(os.path.join(os.path.split(name)[0],
-                                    os.path.splitext(os.path.split(name)[1])[0] +
-                                    '.' + writer.GetDefaultFileExtension()))
-  else:
-    writer = vtk.vtkDataSetWriter()
-    writer.SetHeader('# powered by '+scriptID)
-    writer.WriteToOutputStringOn()
-  
-  
-  writer.SetInputData(Polydata)
-
-  writer.Write()
-
-  if name is None: sys.stdout.write(writer.GetOutputString())
+    if name:
+        v.write(os.path.splitext(name)[0])
+    else:
+        sys.stdout.write(v.__repr__())

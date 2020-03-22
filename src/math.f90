@@ -73,10 +73,10 @@ module math
       3,3  &
       ],[2,9])                                                                                      !< arrangement in Plain notation
 
+  interface math_eye
+    module procedure math_identity2nd
+  end interface math_eye
 
-  interface math_mul33xx33
-    module procedure math_tensordot
-  end interface math_mul33xx33
 
 !---------------------------------------------------------------------------------------------------
  private :: &
@@ -89,7 +89,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine math_init
 
-  integer :: i
   real(pReal), dimension(4) :: randTest
   integer :: randSize
   integer, dimension(:), allocatable :: randInit
@@ -106,11 +105,8 @@ subroutine math_init
     randInit(2:randSize) = randInit(1)
   endif
 
-  call random_seed(put=randInit)
-
-  do i = 1, 4
-    call random_number(randTest(i))
-  enddo
+  call random_seed(put = randInit)
+  call random_number(randTest)
 
   write(6,'(a,i2)')                ' size  of random seed:     ', randSize
   write(6,'(a,i0)')                ' value of random seed:     ', randInit(1)
@@ -427,7 +423,7 @@ end function math_exp33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Cramer inversion of 33 matrix (function)
+!> @brief Cramer inversion of 3x3 matrix (function)
 !> @details Direct Cramer inversion of matrix A. Returns all zeroes if not possible, i.e.
 ! if determinant is close to zero
 !--------------------------------------------------------------------------------------------------
@@ -446,7 +442,7 @@ end function math_inv33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Cramer inversion of 33 matrix (subroutine)
+!> @brief Cramer inversion of 3x3 matrix (subroutine)
 !> @details Direct Cramer inversion of matrix A. Also returns determinant
 !  Returns an error if not possible, i.e. if determinant is close to zero
 !--------------------------------------------------------------------------------------------------
@@ -483,7 +479,7 @@ end subroutine math_invert33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Inversion of symmetriced 3x3x3x3 tensor.
+!> @brief Inversion of symmetriced 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
 function math_invSym3333(A)
 
@@ -540,7 +536,7 @@ end subroutine math_invert
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrize a 33 matrix
+!> @brief symmetrize a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric33(m)
 
@@ -553,7 +549,7 @@ end function math_symmetric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetrize a 66 matrix
+!> @brief symmetrize a 6x6 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetric66(m)
 
@@ -566,7 +562,7 @@ end function math_symmetric66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief skew part of a 33 matrix
+!> @brief skew part of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_skew33(m)
 
@@ -579,7 +575,7 @@ end function math_skew33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief hydrostatic part of a 33 matrix
+!> @brief hydrostatic part of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_spherical33(m)
 
@@ -592,7 +588,7 @@ end function math_spherical33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief deviatoric part of a 33 matrix
+!> @brief deviatoric part of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_deviatoric33(m)
 
@@ -605,7 +601,7 @@ end function math_deviatoric33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief trace of a 33 matrix
+!> @brief trace of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_trace33(m)
 
@@ -617,7 +613,7 @@ end function math_trace33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determinant of a 33 matrix
+!> @brief determinant of a 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_det33(m)
 
@@ -631,7 +627,7 @@ end function math_det33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief determinant of a symmetric 33 matrix
+!> @brief determinant of a symmetric 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_detSym33(m)
 
@@ -644,7 +640,7 @@ end function  math_detSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 33 matrix into vector 9
+!> @brief convert 3x3 matrix into vector 9
 !--------------------------------------------------------------------------------------------------
 pure function math_33to9(m33)
 
@@ -661,7 +657,7 @@ end function math_33to9
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 9 vector into 33 matrix
+!> @brief convert 9 vector into 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_9to33(v9)
 
@@ -678,7 +674,7 @@ end function math_9to33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 33 matrix into 6 vector
+!> @brief convert symmetric 3x3 matrix into 6 vector
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -686,8 +682,8 @@ end function math_9to33
 pure function math_sym33to6(m33,weighted)
 
   real(pReal), dimension(6)               :: math_sym33to6
-  real(pReal), dimension(3,3), intent(in) :: m33                                                     !< symmetric matrix (no internal check)
-  logical,     optional,       intent(in) :: weighted                                                !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(3,3), intent(in) :: m33                                                    !< symmetric 3x3 matrix (no internal check)
+  logical,     optional,       intent(in) :: weighted                                               !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i
@@ -706,7 +702,7 @@ end function math_sym33to6
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 6 vector into symmetric 33 matrix
+!> @brief convert 6 vector into symmetric 3x3 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
 ! Unweighted conversion only changes order according to Nye
@@ -714,8 +710,8 @@ end function math_sym33to6
 pure function math_6toSym33(v6,weighted)
 
   real(pReal), dimension(3,3)           :: math_6toSym33
-  real(pReal), dimension(6), intent(in) :: v6
-  logical,     optional,     intent(in) :: weighted                                                  !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(6), intent(in) :: v6                                                       !< 6 vector
+  logical,     optional,     intent(in) :: weighted                                                 !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i
@@ -735,7 +731,7 @@ end function math_6toSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 3333 matrix into 99 matrix
+!> @brief convert 3x3x3x3 matrix into 9x9 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_3333to99(m3333)
 
@@ -752,7 +748,7 @@ end function math_3333to99
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 99 matrix into 3333 matrix
+!> @brief convert 9x9 matrix into 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_99to3333(m99)
 
@@ -769,16 +765,16 @@ end function math_99to3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert symmetric 3333 matrix into 66 matrix
+!> @brief convert symmetric 3x3x3x3 matrix into 6x6 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only changes order according to Nye
+! Unweighted conversion only rearranges order according to Nye
 !--------------------------------------------------------------------------------------------------
 pure function math_sym3333to66(m3333,weighted)
 
   real(pReal), dimension(6,6)                 :: math_sym3333to66
-  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                               !< symmetric matrix (no internal check)
-  logical,     optional,           intent(in) :: weighted                                            !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(3,3,3,3), intent(in) :: m3333                                              !< symmetric 3x3x3x3 matrix (no internal check)
+  logical,     optional,           intent(in) :: weighted                                           !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i,j
@@ -797,16 +793,16 @@ end function math_sym3333to66
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 matrix into symmetric 3333 matrix
+!> @brief convert 66 matrix into symmetric 3x3x3x3 matrix
 !> @details Weighted conversion (default) rearranges according to Nye and weights shear
 ! components according to Mandel. Advisable for matrix operations.
-! Unweighted conversion only changes order according to Nye
+! Unweighted conversion only rearranges order according to Nye
 !--------------------------------------------------------------------------------------------------
 pure function math_66toSym3333(m66,weighted)
 
   real(pReal), dimension(3,3,3,3)            :: math_66toSym3333
-  real(pReal), dimension(6,6),    intent(in) :: m66
-  logical,     optional,          intent(in) :: weighted                                             !< weight according to Mandel (.true. by default)
+  real(pReal), dimension(6,6),    intent(in) :: m66                                                 !< 6x6 matrix
+  logical,     optional,          intent(in) :: weighted                                            !< weight according to Mandel (.true. by default)
 
   real(pReal), dimension(6) :: w
   integer :: i,j
@@ -828,12 +824,12 @@ end function math_66toSym3333
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert 66 Voigt matrix into symmetric 3333 matrix
+!> @brief convert 66 Voigt matrix into symmetric 3x3x3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_Voigt66to3333(m66)
 
   real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
-  real(pReal), dimension(6,6), intent(in) :: m66
+  real(pReal), dimension(6,6), intent(in) :: m66                                                    !< 6x6 matrix
   integer :: i,j
 
   do i=1,6; do j=1, 6
@@ -851,9 +847,10 @@ end function math_Voigt66to3333
 !--------------------------------------------------------------------------------------------------
 real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
 
-  real(pReal), intent(in) ::            meanvalue, &                                                ! meanvalue of gauss distribution
-                                        stddev                                                      ! standard deviation of gauss distribution
-  real(pReal), intent(in), optional ::  width                                                       ! width of considered values as multiples of standard deviation
+  real(pReal), intent(in) ::            meanvalue, &                                                !< meanvalue of gauss distribution
+                                        stddev                                                      !< standard deviation of gauss distribution
+  real(pReal), intent(in), optional ::  width                                                       !< width of considered values as multiples of standard deviation
+
   real(pReal), dimension(2) ::          rnd                                                         ! random numbers
   real(pReal) ::                        scatter, &                                                  ! normalized scatter around meanvalue
                                         width_
@@ -880,266 +877,172 @@ end function math_sampleGaussVar
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues and eigenvectors of symmetric matrix m
+!> @brief eigenvalues and eigenvectors of symmetric matrix
 ! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigenValuesVectorsSym(m,values,vectors,error)
+subroutine math_eigh(m,w,v,error)
 
-  real(pReal), dimension(:,:),                  intent(in)  :: m
-  real(pReal), dimension(size(m,1)),            intent(out) :: values
-  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: vectors
+  real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
+  real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
+  real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v                                    !< eigenvectors
+
   logical, intent(out) :: error
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
   external :: &
     dsyev
 
-  vectors = m                                                                                       ! copy matrix to input (doubles as output) array
-  call dsyev('V','U',size(m,1),vectors,size(m,1),values,work,size(work,1),ierr)
+  v = m                                                                                             ! copy matrix to input (doubles as output) array
+  call dsyev('V','U',size(m,1),v,size(m,1),w,work,size(work,1),ierr)
   error = (ierr /= 0)
 
-end subroutine math_eigenValuesVectorsSym
+end subroutine math_eigh
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues and eigenvectors of symmetric 33 matrix m using an analytical expression
+!> @brief eigenvalues and eigenvectors of symmetric 3x3 matrix using an analytical expression
 !> and the general LAPACK powered version for arbritrary sized matrices as fallback
 !> @author Joachim Kopp, Max-Planck-Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
 ! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigenValuesVectorsSym33(m,values,vectors)
+subroutine math_eigh33(m,w,v)
 
-  real(pReal), dimension(3,3),intent(in)  :: m
-  real(pReal), dimension(3),  intent(out) :: values
-  real(pReal), dimension(3,3),intent(out) :: vectors
+  real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
+  real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
+  real(pReal), dimension(3,3),intent(out) :: v                                                      !< eigenvectors
+
   real(pReal) :: T, U, norm, threshold
   logical :: error
 
-  values = math_eigenvaluesSym33(m)
+  w = math_eigvalsh33(m)
 
-  vectors(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
-                     m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
-                     m(1, 2)**2]
+  v(1:3,2) = [ m(1, 2) * m(2, 3) - m(1, 3) * m(2, 2), &
+               m(1, 3) * m(1, 2) - m(2, 3) * m(1, 1), &
+               m(1, 2)**2]
 
-  T = maxval(abs(values))
+  T = maxval(abs(w))
   U = max(T, T**2)
   threshold = sqrt(5.68e-14_pReal * U**2)
 
- ! Calculate first eigenvector by the formula v[0] = (m - lambda[0]).e1 x (m - lambda[0]).e2
-  vectors(1:3,1) = [ vectors(1,2) + m(1, 3) * values(1), &
-                     vectors(2,2) + m(2, 3) * values(1), &
-                     (m(1,1) - values(1)) * (m(2,2) - values(1)) - vectors(3,2)]
-  norm = norm2(vectors(1:3, 1))
-
+  v(1:3,1) = [ v(1,2) + m(1, 3) * w(1), &
+               v(2,2) + m(2, 3) * w(1), &
+              (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
+  norm = norm2(v(1:3, 1))
   fallback1: if(norm < threshold) then
-    call math_eigenValuesVectorsSym(m,values,vectors,error)
-    return
+    call math_eigh(m,w,v,error)
+  else fallback1
+    v(1:3,1) = v(1:3, 1) / norm
+    v(1:3,2) = [ v(1,2) + m(1, 3) * w(2), &
+                 v(2,2) + m(2, 3) * w(2), &
+                (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
+    norm = norm2(v(1:3, 2))
+    fallback2: if(norm < threshold) then
+      call math_eigh(m,w,v,error)
+    else fallback2
+      v(1:3,2) = v(1:3, 2) / norm
+      v(1:3,3) = math_cross(v(1:3,1),v(1:3,2))
+     endif fallback2
   endif fallback1
 
-  vectors(1:3,1) = vectors(1:3, 1) / norm
+end subroutine math_eigh33
 
- ! Calculate second eigenvector by the formula v[1] = (m - lambda[1]).e1 x (m - lambda[1]).e2
-  vectors(1:3,2) = [ vectors(1,2) + m(1, 3) * values(2), &
-                     vectors(2,2) + m(2, 3) * values(2), &
-                     (m(1,1) - values(2)) * (m(2,2) - values(2)) - vectors(3,2)]
-  norm = norm2(vectors(1:3, 2))
 
-  fallback2: if(norm < threshold) then
-    call math_eigenValuesVectorsSym(m,values,vectors,error)
-    return
-  endif fallback2
-  vectors(1:3,2) = vectors(1:3, 2) / norm
-
- ! Calculate third eigenvector according to  v[2] = v[0] x v[1]
-  vectors(1:3,3) = math_cross(vectors(1:3,1),vectors(1:3,2))
-
-end subroutine math_eigenValuesVectorsSym33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvector basis of symmetric matrix m
+!> @brief rotational part from polar decomposition of 3x3 tensor
 !--------------------------------------------------------------------------------------------------
-function math_eigenvectorBasisSym(m)
-
-  real(pReal), dimension(:,:),      intent(in)  :: m
-  real(pReal), dimension(size(m,1))             :: values
-  real(pReal), dimension(size(m,1),size(m,1))   :: vectors
-  real(pReal), dimension(size(m,1),size(m,1))   :: math_eigenvectorBasisSym
-  logical :: error
-  integer :: i
-
-  math_eigenvectorBasisSym = 0.0_pReal
-  call math_eigenValuesVectorsSym(m,values,vectors,error)
-  if(error) return
-
-  do i=1, size(m,1)
-    math_eigenvectorBasisSym = math_eigenvectorBasisSym &
-                             + sqrt(values(i)) * math_outer(vectors(:,i),vectors(:,i))
-  enddo
-
-end function math_eigenvectorBasisSym
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief eigenvector basis of symmetric 33 matrix m
-!--------------------------------------------------------------------------------------------------
-pure function math_eigenvectorBasisSym33(m)
-
-  real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33
-  real(pReal), dimension(3)                :: invariants, values
-  real(pReal), dimension(3,3), intent(in) :: m
-  real(pReal) :: P, Q, rho, phi
-  real(pReal), parameter :: TOL=1.e-14_pReal
-  real(pReal), dimension(3,3,3) :: N, EB
-
-  invariants = math_invariantsSym33(m)
-  EB = 0.0_pReal
-
-  P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
-  Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
-
-  threeSimilarEigenvalues: if(all(abs([P,Q]) < TOL)) then
-    values = invariants(1)/3.0_pReal
-  ! this is not really correct, but at least the basis is correct
-    EB(1,1,1)=1.0_pReal
-    EB(2,2,2)=1.0_pReal
-    EB(3,3,3)=1.0_pReal
-  else threeSimilarEigenvalues
-    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-    phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-    values = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                              [cos(phi/3.0_pReal), &
-                               cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                               cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                              ] + invariants(1)/3.0_pReal
-    N(1:3,1:3,1) = m-values(1)*math_I3
-    N(1:3,1:3,2) = m-values(2)*math_I3
-    N(1:3,1:3,3) = m-values(3)*math_I3
-    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then
-      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((values(3)-values(1))*(values(3)-values(2)))
-      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
-    elseif(abs(values(2)-values(3)) < TOL) then twoSimilarEigenvalues
-      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((values(1)-values(2))*(values(1)-values(3)))
-      EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
-    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues
-      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((values(2)-values(1))*(values(2)-values(3)))
-      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
-    else twoSimilarEigenvalues
-      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((values(1)-values(2))*(values(1)-values(3)))
-      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((values(2)-values(1))*(values(2)-values(3)))
-      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((values(3)-values(1))*(values(3)-values(2)))
-    endif twoSimilarEigenvalues
-  endif threeSimilarEigenvalues
-
- math_eigenvectorBasisSym33 = sqrt(values(1)) * EB(1:3,1:3,1) &
-                            + sqrt(values(2)) * EB(1:3,1:3,2) &
-                            + sqrt(values(3)) * EB(1:3,1:3,3)
-
-end function math_eigenvectorBasisSym33
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief logarithm eigenvector basis of symmetric 33 matrix m
-!--------------------------------------------------------------------------------------------------
-pure function math_eigenvectorBasisSym33_log(m)
-
-  real(pReal), dimension(3,3)              :: math_eigenvectorBasisSym33_log
-  real(pReal), dimension(3)                :: invariants, values
-  real(pReal), dimension(3,3), intent(in) :: m
-  real(pReal) :: P, Q, rho, phi
-  real(pReal), parameter :: TOL=1.e-14_pReal
-  real(pReal), dimension(3,3,3) :: N, EB
-
-  invariants = math_invariantsSym33(m)
-  EB = 0.0_pReal
-
-  P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal
-  Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)
-
-  threeSimilarEigenvalues: if(all(abs([P,Q]) < TOL)) then
-    values = invariants(1)/3.0_pReal
-  ! this is not really correct, but at least the basis is correct
-    EB(1,1,1)=1.0_pReal
-    EB(2,2,2)=1.0_pReal
-    EB(3,3,3)=1.0_pReal
-  else threeSimilarEigenvalues
-    rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-    phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-    values = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                              [cos(phi/3.0_pReal), &
-                               cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                               cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                              ] + invariants(1)/3.0_pReal
-    N(1:3,1:3,1) = m-values(1)*math_I3
-    N(1:3,1:3,2) = m-values(2)*math_I3
-    N(1:3,1:3,3) = m-values(3)*math_I3
-    twoSimilarEigenvalues: if(abs(values(1)-values(2)) < TOL) then
-      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((values(3)-values(1))*(values(3)-values(2)))
-      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,3)
-    elseif(abs(values(2)-values(3)) < TOL) then twoSimilarEigenvalues
-      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((values(1)-values(2))*(values(1)-values(3)))
-      EB(1:3,1:3,2)=math_I3-EB(1:3,1:3,1)
-    elseif(abs(values(3)-values(1)) < TOL) then twoSimilarEigenvalues
-      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((values(2)-values(1))*(values(2)-values(3)))
-      EB(1:3,1:3,1)=math_I3-EB(1:3,1:3,2)
-    else twoSimilarEigenvalues
-      EB(1:3,1:3,1)=matmul(N(1:3,1:3,2),N(1:3,1:3,3))/ &
-                                                ((values(1)-values(2))*(values(1)-values(3)))
-      EB(1:3,1:3,2)=matmul(N(1:3,1:3,1),N(1:3,1:3,3))/ &
-                                                ((values(2)-values(1))*(values(2)-values(3)))
-      EB(1:3,1:3,3)=matmul(N(1:3,1:3,1),N(1:3,1:3,2))/ &
-                                                ((values(3)-values(1))*(values(3)-values(2)))
-    endif twoSimilarEigenvalues
-  endif threeSimilarEigenvalues
-
-  math_eigenvectorBasisSym33_log = log(sqrt(values(1))) * EB(1:3,1:3,1) &
-                                 + log(sqrt(values(2))) * EB(1:3,1:3,2) &
-                                 + log(sqrt(values(3))) * EB(1:3,1:3,3)
-
-end function math_eigenvectorBasisSym33_log
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief rotational part from polar decomposition of 33 tensor m
-!--------------------------------------------------------------------------------------------------
-function math_rotationalPart33(m)
+function math_rotationalPart(m)
 
   real(pReal), intent(in), dimension(3,3) :: m
-  real(pReal), dimension(3,3) :: math_rotationalPart33
+  real(pReal), dimension(3,3) :: math_rotationalPart
   real(pReal), dimension(3,3) :: U , Uinv
 
-  U = math_eigenvectorBasisSym33(matmul(transpose(m),m))
+  U = eigenvectorBasis(matmul(transpose(m),m))
   Uinv = math_inv33(U)
 
   inversionFailed: if (all(dEq0(Uinv))) then
-    math_rotationalPart33 = math_I3
+    math_rotationalPart = math_I3
     call IO_warning(650)
   else inversionFailed
-    math_rotationalPart33 = matmul(m,Uinv)
+    math_rotationalPart = matmul(m,Uinv)
   endif inversionFailed
 
-end function math_rotationalPart33
+contains
+  !--------------------------------------------------------------------------------------------------
+  !> @brief eigenvector basis of positive-definite 3x3 matrix
+  !--------------------------------------------------------------------------------------------------
+  pure function eigenvectorBasis(m)
+
+    real(pReal), dimension(3,3)             :: eigenvectorBasis
+    real(pReal), dimension(3,3), intent(in) :: m                                                      !< positive-definite matrix of which the basis is computed
+
+    real(pReal), dimension(3)               :: I, v
+    real(pReal) :: P, Q, rho, phi
+    real(pReal), parameter :: TOL=1.e-14_pReal
+    real(pReal), dimension(3,3,3) :: N, EB
+
+    I = math_invariantsSym33(m)
+
+    P = I(2)-I(1)**2.0_pReal/3.0_pReal
+    Q = -2.0_pReal/27.0_pReal*I(1)**3.0_pReal+product(I(1:2))/3.0_pReal-I(3)
+
+    threeSimilarEigVals: if(all(abs([P,Q]) < TOL)) then
+      v = I(1)/3.0_pReal
+      ! this is not really correct, but at least the basis is correct
+      EB = 0.0_pReal
+      EB(1,1,1)=1.0_pReal
+      EB(2,2,2)=1.0_pReal
+      EB(3,3,3)=1.0_pReal
+    else threeSimilarEigVals
+      rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+      phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
+      v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos((phi             )/3.0_pReal), &
+                                                 cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                                                 cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                                                ] + I(1)/3.0_pReal
+      N(1:3,1:3,1) = m-v(1)*math_I3
+      N(1:3,1:3,2) = m-v(2)*math_I3
+      N(1:3,1:3,3) = m-v(3)*math_I3
+      twoSimilarEigVals: if(abs(v(1)-v(2)) < TOL) then
+        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
+        EB(1:3,1:3,1) = math_I3-EB(1:3,1:3,3)
+        EB(1:3,1:3,2) = 0.0_pReal
+      elseif               (abs(v(2)-v(3)) < TOL) then twoSimilarEigVals
+        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
+        EB(1:3,1:3,2) = math_I3-EB(1:3,1:3,1)
+        EB(1:3,1:3,3) = 0.0_pReal
+      elseif               (abs(v(3)-v(1)) < TOL) then twoSimilarEigVals
+        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
+        EB(1:3,1:3,3) = math_I3-EB(1:3,1:3,2)
+        EB(1:3,1:3,1) = 0.0_pReal
+      else twoSimilarEigVals
+        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
+        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
+        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
+      endif twoSimilarEigVals
+    endif threeSimilarEigVals
+
+   eigenvectorBasis = sqrt(v(1)) * EB(1:3,1:3,1) &
+                    + sqrt(v(2)) * EB(1:3,1:3,2) &
+                    + sqrt(v(3)) * EB(1:3,1:3,3)
+
+  end function eigenvectorBasis
+
+end function math_rotationalPart
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Eigenvalues of symmetric matrix m
+!> @brief Eigenvalues of symmetric matrix
 ! will return NaN on error
 !--------------------------------------------------------------------------------------------------
-function math_eigenvaluesSym(m)
+function math_eigvalsh(m)
 
-  real(pReal), dimension(:,:),                  intent(in)  :: m
-  real(pReal), dimension(size(m,1))                         :: math_eigenvaluesSym
+  real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< symmetric matrix to compute eigenvalues of
+  real(pReal), dimension(size(m,1))                         :: math_eigvalsh
+
   real(pReal), dimension(size(m,1),size(m,1))               :: m_
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
@@ -1147,48 +1050,51 @@ function math_eigenvaluesSym(m)
    dsyev
 
   m_= m                                                                                             ! copy matrix to input (will be destroyed)
-  call dsyev('N','U',size(m,1),m_,size(m,1),math_eigenvaluesSym,work,size(work,1),ierr)
-  if (ierr /= 0) math_eigenvaluesSym = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
+  call dsyev('N','U',size(m,1),m_,size(m,1),math_eigvalsh,work,size(work,1),ierr)
+  if (ierr /= 0) math_eigvalsh = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
 
-end function math_eigenvaluesSym
+end function math_eigvalsh
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief eigenvalues of symmetric 33 matrix m using an analytical expression
+!> @brief eigenvalues of symmetric 3x3 matrix using an analytical expression
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details similar to http://arxiv.org/abs/physics/0610206 (DSYEVC3)
 !> but apparently more stable solution and has general LAPACK powered version for arbritrary sized
 !> matrices as fallback
 !--------------------------------------------------------------------------------------------------
-function math_eigenvaluesSym33(m)
+function math_eigvalsh33(m)
 
-  real(pReal), intent(in), dimension(3,3) :: m
-  real(pReal), dimension(3) :: math_eigenvaluesSym33,invariants
+  real(pReal), intent(in), dimension(3,3) :: m                                                      !< 3x3 symmetric matrix to compute eigenvalues of
+  real(pReal), dimension(3) :: math_eigvalsh33,I
   real(pReal) :: P, Q, rho, phi
   real(pReal), parameter :: TOL=1.e-14_pReal
 
-  invariants = math_invariantsSym33(m)                                                              ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
+  I = math_invariantsSym33(m)                                                                       ! invariants are coefficients in characteristic polynomial apart for the sign of c0 and c2 in http://arxiv.org/abs/physics/0610206
 
-  P = invariants(2)-invariants(1)**2.0_pReal/3.0_pReal                                              ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
-  Q = -2.0_pReal/27.0_pReal*invariants(1)**3.0_pReal+product(invariants(1:2))/3.0_pReal-invariants(3)! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+  P = I(2)-I(1)**2.0_pReal/3.0_pReal                                                                ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
+  Q = product(I(1:2))/3.0_pReal &
+    - 2.0_pReal/27.0_pReal*I(1)**3.0_pReal &
+    - I(3)                                                                                          ! different from http://arxiv.org/abs/physics/0610206 (this formulation was in DAMASK)
 
   if(all(abs([P,Q]) < TOL)) then
-    math_eigenvaluesSym33 = math_eigenvaluesSym(m)
+    math_eigvalsh33 = math_eigvalsh(m)
   else
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-    math_eigenvaluesSym33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                          [cos(phi/3.0_pReal), &
-                           cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                           cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                          ] + invariants(1)/3.0_pReal
+    math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
+                                                            [cos(phi/3.0_pReal), &
+                                                             cos((phi+2.0_pReal*PI)/3.0_pReal), &
+                                                             cos((phi+4.0_pReal*PI)/3.0_pReal) &
+                                                            ] &
+                    + I(1)/3.0_pReal
   endif
 
-end function math_eigenvaluesSym33
+end function math_eigvalsh33
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief invariants of symmetrix 33 matrix m
+!> @brief invariants of symmetrix 3x3 matrix
 !--------------------------------------------------------------------------------------------------
 pure function math_invariantsSym33(m)
 
@@ -1298,7 +1204,7 @@ end function math_clip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of (some) math functions
+!> @brief check correctness of some math functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 
@@ -1344,7 +1250,6 @@ subroutine unitTest
 
    if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
     call IO_error(0,ext_msg='math_exp33(math_I3,1)')
-
   if(any(dNeq(math_exp33(math_I3,256),exp(1.0_pReal)*math_I3))) &
     call IO_error(0,ext_msg='math_exp33(math_I3,256)')
 
@@ -1400,9 +1305,13 @@ subroutine unitTest
   if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert t33')
 
-  t33_2 = transpose(math_rotationalPart33(t33))
-  if(any(dNeq0(matmul(t33_2,math_rotationalPart33(t33)) - MATH_I3,tol=5.0e-4_pReal))) &
-    call IO_error(0,ext_msg='math_rotationalPart33')
+  do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
+    call random_number(t33)
+  enddo
+  t33_2 = math_rotationalPart(transpose(t33))
+  t33   = math_rotationalPart(t33)
+  if(any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
+    call IO_error(0,ext_msg='math_rotationalPart')
 
   call random_number(r)
   d = int(r*5.0_pReal) + 1

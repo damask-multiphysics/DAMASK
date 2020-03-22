@@ -1,6 +1,6 @@
 import numpy as np
 
-from . import Lambert
+from ._Lambert import ball_to_cube, cube_to_ball
 
 P = -1
 
@@ -304,7 +304,7 @@ class Rotation:
                   reciprocal = False,
                  ):
 
-        om = basis if isinstance(basis, np.ndarray) else np.array(basis).reshape((3,3))
+        om = basis if isinstance(basis, np.ndarray) else np.array(basis).reshape(3,3)
         if reciprocal:
             om = np.linalg.inv(om.T/np.pi)                                                          # transform reciprocal basis set
             orthonormal = False                                                                     # contains stretch
@@ -338,7 +338,7 @@ class Rotation:
         if not np.isclose(np.linalg.norm(ro[0:3]), 1.0):
             raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[0:3]))
         if ro[3] < 0.0:
-            raise ValueError('Rodriques rotation angle not positive.\n'.format(ro[3]))
+            raise ValueError('Rodrigues rotation angle not positive.\n'.format(ro[3]))
 
         return Rotation(Rotation.ro2qu(ro))
 
@@ -492,7 +492,7 @@ class Rotation:
 
     @staticmethod
     def qu2ro(qu):
-        """Quaternion to Rodriques-Frank vector."""
+        """Quaternion to Rodrigues-Frank vector."""
         if iszero(qu[0]):
             ro = [qu[1], qu[2], qu[3], np.inf]
         else:
@@ -567,7 +567,7 @@ class Rotation:
 
     @staticmethod
     def om2ro(om):
-        """Rotation matrix to Rodriques-Frank vector."""
+        """Rotation matrix to Rodrigues-Frank vector."""
         return Rotation.eu2ro(Rotation.om2eu(om))
 
     @staticmethod
@@ -628,7 +628,7 @@ class Rotation:
 
     @staticmethod
     def eu2ro(eu):
-        """Bunge-Euler angles to Rodriques-Frank vector."""
+        """Bunge-Euler angles to Rodrigues-Frank vector."""
         ro = Rotation.eu2ax(eu)                                                                     # convert to axis angle pair representation
         if ro[3] >= np.pi:                                                                          # Differs from original implementation. check convention 5
             ro[3] = np.inf
@@ -682,7 +682,7 @@ class Rotation:
 
     @staticmethod
     def ax2ro(ax):
-        """Axis angle pair to Rodriques-Frank vector."""
+        """Axis angle pair to Rodrigues-Frank vector."""
         if iszero(ax[3]):
             ro = [ 0.0, 0.0, P, 0.0 ]
         else:
@@ -708,7 +708,7 @@ class Rotation:
     #---------- Rodrigues-Frank vector ----------
     @staticmethod
     def ro2qu(ro):
-        """Rodriques-Frank vector to quaternion."""
+        """Rodrigues-Frank vector to quaternion."""
         return Rotation.ax2qu(Rotation.ro2ax(ro))
 
     @staticmethod
@@ -718,12 +718,12 @@ class Rotation:
 
     @staticmethod
     def ro2eu(ro):
-        """Rodriques-Frank vector to Bunge-Euler angles."""
+        """Rodrigues-Frank vector to Bunge-Euler angles."""
         return Rotation.om2eu(Rotation.ro2om(ro))
 
     @staticmethod
     def ro2ax(ro):
-        """Rodriques-Frank vector to axis angle pair."""
+        """Rodrigues-Frank vector to axis angle pair."""
         ta = ro[3]
 
         if iszero(ta):
@@ -738,7 +738,7 @@ class Rotation:
 
     @staticmethod
     def ro2ho(ro):
-        """Rodriques-Frank vector to homochoric vector."""
+        """Rodrigues-Frank vector to homochoric vector."""
         if iszero(np.sum(ro[0:3]**2.0)):
             ho = [ 0.0, 0.0, 0.0 ]
         else:
@@ -748,7 +748,7 @@ class Rotation:
 
     @staticmethod
     def ro2cu(ro):
-        """Rodriques-Frank vector to cubochoric vector."""
+        """Rodrigues-Frank vector to cubochoric vector."""
         return Rotation.ho2cu(Rotation.ro2ho(ro))
 
 
@@ -796,13 +796,13 @@ class Rotation:
 
     @staticmethod
     def ho2ro(ho):
-        """Axis angle pair to Rodriques-Frank vector."""
+        """Axis angle pair to Rodrigues-Frank vector."""
         return Rotation.ax2ro(Rotation.ho2ax(ho))
 
     @staticmethod
     def ho2cu(ho):
         """Homochoric vector to cubochoric vector."""
-        return Lambert.BallToCube(ho)
+        return ball_to_cube(ho)
 
 
     #---------- Cubochoric ----------
@@ -828,10 +828,10 @@ class Rotation:
 
     @staticmethod
     def cu2ro(cu):
-        """Cubochoric vector to Rodriques-Frank vector."""
+        """Cubochoric vector to Rodrigues-Frank vector."""
         return Rotation.ho2ro(Rotation.cu2ho(cu))
 
     @staticmethod
     def cu2ho(cu):
         """Cubochoric vector to homochoric vector."""
-        return Lambert.CubeToBall(cu)
+        return cube_to_ball(cu)

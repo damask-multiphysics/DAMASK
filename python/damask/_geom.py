@@ -8,7 +8,7 @@ from . import VTK
 from . import util
 
 
-class Geom():
+class Geom:
     """Geometry definition for grid solvers."""
 
     def __init__(self,microstructure,size,origin=[0.0,0.0,0.0],homogenization=1,comments=[]):
@@ -46,6 +46,7 @@ class Geom():
                '# microstructures:   {}'.format(len(np.unique(self.microstructure))),
                'max microstructure:  {}'.format(np.nanmax(self.microstructure)),
               ])
+
 
     def update(self,microstructure=None,size=None,origin=None,rescale=False):
         """
@@ -109,6 +110,7 @@ class Geom():
 
         return util.return_message(message)
 
+
     def set_comments(self,comments):
         """
         Replaces all existing comments.
@@ -122,6 +124,7 @@ class Geom():
         self.comments = []
         self.add_comments(comments)
 
+
     def add_comments(self,comments):
         """
         Appends comments to existing comments.
@@ -133,6 +136,7 @@ class Geom():
 
         """
         self.comments += [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
+
 
     def set_microstructure(self,microstructure):
         """
@@ -151,6 +155,7 @@ class Geom():
                 raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
             else:
                 self.microstructure = np.copy(microstructure)
+
 
     def set_size(self,size):
         """
@@ -171,6 +176,7 @@ class Geom():
             else:
                 self.size = np.array(size)
 
+
     def set_origin(self,origin):
         """
         Replaces the existing origin information.
@@ -186,6 +192,7 @@ class Geom():
                 raise ValueError('Invalid origin {}'.format(origin))
             else:
                 self.origin = np.array(origin)
+
 
     def set_homogenization(self,homogenization):
         """
@@ -203,33 +210,46 @@ class Geom():
             else:
                 self.homogenization = homogenization
 
+
     @property
     def grid(self):
         return self.get_grid()
+
+
+    @property
+    def N_microstructure(self):
+        return len(np.unique(self.microstructure))
+
 
     def get_microstructure(self):
         """Return the microstructure representation."""
         return np.copy(self.microstructure)
 
+
     def get_size(self):
         """Return the physical size in meter."""
         return np.copy(self.size)
+
 
     def get_origin(self):
         """Return the origin in meter."""
         return np.copy(self.origin)
 
+
     def get_grid(self):
         """Return the grid discretization."""
         return np.array(self.microstructure.shape)
+
 
     def get_homogenization(self):
         """Return the homogenization index."""
         return self.homogenization
 
+
     def get_comments(self):
         """Return the comments."""
         return self.comments[:]
+
 
     def get_header(self):
         """Return the full header (grid, size, origin, homogenization, comments)."""
@@ -239,6 +259,7 @@ class Geom():
         header.append('origin x {} y {} z {}'.format(*self.get_origin()))
         header.append('homogenization {}'.format(self.get_homogenization()))
         return header
+
 
     @staticmethod
     def from_file(fname):
@@ -425,8 +446,8 @@ class Geom():
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
+        #self.add_comments('geom.py:mirror v{}'.format(version)
         return self.update(ms,rescale=True)
-        #self.add_comments('tbd')
 
 
     def scale(self,grid):
@@ -439,6 +460,7 @@ class Geom():
             new grid dimension
 
         """
+        #self.add_comments('geom.py:scale v{}'.format(version)
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
@@ -449,7 +471,6 @@ class Geom():
                                                       prefilter=False
                                                      )
                           )
-        #self.add_comments('tbd')
 
 
     def clean(self,stencil=3):
@@ -466,13 +487,13 @@ class Geom():
             unique, inverse = np.unique(arr, return_inverse=True)
             return unique[np.argmax(np.bincount(inverse))]
 
+        #self.add_comments('geom.py:clean v{}'.format(version)
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
                                                           size=(stencil,)*3
                                                          ).astype(self.microstructure.dtype)
                           )
-        #self.add_comments('tbd')
 
 
     def renumber(self):
@@ -481,5 +502,5 @@ class Geom():
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
+        #self.add_comments('geom.py:renumber v{}'.format(version)
         return self.update(renumbered)
-        #self.add_comments('tbd')

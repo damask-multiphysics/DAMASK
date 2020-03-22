@@ -19,7 +19,7 @@ module subroutine plastic_none_init
     p, &
     NipcMyPhase
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_NONE_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_NONE_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_plasticity == PLASTICITY_NONE_ID)
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &

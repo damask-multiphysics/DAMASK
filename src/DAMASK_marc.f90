@@ -178,7 +178,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  use numerics
  use FEsolving
  use debug
- use mesh
+ use discretization_marc
  use CPFEM
 
  implicit none
@@ -233,8 +233,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions
 
-#include QUOTE(PASTE(./MarcInclude/concom,Marc4DAMASK))                                             ! concom is needed for inc, lovl
-#include QUOTE(PASTE(./MarcInclude/creeps,Marc4DAMASK))                                             ! creeps is needed for timinc (time increment)
+#include QUOTE(PASTE(./marc/include/concom,Marc4DAMASK))                                            ! concom is needed for inc, lovl
+#include QUOTE(PASTE(./marc/include/creeps,Marc4DAMASK))                                            ! creeps is needed for timinc (time increment)
 
  logical :: cutBack
  real(pReal), dimension(6) ::   stress
@@ -378,7 +378,7 @@ end subroutine hypela2
 subroutine flux(f,ts,n,time)
   use prec
   use thermal_conduction
-  use mesh
+  use discretization_marc
 
   implicit none
   real(pReal), dimension(6),           intent(in) :: &
@@ -408,7 +408,7 @@ subroutine uedinc(inc,incsub)
   implicit none
   integer, intent(in) :: inc, incsub
   integer, save :: inc_written
-#include QUOTE(PASTE(./MarcInclude/creeps,Marc4DAMASK))                                             ! creeps is needed for timinc (time increment)
+#include QUOTE(PASTE(./marc/include/creeps,Marc4DAMASK))                                            ! creeps is needed for timinc (time increment)
 
   if (inc > inc_written) then
     call CPFEM_results(inc,cptim)

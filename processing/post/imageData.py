@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -102,6 +102,7 @@ parser.set_defaults(label = None,
                    )
 
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.pixelsize > 1: (options.pixelsizex,options.pixelsizey) = [options.pixelsize]*2
 
@@ -112,9 +113,6 @@ if options.invert: theMap = theMap.invert()
 theColors = np.uint8(np.array(theMap.export(format = 'list',steps = 256))*255)
 
 # --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
-
 for name in filenames:
   try:
     table = damask.ASCIItable(name = name, labeled = options.label is not None, readonly = True)

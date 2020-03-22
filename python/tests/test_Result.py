@@ -27,7 +27,7 @@ class TestResult:
     def test_time_increments(self,default):
         shape = default.read_dataset(default.get_dataset_location('F'),0).shape
         default.set_by_time(0.0,20.0)
-        for i in default.iter_visible('increments'):
+        for i in default.iterate('increments'):
            assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
 
 
@@ -61,7 +61,7 @@ class TestResult:
         default.add_determinant('P')
         loc = {'P':     default.get_dataset_location('P'),
                'det(P)':default.get_dataset_location('det(P)')}
-        in_memory = np.linalg.det(default.read_dataset(loc['P'],0)).reshape((-1,1))
+        in_memory = np.linalg.det(default.read_dataset(loc['P'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['det(P)'],0)
         assert np.allclose(in_memory,in_file)
 

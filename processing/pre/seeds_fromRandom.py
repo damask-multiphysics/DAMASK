@@ -1,28 +1,17 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,random
-import numpy as np
-import damask
+import os
+import sys
 from optparse import OptionParser,OptionGroup
+
+import numpy as np
 from scipy import spatial
+
+import damask
 
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-
-# ------------------------------------------ aux functions ---------------------------------
-
-def kdtree_search(cloud, queryPoints):
-  """Find distances to nearest neighbor among cloud (N,d) for each of the queryPoints (n,d)."""
-  n = queryPoints.shape[0]
-  distances = np.zeros(n,dtype=float)
-  tree = spatial.cKDTree(cloud)
-  
-  for i in range(n):
-    distances[i], index = tree.query(queryPoints[i])
-
-  return distances
 
 
 # --------------------------------------------------------------------
@@ -30,7 +19,7 @@ def kdtree_search(cloud, queryPoints):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options', description = """
-Distribute given number of points randomly within (a fraction of) the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
+Distribute given number of points randomly within rectangular cuboid.
 Reports positions with random crystal orientations in seeds file format to STDOUT.
 
 """, version = scriptID)
@@ -39,11 +28,11 @@ parser.add_option('-N',
                   dest = 'N',
                   type = 'int', metavar = 'int',
                   help = 'number of seed points [%default]')
-parser.add_option('-f',
-                  '--fraction',
-                  dest = 'fraction',
+parser.add_option('-s',
+                  '--size',
+                  dest = 'size',
                   type = 'float', nargs = 3, metavar = 'float float float',
-                  help='fractions along x,y,z of unit cube to fill %default')
+                  help='size x,y,z of unit cube to fill %default')
 parser.add_option('-g',
                   '--grid',
                   dest = 'grid',
@@ -58,9 +47,6 @@ parser.add_option('-r',
                   '--rnd',
                   dest = 'randomSeed', type = 'int', metavar = 'int',
                   help = 'seed of random number generator [%default]')
-parser.add_option('--format',
-                  dest = 'format', type = 'string', metavar = 'string',
-                  help = 'output number format [auto]')
 
 group = OptionGroup(parser, "Laguerre Tessellation",
                    "Parameters determining shape of weight distribution of seed points"
@@ -87,8 +73,7 @@ parser.add_option_group(group)
 group = OptionGroup(parser, "Selective Seeding",
                     "More uniform distribution of seed points using Mitchell's Best Candidate Algorithm"
                    )
-group.add_option( '-s',
-                  '--selective',
+group.add_option( '--selective',
                   action = 'store_true',
                   dest   = 'selective',
                   help   = 'selective picking of seed points from random seed points')
@@ -99,12 +84,12 @@ group.add_option( '--distance',
 group.add_option( '--numCandidates',
                   dest = 'numCandidates',
                   type = 'int', metavar = 'int',
-                  help = 'size of point group to select best distance from [%default]')    
+                  help = 'size of point group to select best distance from [%default]')
 parser.add_option_group(group)
 
 parser.set_defaults(randomSeed = None,
                     grid = (16,16,16),
-                    fraction = (1.0,1.0,1.0),
+                    size = (1.0,1.0,1.0),
                     N = 20,
                     weights = False,
                     max = 0.0,
@@ -114,116 +99,67 @@ parser.set_defaults(randomSeed = None,
                     selective = False,
                     distance = 0.2,
                     numCandidates = 10,
-                    format = None,
                    )
 
 (options,filenames) = parser.parse_args()
-
-options.fraction = np.array(options.fraction)
-options.grid = np.array(options.grid)
-gridSize = options.grid.prod()
-
-if options.randomSeed is None: options.randomSeed = int(os.urandom(4).hex(), 16)
-np.random.seed(options.randomSeed)                                                                  # init random generators
-random.seed(options.randomSeed)
-
-
-# --- loop over output files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+size = np.array(options.size)
+grid = np.array(options.grid)
+np.random.seed(int(os.urandom(4).hex(),16) if options.randomSeed is None else options.randomSeed)
+
 for name in filenames:
-  try:
-    table = damask.ASCIItable(outname = name)
-  except IOError:
-    continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# --- sanity checks -------------------------------------------------------------------------
+    if options.N > np.prod(grid):
+        damask.util.croak('More seeds than grid positions.')
+        sys.exit()
+    if options.selective and options.distance < min(size/grid):
+        damask.util.croak('Distance must be larger than grid spacing.')
+        sys.exit()
+    if options.selective and options.distance**3*options.N > 0.5*np.prod(size):
+        damask.util.croak('Number of seeds for given size and distance should be < {}.'\
+                          .format(int(0.5*np.prod(size)/options.distance**3)))
 
-  remarks = []
-  errors  = []
-  if gridSize == 0:
-    errors.append('zero grid dimension for {}.'.format(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
-  if options.N > gridSize/10.:
-    remarks.append('seed count exceeds 0.1 of grid points.')
-  if options.selective and 4./3.*math.pi*(options.distance/2.)**3*options.N > 0.5:
-    remarks.append('maximum recommended seed point count for given distance is {}.{}'.
-                   format(int(3./8./math.pi/(options.distance/2.)**3)))
+    eulers = np.random.rand(options.N,3)                                                            # create random Euler triplets
+    eulers[:,0] *= 360.0                                                                            # phi_1    is uniformly distributed
+    eulers[:,1] = np.degrees(np.arccos(2*eulers[:,1]-1.0))                                          # cos(Phi) is uniformly distributed
+    eulers[:,2] *= 360.0                                                                            # phi_2    is uniformly distributed
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    sys.exit()
 
-# --- do work ------------------------------------------------------------------------------------
- 
-  grainEuler = np.random.rand(3,options.N)                                                          # create random Euler triplets
-  grainEuler[0,:] *= 360.0                                                                          # phi_1    is uniformly distributed
-  grainEuler[1,:] = np.degrees(np.arccos(2*grainEuler[1,:]-1))                                      # cos(Phi) is uniformly distributed
-  grainEuler[2,:] *= 360.0                                                                          # phi_2    is uniformly distributed
+    if not options.selective:
+        coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3)
+        seeds = coords[np.random.choice(np.prod(grid), options.N, replace=False)] \
+              + np.broadcast_to(size/grid,(options.N,3))*(np.random.rand(options.N,3)*.5-.25)       # wobble without leaving grid
+    else:
+        seeds = np.empty((options.N,3))
+        seeds[0] = np.random.random(3) * size
 
-  if not options.selective:
-    n = np.maximum(np.ones(3),np.array(options.grid*options.fraction),
-                   dtype=int,casting='unsafe')                                                      # find max grid indices within fraction
-    meshgrid = np.meshgrid(*map(np.arange,n),indexing='ij')                                         # create a meshgrid within fraction
-    coords = np.vstack((meshgrid[0],meshgrid[1],meshgrid[2])).reshape(3,n.prod()).T                 # assemble list of 3D coordinates
-    seeds = ((random.sample(list(coords),options.N)+np.random.random(options.N*3).reshape(options.N,3))\
-              / \
-             (n/options.fraction)).T                                                                # pick options.N of those, rattle position,
-                                                                                                    # and rescale to fall within fraction
-  else:
-    seeds = np.zeros((options.N,3),dtype=float)                                                     # seed positions array
-    seeds[0] = np.random.random(3)*options.grid/max(options.grid)
-    i = 1                                                                                           # start out with one given point
-    if i%(options.N/100.) < 1: damask.util.croak('.',False)
+        i = 1
+        progress = damask.util._ProgressBar(options.N,'',50)
+        while i < options.N:
+            candidates = np.random.rand(options.numCandidates,3)*np.broadcast_to(size,(options.numCandidates,3))
+            tree = spatial.cKDTree(seeds[:i])
+            distances, dev_null = tree.query(candidates)
+            best = distances.argmax()
+            if distances[best] > options.distance:                                                  # require minimum separation
+                seeds[i] = candidates[best]                                                         # maximum separation to existing point cloud
+                i += 1
+                progress.update(i)
 
-    while i < options.N:
-      candidates = np.random.random(options.numCandidates*3).reshape(options.numCandidates,3)
-      distances  = kdtree_search(seeds[:i],candidates)
-      best = distances.argmax()
-      if distances[best] > options.distance:                                                        # require minimum separation
-        seeds[i] = candidates[best]                                                                 # maximum separation to existing point cloud
-        i += 1
-        if i%(options.N/100.) < 1: damask.util.croak('.',False)
 
-    damask.util.croak('')
-    seeds = seeds.T                                                                                 # prepare shape for stacking
+    comments = [scriptID + ' ' + ' '.join(sys.argv[1:]),
+                'grid\ta {}\tb {}\tc {}'.format(*grid),
+                'size\tx {}\ty {}\tz {}'.format(*size),
+                'randomSeed\t{}'.format(options.randomSeed),
+               ]
 
-  if options.weights:
-    weights = [np.random.uniform(low = 0, high = options.max, size = options.N)] if options.max > 0.0 \
-         else [np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)]
-  else:
-    weights = []
-  seeds = np.transpose(np.vstack(tuple([seeds,
-                                        grainEuler,
-                                        np.arange(options.microstructure,
-                                                  options.microstructure + options.N),
-                                       ] + weights
-                                 )))
+    table = damask.Table(np.hstack((seeds,eulers)),{'pos':(3,),'euler':(3,)},comments)
+    table.add('microstructure',np.arange(options.microstructure,options.microstructure + options.N,dtype=int))
 
-# ------------------------------------------ assemble header ---------------------------------------
+    if options.weights:
+        weights = np.random.uniform(low = 0, high = options.max, size = options.N) if options.max > 0.0 \
+             else np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)
+        table.add('weight',weights)
 
-  table.info_clear()
-  table.info_append([
-    scriptID + ' ' + ' '.join(sys.argv[1:]),
-    "grid\ta {}\tb {}\tc {}".format(*options.grid),
-    "microstructures\t{}".format(options.N),
-    "randomSeed\t{}".format(options.randomSeed),
-    ])
-  table.labels_clear()
-  table.labels_append( ['{dim}_{label}'.format(dim = 1+k,label = 'pos')   for k in range(3)] +
-                       ['{dim}_{label}'.format(dim = 1+k,label = 'euler') for k in range(3)] + 
-                       ['microstructure'] +
-                      (['weight'] if options.weights else []))
-  table.head_write()
-  table.output_flush()
-  
-# --- write seeds information ------------------------------------------------------------
-
-  table.data = seeds
-  table.data_writeArray(fmt = options.format)
-    
-# --- output finalization --------------------------------------------------------------------------
-
-  table.close()                                                                                     # close ASCII table
+    table.to_ASCII(sys.stdout if name is None else name)

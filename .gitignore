@@ -1,6 +1,3 @@
-*.pyc
-*.hdf5
-*.xdmf
 *.bak
 *~
 .DS_Store

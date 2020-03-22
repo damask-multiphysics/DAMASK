@@ -1,9 +1,8 @@
 *.C_ref
-*.mesh
-*.outputConstitutive
-*.outputCrystallite
-*.outputHomogenization
-*.spectralOut
+*.hdf5
+*.xdmf
 *.sta
 *.vt*
+*.geom
+*.seeds
 postProc

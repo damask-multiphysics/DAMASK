@@ -3,7 +3,8 @@ import os
 import pandas as pd
 import numpy as np
 import vtk
-from vtk.util.numpy_support import numpy_to_vtk as np_to_vtk
+from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
+from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 
 from . import Table
 from . import Environment
@@ -24,11 +25,12 @@ class VTK:
         Parameters
         ----------
         geom : subclass of vtk.vtkDataSet
-          Description of geometry and topology. Valid types are vtk.vtkRectilinearGrid,
-          vtk.vtkUnstructuredGrid, or vtk.vtkPolyData.
+            Description of geometry and topology. Valid types are vtk.vtkRectilinearGrid,
+            vtk.vtkUnstructuredGrid, or vtk.vtkPolyData.
 
         """
         self.geom = geom
+
 
     @staticmethod
     def from_rectilinearGrid(grid,size,origin=np.zeros(3)):
@@ -40,23 +42,18 @@ class VTK:
         Parameters
         ----------
         grid : numpy.ndarray of shape (3) of np.dtype = int
-          Number of cells.
+            Number of cells.
         size : numpy.ndarray of shape (3)
-          Physical length.
+            Physical length.
         origin : numpy.ndarray of shape (3), optional
-          Spatial origin.
+            Spatial origin.
 
         """
-        coordArray = [vtk.vtkDoubleArray(),vtk.vtkDoubleArray(),vtk.vtkDoubleArray()]
-        for dim in [0,1,2]:
-            coords = np.linspace(origin[dim],origin[dim]+size[dim],grid[dim]+1)
-            coordArray[dim].SetArray(np_to_vtk(coords),grid[dim]+1,1)
-
         geom = vtk.vtkRectilinearGrid()
         geom.SetDimensions(*(grid+1))
-        geom.SetXCoordinates(coordArray[0])
-        geom.SetYCoordinates(coordArray[1])
-        geom.SetZCoordinates(coordArray[2])
+        geom.SetXCoordinates(np_to_vtk(np.linspace(origin[0],origin[0]+size[0],grid[0]+1),deep=True))
+        geom.SetYCoordinates(np_to_vtk(np.linspace(origin[1],origin[1]+size[1],grid[1]+1),deep=True))
+        geom.SetZCoordinates(np_to_vtk(np.linspace(origin[2],origin[2]+size[2],grid[2]+1),deep=True))
 
         return VTK(geom)
 
@@ -71,11 +68,11 @@ class VTK:
         Parameters
         ----------
         nodes : numpy.ndarray of shape (:,3)
-          Spatial position of the nodes.
+            Spatial position of the nodes.
         connectivity : numpy.ndarray of np.dtype = int
-          Cell connectivity (0-based), first dimension determines #Cells, second dimension determines #Nodes/Cell.
+            Cell connectivity (0-based), first dimension determines #Cells, second dimension determines #Nodes/Cell.
         cell_type : str
-          Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, and HEXAHEDRON.
+            Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, and HEXAHEDRON.
 
         """
         vtk_nodes = vtk.vtkPoints()
@@ -84,7 +81,7 @@ class VTK:
         cells.SetNumberOfCells(connectivity.shape[0])
         T = np.concatenate((np.ones((connectivity.shape[0],1),dtype=np.int64)*connectivity.shape[1],
                             connectivity),axis=1).ravel()
-        cells.SetCells(connectivity.shape[0],np_to_vtk(T, deep=True, array_type=vtk.VTK_ID_TYPE))
+        cells.SetCells(connectivity.shape[0],np_to_vtkIdTypeArray(T,deep=True))
 
         geom = vtk.vtkUnstructuredGrid()
         geom.SetPoints(vtk_nodes)
@@ -103,7 +100,7 @@ class VTK:
         Parameters
         ----------
         points : numpy.ndarray of shape (:,3)
-          Spatial position of the points.
+            Spatial position of the points.
 
         """
         vtk_points= vtk.vtkPoints()
@@ -123,10 +120,10 @@ class VTK:
         Parameters
         ----------
         fname : str
-          Filename for reading. Valid extensions are .vtk, .vtr, .vtu, and .vtp.
+            Filename for reading. Valid extensions are *.vtr, *.vtu, *.vtp, and *.vtk.
         dataset_type : str, optional
-          Name of the vtk.vtkDataSet subclass when opening an .vtk file. Valid types are vtkRectilinearGrid,
-          vtkUnstructuredGrid, and vtkPolyData.
+            Name of the vtk.vtkDataSet subclass when opening an *.vtk file. Valid types are vtkRectilinearGrid,
+            vtkUnstructuredGrid, and vtkPolyData.
 
         """
         ext = os.path.splitext(fname)[1]
@@ -134,11 +131,13 @@ class VTK:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(fname)
             reader.Update()
-            if 'rectilineargrid' in    dataset_type.lower():
+            if dataset_type is None:
+                raise TypeError('Dataset type for *.vtk file not given.')
+            elif dataset_type.lower().endswith('rectilineargrid'):
                 geom = reader.GetRectilinearGridOutput()
-            elif 'unstructuredgrid' in dataset_type.lower():
+            elif dataset_type.lower().endswith('unstructuredgrid'):
                 geom = reader.GetUnstructuredGridOutput()
-            elif 'polydata' in         dataset_type.lower():
+            elif dataset_type.lower().endswith('polydata'):
                 geom = reader.GetPolyDataOutput()
             else:
                 raise TypeError('Unknown dataset type for vtk file {}'.format(dataset_type))
@@ -159,7 +158,6 @@ class VTK:
         return VTK(geom)
 
 
-    # ToDo: If extension is given, check for consistency.
     def write(self,fname):
         """
         Write to file.
@@ -167,7 +165,7 @@ class VTK:
         Parameters
         ----------
         fname : str
-          Filename for writing.
+            Filename for writing.
 
         """
         if  (isinstance(self.geom,vtk.vtkRectilinearGrid)):
@@ -177,8 +175,11 @@ class VTK:
         elif(isinstance(self.geom,vtk.vtkPolyData)):
             writer = vtk.vtkXMLPolyDataWriter()
 
-        writer.SetFileName('{}.{}'.format(os.path.splitext(fname)[0],
-                                          writer.GetDefaultFileExtension()))
+        default_ext = writer.GetDefaultFileExtension()
+        name, ext = os.path.splitext(fname)
+        if ext and ext != '.'+default_ext:
+            raise ValueError('Given extension {} is not .{}'.format(ext,default_ext))
+        writer.SetFileName('{}.{}'.format(name,default_ext))
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
         writer.SetInputData(self.geom)
@@ -195,15 +196,19 @@ class VTK:
 
         if   isinstance(data,np.ndarray):
             d = np_to_vtk(num_array=data.reshape(data.shape[0],-1),deep=True)
+            if label is None:
+                raise ValueError('No label defined for numpy.ndarray')
             d.SetName(label)
             if   data.shape[0] == N_cells:
                 self.geom.GetCellData().AddArray(d)
             elif data.shape[0] == N_points:
                 self.geom.GetPointData().AddArray(d)
         elif isinstance(data,pd.DataFrame):
-            pass
+            raise NotImplementedError('pd.DataFrame')
         elif isinstance(data,Table):
-            pass
+            raise NotImplementedError('damask.Table')
+        else:
+            raise TypeError
 
 
     def __repr__(self):

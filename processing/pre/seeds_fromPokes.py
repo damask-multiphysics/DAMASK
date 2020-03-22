@@ -32,7 +32,7 @@ parser.add_option('-b', '--box',
                   help = 'bounding box as fraction in x, y, and z directions')
 parser.add_option('-x',
                   action = 'store_true',
-                  dest   = 'x', 
+                  dest   = 'x',
                   help   = 'poke 45 deg along x')
 parser.add_option('-y',
                   action = 'store_true',
@@ -53,20 +53,20 @@ options.box = np.array(options.box).reshape(3,2)
 for name in filenames:
     damask.util.report(scriptName,name)
     geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    
+
     offset =(np.amin(options.box, axis=1)*geom.grid/geom.size).astype(int)
     box    = np.amax(options.box, axis=1) \
            - np.amin(options.box, axis=1)
-  
+
     Nx = int(options.N/np.sqrt(options.N*geom.size[1]*box[1]/geom.size[0]/box[0]))
     Ny = int(options.N/np.sqrt(options.N*geom.size[0]*box[0]/geom.size[1]/box[1]))
     Nz = int(box[2]*geom.grid[2])
-  
+
     damask.util.croak('poking {} x {} x {} in box {} {} {}...'.format(Nx,Ny,Nz,*box))
-  
-    seeds = np.zeros((Nx*Ny*Nz,4),'d')
-    g     = np.zeros(3,'i')
-  
+
+    seeds = np.zeros((Nx*Ny*Nz,4))
+    g     = np.zeros(3,dtype=np.int)
+
     n = 0
     for i in range(Nx):
         for j in range(Ny):
@@ -80,16 +80,17 @@ for name in filenames:
                 if options.x: g[0] += 1
                 if options.y: g[1] += 1
                 n += 1
-        
-  
+
+
     comments = geom.comments \
              + [scriptID + ' ' + ' '.join(sys.argv[1:]),
-                "poking\ta {}\tb {}\tc {}".format(Nx,Ny,Nz),
-                "grid\ta {}\tb {}\tc {}".format(*geom.grid),
-                "size\tx {}\ty {}\tz {}".format(*geom.size),
-                "origin\tx {}\ty {}\tz {}".format(*geom.origin),
-                "homogenization\t{}".format(geom.homogenization)]
-  
+                'poking\ta {}\tb {}\tc {}'.format(Nx,Ny,Nz),
+                'grid\ta {}\tb {}\tc {}'.format(*geom.grid),
+                'size\tx {}\ty {}\tz {}'.format(*geom.size),
+                'origin\tx {}\ty {}\tz {}'.format(*geom.origin),
+                'homogenization\t{}'.format(geom.homogenization)]
+
     table = damask.Table(seeds,{'pos':(3,),'microstructure':(1,)},comments)
+    table.set('microstructure',table.get('microstructure').astype(np.int))
     table.to_ASCII(sys.stdout if name is None else \
                    os.path.splitext(name)[0]+'_poked_{}.seeds'.format(options.N))

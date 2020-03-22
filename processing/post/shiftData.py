@@ -43,9 +43,7 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    for i,label in enumerate(options.labels):
-        table.set(label,
-                  table.get(label)+float(options.offset[i]),
-                  scriptID+' '+' '.join(sys.argv[1:]))
+    for label,offset in zip(options.labels,options.offset):
+        table.set(label,table.get(label)+float(offset),scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)

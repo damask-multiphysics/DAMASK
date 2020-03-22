@@ -17,36 +17,19 @@ module numerics
  private
 
  integer, protected, public :: &
-   iJacoStiffness             =  1, &                                                              !< frequency of stiffness update
-   nMPstate                   = 10, &                                                              !< materialpoint state loop limit
-   randomSeed                 =  0, &                                                              !< fixed seeding for pseudo-random number generator, Default 0: use random seed
-   worldrank                  =  0, &                                                              !< MPI worldrank (/=0 for MPI simulations only)
-   worldsize                  =  1, &                                                              !< MPI worldsize (/=1 for MPI simulations only)
-   numerics_integrator        =  1                                                                 !< method used for state integration Default 1: fix-point iteration
+   iJacoStiffness             =  1, &                                                               !< frequency of stiffness update
+   randomSeed                 =  0, &                                                               !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+   worldrank                  =  0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
+   worldsize                  =  1, &                                                               !< MPI worldsize (/=1 for MPI simulations only)
+   numerics_integrator        =  1                                                                  !< method used for state integration Default 1: fix-point iteration
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
    defgradTolerance           =  1.0e-7_pReal, &                                                    !< deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
-   subStepMinHomog            =  1.0e-3_pReal, &                                                    !< minimum (relative) size of sub-step allowed during cutback in homogenization
-   subStepSizeHomog           =  0.25_pReal, &                                                      !< size of first substep when cutback in homogenization
-   stepIncreaseHomog          =  1.5_pReal, &                                                       !< increase of next substep size when previous substep converged in homogenization
    numerics_unitlength        =  1.0_pReal, &                                                       !< determines the physical length of one computational length unit
-   absTol_RGC                 =  1.0e+4_pReal, &                                                    !< absolute tolerance of RGC residuum
-   relTol_RGC                 =  1.0e-3_pReal, &                                                    !< relative tolerance of RGC residuum
-   absMax_RGC                 =  1.0e+10_pReal, &                                                   !< absolute maximum of RGC residuum
-   relMax_RGC                 =  1.0e+2_pReal, &                                                    !< relative maximum of RGC residuum
-   pPert_RGC                  =  1.0e-7_pReal, &                                                    !< perturbation for computing RGC penalty tangent
-   xSmoo_RGC                  =  1.0e-5_pReal, &                                                    !< RGC penalty smoothing parameter (hyperbolic tangent)
-   viscPower_RGC              =  1.0e+0_pReal, &                                                    !< power (sensitivity rate) of numerical viscosity in RGC scheme, Default 1.0e0: Newton viscosity (linear model)
-   viscModus_RGC              =  0.0e+0_pReal, &                                                    !< stress modulus of RGC numerical viscosity, Default 0.0e0: No viscosity is applied
-   refRelaxRate_RGC           =  1.0e-3_pReal, &                                                    !< reference relaxation rate in RGC viscosity
-   maxdRelax_RGC              =  1.0e+0_pReal, &                                                    !< threshold of maximum relaxation vector increment (if exceed this then cutback)
-   maxVolDiscr_RGC            =  1.0e-5_pReal, &                                                    !< threshold of maximum volume discrepancy allowed
-   volDiscrMod_RGC            =  1.0e+12_pReal, &                                                   !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
-   volDiscrPow_RGC            =  5.0_pReal, &                                                       !< powerlaw penalty for volume discrepancy
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
-   residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage   
- logical, protected, public :: &                                                   
+   residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage
+ logical, protected, public :: &
    usePingPong                = .true.
 
 !--------------------------------------------------------------------------------------------------
@@ -74,9 +57,8 @@ module numerics
    err_curl_tolRel            =  5.0e-4_pReal, &                                                    !< relative tolerance for compatibility
    err_stress_tolAbs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC
    err_stress_tolRel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC
-   rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
-   polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
-   polarBeta                  =  1.0_pReal                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme 
+   polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
+   polarBeta                  =  1.0_pReal                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
  character(len=pStringLen), protected, public :: &
    petsc_options              = ''
 #endif
@@ -87,26 +69,14 @@ module numerics
  integer, protected, public :: &
    integrationOrder           =  2, &                                                              !< order of quadrature rule required
    structOrder                =  2                                                                 !< order of displacement shape functions
- logical, protected, public :: & 
-   BBarStabilisation          = .false.                                                  
- character(len=*), parameter, public :: &
-   petsc_defaultOptions    = '-mech_snes_type newtonls &
-                             &-mech_snes_linesearch_type cp &
-                             &-mech_snes_ksp_ew &
-                             &-mech_snes_ksp_ew_rtol0 0.01 &
-                             &-mech_snes_ksp_ew_rtolmax 0.01 &
-                             &-mech_ksp_type fgmres &
-                             &-mech_ksp_max_it 25 &
-                             &-mech_pc_type ml &
-                             &-mech_mg_levels_ksp_type chebyshev &
-                             &-mech_mg_levels_pc_type sor &
-                             &-mech_pc_ml_nullspace user'
+ logical, protected, public :: &
+   BBarStabilisation          = .false.
  character(len=pStringLen), protected, public :: &
    petsc_options           = ''
 #endif
 
  public :: numerics_init
-  
+
 contains
 
 
@@ -130,7 +100,7 @@ subroutine numerics_init
  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
 #endif
  write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
- 
+
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
 !$   call IO_warning(35,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
@@ -140,15 +110,15 @@ subroutine numerics_init
 !$   if (DAMASK_NumThreadsInt < 1_4) DAMASK_NumThreadsInt = 1_4                                     ! in case of string conversion fails, set it to one
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
- 
+
  inquire(file='numerics.config', exist=fexist)
- 
+
  fileExists: if (fexist) then
    write(6,'(a,/)') ' using values from config file'
    flush(6)
-   fileContent = IO_read_ASCII('numerics.config') 
+   fileContent = IO_read_ASCII('numerics.config')
    do j=1, size(fileContent)
-   
+
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
      line = fileContent(j)
@@ -164,49 +134,12 @@ subroutine numerics_init
          defgradTolerance = IO_floatValue(line,chunkPos,2)
        case ('ijacostiffness')
          iJacoStiffness = IO_intValue(line,chunkPos,2)
-       case ('nmpstate')
-         nMPstate = IO_intValue(line,chunkPos,2)
-       case ('substepminhomog')
-         subStepMinHomog = IO_floatValue(line,chunkPos,2)
-       case ('substepsizehomog')
-         subStepSizeHomog = IO_floatValue(line,chunkPos,2)
-       case ('stepincreasehomog')
-         stepIncreaseHomog = IO_floatValue(line,chunkPos,2)
        case ('integrator')
          numerics_integrator = IO_intValue(line,chunkPos,2)
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2) > 0
        case ('unitlength')
          numerics_unitlength = IO_floatValue(line,chunkPos,2)
-
-!--------------------------------------------------------------------------------------------------
-! RGC parameters
-       case ('atol_rgc')
-         absTol_RGC = IO_floatValue(line,chunkPos,2)
-       case ('rtol_rgc')
-         relTol_RGC = IO_floatValue(line,chunkPos,2)
-       case ('amax_rgc')
-         absMax_RGC = IO_floatValue(line,chunkPos,2)
-       case ('rmax_rgc')
-         relMax_RGC = IO_floatValue(line,chunkPos,2)
-       case ('perturbpenalty_rgc')
-         pPert_RGC = IO_floatValue(line,chunkPos,2)
-       case ('relevantmismatch_rgc')
-         xSmoo_RGC = IO_floatValue(line,chunkPos,2)
-       case ('viscositypower_rgc')
-         viscPower_RGC = IO_floatValue(line,chunkPos,2)
-       case ('viscositymodulus_rgc')
-         viscModus_RGC = IO_floatValue(line,chunkPos,2)
-       case ('refrelaxationrate_rgc')
-         refRelaxRate_RGC = IO_floatValue(line,chunkPos,2)
-       case ('maxrelaxation_rgc')
-         maxdRelax_RGC = IO_floatValue(line,chunkPos,2)
-       case ('maxvoldiscrepancy_rgc')
-         maxVolDiscr_RGC = IO_floatValue(line,chunkPos,2)
-       case ('voldiscrepancymod_rgc')
-         volDiscrMod_RGC = IO_floatValue(line,chunkPos,2)
-       case ('discrepancypower_rgc')
-         volDiscrPow_RGC = IO_floatValue(line,chunkPos,2)
 
 !--------------------------------------------------------------------------------------------------
 ! random seeding parameter
@@ -280,8 +213,6 @@ subroutine numerics_init
 #endif
      end select
    enddo
-
-
  else fileExists
    write(6,'(a,/)') ' using standard values'
    flush(6)
@@ -295,26 +226,6 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')     ' integrator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
-
- write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
- write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
- write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
- write(6,'(a24,1x,i8,/)')   ' nMPstate:               ',nMPstate
-
-!--------------------------------------------------------------------------------------------------
-! RGC parameters
- write(6,'(a24,1x,es8.1)')   ' aTol_RGC:               ',absTol_RGC
- write(6,'(a24,1x,es8.1)')   ' rTol_RGC:               ',relTol_RGC
- write(6,'(a24,1x,es8.1)')   ' aMax_RGC:               ',absMax_RGC
- write(6,'(a24,1x,es8.1)')   ' rMax_RGC:               ',relMax_RGC
- write(6,'(a24,1x,es8.1)')   ' perturbPenalty_RGC:     ',pPert_RGC
- write(6,'(a24,1x,es8.1)')   ' relevantMismatch_RGC:   ',xSmoo_RGC
- write(6,'(a24,1x,es8.1)')   ' viscosityrate_RGC:      ',viscPower_RGC
- write(6,'(a24,1x,es8.1)')   ' viscositymodulus_RGC:   ',viscModus_RGC
- write(6,'(a24,1x,es8.1)')   ' maxrelaxation_RGC:      ',maxdRelax_RGC
- write(6,'(a24,1x,es8.1)')   ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
- write(6,'(a24,1x,es8.1)')   ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
- write(6,'(a24,1x,es8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
 
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
@@ -363,35 +274,17 @@ subroutine numerics_init
 #ifdef FEM
  write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
  write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_defaultOptions)//' '//trim(petsc_options)
+ write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
  write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
- 
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
  if (defgradTolerance <= 0.0_pReal)        call IO_error(301,ext_msg='defgradTolerance')
  if (iJacoStiffness < 1)                   call IO_error(301,ext_msg='iJacoStiffness')
- if (nMPstate < 1)                         call IO_error(301,ext_msg='nMPstate')
- if (subStepMinHomog <= 0.0_pReal)         call IO_error(301,ext_msg='subStepMinHomog')
- if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301,ext_msg='subStepSizeHomog')
- if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301,ext_msg='stepIncreaseHomog')
  if (numerics_integrator <= 0 .or. numerics_integrator >= 6) &
                                            call IO_error(301,ext_msg='integrator')
  if (numerics_unitlength <= 0.0_pReal)     call IO_error(301,ext_msg='unitlength')
- if (absTol_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='absTol_RGC')
- if (relTol_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='relTol_RGC')
- if (absMax_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='absMax_RGC')
- if (relMax_RGC <= 0.0_pReal)              call IO_error(301,ext_msg='relMax_RGC')
- if (pPert_RGC <= 0.0_pReal)               call IO_error(301,ext_msg='pPert_RGC')
- if (xSmoo_RGC <= 0.0_pReal)               call IO_error(301,ext_msg='xSmoo_RGC')
- if (viscPower_RGC < 0.0_pReal)            call IO_error(301,ext_msg='viscPower_RGC')
- if (viscModus_RGC < 0.0_pReal)            call IO_error(301,ext_msg='viscModus_RGC')
- if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(301,ext_msg='refRelaxRate_RGC')
- if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(301,ext_msg='maxdRelax_RGC')
- if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301,ext_msg='maxVolDiscr_RGC')
- if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301,ext_msg='volDiscrMod_RGC')
- if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301,ext_msg='volDiscrPw_RGC')
  if (residualStiffness < 0.0_pReal)        call IO_error(301,ext_msg='residualStiffness')
  if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1)         call IO_error(301,ext_msg='itmin')

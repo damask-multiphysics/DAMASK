@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
+import os
+import sys
+import math
+import random
+from io import StringIO
 from optparse import OptionParser
-import damask
-import os,sys,math,random
+
 import numpy as np
+
+import damask
+
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -223,54 +229,29 @@ parser.set_defaults(randomSeed = None,
                    )
 
 (options,filenames) = parser.parse_args()
-
-nSamples       = options.number
-methods        = [options.algorithm]
-
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name, readonly=True)
-  except IOError:
-    continue
   damask.util.report(scriptName,name)
+  
+  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  randomSeed = int(os.urandom(4).hex(), 16)  if options.randomSeed is None else options.randomSeed         # random seed per file for second phase
+  randomSeed = int(os.urandom(4).hex(),16)  if options.randomSeed is None else options.randomSeed  # random seed per file
   random.seed(randomSeed)
 
-# ------------------------------------------ read header and data ---------------------------------
-  table.head_read()
-
-  errors = []
-  labels = ['1_euler','2_euler','3_euler','intensity']
-  for i,index in enumerate(table.label_index(labels)):
-    if index < 0: errors.append('label {} not present.'.format(labels[i]))
-  
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-  table.data_readArray(labels)
-
 # --------------- figure out limits (left/right), delta, and interval -----------------------------
-
   ODF = {}
-  limits = np.array([np.min(table.data[:,0:3],axis=0),
-                     np.max(table.data[:,0:3],axis=0)])                                             # min/max euler angles in degrees
+  eulers = table.get('euler')
+  limits = np.array([np.min(eulers,axis=0),np.max(eulers,axis=0)])                                  # min/max euler angles in degrees
   ODF['limit'] = np.radians(limits[1,:])                                                            # right hand limits in radians
   ODF['center'] = 0.0 if all(limits[0,:]<1e-8) else 0.5                                             # vertex or cell centered
 
-  ODF['interval'] = np.array(list(map(len,[np.unique(table.data[:,i]) for i in range(3)])),'i')     # steps are number of distict values
+  ODF['interval'] = np.array(list(map(len,[np.unique(eulers[:,i]) for i in range(3)])),'i')         # steps are number of distict values
   ODF['nBins'] = ODF['interval'].prod()
   ODF['delta'] = np.radians(np.array(limits[1,0:3]-limits[0,0:3])/(ODF['interval']-1))              # step size
 
-  if table.data.shape[0] != ODF['nBins']:
-    damask.util.croak('expecting %i values but got %i'%(ODF['nBins'],table.data.shape[0]))
+  if eulers.shape[0] != ODF['nBins']:
+    damask.util.croak('expecting %i values but got %i'%(ODF['nBins'],eulers.shape[0]))
     continue
   
 # ----- build binnedODF array and normalize ------------------------------------------------------
@@ -278,9 +259,10 @@ for name in filenames:
   ODF['dV_V'] = [None]*ODF['nBins']
   ODF['nNonZero'] = 0
   dg = ODF['delta'][0]*2.0*math.sin(ODF['delta'][1]/2.0)*ODF['delta'][2]
+  intensity = table.get('intensity')
   for b in range(ODF['nBins']):
     ODF['dV_V'][b] = \
-      max(0.0,table.data[b,table.label_index('intensity')]) * dg * \
+      max(0.0,intensity[b,0]) * dg * \
       math.sin(((b//ODF['interval'][2])%ODF['interval'][1]+ODF['center'])*ODF['delta'][1])
     if ODF['dV_V'][b] > 0.0:
       sumdV_V += ODF['dV_V'][b]
@@ -296,11 +278,10 @@ for name in filenames:
                'Reference Integral: %12.11f\n'%(ODF['limit'][0]*ODF['limit'][2]*(1-math.cos(ODF['limit'][1]))),
                ])
                                                      
-# call methods
   Functions = {'IA': 'directInversion', 'STAT': 'TothVanHoutteSTAT', 'MC': 'MonteCarloBins'}
   method = Functions[options.algorithm]
 
-  Orientations, ReconstructedODF = (globals()[method])(ODF,nSamples)
+  Orientations, ReconstructedODF = (globals()[method])(ODF,options.number)
   
 # calculate accuracy of sample
   squaredDiff     = {'orig':0.0,method:0.0}
@@ -319,7 +300,7 @@ for name in filenames:
   indivSum['orig'] += ODF['dV_V'][bin]
   indivSquaredSum['orig'] += ODF['dV_V'][bin]**2
   
-  damask.util.croak(['sqrt(N*)RMSD of ODFs:\t %12.11f'% math.sqrt(nSamples*squaredDiff[method]),
+  damask.util.croak(['sqrt(N*)RMSD of ODFs:\t %12.11f'% math.sqrt(options.number*squaredDiff[method]),
                'RMSrD of ODFs:\t %12.11f'%math.sqrt(squaredRelDiff[method]),
                'rMSD of ODFs:\t %12.11f'%(squaredDiff[method]/indivSquaredSum['orig']),
                'nNonZero correlation slope:\t %12.11f'\
@@ -331,10 +312,10 @@ for name in filenames:
                         (indivSquaredSum[method]/ODF['nNonZero']-(indivSum[method]/ODF['nNonZero'])**2)))),
               ])
   
-  if method == 'IA' and nSamples < ODF['nNonZero']:
+  if method == 'IA' and options.number < ODF['nNonZero']:
     strOpt = '(%i)'%ODF['nNonZero']
   
-  formatwidth = 1+int(math.log10(nSamples))
+  formatwidth = 1+int(math.log10(options.number))
 
   materialConfig = [
       '#' + scriptID + ' ' + ' '.join(sys.argv[1:]),
@@ -344,7 +325,7 @@ for name in filenames:
       '#-------------------#',
       ]
   
-  for i,ID in enumerate(range(nSamples)):
+  for i,ID in enumerate(range(options.number)):
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
                       '(constituent)   phase %i   texture %s   fraction 1.0'%(options.phase,str(ID+1).rjust(formatwidth)),
                      ]
@@ -355,7 +336,7 @@ for name in filenames:
       '#-------------------#',
       ]
 
-  for ID in range(nSamples):
+  for ID in range(options.number):
     eulers = Orientations[ID]
   
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
@@ -364,7 +345,5 @@ for name in filenames:
 
 #--- output finalization -------------------------------------------------------------------------- 
 
-  with (open(os.path.splitext(name)[0]+'_'+method+'_'+str(nSamples)+'_material.config','w')) as outfile:
+  with (open(os.path.splitext(name)[0]+'_'+method+'_'+str(options.number)+'_material.config','w')) as outfile:
     outfile.write('\n'.join(materialConfig)+'\n')
-
-  table.close()

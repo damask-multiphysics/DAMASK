@@ -5,39 +5,39 @@ import numpy as np
 
 from . import version
 
-class Table():
+class Table:
     """Store spreadsheet-like data."""
-  
+
     def __init__(self,data,shapes,comments=None):
         """
         New spreadsheet.
-        
+
         Parameters
         ----------
         data : numpy.ndarray or pandas.DataFrame
             Data. Column labels from a pandas.DataFrame will be replaced.
         shapes : dict with str:tuple pairs
-            Shapes of the columns. Example 'F':(3,3) for a deformation gradient. 
+            Shapes of the columns. Example 'F':(3,3) for a deformation gradient.
         comments : iterable of str, optional
             Additional, human-readable information.
-        
+
         """
         self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
         self.shapes = shapes
-        self.__label_condensed()
+        self._label_condensed()
 
 
-    def __label_flat(self):
+    def _label_flat(self):
         """Label data individually, e.g. v v v ==> 1_v 2_v 3_v."""
         labels = []
         for label,shape in self.shapes.items():
             size = int(np.prod(shape))
             labels += ['{}{}'.format('' if size == 1 else '{}_'.format(i+1),label) for i in range(size)]
         self.data.columns = labels
-        
-        
-    def __label_condensed(self):
+
+
+    def _label_condensed(self):
         """Label data condensed, e.g. 1_v 2_v 3_v ==> v v v."""
         labels = []
         for label,shape in self.shapes.items():
@@ -45,19 +45,19 @@ class Table():
         self.data.columns = labels
 
 
-    def __add_comment(self,label,shape,info):
+    def _add_comment(self,label,shape,info):
         if info is not None:
-            self.comments.append('{}{}: {}'.format(label,
-                                                   ' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',
-                                                   info))
+            c = '{}{}: {}'.format(label,' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',info)
+            self.comments.append(c)
 
-    
+
     @staticmethod
     def from_ASCII(fname):
         """
         Create table from ASCII file.
 
-        The first line needs to indicate the number of subsequent header lines as 'n header'.
+        The first line can indicate the number of subsequent header lines as 'n header',
+        alternatively first line is the header and comments are marked by '#' ('new style').
         Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
         Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
 
@@ -88,7 +88,7 @@ class Table():
                 comments.append(line.lstrip('#').strip())
                 line = f.readline().strip()
             labels = line.split()
-       
+
         shapes = {}
         for label in labels:
             tensor_column = re.search(r'[0-9,x]*?:[0-9]*?_',label)
@@ -101,7 +101,7 @@ class Table():
                     shapes[label.split('_',1)[1]] = (int(label.split('_',1)[0]),)
                 else:
                     shapes[label] = (1,)
-        
+
         data = pd.read_csv(f,names=list(range(len(labels))),sep=r'\s+')
 
         return Table(data,shapes,comments)
@@ -133,7 +133,7 @@ class Table():
         except TypeError:
             f = fname
             f.seek(0)
-        
+
         content = f.readlines()
 
         comments = ['table.py:from_ang v {}'.format(version)]
@@ -142,7 +142,7 @@ class Table():
                 comments.append(line.strip())
             else:
                 break
-       
+
         data = np.loadtxt(content)
         for c in range(data.shape[1]-10):
             shapes['n/a_{}'.format(c+1)] = (1,)
@@ -167,8 +167,8 @@ class Table():
         """
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
-            data = self.data[key].to_numpy()[:,int(idx)-1].reshape((-1,1))
-        else: 
+            data = self.data[key].to_numpy()[:,int(idx)-1].reshape(-1,1)
+        else:
             data = self.data[label].to_numpy().reshape((-1,)+self.shapes[label])
 
         return data.astype(type(data.flatten()[0]))
@@ -188,13 +188,13 @@ class Table():
             Human-readable information about the new data.
 
         """
-        self.__add_comment(label,data.shape[1:],info)
+        self._add_comment(label,data.shape[1:],info)
 
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
             iloc = self.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
             self.data.iloc[:,iloc] = data
-        else: 
+        else:
             self.data[label]       = data.reshape(self.data[label].shape)
 
 
@@ -212,7 +212,7 @@ class Table():
             Human-readable information about the modified data.
 
         """
-        self.__add_comment(label,data.shape[1:],info)
+        self._add_comment(label,data.shape[1:],info)
 
         self.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
         size = np.prod(data.shape[1:],dtype=int)
@@ -251,12 +251,8 @@ class Table():
 
         """
         self.data.rename(columns={label_old:label_new},inplace=True)
-
-        self.comments.append('{} => {}{}'.format(label_old,
-                                                 label_new,
-                                                 '' if info is None else ': {}'.format(info),
-                                                 ))
-
+        c = '{} => {}{}'.format(label_old,label_new,'' if info is None else ': {}'.format(info))
+        self.comments.append(c)
         self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
@@ -272,9 +268,9 @@ class Table():
             Set sort order.
 
         """
-        self.__label_flat()
+        self._label_flat()
         self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
-        self.__label_condensed()
+        self._label_condensed()
         self.comments.append('sorted by [{}]'.format(', '.join(labels)))
 
 
@@ -287,7 +283,7 @@ class Table():
         Parameters
         ----------
         other : Table
-            Table to append
+            Table to append.
 
         """
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
@@ -305,7 +301,7 @@ class Table():
         Parameters
         ----------
         other : Table
-            Table to join
+            Table to join.
 
         """
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
@@ -316,14 +312,16 @@ class Table():
                 self.shapes[key] = other.shapes[key]
 
 
-    def to_ASCII(self,fname,new=False):
+    def to_ASCII(self,fname,new_style=False):
         """
         Store as plain text file.
 
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file for writing.
+        new_style : Boolean, optional
+            Write table in new style, indicating header lines by comment sign ('#') only.
 
         """
         seen = set()
@@ -338,7 +336,7 @@ class Table():
                 labels += ['{}:{}_{}'.format('x'.join([str(d) for d in self.shapes[l]]),i+1,l) \
                           for i in range(np.prod(self.shapes[l]))]
 
-        if new:
+        if new_style:
             header = ['# {}'.format(comment) for comment in self.comments]
         else:
             header = ['{} header'.format(len(self.comments)+1)] \

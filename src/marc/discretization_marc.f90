@@ -5,7 +5,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Sets up the mesh for the solver MSC.Marc
 !--------------------------------------------------------------------------------------------------
-module mesh
+module discretization_marc
   use IO
   use prec
   use math
@@ -37,7 +37,7 @@ module mesh
     mesh_FEM2DAMASK_node                                                                             !< DAMASK node ID for Marc node ID
 
   public :: &
-    mesh_init
+    discretization_marc_init
  
 contains
 
@@ -45,7 +45,7 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init(ip,el)
+subroutine discretization_marc_init(ip,el)
 
   integer, intent(in) :: el, ip
    
@@ -114,7 +114,7 @@ subroutine mesh_init(ip,el)
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   call geometry_plastic_nonlocal_results
   
-end subroutine mesh_init
+end subroutine discretization_marc_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1118,4 +1118,4 @@ logical function containsRange(str,chunkPos)
 end function containsRange
 
 
-end module mesh
+end module discretization_marc

@@ -1,37 +1,25 @@
 """Main aggregator."""
-import os
-import re
+import os as _os
+import re as _re
 
 name = 'damask'
-with open(os.path.join(os.path.dirname(__file__),'VERSION')) as f:
-    version = re.sub(r'^v','',f.readline().strip())
+with open(_os.path.join(_os.path.dirname(__file__),'VERSION')) as _f:
+    version = _re.sub(r'^v','',_f.readline().strip())
 
 # classes
-from .environment import Environment      # noqa
-from .table       import Table            # noqa
-from .ktv         import VTK              # noqa
-from .colormaps   import Colormap, Color  # noqa
-from .rotation    import Rotation         # noqa
-from .lattice     import Symmetry, Lattice# noqa
-from .orientation import Orientation      # noqa
-from .result      import Result           # noqa
-from .geom        import Geom             # noqa
-from .solver      import Solver           # noqa
-
-# compatibility hack
-from .result      import Result as DADF5  # noqa
+from ._environment import Environment      # noqa
+from ._table       import Table            # noqa
+from ._vtk         import VTK              # noqa
+from ._colormaps   import Colormap, Color  # noqa
+from ._rotation    import Rotation         # noqa
+from ._lattice     import Symmetry, Lattice# noqa
+from ._orientation import Orientation      # noqa
+from ._result      import Result           # noqa
+from ._geom        import Geom             # noqa
+from .             import solver           # noqa
 
 # deprecated
-from .asciitable  import ASCIItable       # noqa
-from .util        import extendableOption # noqa
-from .config      import Material         # noqa
-from .test        import Test             # noqa
-
-# functions in modules
-from .            import mechanics        # noqa
-from .            import grid_filters     # noqa
-
-# clean temporary variables
-del os
-del re
-del f
+from ._asciitable  import ASCIItable       # noqa
+from ._test        import Test             # noqa
+from .config       import Material         # noqa
+from .util         import extendableOption # noqa

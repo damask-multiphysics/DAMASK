@@ -9,13 +9,11 @@ file(GLOB damask-sources *.f90 *.c)
 # probably we should have a subfolder for MSC.Marc
 list(FILTER damask-sources EXCLUDE REGEX ".*CPFEM.f90")
 list(FILTER damask-sources EXCLUDE REGEX ".*DAMASK_marc.*.f90")
-list(FILTER damask-sources EXCLUDE REGEX ".*mesh_marc.*.f90")
 list(FILTER damask-sources EXCLUDE REGEX ".*commercialFEM_fileList.*.f90")
 
 
 if (PROJECT_NAME STREQUAL "damask-grid")
 
-      list(FILTER damask-sources EXCLUDE REGEX ".*mesh_FEM.*.f90")
       file(GLOB grid-sources grid/*.f90)
 
       if(NOT CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
@@ -30,7 +28,6 @@ if (PROJECT_NAME STREQUAL "damask-grid")
 
 elseif (PROJECT_NAME STREQUAL "damask-mesh")
       
-      list(FILTER damask-sources EXCLUDE REGEX ".*mesh_grid.*.f90")
       file(GLOB mesh-sources mesh/*.f90)
 
       add_executable(DAMASK_FEM ${damask-sources} ${mesh-sources})

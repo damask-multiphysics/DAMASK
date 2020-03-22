@@ -1,11 +1,10 @@
-# -*- coding: UTF-8 no BOM -*-
-
 import re
 import os
 
 
 class Section():
   def __init__(self,data = {'__order__':[]},part = ''):
+    """New material.config section."""
     classes = {
                 'homogenization':Homogenization,
                 'microstructure':Microstructure,
@@ -35,26 +34,31 @@ class Section():
 
 class Homogenization(Section):
   def __init__(self,data = {'__order__':[]}):
+    """New material.config <homogenization> section."""
     Section.__init__(self,data)
 
 
 class Crystallite(Section):
   def __init__(self,data = {'__order__':[]}):
+    """New material.config <crystallite> section."""
     Section.__init__(self,data)
   
 
 class Phase(Section):
   def __init__(self,data = {'__order__':[]}):
+    """New material.config <Phase> section."""
     Section.__init__(self,data)
   
 
 class Microstructure(Section):
   def __init__(self,data = {'__order__':[]}):
+    """New material.config <microstructure> section."""
     Section.__init__(self,data)
   
   
 class Texture(Section):
   def __init__(self,data = {'__order__':[]}):
+    """New material.config <texture> section."""
     Section.__init__(self,data)
     
   def add_component(self,theType,properties):
@@ -79,10 +83,10 @@ class Texture(Section):
 
  
 class Material():
-  """Reads, manipulates and writes material.config files"""
+  """Read, manipulate, and write material.config files."""
 
   def __init__(self,verbose=True):
-    """Generates ordered list of parts"""
+    """Generates ordered list of parts."""
     self.parts = [
              'homogenization',
              'crystallite',
@@ -100,7 +104,7 @@ class Material():
     self.verbose = verbose
            
   def __repr__(self):
-    """Returns current data structure in material.config format"""
+    """Returns current data structure in material.config format."""
     me = []
     for part in self.parts:
       if self.verbose: print('processing <{}>'.format(part))
@@ -158,9 +162,9 @@ class Material():
 
 
   def read(self,filename=None):
-    """Reads material.config file"""
+    """Read material.config file."""
     def recursiveRead(filename):
-      """Takes care of include statements like '{}'"""
+      """Takes care of include statements like '{}'."""
       result = []
       re_include  = re.compile(r'^{(.+)}$')
       with open(filename) as f: lines = f.readlines()
@@ -176,7 +180,7 @@ class Material():
       self.parse(part=p, content=c)
       
   def write(self,filename='material.config', overwrite=False):
-    """Writes to material.config"""
+    """Write to material.config."""
     i = 0
     outname = filename
     while os.path.exists(outname) and not overwrite:
@@ -189,7 +193,7 @@ class Material():
     return outname
 
   def add_section(self, part=None, section=None, initialData=None, merge=False):
-    """adding/updating"""
+    """Add Update."""
     part    = part.lower()
     section = section.lower()
     if part not in self.parts: raise Exception('invalid part {}'.format(part))

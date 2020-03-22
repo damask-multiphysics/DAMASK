@@ -14,11 +14,9 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def __init__(self,
-               name    = None,
-               outname = None,
-               buffered  = False,                                                                   # is ignored, only exists for compatibility reasons
-               labeled   = True,                                                                    # assume table has labels
-               readonly  = False,                                                                   # no reading from file
+               name,
+               labeled  = True,                                                                     # assume table has labels
+               readonly = False,                                                                    # no reading from file
               ):
     """Read and write to ASCII tables."""
     self.__IO__ = {'output': [],
@@ -27,8 +25,9 @@ class ASCIItable():
                    'dataStart': 0,
                   }
 
-    self.__IO__['inPlace'] = not outname and name and not readonly
-    if self.__IO__['inPlace']: outname = name + self.tmpext                                         # transparently create tmp file
+    self.__IO__['inPlace'] = name and not readonly
+    outname = name + self.tmpext if self.__IO__['inPlace'] else None                                # transparently create tmp file
+
     try:
       self.__IO__['in'] = (open(   name,'r') if os.access(   name, os.R_OK) else None) if name else sys.stdin
     except TypeError:
@@ -165,42 +164,6 @@ class ASCIItable():
       if len(self.tags) == 0: raise ValueError('no labels present.')
 
     return self.output_write(head)
-
-# ------------------------------------------------------------------
-  def head_getGeom(self):
-    """Interpret geom header."""
-    identifiers = {
-            'grid':    ['a','b','c'],
-            'size':    ['x','y','z'],
-            'origin':  ['x','y','z'],
-              }
-    mappings = {
-            'grid':            lambda x: int(x),
-            'size':            lambda x: float(x),
-            'origin':          lambda x: float(x),
-              }
-    info = {
-            'grid':            np.zeros(3,'i'),
-            'size':            np.zeros(3,'d'),
-            'origin':          np.zeros(3,'d'),
-           }
-    extra_header = []
-
-    for header in self.info:
-      headitems = list(map(str.lower,header.split()))
-      if len(headitems) == 0: continue                                                              # skip blank lines
-      if headitems[0] in list(mappings.keys()):
-        if headitems[0] in list(identifiers.keys()):
-          for i in range(len(identifiers[headitems[0]])):
-            info[headitems[0]][i] = \
-              mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
-        else:
-          info[headitems[0]] = mappings[headitems[0]](headitems[1])
-      else:
-        extra_header.append(header)
-
-    return info,extra_header
-
 
 # ------------------------------------------------------------------
   def labels_append(self,
@@ -424,29 +387,26 @@ class ASCIItable():
     return labels_missing
 
 # ------------------------------------------------------------------
-  def data_write(self,
-                 delimiter = '\t'):
+  def data_write(self):
     """Write current data array and report alive output back."""
     if len(self.data) == 0: return True
 
     if isinstance(self.data[0],list):
-      return self.output_write([delimiter.join(map(self._quote,items)) for items in self.data])
+      return self.output_write(['\t'.join(map(self._quote,items)) for items in self.data])
     else:
-      return self.output_write( delimiter.join(map(self._quote,self.data)))
+      return self.output_write( '\t'.join(map(self._quote,self.data)))
 
 # ------------------------------------------------------------------
-  def data_writeArray(self,
-                      fmt = None,
-                      delimiter = '\t'):
+  def data_writeArray(self):
     """Write whole numpy array data."""
     for row in self.data:
       try:
-        output = [fmt % value for value in row] if fmt else list(map(repr,row))
+        output = list(map(repr,row))
       except Exception:
-        output = [fmt % row] if fmt else [repr(row)]
+        output = [repr(row)]
 
       try:
-        self.__IO__['out'].write(delimiter.join(output) + '\n')
+        self.__IO__['out'].write('\t'.join(output) + '\n')
       except Exception:
         pass
 

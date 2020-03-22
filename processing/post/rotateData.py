@@ -2,9 +2,8 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
-
-import numpy as np
 
 import damask
 
@@ -40,65 +39,25 @@ parser.set_defaults(rotation = (1.,1.,1.,0),                                    
                    )
                     
 (options,filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
 if options.data is None:
   parser.error('no data column specified.')
 
-r = damask.Rotation.fromAxisAngle(np.array(options.rotation),options.degrees,normalise=True)
-
-# --- loop over input files -------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
+r = damask.Rotation.fromAxisAngle(options.rotation,options.degrees,normalise=True)
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name)
-  except IOError:
-    continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
+    
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-# --- interpret header ----------------------------------------------------------------------------
+    for data in options.data:
+        d = table.get(data)
+        if table.shapes[data] == (9,): d=d.reshape(-1,3,3)
+        for i,l in enumerate(d):
+            d[i] = r*l
+        if table.shapes[data] == (9,): d=d.reshape(-1,9)
+        
+        table.set(data,d,scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.head_read()
-
-  errors  = []
-  remarks = []
-  active  = {'vector':[],'tensor':[]}
-
-  for i,dim in enumerate(table.label_dimension(options.data)):
-    label = options.data[i]
-    if dim == -1:
-      remarks.append('"{}" not found...'.format(label))
-    elif dim ==  3:
-      remarks.append('adding vector "{}"...'.format(label))
-      active['vector'].append(label)
-    elif dim ==  9:
-      remarks.append('adding tensor "{}"...'.format(label))
-      active['tensor'].append(label)
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header --------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for v in active['vector']:
-      column = table.label_index(v)
-      table.data[column:column+3] = r * np.array(list(map(float,table.data[column:column+3])))
-    for t in active['tensor']:
-      column = table.label_index(t)
-      table.data[column:column+9] = (r * np.array(list(map(float,table.data[column:column+9]))).reshape((3,3))).reshape(9)
-      
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
+    table.to_ASCII(sys.stdout if name is None else name)

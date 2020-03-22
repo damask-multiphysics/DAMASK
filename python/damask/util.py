@@ -47,9 +47,9 @@ def srepr(arg,glue = '\n'):
     Parameters
     ----------
     arg : iterable
-      Items to join.
+        Items to join.
     glue : str, optional
-      Defaults to \n.
+        Defaults to \n.
 
     """
     if (not hasattr(arg, "strip") and
@@ -66,12 +66,12 @@ def croak(what, newline = True):
     Parameters
     ----------
     what : str or iterable
-      Content to be displayed
+        Content to be displayed.
     newline : bool, optional
-      Separate items of what by newline. Defaults to True.
+        Separate items of what by newline. Defaults to True.
 
     """
-    if not what:
+    if what is not None:
         sys.stderr.write(srepr(what,glue = '\n') + ('\n' if newline else ''))
     sys.stderr.flush()
 
@@ -117,13 +117,13 @@ def execute(cmd,
     Parameters
     ----------
     cmd : str
-      Command to be executed.
+        Command to be executed.
     streanIn :, optional
-      Input (via pipe) for executed process.
+        Input (via pipe) for executed process.
     wd : str, optional
-      Working directory of process. Defaults to ./ .
-    env :
-      Environment
+        Working directory of process. Defaults to ./ .
+    env : dict, optional
+        Environment for execution.
 
     """
     initialPath = os.getcwd()
@@ -140,7 +140,7 @@ def execute(cmd,
     error = error.decode('utf-8').replace('\x08','')
     os.chdir(initialPath)
     if process.returncode != 0:
-      raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
+        raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
     return out,error
 
 
@@ -158,11 +158,11 @@ class extendableOption(Option):
     ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
 
     def take_action(self, action, dest, opt, value, values, parser):
-      if action == "extend":
-        lvalue = value.split(",")
-        values.ensure_value(dest, []).extend(lvalue)
-      else:
-        Option.take_action(self, action, dest, opt, value, values, parser)
+        if action == "extend":
+            lvalue = value.split(",")
+            values.ensure_value(dest, []).extend(lvalue)
+        else:
+            Option.take_action(self, action, dest, opt, value, values, parser)
 
 
 class _ProgressBar:
@@ -179,11 +179,11 @@ class _ProgressBar:
         Parameters
         ----------
         total : int
-          Total # of iterations.
+            Total # of iterations.
         prefix : str
-          Prefix string.
+            Prefix string.
         bar_length : int
-          Character length of bar.
+            Character length of bar.
 
         """
         self.total = total
@@ -224,13 +224,13 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
     Parameters
     ----------
     iterable : iterable/function with yield statement
-      Iterable (or function with yield statement) to be decorated.
+        Iterable (or function with yield statement) to be decorated.
     N_iter : int
-      Total # of iterations. Needed if number of iterations can not be obtained as len(iterable).
+        Total # of iterations. Needed if number of iterations can not be obtained as len(iterable).
     prefix : str, optional.
-      Prefix string.
+        Prefix string.
     bar_length : int, optional
-      Character length of bar. Defaults to 50.
+        Character length of bar. Defaults to 50.
 
     """
     status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
@@ -238,7 +238,7 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
     for i,item in enumerate(iterable):
         yield item
         status.update(i)
- 
+
 
 def scale_to_coprime(v):
     """Scale vector to co-prime (relatively prime) integers."""
@@ -258,7 +258,7 @@ def scale_to_coprime(v):
     return m//reduce(np.gcd,m)
 
 
-class return_message():
+class return_message:
     """Object with formatted return message."""
 
     def __init__(self,message):
@@ -268,7 +268,7 @@ class return_message():
         Parameters
         ----------
         message : str or list of str
-          message for output to screen
+            message for output to screen
 
         """
         self.message = message

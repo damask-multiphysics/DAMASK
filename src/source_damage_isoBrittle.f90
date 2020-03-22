@@ -24,8 +24,7 @@ module source_damage_isoBrittle
   type, private :: tParameters                                                                      !< container type for internal constitutive parameters
     real(pReal) :: &
       critStrainEnergy, &
-      N, &
-      aTol
+      N
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -48,7 +47,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine source_damage_isoBrittle_init
 
-  integer :: Ninstance,sourceOffset,NofMyPhase,p
+  integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
@@ -74,30 +73,27 @@ subroutine source_damage_isoBrittle_init
     associate(prm => param(source_damage_isoBrittle_instance(p)), &
               config => config_phase(p))
 
-    prm%aTol             = config%getFloat('isobrittle_atol',defaultVal = 1.0e-3_pReal)
+    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+
     prm%N                = config%getFloat('isobrittle_n')
     prm%critStrainEnergy = config%getFloat('isobrittle_criticalstrainenergy')
 
     ! sanity checks
-    if (prm%aTol             <  0.0_pReal) extmsg = trim(extmsg)//' isobrittle_atol'
     if (prm%N                <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
     if (prm%critStrainEnergy <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
 
-!--------------------------------------------------------------------------------------------------
-!  exit if any parameter is out of range
-    if (extmsg /= '') &
-      call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISOBRITTLE_LABEL//')')
-
-!--------------------------------------------------------------------------------------------------
-!  output pararameters
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
-
-    NofMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NofMyPhase,1,1,1)
-    sourceState(p)%p(sourceOffset)%aTolState=prm%aTol
+    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,1)
+    sourceState(p)%p(sourceOffset)%atol = config%getFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
+    if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 
     end associate
-  enddo
+
+!--------------------------------------------------------------------------------------------------
+!  exit if any parameter is out of range
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISOBRITTLE_LABEL//')')
+
+enddo
 
 end subroutine source_damage_isoBrittle_init
 

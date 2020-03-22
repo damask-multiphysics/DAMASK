@@ -50,11 +50,9 @@ for name in filenames:
         if options.rh: v[np.linalg.det(v) < 0.0,:,2] *= -1.0
 
         for i,o in enumerate(['Min','Mid','Max']):
-            table.add('eigval{}({})'.format(o,tensor),u[:,i],
-                      scriptID+' '+' '.join(sys.argv[1:]))
+            table.add('eigval{}({})'.format(o,tensor),u[:,i],  scriptID+' '+' '.join(sys.argv[1:]))
 
         for i,o in enumerate(['Min','Mid','Max']):
-            table.add('eigvec{}({})'.format(o,tensor),v[:,:,i],
-                      scriptID+' '+' '.join(sys.argv[1:]))
+            table.add('eigvec{}({})'.format(o,tensor),v[:,:,i],scriptID+' '+' '.join(sys.argv[1:]))
         
     table.to_ASCII(sys.stdout if name is None else name)

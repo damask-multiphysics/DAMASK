@@ -25,7 +25,7 @@ module discretization
     discretization_NodeCoords
     
   integer :: &
-    discretization_sharedNodesBeginn
+    discretization_sharedNodesBegin
 
   public :: &
     discretization_init, &
@@ -40,7 +40,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_init(homogenizationAt,microstructureAt,&
                                IPcoords0,NodeCoords0,&
-                               sharedNodesBeginn)
+                               sharedNodesBegin)
 
   integer,     dimension(:),   intent(in) :: &
     homogenizationAt, &
@@ -49,7 +49,7 @@ subroutine discretization_init(homogenizationAt,microstructureAt,&
     IPcoords0, &
     NodeCoords0
   integer, optional,           intent(in) :: &
-    sharedNodesBeginn
+    sharedNodesBegin
 
   write(6,'(/,a)') ' <<<+-  discretization init  -+>>>'; flush(6)
 
@@ -65,10 +65,10 @@ subroutine discretization_init(homogenizationAt,microstructureAt,&
   discretization_NodeCoords0 = NodeCoords0
   discretization_NodeCoords  = NodeCoords0
   
-  if(present(sharedNodesBeginn)) then
-    discretization_sharedNodesBeginn = sharedNodesBeginn
+  if(present(sharedNodesBegin)) then
+    discretization_sharedNodesBegin = sharedNodesBegin
   else
-    discretization_sharedNodesBeginn = size(discretization_NodeCoords0,2)
+    discretization_sharedNodesBegin = size(discretization_NodeCoords0,2)
   endif
   
 end subroutine discretization_init
@@ -83,8 +83,8 @@ subroutine discretization_results
   
   call results_closeGroup(results_addGroup('current/geometry'))
   
-  u = discretization_NodeCoords (1:3,:discretization_sharedNodesBeginn) &
-    - discretization_NodeCoords0(1:3,:discretization_sharedNodesBeginn)
+  u = discretization_NodeCoords (1:3,:discretization_sharedNodesBegin) &
+    - discretization_NodeCoords0(1:3,:discretization_sharedNodesBegin)
   call results_writeDataset('current/geometry',u,'u_n','displacements of the nodes','m')
   
   u = discretization_IPcoords &

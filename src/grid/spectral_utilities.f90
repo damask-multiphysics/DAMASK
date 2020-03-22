@@ -9,10 +9,11 @@ module spectral_utilities
   use PETScSys
 
   use prec
+  use DAMASK_interface
   use math
   use rotations
   use IO
-  use mesh_grid
+  use discretization_grid
   use numerics
   use debug
   use config
@@ -26,12 +27,11 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! field labels information
-  enum, bind(c)
-    enumerator :: &
-      FIELD_UNDEFINED_ID, &
-      FIELD_MECH_ID, &
-      FIELD_THERMAL_ID, &
-      FIELD_DAMAGE_ID
+  enum, bind(c); enumerator :: &
+    FIELD_UNDEFINED_ID, &
+    FIELD_MECH_ID, &
+    FIELD_THERMAL_ID, &
+    FIELD_DAMAGE_ID
   end enum
 
 !--------------------------------------------------------------------------------------------------
@@ -125,11 +125,10 @@ module spectral_utilities
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  enum, bind(c)
-    enumerator :: &
-      DERIVATIVE_CONTINUOUS_ID, &
-      DERIVATIVE_CENTRAL_DIFF_ID, &
-      DERIVATIVE_FWBW_DIFF_ID
+  enum, bind(c); enumerator :: &
+    DERIVATIVE_CONTINUOUS_ID, &
+    DERIVATIVE_CENTRAL_DIFF_ID, &
+    DERIVATIVE_FWBW_DIFF_ID
   end enum
 
   integer(kind(DERIVATIVE_CONTINUOUS_ID)) :: &
@@ -430,7 +429,7 @@ end subroutine utilities_updateGamma
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTtensorForward
 
-  tensorField_real(1:3,1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
+  tensorField_real(1:3,1:3,grid(1)+1:grid1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planTensorForth,tensorField_real,tensorField_fourier)
 
 end subroutine utilities_FFTtensorForward
@@ -454,7 +453,7 @@ end subroutine utilities_FFTtensorBackward
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTscalarForward
 
-  scalarField_real(grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
+  scalarField_real(grid(1)+1:grid1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planScalarForth,scalarField_real,scalarField_fourier)
 
 end subroutine utilities_FFTscalarForward
@@ -479,7 +478,7 @@ end subroutine utilities_FFTscalarBackward
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_FFTvectorForward
 
-  vectorField_real(1:3,grid(1)+1:grid1Red*2,:,:) = cmplx(0.0,0.0,pReal)
+  vectorField_real(1:3,grid(1)+1:grid1Red*2,:,:) = 0.0_pReal
   call fftw_mpi_execute_dft_r2c(planVectorForth,vectorField_real,vectorField_fourier)
 
 end subroutine utilities_FFTvectorForward
@@ -1030,7 +1029,7 @@ subroutine utilities_updateCoords(F)
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid1Red
     if(any([i,j,k+grid3Offset] /= 1)) then
       vectorField_fourier(1:3,i,j,k) = matmul(tensorField_fourier(1:3,1:3,i,j,k),xi2nd(1:3,i,j,k)) &
-                                     / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * wgt
+                                     / sum(conjg(-xi2nd(1:3,i,j,k))*xi2nd(1:3,i,j,k)) * cmplx(wgt,0.0,pReal)
     else
       vectorField_fourier(1:3,i,j,k) = cmplx(0.0,0.0,pReal)
     endif
@@ -1082,7 +1081,7 @@ subroutine utilities_updateCoords(F)
  ! calculate cell center displacements
   do k = 1,grid3; do j = 1,grid(2); do i = 1,grid(1)
     IPcoords(1:3,i,j,k) = vectorField_real(1:3,i,j,k) &
-                        + matmul(Favg,step*real([i,j,k+grid3Offset]-0.5_pReal,pReal))
+                        + matmul(Favg,step*(real([i,j,k+grid3Offset],pReal)-0.5_pReal))
   enddo; enddo; enddo
 
   call discretization_setNodeCoords(reshape(NodeCoords,[3,(grid(1)+1)*(grid(2)+1)*(grid3+1)]))
@@ -1101,7 +1100,7 @@ subroutine utilities_saveReferenceStiffness
 
   if (worldrank == 0) then
     write(6,'(a)') ' writing reference stiffness data required for restart to file'; flush(6)
-    fileUnit = IO_open_jobFile_binary('C_ref','w')
+    fileUnit = IO_open_binary(trim(getSolverJobName())//'.C_ref','w')
     write(fileUnit) C_ref
     close(fileUnit)
   endif

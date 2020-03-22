@@ -86,13 +86,13 @@ for name in filenames:
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     for defgrad in options.defgrad:
-        F = table.get(defgrad).reshape((-1,3,3))
+        F = table.get(defgrad).reshape(-1,3,3)
         for theStretch in stretches:
             for theStrain in strains:
                 (t,m) = parameters(theStretch,theStrain)
                 label = '{}({}){}'.format(theStrain,theStretch,defgrad if defgrad != 'f' else '')
                 table.add(label,
-                          damask.mechanics.strain_tensor(F,t,m).reshape((-1,9)),
+                          damask.mechanics.strain_tensor(F,t,m).reshape(-1,9),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)

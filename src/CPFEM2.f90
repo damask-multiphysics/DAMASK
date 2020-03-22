@@ -21,11 +21,11 @@ module CPFEM2
   use homogenization
   use constitutive
   use crystallite
-#ifdef FEM
-  use FEM_Zoo
-  use mesh
-#else
-  use mesh_grid
+#if    defined(FEM)
+  use FEM_quadrature
+  use discretization_mesh
+#elif defined(Grid)
+  use discretization_grid
 #endif
 
   implicit none
@@ -43,7 +43,7 @@ subroutine CPFEM_initAll
   call prec_init
   call IO_init
 #ifdef FEM
-  call FEM_Zoo_init
+  call FEM_quadrature_init
 #endif
   call numerics_init
   call debug_init
@@ -53,7 +53,11 @@ subroutine CPFEM_initAll
   call lattice_init
   call HDF5_utilities_init
   call results_init
-  call mesh_init
+#if    defined(FEM)
+  call discretization_mesh_init
+#elif defined(Grid)
+  call discretization_grid_init
+#endif
   call material_init
   call constitutive_init
   call crystallite_init
@@ -68,7 +72,7 @@ end subroutine CPFEM_initAll
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
 
-  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  CPFEM init  -+>>>'; flush(6)
 
   if (interface_restartInc > 0) call crystallite_restartRead
 

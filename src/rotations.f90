@@ -1222,7 +1222,7 @@ end function cu2ho
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of (some) rotations functions
+!> @brief check correctness of some rotations functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
   

@@ -3,6 +3,8 @@
 import os
 import sys
 import multiprocessing
+from io import StringIO
+from functools import partial
 from optparse import OptionParser,OptionGroup
 
 import numpy as np
@@ -15,73 +17,40 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def laguerreTessellation(undeformed, coords, weights, grains, periodic = True, cpus = 2):
+def findClosestSeed(seeds, weights, point):
+    return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
 
-  def findClosestSeed(fargs):
-    point, seeds, myWeights = fargs
-    tmp = np.repeat(point.reshape(3,1), len(seeds), axis=1).T
-    dist = np.sum((tmp - seeds)**2,axis=1) -myWeights
-    return np.argmin(dist)                                                                          # seed point closest to point
 
-  copies = \
-    np.array([
-              [ -1,-1,-1 ],
-              [  0,-1,-1 ],
-              [  1,-1,-1 ],
-              [ -1, 0,-1 ],
-              [  0, 0,-1 ],
-              [  1, 0,-1 ],
-              [ -1, 1,-1 ],
-              [  0, 1,-1 ],
-              [  1, 1,-1 ],
-              [ -1,-1, 0 ],
-              [  0,-1, 0 ],
-              [  1,-1, 0 ],
-              [ -1, 0, 0 ],
-              [  0, 0, 0 ],
-              [  1, 0, 0 ],
-              [ -1, 1, 0 ],
-              [  0, 1, 0 ],
-              [  1, 1, 0 ],
-              [ -1,-1, 1 ],
-              [  0,-1, 1 ],
-              [  1,-1, 1 ],
-              [ -1, 0, 1 ],
-              [  0, 0, 1 ],
-              [  1, 0, 1 ],
-              [ -1, 1, 1 ],
-              [  0, 1, 1 ],
-              [  1, 1, 1 ],
-             ]).astype(float)*info['size'] if periodic else \
-    np.array([
-              [  0, 0, 0 ],
-             ]).astype(float)
+def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
 
-  repeatweights = np.tile(weights,len(copies)).flatten(order='F')                                   # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
-  for i,vec in enumerate(copies):                                                                   # periodic copies of seed points ...
-    try: seeds = np.append(seeds, coords+vec, axis=0)                                               # ... (1+a,2+a,3+a,...,1+z,2+z,3+z)
-    except NameError: seeds = coords+vec
-
-  if (repeatweights == 0.0).all():                                                                  # standard Voronoi (no weights, KD tree)
-    myKDTree = spatial.cKDTree(seeds)
-    devNull,closestSeeds = myKDTree.query(undeformed)
-  else:
-    damask.util.croak('...using {} cpu{}'.format(options.cpus, 's' if options.cpus > 1 else ''))
-    arguments = [[arg,seeds,repeatweights] for arg in list(undeformed)]
-
-    if cpus > 1:                                                                                    # use multithreading
-      pool = multiprocessing.Pool(processes = cpus)                                                 # initialize workers
-      result = pool.map_async(findClosestSeed, arguments)                                           # evaluate function in parallel
-      pool.close()
-      pool.join()
-      closestSeeds = np.array(result.get()).flatten()
+    if periodic:
+        weights_p = np.tile(weights,27).flatten(order='F')                                          # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+        seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
+        seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
+        seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
     else:
-      closestSeeds = np.zeros(len(arguments),dtype='i')
-      for i,arg in enumerate(arguments):
-        closestSeeds[i] = findClosestSeed(arg)
+        weights_p = weights.flatten()
+        seeds_p   = seeds
 
-# closestSeed is modulo number of original seed points (i.e. excluding periodic copies)
-  return grains[closestSeeds%coords.shape[0]]
+    if cpus > 1:
+        default_args = partial(findClosestSeed,seeds_p,weights_p)
+        pool = multiprocessing.Pool(processes = cpus)                                               # initialize workers
+        result = pool.map_async(default_args, [point for point in grid])                            # evaluate function in parallel
+        pool.close()
+        pool.join()
+        closestSeeds = np.array(result.get()).flatten()
+    else:
+        closestSeeds= np.array([findClosestSeed(seeds_p,weights_p,point) for point in grid])
+
+    return grains[closestSeeds%seeds.shape[0]]
+
+
+def Voronoi_tessellation(grid, seeds, grains, size, periodic = True):
+
+    KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
+    devNull,closestSeeds = KDTree.query(grid)
+
+    return grains[closestSeeds]
 
 
 # --------------------------------------------------------------------
@@ -123,16 +92,12 @@ group.add_option('-s',
                  '--size',
                  dest = 'size',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                 help = 'x,y,z size of hexahedral box')
+                 help = 'x,y,z size of hexahedral box [1.0 1.0 1.0]')
 group.add_option('-o',
                  '--origin',
                  dest = 'origin',
                  type = 'float', nargs = 3, metavar=' '.join(['float']*3),
-                 help = 'origin of grid')
-group.add_option('--nonnormalized',
-                 dest = 'normalized',
-                 action = 'store_false',
-                 help = 'seed coordinates are not normalized to a unit cube')
+                 help = 'origin of grid [0.0 0.0 0.0]')
 
 parser.add_option_group(group)
 
@@ -191,114 +156,73 @@ parser.set_defaults(pos            = 'pos',
                     cpus           = 2,
                     laguerre       = False,
                     periodic       = True,
-                    normalized     = True,
                     config         = True,
                   )
 
 (options,filenames) = parser.parse_args()
-
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-  table = damask.ASCIItable(name = name, readonly = True)
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
+    size   = np.ones(3)
+    origin = np.zeros(3)
+    for line in table.comments:
+        items = line.lower().strip().split()
+        key = items[0] if items else ''
+        if   key == 'grid':
+            grid   = np.array([  int(dict(zip(items[1::2],items[2::2]))[i]) for i in ['a','b','c']])
+        elif key == 'size':
+            size   = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
+        elif key == 'origin':
+            origin = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
+    if options.grid:   grid   = np.array(options.grid)
+    if options.size:   size   = np.array(options.size)
+    if options.origin: origin = np.array(options.origin)
 
-# --- read header ----------------------------------------------------------------------------
+    seeds  = table.get(options.pos)
 
-  table.head_read()
-  info,extra_header = table.head_getGeom()
+    grains = table.get(options.microstructure) if options.microstructure in table.labels else np.arange(len(seeds))+1
+    grainIDs  = np.unique(grains).astype('i')
+    NgrainIDs = len(grainIDs)
 
-  if options.grid   is not None: info['grid']   = options.grid
-  if options.size   is not None: info['size']   = options.size
-  if options.origin is not None: info['origin'] = options.origin
+    if options.eulers in table.labels:
+        eulers = table.get(options.eulers)
 
-# ------------------------------------------ sanity checks ---------------------------------------
+    coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
 
-  remarks = []
-  errors = []
-  labels = []
+    if options.laguerre:
+        indices = Laguerre_tessellation(coords,seeds,grains,size,options.periodic,
+                                        table.get(options.weight),options.cpus)
+    else:
+        indices = Voronoi_tessellation (coords,seeds,grains,size,options.periodic)
 
-  hasGrains  = table.label_dimension(options.microstructure) == 1
-  hasEulers  = table.label_dimension(options.eulers) == 3
-  hasWeights = table.label_dimension(options.weight) == 1 and options.laguerre
+    config_header = []
+    if options.config:
 
-  for i in range(3):
-    if info['size'][i] <= 0.0:                                                                        # any invalid size?
-      info['size'][i] = float(info['grid'][i])/max(info['grid'])                                      # normalize to grid
-      remarks.append('rescaling size {} to {}...'.format(['x','y','z'][i],info['size'][i]))
+        if options.eulers in table.labels:
+            config_header += ['<texture>']
+            for ID in grainIDs:
+                eulerID = np.nonzero(grains == ID)[0][0]                                            # find first occurrence of this grain id
+                config_header += ['[Grain{}]'.format(ID),
+                                  '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*eulers[eulerID])
+                                 ]
+                if options.axes: config_header += ['axes\t{} {} {}'.format(*options.axes)]
 
-  if table.label_dimension(options.pos) != 3:
-    errors.append('seed positions "{}" have dimension {}.'.format(options.pos,
-                                                                  table.label_dimension(options.pos)))
-  else:
-    labels += [options.pos]
+        config_header += ['<microstructure>']
+        for ID in grainIDs:
+            config_header += ['[Grain{}]'.format(ID),
+                              '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,ID)
+                             ]
 
-  if not options.normalized:               remarks.append('using real-space seed coordinates...')
-  if not hasEulers:                        remarks.append('missing seed orientations...')
-  else: labels += [options.eulers]
-  if not hasGrains:                        remarks.append('missing seed microstructure indices...')
-  else: labels += [options.microstructure]
-  if options.laguerre and not hasWeights:  remarks.append('missing seed weights...')
-  else: labels += [options.weight]
+        config_header += ['<!skip>']
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors != []:
-    damask.util.croak(errors)
-    table.close(dismiss=True)
-    continue
+    header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
+           + config_header
+    geom = damask.Geom(indices.reshape(grid),size,origin,
+                       homogenization=options.homogenization,comments=header)
+    damask.util.croak(geom)
 
-# ------------------------------------------ read seeds ---------------------------------------
-
-  table.data_readArray(labels)
-  coords    = table.data[:,table.label_indexrange(options.pos)] * info['size'] if options.normalized \
-        else  table.data[:,table.label_indexrange(options.pos)] - info['origin']
-  eulers    = table.data[:,table.label_indexrange(options.eulers)] if hasEulers \
-              else np.zeros(3*len(coords))
-  grains    = table.data[:,table.label_indexrange(options.microstructure)].astype(int) if hasGrains \
-              else 1+np.arange(len(coords))
-  weights   = table.data[:,table.label_indexrange(options.weight)] if hasWeights \
-              else np.zeros(len(coords))
-  grainIDs  = np.unique(grains).astype('i')
-  NgrainIDs = len(grainIDs)
-
-# --- tessellate microstructure ------------------------------------------------------------
-
-  x = (np.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
-  y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
-  z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
-  X,Y,Z = np.meshgrid(x, y, z,indexing='ij')
-  grid = np.stack((X,Y,Z),axis=-1).reshape((np.prod(info['grid']),3),order='F')
-
-  damask.util.croak('tessellating...')
-  indices = laguerreTessellation(grid, coords, weights, grains, options.periodic, options.cpus)
-
-  config_header = []
-  if options.config:
-
-    if hasEulers:
-      config_header += ['<texture>']
-      for ID in grainIDs:
-        eulerID = np.nonzero(grains == ID)[0][0]                                                    # find first occurrence of this grain id
-        config_header += ['[Grain{}]'.format(ID),
-                          '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*eulers[eulerID])
-                         ]
-        if options.axes is not None: config_header += ['axes\t{} {} {}'.format(*options.axes)]
-
-    config_header += ['<microstructure>']
-    for ID in grainIDs:
-      config_header += ['[Grain{}]'.format(ID),
-                        '(constituent)\tphase {}\ttexture {}\tfraction 1.0'.format(options.phase,ID)
-                       ]
-
-    config_header += ['<!skip>']
-
-  header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
-         + config_header
-  geom = damask.Geom(indices.reshape(info['grid'],order='F'),info['size'],info['origin'],
-                     homogenization=options.homogenization,comments=header)
-  damask.util.croak(geom)
-
-  geom.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',pack=False)
+    geom.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',pack=False)

@@ -381,14 +381,14 @@ module lattice
       ],pReal),shape(ORT_SYSTEMCLEAVAGE))
 
 
-  enum, bind(c)
-    enumerator :: lattice_UNDEFINED_ID, &
-                  lattice_ISO_ID, &
-                  lattice_FCC_ID, &
-                  lattice_BCC_ID, &
-                  lattice_BCT_ID, &
-                  lattice_HEX_ID, &
-                  lattice_ORT_ID
+  enum, bind(c); enumerator :: &
+    lattice_UNDEFINED_ID, &
+    lattice_ISO_ID, &
+    lattice_FCC_ID, &
+    lattice_BCC_ID, &
+    lattice_BCT_ID, &
+    lattice_HEX_ID, &
+    lattice_ORT_ID
   end enum
 
 ! SHOULD NOT BE PART OF LATTICE BEGIN
@@ -502,15 +502,10 @@ subroutine lattice_init
 
     lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),structure)
 
-    ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-    lattice_mu(p) = 0.2_pReal *(lattice_C66(1,1,p) -lattice_C66(1,2,p) +3.0_pReal*lattice_C66(4,4,p))
-
-    ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-    lattice_nu(p) = (          lattice_C66(1,1,p) +4.0_pReal*lattice_C66(1,2,p) -2.0_pReal*lattice_C66(4,4,p)) &
-                  / (4.0_pReal*lattice_C66(1,1,p) +6.0_pReal*lattice_C66(1,2,p) +2.0_pReal*lattice_C66(4,4,p))
+    lattice_mu(p) = equivalent_mu(lattice_C66(1:6,1:6,p),'voigt')
+    lattice_nu(p) = equivalent_nu(lattice_C66(1:6,1:6,p),'voigt')
 
     lattice_C66(1:6,1:6,p) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,p)))           ! Literature data is in Voigt notation
-
     do i = 1, 6
       if (abs(lattice_C66(i,i,p))<tol_math_check) &
         call IO_error(135,el=i,ip=p,ext_msg='matrix diagonal "el"ement of phase "ip"')
@@ -531,8 +526,10 @@ subroutine lattice_init
     lattice_DamageDiffusion(3,3,p) = config_phase(p)%getFloat('damage_diffusion33',defaultVal=0.0_pReal)
     lattice_DamageDiffusion(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_DamageDiffusion(1:3,1:3,p),structure)
 
-    lattice_DamageMobility(p) = config_phase(p)%getFloat( 'damage_mobility',defaultVal=0.0_pReal)
+    lattice_DamageMobility(p) = config_phase(p)%getFloat('damage_mobility',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
+
+    call unitTest
 
   enddo
 
@@ -739,7 +736,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
 
   coordinateSystem  = buildCoordinateSystem(Nslip,BCC_NSLIPSYSTEM,BCC_SYSTEMSLIP,&
                                             'bcc',0.0_pReal)
-  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip)) *real(sense,pReal)    ! convert unidirectional coordinate system
+  coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip))*real(sense,pReal)     ! convert unidirectional coordinate system
   nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'bcc',0.0_pReal)                                ! Schmid contribution
 
   do i = 1,sum(Nslip)
@@ -1936,7 +1933,7 @@ end function coordinateSystem_slip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Populates reduced interaction matrix
+!> @brief Populate reduced interaction matrix
 !--------------------------------------------------------------------------------------------------
 function buildInteraction(reacting_used,acting_used,reacting_max,acting_max,values,matrix)
 
@@ -1979,7 +1976,7 @@ end function buildInteraction
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief build a local coordinate system on slip, twin, trans, cleavage systems
+!> @brief Build a local coordinate system on slip, twin, trans, cleavage systems
 !> @details Order: Direction, plane (normal), and common perpendicular
 !--------------------------------------------------------------------------------------------------
 function buildCoordinateSystem(active,potential,system,structure,cOverA)
@@ -1994,7 +1991,7 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
   real(pReal),                 intent(in) :: &
     cOverA
   real(pReal), dimension(3,3,sum(active)) :: &
-   buildCoordinateSystem
+    buildCoordinateSystem
 
   real(pReal), dimension(3) :: &
     direction, normal
@@ -2207,7 +2204,7 @@ function getlabels(active,potential,system) result(labels)
       i = 1
       label(i:i) = '['
       direction: do j = 1, size(system,1)/2
-        write(label(i+1:i+2),"(I2.1)") int(system(j,p))
+        write(label(i+1:i+2),'(I2.1)') int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
       enddo direction
@@ -2216,7 +2213,7 @@ function getlabels(active,potential,system) result(labels)
       i = i +1
       label(i:i) = '('
       normal: do j = size(system,1)/2+1, size(system,1)
-        write(label(i+1:i+2),"(I2.1)") int(system(j,p))
+        write(label(i+1:i+2),'(I2.1)') int(system(j,p))
         label(i+3:i+3) = ' '
         i = i + 3
       enddo normal
@@ -2229,5 +2226,101 @@ function getlabels(active,potential,system) result(labels)
 
 end function getlabels
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Equivalent Poisson's ratio (ν)
+!> @details https://doi.org/10.1143/JPSJ.20.635
+!--------------------------------------------------------------------------------------------------
+function equivalent_nu(C,assumption) result(nu)
+
+  real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+
+  real(pReal)                 :: K, mu, nu
+  logical                     :: error
+  real(pReal), dimension(6,6) :: S
+
+  if    (IO_lc(assumption) == 'voigt') then
+    K = (C(1,1)+C(2,2)+C(3,3) +2.0_pReal*(C(1,2)+C(2,3)+C(1,3))) &
+      / 9.0_pReal
+  elseif(IO_lc(assumption) == 'reuss') then
+    call math_invert(S,error,C)
+    if(error) call IO_error(0)
+    K = 1.0_pReal &
+      / (S(1,1)+S(2,2)+S(3,3) +2.0_pReal*(S(1,2)+S(2,3)+S(1,3)))
+  else
+    call IO_error(0)
+    K = 0.0_pReal
+  endif
+
+  mu = equivalent_mu(C,assumption)
+  nu = (1.5_pReal*K -mu)/(3.0_pReal*K+mu)
+
+end function equivalent_nu
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Equivalent shear modulus (μ)
+!> @details https://doi.org/10.1143/JPSJ.20.635
+!--------------------------------------------------------------------------------------------------
+function equivalent_mu(C,assumption) result(mu)
+
+  real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
+  character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
+
+  real(pReal)                 :: mu
+  logical                     :: error
+  real(pReal), dimension(6,6) :: S
+
+  if    (IO_lc(assumption) == 'voigt') then
+    mu = (1.0_pReal*(C(1,1)+C(2,2)+C(3,3)) -1.0_pReal*(C(1,2)+C(2,3)+C(1,3)) +3.0_pReal*(C(4,4)+C(5,5)+C(6,6))) &
+       / 15.0_pReal
+  elseif(IO_lc(assumption) == 'reuss') then
+    call math_invert(S,error,C)
+    if(error) call IO_error(0)
+    mu = 15.0_pReal &
+       / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
+  else
+    call IO_error(0)
+    mu = 0.0_pReal
+  endif
+
+end function equivalent_mu
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of some lattice functions
+!--------------------------------------------------------------------------------------------------
+subroutine unitTest
+
+  real(pReal), dimension(:,:,:), allocatable :: CoSy
+  real(pReal), dimension(:,:),   allocatable :: system
+
+  real(pReal), dimension(6,6) :: C
+  real(pReal), dimension(2)   :: r
+  real(pReal)                 :: lambda
+
+  call random_number(r)
+
+  system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
+  CoSy   = buildCoordinateSystem([1],[1],system,'fcc',0.0_pReal)
+
+  if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) &
+    call IO_error(0)
+
+  call random_number(C)
+  C(1,1) = C(1,1) + 1.0_pReal
+  C = applyLatticeSymmetryC66(C,'iso')
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_mu/voigt')
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_mu/reuss')
+  lambda = C(1,2)
+  if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'voigt')),equivalent_nu(C,'voigt'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_nu/voigt')
+  if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'reuss')),equivalent_nu(C,'reuss'),1.0e-12_pReal)) &
+    call IO_error(0,ext_msg='equivalent_nu/reuss')
+
+end subroutine unitTest
 
 end module lattice

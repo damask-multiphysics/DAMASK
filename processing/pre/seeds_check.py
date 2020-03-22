@@ -16,7 +16,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [geomfile(s)]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [seedfile(s)]', description = """
 Writes vtk file for visualization.
 
 """, version = scriptID)
@@ -27,11 +27,13 @@ if filenames == []: filenames = [None]
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-
-    damask.util.croak(geom)
+    seeds = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    v = damask.VTK.from_polyData(seeds.get('pos'))
+    for label in seeds.shapes.keys():
+        if label == 'pos': pass
+        v.add(seeds.get(label),label)
 
     if name:
-        geom.to_vtk(os.path.splitext(name)[0])
+        v.write(os.path.splitext(name)[0])
     else:
-        sys.stdout.write(geom.to_vtk())
+        sys.stdout.write(v.__repr__())

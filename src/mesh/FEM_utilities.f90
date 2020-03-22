@@ -17,7 +17,7 @@ module FEM_utilities
   use numerics
   use debug
   use math
-  use mesh
+  use discretization_mesh
 
   implicit none
   private
@@ -37,15 +37,15 @@ module FEM_utilities
   character(len=*),                         parameter,            public :: &
     FIELD_MECH_label     = 'mechanical'
  
-  enum, bind(c)
-    enumerator :: FIELD_UNDEFINED_ID, &
-                  FIELD_MECH_ID
+  enum, bind(c); enumerator :: &
+    FIELD_UNDEFINED_ID, &
+    FIELD_MECH_ID
   end enum
-  enum, bind(c)
-    enumerator :: COMPONENT_UNDEFINED_ID, &
-                  COMPONENT_MECH_X_ID, &
-                  COMPONENT_MECH_Y_ID, &
-                  COMPONENT_MECH_Z_ID
+  enum, bind(c); enumerator :: &
+    COMPONENT_UNDEFINED_ID, &
+    COMPONENT_MECH_X_ID, &
+    COMPONENT_MECH_Y_ID, &
+    COMPONENT_MECH_Z_ID
   end enum
  
 !--------------------------------------------------------------------------------------------------
@@ -117,7 +117,13 @@ subroutine utilities_init
   CHKERRQ(ierr)
   if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_defaultOptions),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type newtonls &
+                               &-mech_snes_linesearch_type cp -mech_snes_ksp_ew &
+                               &-mech_snes_ksp_ew_rtol0 0.01 -mech_snes_ksp_ew_rtolmax 0.01 &
+                               &-mech_ksp_type fgmres -mech_ksp_max_it 25 &
+                               &-mech_pc_type ml -mech_mg_levels_ksp_type chebyshev &
+                               &-mech_mg_levels_pc_type sor -mech_pc_ml_nullspace user',ierr)
+  CHKERRQ(ierr)
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
   CHKERRQ(ierr)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
@@ -128,6 +134,7 @@ subroutine utilities_init
 
 
 end subroutine utilities_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates constitutive response

@@ -77,9 +77,9 @@ variables:
   IntelMarc:                       "$IntelCompiler17_8"
   HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
   # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  Doxygen1_8_15:                   "Documentation/Doxygen/1.8.15"
+  Doxygen1_8_17:                   "Documentation/Doxygen/1.8.17"
   # ------------ Defaults ----------------------------------------------
-  Doxygen:                         "$Doxygen1_8_15"
+  Doxygen:                         "$Doxygen1_8_17"
 
 
 ###################################################################################################
@@ -490,7 +490,7 @@ GridSolver:
   stage: createDocumentation
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT spectral
+    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT grid
   except:
     - master
     - release
