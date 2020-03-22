@@ -1604,7 +1604,7 @@ subroutine update_stress(timeFraction)
   !$OMP END PARALLEL DO
 
   if(nonlocal_broken) &
-    where(.not. crystallite_localPlasticity) crystallite_todo = .true.
+    where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
 end subroutine update_stress
 
