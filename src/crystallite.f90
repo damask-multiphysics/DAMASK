@@ -1019,7 +1019,8 @@ subroutine integrateStateFPI
  real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
    residuum_source                                                                                  ! residuum for source state
  logical :: &
-   doneWithIntegration
+   doneWithIntegration, &
+   nonlocal_broken
 
  ! --+>> PREGUESS FOR STATE <<+--
  call update_dotState(1.0_pReal)
@@ -1027,6 +1028,7 @@ subroutine integrateStateFPI
 
  NiterationState = 0
  doneWithIntegration = .false.
+ nonlocal_broken = .false.
  crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < num%nState)
    NiterationState = NiterationState + 1
 
@@ -1037,33 +1039,39 @@ subroutine integrateStateFPI
 
    ! store previousDotState and previousDotState2
 
-   !$OMP PARALLEL DO PRIVATE(p,c)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+  !$OMP PARALLEL DO PRIVATE(p,c)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
+          (.not. nonlocal_broken .or. crystallite_localPlasticity(g,i,e)) ) then
+          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-           plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
-                                                          0.0_pReal,&
-                                                          NiterationState > 1)
-           plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
-           do s = 1, phase_Nsources(p)
-             sourceState(p)%p(s)%previousDotState2(:,c) = merge(sourceState(p)%p(s)%previousDotState(:,c),&
-                                                                0.0_pReal, &
-                                                                NiterationState > 1)
-             sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
-           enddo
-           call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
-                                            crystallite_Fp(1:3,1:3,g,i,e), &
-                                            g, i, e)
-         endif
-       enddo
-     enddo
-   enddo
-   !$OMP END PARALLEL DO
+          plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
+                                                         0.0_pReal,&
+                                                         NiterationState > 1)
+          plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
+          do s = 1, phase_Nsources(p)
+            sourceState(p)%p(s)%previousDotState2(:,c) = merge(sourceState(p)%p(s)%previousDotState(:,c),&
+                                                               0.0_pReal, &
+                                                               NiterationState > 1)
+            sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
+          enddo
+          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                           g, i, e)
+          crystallite_todo(g,i,e) = integrateStress(g,i,e,1.0_pReal)
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocal_broken = .true.
+        endif
+      enddo
+    enddo
+  enddo
+  !$OMP END PARALLEL DO
 
-   call update_stress(1.0_pReal)
+  if(nonlocal_broken) &
+    where(.not. crystallite_localPlasticity) crystallite_todo = .false.
+
    call update_dotState(1.0_pReal)
 
    !$OMP PARALLEL
