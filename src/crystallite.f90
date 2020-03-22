@@ -1580,29 +1580,31 @@ end subroutine setConvergenceFlag
 !--------------------------------------------------------------------------------------------------
 subroutine update_stress(timeFraction)
 
- real(pReal), intent(in) :: &
-   timeFraction
- integer :: &
-   e, &                                                                                             !< element index in element loop
-   i, &                                                                                             !< integration point index in ip loop
-   g
+  real(pReal), intent(in) :: &
+    timeFraction
+  integer :: &
+    e, &                                                                                             !< element index in element loop
+    i, &                                                                                             !< integration point index in ip loop
+    g
+  logical :: &
+    nonlocal_broken
 
- !$OMP PARALLEL DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-     !$OMP FLUSH(crystallite_todo)
-     if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-       crystallite_todo(g,i,e) = integrateStress(g,i,e,timeFraction)
-       !$OMP FLUSH(crystallite_todo)
-       if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then                  ! if broken non-local...
-         !$OMP CRITICAL (checkTodo)
-           crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
-         !$OMP END CRITICAL (checkTodo)
-       endif
-     endif
-   enddo; enddo; enddo
- !$OMP END PARALLEL DO
+  nonlocal_broken = .false.
+  !$OMP PARALLEL DO
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
+           (.not. nonlocal_broken .or. crystallite_localPlasticity(g,i,e)) ) then
+          crystallite_todo(g,i,e) = integrateStress(g,i,e,timeFraction)
+          if (.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocal_broken = .true.
+        endif
+  enddo; enddo; enddo
+  !$OMP END PARALLEL DO
+
+  if(nonlocal_broken) &
+    where(.not. crystallite_localPlasticity) crystallite_todo = .true.
 
 end subroutine update_stress
 
