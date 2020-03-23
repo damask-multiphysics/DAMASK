@@ -37,48 +37,48 @@ class Result:
         """
         with h5py.File(fname,'r') as f:
 
-          try:
-              self.version_major = f.attrs['DADF5_version_major']
-              self.version_minor = f.attrs['DADF5_version_minor']
-          except KeyError:
-              self.version_major = f.attrs['DADF5-major']
-              self.version_minor = f.attrs['DADF5-minor']
+            try:
+                self.version_major = f.attrs['DADF5_version_major']
+                self.version_minor = f.attrs['DADF5_version_minor']
+            except KeyError:
+                self.version_major = f.attrs['DADF5-major']
+                self.version_minor = f.attrs['DADF5-minor']
 
-          if self.version_major != 0 or not 2 <= self.version_minor <= 6:
-              raise TypeError('Unsupported DADF5 version {}.{} '.format(self.version_major,
-                                                                        self.version_minor))
+            if self.version_major != 0 or not 2 <= self.version_minor <= 6:
+                raise TypeError('Unsupported DADF5 version {}.{} '.format(self.version_major,
+                                                                          self.version_minor))
 
-          self.structured = 'grid' in f['geometry'].attrs.keys()
+            self.structured = 'grid' in f['geometry'].attrs.keys()
 
-          if self.structured:
-              self.grid   = f['geometry'].attrs['grid']
-              self.size   = f['geometry'].attrs['size']
-              self.origin = f['geometry'].attrs['origin'] if self.version_major == 0 and self.version_minor >= 5 else \
-                            np.zeros(3)
+            if self.structured:
+                self.grid   = f['geometry'].attrs['grid']
+                self.size   = f['geometry'].attrs['size']
+                self.origin = f['geometry'].attrs['origin'] if self.version_major == 0 and self.version_minor >= 5 else \
+                              np.zeros(3)
 
-          r=re.compile('inc[0-9]+')
-          increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
-          self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
-          self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
+            r=re.compile('inc[0-9]+')
+            increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
+            self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
+            self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
-          self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
-          self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
-          self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
+            self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
+            self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
+            self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
 
-          self.con_physics  = []
-          for c in self.constituents:
-              self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
-          self.con_physics = list(set(self.con_physics))                                            # make unique
+            self.con_physics = []
+            for c in self.constituents:
+                self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
+            self.con_physics = list(set(self.con_physics))                                            # make unique
 
-          self.mat_physics = []
-          for m in self.materialpoints:
-              self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
-          self.mat_physics = list(set(self.mat_physics))                                            # make unique
+            self.mat_physics = []
+            for m in self.materialpoints:
+                self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
+            self.mat_physics = list(set(self.mat_physics))                                            # make unique
 
-        self.selection= {'increments':     self.increments,
-                         'constituents':   self.constituents,'materialpoints': self.materialpoints,
-                         'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
-                        }
+        self.selection = {'increments':     self.increments,
+                          'constituents':   self.constituents,'materialpoints': self.materialpoints,
+                          'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
+                         }
 
         self.fname = fname
 
@@ -129,7 +129,7 @@ class Result:
                 iterator = map(float,choice)
                 choice = []
                 for c in iterator:
-                    idx=np.searchsorted(self.times,c)
+                    idx = np.searchsorted(self.times,c)
                     if   np.isclose(c,self.times[idx]):
                         choice.append(self.increments[idx])
                     elif np.isclose(c,self.times[idx+1]):
@@ -141,12 +141,12 @@ class Result:
         if   action == 'set':
             self.selection[what] = valid
         elif action == 'add':
-            add=existing.union(valid)
-            add_sorted=sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            add = existing.union(valid)
+            add_sorted = sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
             self.selection[what] = add_sorted
         elif action == 'del':
-            diff=existing.difference(valid)
-            diff_sorted=sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            diff = existing.difference(valid)
+            diff_sorted = sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
             self.selection[what] = diff_sorted
 
 
@@ -287,8 +287,8 @@ class Result:
                             inData[key] =          f['mapping/cellResults/materialpoint'][inGeom[key].tolist()]['Position']
                     shape = np.shape(f[path])
                     data = np.full((self.Nmaterialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
-                                    np.nan,
-                                    dtype=np.dtype(f[path]))
+                                   np.nan,
+                                   dtype=np.dtype(f[path]))
                     data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
                     path = (os.path.join(*([prop,name]+([cat] if cat else [])+([item] if item else []))) if split else path)+tag
                     if split:
@@ -343,14 +343,14 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                  for oo in self.iterate(o):
-                    for pp in self.iterate(p):
-                      group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
-                      if sets is True:
-                        groups.append(group)
-                      else:
-                        match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-                        if len(set(match)) == len(sets) : groups.append(group)
+                    for oo in self.iterate(o):
+                        for pp in self.iterate(p):
+                            group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
+                            if sets is True:
+                                groups.append(group)
+                            else:
+                                match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+                                if len(set(match)) == len(sets): groups.append(group)
         return groups
 
 
@@ -359,20 +359,20 @@ class Result:
         message = ''
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
-                message+='\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
+                message += '\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
-                  for oo in self.iterate(o):
-                    message+='  {}\n'.format(oo)
-                    for pp in self.iterate(p):
-                      message+='    {}\n'.format(pp)
-                      group = '/'.join([i,o[:-1],oo,pp])                                            # o[:-1]: plural/singular issue
-                      for d in f[group].keys():
-                        try:
-                          dataset = f['/'.join([group,d])]
-                          message+='      {} / ({}): {}\n'.\
-                                    format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
-                        except KeyError:
-                          pass
+                    for oo in self.iterate(o):
+                        message += '  {}\n'.format(oo)
+                        for pp in self.iterate(p):
+                            message += '    {}\n'.format(pp)
+                            group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
+                            for d in f[group].keys():
+                                try:
+                                    dataset = f['/'.join([group,d])]
+                                    message += '      {} / ({}): {}\n'.\
+                                               format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
+                                except KeyError:
+                                    pass
         return message
 
 
@@ -385,7 +385,7 @@ class Result:
                 try:
                     f[k]
                     path.append(k)
-                except KeyError as e:
+                except KeyError:
                     pass
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
                     for oo in self.iterate(o):
@@ -394,7 +394,7 @@ class Result:
                             try:
                                 f[k]
                                 path.append(k)
-                            except KeyError as e:
+                            except KeyError:
                                 pass
         return path
 
@@ -419,31 +419,31 @@ class Result:
         If more than one path is given, the dataset is composed of the individual contributions.
         """
         with h5py.File(self.fname,'r') as f:
-          shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
-          if len(shape) == 1: shape = shape +(1,)
-          dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
-          for pa in path:
-              label = pa.split('/')[2]
+            shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
+            if len(shape) == 1: shape = shape +(1,)
+            dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
+            for pa in path:
+                label = pa.split('/')[2]
 
-              if (pa.split('/')[1] == 'geometry'):
-                  dataset = np.array(f[pa])
-                  continue
+                if pa.split('/')[1] == 'geometry':
+                    dataset = np.array(f[pa])
+                    continue
 
-              p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
-              if len(p)>0:
-                  u = (f['mapping/cellResults/constituent']['Position'][p,c])
-                  a = np.array(f[pa])
-                  if len(a.shape) == 1:
-                      a=a.reshape([a.shape[0],1])
-                  dataset[p,:] = a[u,:]
+                p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+                if len(p)>0:
+                    u = (f['mapping/cellResults/constituent']['Position'][p,c])
+                    a = np.array(f[pa])
+                    if len(a.shape) == 1:
+                        a=a.reshape([a.shape[0],1])
+                    dataset[p,:] = a[u,:]
 
-              p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
-              if len(p)>0:
-                  u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
-                  a = np.array(f[pa])
-                  if len(a.shape) == 1:
-                      a=a.reshape([a.shape[0],1])
-                  dataset[p,:] = a[u,:]
+                p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+                if len(p)>0:
+                    u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
+                    a = np.array(f[pa])
+                    if len(a.shape) == 1:
+                        a=a.reshape([a.shape[0],1])
+                    dataset[p,:] = a[u,:]
 
         if plain and dataset.dtype.names is not None:
             return dataset.view(('float64',len(dataset.dtype.names)))
@@ -518,7 +518,7 @@ class Result:
 
         """
         if not vectorized:
-          raise NotImplementedError
+            raise NotImplementedError
 
         dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
         args             = {'formula':formula,'label':label,'unit':unit,'description':description}
@@ -661,9 +661,9 @@ class Result:
 
         lattice   = q['meta']['Lattice']
 
-        for i,q in enumerate(q['data']):
-             o = Orientation(np.array([q['w'],q['x'],q['y'],q['z']]),lattice).reduced()
-             colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
+        for i,qu in enumerate(q['data']):
+            o = Orientation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]),lattice).reduced()
+            colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
 
         return {
                 'data': colors,
@@ -814,8 +814,8 @@ class Result:
         m         = util.scale_to_coprime(pole)
         coords    = np.empty((len(q['data']),2))
 
-        for i,q in enumerate(q['data']):
-            o = Rotation(np.array([q['w'],q['x'],q['y'],q['z']]))
+        for i,qu in enumerate(q['data']):
+            o = Rotation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]))
             rotatedPole = o*unit_pole                                                               # rotate pole according to crystal orientation
             (x,y) = rotatedPole[0:2]/(1.+abs(unit_pole[2]))                                         # stereographic projection
             coords[i] = [np.sqrt(x*x+y*y),np.arctan2(y,x)] if polar else [x,y]
@@ -1036,67 +1036,67 @@ class Result:
         """
         if mode.lower()=='cell':
 
-          if self.structured:
-              v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
-          else:
-              with h5py.File(self.fname,'r') as f:
-                  v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
-                                                f['/geometry/T_c'][()]-1,
-                                                f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+            if self.structured:
+                v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+            else:
+                with h5py.File(self.fname,'r') as f:
+                    v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
+                                                  f['/geometry/T_c'][()]-1,
+                                                  f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
             v = VTK.from_polyData(self.cell_coordinates())
 
         N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
 
-        for i,inc in enumerate(util.show_progress(self.iterate('increments'),len(self.selection['increments']))):
+        for inc in util.show_progress(self.iterate('increments'),len(self.selection['increments'])):
 
-          materialpoints_backup = self.selection['materialpoints'].copy()
-          self.pick('materialpoints',False)
-          for label in (labels if isinstance(labels,list) else [labels]):
-              for p in self.iterate('con_physics'):
-                  if p != 'generic':
-                      for c in self.iterate('constituents'):
-                          x = self.get_dataset_location(label)
-                          if len(x) == 0:
-                              continue
-                          array = self.read_dataset(x,0)
-                          v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
-              else:
-                  x = self.get_dataset_location(label)
-                  if len(x) == 0:
-                      continue
-                  array = self.read_dataset(x,0)
-                  ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')                   # identify  phase name
-                  dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                       # removing phase name
-                  v.add(array,dset_name)
-          self.pick('materialpoints',materialpoints_backup)
+            materialpoints_backup = self.selection['materialpoints'].copy()
+            self.pick('materialpoints',False)
+            for label in (labels if isinstance(labels,list) else [labels]):
+                for p in self.iterate('con_physics'):
+                    if p != 'generic':
+                        for c in self.iterate('constituents'):
+                            x = self.get_dataset_location(label)
+                            if len(x) == 0:
+                                continue
+                            array = self.read_dataset(x,0)
+                            v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
+                    else:
+                        x = self.get_dataset_location(label)
+                        if len(x) == 0:
+                            continue
+                        array = self.read_dataset(x,0)
+                        ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')             # identify  phase name
+                        dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                 # removing phase name
+                        v.add(array,dset_name)
+            self.pick('materialpoints',materialpoints_backup)
 
-          constituents_backup = self.selection['constituents'].copy()
-          self.pick('constituents',False)
-          for label in (labels if isinstance(labels,list) else [labels]):
-              for p in self.iterate('mat_physics'):
-                  if p != 'generic':
-                      for m in self.iterate('materialpoints'):
-                          x = self.get_dataset_location(label)
-                          if len(x) == 0:
-                              continue
-                          array = self.read_dataset(x,0)
-                          v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
-              else:
-                  x = self.get_dataset_location(label)
-                  if len(x) == 0:
-                      continue
-                  array = self.read_dataset(x,0)
-                  v.add(array,'1_'+x[0].split('/',1)[1])
-          self.pick('constituents',constituents_backup)
+            constituents_backup = self.selection['constituents'].copy()
+            self.pick('constituents',False)
+            for label in (labels if isinstance(labels,list) else [labels]):
+                for p in self.iterate('mat_physics'):
+                    if p != 'generic':
+                        for m in self.iterate('materialpoints'):
+                            x = self.get_dataset_location(label)
+                            if len(x) == 0:
+                                continue
+                            array = self.read_dataset(x,0)
+                            v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
+                    else:
+                        x = self.get_dataset_location(label)
+                        if len(x) == 0:
+                            continue
+                        array = self.read_dataset(x,0)
+                        v.add(array,'1_'+x[0].split('/',1)[1])
+            self.pick('constituents',constituents_backup)
 
-          u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
-          v.add(u,'u')
+            u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
+            v.add(u,'u')
 
-          file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
-                                          inc[3:].zfill(N_digits))
+            file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
+                                            inc[3:].zfill(N_digits))
 
-          v.write(file_out)
+            v.write(file_out)
 
 ###################################################################################################
 # BEGIN DEPRECATED

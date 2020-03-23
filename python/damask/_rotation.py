@@ -292,7 +292,7 @@ class Rotation:
         if degrees:   ax[  3]  = np.radians(ax[3])
         if normalise: ax[0:3] /= np.linalg.norm(ax[0:3])
         if ax[3] < 0.0 or ax[3] > np.pi:
-            raise ValueError('Axis angle rotation angle outside of [0..π].\n'.format(ax[3]))
+            raise ValueError('Axis angle rotation angle outside of [0..π].\n{}'.format(ax[3]))
         if not np.isclose(np.linalg.norm(ax[0:3]), 1.0):
             raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[0:3]))
 
@@ -338,7 +338,7 @@ class Rotation:
         if not np.isclose(np.linalg.norm(ro[0:3]), 1.0):
             raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[0:3]))
         if ro[3] < 0.0:
-            raise ValueError('Rodrigues rotation angle not positive.\n'.format(ro[3]))
+            raise ValueError('Rodrigues rotation angle not positive.\n{}'.format(ro[3]))
 
         return Rotation(Rotation.ro2qu(ro))
 
@@ -365,8 +365,7 @@ class Rotation:
 
 
     @staticmethod
-    def fromAverage(rotations,
-                    weights = []):
+    def fromAverage(rotations,weights = None):
         """
         Average rotation.
 
@@ -384,10 +383,10 @@ class Rotation:
 
         """
         if not all(isinstance(item, Rotation) for item in rotations):
-          raise TypeError("Only instances of Rotation can be averaged.")
+            raise TypeError("Only instances of Rotation can be averaged.")
 
         N = len(rotations)
-        if weights == [] or not weights:
+        if not weights:
             weights = np.ones(N,dtype='i')
 
         for i,(r,n) in enumerate(zip(rotations,weights)):
@@ -713,8 +712,8 @@ class Rotation:
 
     @staticmethod
     def ro2om(ro):
-       """Rodgrigues-Frank vector to rotation matrix."""
-       return Rotation.ax2om(Rotation.ro2ax(ro))
+        """Rodgrigues-Frank vector to rotation matrix."""
+        return Rotation.ax2om(Rotation.ro2ax(ro))
 
     @staticmethod
     def ro2eu(ro):
