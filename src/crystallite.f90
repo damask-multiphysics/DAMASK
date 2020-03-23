@@ -1055,12 +1055,29 @@ subroutine integrateStateFPI
                                                                  NiterationState > 1)
               sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
             enddo
+
             call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
                                              crystallite_Fp(1:3,1:3,g,i,e), &
                                              g, i, e)
+
             crystallite_todo(g,i,e) = integrateStress(g,i,e,1.0_pReal)
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
+            if(.not. crystallite_todo(g,i,e)) cycle
+
+            call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                              crystallite_partionedF0, &
+                                              crystallite_Fi(1:3,1:3,g,i,e), &
+                                              crystallite_partionedFp0, &
+                                              crystallite_subdt(g,i,e), g,i,e)
+            crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
+            do s = 1, phase_Nsources(p)
+              crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
+            enddo
+            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+              nonlocalBroken = .true.
+            if(.not. crystallite_todo(g,i,e)) cycle
+
           endif
         enddo
       enddo
@@ -1068,8 +1085,6 @@ subroutine integrateStateFPI
     !$OMP END PARALLEL DO
 
     if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-    call update_dotState(1.0_pReal)
 
     !$OMP PARALLEL
     !$OMP DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
