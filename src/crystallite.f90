@@ -1003,194 +1003,191 @@ end function integrateStress
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateFPI
 
- integer :: &
-   NiterationState, &                                                                               !< number of iterations in state loop
-   e, &                                                                                             !< element index in element loop
-   i, &                                                                                             !< integration point index in ip loop
-   g, &                                                                                             !< grain index in grain loop
-   p, &
-   c, &
-   s, &
-   sizeDotState
- real(pReal) :: &
-   zeta
- real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
-   residuum_plastic                                                                                 ! residuum for plastic state
- real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
-   residuum_source                                                                                  ! residuum for source state
- logical :: &
-   doneWithIntegration, &
-   nonlocal_broken
+  integer :: &
+    NiterationState, &                                                                              !< number of iterations in state loop
+    e, &                                                                                            !< element index in element loop
+    i, &                                                                                            !< integration point index in ip loop
+    g, &                                                                                            !< grain index in grain loop
+    p, &
+    c, &
+    s, &
+    sizeDotState
+  real(pReal) :: &
+    zeta
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
+    residuum_plastic                                                                                ! residuum for plastic state
+  real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
+    residuum_source                                                                                 ! residuum for source state
+  logical :: &
+    doneWithIntegration, &
+    nonlocalBroken
 
- ! --+>> PREGUESS FOR STATE <<+--
- call update_dotState(1.0_pReal)
- call update_state(1.0_pReal)
+  ! --+>> PREGUESS FOR STATE <<+--
+  call update_dotState(1.0_pReal)
+  call update_state(1.0_pReal)
 
- NiterationState = 0
- doneWithIntegration = .false.
- nonlocal_broken = .false.
- crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < num%nState)
-   NiterationState = NiterationState + 1
+  NiterationState = 0
+  doneWithIntegration = .false.
+  nonlocalBroken = .false.
+  iteration: do while (.not. doneWithIntegration .and. NiterationState < num%nState)
+    NiterationState = NiterationState + 1
 
 #ifdef DEBUG
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0) &
      write(6,'(a,i6)') '<< CRYST stateFPI >> state iteration ',NiterationState
 #endif
 
-   ! store previousDotState and previousDotState2
+    !$OMP PARALLEL DO PRIVATE(p,c)
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      do i = FEsolving_execIP(1),FEsolving_execIP(2)
+        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+          if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
+            (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+            p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-  !$OMP PARALLEL DO PRIVATE(p,c)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
-          (.not. nonlocal_broken .or. crystallite_localPlasticity(g,i,e)) ) then
-          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-
-          plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
-                                                         0.0_pReal,&
-                                                         NiterationState > 1)
-          plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
-          do s = 1, phase_Nsources(p)
-            sourceState(p)%p(s)%previousDotState2(:,c) = merge(sourceState(p)%p(s)%previousDotState(:,c),&
-                                                               0.0_pReal, &
-                                                               NiterationState > 1)
-            sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
-          enddo
-          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
-                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                           g, i, e)
-          crystallite_todo(g,i,e) = integrateStress(g,i,e,1.0_pReal)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-            nonlocal_broken = .true.
-        endif
+            plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
+                                                           0.0_pReal,&
+                                                           NiterationState > 1)
+            plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)
+            do s = 1, phase_Nsources(p)
+              sourceState(p)%p(s)%previousDotState2(:,c) = merge(sourceState(p)%p(s)%previousDotState(:,c),&
+                                                                 0.0_pReal, &
+                                                                 NiterationState > 1)
+              sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
+            enddo
+            call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                             crystallite_Fp(1:3,1:3,g,i,e), &
+                                             g, i, e)
+            crystallite_todo(g,i,e) = integrateStress(g,i,e,1.0_pReal)
+            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+              nonlocalBroken = .true.
+          endif
+        enddo
       enddo
     enddo
-  enddo
-  !$OMP END PARALLEL DO
+    !$OMP END PARALLEL DO
 
-  if(nonlocal_broken) &
-    where(.not. crystallite_localPlasticity) crystallite_todo = .false.
+    if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
-   call update_dotState(1.0_pReal)
+    call update_dotState(1.0_pReal)
 
-   !$OMP PARALLEL
-   !$OMP DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-           sizeDotState = plasticState(p)%sizeDotState
+    !$OMP PARALLEL
+    !$OMP DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      do i = FEsolving_execIP(1),FEsolving_execIP(2)
+        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+          if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+            p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+            sizeDotState = plasticState(p)%sizeDotState
 
-           zeta = damper(plasticState(p)%dotState         (:,c), &
-                         plasticState(p)%previousDotState (:,c), &
-                         plasticState(p)%previousDotState2(:,c))
+            zeta = damper(plasticState(p)%dotState         (:,c), &
+                          plasticState(p)%previousDotState (:,c), &
+                          plasticState(p)%previousDotState2(:,c))
 
-           residuum_plastic(1:SizeDotState) = plasticState(p)%state    (1:sizeDotState,c) &
-                                            - plasticState(p)%subState0(1:sizeDotState,c)  &
-                                            - (  plasticState(p)%dotState        (:,c) * zeta &
-                                               + plasticState(p)%previousDotState(:,c) * (1.0_pReal-zeta) &
-                                              ) * crystallite_subdt(g,i,e)
-
-           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%state(1:sizeDotState,c) &
-                                                   - residuum_plastic(1:sizeDotState)
-           plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * zeta &
-                                         + plasticState(p)%previousDotState(:,c) * (1.0_pReal - zeta)
-
-           crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState), &
-                                                    plasticState(p)%state(1:sizeDotState,c), &
-                                                    plasticState(p)%atol(1:sizeDotState))
-
-
-           do s = 1, phase_Nsources(p)
-             sizeDotState  = sourceState(p)%p(s)%sizeDotState
-
-             zeta = damper(sourceState(p)%p(s)%dotState         (:,c), &
-                           sourceState(p)%p(s)%previousDotState (:,c), &
-                           sourceState(p)%p(s)%previousDotState2(:,c))
-
-             residuum_source(1:sizeDotState) = sourceState(p)%p(s)%state    (1:sizeDotState,c)  &
-                                             - sourceState(p)%p(s)%subState0(1:sizeDotState,c)  &
-                                             - (  sourceState(p)%p(s)%dotState         (:,c) * zeta &
-                                                 + sourceState(p)%p(s)%previousDotState(:,c) * (1.0_pReal - zeta) &
+            residuum_plastic(1:SizeDotState) = plasticState(p)%state    (1:sizeDotState,c) &
+                                             - plasticState(p)%subState0(1:sizeDotState,c)  &
+                                             - (  plasticState(p)%dotState        (:,c) * zeta &
+                                                + plasticState(p)%previousDotState(:,c) * (1.0_pReal-zeta) &
                                                ) * crystallite_subdt(g,i,e)
 
-             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%state(1:sizeDotState,c) &
-                                                         - residuum_source(1:sizeDotState)
-             sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
-                                               + sourceState(p)%p(s)%previousDotState(:,c)* (1.0_pReal - zeta)
+            plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%state(1:sizeDotState,c) &
+                                                    - residuum_plastic(1:sizeDotState)
+            plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * zeta &
+                                          + plasticState(p)%previousDotState(:,c) * (1.0_pReal - zeta)
 
-             crystallite_converged(g,i,e) = &
-             crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState), &
-                                                          sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                          sourceState(p)%p(s)%atol(1:sizeDotState))
-           enddo
-         endif
-   enddo; enddo; enddo
-   !$OMP ENDDO
-
-   !$OMP DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-       !$OMP FLUSH(crystallite_todo)
-       if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                  ! converged and still alive...
-         crystallite_todo(g,i,e) = stateJump(g,i,e)
-         !$OMP FLUSH(crystallite_todo)
-         if (.not. crystallite_todo(g,i,e)) then                                                             ! if state jump fails, then convergence is broken
-           crystallite_converged(g,i,e) = .false.
-           if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
-             !$OMP CRITICAL (checkTodo)
-               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-             !$OMP END CRITICAL (checkTodo)
-           endif
-         endif
-       endif
-     enddo; enddo; enddo
-   !$OMP ENDDO
-   !$OMP END PARALLEL
+            crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState), &
+                                                     plasticState(p)%state(1:sizeDotState,c), &
+                                                     plasticState(p)%atol(1:sizeDotState))
 
 
-   if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+            do s = 1, phase_Nsources(p)
+              sizeDotState  = sourceState(p)%p(s)%sizeDotState
+
+              zeta = damper(sourceState(p)%p(s)%dotState         (:,c), &
+                            sourceState(p)%p(s)%previousDotState (:,c), &
+                            sourceState(p)%p(s)%previousDotState2(:,c))
+
+              residuum_source(1:sizeDotState) = sourceState(p)%p(s)%state    (1:sizeDotState,c)  &
+                                              - sourceState(p)%p(s)%subState0(1:sizeDotState,c)  &
+                                              - (  sourceState(p)%p(s)%dotState         (:,c) * zeta &
+                                                  + sourceState(p)%p(s)%previousDotState(:,c) * (1.0_pReal - zeta) &
+                                                ) * crystallite_subdt(g,i,e)
+
+              sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%state(1:sizeDotState,c) &
+                                                          - residuum_source(1:sizeDotState)
+              sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
+                                                + sourceState(p)%p(s)%previousDotState(:,c)* (1.0_pReal - zeta)
+
+              crystallite_converged(g,i,e) = &
+              crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState), &
+                                                           sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                                                           sourceState(p)%p(s)%atol(1:sizeDotState))
+            enddo
+          endif
+    enddo; enddo; enddo
+    !$OMP ENDDO
+
+    !$OMP DO
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      do i = FEsolving_execIP(1),FEsolving_execIP(2)
+        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        !$OMP FLUSH(crystallite_todo)
+        if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                        ! converged and still alive...
+          crystallite_todo(g,i,e) = stateJump(g,i,e)
+          !$OMP FLUSH(crystallite_todo)
+          if (.not. crystallite_todo(g,i,e)) then                                                   ! if state jump fails, then convergence is broken
+            crystallite_converged(g,i,e) = .false.
+            if (.not. crystallite_localPlasticity(g,i,e)) then                                      ! if broken non-local...
+              !$OMP CRITICAL (checkTodo)
+                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity               ! ...all non-locals skipped
+              !$OMP END CRITICAL (checkTodo)
+            endif
+          endif
+        endif
+      enddo; enddo; enddo
+    !$OMP ENDDO
+    !$OMP END PARALLEL
 
 
-   ! --- CHECK IF DONE WITH INTEGRATION ---
-   doneWithIntegration = .true.
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         doneWithIntegration = .false.
-         exit
-       endif
-     enddo; enddo
-   enddo
-
- enddo crystalliteLooping
+    if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
 
 
- contains
+    ! --- CHECK IF DONE WITH INTEGRATION ---
+    doneWithIntegration = .true.
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      do i = FEsolving_execIP(1),FEsolving_execIP(2)
+        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+          doneWithIntegration = .false.
+          exit
+        endif
+      enddo; enddo
+    enddo
 
- !--------------------------------------------------------------------------------------------------
- !> @brief calculate the damping for correction of state and dot state
- !--------------------------------------------------------------------------------------------------
- real(pReal) pure function damper(current,previous,previous2)
+  enddo iteration
 
- real(pReal), dimension(:), intent(in) ::&
-   current, previous, previous2
 
- real(pReal) :: dot_prod12, dot_prod22
+  contains
 
- dot_prod12 = dot_product(current  - previous,  previous - previous2)
- dot_prod22 = dot_product(previous - previous2, previous - previous2)
- if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
-   damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
- else
-   damper = 1.0_pReal
- endif
+  !--------------------------------------------------------------------------------------------------
+  !> @brief calculate the damping for correction of state and dot state
+  !--------------------------------------------------------------------------------------------------
+  real(pReal) pure function damper(current,previous,previous2)
 
- end function damper
+  real(pReal), dimension(:), intent(in) ::&
+    current, previous, previous2
+
+  real(pReal) :: dot_prod12, dot_prod22
+
+  dot_prod12 = dot_product(current  - previous,  previous - previous2)
+  dot_prod22 = dot_product(previous - previous2, previous - previous2)
+  if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
+    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+  else
+    damper = 1.0_pReal
+  endif
+
+  end function damper
 
 end subroutine integrateStateFPI
 
@@ -1591,30 +1588,30 @@ subroutine update_stress(timeFraction)
   real(pReal), intent(in) :: &
     timeFraction
   integer :: &
-    e, &                                                                                             !< element index in element loop
-    i, &                                                                                             !< integration point index in ip loop
+    e, &                                                                                            !< element index in element loop
+    i, &                                                                                            !< integration point index in ip loop
     g
   logical :: &
-    nonlocal_broken
+    nonlocalBroken
 
-  nonlocal_broken = .false.
+  nonlocalBroken = .false.
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
-           (.not. nonlocal_broken .or. crystallite_localPlasticity(g,i,e)) ) then
+        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
+          (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
           crystallite_todo(g,i,e) = integrateStress(g,i,e,timeFraction)
           if (.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-            nonlocal_broken = .true.
+            nonlocalBroken = .true.
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if(nonlocal_broken) &
-    where(.not. crystallite_localPlasticity) crystallite_todo = .false.
+  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
 end subroutine update_stress
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief tbd
@@ -1678,56 +1675,56 @@ subroutine update_state(timeFraction)
 end subroutine update_state
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief triggers calculation of all new rates
+!---------------------------------------------------------------------------------------------------
+!> @brief Trigger calculation of all new rates
 !> if NaN occurs, crystallite_todo is set to FALSE. Any NaN in a nonlocal propagates to all others
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 subroutine update_dotState(timeFraction)
 
- real(pReal), intent(in) :: &
-   timeFraction
- integer :: &
-   e, &                                                                                             !< element index in element loop
-   i, &                                                                                             !< integration point index in ip loop
-   g, &                                                                                             !< grain index in grain loop
-   p, &
-   c, &
-   s
- logical :: &
-   NaN, &
-   nonlocalStop
+  real(pReal), intent(in) :: &
+    timeFraction
+  integer :: &
+    e, &                                                                                            !< element index in element loop
+    i, &                                                                                            !< integration point index in ip loop
+    g, &                                                                                            !< grain index in grain loop
+    p, &
+    c, &
+    s
+  logical :: &
+    nonlocalBroken
 
-   nonlocalStop = .false.
+  nonlocalBroken = .false.
+  !$OMP PARALLEL DO PRIVATE (p,c)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
+          (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                            crystallite_partionedF0, &
+                                            crystallite_Fi(1:3,1:3,g,i,e), &
+                                            crystallite_partionedFp0, &
+                                            crystallite_subdt(g,i,e)*timeFraction, g,i,e)
+          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
+          do s = 1, phase_Nsources(p)
+            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
+          enddo
+          if (.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+        endif
+  enddo; enddo; enddo
+  !$OMP END PARALLEL DO
 
-   !$OMP PARALLEL DO PRIVATE (p,c,NaN)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-     do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-         !$OMP FLUSH(nonlocalStop)
-        if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
-           call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                             crystallite_partionedF0, &
-                                             crystallite_Fi(1:3,1:3,g,i,e), &
-                                             crystallite_partionedFp0, &
-                                             crystallite_subdt(g,i,e)*timeFraction, g,i,e)
-           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-           NaN = any(IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-           do s = 1, phase_Nsources(p)
-             NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-           enddo
-           if (NaN) then
-             crystallite_todo(g,i,e) = .false.                                                      ! this one done (and broken)
-             if (.not. crystallite_localPlasticity(g,i,e)) nonlocalStop = .True.
-           endif
-         endif
-   enddo; enddo; enddo
-   !$OMP END PARALLEL DO
-
- if (nonlocalStop) crystallite_todo = crystallite_todo .and. crystallite_localPlasticity
+  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
 end subroutine update_DotState
 
 
+!---------------------------------------------------------------------------------------------------
+!> @brief Trigger calculation of all new sudden state change
+!> if NaN occurs, crystallite_todo is set to FALSE. Any NaN in a nonlocal propagates to all others
+!---------------------------------------------------------------------------------------------------
 subroutine update_deltaState
 
  integer :: &
