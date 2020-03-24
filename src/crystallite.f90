@@ -1027,9 +1027,9 @@ subroutine integrateStateFPI
   call update_state(1.0_pReal)
 
   NiterationState = 0
-  doneWithIntegration = .false.
   nonlocalBroken = .false.
   iteration: do while (.not. doneWithIntegration .and. NiterationState < num%nState)
+    doneWithIntegration = .true.
     NiterationState = NiterationState + 1
 
 #ifdef DEBUG
@@ -1117,31 +1117,18 @@ subroutine integrateStateFPI
               if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
                 nonlocalBroken = .true.
               cycle
+            else
+              doneWithIntegration = .false.
             endif
 
           endif
     enddo; enddo; enddo
     !$OMP END PARALLEL DO
 
-    if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-    if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
-
-
-    ! --- CHECK IF DONE WITH INTEGRATION ---
-    doneWithIntegration = .true.
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      do i = FEsolving_execIP(1),FEsolving_execIP(2)
-        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-          doneWithIntegration = .false.
-          exit
-        endif
-      enddo; enddo
-    enddo
-
   enddo iteration
 
+  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
+  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
 
   contains
 
