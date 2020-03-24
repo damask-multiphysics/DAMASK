@@ -1180,10 +1180,10 @@ subroutine integrateStateEuler
           do s = 1, phase_Nsources(p)
             crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
           enddo
-          if (.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
-          
+
           sizeDotState = plasticState(p)%sizeDotState
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
@@ -1195,14 +1195,21 @@ subroutine integrateStateEuler
                                                           * crystallite_subdt(g,i,e)
           enddo
 
+          crystallite_todo(g,i,e) = stateJump(g,i,e)
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+          if(.not. crystallite_todo(g,i,e)) cycle
+
+          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                           g, i, e)
+
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
-  call update_deltaState
-  call update_dependentState
   call update_stress(1.0_pReal)
   call setConvergenceFlag
   if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
