@@ -1019,30 +1019,22 @@ subroutine integrateStateFPI
   real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
     residuum_source                                                                                 ! residuum for source state
   logical :: &
-    doneWithIntegration, &
     nonlocalBroken
 
   ! --+>> PREGUESS FOR STATE <<+--
   call update_dotState(1.0_pReal)
   call update_state(1.0_pReal)
 
-  NiterationState = 0
   nonlocalBroken = .false.
-  iteration: do while (.not. doneWithIntegration .and. NiterationState < num%nState)
-    doneWithIntegration = .true.
-    NiterationState = NiterationState + 1
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
+          (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
-#ifdef DEBUG
-   if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0) &
-     write(6,'(a,i6)') '<< CRYST stateFPI >> state iteration ',NiterationState
-#endif
+          iteration: do NiterationState = 1, num%nState
 
-    !$OMP PARALLEL DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      do i = FEsolving_execIP(1),FEsolving_execIP(2)
-        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-          if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
-            (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
             p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
             plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
@@ -1063,7 +1055,7 @@ subroutine integrateStateFPI
             crystallite_todo(g,i,e) = integrateStress(g,i,e,1.0_pReal)
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) cycle
+            if(.not. crystallite_todo(g,i,e)) exit iteration
 
             call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
@@ -1076,7 +1068,7 @@ subroutine integrateStateFPI
             enddo
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) cycle
+            if(.not. crystallite_todo(g,i,e)) exit iteration
 
             sizeDotState = plasticState(p)%sizeDotState
             zeta = damper(plasticState(p)%dotState         (:,c), &
@@ -1116,16 +1108,14 @@ subroutine integrateStateFPI
               crystallite_todo(g,i,e) = stateJump(g,i,e)
               if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
                 nonlocalBroken = .true.
-              cycle
-            else
-              doneWithIntegration = .false.
+              exit iteration
             endif
 
-          endif
-    enddo; enddo; enddo
-    !$OMP END PARALLEL DO
+          enddo iteration
 
-  enddo iteration
+        endif
+  enddo; enddo; enddo
+  !$OMP END PARALLEL DO
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
   if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
@@ -1759,33 +1749,33 @@ logical function stateJump(ipc,ip,el)
     el, &                       ! element index
     ip, &                       ! integration point index
     ipc                         ! grain index
- 
+
   integer :: &
     c, &
     p, &
     mySource, &
     myOffset, &
     mySize
- 
+
   c = material_phaseMemberAt(ipc,ip,el)
   p = material_phaseAt(ipc,el)
- 
+
   call constitutive_collectDeltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
                                       crystallite_Fe(1:3,1:3,ipc,ip,el), &
                                       crystallite_Fi(1:3,1:3,ipc,ip,el), &
                                       ipc,ip,el)
- 
+
   myOffset = plasticState(p)%offsetDeltaState
   mySize   = plasticState(p)%sizeDeltaState
- 
+
   if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySize,c)))) then
     stateJump = .false.
     return
   endif
- 
+
   plasticState(p)%state(myOffset + 1:myOffset + mySize,c) = &
   plasticState(p)%state(myOffset + 1:myOffset + mySize,c) + plasticState(p)%deltaState(1:mySize,c)
- 
+
   do mySource = 1, phase_Nsources(p)
     myOffset = sourceState(p)%p(mySource)%offsetDeltaState
     mySize   = sourceState(p)%p(mySource)%sizeDeltaState
@@ -1796,7 +1786,7 @@ logical function stateJump(ipc,ip,el)
     sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) = &
     sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) + sourceState(p)%p(mySource)%deltaState(1:mySize,c)
   enddo
- 
+
   stateJump = .true.
 
 end function stateJump
