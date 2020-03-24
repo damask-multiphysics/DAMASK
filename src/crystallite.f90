@@ -1423,7 +1423,7 @@ subroutine integrateStateRKCK45
      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]                       !< coefficients in Butcher tableau (used for final integration and error estimate)
 
  real(pReal), dimension(5), parameter :: &
-   C = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]                                    !< coefficients in Butcher tableau (fractions of original time step in stages 2 to 6)
+   CC = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]                                    !< coefficients in Butcher tableau (fractions of original time step in stages 2 to 6)
 
  integer :: &
    e, &                                                                                             ! element index in element loop
@@ -1432,7 +1432,7 @@ subroutine integrateStateRKCK45
    stage, &                                                                                         ! stage index in integration stage loop
    n, &
    p, &
-   cc, &
+   c, &
    s, &
    sizeDotState
 
@@ -1455,27 +1455,27 @@ subroutine integrateStateRKCK45
 
    ! --- state update ---
 
-   !$OMP PARALLEL DO PRIVATE(p,cc)
+   !$OMP PARALLEL DO PRIVATE(p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
-         p = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
+         p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-         plasticState(p)%RKCK45dotState(stage,:,cc) = plasticState(p)%dotState(:,cc)
-         plasticState(p)%dotState(:,cc) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,cc)
+         plasticState(p)%RKCK45dotState(stage,:,c) = plasticState(p)%dotState(:,c)
+         plasticState(p)%dotState(:,c) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,c)
 
          do s = 1, phase_Nsources(p)
-           sourceState(p)%p(s)%RKCK45dotState(stage,:,cc) = sourceState(p)%p(s)%dotState(:,cc)
-           sourceState(p)%p(s)%dotState(:,cc) = A(1,stage) * sourceState(p)%p(s)%RKCK45dotState(1,:,cc)
+           sourceState(p)%p(s)%RKCK45dotState(stage,:,c) = sourceState(p)%p(s)%dotState(:,c)
+           sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * sourceState(p)%p(s)%RKCK45dotState(1,:,c)
          enddo
 
          do n = 2, stage
-           plasticState(p)%dotState(:,cc) = plasticState(p)%dotState(:,cc) &
-                                          + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,cc)
+           plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
+                                          + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,c)
            do s = 1, phase_Nsources(p)
-             sourceState(p)%p(s)%dotState(:,cc) = sourceState(p)%p(s)%dotState(:,cc) &
-                                                + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,cc)
+             sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
+                                                + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,c)
            enddo
          enddo
 
@@ -1486,8 +1486,8 @@ subroutine integrateStateRKCK45
     call update_state(1.0_pReal) !MD: 1.0 correct?
     call update_deltaState
     call update_dependentState
-    call update_stress(C(stage))
-    call update_dotState(C(stage))
+    call update_stress(CC(stage))
+    call update_dotState(CC(stage))
 
  enddo
 
@@ -1495,35 +1495,35 @@ subroutine integrateStateRKCK45
 !--------------------------------------------------------------------------------------------------
 ! --- STATE UPDATE WITH ERROR ESTIMATE FOR STATE ---
 
- !$OMP PARALLEL DO PRIVATE(sizeDotState,p,cc)
+ !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
      if (crystallite_todo(g,i,e)) then
-       p = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
+       p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
        sizeDotState = plasticState(p)%sizeDotState
 
-       plasticState(p)%RKCK45dotState(6,:,cc) = plasticState (p)%dotState(:,cc)
+       plasticState(p)%RKCK45dotState(6,:,c) = plasticState (p)%dotState(:,c)
 
        residuum_plastic(1:sizeDotState,g,i,e) = &
-         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,cc)),DB) &              ! why transpose? Better to transpose constant DB
+         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)),DB) &              ! why transpose? Better to transpose constant DB
        * crystallite_subdt(g,i,e)
 
-        plasticState(p)%dotState(:,cc) =  &
-         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,cc)), B)                ! why transpose? Better to transpose constant B
+        plasticState(p)%dotState(:,c) =  &
+         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)), B)                ! why transpose? Better to transpose constant B
 
        do s = 1, phase_Nsources(p)
          sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-         sourceState(p)%p(s)%RKCK45dotState(6,:,cc) = sourceState(p)%p(s)%dotState(:,cc)
+         sourceState(p)%p(s)%RKCK45dotState(6,:,c) = sourceState(p)%p(s)%dotState(:,c)
 
          residuum_source(1:sizeDotState,s,g,i,e) = &
-           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,cc)),DB) &
+           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)),DB) &
          * crystallite_subdt(g,i,e)
 
-         sourceState(p)%p(s)%dotState(:,cc)  = &
-           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,cc)),B)
+         sourceState(p)%p(s)%dotState(:,c)  = &
+           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)),B)
        enddo
 
      endif
@@ -1534,17 +1534,17 @@ subroutine integrateStateRKCK45
 
  ! --- relative residui and state convergence ---
 
- !$OMP PARALLEL DO PRIVATE(sizeDotState,p,cc)
+ !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    do i = FEsolving_execIP(1),FEsolving_execIP(2)
      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
-         p  = material_phaseAt(g,e); cc = material_phaseMemberAt(g,i,e)
+         p  = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
          sizeDotState = plasticState(p)%sizeDotState
 
          crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
-                                             plasticState(p)%state(1:sizeDotState,cc), &
+                                             plasticState(p)%state(1:sizeDotState,c), &
                                              plasticState(p)%atol(1:sizeDotState))
 
          do s = 1, phase_Nsources(p)
@@ -1552,7 +1552,7 @@ subroutine integrateStateRKCK45
 
                   crystallite_todo(g,i,e) = &
                   crystallite_todo(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
-                                                          sourceState(p)%p(s)%state(1:sizeDotState,cc), &
+                                                          sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                           sourceState(p)%p(s)%atol(1:sizeDotState))
          enddo
      endif
