@@ -1150,13 +1150,62 @@ end subroutine integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateEuler
 
- call update_dotState(1.0_pReal)
- call update_state(1.0_pReal)
- call update_deltaState
- call update_dependentState
- call update_stress(1.0_pReal)
- call setConvergenceFlag
- if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+  integer :: &
+    e, &                                                                                            !< element index in element loop
+    i, &                                                                                            !< integration point index in ip loop
+    g, &                                                                                            !< grain index in grain loop
+    p, &
+    c, &
+    s, &
+    sizeDotState
+  logical :: &
+    nonlocalBroken
+
+  nonlocalBroken = .false.
+  !$OMP PARALLEL DO PRIVATE (sizeDotState,p,c)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
+          (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+
+          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+
+          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                            crystallite_partionedF0, &
+                                            crystallite_Fi(1:3,1:3,g,i,e), &
+                                            crystallite_partionedFp0, &
+                                            crystallite_subdt(g,i,e), g,i,e)
+          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
+          do s = 1, phase_Nsources(p)
+            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
+          enddo
+          if (.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+          if(.not. crystallite_todo(g,i,e)) cycle
+          
+          sizeDotState = plasticState(p)%sizeDotState
+          plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                                  + plasticState(p)%dotState (1:sizeDotState,c) &
+                                                    * crystallite_subdt(g,i,e)
+          do s = 1, phase_Nsources(p)
+            sizeDotState = sourceState(p)%p(s)%sizeDotState
+            sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                        + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
+                                                          * crystallite_subdt(g,i,e)
+          enddo
+
+        endif
+  enddo; enddo; enddo
+  !$OMP END PARALLEL DO
+
+  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
+
+  call update_deltaState
+  call update_dependentState
+  call update_stress(1.0_pReal)
+  call setConvergenceFlag
+  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
 
 end subroutine integrateStateEuler
 
@@ -1175,7 +1224,6 @@ subroutine integrateStateAdaptiveEuler
    s, &
    sizeDotState
 
-  ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of adaptive Euler
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
    residuum_plastic
