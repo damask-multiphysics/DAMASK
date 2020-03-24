@@ -1052,7 +1052,7 @@ subroutine integrateStateFPI
                                              crystallite_Fp(1:3,1:3,g,i,e), &
                                              g, i, e)
 
-            crystallite_todo(g,i,e) = integrateStress(g,i,e,1.0_pReal)
+            crystallite_todo(g,i,e) = integrateStress(g,i,e)
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
             if(.not. crystallite_todo(g,i,e)) exit iteration
@@ -1204,14 +1204,17 @@ subroutine integrateStateEuler
                                            crystallite_Fp(1:3,1:3,g,i,e), &
                                            g, i, e)
 
+          crystallite_todo(g,i,e) = integrateStress(g,i,e)
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+
+          crystallite_converged(g,i,e) = crystallite_todo(g,i,e)
+
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-  call update_stress(1.0_pReal)
-  call setConvergenceFlag
   if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
 
 end subroutine integrateStateEuler
