@@ -1037,7 +1037,7 @@ subroutine integrateStateFPI
      write(6,'(a,i6)') '<< CRYST stateFPI >> state iteration ',NiterationState
 #endif
 
-    !$OMP DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
+    !$OMP PARALLEL DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
     do e = FEsolving_execElem(1),FEsolving_execElem(2)
       do i = FEsolving_execIP(1),FEsolving_execIP(2)
         do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1114,28 +1114,28 @@ subroutine integrateStateFPI
           
           endif
     enddo; enddo; enddo
-    !$OMP ENDDO
+    !$OMP END PARALLEL DO
 
     if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
-    !$OMP DO
+    !$OMP PARALLEL DO
     do e = FEsolving_execElem(1),FEsolving_execElem(2)
       do i = FEsolving_execIP(1),FEsolving_execIP(2)
         do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        !$OMP FLUSH(crystallite_todo)
-        if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                        ! converged and still alive...
-          crystallite_todo(g,i,e) = stateJump(g,i,e)
           !$OMP FLUSH(crystallite_todo)
-          if (.not. crystallite_todo(g,i,e)) then                                                   ! if state jump fails, then convergence is broken
-            crystallite_converged(g,i,e) = .false.
-            if (.not. crystallite_localPlasticity(g,i,e)) then                                      ! if broken non-local...
-              !$OMP CRITICAL (checkTodo)
+          if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                      ! converged and still alive...
+            crystallite_todo(g,i,e) = stateJump(g,i,e)
+            !$OMP FLUSH(crystallite_todo)
+            if (.not. crystallite_todo(g,i,e)) then                                                 ! if state jump fails, then convergence is broken
+              crystallite_converged(g,i,e) = .false.
+              if (.not. crystallite_localPlasticity(g,i,e)) then                                    ! if broken non-local...
+                !$OMP CRITICAL (checkTodo)
                 crystallite_todo = crystallite_todo .and. crystallite_localPlasticity               ! ...all non-locals skipped
-              !$OMP END CRITICAL (checkTodo)
+                !$OMP END CRITICAL (checkTodo)
+              endif
             endif
           endif
-        endif
-      enddo; enddo; enddo
+    enddo; enddo; enddo
     !$OMP END PARALLEL DO
 
 
