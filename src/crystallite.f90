@@ -1435,31 +1435,32 @@ subroutine integrateStateRKCK45
    c, &
    s, &
    sizeDotState
-
-   ! ToDo: MD: once all constitutives use allocate state, attach residuum arrays to the state in case of RKCK45
+ logical :: &
+   nonlocalBroken
 
  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-   residuum_plastic                                                                         ! relative residuum from evolution in microstructure
+   residuum_plastic
  real(pReal), dimension(constitutive_source_maxSizeDotState, &
                         maxval(phase_Nsources), &
                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-   residuum_source                                                                   ! relative residuum from evolution in microstructure
+   residuum_source
 
 
  call update_dotState(1.0_pReal)
 
  ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
-
+ nonlocalBroken = .false.
  do stage = 1,5
 
    ! --- state update ---
 
-   !$OMP PARALLEL DO PRIVATE(p,c)
+   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
        if (crystallite_todo(g,i,e)) then
+
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
          plasticState(p)%RKCK45dotState(stage,:,c) = plasticState(p)%dotState(:,c)
@@ -1479,12 +1480,27 @@ subroutine integrateStateRKCK45
            enddo
          enddo
 
+         sizeDotState = plasticState(p)%sizeDotState
+         plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                                 + plasticState(p)%dotState (1:sizeDotState,c) &
+                                                 * crystallite_subdt(g,i,e)
+         do s = 1, phase_Nsources(p)
+           sizeDotState = sourceState(p)%p(s)%sizeDotState
+           sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                       + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
+                                                       * crystallite_subdt(g,i,e)
+         enddo
+
+         crystallite_todo(g,i,e) = stateJump(g,i,e)
+         if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+           nonlocalBroken = .true.
+         if(.not. crystallite_todo(g,i,e)) cycle
+
        endif
-     enddo; enddo; enddo
+   enddo; enddo; enddo
    !$OMP END PARALLEL DO
 
-    call update_state(1.0_pReal) !MD: 1.0 correct?
-    call update_deltaState
+  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
     call update_dependentState
     call update_stress(CC(stage))
     call update_dotState(CC(stage))
