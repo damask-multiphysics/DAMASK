@@ -1259,15 +1259,15 @@ subroutine integrateStateAdaptiveEuler
 
           residuum_plastic(1:sizeDotState,g,i,e) = plasticState(p)%dotstate(1:sizeDotState,c) &
                                                  * (- 0.5_pReal * crystallite_subdt(g,i,e))
-          plasticState(p)%state(1:sizeDotState,c) = &
-          plasticState(p)%state(1:sizeDotState,c) + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e) !ToDo: state, partitioned state?
+          plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                                  + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
             residuum_source(1:sizeDotState,s,g,i,e) = sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
                                                     * (- 0.5_pReal * crystallite_subdt(g,i,e))
-            sourceState(p)%p(s)%state(1:sizeDotState,c) = &
-            sourceState(p)%p(s)%state(1:sizeDotState,c) + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e) !ToDo: state, partitioned state?
+            sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                        + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           enddo
 
           crystallite_todo(g,i,e) = stateJump(g,i,e)
