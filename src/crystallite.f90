@@ -1496,13 +1496,20 @@ subroutine integrateStateRKCK45
            nonlocalBroken = .true.
          if(.not. crystallite_todo(g,i,e)) cycle
 
+         call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                          crystallite_Fp(1:3,1:3,g,i,e), &
+                                          g, i, e)
+
+         crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
+         if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+           nonlocalBroken = .true.
+         if(.not. crystallite_todo(g,i,e)) cycle
+
        endif
    enddo; enddo; enddo
    !$OMP END PARALLEL DO
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-    call update_dependentState
-    call update_stress(CC(stage))
     call update_dotState(CC(stage))
 
  enddo
