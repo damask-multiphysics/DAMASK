@@ -1451,7 +1451,6 @@ subroutine integrateStateRKCK45
 
  ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
  nonlocalBroken = .false.
- do stage = 1,5
 
    ! --- state update ---
 
@@ -1461,6 +1460,7 @@ subroutine integrateStateRKCK45
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
         if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
+ do stage = 1,5
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
          plasticState(p)%RKCK45dotState(stage,:,c) = plasticState(p)%dotState(:,c)
@@ -1518,11 +1518,11 @@ subroutine integrateStateRKCK45
            nonlocalBroken = .true.
          if(.not. crystallite_todo(g,i,e)) cycle
 
+ enddo
        endif
    enddo; enddo; enddo
    !$OMP END PARALLEL DO
 
- enddo
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
