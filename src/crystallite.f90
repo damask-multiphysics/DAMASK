@@ -1459,7 +1459,7 @@ subroutine integrateStateRKCK45
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-       if (crystallite_todo(g,i,e)) then
+        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
