@@ -1269,12 +1269,22 @@ subroutine integrateStateAdaptiveEuler
             sourceState(p)%p(s)%state(1:sizeDotState,c) = &
             sourceState(p)%p(s)%state(1:sizeDotState,c) + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e) !ToDo: state, partitioned state?
           enddo
+
+          crystallite_todo(g,i,e) = stateJump(g,i,e)
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+          if(.not. crystallite_todo(g,i,e)) cycle
+
+          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                           g, i, e)
+
         endif
       enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  call update_deltaState
-  call update_dependentState
+  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
+
   call update_stress(1.0_pReal)
   call update_dotState(1.0_pReal)
 
