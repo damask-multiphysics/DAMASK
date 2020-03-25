@@ -1455,146 +1455,129 @@ subroutine integrateStateRKCK45
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-       if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
  
-         p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-         
-         do stage = 1,5
+          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+          
+          do stage = 1,5
  
-           plasticState(p)%RKCK45dotState(stage,:,c) = plasticState(p)%dotState(:,c)
-           plasticState(p)%dotState(:,c) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,c)
+            plasticState(p)%RKCK45dotState(stage,:,c) = plasticState(p)%dotState(:,c)
+            plasticState(p)%dotState(:,c) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,c)
  
-           do s = 1, phase_Nsources(p)
-             sourceState(p)%p(s)%RKCK45dotState(stage,:,c) = sourceState(p)%p(s)%dotState(:,c)
-             sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * sourceState(p)%p(s)%RKCK45dotState(1,:,c)
-           enddo
+            do s = 1, phase_Nsources(p)
+              sourceState(p)%p(s)%RKCK45dotState(stage,:,c) = sourceState(p)%p(s)%dotState(:,c)
+              sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * sourceState(p)%p(s)%RKCK45dotState(1,:,c)
+            enddo
  
-           do n = 2, stage
-             plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
-                                            + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,c)
-             do s = 1, phase_Nsources(p)
-               sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
-                                                  + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,c)
-             enddo
-           enddo
+            do n = 2, stage
+              plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
+                                             + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,c)
+              do s = 1, phase_Nsources(p)
+                sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
+                                                   + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,c)
+              enddo
+            enddo
  
-           sizeDotState = plasticState(p)%sizeDotState
-           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
-                                                   * crystallite_subdt(g,i,e)
-           do s = 1, phase_Nsources(p)
-             sizeDotState = sourceState(p)%p(s)%sizeDotState
-             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                         * crystallite_subdt(g,i,e)
-           enddo
+            sizeDotState = plasticState(p)%sizeDotState
+            plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                                    + plasticState(p)%dotState (1:sizeDotState,c) &
+                                                    * crystallite_subdt(g,i,e)
+            do s = 1, phase_Nsources(p)
+              sizeDotState = sourceState(p)%p(s)%sizeDotState
+              sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                          + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
+                                                          * crystallite_subdt(g,i,e)
+            enddo
  
-           call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
-                                            crystallite_Fp(1:3,1:3,g,i,e), &
-                                            g, i, e)
+            call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                             crystallite_Fp(1:3,1:3,g,i,e), &
+                                             g, i, e)
  
-           crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
-           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-             nonlocalBroken = .true.
-           if(.not. crystallite_todo(g,i,e)) cycle
+            crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
+            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+              nonlocalBroken = .true.
+            if(.not. crystallite_todo(g,i,e)) cycle
  
-           call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                             crystallite_partionedF0, &
-                                             crystallite_Fi(1:3,1:3,g,i,e), &
-                                             crystallite_partionedFp0, &
-                                             crystallite_subdt(g,i,e)*CC(stage), g,i,e)
-           crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-           do s = 1, phase_Nsources(p)
-             crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-           enddo
-           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-             nonlocalBroken = .true.
-           if(.not. crystallite_todo(g,i,e)) cycle
+            call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                              crystallite_partionedF0, &
+                                              crystallite_Fi(1:3,1:3,g,i,e), &
+                                              crystallite_partionedFp0, &
+                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e)
+            crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
+            do s = 1, phase_Nsources(p)
+              crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
+            enddo
+            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+              nonlocalBroken = .true.
+            if(.not. crystallite_todo(g,i,e)) cycle
  
-         enddo
+          enddo
       
-      endif
+          if(.not. crystallite_todo(g,i,e)) exit
+
+          sizeDotState = plasticState(p)%sizeDotState
+          plasticState(p)%RKCK45dotState(6,:,c) = plasticState (p)%dotState(:,c)
+
+          residuum_plastic(1:sizeDotState,g,i,e) = &
+            matmul(DB,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)) &
+          * crystallite_subdt(g,i,e)
+
+           plasticState(p)%dotState(:,c) =  &
+            matmul(B,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c))
+
+          do s = 1, phase_Nsources(p)
+            sizeDotState = sourceState(p)%p(s)%sizeDotState
+            sourceState(p)%p(s)%RKCK45dotState(6,:,c) = sourceState(p)%p(s)%dotState(:,c)
+
+            residuum_source(1:sizeDotState,s,g,i,e) = &
+              matmul(DB,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)) &
+            * crystallite_subdt(g,i,e)
+
+            sourceState(p)%p(s)%dotState(:,c)  = &
+              matmul(B,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c))
+          enddo
+
+        endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-
-
-!--------------------------------------------------------------------------------------------------
-! --- STATE UPDATE WITH ERROR ESTIMATE FOR STATE ---
-
- !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-
-        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
-
-       p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-
-       sizeDotState = plasticState(p)%sizeDotState
-
-       plasticState(p)%RKCK45dotState(6,:,c) = plasticState (p)%dotState(:,c)
-
-       residuum_plastic(1:sizeDotState,g,i,e) = &
-         matmul(DB,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)) &
-       * crystallite_subdt(g,i,e)
-
-        plasticState(p)%dotState(:,c) =  &
-         matmul(B,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c))
-
-       do s = 1, phase_Nsources(p)
-         sizeDotState = sourceState(p)%p(s)%sizeDotState
-
-         sourceState(p)%p(s)%RKCK45dotState(6,:,c) = sourceState(p)%p(s)%dotState(:,c)
-
-         residuum_source(1:sizeDotState,s,g,i,e) = &
-           matmul(DB,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)) &
-         * crystallite_subdt(g,i,e)
-
-         sourceState(p)%p(s)%dotState(:,c)  = &
-           matmul(B,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c))
-       enddo
-
-     endif
-   enddo; enddo; enddo
- !$OMP END PARALLEL DO
-
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
- call update_state(1.0_pReal)
+  call update_state(1.0_pReal)
 
- ! --- relative residui and state convergence ---
+  ! --- relative residui and state convergence ---
 
- !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
- do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1),FEsolving_execIP(2)
-     do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-       if (crystallite_todo(g,i,e)) then
-         p  = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        if (crystallite_todo(g,i,e)) then
+          p  = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-         sizeDotState = plasticState(p)%sizeDotState
+          sizeDotState = plasticState(p)%sizeDotState
 
-         crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
-                                             plasticState(p)%state(1:sizeDotState,c), &
-                                             plasticState(p)%atol(1:sizeDotState))
+          crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
+                                              plasticState(p)%state(1:sizeDotState,c), &
+                                              plasticState(p)%atol(1:sizeDotState))
 
-         do s = 1, phase_Nsources(p)
-           sizeDotState = sourceState(p)%p(s)%sizeDotState
+          do s = 1, phase_Nsources(p)
+            sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-                  crystallite_todo(g,i,e) = &
-                  crystallite_todo(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
-                                                          sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                          sourceState(p)%p(s)%atol(1:sizeDotState))
-         enddo
-     endif
-   enddo; enddo; enddo
- !$OMP END PARALLEL DO
+                   crystallite_todo(g,i,e) = &
+                   crystallite_todo(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                                                           sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                                                           sourceState(p)%p(s)%atol(1:sizeDotState))
+          enddo
+      endif
+    enddo; enddo; enddo
+  !$OMP END PARALLEL DO
 
- call update_deltaState
- call update_dependentState
- call update_stress(1.0_pReal)
- call setConvergenceFlag
- if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+  call update_deltaState
+  call update_dependentState
+  call update_stress(1.0_pReal)
+  
+  call setConvergenceFlag
+  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
 
 end subroutine integrateStateRKCK45
 
