@@ -1499,7 +1499,7 @@ subroutine integrateStateRKCK45
                                                           * crystallite_subdt(g,i,e)
             enddo
 
-            call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+            call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
                                              crystallite_Fp(1:3,1:3,g,i,e), &
                                              g, i, e)
 
