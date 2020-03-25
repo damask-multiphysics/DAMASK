@@ -1564,19 +1564,29 @@ subroutine integrateStateRKCK45
                                                            sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                            sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
-
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
 
+          crystallite_todo(g,i,e) = stateJump(g,i,e)
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+          if(.not. crystallite_todo(g,i,e)) cycle
+
+          call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
+                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                           g, i, e)
+
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+          if(.not. crystallite_todo(g,i,e)) cycle
+        
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
-  call update_deltaState
-  call update_dependentState
   call update_stress(1.0_pReal)
 
   call setConvergenceFlag
