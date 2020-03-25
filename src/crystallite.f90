@@ -1548,21 +1548,6 @@ subroutine integrateStateRKCK45
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-        endif
-  enddo; enddo; enddo
-  !$OMP END PARALLEL DO
-
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-  ! --- relative residui and state convergence ---
-
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if (crystallite_todo(g,i,e)) then
-          p  = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-
           sizeDotState = plasticState(p)%sizeDotState
 
           crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
@@ -1577,9 +1562,15 @@ subroutine integrateStateRKCK45
                                                            sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                            sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
-      endif
-    enddo; enddo; enddo
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+          if(.not. crystallite_todo(g,i,e)) cycle
+
+        endif
+  enddo; enddo; enddo
   !$OMP END PARALLEL DO
+
+  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
   call update_deltaState
   call update_dependentState
