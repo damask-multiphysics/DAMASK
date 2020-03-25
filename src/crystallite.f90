@@ -1496,7 +1496,7 @@ subroutine integrateStateRKCK45
             crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) cycle
+            if(.not. crystallite_todo(g,i,e)) exit
 
             call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
@@ -1509,11 +1509,11 @@ subroutine integrateStateRKCK45
             enddo
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) cycle
+            if(.not. crystallite_todo(g,i,e)) exit
 
           enddo
 
-          if(.not. crystallite_todo(g,i,e)) exit
+          if(.not. crystallite_todo(g,i,e)) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
           plasticState(p)%RKCK45dotState(6,:,c) = plasticState (p)%dotState(:,c)
