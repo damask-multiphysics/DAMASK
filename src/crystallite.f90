@@ -1580,16 +1580,17 @@ subroutine integrateStateRKCK45
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
-        
+
+          crystallite_todo(g,i,e) = integrateStress(g,i,e)
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
+          crystallite_converged(g,i,e) = crystallite_todo(g,i,e)                                    ! consider converged if not broken
+
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-  call update_stress(1.0_pReal)
-
-  call setConvergenceFlag
   if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
 
 end subroutine integrateStateRKCK45
