@@ -1048,7 +1048,7 @@ subroutine integrateStateFPI
               sourceState(p)%p(s)%previousDotState (:,c) = sourceState(p)%p(s)%dotState(:,c)
             enddo
 
-            call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+            call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
                                              crystallite_Fp(1:3,1:3,g,i,e), &
                                              g, i, e)
 
@@ -1579,7 +1579,7 @@ subroutine update_dependentState
      do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
          if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+         call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
                                           g, i, e)
    enddo; enddo; enddo
