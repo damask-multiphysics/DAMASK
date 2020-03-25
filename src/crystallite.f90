@@ -1449,10 +1449,7 @@ subroutine integrateStateRKCK45
 
  call update_dotState(1.0_pReal)
 
- ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
  nonlocalBroken = .false.
-
-   ! --- state update ---
 
    !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -1490,11 +1487,6 @@ subroutine integrateStateRKCK45
                                                        + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                        * crystallite_subdt(g,i,e)
          enddo
-
-         crystallite_todo(g,i,e) = stateJump(g,i,e)
-         if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-           nonlocalBroken = .true.
-         if(.not. crystallite_todo(g,i,e)) cycle
 
          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
