@@ -1541,27 +1541,20 @@ subroutine integrateStateRKCK45
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
+          crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
+                                              plasticState(p)%state(1:sizeDotState,c), &
+                                              plasticState(p)%atol(1:sizeDotState))
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
-          enddo
-
-          sizeDotState = plasticState(p)%sizeDotState
-
-          crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
-                                              plasticState(p)%state(1:sizeDotState,c), &
-                                              plasticState(p)%atol(1:sizeDotState))
-
-          do s = 1, phase_Nsources(p)
-            sizeDotState = sourceState(p)%p(s)%sizeDotState
-
                    crystallite_todo(g,i,e) = &
                    crystallite_todo(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
                                                            sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                            sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
+
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
