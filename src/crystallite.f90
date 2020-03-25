@@ -1532,9 +1532,9 @@ subroutine integrateStateRKCK45
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1),FEsolving_execIP(2)
        do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        
+
         if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
-       
+
        p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
        sizeDotState = plasticState(p)%sizeDotState
@@ -1542,11 +1542,11 @@ subroutine integrateStateRKCK45
        plasticState(p)%RKCK45dotState(6,:,c) = plasticState (p)%dotState(:,c)
 
        residuum_plastic(1:sizeDotState,g,i,e) = &
-         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)),DB) &              ! why transpose? Better to transpose constant DB
+         matmul(DB,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)) &
        * crystallite_subdt(g,i,e)
 
         plasticState(p)%dotState(:,c) =  &
-         matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)), B)                ! why transpose? Better to transpose constant B
+         matmul(B,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c))
 
        do s = 1, phase_Nsources(p)
          sizeDotState = sourceState(p)%p(s)%sizeDotState
@@ -1554,11 +1554,11 @@ subroutine integrateStateRKCK45
          sourceState(p)%p(s)%RKCK45dotState(6,:,c) = sourceState(p)%p(s)%dotState(:,c)
 
          residuum_source(1:sizeDotState,s,g,i,e) = &
-           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)),DB) &
+           matmul(DB,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)) &
          * crystallite_subdt(g,i,e)
 
          sourceState(p)%p(s)%dotState(:,c)  = &
-           matmul(transpose(sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)),B)
+           matmul(B,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c))
        enddo
 
      endif
@@ -1566,7 +1566,7 @@ subroutine integrateStateRKCK45
  !$OMP END PARALLEL DO
 
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
- 
+
  call update_state(1.0_pReal)
 
  ! --- relative residui and state convergence ---
