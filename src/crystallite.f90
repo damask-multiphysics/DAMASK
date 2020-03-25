@@ -1404,116 +1404,118 @@ end subroutine integrateStateRK4
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRKCK45
-
- real(pReal), dimension(5,5), parameter :: &
-   A = reshape([&
-     .2_pReal, .075_pReal,   .3_pReal, -11.0_pReal/54.0_pReal,  1631.0_pReal/55296.0_pReal, &
-     .0_pReal, .225_pReal,  -.9_pReal,   2.5_pReal,              175.0_pReal/512.0_pReal, &
-     .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,   575.0_pReal/13824.0_pReal, &
-     .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal, 44275.0_pReal/110592.0_pReal, &
-     .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,              253.0_pReal/4096.0_pReal], &
-     [5,5], order=[2,1])                                                                            !< coefficients in Butcher tableau (used for preliminary integration in stages 2 to 6)
-
- real(pReal), dimension(6), parameter :: &
-   B = &
-     [37.0_pReal/378.0_pReal, .0_pReal, 250.0_pReal/621.0_pReal, &
-     125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &                                !< coefficients in Butcher tableau (used for final integration and error estimate)
-   DB = B - &
-     [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
-     13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]                       !< coefficients in Butcher tableau (used for final integration and error estimate)
-
- real(pReal), dimension(5), parameter :: &
-   CC = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]                                    !< coefficients in Butcher tableau (fractions of original time step in stages 2 to 6)
-
- integer :: &
-   e, &                                                                                             ! element index in element loop
-   i, &                                                                                             ! integration point index in ip loop
-   g, &                                                                                             ! grain index in grain loop
-   stage, &                                                                                         ! stage index in integration stage loop
-   n, &
-   p, &
-   c, &
-   s, &
-   sizeDotState
- logical :: &
-   nonlocalBroken
-
- real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                        homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-   residuum_plastic
- real(pReal), dimension(constitutive_source_maxSizeDotState, &
-                        maxval(phase_Nsources), &
-                        homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-   residuum_source
-
-
- call update_dotState(1.0_pReal)
-
- nonlocalBroken = .false.
-
-   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
-
- do stage = 1,5
+ 
+  real(pReal), dimension(5,5), parameter :: &
+    A = reshape([&
+      .2_pReal, .075_pReal,   .3_pReal, -11.0_pReal/54.0_pReal,  1631.0_pReal/55296.0_pReal, &
+      .0_pReal, .225_pReal,  -.9_pReal,   2.5_pReal,              175.0_pReal/512.0_pReal, &
+      .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,   575.0_pReal/13824.0_pReal, &
+      .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal, 44275.0_pReal/110592.0_pReal, &
+      .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,              253.0_pReal/4096.0_pReal], &
+      [5,5], order=[2,1])                                                                           !< coefficients in Butcher tableau (used for preliminary integration in stages 2 to 6)
+ 
+  real(pReal), dimension(6), parameter :: &
+    B = &
+      [37.0_pReal/378.0_pReal, .0_pReal, 250.0_pReal/621.0_pReal, &
+      125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &                               !< coefficients in Butcher tableau (used for final integration and error estimate)
+    DB = B - &
+      [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
+      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]                      !< coefficients in Butcher tableau (used for final integration and error estimate)
+ 
+  real(pReal), dimension(5), parameter :: &
+    CC = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]                                  !< coefficients in Butcher tableau (fractions of original time step in stages 2 to 6)
+ 
+  integer :: &
+    e, &                                                                                            ! element index in element loop
+    i, &                                                                                            ! integration point index in ip loop
+    g, &                                                                                            ! grain index in grain loop
+    stage, &                                                                                        ! stage index in integration stage loop
+    n, &
+    p, &
+    c, &
+    s, &
+    sizeDotState
+  logical :: &
+    nonlocalBroken
+ 
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
+                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
+    residuum_plastic
+  real(pReal), dimension(constitutive_source_maxSizeDotState, &
+                         maxval(phase_Nsources), &
+                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
+    residuum_source
+ 
+ 
+  call update_dotState(1.0_pReal)
+ 
+  nonlocalBroken = .false.
+ 
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+       if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+ 
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-
-         plasticState(p)%RKCK45dotState(stage,:,c) = plasticState(p)%dotState(:,c)
-         plasticState(p)%dotState(:,c) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,c)
-
-         do s = 1, phase_Nsources(p)
-           sourceState(p)%p(s)%RKCK45dotState(stage,:,c) = sourceState(p)%p(s)%dotState(:,c)
-           sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * sourceState(p)%p(s)%RKCK45dotState(1,:,c)
-         enddo
-
-         do n = 2, stage
-           plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
-                                          + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,c)
+         
+         do stage = 1,5
+ 
+           plasticState(p)%RKCK45dotState(stage,:,c) = plasticState(p)%dotState(:,c)
+           plasticState(p)%dotState(:,c) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,c)
+ 
            do s = 1, phase_Nsources(p)
-             sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
-                                                + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,c)
+             sourceState(p)%p(s)%RKCK45dotState(stage,:,c) = sourceState(p)%p(s)%dotState(:,c)
+             sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * sourceState(p)%p(s)%RKCK45dotState(1,:,c)
            enddo
+ 
+           do n = 2, stage
+             plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
+                                            + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,c)
+             do s = 1, phase_Nsources(p)
+               sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
+                                                  + A(n,stage) * sourceState(p)%p(s)%RKCK45dotState(n,:,c)
+             enddo
+           enddo
+ 
+           sizeDotState = plasticState(p)%sizeDotState
+           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
+                                                   * crystallite_subdt(g,i,e)
+           do s = 1, phase_Nsources(p)
+             sizeDotState = sourceState(p)%p(s)%sizeDotState
+             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
+                                                         * crystallite_subdt(g,i,e)
+           enddo
+ 
+           call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+                                            crystallite_Fp(1:3,1:3,g,i,e), &
+                                            g, i, e)
+ 
+           crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
+           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+             nonlocalBroken = .true.
+           if(.not. crystallite_todo(g,i,e)) cycle
+ 
+           call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                             crystallite_partionedF0, &
+                                             crystallite_Fi(1:3,1:3,g,i,e), &
+                                             crystallite_partionedFp0, &
+                                             crystallite_subdt(g,i,e)*CC(stage), g,i,e)
+           crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
+           do s = 1, phase_Nsources(p)
+             crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
+           enddo
+           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+             nonlocalBroken = .true.
+           if(.not. crystallite_todo(g,i,e)) cycle
+ 
          enddo
-
-         sizeDotState = plasticState(p)%sizeDotState
-         plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                 + plasticState(p)%dotState (1:sizeDotState,c) &
-                                                 * crystallite_subdt(g,i,e)
-         do s = 1, phase_Nsources(p)
-           sizeDotState = sourceState(p)%p(s)%sizeDotState
-           sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                       + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                       * crystallite_subdt(g,i,e)
-         enddo
-
-         call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
-                                          crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)
-
-         crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
-         if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-           nonlocalBroken = .true.
-         if(.not. crystallite_todo(g,i,e)) cycle
-
-         call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                           crystallite_partionedF0, &
-                                           crystallite_Fi(1:3,1:3,g,i,e), &
-                                           crystallite_partionedFp0, &
-                                           crystallite_subdt(g,i,e)*CC(stage), g,i,e)
-         crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-         do s = 1, phase_Nsources(p)
-           crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-         enddo
-         if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-           nonlocalBroken = .true.
-         if(.not. crystallite_todo(g,i,e)) cycle
-
- enddo
-       endif
-   enddo; enddo; enddo
-   !$OMP END PARALLEL DO
+      
+      endif
+  enddo; enddo; enddo
+  !$OMP END PARALLEL DO
 
 
 
