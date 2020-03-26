@@ -1199,7 +1199,7 @@ subroutine integrateStateEuler
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
 
-          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+          call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
                                            crystallite_Fp(1:3,1:3,g,i,e), &
                                            g, i, e)
 
@@ -1275,7 +1275,7 @@ subroutine integrateStateAdaptiveEuler
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
 
-          call constitutive_dependentState(crystallite_Fe(1:3,1:3,g,i,e), &
+          call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
                                            crystallite_Fp(1:3,1:3,g,i,e), &
                                            g, i, e)
 
