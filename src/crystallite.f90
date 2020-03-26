@@ -1347,9 +1347,9 @@ end subroutine integrateStateAdaptiveEuler
 subroutine integrateStateRK4
 
  real(pReal), dimension(4), parameter :: &
-   TIMESTEPFRACTION = [0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal]                                   ! factor giving the fraction of the original timestep used for Runge Kutta Integration
+   CC = [0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal]                                   ! factor giving the fraction of the original timestep used for Runge Kutta Integration
  real(pReal), dimension(4), parameter :: &
-   WEIGHT = [1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal/6.0_pReal]                                   ! weight of slope used for Runge Kutta integration (final weight divided by 6)
+   B = [1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal/6.0_pReal]                                   ! weight of slope used for Runge Kutta integration (final weight divided by 6)
 
  integer ::                                    e, &                                                  ! element index in element loop
                                                i, &                                                  ! integration point index in ip loop
@@ -1371,24 +1371,24 @@ subroutine integrateStateRK4
        if (crystallite_todo(g,i,e)) then
          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-         plasticState(p)%RK4dotState(:,c) = WEIGHT(n)*plasticState(p)%dotState(:,c) &
+         plasticState(p)%RK4dotState(:,c) = B(n)*plasticState(p)%dotState(:,c) &
                                           + merge(plasticState(p)%RK4dotState(:,c),0.0_pReal,n>1)
          do s = 1, phase_Nsources(p)
-           sourceState(p)%p(s)%RK4dotState(:,c) = WEIGHT(n)*sourceState(p)%p(s)%dotState(:,c) &
+           sourceState(p)%p(s)%RK4dotState(:,c) = B(n)*sourceState(p)%p(s)%dotState(:,c) &
                                                 + merge(sourceState(p)%p(s)%RK4dotState(:,c),0.0_pReal,n>1)
          enddo
        endif
      enddo; enddo; enddo
    !$OMP END PARALLEL DO
 
-   call update_state(TIMESTEPFRACTION(n))
+   call update_state(CC(n))
    call update_deltaState
    call update_dependentState
-   call update_stress(TIMESTEPFRACTION(n))
+   call update_stress(CC(n))
    ! --- dot state and RK dot state---
 
    first3steps: if (n < 4) then
-     call update_dotState(TIMESTEPFRACTION(n))
+     call update_dotState(CC(n))
    endif first3steps
 
  enddo
