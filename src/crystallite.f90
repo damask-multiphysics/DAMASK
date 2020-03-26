@@ -1715,10 +1715,10 @@ subroutine setConvergenceFlag
 end subroutine setConvergenceFlag
 
 
- !--------------------------------------------------------------------------------------------------
- !> @brief determines whether a point is converged
- !--------------------------------------------------------------------------------------------------
- logical pure function converged(residuum,state,atol)
+!--------------------------------------------------------------------------------------------------
+!> @brief determines whether a point is converged
+!--------------------------------------------------------------------------------------------------
+logical pure function converged(residuum,state,atol)
 
   real(pReal), intent(in), dimension(:) ::&
     residuum, state, atol
@@ -1729,62 +1729,7 @@ end subroutine setConvergenceFlag
 
   converged = all(abs(residuum) <= max(atol, rtol*abs(state)))
 
- end function converged
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Standard forwarding of state as state = state0 + dotState * (delta t)                        comment seems wrong!
-!--------------------------------------------------------------------------------------------------
-subroutine update_stress(timeFraction)
-
-  real(pReal), intent(in) :: &
-    timeFraction
-  integer :: &
-    e, &                                                                                            !< element index in element loop
-    i, &                                                                                            !< integration point index in ip loop
-    g
-  logical :: &
-    nonlocalBroken
-
-  nonlocalBroken = .false.
-  !$OMP PARALLEL DO
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
-          (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
-          crystallite_todo(g,i,e) = integrateStress(g,i,e,timeFraction)
-          if (.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-            nonlocalBroken = .true.
-        endif
-  enddo; enddo; enddo
-  !$OMP END PARALLEL DO
-
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-end subroutine update_stress
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief tbd
-!--------------------------------------------------------------------------------------------------
-subroutine update_dependentState
- integer ::                                    e, &                                                  ! element index in element loop
-                                               i, &                                                  ! integration point index in ip loop
-                                               g                                                     ! grain index in grain loop
-
- !$OMP PARALLEL DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                          crystallite_Fp(1:3,1:3,g,i,e), &
-                                          g, i, e)
-   enddo; enddo; enddo
- !$OMP END PARALLEL DO
-
-end subroutine update_dependentState
+end function converged
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1871,71 +1816,6 @@ subroutine update_dotState(timeFraction)
   if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
 
 end subroutine update_DotState
-
-
-!---------------------------------------------------------------------------------------------------
-!> @brief Trigger calculation of all new sudden state change
-!> if NaN occurs, crystallite_todo is set to FALSE. Any NaN in a nonlocal propagates to all others
-!---------------------------------------------------------------------------------------------------
-subroutine update_deltaState
-
- integer :: &
-   e, &                                                                                             !< element index in element loop
-   i, &                                                                                             !< integration point index in ip loop
-   g, &                                                                                             !< grain index in grain loop
-   p, &
-   mySize, &
-   myOffset, &
-   c, &
-   s
- logical :: &
-   NaN, &
-   nonlocalStop
-
-   nonlocalStop = .false.
-
-   !$OMP PARALLEL DO PRIVATE(p,c,myOffset,mySize,NaN)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-     do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-         !$OMP FLUSH(nonlocalStop)
-         if ((crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) .and. .not. nonlocalStop) then
-        call constitutive_collectDeltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_Fe(1:3,1:3,g,i,e), &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            g,i,e)
-         p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-         myOffset = plasticState(p)%offsetDeltaState
-         mySize   = plasticState(p)%sizeDeltaState
-         NaN = any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySize,c)))
-
-         if (.not. NaN) then
-
-           plasticState(p)%state(myOffset + 1: myOffset + mySize,c) = &
-           plasticState(p)%state(myOffset + 1: myOffset + mySize,c) + plasticState(p)%deltaState(1:mySize,c)
-           do s = 1, phase_Nsources(p)
-             myOffset = sourceState(p)%p(s)%offsetDeltaState
-             mySize   = sourceState(p)%p(s)%sizeDeltaState
-             NaN = NaN .or. any(IEEE_is_NaN(sourceState(p)%p(s)%deltaState(1:mySize,c)))
-
-             if (.not. NaN) then
-               sourceState(p)%p(s)%state(myOffset + 1:myOffset + mySize,c) = &
-               sourceState(p)%p(s)%state(myOffset + 1:myOffset + mySize,c) + sourceState(p)%p(s)%deltaState(1:mySize,c)
-             endif
-          enddo
-        endif
-
-         crystallite_todo(g,i,e) = .not. NaN
-         if (.not. crystallite_todo(g,i,e)) then                                                             ! if state jump fails, then convergence is broken
-           crystallite_converged(g,i,e) = .false.
-           if (.not. crystallite_localPlasticity(g,i,e)) nonlocalStop = .true.
-         endif
-       endif
-     enddo; enddo; enddo
-   !$OMP END PARALLEL DO
- if (nonlocalStop) crystallite_todo = crystallite_todo .and. crystallite_localPlasticity
-
-end subroutine update_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
