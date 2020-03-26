@@ -51,10 +51,10 @@ module prec
     real(pReal), allocatable, dimension(:,:) :: &
       partionedState0, &
       subState0, &
-      previousDotState, &                                                                           !< state rate of previous xxxx
-      previousDotState2, &                                                                          !< state rate two xxxx ago
-      RK4dotState
+      previousDotState, &
+      previousDotState2
     real(pReal), allocatable, dimension(:,:,:) :: &
+      RK4dotState, &
       RKCK45dotState
   end type
 
@@ -249,16 +249,16 @@ subroutine unitTest
   real(pReal), dimension(2) :: r
   external :: &
     quit
-  
+
   call random_number(r)
   r = r/minval(r)
   if(.not. all(dEq(r,r+PREAL_EPSILON)))    call quit(9000)
   if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) call quit(9000)
   if(.not. all(dEq0(r-(r+PREAL_MIN))))     call quit(9000)
-  
+
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2])) call quit(9000)
-  
+
 end subroutine unitTest
 
 end module prec
