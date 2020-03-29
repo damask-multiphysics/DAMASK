@@ -21,36 +21,42 @@ def findClosestSeed(seeds, weights, point):
     return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
 
 
-def Laguerre_tessellation(grid, seeds, grains, size, periodic, weights, cpus):
+def Laguerre_tessellation(grid, size, seeds, weights, origin = np.zeros(3), periodic = True, cpus = 2):
 
     if periodic:
         weights_p = np.tile(weights,27).flatten(order='F')                                          # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
         seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
         seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
         seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
+        coords = damask.grid_filters.cell_coord0(grid*3,size*3,-origin-size).reshape(-1,3,order='F')
     else:
         weights_p = weights.flatten()
         seeds_p   = seeds
+        coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
 
     if cpus > 1:
-        default_args = partial(findClosestSeed,seeds_p,weights_p)
-        pool = multiprocessing.Pool(processes = cpus)                                               # initialize workers
-        result = pool.map_async(default_args, [point for point in grid])                            # evaluate function in parallel
+        pool = multiprocessing.Pool(processes = cpus)
+        result = pool.map_async(partial(findClosestSeed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
-        closestSeeds = np.array(result.get()).flatten()
+        closest_seed = np.array(result.get())
     else:
-        closestSeeds= np.array([findClosestSeed(seeds_p,weights_p,point) for point in grid])
+        closest_seed= np.array([findClosestSeed(seeds_p,weights_p,coord) for coord in coords])
 
-    return grains[closestSeeds%seeds.shape[0]]
+    if periodic:
+        closest_seed = closest_seed.reshape(grid[2]*3,grid[1]*3,grid[0]*3)
+        return closest_seed[grid[2]:grid[2]*2,grid[1]:grid[1]*2,grid[0]:grid[0]*2]%seeds.shape[0]
+    else:
+        return closest_seed
 
 
-def Voronoi_tessellation(grid, seeds, grains, size, periodic = True):
+def Voronoi_tessellation(grid, size, seeds, origin = np.zeros(3), periodic = True):
 
+    coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
     KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
-    devNull,closestSeeds = KDTree.query(grid)
+    devNull,closest_seed = KDTree.query(coords)
 
-    return grains[closestSeeds]
+    return closest_seed
 
 
 # --------------------------------------------------------------------
@@ -191,13 +197,11 @@ for name in filenames:
     if options.eulers in table.labels:
         eulers = table.get(options.eulers)
 
-    coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
-
     if options.laguerre:
-        indices = Laguerre_tessellation(coords,seeds,grains,size,options.periodic,
-                                        table.get(options.weight),options.cpus)
+        indices = grains[Laguerre_tessellation(grid,size,seeds,table.get(options.weight),origin,
+                                               options.periodic,options.cpus)]
     else:
-        indices = Voronoi_tessellation (coords,seeds,grains,size,options.periodic)
+        indices = grains[Voronoi_tessellation (grid,size,seeds,origin,options.periodic)]
 
     config_header = []
     if options.config:
