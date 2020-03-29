@@ -44,8 +44,8 @@ def Laguerre_tessellation(grid, size, seeds, weights, origin = np.zeros(3), peri
         closest_seed= np.array([findClosestSeed(seeds_p,weights_p,coord) for coord in coords])
 
     if periodic:
-        closest_seed = closest_seed.reshape(grid[2]*3,grid[1]*3,grid[0]*3)
-        return closest_seed[grid[2]:grid[2]*2,grid[1]:grid[1]*2,grid[0]:grid[0]*2]%seeds.shape[0]
+        closest_seed = closest_seed.reshape(grid*3)
+        return closest_seed[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
     else:
         return closest_seed
 

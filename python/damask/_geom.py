@@ -370,7 +370,7 @@ class Geom:
         microstructure = np.array(result.get())
 
         if periodic:
-            microstructure = microstructure.reshape(grid[0]*3,grid[1]*3,grid[2]*3)
+            microstructure = microstructure.reshape(grid*3)
             microstructure = microstructure[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
         else:
             microstructure = microstructure.reshape(grid)
