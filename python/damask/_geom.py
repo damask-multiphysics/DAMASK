@@ -1,11 +1,15 @@
 import sys
 from io import StringIO
+import multiprocessing
+from functools import partial
 
 import numpy as np
-from scipy import ndimage
+from scipy import ndimage,spatial
 
 from . import VTK
 from . import util
+from . import Environment
+from . import grid_filters
 
 
 class Geom:
@@ -50,7 +54,7 @@ class Geom:
 
     def update(self,microstructure=None,size=None,origin=None,rescale=False):
         """
-        Updates microstructure and size.
+        Update microstructure and size.
 
         Parameters
         ----------
@@ -113,7 +117,7 @@ class Geom:
 
     def set_comments(self,comments):
         """
-        Replaces all existing comments.
+        Replace all existing comments.
 
         Parameters
         ----------
@@ -127,7 +131,7 @@ class Geom:
 
     def add_comments(self,comments):
         """
-        Appends comments to existing comments.
+        Append comments to existing comments.
 
         Parameters
         ----------
@@ -140,7 +144,7 @@ class Geom:
 
     def set_microstructure(self,microstructure):
         """
-        Replaces the existing microstructure representation.
+        Replace the existing microstructure representation.
 
         Parameters
         ----------
@@ -159,7 +163,7 @@ class Geom:
 
     def set_size(self,size):
         """
-        Replaces the existing size information.
+        Replace the existing size information.
 
         Parameters
         ----------
@@ -179,7 +183,7 @@ class Geom:
 
     def set_origin(self,origin):
         """
-        Replaces the existing origin information.
+        Replace the existing origin information.
 
         Parameters
         ----------
@@ -196,7 +200,7 @@ class Geom:
 
     def set_homogenization(self,homogenization):
         """
-        Replaces the existing homogenization index.
+        Replace the existing homogenization index.
 
         Parameters
         ----------
@@ -264,7 +268,7 @@ class Geom:
     @staticmethod
     def from_file(fname):
         """
-        Reads a geom file.
+        Read a geom file.
 
         Parameters
         ----------
@@ -323,6 +327,81 @@ class Geom:
             microstructure = microstructure.astype('int')
 
         return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
+
+
+    @staticmethod
+    def _find_closest_seed(seeds, weights, point):
+        return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
+    @staticmethod
+    def from_Laguerre_tessellation(grid,size,seeds,weights,periodic=True):
+        """
+        Generate geometry from Laguerre tessellation.
+
+        Parameters
+        ----------
+        grid : numpy.ndarray of shape (3)
+            number of grid points in x,y,z direction.
+        size : list or numpy.ndarray of shape (3)
+            physical size of the microstructure in meter.
+        seeds : numpy.ndarray of shape (:,3)
+            position of the seed points in meter. All points need to lay within the box.
+        weights : numpy.ndarray of shape (seeds.shape[0])
+            weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
+        periodic : Boolean, optional
+            perform a periodic tessellation. Defaults to True.
+
+        """
+        if periodic:
+            weights_p = np.tile(weights,27).flatten(order='F')                                      # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+            seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
+            seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
+            seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
+            coords  = grid_filters.cell_coord0(grid*3,size*3,-size).reshape(-1,3,order='F')
+
+        else:
+            weights_p = weights.flatten()
+            seeds_p   = seeds
+            coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+
+        pool = multiprocessing.Pool(processes = int(Environment().options['DAMASK_NUM_THREADS']))
+        result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
+        pool.close()
+        pool.join()
+        microstructure = np.array(result.get())
+
+        if periodic:
+            microstructure = microstructure.reshape(grid[0]*3,grid[1]*3,grid[2]*3)
+            microstructure = microstructure[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
+        else:
+            microstructure = microstructure.reshape(grid)
+
+        #comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
+        return Geom(microstructure+1,size,homogenization=1)
+
+
+    @staticmethod
+    def from_Voronoi_tessellation(grid,size,seeds,periodic=True):
+        """
+        Generate geometry from Voronoi tessellation.
+
+        Parameters
+        ----------
+        grid : numpy.ndarray of shape (3)
+            number of grid points in x,y,z direction.
+        size : list or numpy.ndarray of shape (3)
+            physical size of the microstructure in meter.
+        seeds : numpy.ndarray of shape (:,3)
+            position of the seed points in meter. All points need to lay within the box.
+        periodic : Boolean, optional
+            perform a periodic tessellation. Defaults to True.
+
+        """
+        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+        KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
+        devNull,microstructure = KDTree.query(coords)
+
+        #comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
+        return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
 
 
     def to_file(self,fname,pack=None):

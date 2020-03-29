@@ -97,3 +97,24 @@ class TestGeom:
         reference = os.path.join(reference_dir,'scale_{}.geom'.format(tag))
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
+
+    @pytest.mark.parametrize('periodic',[(True),(False)])
+    def test_tessellation(self,periodic):
+        grid   = np.random.randint(10,20,3)
+        size   = np.random.random(3) + 1.0
+        N_seeds= np.random.randint(10,30)
+        seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
+        Voronoi  = Geom.from_Voronoi_tessellation( grid,size,seeds,                 periodic)
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),periodic)
+        assert geom_equal(Laguerre,Voronoi)
+
+    def test_Laguerre(self):
+        grid   = np.random.randint(10,20,3)
+        size   = np.random.random(3) + 1.0
+        N_seeds= np.random.randint(10,30)
+        seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
+        weights= np.full((N_seeds),-np.inf)
+        ms     = np.random.randint(1, N_seeds+1)
+        weights[ms-1] = np.random.random()
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,np.random.random()>0.5)
+        assert np.all(Laguerre.microstructure == ms)
