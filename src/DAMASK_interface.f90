@@ -25,7 +25,7 @@ module DAMASK_interface
   
   implicit none
   private
-  logical,                       public, protected :: &
+  logical,          volatile,    public, protected :: &
     SIGTERM, &                                                                                      !< termination signal 
     SIGUSR1, &                                                                                      !< 1. user-defined signal
     SIGUSR2                                                                                         !< 2. user-defined signal
