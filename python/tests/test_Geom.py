@@ -99,7 +99,7 @@ class TestGeom:
         assert geom_equal(modified,Geom.from_file(reference))
 
     @pytest.mark.parametrize('periodic',[(True),(False)])
-    def test_tessellation(self,periodic):
+    def test_tessellation_approaches(self,periodic):
         grid   = np.random.randint(10,20,3)
         size   = np.random.random(3) + 1.0
         N_seeds= np.random.randint(10,30)
@@ -108,7 +108,7 @@ class TestGeom:
         Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),periodic)
         assert geom_equal(Laguerre,Voronoi)
 
-    def test_Laguerre(self):
+    def test_Laguerre_weights(self):
         grid   = np.random.randint(10,20,3)
         size   = np.random.random(3) + 1.0
         N_seeds= np.random.randint(10,30)
@@ -118,3 +118,16 @@ class TestGeom:
         weights[ms-1] = np.random.random()
         Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,np.random.random()>0.5)
         assert np.all(Laguerre.microstructure == ms)
+
+    @pytest.mark.parametrize('approach',[('Laguerre'),('Voronoi')])
+    def test_tessellate_bicrystal(self,approach):
+        grid  = np.random.randint(5,10,3)*2
+        size  = grid.astype(np.float)
+        seeds = np.vstack((size*np.array([0.5,0.25,0.5]),size*np.array([0.5,0.75,0.5])))
+        microstructure = np.ones(grid)
+        microstructure[:,grid[1]//2:,:] = 2
+        if   approach == 'Laguerre':
+            geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),np.random.random()>0.5)
+        elif approach == 'Voronoi':
+            geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            np.random.random()>0.5)
+        assert np.all(geom.microstructure == microstructure)
