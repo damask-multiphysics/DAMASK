@@ -29,6 +29,8 @@ module homogenization
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
+  logical, public :: &
+    terminallyIll = .false.                                                                         !< at least one material point is terminally ill
   real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
     materialpoint_F0, &                                                                             !< def grad of IP at start of FE increment
     materialpoint_F, &                                                                              !< def grad of IP to be reached at end of FE increment
