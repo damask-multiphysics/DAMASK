@@ -485,21 +485,19 @@ function math_invSym3333(A)
 
   real(pReal),dimension(3,3,3,3),intent(in) :: A
 
-  integer :: ierr
   integer,     dimension(6)        :: ipiv6
   real(pReal), dimension(6,6)      :: temp66
   real(pReal), dimension(6*(64+2)) :: work
-  logical                          :: error
+  integer                          :: ierr_i, ierr_f
   external :: &
     dgetrf, &
     dgetri
 
   temp66 = math_sym3333to66(A)
-  call dgetrf(6,6,temp66,6,ipiv6,ierr)
-  error = (ierr /= 0)
-  call dgetri(6,temp66,6,ipiv6,work,size(work,1),ierr)
-  error = error .or. (ierr /= 0)
-  if (error) then
+  call dgetrf(6,6,temp66,6,ipiv6,ierr_i)
+  call dgetri(6,temp66,6,ipiv6,work,size(work,1),ierr_f)
+
+  if (ierr_i /= 0 .or. ierr_f /= 0) then
     call IO_error(400, ext_msg = 'math_invSym3333')
   else
     math_invSym3333 = math_66toSym3333(temp66)
