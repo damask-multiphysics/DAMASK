@@ -28,7 +28,7 @@ def reference_dir(reference_dir_base):
 
 
 class TestGeom:
-    
+
     def test_update(self,default):
         modified = copy.deepcopy(default)
         modified.update(
