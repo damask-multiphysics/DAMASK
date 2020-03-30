@@ -1298,18 +1298,6 @@ subroutine integrateStateAdaptiveEuler
           if(.not. crystallite_todo(g,i,e)) cycle
 
 
-        endif
-      enddo; enddo; enddo
-  !$OMP END PARALLEL DO
-
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if (crystallite_todo(g,i,e)) then
-          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
           sizeDotState = plasticState(p)%sizeDotState
 
           residuum_plastic(1:sizeDotState,g,i,e) = residuum_plastic(1:sizeDotState,g,i,e) &
