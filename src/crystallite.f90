@@ -1711,29 +1711,6 @@ end subroutine nonlocalConvergenceCheck
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Sets convergence flag based on "todo": every point that survived the integration (todo is
-! still .true. is considered as converged
-!> @details: For explicitEuler, RK4 and RKCK45, adaptive Euler and FPI have their on criteria
-!--------------------------------------------------------------------------------------------------
-subroutine setConvergenceFlag
-
- integer :: &
-   e, &                                                                                             !< element index in element loop
-   i, &                                                                                             !< integration point index in ip loop
-   g                                                                                                !< grain index in grain loop
-
- !OMP DO PARALLEL PRIVATE
- do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   do i = FEsolving_execIP(1),FEsolving_execIP(2)
-     do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-       crystallite_converged(g,i,e) = crystallite_todo(g,i,e) .or. crystallite_converged(g,i,e)     ! if still "to do" then converged per definition
- enddo; enddo; enddo
- !OMP END DO PARALLEL
-
-end subroutine setConvergenceFlag
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief determines whether a point is converged
 !--------------------------------------------------------------------------------------------------
 logical pure function converged(residuum,state,atol)
@@ -1748,92 +1725,6 @@ logical pure function converged(residuum,state,atol)
   converged = all(abs(residuum) <= max(atol, rtol*abs(state)))
 
 end function converged
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Standard forwarding of state as state = state0 + dotState * (delta t)
-!--------------------------------------------------------------------------------------------------
-subroutine update_state(timeFraction)
-
- real(pReal), intent(in) :: &
-   timeFraction
- integer :: &
-   e, &                                                                                             !< element index in element loop
-   i, &                                                                                             !< integration point index in ip loop
-   g, &                                                                                             !< grain index in grain loop
-   p, &
-   c, &
-   s, &
-   mySize
-
- !$OMP PARALLEL DO PRIVATE(mySize,p,c)
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-     do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-         if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-       p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-
-       mySize = plasticState(p)%sizeDotState
-       plasticState(p)%state(1:mySize,c) = plasticState(p)%subState0(1:mySize,c) &
-                                         + plasticState(p)%dotState (1:mySize,c) &
-                                         * crystallite_subdt(g,i,e) * timeFraction
-       do s = 1, phase_Nsources(p)
-         mySize = sourceState(p)%p(s)%sizeDotState
-         sourceState(p)%p(s)%state(1:mySize,c) = sourceState(p)%p(s)%subState0(1:mySize,c) &
-                                               + sourceState(p)%p(s)%dotState (1:mySize,c) &
-                                               * crystallite_subdt(g,i,e) * timeFraction
-       enddo
-     endif
- enddo; enddo; enddo
- !$OMP END PARALLEL DO
-
-end subroutine update_state
-
-
-!---------------------------------------------------------------------------------------------------
-!> @brief Trigger calculation of all new rates
-!> if NaN occurs, crystallite_todo is set to FALSE. Any NaN in a nonlocal propagates to all others
-!---------------------------------------------------------------------------------------------------
-subroutine update_dotState(timeFraction)
-
-  real(pReal), intent(in) :: &
-    timeFraction
-  integer :: &
-    e, &                                                                                            !< element index in element loop
-    i, &                                                                                            !< integration point index in ip loop
-    g, &                                                                                            !< grain index in grain loop
-    p, &
-    c, &
-    s
-  logical :: &
-    nonlocalBroken
-
-  nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE (p,c)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
-          (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
-          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e)*timeFraction, g,i,e)
-          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
-          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-          do s = 1, phase_Nsources(p)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-          enddo
-          if (.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-            nonlocalBroken = .true.
-        endif
-  enddo; enddo; enddo
-  !$OMP END PARALLEL DO
-
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-
-end subroutine update_DotState
 
 
 !--------------------------------------------------------------------------------------------------
