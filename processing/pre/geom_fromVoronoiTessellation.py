@@ -192,7 +192,6 @@ for name in filenames:
 
     grains = table.get(options.microstructure) if options.microstructure in table.labels else np.arange(len(seeds))+1
     grainIDs  = np.unique(grains).astype('i')
-    NgrainIDs = len(grainIDs)
 
     if options.eulers in table.labels:
         eulers = table.get(options.eulers)
