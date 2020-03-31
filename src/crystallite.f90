@@ -1118,8 +1118,7 @@ subroutine integrateStateFPI
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+  if (nonlocalBroken) call nonlocalConvergenceCheck
 
   contains
 
@@ -1214,8 +1213,7 @@ subroutine integrateStateEuler
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+  if (nonlocalBroken) call nonlocalConvergenceCheck
 
 end subroutine integrateStateEuler
 
@@ -1324,7 +1322,7 @@ subroutine integrateStateAdaptiveEuler
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+  if (nonlocalBroken) call nonlocalConvergenceCheck
 
 end subroutine integrateStateAdaptiveEuler
 
@@ -1478,8 +1476,7 @@ subroutine integrateStateRK4
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+  if (nonlocalBroken) call nonlocalConvergenceCheck
 
 end subroutine integrateStateRK4
 
@@ -1652,8 +1649,7 @@ subroutine integrateStateRKCK45
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if(nonlocalBroken) where(.not. crystallite_localPlasticity) crystallite_todo = .false.
-  if (any(plasticState(:)%nonlocal)) call nonlocalConvergenceCheck
+  if (nonlocalBroken) call nonlocalConvergenceCheck
 
 end subroutine integrateStateRKCK45
 
@@ -1664,8 +1660,7 @@ end subroutine integrateStateRKCK45
 !--------------------------------------------------------------------------------------------------
 subroutine nonlocalConvergenceCheck
 
- if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &                    ! any non-local not yet converged (or broken)...
-   where( .not. crystallite_localPlasticity) crystallite_converged = .false.
+  where( .not. crystallite_localPlasticity) crystallite_converged = .false.
 
 end subroutine nonlocalConvergenceCheck
 
