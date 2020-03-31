@@ -1070,8 +1070,6 @@ subroutine integrateStateFPI
                                              g, i, e)
 
             crystallite_todo(g,i,e) = integrateStress(g,i,e)
-            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-              nonlocalBroken = .true.
             if(.not. crystallite_todo(g,i,e)) exit iteration
 
             call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
@@ -1083,8 +1081,6 @@ subroutine integrateStateFPI
             do s = 1, phase_Nsources(p)
               crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
             enddo
-            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-              nonlocalBroken = .true.
             if(.not. crystallite_todo(g,i,e)) exit iteration
 
             sizeDotState = plasticState(p)%sizeDotState
@@ -1117,12 +1113,12 @@ subroutine integrateStateFPI
 
             if(crystallite_converged(g,i,e)) then
               crystallite_todo(g,i,e) = stateJump(g,i,e)
-              if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-                nonlocalBroken = .true.
               exit iteration
             endif
 
           enddo iteration
+          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            nonlocalBroken = .true.
 
         endif
   enddo; enddo; enddo
