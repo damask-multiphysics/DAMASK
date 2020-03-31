@@ -1016,7 +1016,7 @@ subroutine integrateStateFPI
     nonlocalBroken
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,r,zeta,p,c,plastic_dotState_p1, plastic_dotState_p2,source_dotState_p1, source_dotState_p2)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,r,zeta,p,c,plastic_dotState_p1, plastic_dotState_p2,source_dotState)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1359,8 +1359,10 @@ subroutine integrateStateRK4
   logical :: &
     nonlocalBroken
 
+  real(pReal), dimension(constitutive_source_maxSizeDotState,4,maxval(phase_Nsources)) :: source_RK4dotState
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,4) :: plastic_RK4dotState
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,source_RK4dotState,plastic_RK4dotState)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1382,20 +1384,23 @@ subroutine integrateStateRK4
           if(.not. crystallite_todo(g,i,e)) cycle
 
           do stage = 1,3
-
-            plasticState(p)%RK4dotState(stage,:,c) = plasticState(p)%dotState(:,c)
-            plasticState(p)%dotState(:,c) = A(1,stage) * plasticState(p)%RK4dotState(1,:,c)
+            sizeDotState = plasticState(p)%sizeDotState
+            plastic_RK4dotState(1:sizeDotState,stage) = plasticState(p)%dotState(:,c)
+            plasticState(p)%dotState(:,c) = A(1,stage) * plastic_RK4dotState(1:sizeDotState,1)
             do s = 1, phase_Nsources(p)
-              sourceState(p)%p(s)%RK4dotState(stage,:,c) = sourceState(p)%p(s)%dotState(:,c)
-              sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * sourceState(p)%p(s)%RK4dotState(1,:,c)
+              sizeDotState = sourceState(p)%p(s)%sizeDotState
+              source_RK4dotState(1:sizeDotState,stage,s) = sourceState(p)%p(s)%dotState(:,c)
+              sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * source_RK4dotState(1:sizeDotState,1,s)
             enddo
 
             do n = 2, stage
+              sizeDotState = plasticState(p)%sizeDotState
               plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
-                                            + A(n,stage) * plasticState(p)%RK4dotState(n,:,c)
+                                            + A(n,stage) * plastic_RK4dotState(1:sizeDotState,n)
               do s = 1, phase_Nsources(p)
+                sizeDotState = sourceState(p)%p(s)%sizeDotState
                 sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
-                                                  + A(n,stage) * sourceState(p)%p(s)%RK4dotState(n,:,c)
+                                                  + A(n,stage) * source_RK4dotState(1:sizeDotState,n,s)
               enddo
             enddo
 
@@ -1438,9 +1443,9 @@ subroutine integrateStateRK4
 
           sizeDotState = plasticState(p)%sizeDotState
 
-          plasticState(p)%RK4dotState(4,:,c) = plasticState (p)%dotState(:,c)
+          plastic_RK4dotState(1:sizeDotState,4) = plasticState (p)%dotState(:,c)
 
-          plasticState(p)%dotState(:,c) =  matmul(B,plasticState(p)%RK4dotState(1:4,1:sizeDotState,c))
+          plasticState(p)%dotState(:,c) =  matmul(plastic_RK4dotState(1:sizeDotState,1:4),B)
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
@@ -1448,9 +1453,9 @@ subroutine integrateStateRK4
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-            sourceState(p)%p(s)%RK4dotState(4,:,c) = sourceState(p)%p(s)%dotState(:,c)
+            source_RK4dotState(1:sizeDotState,4,s) = sourceState(p)%p(s)%dotState(:,c)
 
-            sourceState(p)%p(s)%dotState(:,c)  = matmul(B,sourceState(p)%p(s)%RK4dotState(1:4,1:sizeDotState,c))
+            sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RK4dotState(1:sizeDotState,1:4,s),B)
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)

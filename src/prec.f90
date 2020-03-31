@@ -46,11 +46,8 @@ module prec
       deltaState                                                                                    !< increment of state change
     real(pReal), allocatable, dimension(:,:) :: &
       partionedState0, &
-      subState0, &
-      previousDotState, &
-      previousDotState2
+      subState0
     real(pReal), allocatable, dimension(:,:,:) :: &
-      RK4dotState, &
       RKCK45dotState
   end type
 
