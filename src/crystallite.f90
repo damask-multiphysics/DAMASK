@@ -1540,15 +1540,6 @@ subroutine integrateStateRKCK45
   logical :: &
     nonlocalBroken
 
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    residuum_plastic
-  real(pReal), dimension(constitutive_source_maxSizeDotState, &
-                         maxval(phase_Nsources), &
-                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    residuum_source
-
-
   nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -1629,13 +1620,12 @@ subroutine integrateStateRKCK45
           sizeDotState = plasticState(p)%sizeDotState
 
           plasticState(p)%RKCK45dotState(6,:,c) = plasticState (p)%dotState(:,c)
-          residuum_plastic(1:sizeDotState,g,i,e) = matmul(DB,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)) &
-                                                   * crystallite_subdt(g,i,e)
           plasticState(p)%dotState(:,c) =  matmul(B,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c))
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
-          crystallite_todo(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
+          crystallite_todo(g,i,e) = converged(matmul(DB,plasticState(p)%RKCK45dotState(1:6,1:sizeDotState,c)) &
+                                                   * crystallite_subdt(g,i,e), &
                                               plasticState(p)%state(1:sizeDotState,c), &
                                               plasticState(p)%atol(1:sizeDotState))
 
@@ -1643,14 +1633,13 @@ subroutine integrateStateRKCK45
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
             sourceState(p)%p(s)%RKCK45dotState(6,:,c) = sourceState(p)%p(s)%dotState(:,c)
-            residuum_source(1:sizeDotState,s,g,i,e) = matmul(DB,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)) &
-                                                      * crystallite_subdt(g,i,e)
             sourceState(p)%p(s)%dotState(:,c)  = matmul(B,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c))
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
             crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. &
-                                      converged(residuum_source(1:sizeDotState,s,g,i,e), &
+                                      converged(matmul(DB,sourceState(p)%p(s)%RKCK45dotState(1:6,1:sizeDotState,c)) &
+                                                      * crystallite_subdt(g,i,e), &
                                                 sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                 sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
