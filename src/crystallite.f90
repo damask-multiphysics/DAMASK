@@ -1033,9 +1033,9 @@ subroutine integrateStateFPI
         if(crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e) .and. &
           (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
-          iteration: do NiterationState = 1, num%nState
+          p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-            p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
+          iteration: do NiterationState = 1, num%nState
 
             plasticState(p)%previousDotState2(:,c) = merge(plasticState(p)%previousDotState(:,c),&
                                                            0.0_pReal,&
