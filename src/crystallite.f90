@@ -1360,7 +1360,6 @@ end subroutine integrateStateAdaptiveEuler
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 4th order explicit Runge Kutta method
-! ToDo: This is totally BROKEN: RK4dotState is never used!!!
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRK4
 
@@ -1678,10 +1677,6 @@ subroutine integrateStateRKCK45
           call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
                                            crystallite_Fp(1:3,1:3,g,i,e), &
                                            g, i, e)
-
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-            nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
 
           crystallite_todo(g,i,e) = integrateStress(g,i,e)
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
