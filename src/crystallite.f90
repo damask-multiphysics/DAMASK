@@ -804,7 +804,6 @@ logical function integrateStress(ipc,ip,el,timeFraction)
                                       residuumLi_old, &                                             ! last residuum of intermediate velocity gradient
                                       deltaLi, &                                                    ! direction of next guess
                                       Fe, &                                                         ! elastic deformation gradient
-                                      Fe_new, &
                                       S, &                                                          ! 2nd Piola-Kirchhoff Stress in plastic (lattice) configuration
                                       A, &
                                       B, &
@@ -982,17 +981,15 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   invFp_new = matmul(invFp_current,B)
   call math_invert33(Fp_new,devNull,error,invFp_new)
   if (error) return ! error
-  Fp_new = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)                                       ! regularize
-  Fe_new = matmul(matmul(F,invFp_new),invFi_new)
 
   integrateStress = .true.
   crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
   crystallite_S    (1:3,1:3,ipc,ip,el) = S
   crystallite_Lp   (1:3,1:3,ipc,ip,el) = Lpguess
   crystallite_Li   (1:3,1:3,ipc,ip,el) = Liguess
-  crystallite_Fp   (1:3,1:3,ipc,ip,el) = Fp_new
+  crystallite_Fp   (1:3,1:3,ipc,ip,el) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)         ! regularize
   crystallite_Fi   (1:3,1:3,ipc,ip,el) = Fi_new
-  crystallite_Fe   (1:3,1:3,ipc,ip,el) = Fe_new
+  crystallite_Fe   (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),invFi_new)
 
 end function integrateStress
 
