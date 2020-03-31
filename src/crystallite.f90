@@ -1014,15 +1014,13 @@ subroutine integrateStateFPI
     sizeDotState
   real(pReal) :: &
     zeta
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
-    residuum_plastic                                                                                ! residuum for plastic state
-  real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
-    residuum_source                                                                                 ! residuum for source state
+  real(pReal), dimension(max(constitutive_plasticity_maxSizeDotState,constitutive_source_maxSizeDotState)) :: &
+    r                                                                                               ! state residuum
   logical :: &
     nonlocalBroken
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,residuum_plastic,residuum_source,zeta,p,c)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,r,zeta,p,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1095,13 +1093,12 @@ subroutine integrateStateFPI
                           plasticState(p)%previousDotState2(:,c))
             plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * zeta &
                                           + plasticState(p)%previousDotState(:,c) * (1.0_pReal - zeta)
-            residuum_plastic(1:SizeDotState) = plasticState(p)%state    (1:sizeDotState,c) &
-                                             - plasticState(p)%subState0(1:sizeDotState,c)  &
-                                             - plasticState(p)%dotState (1:sizeDotState,c)  &
-                                               * crystallite_subdt(g,i,e)
+            r(1:SizeDotState) = plasticState(p)%state    (1:sizeDotState,c) &
+                              - plasticState(p)%subState0(1:sizeDotState,c)  &
+                              - plasticState(p)%dotState (1:sizeDotState,c) * crystallite_subdt(g,i,e)
             plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%state(1:sizeDotState,c) &
-                                                    - residuum_plastic(1:sizeDotState)
-            crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState), &
+                                                    - r(1:sizeDotState)
+            crystallite_converged(g,i,e) = converged(r(1:sizeDotState), &
                                                      plasticState(p)%state(1:sizeDotState,c), &
                                                      plasticState(p)%atol(1:sizeDotState))
             do s = 1, phase_Nsources(p)
@@ -1111,14 +1108,13 @@ subroutine integrateStateFPI
                             sourceState(p)%p(s)%previousDotState2(:,c))
               sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
                                                 + sourceState(p)%p(s)%previousDotState(:,c)* (1.0_pReal - zeta)
-              residuum_source(1:sizeDotState) = sourceState(p)%p(s)%state    (1:sizeDotState,c)  &
-                                              - sourceState(p)%p(s)%subState0(1:sizeDotState,c)  &
-                                              - sourceState(p)%p(s)%dotState (1:sizeDotState,c)  &
-                                                * crystallite_subdt(g,i,e)
+              r(1:sizeDotState) = sourceState(p)%p(s)%state    (1:sizeDotState,c)  &
+                                - sourceState(p)%p(s)%subState0(1:sizeDotState,c)  &
+                                - sourceState(p)%p(s)%dotState (1:sizeDotState,c) * crystallite_subdt(g,i,e)
               sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%state(1:sizeDotState,c) &
-                                                          - residuum_source(1:sizeDotState)
+                                                          - r(1:sizeDotState)
               crystallite_converged(g,i,e) = &
-              crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState), &
+              crystallite_converged(g,i,e) .and. converged(r(1:sizeDotState), &
                                                            sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                            sourceState(p)%p(s)%atol(1:sizeDotState))
             enddo
