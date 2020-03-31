@@ -1047,7 +1047,7 @@ subroutine integrateStateFPI
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
-            source_dotState_p2(p)%p = 0.0_pReal * sourceState(p)%p(s)%dotState (1:sizeDotState,c)   ! ToDo can be done smarter/clearer
+            source_dotState_p2(s)%p = 0.0_pReal * sourceState(p)%p(s)%dotState (1:sizeDotState,c)   ! ToDo can be done smarter/clearer
           enddo
 
           iteration: do NiterationState = 1, num%nState
@@ -1055,8 +1055,8 @@ subroutine integrateStateFPI
             if(nIterationState > 1) plastic_dotState_p2 = plastic_dotState_p1
             plastic_dotState_p1 = plasticState(p)%dotState(:,c)
             do s = 1, phase_Nsources(p)
-              if(nIterationState > 1) source_dotState_p2(p)%p = source_dotState_p1(p)%p
-              source_dotState_p1(p)%p = sourceState(p)%p(s)%dotState(:,c)
+              if(nIterationState > 1) source_dotState_p2(s)%p = source_dotState_p1(s)%p
+              source_dotState_p1(s)%p = sourceState(p)%p(s)%dotState(:,c)
             enddo
 
             call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
@@ -1091,9 +1091,9 @@ subroutine integrateStateFPI
                                                      plasticState(p)%atol(1:sizeDotState))
             do s = 1, phase_Nsources(p)
               sizeDotState  = sourceState(p)%p(s)%sizeDotState
-              zeta = damper(sourceState(p)%p(s)%dotState(:,c),source_dotState_p1(p)%p,source_dotState_p2(p)%p)
+              zeta = damper(sourceState(p)%p(s)%dotState(:,c),source_dotState_p1(s)%p,source_dotState_p2(s)%p)
               sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
-                                                + source_dotState_p1(p)%p* (1.0_pReal - zeta)
+                                                + source_dotState_p1(s)%p* (1.0_pReal - zeta)
               r(1:sizeDotState) = sourceState(p)%p(s)%state    (1:sizeDotState,c)  &
                                 - sourceState(p)%p(s)%subState0(1:sizeDotState,c)  &
                                 - sourceState(p)%p(s)%dotState (1:sizeDotState,c) * crystallite_subdt(g,i,e)
@@ -1236,14 +1236,8 @@ subroutine integrateStateAdaptiveEuler
   logical :: &
     nonlocalBroken
 
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,            &
-                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    residuum_plastic
-  real(pReal), dimension(constitutive_source_maxSizeDotState,&
-                         maxval(phase_Nsources), &
-                         homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    residuum_source
-
+  real(pReal), dimension(:), allocatable :: residuum_plastic
+  type(group_float), dimension(maxval(phase_Nsources)) :: residuum_source
 
   nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
@@ -1269,15 +1263,14 @@ subroutine integrateStateAdaptiveEuler
 
           sizeDotState = plasticState(p)%sizeDotState
 
-          residuum_plastic(1:sizeDotState,g,i,e) = plasticState(p)%dotstate(1:sizeDotState,c) &
-                                                 * (- 0.5_pReal * crystallite_subdt(g,i,e))
+          residuum_plastic = - plasticState(p)%dotstate(1:sizeDotState,c) * 0.5_pReal * crystallite_subdt(g,i,e)
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-            residuum_source(1:sizeDotState,s,g,i,e) = sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
-                                                    * (- 0.5_pReal * crystallite_subdt(g,i,e))
+            residuum_source(s)%p  = - sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
+                                  * 0.5_pReal * crystallite_subdt(g,i,e)
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           enddo
@@ -1312,21 +1305,17 @@ subroutine integrateStateAdaptiveEuler
 
           sizeDotState = plasticState(p)%sizeDotState
 
-          residuum_plastic(1:sizeDotState,g,i,e) = residuum_plastic(1:sizeDotState,g,i,e) &
-                                                 + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e)
-
-          crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState,g,i,e), &
+          crystallite_converged(g,i,e) = converged(residuum_plastic &
+                                                   + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e), &
                                                    plasticState(p)%state(1:sizeDotState,c), &
                                                    plasticState(p)%atol(1:sizeDotState))
 
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-            residuum_source(1:sizeDotState,s,g,i,e) = &
-            residuum_source(1:sizeDotState,s,g,i,e) + 0.5_pReal * sourceState(p)%p(s)%dotState(:,c) * crystallite_subdt(g,i,e)
-
             crystallite_converged(g,i,e) = &
-            crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s,g,i,e), &
+            crystallite_converged(g,i,e) .and. converged(residuum_source(s)%p &
+                                                         + 0.5_pReal*sourceState(p)%p(s)%dotState(:,c)*crystallite_subdt(g,i,e), &
                                                          sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                          sourceState(p)%p(s)%atol(1:sizeDotState))
            enddo
