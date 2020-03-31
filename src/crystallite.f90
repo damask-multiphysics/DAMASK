@@ -910,21 +910,19 @@ logical function integrateStress(ipc,ip,el,timeFraction)
         cycle LpLoop
       endif
 
-     !* calculate Jacobian for correction term
-      if (mod(jacoCounterLp, num%iJacoLpresiduum) == 0) then
+      calculateJacobiLi: if (mod(jacoCounterLp, num%iJacoLpresiduum) == 0) then
         jacoCounterLp = jacoCounterLp + 1
 
         do o=1,3; do p=1,3
-          dFe_dLp(o,1:3,p,1:3) = A(o,p)*transpose(invFi_new)                                        ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+          dFe_dLp(o,1:3,p,1:3) = - dt * A(o,p)*transpose(invFi_new)                                 ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
         enddo; enddo
-        dFe_dLp  = - dt * dFe_dLp
         dRLp_dLp = math_identity2nd(9) &
                  - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
         temp_9 = math_33to9(residuumLp)
         call dgesv(9,1,dRLp_dLp,9,devNull_9,temp_9,9,ierr)                                          ! solve dRLp/dLp * delta Lp = -res for delta Lp
         if (ierr /= 0) return ! error
         deltaLp = - math_9to33(temp_9)
-      endif
+      endif calculateJacobiLi
 
       Lpguess = Lpguess &
               + deltaLp * steplengthLp
@@ -952,8 +950,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
       cycle LiLoop
     endif
 
-    !* calculate Jacobian for correction term
-    if (mod(jacoCounterLi, num%iJacoLpresiduum) == 0) then
+    calculateJacobiLp: if (mod(jacoCounterLi, num%iJacoLpresiduum) == 0) then
       jacoCounterLi = jacoCounterLi + 1
 
       temp_33 = matmul(matmul(A,B),invFi_current)
@@ -972,7 +969,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
       call dgesv(9,1,dRLi_dLi,9,devNull_9,temp_9,9,ierr)                                            ! solve dRLi/dLp * delta Li = -res for delta Li
       if (ierr /= 0) return ! error
       deltaLi = - math_9to33(temp_9)
-    endif
+    endif calculateJacobiLp
 
     Liguess = Liguess &
             + deltaLi * steplengthLi
