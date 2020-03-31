@@ -30,10 +30,6 @@ module prec
     real(pReal), dimension(:), pointer :: p
   end type group_float
 
-  type :: group_int
-    integer, dimension(:), pointer :: p
-  end type group_int
-
   ! http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
   type :: tState
     integer :: &
