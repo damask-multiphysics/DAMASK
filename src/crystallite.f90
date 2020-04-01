@@ -1037,7 +1037,6 @@ subroutine integrateStateFPI(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1113,7 +1112,6 @@ subroutine integrateStateFPI(todo)
 
           enddo iteration
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
-
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
@@ -1178,7 +1176,6 @@ subroutine integrateStateEuler(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1201,9 +1198,7 @@ subroutine integrateStateEuler(todo)
 
           broken = integrateStress(g,i,e)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
-
           crystallite_converged(g,i,e) = .not. broken
-
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
@@ -1239,6 +1234,7 @@ subroutine integrateStateAdaptiveEuler(todo)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        broken = .false.
         p = material_phaseAt(g,e)
         if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
 
@@ -1249,8 +1245,6 @@ subroutine integrateStateAdaptiveEuler(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
@@ -1270,11 +1264,9 @@ subroutine integrateStateAdaptiveEuler(todo)
           broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
                                            crystallite_Fe(1:3,1:3,g,i,e), &
                                            crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           broken = integrateStress(g,i,e)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
@@ -1282,13 +1274,10 @@ subroutine integrateStateAdaptiveEuler(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
 
           sizeDotState = plasticState(p)%sizeDotState
-
           crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState) &
                                                    + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e), &
                                                    plasticState(p)%state(1:sizeDotState,c), &
@@ -1296,7 +1285,6 @@ subroutine integrateStateAdaptiveEuler(todo)
 
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
-
             crystallite_converged(g,i,e) = &
             crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s) &
                                                          + 0.5_pReal*sourceState(p)%p(s)%dotState(:,c)*crystallite_subdt(g,i,e), &
@@ -1305,6 +1293,7 @@ subroutine integrateStateAdaptiveEuler(todo)
            enddo
 
         endif
+        if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
@@ -1351,6 +1340,7 @@ subroutine integrateStateRK4(todo)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        broken = .false.
         p = material_phaseAt(g,e)
         if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
 
@@ -1362,8 +1352,6 @@ subroutine integrateStateRK4(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           do stage = 1,3
@@ -1409,7 +1397,6 @@ subroutine integrateStateRK4(todo)
             if(broken) exit
 
           enddo
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
@@ -1435,14 +1422,13 @@ subroutine integrateStateRK4(todo)
           broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
                                            crystallite_Fe(1:3,1:3,g,i,e), &
                                            crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           broken = integrateStress(g,i,e)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           crystallite_converged(g,i,e) = .not. broken
 
         endif
+        if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
@@ -1499,6 +1485,7 @@ subroutine integrateStateRKCK45(todo)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        broken = .false.
         p = material_phaseAt(g,e)
         if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
 
@@ -1509,8 +1496,6 @@ subroutine integrateStateRKCK45(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           do stage = 1,5
@@ -1556,7 +1541,6 @@ subroutine integrateStateRKCK45(todo)
             if(broken) exit
 
           enddo
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
@@ -1585,20 +1569,18 @@ subroutine integrateStateRKCK45(todo)
                                                 sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                 sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
                                            crystallite_Fe(1:3,1:3,g,i,e), &
                                            crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           broken = integrateStress(g,i,e)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           crystallite_converged(g,i,e) = .not. broken
 
         endif
+        if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
