@@ -724,8 +724,6 @@ subroutine material_allocatePlasticState(phase,NipcMyPhase,&
   allocate(plasticState(phase)%state               (sizeState,NipcMyPhase),   source=0.0_pReal)
 
   allocate(plasticState(phase)%dotState            (sizeDotState,NipcMyPhase),source=0.0_pReal)
-  if (numerics_integrator == 5) &
-    allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NipcMyPhase),source=0.0_pReal)
 
   allocate(plasticState(phase)%deltaState        (sizeDeltaState,NipcMyPhase),source=0.0_pReal)
 
@@ -756,8 +754,6 @@ subroutine material_allocateSourceState(phase,of,NipcMyPhase,&
   allocate(sourceState(phase)%p(of)%state               (sizeState,NipcMyPhase),   source=0.0_pReal)
 
   allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NipcMyPhase),source=0.0_pReal)
-  if (numerics_integrator == 5) &
-    allocate(sourceState(phase)%p(of)%RKCK45dotState  (6,sizeDotState,NipcMyPhase),source=0.0_pReal)
 
   allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NipcMyPhase),source=0.0_pReal)
 

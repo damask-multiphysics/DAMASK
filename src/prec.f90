@@ -47,8 +47,6 @@ module prec
     real(pReal), allocatable, dimension(:,:) :: &
       partionedState0, &
       subState0
-    real(pReal), allocatable, dimension(:,:,:) :: &
-      RKCK45dotState
   end type
 
   type, extends(tState) :: tPlasticState
