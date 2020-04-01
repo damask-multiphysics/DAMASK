@@ -320,7 +320,6 @@ module subroutine plastic_nonlocal_init
       prm%fEdgeMultiplication         = config%getFloat('edgemultiplication')
       prm%shortRangeStressCorrection  = config%keyExists('/shortrangestresscorrection/')
 
-      plasticState(p)%nonlocal        = config%KeyExists('/nonlocal/')
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
@@ -388,6 +387,7 @@ module subroutine plastic_nonlocal_init
 
     call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
+    plasticState(p)%nonlocal         = config%KeyExists('/nonlocal/')
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
 
     st0%rho => plasticState(p)%state0                             (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
