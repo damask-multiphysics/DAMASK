@@ -15,7 +15,6 @@ module crystallite
   use DAMASK_interface
   use config
   use debug
-  use numerics
   use rotations
   use math
   use FEsolving
@@ -83,7 +82,8 @@ module crystallite
     integer :: &
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       nState, &                                                                                     !< state loop limit
-      nStress                                                                                       !< stress loop limit
+      nStress, &                                                                                    !< stress loop limit
+      integrator                                                                                    !< integration scheme (ToDo: better use a string)
     real(pReal) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
       subStepSizeCryst, &                                                                           !< size of first substep when cutback
@@ -175,6 +175,8 @@ subroutine crystallite_init
 
   num%iJacoLpresiduum        = config_numerics%getInt  ('ijacolpresiduum',       defaultVal=1)
 
+  num%integrator             = config_numerics%getInt  ('integrator',            defaultVal=1)
+
   num%nState                 = config_numerics%getInt  ('nstate',                defaultVal=20)
   num%nStress                = config_numerics%getInt  ('nstress',               defaultVal=40)
 
@@ -191,10 +193,14 @@ subroutine crystallite_init
 
   if(num%iJacoLpresiduum < 1)                 call IO_error(301,ext_msg='iJacoLpresiduum')
 
+  if(num%integrator < 1 .or. num%integrator > 5) &
+                                              call IO_error(301,ext_msg='integrator')
+
   if(num%nState < 1)                          call IO_error(301,ext_msg='nState')
   if(num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
 
-  select case(numerics_integrator)
+
+  select case(num%integrator)
     case(1)
       integrateState => integrateStateFPI
     case(2)
