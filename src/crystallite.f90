@@ -69,8 +69,7 @@ module crystallite
   logical,                    dimension(:,:,:),         allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
   logical,                    dimension(:,:,:),         allocatable :: &
-    crystallite_converged, &                                                                        !< convergence flag
-    crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
+    crystallite_converged                                                                           !< convergence flag
 
   type :: tOutput                                                                                   !< new requested output (per phase)
     character(len=pStringLen), allocatable, dimension(:) :: &
@@ -158,7 +157,6 @@ subroutine crystallite_init
 
   allocate(crystallite_orientation(cMax,iMax,eMax))
 
-  allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
@@ -238,7 +236,6 @@ subroutine crystallite_init
                                      / math_det33(crystallite_Fp0(1:3,1:3,c,i,e))**(1.0_pReal/3.0_pReal)
       crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
-      crystallite_localPlasticity(c,i,e) = phase_localPlasticity(material_phaseAt(c,e))
       crystallite_Fe(1:3,1:3,c,i,e)  = math_inv33(matmul(crystallite_Fi0(1:3,1:3,c,i,e), &
                                                          crystallite_Fp0(1:3,1:3,c,i,e)))           ! assuming that euler angles are given in internal strain free configuration
       crystallite_Fp(1:3,1:3,c,i,e)  = crystallite_Fp0(1:3,1:3,c,i,e)
@@ -248,7 +245,7 @@ subroutine crystallite_init
   enddo
   !$OMP END PARALLEL DO
 
-  if(any(.not. crystallite_localPlasticity) .and. .not. usePingPong) call IO_error(601)             ! exit if nonlocal but no ping-pong ToDo: Why not check earlier? or in nonlocal?
+  if(any(plasticState%nonlocal) .and. .not. usePingPong) call IO_error(601)                         ! exit if nonlocal but no ping-pong ToDo: Why not check earlier? or in nonlocal?
 
   crystallite_partionedFp0 = crystallite_Fp0
   crystallite_partionedFi0 = crystallite_Fi0
@@ -277,7 +274,6 @@ subroutine crystallite_init
     write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
     write(6,'(a42,1x,i10)') '    # of integration points/element:     ', iMax
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
-    write(6,'(a42,1x,i10)') '    # of nonlocal constituents:          ',count(.not. crystallite_localPlasticity)
     flush(6)
   endif
 
@@ -1606,7 +1602,7 @@ subroutine integrateStateRKCK45(todo)
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if (nonlocalBroken) call nonlocalConvergenceCheck
+  if(nonlocalBroken) call nonlocalConvergenceCheck
 
 end subroutine integrateStateRKCK45
 
@@ -1617,7 +1613,14 @@ end subroutine integrateStateRKCK45
 !--------------------------------------------------------------------------------------------------
 subroutine nonlocalConvergenceCheck
 
-  where( .not. crystallite_localPlasticity) crystallite_converged = .false.
+  integer :: e,i,p
+
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    p = material_phaseAt(1,e)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      if(plasticState(p)%nonlocal) crystallite_converged(1,i,e) = .false.
+    enddo
+  enddo
 
 end subroutine nonlocalConvergenceCheck
 
