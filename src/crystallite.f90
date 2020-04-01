@@ -1038,7 +1038,7 @@ subroutine integrateStateFPI(todo)
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e)
+                                            crystallite_subdt(g,i,e), g,i,e,p,c)
 
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
@@ -1073,7 +1073,7 @@ subroutine integrateStateFPI(todo)
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
-                                              crystallite_subdt(g,i,e), g,i,e)
+                                              crystallite_subdt(g,i,e), g,i,e,p,c)
             if(broken) exit iteration
 
             sizeDotState = plasticState(p)%sizeDotState
@@ -1107,7 +1107,7 @@ subroutine integrateStateFPI(todo)
             enddo
 
             if(crystallite_converged(g,i,e)) then
-              broken = stateJump(g,i,e)
+              broken = stateJump(g,i,e,p,c)
               exit iteration
             endif
 
@@ -1177,7 +1177,7 @@ subroutine integrateStateEuler(todo)
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e)
+                                            crystallite_subdt(g,i,e), g,i,e,p,c)
 
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
@@ -1193,7 +1193,7 @@ subroutine integrateStateEuler(todo)
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          broken = stateJump(g,i,e)
+          broken = stateJump(g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1246,7 +1246,7 @@ subroutine integrateStateAdaptiveEuler(todo)
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e)
+                                            crystallite_subdt(g,i,e), g,i,e,p,c)
 
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
@@ -1265,7 +1265,7 @@ subroutine integrateStateAdaptiveEuler(todo)
                                                         + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           enddo
 
-          broken = stateJump(g,i,e)
+          broken = stateJump(g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1277,7 +1277,7 @@ subroutine integrateStateAdaptiveEuler(todo)
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e)
+                                            crystallite_subdt(g,i,e), g,i,e,p,c)
 
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
@@ -1357,7 +1357,7 @@ subroutine integrateStateRK4(todo)
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e)
+                                            crystallite_subdt(g,i,e), g,i,e,p,c)
 
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
@@ -1401,7 +1401,7 @@ subroutine integrateStateRK4(todo)
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
-                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e)
+                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
             if(broken) exit
 
           enddo
@@ -1428,7 +1428,7 @@ subroutine integrateStateRK4(todo)
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          broken = stateJump(g,i,e)
+          broken = stateJump(g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1502,7 +1502,7 @@ subroutine integrateStateRKCK45(todo)
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e)
+                                            crystallite_subdt(g,i,e), g,i,e,p,c)
 
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
@@ -1546,7 +1546,7 @@ subroutine integrateStateRKCK45(todo)
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
-                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e)
+                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
             if(broken) exit
 
           enddo
@@ -1582,7 +1582,7 @@ subroutine integrateStateRKCK45(todo)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
-          broken = stateJump(g,i,e)
+          broken = stateJump(g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1631,7 +1631,7 @@ end function converged
 !> @brief calculates a jump in the state according to the current state and the current stress
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
-function stateJump(ipc,ip,el) result(broken)
+function stateJump(ipc,ip,el,p,c) result(broken)
 
   integer, intent(in):: &
     el, &                       ! element index
@@ -1646,13 +1646,10 @@ function stateJump(ipc,ip,el) result(broken)
     mySize
   logical :: broken
 
-  c = material_phaseMemberAt(ipc,ip,el)
-  p = material_phaseAt(ipc,el)
-
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
                                    crystallite_Fe(1:3,1:3,ipc,ip,el), &
                                    crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                   ipc,ip,el)
+                                   ipc,ip,el,p,c)
   if(broken) return
 
   myOffset = plasticState(p)%offsetDeltaState
