@@ -776,7 +776,7 @@ end subroutine crystallite_results
 !> @brief calculation of stress (P) with time integration based on a residuum in Lp and
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
-logical function integrateStress(ipc,ip,el,timeFraction)
+function integrateStress(ipc,ip,el,timeFraction) result(broken)
 
   integer, intent(in)::         el, &                                                               ! element index
                                       ip, &                                                         ! integration point index
@@ -833,11 +833,11 @@ logical function integrateStress(ipc,ip,el,timeFraction)
                                       p, &
                                       jacoCounterLp, &
                                       jacoCounterLi                                                 ! counters to check for Jacobian update
-  logical :: error
+  logical :: error,broken
   external :: &
     dgesv
 
-  integrateStress = .false.
+  broken = .true.
 
   if (present(timeFraction)) then
     dt = crystallite_subdt(ipc,ip,el) * timeFraction
@@ -981,7 +981,6 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   call math_invert33(Fp_new,devNull,error,invFp_new)
   if (error) return ! error
 
-  integrateStress = .true.
   crystallite_P    (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
   crystallite_S    (1:3,1:3,ipc,ip,el) = S
   crystallite_Lp   (1:3,1:3,ipc,ip,el) = Lpguess
@@ -989,6 +988,7 @@ logical function integrateStress(ipc,ip,el,timeFraction)
   crystallite_Fp   (1:3,1:3,ipc,ip,el) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)         ! regularize
   crystallite_Fi   (1:3,1:3,ipc,ip,el) = Fi_new
   crystallite_Fe   (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),invFi_new)
+  broken = .false.
 
 end function integrateStress
 
@@ -1060,7 +1060,7 @@ subroutine integrateStateFPI(todo)
               source_dotState(1:sizeDotState,1,s) = sourceState(p)%p(s)%dotState(:,c)
             enddo
 
-            broken = .not. integrateStress(g,i,e)
+            broken = integrateStress(g,i,e)
             if(broken) exit iteration
 
             broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
@@ -1068,7 +1068,6 @@ subroutine integrateStateFPI(todo)
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
                                               crystallite_subdt(g,i,e), g,i,e)
-
             if(broken) exit iteration
 
             sizeDotState = plasticState(p)%sizeDotState
@@ -1102,7 +1101,7 @@ subroutine integrateStateFPI(todo)
             enddo
 
             if(crystallite_converged(g,i,e)) then
-              broken = .not. stateJump(g,i,e)
+              broken = stateJump(g,i,e)
               exit iteration
             endif
 
@@ -1189,12 +1188,12 @@ subroutine integrateStateEuler(todo)
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          broken = .not. stateJump(g,i,e)
+          broken = stateJump(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
           if(broken) cycle
 
-          broken = .not. integrateStress(g,i,e)
+          broken = integrateStress(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
 
@@ -1263,12 +1262,12 @@ subroutine integrateStateAdaptiveEuler(todo)
                                                         + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           enddo
 
-          broken = .not. stateJump(g,i,e)
+          broken = stateJump(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
           if(broken) cycle
 
-          broken = .not. integrateStress(g,i,e)
+          broken = integrateStress(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
           if(broken) cycle
@@ -1394,7 +1393,7 @@ subroutine integrateStateRK4(todo)
                                                             * crystallite_subdt(g,i,e)
             enddo
 
-            broken = .not. integrateStress(g,i,e,CC(stage))
+            broken = integrateStress(g,i,e,CC(stage))
             if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
               nonlocalBroken = .true.
             if(broken) exit
@@ -1433,12 +1432,12 @@ subroutine integrateStateRK4(todo)
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          broken = .not. stateJump(g,i,e)
+          broken = stateJump(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
           if(broken) cycle
 
-          broken = .not. integrateStress(g,i,e)
+          broken = integrateStress(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
           crystallite_converged(g,i,e) = .not. broken
@@ -1546,7 +1545,7 @@ subroutine integrateStateRKCK45(todo)
                                                             * crystallite_subdt(g,i,e)
             enddo
 
-            broken = .not. integrateStress(g,i,e,CC(stage))
+            broken = integrateStress(g,i,e,CC(stage))
             if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
               nonlocalBroken = .true.
             if(broken) exit
@@ -1594,12 +1593,12 @@ subroutine integrateStateRKCK45(todo)
             nonlocalBroken = .true.
           if(broken) cycle
 
-          broken = .not. stateJump(g,i,e)
+          broken = stateJump(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
           if(broken) cycle
 
-          broken = .not. integrateStress(g,i,e)
+          broken = integrateStress(g,i,e)
           if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
           crystallite_converged(g,i,e) = .not. broken
@@ -1645,7 +1644,7 @@ end function converged
 !> @brief calculates a jump in the state according to the current state and the current stress
 !> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
-logical function stateJump(ipc,ip,el)
+function stateJump(ipc,ip,el) result(broken)
 
   integer, intent(in):: &
     el, &                       ! element index
@@ -1658,15 +1657,16 @@ logical function stateJump(ipc,ip,el)
     mySource, &
     myOffset, &
     mySize
+  logical :: broken
 
   c = material_phaseMemberAt(ipc,ip,el)
   p = material_phaseAt(ipc,el)
 
-  stateJump = .not. constitutive_deltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
-                                      crystallite_Fe(1:3,1:3,ipc,ip,el), &
-                                      crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                      ipc,ip,el)
-  if(.not. stateJump) return
+  broken = constitutive_deltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
+                                   crystallite_Fe(1:3,1:3,ipc,ip,el), &
+                                   crystallite_Fi(1:3,1:3,ipc,ip,el), &
+                                   ipc,ip,el)
+  if(broken) return
 
   myOffset = plasticState(p)%offsetDeltaState
   mySize   = plasticState(p)%sizeDeltaState
