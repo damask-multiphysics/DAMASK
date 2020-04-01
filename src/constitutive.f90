@@ -709,7 +709,7 @@ end subroutine constitutive_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el)
+function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -727,19 +727,22 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
   real(pReal),              dimension(3,3) :: &
     Mp
   integer :: &
+    phase, &
     ho, &                                                                                           !< homogenization
     tme, &                                                                                          !< thermal member position
     i, &                                                                                            !< counter in source loop
     instance, of
+  logical :: broken
 
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
   of = material_phasememberAt(ipc,ip,el)
-  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
+  phase = material_phaseAt(ipc,el)
+  instance = phase_plasticityInstance(phase)
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+  plasticityType: select case (phase_plasticity(phase))
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
       call plastic_isotropic_dotState    (Mp,instance,of)
@@ -760,10 +763,11 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
       call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
                                           instance,of,ip,el)
   end select plasticityType
+  broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
 
-  SourceLoop: do i = 1, phase_Nsources(material_phaseAt(ipc,el))
+  SourceLoop: do i = 1, phase_Nsources(phase)
 
-    sourceType: select case (phase_source(i,material_phaseAt(ipc,el)))
+    sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
         call source_damage_anisoBrittle_dotState (S, ipc, ip, el) !< correct stress?
@@ -775,13 +779,15 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
         call source_damage_anisoDuctile_dotState (   ipc, ip, el)
 
       case (SOURCE_thermal_externalheat_ID) sourceType
-        call source_thermal_externalheat_dotState(material_phaseAt(ipc,el),of)
+        call source_thermal_externalheat_dotState(phase,of)
 
     end select sourceType
 
+    broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
+
   enddo SourceLoop
 
-end subroutine constitutive_collectDotState
+end function constitutive_collectDotState
 
 
 !--------------------------------------------------------------------------------------------------

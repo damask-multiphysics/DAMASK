@@ -1027,15 +1027,12 @@ subroutine integrateStateFPI
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
-          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-          do s = 1, phase_Nsources(p)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-          enddo
+
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
@@ -1066,15 +1063,12 @@ subroutine integrateStateFPI
             crystallite_todo(g,i,e) = integrateStress(g,i,e)
             if(.not. crystallite_todo(g,i,e)) exit iteration
 
-            call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+            crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
                                               crystallite_subdt(g,i,e), g,i,e)
-            crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-            do s = 1, phase_Nsources(p)
-              crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-            enddo
+
             if(.not. crystallite_todo(g,i,e)) exit iteration
 
             sizeDotState = plasticState(p)%sizeDotState
@@ -1172,15 +1166,12 @@ subroutine integrateStateEuler
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
-          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-          do s = 1, phase_Nsources(p)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-          enddo
+
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
@@ -1244,15 +1235,12 @@ subroutine integrateStateAdaptiveEuler
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
-          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-          do s = 1, phase_Nsources(p)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-          enddo
+
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
@@ -1281,15 +1269,12 @@ subroutine integrateStateAdaptiveEuler
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
 
-          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
-          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-          do s = 1, phase_Nsources(p)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-          enddo
+
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
@@ -1361,15 +1346,12 @@ subroutine integrateStateRK4
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
-          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-          do s = 1, phase_Nsources(p)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-          enddo
+
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
@@ -1411,15 +1393,12 @@ subroutine integrateStateRK4
               nonlocalBroken = .true.
             if(.not. crystallite_todo(g,i,e)) exit
 
-            call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+            crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
                                               crystallite_subdt(g,i,e)*CC(stage), g,i,e)
-            crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-            do s = 1, phase_Nsources(p)
-              crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-            enddo
+
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
             if(.not. crystallite_todo(g,i,e)) exit
@@ -1517,15 +1496,12 @@ subroutine integrateStateRKCK45
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
-          crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-          do s = 1, phase_Nsources(p)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-          enddo
+
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
@@ -1567,15 +1543,11 @@ subroutine integrateStateRKCK45
               nonlocalBroken = .true.
             if(.not. crystallite_todo(g,i,e)) exit
 
-            call constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+            crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
                                               crystallite_subdt(g,i,e)*CC(stage), g,i,e)
-            crystallite_todo(g,i,e) = all(.not. IEEE_is_NaN(plasticState(p)%dotState(:,c)))
-            do s = 1, phase_Nsources(p)
-              crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. all(.not. IEEE_is_NaN(sourceState(p)%p(s)%dotState(:,c)))
-            enddo
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
             if(.not. crystallite_todo(g,i,e)) exit
