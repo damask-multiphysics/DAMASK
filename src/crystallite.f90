@@ -269,7 +269,7 @@ subroutine crystallite_init
 #ifdef DEBUG
   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0) then
     write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
-    write(6,'(a42,1x,i10)') 'max # of integration points/element:     ', iMax
+    write(6,'(a42,1x,i10)') '    # of integration points/element:     ', iMax
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
     write(6,'(a42,1x,i10)') '    # of nonlocal constituents:          ',count(.not. crystallite_localPlasticity)
     flush(6)
