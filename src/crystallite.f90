@@ -1237,11 +1237,11 @@ subroutine integrateStateAdaptiveEuler
   logical :: &
     nonlocalBroken
 
-  real(pReal), dimension(:), allocatable :: residuum_plastic
-  type(group_float), dimension(maxval(phase_Nsources)) :: residuum_source
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: residuum_plastic
+  real(pReal), dimension(constitutive_source_maxSizeDotState,maxval(phase_Nsources)) :: residuum_source
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,residuum_plastic,residuum_source)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1264,14 +1264,14 @@ subroutine integrateStateAdaptiveEuler
 
           sizeDotState = plasticState(p)%sizeDotState
 
-          residuum_plastic = - plasticState(p)%dotstate(1:sizeDotState,c) * 0.5_pReal * crystallite_subdt(g,i,e)
+          residuum_plastic(1:sizeDotState) = - plasticState(p)%dotstate(1:sizeDotState,c) * 0.5_pReal * crystallite_subdt(g,i,e)
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-            residuum_source(s)%p  = - sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
-                                  * 0.5_pReal * crystallite_subdt(g,i,e)
+            residuum_source(1:sizeDotState,s)  = - sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
+                                               * 0.5_pReal * crystallite_subdt(g,i,e)
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           enddo
@@ -1306,7 +1306,7 @@ subroutine integrateStateAdaptiveEuler
 
           sizeDotState = plasticState(p)%sizeDotState
 
-          crystallite_converged(g,i,e) = converged(residuum_plastic &
+          crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState) &
                                                    + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e), &
                                                    plasticState(p)%state(1:sizeDotState,c), &
                                                    plasticState(p)%atol(1:sizeDotState))
@@ -1315,7 +1315,7 @@ subroutine integrateStateAdaptiveEuler
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
             crystallite_converged(g,i,e) = &
-            crystallite_converged(g,i,e) .and. converged(residuum_source(s)%p &
+            crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s) &
                                                          + 0.5_pReal*sourceState(p)%p(s)%dotState(:,c)*crystallite_subdt(g,i,e), &
                                                          sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                          sourceState(p)%p(s)%atol(1:sizeDotState))
