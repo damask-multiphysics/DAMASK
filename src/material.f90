@@ -11,7 +11,6 @@ module material
   use results
   use IO
   use debug
-  use numerics
   use rotations
   use discretization
 
