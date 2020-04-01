@@ -1016,10 +1016,10 @@ subroutine integrateStateFPI
   real(pReal), dimension(:), allocatable :: plastic_dotState_p1, plastic_dotState_p2
   real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
-    nonlocalBroken
+    nonlocalBroken, broken
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,r,zeta,p,c,plastic_dotState_p1, plastic_dotState_p2,source_dotState)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,r,zeta,p,c,plastic_dotState_p1, plastic_dotState_p2,source_dotState,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1027,15 +1027,15 @@ subroutine integrateStateFPI
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
 
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
@@ -1060,16 +1060,16 @@ subroutine integrateStateFPI
               source_dotState(1:sizeDotState,1,s) = sourceState(p)%p(s)%dotState(:,c)
             enddo
 
-            crystallite_todo(g,i,e) = integrateStress(g,i,e)
-            if(.not. crystallite_todo(g,i,e)) exit iteration
+            broken = .not. integrateStress(g,i,e)
+            if(broken) exit iteration
 
-            crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+            broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
                                               crystallite_subdt(g,i,e), g,i,e)
 
-            if(.not. crystallite_todo(g,i,e)) exit iteration
+            if(broken) exit iteration
 
             sizeDotState = plasticState(p)%sizeDotState
             zeta = damper(plasticState(p)%dotState(:,c),plastic_dotState_p1,plastic_dotState_p2)
@@ -1102,12 +1102,12 @@ subroutine integrateStateFPI
             enddo
 
             if(crystallite_converged(g,i,e)) then
-              crystallite_todo(g,i,e) = stateJump(g,i,e)
+              broken = .not. stateJump(g,i,e)
               exit iteration
             endif
 
           enddo iteration
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
 
         endif
@@ -1155,10 +1155,10 @@ subroutine integrateStateEuler
     s, &
     sizeDotState
   logical :: &
-    nonlocalBroken
+    nonlocalBroken, broken
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE (sizeDotState,p,c)
+  !$OMP PARALLEL DO PRIVATE (sizeDotState,p,c,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1166,15 +1166,15 @@ subroutine integrateStateEuler
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
 
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
@@ -1187,16 +1187,16 @@ subroutine integrateStateEuler
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          crystallite_todo(g,i,e) = stateJump(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. stateJump(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
-          crystallite_todo(g,i,e) = integrateStress(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. integrateStress(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
 
-          crystallite_converged(g,i,e) = crystallite_todo(g,i,e)
+          crystallite_converged(g,i,e) = .not. broken
 
         endif
   enddo; enddo; enddo
@@ -1221,13 +1221,13 @@ subroutine integrateStateAdaptiveEuler
     s, &
     sizeDotState
   logical :: &
-    nonlocalBroken
+    nonlocalBroken, broken
 
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: residuum_plastic
   real(pReal), dimension(constitutive_source_maxSizeDotState,maxval(phase_Nsources)) :: residuum_source
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,residuum_plastic,residuum_source)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,residuum_plastic,residuum_source,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1235,15 +1235,15 @@ subroutine integrateStateAdaptiveEuler
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
 
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
 
@@ -1259,25 +1259,25 @@ subroutine integrateStateAdaptiveEuler
                                                         + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           enddo
 
-          crystallite_todo(g,i,e) = stateJump(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. stateJump(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
-          crystallite_todo(g,i,e) = integrateStress(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. integrateStress(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
-          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
 
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
 
           sizeDotState = plasticState(p)%sizeDotState
@@ -1333,12 +1333,12 @@ subroutine integrateStateRK4
     s, &
     sizeDotState
   logical :: &
-    nonlocalBroken
+    nonlocalBroken, broken
 
   real(pReal), dimension(constitutive_source_maxSizeDotState,4,maxval(phase_Nsources)) :: source_RK4dotState
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,4) :: plastic_RK4dotState
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,source_RK4dotState,plastic_RK4dotState)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,source_RK4dotState,plastic_RK4dotState,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1346,15 +1346,15 @@ subroutine integrateStateRK4
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
 
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
           do stage = 1,3
             sizeDotState = plasticState(p)%sizeDotState
@@ -1388,24 +1388,24 @@ subroutine integrateStateRK4
                                                             * crystallite_subdt(g,i,e)
             enddo
 
-            crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
-            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            broken = .not. integrateStress(g,i,e,CC(stage))
+            if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) exit
+            if(broken) exit
 
-            crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+            broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
                                               crystallite_subdt(g,i,e)*CC(stage), g,i,e)
 
-            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) exit
+            if(broken) exit
 
           enddo
 
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
 
@@ -1427,15 +1427,15 @@ subroutine integrateStateRK4
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          crystallite_todo(g,i,e) = stateJump(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. stateJump(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
-          crystallite_todo(g,i,e) = integrateStress(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. integrateStress(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          crystallite_converged(g,i,e) = crystallite_todo(g,i,e)                                    ! consider converged if not broken
+          crystallite_converged(g,i,e) = .not. broken
 
         endif
   enddo; enddo; enddo
@@ -1483,12 +1483,12 @@ subroutine integrateStateRKCK45
     s, &
     sizeDotState
   logical :: &
-    nonlocalBroken
+    nonlocalBroken, broken
   real(pReal), dimension(constitutive_source_maxSizeDotState,6,maxval(phase_Nsources)) :: source_RKdotState
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,6) :: plastic_RKdotState
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,plastic_RKdotState,source_RKdotState)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,plastic_RKdotState,source_RKdotState,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1496,15 +1496,15 @@ subroutine integrateStateRKCK45
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
-          crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                             crystallite_partionedF0, &
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e)
 
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
           do stage = 1,5
             sizeDotState = plasticState(p)%sizeDotState
@@ -1538,23 +1538,23 @@ subroutine integrateStateRKCK45
                                                             * crystallite_subdt(g,i,e)
             enddo
 
-            crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
-            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            broken = .not. integrateStress(g,i,e,CC(stage))
+            if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) exit
+            if(broken) exit
 
-            crystallite_todo(g,i,e) = .not. constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+            broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
                                               crystallite_partionedF0, &
                                               crystallite_Fi(1:3,1:3,g,i,e), &
                                               crystallite_partionedFp0, &
                                               crystallite_subdt(g,i,e)*CC(stage), g,i,e)
-            if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+            if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
               nonlocalBroken = .true.
-            if(.not. crystallite_todo(g,i,e)) exit
+            if(broken) exit
 
           enddo
 
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
 
@@ -1563,7 +1563,7 @@ subroutine integrateStateRKCK45
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
-          crystallite_todo(g,i,e) = converged( matmul(plastic_RKdotState(1:sizeDotState,1:6),DB) &
+          broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:6),DB) &
                                                    * crystallite_subdt(g,i,e), &
                                               plasticState(p)%state(1:sizeDotState,c), &
                                               plasticState(p)%atol(1:sizeDotState))
@@ -1576,25 +1576,25 @@ subroutine integrateStateRKCK45
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
-            crystallite_todo(g,i,e) = crystallite_todo(g,i,e) .and. &
+            broken = broken .and. .not. &
                                       converged(matmul(source_RKdotState(1:sizeDotState,1:6,s),DB) &
                                                       * crystallite_subdt(g,i,e), &
                                                 sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                 sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
-          crystallite_todo(g,i,e) = stateJump(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. stateJump(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
+          if(broken) cycle
 
-          crystallite_todo(g,i,e) = integrateStress(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
+          broken = .not. integrateStress(g,i,e)
+          if(broken .and. .not. crystallite_localPlasticity(g,i,e)) &
             nonlocalBroken = .true.
-          crystallite_converged(g,i,e) = crystallite_todo(g,i,e)                                    ! consider converged if not broken
+          crystallite_converged(g,i,e) = .not. broken
 
         endif
   enddo; enddo; enddo
