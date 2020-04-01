@@ -71,7 +71,6 @@ module crystallite
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
   logical,                    dimension(:,:,:),         allocatable :: &
     crystallite_converged, &                                                                        !< convergence flag
-    crystallite_todo, &                                                                             !< flag to indicate need for further computation
     crystallite_localPlasticity                                                                     !< indicates this grain to have purely local constitutive law
 
   type :: tOutput                                                                                   !< new requested output (per phase)
@@ -98,7 +97,7 @@ module crystallite
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  procedure(), pointer :: integrateState
+  procedure(integrateStateFPI), pointer :: integrateState
 
   public :: &
     crystallite_init, &
@@ -161,7 +160,6 @@ subroutine crystallite_init
 
   allocate(crystallite_localPlasticity(cMax,iMax,eMax),       source=.true.)
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
-  allocate(crystallite_todo(cMax,iMax,eMax),                  source=.false.)
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
   num%subStepMinCryst        = config_numerics%getFloat('substepmincryst',       defaultVal=1.0e-3_pReal)
@@ -301,6 +299,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     e, &                                                                                            !< counter in element loop
     startIP, endIP, &
     s
+  logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false in hase of different Ngrains
 
 #ifdef DEBUG
   if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0 &
@@ -344,7 +343,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
         crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partionedF0(1:3,1:3,c,i,e)
         crystallite_subFrac(c,i,e) = 0.0_pReal
         crystallite_subStep(c,i,e) = 1.0_pReal/num%subStepSizeCryst
-        crystallite_todo(c,i,e) = .true.
+        todo(c,i,e) = .true.
         crystallite_converged(c,i,e) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
       endif homogenizationRequestsCalculation
     enddo; enddo
@@ -361,7 +360,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
   endif singleRun
 
   NiterationCrystallite = 0
-  cutbackLooping: do while (any(crystallite_todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
+  cutbackLooping: do while (any(todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
     NiterationCrystallite = NiterationCrystallite + 1
 
 #ifdef DEBUG
@@ -380,8 +379,8 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
             crystallite_subStep(c,i,e) = min(1.0_pReal - crystallite_subFrac(c,i,e), &
                                              num%stepIncreaseCryst * crystallite_subStep(c,i,e))
 
-            crystallite_todo(c,i,e) = crystallite_subStep(c,i,e) > 0.0_pReal                        ! still time left to integrate on?
-            if (crystallite_todo(c,i,e)) then
+            todo(c,i,e) = crystallite_subStep(c,i,e) > 0.0_pReal                        ! still time left to integrate on?
+            if (todo(c,i,e)) then
               crystallite_subF0 (1:3,1:3,c,i,e) = crystallite_subF(1:3,1:3,c,i,e)
               crystallite_subLp0(1:3,1:3,c,i,e) = crystallite_Lp  (1:3,1:3,c,i,e)
               crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_Li  (1:3,1:3,c,i,e)
@@ -415,12 +414,12 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
             enddo
 
                                                                                                     ! cant restore dotState here, since not yet calculated in first cutback after initialization
-            crystallite_todo(c,i,e) = crystallite_subStep(c,i,e) > num%subStepMinCryst              ! still on track or already done (beyond repair)
+            todo(c,i,e) = crystallite_subStep(c,i,e) > num%subStepMinCryst                          ! still on track or already done (beyond repair)
           endif
 
 !--------------------------------------------------------------------------------------------------
 !  prepare for integration
-          if (crystallite_todo(c,i,e)) then
+          if (todo(c,i,e)) then
             crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
                                             + crystallite_subStep(c,i,e) *( crystallite_partionedF (1:3,1:3,c,i,e) &
                                                                            -crystallite_partionedF0(1:3,1:3,c,i,e))
@@ -438,9 +437,9 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
 
 !--------------------------------------------------------------------------------------------------
 !  integrate --- requires fully defined state array (basic + dependent state)
-    if (any(crystallite_todo)) call integrateState                                                  ! TODO: unroll into proper elementloop to avoid N^2 for single point evaluation
+    if (any(todo)) call integrateState(todo)                                                              ! TODO: unroll into proper elementloop to avoid N^2 for single point evaluation
     where(.not. crystallite_converged .and. crystallite_subStep > num%subStepMinCryst) &            ! do not try non-converged but fully cutbacked any further
-      crystallite_todo = .true.                                                                     ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
+      todo = .true.                                                                                 ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
 
 
   enddo cutbackLooping
@@ -998,8 +997,9 @@ end function integrateStress
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateFPI
+subroutine integrateStateFPI(todo)
 
+  logical, dimension(:,:,:), intent(in) :: todo
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
     e, &                                                                                            !< element index in element loop
@@ -1023,7 +1023,7 @@ subroutine integrateStateFPI
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+        if(todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
@@ -1144,7 +1144,9 @@ end subroutine integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateEuler
+subroutine integrateStateEuler(todo)
+
+  logical, dimension(:,:,:), intent(in) :: todo
 
   integer :: &
     e, &                                                                                            !< element index in element loop
@@ -1162,7 +1164,7 @@ subroutine integrateStateEuler
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+        if(todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
@@ -1210,7 +1212,9 @@ end subroutine integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateAdaptiveEuler
+subroutine integrateStateAdaptiveEuler(todo)
+
+  logical, dimension(:,:,:), intent(in) :: todo
 
   integer :: &
     e, &                                                                                             ! element index in element loop
@@ -1231,7 +1235,7 @@ subroutine integrateStateAdaptiveEuler
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+        if(todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
@@ -1309,7 +1313,9 @@ end subroutine integrateStateAdaptiveEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 4th order explicit Runge Kutta method
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateRK4
+subroutine integrateStateRK4(todo)
+
+  logical, dimension(:,:,:), intent(in) :: todo
 
  real(pReal), dimension(3,3), parameter :: &
   A = reshape([&
@@ -1342,7 +1348,7 @@ subroutine integrateStateRK4
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+        if(todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
@@ -1450,7 +1456,9 @@ end subroutine integrateStateRK4
 !> @brief integrate stress, state with 5th order Runge-Kutta Cash-Karp method with
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateRKCK45
+subroutine integrateStateRKCK45(todo)
+
+  logical, dimension(:,:,:), intent(in) :: todo
 
   real(pReal), dimension(5,5), parameter :: &
     A = reshape([&
@@ -1492,7 +1500,7 @@ subroutine integrateStateRKCK45
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        if(crystallite_todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
+        if(todo(g,i,e) .and. (.not. nonlocalBroken .or. crystallite_localPlasticity(g,i,e)) ) then
 
           p = material_phaseAt(g,e); c = material_phaseMemberAt(g,i,e)
 
