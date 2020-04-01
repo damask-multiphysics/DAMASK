@@ -849,6 +849,9 @@ logical function integrateStress(ipc,ip,el,timeFraction)
     F  = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
+  call constitutive_dependentState(crystallite_partionedF(1:3,1:3,ipc,ip,el), &
+                                   crystallite_Fp(1:3,1:3,ipc,ip,el),ipc,ip,el)
+
   Lpguess = crystallite_Lp(1:3,1:3,ipc,ip,el)                                                       ! take as first guess
   Liguess = crystallite_Li(1:3,1:3,ipc,ip,el)                                                       ! take as first guess
 
@@ -1060,10 +1063,6 @@ subroutine integrateStateFPI
               source_dotState(1:sizeDotState,1,s) = sourceState(p)%p(s)%dotState(:,c)
             enddo
 
-            call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                             crystallite_Fp(1:3,1:3,g,i,e), &
-                                             g, i, e)
-
             crystallite_todo(g,i,e) = integrateStress(g,i,e)
             if(.not. crystallite_todo(g,i,e)) exit iteration
 
@@ -1202,10 +1201,6 @@ subroutine integrateStateEuler
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
 
-          call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                           g, i, e)
-
           crystallite_todo(g,i,e) = integrateStress(g,i,e)
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
@@ -1280,10 +1275,6 @@ subroutine integrateStateAdaptiveEuler
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
-
-          call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                           g, i, e)
 
           crystallite_todo(g,i,e) = integrateStress(g,i,e)
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
@@ -1415,10 +1406,6 @@ subroutine integrateStateRK4
                                                             * crystallite_subdt(g,i,e)
             enddo
 
-            call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                             crystallite_Fp(1:3,1:3,g,i,e), &
-                                             g, i, e)
-
             crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
@@ -1462,14 +1449,6 @@ subroutine integrateStateRK4
           enddo
 
           crystallite_todo(g,i,e) = stateJump(g,i,e)
-          if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
-            nonlocalBroken = .true.
-          if(.not. crystallite_todo(g,i,e)) cycle
-
-          call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                           g, i, e)
-
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
@@ -1583,10 +1562,6 @@ subroutine integrateStateRKCK45
                                                             * crystallite_subdt(g,i,e)
             enddo
 
-            call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                             crystallite_Fp(1:3,1:3,g,i,e), &
-                                             g, i, e)
-
             crystallite_todo(g,i,e) = integrateStress(g,i,e,CC(stage))
             if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
               nonlocalBroken = .true.
@@ -1643,10 +1618,6 @@ subroutine integrateStateRKCK45
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
             nonlocalBroken = .true.
           if(.not. crystallite_todo(g,i,e)) cycle
-
-          call constitutive_dependentState(crystallite_partionedF(1:3,1:3,g,i,e), &
-                                           crystallite_Fp(1:3,1:3,g,i,e), &
-                                           g, i, e)
 
           crystallite_todo(g,i,e) = integrateStress(g,i,e)
           if(.not. (crystallite_todo(g,i,e) .or. crystallite_localPlasticity(g,i,e))) &
