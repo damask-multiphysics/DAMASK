@@ -173,8 +173,7 @@ module material
 
   public :: &
     material_init, &
-    material_allocatePlasticState, &
-    material_allocateSourceState, &
+    material_allocateState, &
     ELASTICITY_HOOKE_ID ,&
     PLASTICITY_NONE_ID, &
     PLASTICITY_ISOTROPIC_ID, &
@@ -699,63 +698,35 @@ end subroutine material_parseTexture
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates the plastic state of a phase
+!> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
-subroutine material_allocatePlasticState(phase,NipcMyPhase,&
-                                         sizeState,sizeDotState,sizeDeltaState)
+subroutine material_allocateState(state, &
+                                  NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
+  class(tState), intent(out) :: &
+    state
   integer, intent(in) :: &
-    phase, &
     NipcMyPhase, &
     sizeState, &
     sizeDotState, &
     sizeDeltaState
 
-  plasticState(phase)%sizeState        = sizeState
-  plasticState(phase)%sizeDotState     = sizeDotState
-  plasticState(phase)%sizeDeltaState   = sizeDeltaState
-  plasticState(phase)%offsetDeltaState = sizeState-sizeDeltaState                                   ! deltaState occupies latter part of state by definition
+  state%sizeState        = sizeState
+  state%sizeDotState     = sizeDotState
+  state%sizeDeltaState   = sizeDeltaState
+  state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
 
-  allocate(plasticState(phase)%atol                (sizeState),               source=0.0_pReal)
-  allocate(plasticState(phase)%state0              (sizeState,NipcMyPhase),   source=0.0_pReal)
-  allocate(plasticState(phase)%partionedState0     (sizeState,NipcMyPhase),   source=0.0_pReal)
-  allocate(plasticState(phase)%subState0           (sizeState,NipcMyPhase),   source=0.0_pReal)
-  allocate(plasticState(phase)%state               (sizeState,NipcMyPhase),   source=0.0_pReal)
+  allocate(state%atol           (sizeState),             source=0.0_pReal)
+  allocate(state%state0         (sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%partionedState0(sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%subState0      (sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%state          (sizeState,NipcMyPhase), source=0.0_pReal)
 
-  allocate(plasticState(phase)%dotState            (sizeDotState,NipcMyPhase),source=0.0_pReal)
+  allocate(state%dotState    (sizeDotState,NipcMyPhase), source=0.0_pReal)
 
-  allocate(plasticState(phase)%deltaState        (sizeDeltaState,NipcMyPhase),source=0.0_pReal)
+  allocate(state%deltaState(sizeDeltaState,NipcMyPhase), source=0.0_pReal)
 
-end subroutine material_allocatePlasticState
+end subroutine material_allocateState
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief allocates the source state of a phase
-!--------------------------------------------------------------------------------------------------
-subroutine material_allocateSourceState(phase,of,NipcMyPhase,&
-                                        sizeState,sizeDotState,sizeDeltaState)
-
-  integer, intent(in) :: &
-    phase, &
-    of, &
-    NipcMyPhase, &
-    sizeState, sizeDotState,sizeDeltaState
-
-  sourceState(phase)%p(of)%sizeState        = sizeState
-  sourceState(phase)%p(of)%sizeDotState     = sizeDotState
-  sourceState(phase)%p(of)%sizeDeltaState   = sizeDeltaState
-  sourceState(phase)%p(of)%offsetDeltaState = sizeState-sizeDeltaState                              ! deltaState occupies latter part of state by definition
-
-  allocate(sourceState(phase)%p(of)%atol                (sizeState),               source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%state0              (sizeState,NipcMyPhase),   source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%partionedState0     (sizeState,NipcMyPhase),   source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%subState0           (sizeState,NipcMyPhase),   source=0.0_pReal)
-  allocate(sourceState(phase)%p(of)%state               (sizeState,NipcMyPhase),   source=0.0_pReal)
-
-  allocate(sourceState(phase)%p(of)%dotState            (sizeDotState,NipcMyPhase),source=0.0_pReal)
-
-  allocate(sourceState(phase)%p(of)%deltaState        (sizeDeltaState,NipcMyPhase),source=0.0_pReal)
-
-end subroutine material_allocateSourceState
 
 end module material

@@ -384,7 +384,7 @@ module subroutine plastic_nonlocal_init
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
+    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
     plasticState(p)%nonlocal = .true.
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
