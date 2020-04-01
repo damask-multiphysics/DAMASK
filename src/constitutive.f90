@@ -327,7 +327,7 @@ module constitutive
     constitutive_initialFi, &
     constitutive_SandItsTangents, &
     constitutive_collectDotState, &
-    constitutive_collectDeltaState, &
+    constitutive_deltaState, &
     constitutive_results
 
 contains
@@ -794,7 +794,7 @@ end function constitutive_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
+function constitutive_deltaState(S, Fe, Fi, ipc, ip, el) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -808,13 +808,18 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
     Mp
   integer :: &
     i, &
-    instance, of
+    instance, of, &
+    phase
+  logical :: &
+    broken
+
 
   Mp  = matmul(matmul(transpose(Fi),Fi),S)
   of = material_phasememberAt(ipc,ip,el)
+  phase = material_phaseAt(ipc,el)
   instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+  plasticityType: select case (phase_plasticity(phase))
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
       call plastic_kinehardening_deltaState(Mp,instance,of)
@@ -823,10 +828,11 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
       call plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
 
   end select plasticityType
+  broken = any(IEEE_is_NaN(plasticState(phase)%deltaState(:,of)))
 
-  sourceLoop: do i = 1, phase_Nsources(material_phaseAt(ipc,el))
+  sourceLoop: do i = 1, phase_Nsources(phase)
 
-     sourceType: select case (phase_source(i,material_phaseAt(ipc,el)))
+     sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_isoBrittle_ID) sourceType
         call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
@@ -834,9 +840,11 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
 
     end select sourceType
 
+    broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%deltaState(:,of)))
+
   enddo SourceLoop
 
-end subroutine constitutive_collectDeltaState
+end function constitutive_deltaState
 
 
 !--------------------------------------------------------------------------------------------------

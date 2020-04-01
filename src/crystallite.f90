@@ -1654,18 +1654,15 @@ logical function stateJump(ipc,ip,el)
   c = material_phaseMemberAt(ipc,ip,el)
   p = material_phaseAt(ipc,el)
 
-  call constitutive_collectDeltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
+  stateJump = .not. constitutive_deltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
                                       crystallite_Fe(1:3,1:3,ipc,ip,el), &
                                       crystallite_Fi(1:3,1:3,ipc,ip,el), &
                                       ipc,ip,el)
+  if(.not. stateJump) return
 
   myOffset = plasticState(p)%offsetDeltaState
   mySize   = plasticState(p)%sizeDeltaState
 
-  if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySize,c)))) then
-    stateJump = .false.
-    return
-  endif
 
   plasticState(p)%state(myOffset + 1:myOffset + mySize,c) = &
   plasticState(p)%state(myOffset + 1:myOffset + mySize,c) + plasticState(p)%deltaState(1:mySize,c)
@@ -1673,15 +1670,9 @@ logical function stateJump(ipc,ip,el)
   do mySource = 1, phase_Nsources(p)
     myOffset = sourceState(p)%p(mySource)%offsetDeltaState
     mySize   = sourceState(p)%p(mySource)%sizeDeltaState
-    if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySize,c)))) then
-      stateJump = .false.
-      return
-    endif
     sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) = &
     sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) + sourceState(p)%p(mySource)%deltaState(1:mySize,c)
   enddo
-
-  stateJump = .true.
 
 end function stateJump
 
