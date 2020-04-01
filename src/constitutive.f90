@@ -809,7 +809,9 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
     Mp
   integer :: &
     i, &
-    instance
+    instance, &
+    myOffset, &
+    mySize
   logical :: &
     broken
 
@@ -831,6 +833,17 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
 
   end select plasticityType
 
+  if(.not. broken) then
+    select case(phase_plasticity(phase))
+      case (PLASTICITY_NONLOCAL_ID,PLASTICITY_KINEHARDENING_ID)
+
+        myOffset = plasticState(phase)%offsetDeltaState
+        mySize   = plasticState(phase)%sizeDeltaState
+        plasticState(phase)%state(myOffset + 1:myOffset + mySize,of) = &
+        plasticState(phase)%state(myOffset + 1:myOffset + mySize,of) + plasticState(phase)%deltaState(1:mySize,of)
+    end select
+  endif
+
 
   sourceLoop: do i = 1, phase_Nsources(phase)
 
@@ -840,6 +853,12 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
         call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
                                                    ipc, ip, el)
         broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%deltaState(:,of)))
+        if(.not. broken) then
+          myOffset = sourceState(phase)%p(i)%offsetDeltaState
+          mySize   = sourceState(phase)%p(i)%sizeDeltaState
+          sourceState(phase)%p(i)%state(myOffset + 1: myOffset + mySize,of) = &
+          sourceState(phase)%p(i)%state(myOffset + 1: myOffset + mySize,of) + sourceState(phase)%p(i)%deltaState(1:mySize,of)
+        endif
 
     end select sourceType
 

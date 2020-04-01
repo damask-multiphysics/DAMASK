@@ -1107,7 +1107,9 @@ subroutine integrateStateFPI(todo)
             enddo
 
             if(crystallite_converged(g,i,e)) then
-              broken = stateJump(g,i,e,p,c)
+              broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                               crystallite_Fe(1:3,1:3,g,i,e), &
+                                               crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
               exit iteration
             endif
 
@@ -1193,7 +1195,9 @@ subroutine integrateStateEuler(todo)
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          broken = stateJump(g,i,e,p,c)
+          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                           crystallite_Fe(1:3,1:3,g,i,e), &
+                                          crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1265,7 +1269,9 @@ subroutine integrateStateAdaptiveEuler(todo)
                                                         + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
           enddo
 
-          broken = stateJump(g,i,e,p,c)
+          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                           crystallite_Fe(1:3,1:3,g,i,e), &
+                                           crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1428,7 +1434,9 @@ subroutine integrateStateRK4(todo)
                                                           * crystallite_subdt(g,i,e)
           enddo
 
-          broken = stateJump(g,i,e,p,c)
+          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                           crystallite_Fe(1:3,1:3,g,i,e), &
+                                           crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1582,7 +1590,9 @@ subroutine integrateStateRKCK45(todo)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
-          broken = stateJump(g,i,e,p,c)
+          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                           crystallite_Fe(1:3,1:3,g,i,e), &
+                                           crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
           if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
@@ -1625,48 +1635,6 @@ logical pure function converged(residuum,state,atol)
   converged = all(abs(residuum) <= max(atol, rtol*abs(state)))
 
 end function converged
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates a jump in the state according to the current state and the current stress
-!> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
-!--------------------------------------------------------------------------------------------------
-function stateJump(ipc,ip,el,p,c) result(broken)
-
-  integer, intent(in):: &
-    el, &                       ! element index
-    ip, &                       ! integration point index
-    ipc                         ! grain index
-
-  integer :: &
-    c, &
-    p, &
-    mySource, &
-    myOffset, &
-    mySize
-  logical :: broken
-
-  broken = constitutive_deltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
-                                   crystallite_Fe(1:3,1:3,ipc,ip,el), &
-                                   crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                   ipc,ip,el,p,c)
-  if(broken) return
-
-  myOffset = plasticState(p)%offsetDeltaState
-  mySize   = plasticState(p)%sizeDeltaState
-
-
-  plasticState(p)%state(myOffset + 1:myOffset + mySize,c) = &
-  plasticState(p)%state(myOffset + 1:myOffset + mySize,c) + plasticState(p)%deltaState(1:mySize,c)
-
-  do mySource = 1, phase_Nsources(p)
-    myOffset = sourceState(p)%p(mySource)%offsetDeltaState
-    mySize   = sourceState(p)%p(mySource)%sizeDeltaState
-    sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) = &
-    sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) + sourceState(p)%p(mySource)%deltaState(1:mySize,c)
-  enddo
-
-end function stateJump
 
 
 !--------------------------------------------------------------------------------------------------
