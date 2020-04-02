@@ -287,7 +287,7 @@ class Geom:
 
         comments = []
         for i,line in enumerate(content[:header_length]):
-            items = line.lower().strip().split()
+            items = line.split('#')[0].lower().strip().split()
             key = items[0] if items else ''
             if   key == 'grid':
                 grid   = np.array([  int(dict(zip(items[1::2],items[2::2]))[i]) for i in ['a','b','c']])
@@ -303,7 +303,7 @@ class Geom:
         microstructure = np.empty(grid.prod())                                                      # initialize as flat array
         i = 0
         for line in content[header_length:]:
-            items = line.split()
+            items = line.split('#')[0].split()
             if len(items) == 3:
                 if   items[1].lower() == 'of':
                     items = np.ones(int(items[0]))*float(items[2])
