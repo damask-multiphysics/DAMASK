@@ -1597,12 +1597,14 @@ subroutine nonlocalConvergenceCheck
 
   integer :: e,i,p
 
+  !$OMP PARALLEL DO PRIVATE(p)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     p = material_phaseAt(1,e)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       if(plasticState(p)%nonlocal) crystallite_converged(1,i,e) = .false.
     enddo
   enddo
+  !$OMP END PARALLEL DO
 
 end subroutine nonlocalConvergenceCheck
 
