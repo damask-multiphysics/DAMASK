@@ -30,10 +30,6 @@ module prec
     real(pReal), dimension(:), pointer :: p
   end type group_float
 
-  type :: group_int
-    integer, dimension(:), pointer :: p
-  end type group_int
-
   ! http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
   type :: tState
     integer :: &
@@ -50,12 +46,7 @@ module prec
       deltaState                                                                                    !< increment of state change
     real(pReal), allocatable, dimension(:,:) :: &
       partionedState0, &
-      subState0, &
-      previousDotState, &
-      previousDotState2
-    real(pReal), allocatable, dimension(:,:,:) :: &
-      RK4dotState, &
-      RKCK45dotState
+      subState0
   end type
 
   type, extends(tState) :: tPlasticState
