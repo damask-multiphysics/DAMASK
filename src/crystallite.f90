@@ -1359,10 +1359,10 @@ subroutine integrateStateRK4
   logical :: &
     nonlocalBroken
 
-  real(pReal), dimension(constitutive_source_maxSizeDotState,4,maxval(phase_Nsources)) :: source_RK4dotState
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,4) :: plastic_RK4dotState
+  real(pReal), dimension(constitutive_source_maxSizeDotState,4,maxval(phase_Nsources)) :: source_RK4dotState
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,source_RK4dotState,plastic_RK4dotState)
+  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,plastic_RK4dotState,source_RK4dotState)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1526,8 +1526,8 @@ subroutine integrateStateRKCK45
     sizeDotState
   logical :: &
     nonlocalBroken
-  real(pReal), dimension(constitutive_source_maxSizeDotState,6,maxval(phase_Nsources)) :: source_RKdotState
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,6) :: plastic_RKdotState
+  real(pReal), dimension(constitutive_source_maxSizeDotState,6,maxval(phase_Nsources)) :: source_RKdotState
 
   nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,plastic_RKdotState,source_RKdotState)
