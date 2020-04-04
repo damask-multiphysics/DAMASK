@@ -28,7 +28,7 @@ def reference_dir(reference_dir_base):
 
 
 class TestGeom:
-    
+
     def test_update(self,default):
         modified = copy.deepcopy(default)
         modified.update(
@@ -72,7 +72,7 @@ class TestGeom:
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
-    @pytest.mark.parametrize('stencil',[(1),(2),(3),(4)])
+    @pytest.mark.parametrize('stencil',[1,2,3,4])
     def test_clean(self,default,update,reference_dir,stencil):
         modified = copy.deepcopy(default)
         modified.clean(stencil)
@@ -82,12 +82,12 @@ class TestGeom:
         assert geom_equal(modified,Geom.from_file(reference))
 
     @pytest.mark.parametrize('grid',[
-                                     ((10,11,10)),
-                                     ([10,13,10]),
-                                     (np.array((10,10,10))),
-                                     (np.array((8, 10,12))),
-                                     (np.array((5, 4, 20))),
-                                     (np.array((10,20,2)) )
+                                     (10,11,10),
+                                     [10,13,10],
+                                     np.array((10,10,10)),
+                                     np.array((8, 10,12)),
+                                     np.array((5, 4, 20)),
+                                     np.array((10,20,2))
                                     ]
                             )
     def test_scale(self,default,update,reference_dir,grid):
@@ -97,3 +97,37 @@ class TestGeom:
         reference = os.path.join(reference_dir,'scale_{}.geom'.format(tag))
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
+
+    @pytest.mark.parametrize('periodic',[True,False])
+    def test_tessellation_approaches(self,periodic):
+        grid   = np.random.randint(10,20,3)
+        size   = np.random.random(3) + 1.0
+        N_seeds= np.random.randint(10,30)
+        seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
+        Voronoi  = Geom.from_Voronoi_tessellation( grid,size,seeds,                 periodic)
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),periodic)
+        assert geom_equal(Laguerre,Voronoi)
+
+    def test_Laguerre_weights(self):
+        grid   = np.random.randint(10,20,3)
+        size   = np.random.random(3) + 1.0
+        N_seeds= np.random.randint(10,30)
+        seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
+        weights= np.full((N_seeds),-np.inf)
+        ms     = np.random.randint(1, N_seeds+1)
+        weights[ms-1] = np.random.random()
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,np.random.random()>0.5)
+        assert np.all(Laguerre.microstructure == ms)
+
+    @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
+    def test_tessellate_bicrystal(self,approach):
+        grid  = np.random.randint(5,10,3)*2
+        size  = grid.astype(np.float)
+        seeds = np.vstack((size*np.array([0.5,0.25,0.5]),size*np.array([0.5,0.75,0.5])))
+        microstructure = np.ones(grid)
+        microstructure[:,grid[1]//2:,:] = 2
+        if   approach == 'Laguerre':
+            geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),np.random.random()>0.5)
+        elif approach == 'Voronoi':
+            geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            np.random.random()>0.5)
+        assert np.all(geom.microstructure == microstructure)
