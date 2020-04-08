@@ -6,8 +6,8 @@ import numpy as np
 from damask import Rotation
 
 n = 1000
-atol=1.e-5
-scatter=1.e-9
+atol=1.e-4
+scatter=1.e-2
 
 @pytest.fixture
 def default():
