@@ -60,7 +60,7 @@ def cube_to_ball(cube):
     else:
         # get pyramide and scale by grid parameter ratio
         p = _get_order(cube)
-        XYZ = cube[p] * sc
+        XYZ = cube[p[0]] * sc
 
         # intercept all the points along the z-axis
         if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-300):
@@ -82,7 +82,7 @@ def cube_to_ball(cube):
             ball = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
 
         # reverse the coordinates back to the regular order according to the original pyramid number
-        ball = ball[p]
+        ball = ball[p[1]]
 
     return ball
 
@@ -110,7 +110,7 @@ def ball_to_cube(ball):
         cube = np.zeros(3)
     else:
         p = _get_order(ball)
-        xyz3 = ball[p]
+        xyz3 = ball[p[0]]
 
         # inverse M_3
         xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
@@ -132,7 +132,7 @@ def ball_to_cube(ball):
         # inverse M_1
         cube = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /sc
         # reverse the coordinates back to the regular order according to the original pyramid number
-        cube = cube[p]
+        cube = cube[p[1]]
 
     return cube
 
@@ -157,10 +157,10 @@ def _get_order(xyz):
     """
     if   (abs(xyz[0])<= xyz[2]) and (abs(xyz[1])<= xyz[2]) or \
          (abs(xyz[0])<=-xyz[2]) and (abs(xyz[1])<=-xyz[2]):
-        return [0,1,2]
+        return [[0,1,2],[0,1,2]]
     elif (abs(xyz[2])<= xyz[0]) and (abs(xyz[1])<= xyz[0]) or \
          (abs(xyz[2])<=-xyz[0]) and (abs(xyz[1])<=-xyz[0]):
-        return [1,2,0]
+        return [[1,2,0],[2,0,1]]
     elif (abs(xyz[0])<= xyz[1]) and (abs(xyz[2])<= xyz[1]) or \
          (abs(xyz[0])<=-xyz[1]) and (abs(xyz[2])<=-xyz[1]):
-        return [2,0,1]
+        return [[2,0,1],[1,2,0]]

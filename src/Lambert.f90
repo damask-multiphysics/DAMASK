@@ -70,13 +70,13 @@ contains
 !--------------------------------------------------------------------------
 pure function Lambert_CubeToBall(cube) result(ball)
  
-  real(pReal), intent(in), dimension(3) :: cube
-  real(pReal),             dimension(3) :: ball, LamXYZ, XYZ
-  real(pReal),             dimension(2) :: T
-  real(pReal)                           :: c, s, q
-  real(pReal), parameter                :: eps = 1.0e-8_pReal
-  integer,                 dimension(3) :: p
-  integer,                 dimension(2) :: order
+  real(pReal), intent(in), dimension(3)   :: cube
+  real(pReal),             dimension(3)   :: ball, LamXYZ, XYZ
+  real(pReal),             dimension(2)   :: T
+  real(pReal)                             :: c, s, q
+  real(pReal), parameter                  :: eps = 1.0e-8_pReal
+  integer,                 dimension(3,2) :: p
+  integer,                 dimension(2)   :: order
   
   if (maxval(abs(cube)) > AP/2.0+eps) then
     ball = IEEE_value(cube,IEEE_positive_inf)
@@ -89,7 +89,7 @@ pure function Lambert_CubeToBall(cube) result(ball)
   else center
     ! get pyramide and scale by grid parameter ratio
     p = GetPyramidOrder(cube)
-    XYZ = cube(p) * sc
+    XYZ = cube(p(:,1)) * sc
   
     ! intercept all the points along the z-axis
     special: if (all(dEq0(XYZ(1:2)))) then
@@ -112,7 +112,7 @@ pure function Lambert_CubeToBall(cube) result(ball)
     endif special
   
     ! reverse the coordinates back to order according to the original pyramid number
-    ball = LamXYZ(p)
+    ball = LamXYZ(p(:,2))
  
   endif center
 
@@ -126,11 +126,11 @@ end function Lambert_CubeToBall
 !--------------------------------------------------------------------------
 pure function Lambert_BallToCube(xyz) result(cube)
  
-  real(pReal), intent(in), dimension(3) :: xyz
-  real(pReal),             dimension(3) :: cube, xyz1, xyz3
-  real(pReal),             dimension(2) :: Tinv, xyz2
-  real(pReal)                           :: rs, qxy, q2, sq2, q, tt
-  integer,                 dimension(3) :: p
+  real(pReal), intent(in), dimension(3)   :: xyz
+  real(pReal),             dimension(3)   :: cube, xyz1, xyz3
+  real(pReal),             dimension(2)   :: Tinv, xyz2
+  real(pReal)                             :: rs, qxy, q2, sq2, q, tt
+  integer,                 dimension(3,2) :: p
   
   rs = norm2(xyz)
   if (rs > R1) then 
@@ -142,7 +142,7 @@ pure function Lambert_BallToCube(xyz) result(cube)
     cube = 0.0_pReal
   else center
     p = GetPyramidOrder(xyz)
-    xyz3 = xyz(p)
+    xyz3 = xyz(p(:,1))
     
     ! inverse M_3
     xyz2 = xyz3(1:2) * sqrt( 2.0*rs/(rs+abs(xyz3(3))) )
@@ -166,7 +166,7 @@ pure function Lambert_BallToCube(xyz) result(cube)
     xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
     
     ! reverse the coordinates back to order according to the original pyramid number
-    cube = xyz1(p)
+    cube = xyz1(p(:,2))
  
   endif center
 
@@ -180,18 +180,18 @@ end function Lambert_BallToCube
 !--------------------------------------------------------------------------
 pure function GetPyramidOrder(xyz)
 
-  real(pReal),intent(in),dimension(3) :: xyz
-  integer,               dimension(3) :: GetPyramidOrder
+  real(pReal),intent(in),dimension(3)   :: xyz
+  integer,               dimension(3,2) :: GetPyramidOrder
  
   if      (((abs(xyz(1)) <=  xyz(3)).and.(abs(xyz(2)) <=  xyz(3))) .or. &
            ((abs(xyz(1)) <= -xyz(3)).and.(abs(xyz(2)) <= -xyz(3)))) then
-    GetPyramidOrder = [1,2,3]
+    GetPyramidOrder = reshape([[1,2,3],[1,2,3]],[3,2])
   else if (((abs(xyz(3)) <=  xyz(1)).and.(abs(xyz(2)) <=  xyz(1))) .or. &
            ((abs(xyz(3)) <= -xyz(1)).and.(abs(xyz(2)) <= -xyz(1)))) then
-    GetPyramidOrder = [2,3,1]
+    GetPyramidOrder = reshape([[2,3,1],[3,1,2]],[3,2])
   else if (((abs(xyz(1)) <=  xyz(2)).and.(abs(xyz(3)) <=  xyz(2))) .or. &
            ((abs(xyz(1)) <= -xyz(2)).and.(abs(xyz(3)) <= -xyz(2)))) then
-    GetPyramidOrder = [3,1,2]
+    GetPyramidOrder = reshape([[3,1,2],[2,3,1]],[3,2])
   else
     GetPyramidOrder = -1                                                                            ! should be impossible, but might simplify debugging
   end if
