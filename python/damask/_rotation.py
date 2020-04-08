@@ -596,18 +596,26 @@ class Rotation:
     @staticmethod
     def om2eu(om):
         """Rotation matrix to Bunge-Euler angles."""
-        if not np.isclose(np.abs(om[2,2]),1.0,1.e-4):
-            zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
-            eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
-                           np.arccos(om[2,2]),
-                           np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
+        if len(om.shape) == 2:
+            if not np.isclose(np.abs(om[2,2]),1.0,1.e-4):
+                zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
+                eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
+                               np.arccos(om[2,2]),
+                               np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
+            else:
+                eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])            # following the paper, not the reference implementation
         else:
-            eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                # following the paper, not the reference implementation
-
-        # reduce Euler angles to definition range, i.e a lower limit of 0.0
+          with np.errstate(divide='ignore'):
+              zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
+          eu = np.block([np.arctan2(om[...,2,0:1]*zeta,-om[...,2,1:2]*zeta),
+                         np.arccos(om[...,2,2:3]),
+                         np.arctan2(om[...,0,2:3]*zeta,+om[...,1,2:3]*zeta)
+                        ])
+        # TODO Special case not implemented!
         eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
+
 
     @staticmethod
     def om2ax(om):
