@@ -262,9 +262,9 @@ class Rotation:
             if acceptHomomorph:
                 qu *= -1.
             else:
-                raise ValueError('Quaternion has negative first component.\n{}'.format(qu[0]))
+                raise ValueError('Quaternion has negative first component: {}.'.format(qu[0]))
         if not np.isclose(np.linalg.norm(qu), 1.0):
-            raise ValueError('Quaternion is not of unit length.\n{} {} {} {}'.format(*qu))
+            raise ValueError('Quaternion is not of unit length: {} {} {} {}.'.format(*qu))
 
         return Rotation(qu)
 
@@ -276,7 +276,7 @@ class Rotation:
                     else np.array(eulers,dtype=float)
         eu = np.radians(eu) if degrees else eu
         if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or eu[1] > np.pi:
-            raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eu))
+            raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π]: {} {} {}.'.format(*eu))
 
         return Rotation(Rotation.eu2qu(eu))
 
@@ -292,9 +292,9 @@ class Rotation:
         if degrees:   ax[  3]  = np.radians(ax[3])
         if normalise: ax[0:3] /= np.linalg.norm(ax[0:3])
         if ax[3] < 0.0 or ax[3] > np.pi:
-            raise ValueError('Axis angle rotation angle outside of [0..π].\n{}'.format(ax[3]))
+            raise ValueError('Axis angle rotation angle outside of [0..π]: {}.'.format(ax[3]))
         if not np.isclose(np.linalg.norm(ax[0:3]), 1.0):
-            raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[0:3]))
+            raise ValueError('Axis angle rotation axis is not of unit length: {} {} {}.'.format(*ax[0:3]))
 
         return Rotation(Rotation.ax2qu(ax))
 
@@ -312,11 +312,11 @@ class Rotation:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
             om = np.dot(U,Vh)
         if not np.isclose(np.linalg.det(om),1.0):
-            raise ValueError('matrix is not a proper rotation.\n{}'.format(om))
+            raise ValueError('matrix is not a proper rotation: {}.'.format(om))
         if    not np.isclose(np.dot(om[0],om[1]), 0.0) \
            or not np.isclose(np.dot(om[1],om[2]), 0.0) \
            or not np.isclose(np.dot(om[2],om[0]), 0.0):
-            raise ValueError('matrix is not orthogonal.\n{}'.format(om))
+            raise ValueError('matrix is not orthogonal: {}.'.format(om))
 
         return Rotation(Rotation.om2qu(om))
 
@@ -336,9 +336,9 @@ class Rotation:
         if P > 0:     ro[0:3] *= -1                                                                 # convert from P=1 to P=-1
         if normalise: ro[0:3] /= np.linalg.norm(ro[0:3])
         if not np.isclose(np.linalg.norm(ro[0:3]), 1.0):
-            raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[0:3]))
+            raise ValueError('Rodrigues rotation axis is not of unit length: {} {} {}.'.format(*ro[0:3]))
         if ro[3] < 0.0:
-            raise ValueError('Rodrigues rotation angle not positive.\n{}'.format(ro[3]))
+            raise ValueError('Rodrigues rotation angle not positive: {}.'.format(ro[3]))
 
         return Rotation(Rotation.ro2qu(ro))
 
@@ -383,7 +383,7 @@ class Rotation:
 
         """
         if not all(isinstance(item, Rotation) for item in rotations):
-            raise TypeError("Only instances of Rotation can be averaged.")
+            raise TypeError('Only instances of Rotation can be averaged.')
 
         N = len(rotations)
         if not weights:
@@ -503,11 +503,10 @@ class Rotation:
     @staticmethod
     def qu2ho(qu):
         """Quaternion to homochoric vector."""
-        omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
-
-        if iszero(omega):
+        if np.isclose(qu[0],1.0):
             ho = np.array([ 0.0, 0.0, 0.0 ])
         else:
+            omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
             ho = np.array([qu[1], qu[2], qu[3]])
             f  = 0.75 * ( omega - np.sin(omega) )
             ho = ho/np.linalg.norm(ho) * f**(1./3.)
