@@ -103,7 +103,7 @@ def ball_to_cube(ball):
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
-    ball_ = ball/np.linalg.norm(ball) if np.isclose(np.linalg.norm(ball),R1) else ball
+    ball_ = ball/np.linalg.norm(ball)*R1 if np.isclose(np.linalg.norm(ball),R1) else ball
     rs = np.linalg.norm(ball_)
     if rs > R1:
         raise ValueError
