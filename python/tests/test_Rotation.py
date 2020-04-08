@@ -150,6 +150,28 @@ class TestRotation:
             print(m,o,rot.asQuaternion())
             assert np.allclose(m,o,atol=atol)
 
+    @pytest.mark.parametrize('conversion',[Rotation.qu2om,
+                                           Rotation.qu2eu,
+                                           Rotation.qu2ax,
+                                           Rotation.qu2ro,
+                                           Rotation.qu2ho])
+    def test_quaternion_vectorization(self,default,conversion):
+        qu = np.array([rot.asQuaternion() for rot in default])
+        co = conversion(qu)
+        for q,c in zip(qu,co):
+             assert np.allclose(conversion(q),c)
+
+    @pytest.mark.parametrize('conversion',[Rotation.eu2qu,
+                                           Rotation.eu2om,
+                                           Rotation.eu2ax,
+                                           Rotation.eu2ro,
+                                          ])
+    def test_Euler_vectorization(self,default,conversion):
+        qu = np.array([rot.asEulers() for rot in default])
+        co = conversion(qu)
+        for q,c in zip(qu,co):
+             assert np.allclose(conversion(q),c)
+
     @pytest.mark.parametrize('conversion',[Rotation.ax2qu,
                                            Rotation.ax2om,
                                            Rotation.ax2ro,
