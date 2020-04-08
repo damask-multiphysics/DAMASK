@@ -141,7 +141,7 @@ class TestRotation:
             m = rot.asHomochoric()
             o = Rotation.fromCubochoric(rot.asCubochoric()).asHomochoric()
             print(m,o,rot.asQuaternion())
-            assert np.allclose(m,o,atol=atol*1e2)
+            assert np.allclose(m,o,atol=atol)
 
     def test_Quaternion(self,default):
         for rot in default:
