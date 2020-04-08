@@ -51,7 +51,7 @@ def cube_to_ball(cube):
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
-    cube_ = np.clip(cube,None,np.pi**(2./3.) * 0.5) if np.isclose(np.abs(np.max(cube)),np.pi**(2./3.) * 0.5) else cube
+    cube_ = np.clip(cube,None,np.pi**(2./3.) * 0.5) if np.isclose(np.abs(np.max(cube)),np.pi**(2./3.) * 0.5,atol=1e-6) else cube
     if np.abs(np.max(cube_))>np.pi**(2./3.) * 0.5:
         raise ValueError('Coordinate outside of the cube: {} {} {}.'.format(*cube))
 
@@ -103,9 +103,9 @@ def ball_to_cube(ball):
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
-    ball_ = ball/np.linalg.norm(ball)*R1 if np.isclose(np.linalg.norm(ball),R1) else ball
+    ball_ = ball/np.linalg.norm(ball)*R1 if np.isclose(np.linalg.norm(ball),R1,atol=1e-6) else ball
     rs = np.linalg.norm(ball_)
-    if rs > R1:
+    if rs > R1 and not np.isclose(rs,R1):
         raise ValueError('Coordinate outside of the sphere: {} {} {}.'.format(*ball))
 
     if np.allclose(ball_,0.0,rtol=0.0,atol=1.0e-16):
