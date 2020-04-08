@@ -653,27 +653,50 @@ class Rotation:
     @staticmethod
     def ax2qu(ax):
         """Axis angle pair to quaternion."""
-        if np.abs(ax[3])<1.e-6:
-            qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
+        if len(ax.shape) == 1:
+            if np.abs(ax[3])<1.e-6:
+                qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
+            else:
+                c = np.cos(ax[3]*0.5)
+                s = np.sin(ax[3]*0.5)
+                qu = np.array([ c, ax[0]*s, ax[1]*s, ax[2]*s ])
+            return qu
         else:
-            c = np.cos(ax[3]*0.5)
-            s = np.sin(ax[3]*0.5)
-            qu = np.array([ c, ax[0]*s, ax[1]*s, ax[2]*s ])
-        return qu
+            c = np.cos(ax[...,3:4]*.5)
+            s = np.sin(ax[...,3:4]*.5)
+            qu = np.where(np.abs(ax[...,3:4])<1.e-12,
+                          [1.0, 0.0, 0.0, 0.0],
+                          np.block([c, ax[...,:3]*s]))
+            return qu
 
     @staticmethod
     def ax2om(ax):
         """Axis angle pair to rotation matrix."""
-        c = np.cos(ax[3])
-        s = np.sin(ax[3])
-        omc = 1.0-c
-        om=np.diag(ax[0:3]**2*omc + c)
+        if len(ax.shape) == 1:
+            c = np.cos(ax[3])
+            s = np.sin(ax[3])
+            omc = 1.0-c
+            om=np.diag(ax[0:3]**2*omc + c)
 
-        for idx in [[0,1,2],[1,2,0],[2,0,1]]:
-            q = omc*ax[idx[0]] * ax[idx[1]]
-            om[idx[0],idx[1]] = q + s*ax[idx[2]]
-            om[idx[1],idx[0]] = q - s*ax[idx[2]]
-        return om if P < 0.0 else om.T
+            for idx in [[0,1,2],[1,2,0],[2,0,1]]:
+                q = omc*ax[idx[0]] * ax[idx[1]]
+                om[idx[0],idx[1]] = q + s*ax[idx[2]]
+                om[idx[1],idx[0]] = q - s*ax[idx[2]]
+            return om if P < 0.0 else om.T
+        else:
+            c = np.cos(ax[...,3:4])
+            s = np.sin(ax[...,3:4])
+            omc = 1. -c
+            ax = np.block([c+omc*ax[...,0:1]**2,
+                           omc*ax[...,0:1]*ax[...,1:2] + s*ax[...,2:3],
+                           omc*ax[...,0:1]*ax[...,2:3] - s*ax[...,1:2],
+                           omc*ax[...,0:1]*ax[...,1:2] - s*ax[...,2:3],
+                           c+omc*ax[...,1:2]**2,
+                           omc*ax[...,1:2]*ax[...,2:3] + s*ax[...,0:1],
+                           omc*ax[...,0:1]*ax[...,2:3] + s*ax[...,1:2],
+                           omc*ax[...,1:2]*ax[...,2:3] - s*ax[...,0:1],
+                           c+omc*ax[...,2:3]**2]).reshape(ax.shape[:-1]+(3,3))
+            return ax
 
     @staticmethod
     def ax2eu(ax):
@@ -683,21 +706,35 @@ class Rotation:
     @staticmethod
     def ax2ro(ax):
         """Axis angle pair to Rodrigues-Frank vector."""
-        if np.abs(ax[3])<1.e-6:
-            ro = [ 0.0, 0.0, P, 0.0 ]
+        if len(ax.shape) == 1:
+            if np.abs(ax[3])<1.e-6:
+                ro = [ 0.0, 0.0, P, 0.0 ]
+            else:
+                ro = [ax[0], ax[1], ax[2]]
+                # 180 degree case
+                ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
+                      [np.tan(ax[3]*0.5)]
+            return np.array(ro)
         else:
-            ro = [ax[0], ax[1], ax[2]]
-            # 180 degree case
-            ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
-                  [np.tan(ax[3]*0.5)]
-        return np.array(ro)
+            ro = np.block([ax[...,:3],
+                           np.where(np.isclose(ax[...,3:4],np.pi,atol=1.e-15,rtol=.0),
+                                    np.inf,
+                                    np.tan(ax[...,3:4]*0.5))
+                          ])
+            ro[np.abs(ax[...,3])<1.e-6] = [.0,.0,P,.0]
+            return ro
 
     @staticmethod
     def ax2ho(ax):
         """Axis angle pair to homochoric vector."""
-        f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
-        ho = ax[0:3] * f
-        return ho
+        if len(ax.shape) == 1:
+            f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
+            ho = ax[0:3] * f
+            return ho
+        else:
+            f = (0.75 * ( ax[...,3:4] - np.sin(ax[...,3:4]) ))**(1.0/3.0)
+            ho = ax[...,:3] * f
+            return ho
 
     @staticmethod
     def ax2cu(ax):

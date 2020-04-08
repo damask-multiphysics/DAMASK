@@ -78,7 +78,7 @@ def default():
     specials /= np.linalg.norm(specials,axis=1).reshape(-1,1)
     specials[specials[:,0]<0]*=-1
     return [Rotation.fromQuaternion(s) for s in specials] + \
-           [Rotation.fromRandom() for r in range(n-len(specials))]
+           [Rotation.fromRandom() for _ in range(n-len(specials))]
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
@@ -149,3 +149,15 @@ class TestRotation:
             o = Rotation.fromQuaternion(rot.asQuaternion()).asCubochoric()
             print(m,o,rot.asQuaternion())
             assert np.allclose(m,o,atol=atol)
+
+    @pytest.mark.parametrize('conversion',[Rotation.ax2qu,
+                                           Rotation.ax2om,
+                                           Rotation.ax2ro,
+                                           Rotation.ax2ho,
+                                          ])
+    def test_axisAngle_vectorization(self,default,conversion):
+        ax = np.array([rot.asAxisAngle() for rot in default])
+        dev_null = conversion(ax.reshape(ax.shape[0]//2,-1,4))
+        co = conversion(ax)
+        for a,c in zip(ax,co):
+             assert np.allclose(conversion(a),c)
