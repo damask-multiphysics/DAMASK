@@ -51,19 +51,20 @@ def cube_to_ball(cube):
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
-    if np.abs(np.max(cube))>np.pi**(2./3.) * 0.5:
+    cube_ = np.clip(cube,None,np.pi**(2./3.) * 0.5) if np.isclose(np.abs(np.max(cube)),np.pi**(2./3.) * 0.5) else cube
+    if np.abs(np.max(cube_))>np.pi**(2./3.) * 0.5:
         raise ValueError
 
     # transform to the sphere grid via the curved square, and intercept the zero point
-    if np.allclose(cube,0.0,rtol=0.0,atol=1.0e-300):
+    if np.allclose(cube_,0.0,rtol=0.0,atol=1.0e-16):
         ball = np.zeros(3)
     else:
         # get pyramide and scale by grid parameter ratio
-        p = _get_order(cube)
-        XYZ = cube[p[0]] * sc
+        p = _get_order(cube_)
+        XYZ = cube_[p[0]] * sc
 
         # intercept all the points along the z-axis
-        if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-300):
+        if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
             ball = np.array([0.0, 0.0, np.sqrt(6.0/np.pi) * XYZ[2]])
         else:
             order = [1,0] if np.abs(XYZ[1]) <= np.abs(XYZ[0]) else [0,1]
@@ -102,15 +103,16 @@ def ball_to_cube(ball):
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
-    rs = np.linalg.norm(ball)
+    ball_ = ball/np.linalg.norm(ball) if np.isclose(np.linalg.norm(ball),R1) else ball
+    rs = np.linalg.norm(ball_)
     if rs > R1:
         raise ValueError
 
-    if np.allclose(ball,0.0,rtol=0.0,atol=1.0e-300):
+    if np.allclose(ball_,0.0,rtol=0.0,atol=1.0e-16):
         cube = np.zeros(3)
     else:
-        p = _get_order(ball)
-        xyz3 = ball[p[0]]
+        p = _get_order(ball_)
+        xyz3 = ball_[p[0]]
 
         # inverse M_3
         xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
@@ -118,7 +120,7 @@ def ball_to_cube(ball):
         # inverse M_2
         qxy = np.sum(xyz2**2)
 
-        if np.isclose(qxy,0.0,rtol=0.0,atol=1.0e-300):
+        if np.isclose(qxy,0.0,rtol=0.0,atol=1.0e-16):
             Tinv = np.zeros(2)
         else:
             q2 = qxy + np.max(np.abs(xyz2))**2
