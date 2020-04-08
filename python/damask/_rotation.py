@@ -459,16 +459,16 @@ class Rotation:
         q03 = qu[0]**2+qu[3]**2
         q12 = qu[1]**2+qu[2]**2
         chi = np.sqrt(q03*q12)
-
-        if iszero(chi):
-            eu = np.array([np.arctan2(-P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0]) if iszero(q12) else \
-                 np.array([np.arctan2(2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2),    np.pi, 0.0])
+        if np.abs(chi)< 1.e-6:
+            eu = np.array([np.arctan2(-P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0]) if np.abs(q12)< 1.e-6 else \
+                 np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
         else:
             eu = np.array([np.arctan2((-P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-P*qu[0]*qu[1]-qu[2]*qu[3])*chi ),
                            np.arctan2( 2.0*chi, q03-q12 ),
                            np.arctan2(( P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-P*qu[0]*qu[1]+qu[2]*qu[3])*chi )])
 
         # reduce Euler angles to definition range, i.e a lower limit of 0.0
+        eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
 
@@ -481,7 +481,7 @@ class Rotation:
         """
         if iszero(qu[1]**2+qu[2]**2+qu[3]**2):                                                      # set axis to [001] if the angle is 0/360
             ax = [ 0.0, 0.0, 1.0, 0.0 ]
-        elif not iszero(qu[0]):
+        elif np.abs(qu[0]) > 1.e-6:
             s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
             omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
             ax = [ qu[1]*s, qu[2]*s, qu[3]*s, omega ]
@@ -498,6 +498,7 @@ class Rotation:
             s = np.linalg.norm([qu[1],qu[2],qu[3]])
             ro = [0.0,0.0,P,0.0] if iszero(s) else \
                 [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))]
+
         return np.array(ro)
 
     @staticmethod
@@ -531,7 +532,7 @@ class Rotation:
     @staticmethod
     def om2eu(om):
         """Rotation matrix to Bunge-Euler angles."""
-        if abs(om[2,2]) < 1.0:
+        if not np.isclose(np.abs(om[2,2]),1.0,1.e-4):
             zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
             eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
                            np.arccos(om[2,2]),
@@ -540,6 +541,7 @@ class Rotation:
             eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                # following the paper, not the reference implementation
 
         # reduce Euler angles to definition range, i.e a lower limit of 0.0
+        eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
 
@@ -552,7 +554,7 @@ class Rotation:
         t = 0.5*(om.trace() -1.0)
         ax[3] = np.arccos(np.clip(t,-1.0,1.0))
 
-        if iszero(ax[3]):
+        if np.abs(ax[3])<1.e-6:
             ax = [ 0.0, 0.0, 1.0, 0.0]
         else:
             w,vr = np.linalg.eig(om)
@@ -560,7 +562,7 @@ class Rotation:
             i = np.where(np.isclose(w,1.0+0.0j))[0][0]
             ax[0:3] = np.real(vr[0:3,i])
             diagDelta = np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
-            ax[0:3] = np.where(iszero(diagDelta), ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
+            ax[0:3] = np.where(np.abs(diagDelta)<1.e-6, ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
         return np.array(ax)
 
     @staticmethod
@@ -603,7 +605,7 @@ class Rotation:
                        [-c[0]*s[2]-s[0]*c[2]*c[1], -s[0]*s[2]+c[0]*c[2]*c[1], +c[2]*s[1]],
                        [+s[0]*s[1],                -c[0]*s[1],                +c[1]     ]])
 
-        om[np.where(iszero(om))] = 0.0
+        om[np.abs(om)<1.e-6] = 0.0
         return om
 
     @staticmethod
@@ -616,7 +618,7 @@ class Rotation:
         alpha = np.pi if iszero(np.cos(sigma)) else \
                 2.0*np.arctan(tau/np.cos(sigma))
 
-        if iszero(alpha):
+        if np.abs(alpha)<1.e-6:
             ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
         else:
             ax = -P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])             # passive axis angle pair so a minus sign in front
@@ -651,7 +653,7 @@ class Rotation:
     @staticmethod
     def ax2qu(ax):
         """Axis angle pair to quaternion."""
-        if iszero(ax[3]):
+        if np.abs(ax[3])<1.e-6:
             qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
         else:
             c = np.cos(ax[3]*0.5)
@@ -681,7 +683,7 @@ class Rotation:
     @staticmethod
     def ax2ro(ax):
         """Axis angle pair to Rodrigues-Frank vector."""
-        if iszero(ax[3]):
+        if np.abs(ax[3])<1.e-6:
             ro = [ 0.0, 0.0, P, 0.0 ]
         else:
             ro = [ax[0], ax[1], ax[2]]
