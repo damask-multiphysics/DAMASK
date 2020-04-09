@@ -166,7 +166,7 @@ class TestRotation:
             assert np.allclose(conversion(q),c)
 
     @pytest.mark.parametrize('conversion',[Rotation.om2eu,
-                                          #Rotation.om2ax,
+                                           Rotation.om2ax,
                                           ])
     def test_matrix_vectorization(self,default,conversion):
         om = np.array([rot.asMatrix() for rot in default])
