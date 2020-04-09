@@ -640,15 +640,25 @@ class Rotation:
                 i = np.where(np.isclose(w,1.0+0.0j))[0][0]
                 ax[0:3] = np.real(vr[0:3,i])
                 diagDelta = np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
-                ax[0:3] = np.where(np.abs(diagDelta)<1.e-6, ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
-            return ax
+                ax[0:3] = np.where(np.abs(diagDelta)<0, ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
         else:
             diag_delta = np.block([om[...,1,2:3]-om[...,2,1:2],
                                    om[...,2,0:1]-om[...,0,2:3],
                                    om[...,0,1:2]-om[...,1,0:1]
                                   ])
+            t = 0.5*(om.trace(axis2=-2,axis1=-1) -1.0).reshape(om.shape[:-2]+(1,))
             w,vr = np.linalg.eig(om)
-            # TODO ------------------
+            # mask duplicated real eigenvalues
+            w[np.isclose(w[...,0],1.0+0.0j),1:] = 0.
+            w[np.isclose(w[...,1],1.0+0.0j),2:] = 0.
+            ax = np.where(np.abs(diag_delta)<0,
+                          np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,)),
+                          np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,)) \
+                          * np.abs(diag_delta)*np.sign(-P*diag_delta))
+            ax = np.block([ax,np.arccos(np.clip(t,-1.0,1.0))])
+            ax[np.abs(ax[...,3])<1.e-6] = [ 0.0, 0.0, 1.0, 0.0]
+        return ax
+
 
     @staticmethod
     def om2ro(om):

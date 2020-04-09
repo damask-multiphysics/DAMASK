@@ -80,7 +80,7 @@ def default():
 
     return [Rotation.fromQuaternion(s) for s in specials] + \
            [Rotation.fromQuaternion(s) for s in specials_scatter] + \
-           [Rotation.fromRandom() for _ in range(n-len(specials))]
+           [Rotation.fromRandom() for _ in range(n-len(specials)-len(specials_scatter))]
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
@@ -159,17 +159,22 @@ class TestRotation:
                                            Rotation.qu2ho])
     def test_quaternion_vectorization(self,default,conversion):
         qu = np.array([rot.asQuaternion() for rot in default])
+        #dev_null = conversion(qu.reshape(qu.shape[0]//2,-1,4))
         co = conversion(qu)
         for q,c in zip(qu,co):
-             assert np.allclose(conversion(q),c)
+            print(q,c)
+            assert np.allclose(conversion(q),c)
 
     @pytest.mark.parametrize('conversion',[Rotation.om2eu,
+                                          #Rotation.om2ax,
                                           ])
     def test_matrix_vectorization(self,default,conversion):
-        qu = np.array([rot.asMatrix() for rot in default])
-        co = conversion(qu)
-        for q,c in zip(qu,co):
-             assert np.allclose(conversion(q),c)
+        om = np.array([rot.asMatrix() for rot in default])
+        #dev_null = conversion(om.reshape(om.shape[0]//2,-1,3,3))
+        co = conversion(om)
+        for o,c in zip(om,co):
+            print(o,c)
+            assert np.allclose(conversion(o),c)
 
     @pytest.mark.parametrize('conversion',[Rotation.eu2qu,
                                            Rotation.eu2om,
@@ -177,10 +182,12 @@ class TestRotation:
                                            Rotation.eu2ro,
                                           ])
     def test_Euler_vectorization(self,default,conversion):
-        qu = np.array([rot.asEulers() for rot in default])
-        co = conversion(qu)
-        for q,c in zip(qu,co):
-             assert np.allclose(conversion(q),c)
+        eu = np.array([rot.asEulers() for rot in default])
+        #dev_null = conversion(eu.reshape(eu.shape[0]//2,-1,3))
+        co = conversion(eu)
+        for e,c in zip(eu,co):
+            print(e,c)
+            assert np.allclose(conversion(e),c)
 
     @pytest.mark.parametrize('conversion',[Rotation.ax2qu,
                                            Rotation.ax2om,
@@ -192,4 +199,5 @@ class TestRotation:
         dev_null = conversion(ax.reshape(ax.shape[0]//2,-1,4))
         co = conversion(ax)
         for a,c in zip(ax,co):
-             assert np.allclose(conversion(a),c)
+            print(a,c)
+            assert np.allclose(conversion(a),c)
