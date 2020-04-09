@@ -474,7 +474,7 @@ class Rotation:
             q03 = qu[0]**2+qu[3]**2
             q12 = qu[1]**2+qu[2]**2
             chi = np.sqrt(q03*q12)
-            if   np.abs(q03)< 1.e-6:
+            if   np.abs(chi)< 1.e-6:
                 eu = np.array([np.arctan2(-P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0])
             elif np.abs(q12)< 1.e-6:
                 eu = np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
@@ -491,14 +491,14 @@ class Rotation:
             q12_s = qu[...,1:2]**2+qu[...,2:3]**2
             chi = np.sqrt(q03_s*q12_s)
 
-            eu = np.where(np.abs(q12_s) < 1.0e-6,
+            eu = np.where(np.abs(chi) < 1.0e-6,
                           np.block([np.arctan2(-P*2.0*qu[...,0:1]*qu[...,3:4],qu[...,0:1]**2-qu[...,3:4]**2),
                                     np.zeros(qu.shape[:-1]+(2,))]),
                           np.block([np.arctan2((-P*q02+q13)*chi, (-P*q01-q23)*chi),
                                     np.arctan2( 2.0*chi,          q03_s-q12_s    ),
                                     np.arctan2(( P*q02+q13)*chi, (-P*q01+q23)*chi)])
                          )
-            eu = np.where(np.abs(q03_s) < 1.0e-6,
+            eu = np.where(np.logical_and(np.abs(q03_s) < 1.0e-6, np.abs(chi) > 1.0e-6),
                           np.block([np.arctan2(   2.0*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
                                     np.ones( qu.shape[:-1]+(1,))*np.pi,
                                     np.zeros(qu.shape[:-1]+(1,))]),
@@ -525,17 +525,14 @@ class Rotation:
             else:
                 ax = ax = np.array([ qu[1], qu[2], qu[3], np.pi])
         else:
-            with np.errstate(divide='ignore'):
+            with np.errstate(invalid='ignore',divide='ignore'):
                 s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
-            omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
-
+                omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
+                ax = np.where(np.expand_dims(np.sum(np.abs(qu[:,1:4])**2,axis=-1) < 1.0e-6,-1),
+                              [0.0, 0.0, 1.0, 0.0], np.block([qu[...,1:4]*s,omega]))
             ax = np.where(qu[...,0:1] < 1.0e-6,
-                          np.block([qu[...,1:4],np.ones(qu.shape[:-1]+(1,))*np.pi]),
-                          np.block([qu[...,1:4]*s,omega]))
-            ax = np.where(np.expand_dims(np.sum(np.abs(qu[:,1:4])**2,axis=-1) < 1.0e-6,-1),
-                          [0.0, 0.0, 1.0, 0.0], ax)                                                 # TODO: Where not needed
+                          np.block([qu[...,1:4],np.ones(qu.shape[:-1]+(1,))*np.pi]),ax)             # TODO: Where not needed
         return ax
-
 
     @staticmethod
     def qu2ro(qu):
@@ -548,12 +545,13 @@ class Rotation:
                 ro = np.array([0.0,0.0,P,0.0] if iszero(s) else \
                               [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))])
         else:
-            s  = np.expand_dims(np.linalg.norm(qu[...,1:4],axis=1),-1)
-            ro = np.where(np.abs(s) < 1.0e-12,
-                          [0.0,0.0,P,0.0],
-                          np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
-                                    np.tan(np.arccos(np.clip(qu[:,0:1],-1.0,1.0)))
-                                   ])
+            with np.errstate(invalid='ignore',divide='ignore'):
+                s  = np.expand_dims(np.linalg.norm(qu[...,1:4],axis=1),-1)
+                ro = np.where(np.abs(s) < 1.0e-12,
+                              [0.0,0.0,P,0.0],
+                              np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
+                                        np.tan(np.arccos(np.clip(qu[:,0:1],-1.0,1.0)))
+                                       ])
                            )
             ro = np.where(np.abs(qu[...,0:1]) < 1.0e-12,
                           np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.ones(qu.shape[:-1]+(1,))*np.inf]),ro) # TODO: Where not needed
@@ -571,10 +569,12 @@ class Rotation:
                 f  = 0.75 * ( omega - np.sin(omega) )
                 ho = ho/np.linalg.norm(ho) * f**(1./3.)
         else:
-            omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
-            ho = np.where(np.abs(omega) < 1.0e-12,
-                          np.zeros(3),
-                          qu[...,1:4]/np.linalg.norm(qu[...,1:4],axis=1).reshape(qu.shape[:-1]+(1,)) * (0.75*(omega - np.sin(omega)))**(1./3.))
+            with np.errstate(invalid='ignore'):
+                omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
+                ho = np.where(np.abs(omega) < 1.0e-12,
+                              np.zeros(3),
+                              qu[...,1:4]/np.linalg.norm(qu[...,1:4],axis=1).reshape(qu.shape[:-1]+(1,)) \
+                              * (0.75*(omega - np.sin(omega)))**(1./3.))
         return ho
 
     @staticmethod
@@ -605,13 +605,18 @@ class Rotation:
             else:
                 eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])            # following the paper, not the reference implementation
         else:
-          with np.errstate(divide='ignore'):
-              zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
-          eu = np.block([np.arctan2(om[...,2,0:1]*zeta,-om[...,2,1:2]*zeta),
-                         np.arccos(om[...,2,2:3]),
-                         np.arctan2(om[...,0,2:3]*zeta,+om[...,1,2:3]*zeta)
-                        ])
-        # TODO Special case not implemented!
+            with np.errstate(invalid='ignore',divide='ignore'):
+                zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
+                eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,1e-4),
+                              np.block([np.arctan2(om[...,0,1:2],om[...,0,0:1]),
+                                        np.pi*0.5*(1-om[...,2,2:3]),
+                                        np.zeros(om.shape[:-2]+(1,)),
+                                       ]),
+                              np.block([np.arctan2(om[...,2,0:1]*zeta,-om[...,2,1:2]*zeta),
+                                        np.arccos(om[...,2,2:3]),
+                                        np.arctan2(om[...,0,2:3]*zeta,+om[...,1,2:3]*zeta)
+                                       ])
+                              )
         eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
@@ -620,22 +625,30 @@ class Rotation:
     @staticmethod
     def om2ax(om):
         """Rotation matrix to axis angle pair."""
-        ax=np.empty(4)
+        if len(om.shape) == 2:
+            ax=np.empty(4)
 
-        # first get the rotation angle
-        t = 0.5*(om.trace() -1.0)
-        ax[3] = np.arccos(np.clip(t,-1.0,1.0))
+            # first get the rotation angle
+            t = 0.5*(om.trace() -1.0)
+            ax[3] = np.arccos(np.clip(t,-1.0,1.0))
 
-        if np.abs(ax[3])<1.e-6:
-            ax = np.array([ 0.0, 0.0, 1.0, 0.0])
+            if np.abs(ax[3])<1.e-6:
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0])
+            else:
+                w,vr = np.linalg.eig(om)
+                # next, find the eigenvalue (1,0j)
+                i = np.where(np.isclose(w,1.0+0.0j))[0][0]
+                ax[0:3] = np.real(vr[0:3,i])
+                diagDelta = np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
+                ax[0:3] = np.where(np.abs(diagDelta)<1.e-6, ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
+            return ax
         else:
+            diag_delta = np.block([om[...,1,2:3]-om[...,2,1:2],
+                                   om[...,2,0:1]-om[...,0,2:3],
+                                   om[...,0,1:2]-om[...,1,0:1]
+                                  ])
             w,vr = np.linalg.eig(om)
-            # next, find the eigenvalue (1,0j)
-            i = np.where(np.isclose(w,1.0+0.0j))[0][0]
-            ax[0:3] = np.real(vr[0:3,i])
-            diagDelta = np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
-            ax[0:3] = np.where(np.abs(diagDelta)<1.e-6, ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
-        return ax
+            # TODO ------------------
 
     @staticmethod
     def om2ro(om):
@@ -727,13 +740,14 @@ class Rotation:
             delta = 0.5*(eu[...,0:1]-eu[...,2:3])
             tau   = np.linalg.norm(np.block([t,np.sin(sigma)]),axis=-1).reshape(-1,1)
             alpha = np.where(np.abs(np.cos(sigma))<1.e-12,np.pi,2.0*np.arctan(tau/np.cos(sigma)))
-            ax = np.where(np.broadcast_to(np.abs(alpha)<1.0e-12,eu.shape[:-1]+(4,)),
-                          [0.0,0.0,1.0,0.0],
-                          np.block([-P/tau*t*np.cos(delta),
-                                    -P/tau*t*np.sin(delta),
-                                    -P/tau*  np.sin(sigma),
-                                     alpha
-                                    ]))
+            with np.errstate(invalid='ignore',divide='ignore'):
+                ax = np.where(np.broadcast_to(np.abs(alpha)<1.0e-12,eu.shape[:-1]+(4,)),
+                              [0.0,0.0,1.0,0.0],
+                              np.block([-P/tau*t*np.cos(delta),
+                                        -P/tau*t*np.sin(delta),
+                                        -P/tau*  np.sin(sigma),
+                                         alpha
+                                        ]))
             ax[(alpha<0.0).squeeze()] *=-1
         return ax
 

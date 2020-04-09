@@ -5,7 +5,7 @@ import numpy as np
 
 from damask import Rotation
 
-n = 1000
+n = 1100
 atol=1.e-4
 scatter=1.e-2
 
@@ -74,10 +74,12 @@ def default():
                np.array([1.0, 1.0,-1.0,-1.0])/2.,
                np.array([1.0,-1.0,-1.0,-1.0])/2.,
               ])
-    specials += np.broadcast_to(np.random.rand(4)*scatter,specials.shape)
-    specials /= np.linalg.norm(specials,axis=1).reshape(-1,1)
-    specials[specials[:,0]<0]*=-1
+    specials_scatter = specials + np.broadcast_to(np.random.rand(4)*scatter,specials.shape)
+    specials_scatter /= np.linalg.norm(specials_scatter,axis=1).reshape(-1,1)
+    specials_scatter[specials_scatter[:,0]<0]*=-1
+
     return [Rotation.fromQuaternion(s) for s in specials] + \
+           [Rotation.fromQuaternion(s) for s in specials_scatter] + \
            [Rotation.fromRandom() for _ in range(n-len(specials))]
 
 @pytest.fixture
