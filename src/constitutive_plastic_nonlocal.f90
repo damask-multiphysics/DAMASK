@@ -16,15 +16,15 @@ submodule(constitutive) plastic_nonlocal
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
 
   ! storage order of dislocation types
-  integer, dimension(8), parameter :: &
+  integer, dimension(*), parameter :: &
     sgl = [1,2,3,4,5,6,7,8]                                                                         !< signed (single)
-  integer, dimension(5), parameter :: &
+  integer, dimension(*), parameter :: &
     edg = [1,2,5,6,9], &                                                                            !< edge
     scr = [3,4,7,8,10]                                                                              !< screw
-  integer, dimension(4), parameter :: &
+  integer, dimension(*), parameter :: &
     mob = [1,2,3,4], &                                                                              !< mobile
     imm = [5,6,7,8]                                                                                 !< immobile (blocked)
-  integer, dimension(2), parameter :: &
+  integer, dimension(*), parameter :: &
     dip = [9,10], &                                                                                 !< dipole
     imm_edg = imm(1:2), &                                                                           !< immobile edge
     imm_scr = imm(3:4)                                                                              !< immobile screw
@@ -1611,7 +1611,7 @@ end subroutine stateInit
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates kinetics
 !--------------------------------------------------------------------------------------------------
-subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Temperature, instance)
+pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Temperature, instance)
 
   integer, intent(in) :: &
     c, &                                                                                            !< dislocation character (1:edge, 2:screw)
@@ -1726,7 +1726,7 @@ end subroutine kinetics
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
-function getRho(instance,of,ip,el)
+pure function getRho(instance,of,ip,el)
 
   integer, intent(in) :: instance, of,ip,el
   real(pReal), dimension(param(instance)%sum_N_sl,10) :: getRho
@@ -1751,7 +1751,7 @@ end function getRho
 !> @brief returns copy of current dislocation densities from state
 !> @details raw values is rectified
 !--------------------------------------------------------------------------------------------------
-function getRho0(instance,of,ip,el)
+pure function getRho0(instance,of,ip,el)
 
   integer, intent(in) :: instance, of,ip,el
   real(pReal), dimension(param(instance)%sum_N_sl,10) :: getRho0

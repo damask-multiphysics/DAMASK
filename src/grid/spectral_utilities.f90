@@ -1056,14 +1056,15 @@ subroutine utilities_updateCoords(F)
   call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
   call MPI_Wait(r,s,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Wait')
 
   ! send top layer to process above
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Wait')
   call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Isend')
   call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
   if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
   call MPI_Wait(r,s,ierr)
+  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Wait')
 
  !--------------------------------------------------------------------------------------------------
  ! calculate nodal displacements

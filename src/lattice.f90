@@ -18,16 +18,16 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! face centered cubic
-  integer, dimension(2), parameter :: &
+  integer, dimension(*), parameter :: &
     FCC_NSLIPSYSTEM = [12, 6]                                                                       !< # of slip systems per family for fcc
 
-  integer, dimension(1), parameter :: &
+  integer, dimension(*), parameter :: &
     FCC_NTWINSYSTEM = [12]                                                                          !< # of twin systems per family for fcc
 
-  integer, dimension(1), parameter :: &
+  integer, dimension(*), parameter :: &
     FCC_NTRANSSYSTEM = [12]                                                                         !< # of transformation systems per family for fcc
 
-  integer, dimension(1), parameter :: &
+  integer, dimension(*), parameter :: &
     FCC_NCLEAVAGESYSTEM = [3]                                                                       !< # of cleavage systems per family for fcc
 
   integer, parameter  :: &
@@ -109,13 +109,13 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! body centered cubic
-  integer, dimension(2), parameter :: &
+  integer, dimension(*), parameter :: &
     BCC_NSLIPSYSTEM = [12, 12]                                                                      !< # of slip systems per family for bcc
 
-  integer, dimension(1), parameter :: &
+  integer, dimension(*), parameter :: &
     BCC_NTWINSYSTEM = [12]                                                                          !< # of twin systems per family for bcc
 
-  integer, dimension(1), parameter :: &
+  integer, dimension(*), parameter :: &
     BCC_NCLEAVAGESYSTEM = [3]                                                                       !< # of cleavage systems per family for bcc
 
   integer, parameter  :: &
@@ -187,10 +187,10 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! hexagonal
-  integer, dimension(6), parameter :: &
+  integer, dimension(*), parameter :: &
     HEX_NSLIPSYSTEM = [3, 3, 3, 6, 12, 6]                                                           !< # of slip systems per family for hex
 
-  integer, dimension(4), parameter :: &
+  integer, dimension(*), parameter :: &
     HEX_NTWINSYSTEM = [6, 6, 6, 6]                                                                  !< # of slip systems per family for hex
 
   integer, parameter  :: &
@@ -280,7 +280,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! body centered tetragonal
-  integer, dimension(13), parameter :: &
+  integer, dimension(*), parameter :: &
     BCT_NSLIPSYSTEM = [2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ]                                      !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
   integer, parameter :: &
@@ -362,7 +362,7 @@ module lattice
 
 !--------------------------------------------------------------------------------------------------
 ! orthorhombic
-  integer, dimension(3), parameter :: &
+  integer, dimension(*), parameter :: &
     ORT_NCLEAVAGESYSTEM = [1, 1, 1]                                                                 !< # of cleavage systems per family for ortho
 
   integer, parameter  :: &

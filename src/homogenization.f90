@@ -29,6 +29,8 @@ module homogenization
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
+  logical, public :: &
+    terminallyIll = .false.                                                                         !< at least one material point is terminally ill
   real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
     materialpoint_F0, &                                                                             !< def grad of IP at start of FE increment
     materialpoint_F, &                                                                              !< def grad of IP to be reached at end of FE increment
@@ -170,22 +172,6 @@ subroutine homogenization_init
   allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
 
   write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'; flush(6)
-
-  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F0:               ', shape(materialpoint_F0)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F:                ', shape(materialpoint_F)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subF0:            ', shape(materialpoint_subF0)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subF:             ', shape(materialpoint_subF)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_P:                ', shape(materialpoint_P)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subStep:          ', shape(materialpoint_subStep)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subdt:            ', shape(materialpoint_subdt)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_requested:        ', shape(materialpoint_requested)
-    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_converged:        ', shape(materialpoint_converged)
-    write(6,'(a32,1x,7(i8,1x),/)') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
-  endif
-  flush(6)
 
   if (debug_g < 1 .or. debug_g > homogenization_Ngrains(material_homogenizationAt(debug_e))) &
     call IO_error(602,ext_msg='constituent', el=debug_e, g=debug_g)
