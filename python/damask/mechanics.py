@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as _np
 
 def Cauchy(P,F):
     """
@@ -14,10 +14,10 @@ def Cauchy(P,F):
         First Piola-Kirchhoff stress.
 
     """
-    if np.shape(F) == np.shape(P) == (3,3):
-        sigma = 1.0/np.linalg.det(F) * np.dot(P,F.T)
+    if _np.shape(F) == _np.shape(P) == (3,3):
+        sigma = 1.0/_np.linalg.det(F) * _np.dot(P,F.T)
     else:
-        sigma = np.einsum('i,ijk,ilk->ijl',1.0/np.linalg.det(F),P,F)
+        sigma = _np.einsum('i,ijk,ilk->ijl',1.0/_np.linalg.det(F),P,F)
     return symmetric(sigma)
 
 
@@ -31,8 +31,8 @@ def deviatoric_part(T):
         Tensor of which the deviatoric part is computed.
 
     """
-    return T - np.eye(3)*spherical_part(T) if np.shape(T) == (3,3) else \
-           T - np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),[T.shape[0],3,3]),spherical_part(T))
+    return T - _np.eye(3)*spherical_part(T) if _np.shape(T) == (3,3) else \
+           T - _np.einsum('ijk,i->ijk',_np.broadcast_to(_np.eye(3),[T.shape[0],3,3]),spherical_part(T))
 
 
 def eigenvalues(T_sym):
@@ -48,7 +48,7 @@ def eigenvalues(T_sym):
         Symmetric tensor of which the eigenvalues are computed.
 
     """
-    return np.linalg.eigvalsh(symmetric(T_sym))
+    return _np.linalg.eigvalsh(symmetric(T_sym))
 
 
 def eigenvectors(T_sym,RHS=False):
@@ -65,13 +65,13 @@ def eigenvectors(T_sym,RHS=False):
         Enforce right-handed coordinate system. Default is False.
 
     """
-    (u,v) = np.linalg.eigh(symmetric(T_sym))
+    (u,v) = _np.linalg.eigh(symmetric(T_sym))
 
     if RHS:
-        if np.shape(T_sym) == (3,3):
-            if np.linalg.det(v) < 0.0: v[:,2] *= -1.0
+        if _np.shape(T_sym) == (3,3):
+            if _np.linalg.det(v) < 0.0: v[:,2] *= -1.0
         else:
-            v[np.linalg.det(v) < 0.0,:,2] *= -1.0
+            v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
     return v
 
 
@@ -99,7 +99,7 @@ def maximum_shear(T_sym):
 
     """
     w = eigenvalues(T_sym)
-    return (w[0] - w[2])*0.5 if np.shape(T_sym) == (3,3) else \
+    return (w[0] - w[2])*0.5 if _np.shape(T_sym) == (3,3) else \
            (w[:,0] - w[:,2])*0.5
 
 
@@ -141,10 +141,10 @@ def PK2(P,F):
         Deformation gradient.
 
     """
-    if np.shape(F) == np.shape(P) == (3,3):
-        S = np.dot(np.linalg.inv(F),P)
+    if _np.shape(F) == _np.shape(P) == (3,3):
+        S = _np.dot(_np.linalg.inv(F),P)
     else:
-        S = np.einsum('ijk,ikl->ijl',np.linalg.inv(F),P)
+        S = _np.einsum('ijk,ikl->ijl',_np.linalg.inv(F),P)
     return symmetric(S)
 
 
@@ -187,14 +187,14 @@ def spherical_part(T,tensor=False):
 
     """
     if T.shape == (3,3):
-        sph = np.trace(T)/3.0
-        return sph if not tensor else np.eye(3)*sph
+        sph = _np.trace(T)/3.0
+        return sph if not tensor else _np.eye(3)*sph
     else:
-        sph = np.trace(T,axis1=1,axis2=2)/3.0
+        sph = _np.trace(T,axis1=1,axis2=2)/3.0
         if not tensor:
             return sph
         else:
-            return np.einsum('ijk,i->ijk',np.broadcast_to(np.eye(3),(T.shape[0],3,3)),sph)
+            return _np.einsum('ijk,i->ijk',_np.broadcast_to(_np.eye(3),(T.shape[0],3,3)),sph)
 
 
 def strain_tensor(F,t,m):
@@ -216,22 +216,22 @@ def strain_tensor(F,t,m):
     """
     F_ = F.reshape(1,3,3) if F.shape == (3,3) else F
     if   t == 'V':
-        B   = np.matmul(F_,transpose(F_))
-        w,n = np.linalg.eigh(B)
+        B   = _np.matmul(F_,transpose(F_))
+        w,n = _np.linalg.eigh(B)
     elif t == 'U':
-        C   = np.matmul(transpose(F_),F_)
-        w,n = np.linalg.eigh(C)
+        C   = _np.matmul(transpose(F_),F_)
+        w,n = _np.linalg.eigh(C)
 
     if   m > 0.0:
-        eps = 1.0/(2.0*abs(m)) * (+ np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n))
-                                  - np.broadcast_to(np.eye(3),[F_.shape[0],3,3]))
+        eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
+                                  - _np.broadcast_to(_np.eye(3),[F_.shape[0],3,3]))
     elif m < 0.0:
-        eps = 1.0/(2.0*abs(m)) * (- np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n))
-                                  + np.broadcast_to(np.eye(3),[F_.shape[0],3,3]))
+        eps = 1.0/(2.0*abs(m)) * (- _np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
+                                  + _np.broadcast_to(_np.eye(3),[F_.shape[0],3,3]))
     else:
-        eps = np.matmul(n,np.einsum('ij,ikj->ijk',0.5*np.log(w),n))
+        eps = _np.matmul(n,_np.einsum('ij,ikj->ijk',0.5*_np.log(w),n))
 
-    return eps.reshape(3,3) if np.shape(F) == (3,3) else \
+    return eps.reshape(3,3) if _np.shape(F) == (3,3) else \
            eps
 
 
@@ -258,8 +258,8 @@ def transpose(T):
         Tensor of which the transpose is computed.
 
     """
-    return T.T if np.shape(T) == (3,3) else \
-           np.transpose(T,(0,2,1))
+    return T.T if _np.shape(T) == (3,3) else \
+           _np.transpose(T,(0,2,1))
 
 
 def _polar_decomposition(T,requested):
@@ -275,17 +275,17 @@ def _polar_decomposition(T,requested):
         ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
 
     """
-    u, s, vh = np.linalg.svd(T)
-    R = np.dot(u,vh) if np.shape(T) == (3,3) else \
-        np.einsum('ijk,ikl->ijl',u,vh)
+    u, s, vh = _np.linalg.svd(T)
+    R = _np.dot(u,vh) if _np.shape(T) == (3,3) else \
+        _np.einsum('ijk,ikl->ijl',u,vh)
 
     output = []
     if 'R' in requested:
         output.append(R)
     if 'V' in requested:
-        output.append(np.dot(T,R.T) if np.shape(T) == (3,3) else np.einsum('ijk,ilk->ijl',T,R))
+        output.append(_np.dot(T,R.T) if _np.shape(T) == (3,3) else _np.einsum('ijk,ilk->ijl',T,R))
     if 'U' in requested:
-        output.append(np.dot(R.T,T) if np.shape(T) == (3,3) else np.einsum('ikj,ikl->ijl',R,T))
+        output.append(_np.dot(R.T,T) if _np.shape(T) == (3,3) else _np.einsum('ikj,ikl->ijl',R,T))
 
     return tuple(output)
 
@@ -303,5 +303,5 @@ def _Mises(T_sym,s):
 
     """
     d = deviatoric_part(T_sym)
-    return np.sqrt(s*(np.sum(d**2.0))) if np.shape(T_sym) == (3,3) else \
-           np.sqrt(s*np.einsum('ijk->i',d**2.0))
+    return _np.sqrt(s*(_np.sum(d**2.0))) if _np.shape(T_sym) == (3,3) else \
+           _np.sqrt(s*_np.einsum('ijk->i',d**2.0))
