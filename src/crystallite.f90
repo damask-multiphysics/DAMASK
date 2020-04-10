@@ -301,7 +301,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     e, &                                                                                            !< counter in element loop
     startIP, endIP, &
     s
-  logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false in has of different Ngrains
+  logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
 
 #ifdef DEBUG
   if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0 &
@@ -1624,59 +1624,6 @@ logical pure function converged(residuum,state,atol)
   converged = all(abs(residuum) <= max(atol, rtol*abs(state)))
 
 end function converged
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates a jump in the state according to the current state and the current stress
-!> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
-!--------------------------------------------------------------------------------------------------
-logical function stateJump(ipc,ip,el)
-
-  integer, intent(in):: &
-    el, &                       ! element index
-    ip, &                       ! integration point index
-    ipc                         ! grain index
-
-  integer :: &
-    c, &
-    p, &
-    mySource, &
-    myOffset, &
-    mySize
-
-  c = material_phaseMemberAt(ipc,ip,el)
-  p = material_phaseAt(ipc,el)
-
-  call constitutive_collectDeltaState(crystallite_S(1:3,1:3,ipc,ip,el), &
-                                      crystallite_Fe(1:3,1:3,ipc,ip,el), &
-                                      crystallite_Fi(1:3,1:3,ipc,ip,el), &
-                                      ipc,ip,el)
-
-  myOffset = plasticState(p)%offsetDeltaState
-  mySize   = plasticState(p)%sizeDeltaState
-
-  if( any(IEEE_is_NaN(plasticState(p)%deltaState(1:mySize,c)))) then
-    stateJump = .false.
-    return
-  endif
-
-  plasticState(p)%state(myOffset + 1:myOffset + mySize,c) = &
-  plasticState(p)%state(myOffset + 1:myOffset + mySize,c) + plasticState(p)%deltaState(1:mySize,c)
-
-  do mySource = 1, phase_Nsources(p)
-    myOffset = sourceState(p)%p(mySource)%offsetDeltaState
-    mySize   = sourceState(p)%p(mySource)%sizeDeltaState
-    if (any(IEEE_is_NaN(sourceState(p)%p(mySource)%deltaState(1:mySize,c)))) then
-      stateJump = .false.
-      return
-    endif
-    sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) = &
-    sourceState(p)%p(mySource)%state(myOffset + 1: myOffset + mySize,c) + sourceState(p)%p(mySource)%deltaState(1:mySize,c)
-  enddo
-
-  stateJump = .true.
-
-end function stateJump
 
 
 !--------------------------------------------------------------------------------------------------
