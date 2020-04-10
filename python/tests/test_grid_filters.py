@@ -24,7 +24,7 @@ class TestGridFilters:
          n = grid_filters.node_coord0(grid,size) + size/grid*.5
          assert np.allclose(c,n)
 
-    @pytest.mark.parametrize('mode',[('cell'),('node')])
+    @pytest.mark.parametrize('mode',['cell','node'])
     def test_grid_DNA(self,mode):
          """Ensure that xx_coord0_gridSizeOrigin is the inverse of xx_coord0."""
          grid   = np.random.randint(8,32,(3))
@@ -49,7 +49,7 @@ class TestGridFilters:
          assert np.allclose(grid_filters.node_coord(size,F) [1:-1,1:-1,1:-1],grid_filters.cell_2_node(
                             grid_filters.cell_coord(size,F))[1:-1,1:-1,1:-1])
 
-    @pytest.mark.parametrize('mode',[('cell'),('node')])
+    @pytest.mark.parametrize('mode',['cell','node'])
     def test_coord0_origin(self,mode):
          origin= np.random.random(3)
          size  = np.random.random(3)                                                                # noqa
@@ -61,22 +61,24 @@ class TestGridFilters:
          elif mode == 'node':
             assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(grid[::-1]+1)+(3,)))
 
-    @pytest.mark.parametrize('mode',[('cell'),('node')])
-    def test_displacement_avg_vanishes(self,mode):
+    @pytest.mark.parametrize('function',[grid_filters.cell_displacement_avg,
+                                         grid_filters.node_displacement_avg])
+    def test_displacement_avg_vanishes(self,function):
          """Ensure that random fluctuations in F do not result in average displacement."""
-         size = np.random.random(3)                                                                 # noqa
+         size = np.random.random(3)
          grid = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(grid)+(3,3))
          F   += np.eye(3) - np.average(F,axis=(0,1,2))
-         assert np.allclose(eval('grid_filters.{}_displacement_avg(size,F)'.format(mode)),0.0)
+         assert np.allclose(function(size,F),0.0)
 
-    @pytest.mark.parametrize('mode',[('cell'),('node')])
-    def test_displacement_fluct_vanishes(self,mode):
+    @pytest.mark.parametrize('function',[grid_filters.cell_displacement_fluct,
+                                         grid_filters.node_displacement_fluct])
+    def test_displacement_fluct_vanishes(self,function):
          """Ensure that constant F does not result in fluctuating displacement."""
-         size = np.random.random(3)                                                                 # noqa
+         size = np.random.random(3)
          grid = np.random.randint(8,32,(3))
-         F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3))                         # noqa
-         assert np.allclose(eval('grid_filters.{}_displacement_fluct(size,F)'.format(mode)),0.0)
+         F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3))
+         assert np.allclose(function(size,F),0.0)
 
     def test_regrid(self):
          size = np.random.random(3)
