@@ -6,7 +6,7 @@ name = 'damask'
 with open(_os.path.join(_os.path.dirname(__file__),'VERSION')) as _f:
     version = _re.sub(r'^v','',_f.readline().strip())
 
-# classes
+# make classes directly accessible as damask.Class
 from ._environment import Environment      # noqa
 from ._table       import Table            # noqa
 from ._vtk         import VTK              # noqa
