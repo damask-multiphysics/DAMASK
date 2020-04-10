@@ -1019,13 +1019,14 @@ subroutine integrateStateFPI(todo)
     zeta
   real(pReal), dimension(max(constitutive_plasticity_maxSizeDotState,constitutive_source_maxSizeDotState)) :: &
     r                                                                                               ! state residuum
-  real(pReal), dimension(:), allocatable :: plastic_dotState_p1, plastic_dotState_p2
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,2) :: &
+    plastic_dotState
   real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
     nonlocalBroken, broken
 
   nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(size_pl,size_so,r,zeta,p,c,plastic_dotState_p1, plastic_dotState_p2,source_dotState,broken)
+  !$OMP PARALLEL DO PRIVATE(size_pl,size_so,r,zeta,p,c,plastic_dotState,source_dotState,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -1046,7 +1047,7 @@ subroutine integrateStateFPI(todo)
           plasticState(p)%state(1:size_pl,c) = plasticState(p)%subState0(1:size_pl,c) &
                                              + plasticState(p)%dotState (1:size_pl,c) &
                                              * crystallite_subdt(g,i,e)
-          plastic_dotState_p2 = 0.0_pReal * plasticState(p)%dotState (1:size_pl,c)
+          plastic_dotState(1:size_pl,2) = 0.0_pReal
           do s = 1, phase_Nsources(p)
             size_so(s) = sourceState(p)%p(s)%sizeDotState
             sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%subState0(1:size_so(s),c) &
@@ -1057,8 +1058,8 @@ subroutine integrateStateFPI(todo)
 
           iteration: do NiterationState = 1, num%nState
 
-            if(nIterationState > 1) plastic_dotState_p2 = plastic_dotState_p1
-            plastic_dotState_p1 = plasticState(p)%dotState(:,c)
+            if(nIterationState > 1) plastic_dotState(1:size_pl,2) = plastic_dotState(1:size_pl,1)
+            plastic_dotState(1:size_pl,1) = plasticState(p)%dotState(:,c)
             do s = 1, phase_Nsources(p)
               if(nIterationState > 1) source_dotState(1:size_so(s),2,s) = source_dotState(1:size_so(s),1,s)
               source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
@@ -1074,9 +1075,10 @@ subroutine integrateStateFPI(todo)
                                                   crystallite_subdt(g,i,e), g,i,e,p,c)
             if(broken) exit iteration
 
-            zeta = damper(plasticState(p)%dotState(:,c),plastic_dotState_p1,plastic_dotState_p2)
+            zeta = damper(plasticState(p)%dotState(:,c),plastic_dotState(1:size_pl,1),&
+                                                        plastic_dotState(1:size_pl,2))
             plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * zeta &
-                                          + plastic_dotState_p1 * (1.0_pReal - zeta)
+                                          + plastic_dotState(1:size_pl,1) * (1.0_pReal - zeta)
             r(1:size_pl) = plasticState(p)%state    (1:size_pl,c) &
                          - plasticState(p)%subState0(1:size_pl,c)  &
                          - plasticState(p)%dotState (1:size_pl,c) * crystallite_subdt(g,i,e)
