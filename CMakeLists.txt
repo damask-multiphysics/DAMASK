@@ -148,7 +148,7 @@ else ()
     set(OPENMP "${OPENMP}")
 endif ()
 
-# syntax check only (mainly for pre-receive hook, works only with gfortran)
+# syntax check only (mainly for pre-receive hook)
 if (CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
     set (BUILDCMD_POST "${BUILDCMD_POST} -fsyntax-only")
 endif ()

@@ -43,6 +43,9 @@ module DAMASK_interface
   logical,          protected, public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
 
+  logical, dimension(:,:), public, allocatable :: &
+    calcMode                                                                                        !< calculate or collect (ping pong scheme)
+
   public :: &
     DAMASK_interface_init, &
     getSolverJobName
@@ -102,7 +105,6 @@ function getSolverJobName()
   character(len=*), parameter   :: pathSep = achar(47)//achar(92)                                   ! forward and backward slash
   integer :: extPos
 
-  inputName=''
   inquire(5, name=inputName)                                                                        ! determine inputfile
   extPos = len_trim(inputName)-4
   getSolverJobName=inputName(scan(inputName,pathSep,back=.true.)+1:extPos)
@@ -179,6 +181,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  use FEsolving
  use debug
  use discretization_marc
+ use homogenization
  use CPFEM
 
  implicit none

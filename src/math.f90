@@ -30,14 +30,12 @@ module math
       1.0_pReal,0.0_pReal,0.0_pReal, &
       0.0_pReal,1.0_pReal,0.0_pReal, &
       0.0_pReal,0.0_pReal,1.0_pReal  &
-      ],[3,3])                                                                                      !< 3x3 Identity
+      ],shape(math_I3))                                                                             !< 3x3 Identity
 
-  real(pReal), dimension(6), parameter, private :: &
-    NRMMANDEL = [&
-      1.0_pReal,       1.0_pReal,       1.0_pReal, &
-      sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal) ]                                           !< forward weighting for Mandel notation
+  real(pReal), dimension(*), parameter, private :: &
+    NRMMANDEL = [1.0_pReal, 1.0_pReal,1.0_pReal, sqrt(2.0_pReal), sqrt(2.0_pReal), sqrt(2.0_pReal)] !< forward weighting for Mandel notation
 
-  real(pReal), dimension(6), parameter, private :: &
+  real(pReal), dimension(*), parameter, private :: &
     INVNRMMANDEL = 1.0_pReal/NRMMANDEL                                                              !< backward weighting for Mandel notation
 
   integer, dimension (2,6), parameter, private :: &
@@ -48,7 +46,7 @@ module math
       1,2, &
       2,3, &
       1,3  &
-      ],[2,6])                                                                                      !< arrangement in Nye notation.
+      ],shape(MAPNYE))                                                                              !< arrangement in Nye notation.
 
   integer, dimension (2,6), parameter, private :: &
     MAPVOIGT = reshape([&
@@ -58,7 +56,7 @@ module math
       2,3, &
       1,3, &
       1,2  &
-      ],[2,6])                                                                                      !< arrangement in Voigt notation
+      ],shape(MAPVOIGT))                                                                            !< arrangement in Voigt notation
 
   integer, dimension (2,9), parameter, private :: &
     MAPPLAIN = reshape([&
@@ -71,7 +69,7 @@ module math
       3,1, &
       3,2, &
       3,3  &
-      ],[2,9])                                                                                      !< arrangement in Plain notation
+      ],shape(MAPPLAIN))                                                                            !< arrangement in Plain notation
 
   interface math_eye
     module procedure math_identity2nd
@@ -487,21 +485,19 @@ function math_invSym3333(A)
 
   real(pReal),dimension(3,3,3,3),intent(in) :: A
 
-  integer :: ierr
   integer,     dimension(6)        :: ipiv6
   real(pReal), dimension(6,6)      :: temp66
   real(pReal), dimension(6*(64+2)) :: work
-  logical                          :: error
+  integer                          :: ierr_i, ierr_f
   external :: &
     dgetrf, &
     dgetri
 
   temp66 = math_sym3333to66(A)
-  call dgetrf(6,6,temp66,6,ipiv6,ierr)
-  error = (ierr /= 0)
-  call dgetri(6,temp66,6,ipiv6,work,size(work,1),ierr)
-  error = error .or. (ierr /= 0)
-  if (error) then
+  call dgetrf(6,6,temp66,6,ipiv6,ierr_i)
+  call dgetri(6,temp66,6,ipiv6,work,size(work,1),ierr_f)
+
+  if (ierr_i /= 0 .or. ierr_f /= 0) then
     call IO_error(400, ext_msg = 'math_invSym3333')
   else
     math_invSym3333 = math_66toSym3333(temp66)

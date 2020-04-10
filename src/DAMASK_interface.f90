@@ -13,7 +13,7 @@
 #define INTEL_MIN 1700
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 10
-#define PETSC_MINOR_MAX 12
+#define PETSC_MINOR_MAX 13
 
 module DAMASK_interface
   use, intrinsic :: iso_fortran_env
@@ -25,7 +25,7 @@ module DAMASK_interface
   
   implicit none
   private
-  logical,                       public, protected :: &
+  logical,          volatile,    public, protected :: &
     SIGTERM, &                                                                                      !< termination signal 
     SIGUSR1, &                                                                                      !< 1. user-defined signal
     SIGUSR2                                                                                         !< 2. user-defined signal

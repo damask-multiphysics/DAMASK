@@ -52,7 +52,7 @@ for name in filenames:
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   substituted = geom.get_microstructure()
-  for old,new in zip(sub[0::2],sub[1::2]): substituted[substituted==old] = new                      # substitute microstructure indices
+  for old,new in zip(sub[0::2],sub[1::2]): substituted[geom.microstructure==old] = new              # substitute microstructure indices
   substituted += options.microstructure                                                             # constant shift
 
   damask.util.croak(geom.update(substituted,origin=geom.get_origin()+options.origin))

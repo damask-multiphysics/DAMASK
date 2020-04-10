@@ -72,7 +72,7 @@ class VTK:
         connectivity : numpy.ndarray of np.dtype = int
             Cell connectivity (0-based), first dimension determines #Cells, second dimension determines #Nodes/Cell.
         cell_type : str
-            Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, and HEXAHEDRON.
+            Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, TETRA, and HEXAHEDRON.
 
         """
         vtk_nodes = vtk.vtkPoints()

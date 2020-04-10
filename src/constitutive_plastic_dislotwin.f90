@@ -568,7 +568,22 @@ module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
                        + ddot_gamma_dtau_slip(i) * prm%P_sl(k,l,i) * prm%P_sl(m,n,i)
   enddo slipContribution
 
-  !ToDo: Why do this before shear banding?
+  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin,ddot_gamma_dtau_twin)
+  twinContibution: do i = 1, prm%sum_N_tw
+    Lp = Lp + dot_gamma_twin(i)*prm%P_tw(1:3,1:3,i)
+    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                       + ddot_gamma_dtau_twin(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i)
+  enddo twinContibution
+
+  call kinetics_trans(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,ddot_gamma_dtau_trans)
+  transContibution: do i = 1, prm%sum_N_tr
+    Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i)
+    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
+                       + ddot_gamma_dtau_trans(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i)
+  enddo transContibution
+
   Lp      = Lp      * f_unrotated
   dLp_dMp = dLp_dMp * f_unrotated
 
@@ -597,23 +612,6 @@ module subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
     enddo
 
   endif shearBandingContribution
-
-  call kinetics_twin(Mp,T,dot_gamma_sl,instance,of,dot_gamma_twin,ddot_gamma_dtau_twin)
-  twinContibution: do i = 1, prm%sum_N_tw
-    Lp = Lp + dot_gamma_twin(i)*prm%P_tw(1:3,1:3,i) * f_unrotated
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_twin(i)* prm%P_tw(k,l,i)*prm%P_tw(m,n,i) * f_unrotated
-  enddo twinContibution
-
-  call kinetics_trans(Mp,T,dot_gamma_sl,instance,of,dot_gamma_tr,ddot_gamma_dtau_trans)
-  transContibution: do i = 1, prm%sum_N_tr
-    Lp = Lp + dot_gamma_tr(i)*prm%P_tr(1:3,1:3,i) * f_unrotated
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-      dLp_dMp(k,l,m,n) = dLp_dMp(k,l,m,n) &
-                       + ddot_gamma_dtau_trans(i)* prm%P_tr(k,l,i)*prm%P_tr(m,n,i) * f_unrotated
-  enddo transContibution
-
 
   end associate
 
