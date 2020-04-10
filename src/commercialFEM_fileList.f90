@@ -9,6 +9,7 @@
 #include "list.f90"
 #include "future.f90"
 #include "config.f90"
+#include "LAPACK_interface.f90"
 #include "math.f90"
 #include "quaternions.f90"
 #include "Lambert.f90"

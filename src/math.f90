@@ -9,6 +9,7 @@ module math
   use prec
   use IO
   use numerics
+  use LAPACK_interface
 
   implicit none
   public
@@ -489,9 +490,6 @@ function math_invSym3333(A)
   real(pReal), dimension(6,6)      :: temp66
   real(pReal), dimension(6*(64+2)) :: work
   integer                          :: ierr_i, ierr_f
-  external :: &
-    dgetrf, &
-    dgetri
 
   temp66 = math_sym3333to66(A)
   call dgetrf(6,6,temp66,6,ipiv6,ierr_i)
@@ -518,9 +516,6 @@ subroutine math_invert(InvA, error, A)
   integer,     dimension(size(A,1))        :: ipiv
   real(pReal), dimension(size(A,1)*(64+2)) :: work
   integer                                  :: ierr
-  external :: &
-    dgetrf, &
-    dgetri
 
   invA = A
   call dgetrf(size(A,1),size(A,1),invA,size(A,1),ipiv,ierr)
@@ -885,8 +880,6 @@ subroutine math_eigh(m,w,v,error)
   logical, intent(out) :: error
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
-  external :: &
-    dsyev
 
   v = m                                                                                             ! copy matrix to input (doubles as output) array
   call dsyev('V','U',size(m,1),v,size(m,1),w,work,size(work,1),ierr)
@@ -1042,8 +1035,6 @@ function math_eigvalsh(m)
   real(pReal), dimension(size(m,1),size(m,1))               :: m_
   integer :: ierr
   real(pReal), dimension((64+2)*size(m,1)) :: work                                                  ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
-  external :: &
-   dsyev
 
   m_= m                                                                                             ! copy matrix to input (will be destroyed)
   call dsyev('N','U',size(m,1),m_,size(m,1),math_eigvalsh,work,size(work,1),ierr)
