@@ -502,7 +502,7 @@ class Rotation:
                                     np.ones( qu.shape[:-1]+(1,))*np.pi,
                                     np.zeros(qu.shape[:-1]+(1,))]),
                           eu)                                                                       # TODO: Where can be nested
-        # reduce Euler angles to definition range, i.e a lower limit of 0.0
+        # reduce Euler angles to definition range
         eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
@@ -530,7 +530,7 @@ class Rotation:
                 ax = np.where(np.broadcast_to(qu[...,0:1] < 1.0e-6,qu.shape),
                               np.block([qu[...,1:4],np.ones(qu.shape[:-1]+(1,))*np.pi]),
                               np.block([qu[...,1:4]*s,omega]))
-            ax[np.sum(np.abs(qu[...,1:4])**2,axis=-1) < 1.0e-6,] =  [0.0, 0.0, 1.0, 0.0]
+            ax[np.sum(np.abs(qu[...,1:4])**2,axis=-1) < 1.0e-6,] = [0.0, 0.0, 1.0, 0.0]
         return ax
 
     @staticmethod
@@ -559,10 +559,10 @@ class Rotation:
     def qu2ho(qu):
         """Quaternion to homochoric vector."""
         if len(qu.shape) == 1:
-            if np.isclose(qu[0],1.0):
+            omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
+            if np.abs(omega) < 1.0e-12:
                 ho = np.zeros(3)
             else:
-                omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
                 ho = np.array([qu[1], qu[2], qu[3]])
                 f  = 0.75 * ( omega - np.sin(omega) )
                 ho = ho/np.linalg.norm(ho) * f**(1./3.)
