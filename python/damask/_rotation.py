@@ -474,9 +474,9 @@ class Rotation:
             q03 = qu[0]**2+qu[3]**2
             q12 = qu[1]**2+qu[2]**2
             chi = np.sqrt(q03*q12)
-            if   np.abs(chi)< 1.e-6:
+            if   np.abs(q12) < 1.e-6:
                 eu = np.array([np.arctan2(-P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0])
-            elif np.abs(q12)< 1.e-6:
+            elif np.abs(q03) < 1.e-6:
                 eu = np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
             else:
                 eu = np.array([np.arctan2((-P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-P*qu[0]*qu[1]-qu[2]*qu[3])*chi ),
@@ -491,14 +491,14 @@ class Rotation:
             q12_s = qu[...,1:2]**2+qu[...,2:3]**2
             chi = np.sqrt(q03_s*q12_s)
 
-            eu = np.where(np.abs(chi) < 1.0e-6,
+            eu = np.where(np.abs(q12_s) < 1.0e-6,
                           np.block([np.arctan2(-P*2.0*qu[...,0:1]*qu[...,3:4],qu[...,0:1]**2-qu[...,3:4]**2),
                                     np.zeros(qu.shape[:-1]+(2,))]),
                           np.block([np.arctan2((-P*q02+q13)*chi, (-P*q01-q23)*chi),
                                     np.arctan2( 2.0*chi,          q03_s-q12_s    ),
                                     np.arctan2(( P*q02+q13)*chi, (-P*q01+q23)*chi)])
                          )
-            eu = np.where(np.logical_and(np.abs(q03_s) < 1.0e-6, np.abs(chi) > 1.0e-6),
+            eu = np.where(np.logical_and(np.abs(q03_s) < 1.0e-6, np.abs(q12_s) >= 1.0e-6),
                           np.block([np.arctan2(   2.0*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
                                     np.ones( qu.shape[:-1]+(1,))*np.pi,
                                     np.zeros(qu.shape[:-1]+(1,))]),
@@ -550,7 +550,7 @@ class Rotation:
                 ro = np.where(np.abs(s) < 1.0e-12,
                               [0.0,0.0,P,0.0],
                               np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
-                                        np.tan(np.arccos(np.clip(qu[:,0:1],-1.0,1.0)))
+                                        np.tan(np.arccos(np.clip(qu[...,0:1],-1.0,1.0)))
                                        ])
                            )
             ro = np.where(np.abs(qu[...,0:1]) < 1.0e-12,
@@ -686,10 +686,10 @@ class Rotation:
             ee = 0.5*eu
             cPhi = np.cos(ee[1])
             sPhi = np.sin(ee[1])
-            qu = np.array([     cPhi*np.cos(ee[0]+ee[2]),
-                             -P*sPhi*np.cos(ee[0]-ee[2]),
-                             -P*sPhi*np.sin(ee[0]-ee[2]),
-                             -P*cPhi*np.sin(ee[0]+ee[2]) ])
+            qu = np.array([   cPhi*np.cos(ee[0]+ee[2]),
+                           -P*sPhi*np.cos(ee[0]-ee[2]),
+                           -P*sPhi*np.sin(ee[0]-ee[2]),
+                           -P*cPhi*np.sin(ee[0]+ee[2]) ])
             if qu[0] < 0.0: qu*=-1
         else:
             ee = 0.5*eu
@@ -776,9 +776,9 @@ class Rotation:
                 ro[3] = np.tan(ro[3]*0.5)
         else:
             ax = Rotation.eu2ax(eu)
-            ro = np.block([ax[:,:3],np.tan(ax[:,3:4]*.5)])
-            ro[ax[:,3]>=np.pi,3] = np.inf
-            ro[np.abs(ax[:,3])<1.e-16] = [ 0.0, 0.0, P, 0.0 ]
+            ro = np.block([ax[...,:3],np.tan(ax[...,3:4]*.5)])
+            ro[ax[...,3]>=np.pi,3] = np.inf
+            ro[np.abs(ax[...,3])<1.e-16] = [ 0.0, 0.0, P, 0.0 ]
         return ro
 
     @staticmethod

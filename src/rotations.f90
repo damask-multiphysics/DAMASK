@@ -432,18 +432,17 @@ pure function qu2eu(qu) result(eu)
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(3) :: eu
   
-  real(pReal)                           :: q12, q03, chi, chiInv
+  real(pReal)                           :: q12, q03, chi
   
   q03 = qu(1)**2+qu(4)**2
   q12 = qu(2)**2+qu(3)**2
   chi = sqrt(q03*q12)
   
-  degenerated: if (dEq0(chi)) then
-    eu = merge([atan2(-P*2.0_pReal*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal], &
-               [atan2(   2.0_pReal*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal], &
-               dEq0(q12))
+  degenerated: if (dEq0(q12)) then
+    eu = [atan2(-P*2.0_pReal*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal]
+  elseif          (dEq0(q03)) then
+    eu = [atan2(   2.0_pReal*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal]
   else degenerated
-    chiInv = 1.0_pReal/chi
     eu = [atan2((-P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)-qu(3)*qu(4))*chi ), &
           atan2( 2.0_pReal*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
