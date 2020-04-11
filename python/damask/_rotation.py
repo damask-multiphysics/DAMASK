@@ -452,7 +452,6 @@ class Rotation:
             om[2,1] = 2.0*(qu[2]*qu[3]-qu[0]*qu[1])
             om[2,0] = 2.0*(qu[1]*qu[3]+qu[0]*qu[2])
             om[0,2] = 2.0*(qu[3]*qu[1]-qu[0]*qu[2])
-            return om if P < 0.0 else om.T
         else:
             qq = qu[...,0:1]**2-(qu[...,1:2]**2 + qu[...,2:3]**2 + qu[...,3:4]**2)
             om = np.block([qq + 2.0*qu[...,1:2]**2,
@@ -465,7 +464,7 @@ class Rotation:
                            2.0*(qu[...,2:3]*qu[...,3:4]-qu[...,0:1]*qu[...,1:2]),
                            qq + 2.0*qu[...,3:4]**2,
                           ]).reshape(qu.shape[:-1]+(3,3))
-            return om # TODO: TRANSPOSE FOR P = 1
+        return om if P < 0.0 else np.swapaxes(om,(-1,-2))
 
     @staticmethod
     def qu2eu(qu):
@@ -823,7 +822,6 @@ class Rotation:
                 q = omc*ax[idx[0]] * ax[idx[1]]
                 om[idx[0],idx[1]] = q + s*ax[idx[2]]
                 om[idx[1],idx[0]] = q - s*ax[idx[2]]
-            return om if P < 0.0 else om.T
         else:
             c = np.cos(ax[...,3:4])
             s = np.sin(ax[...,3:4])
@@ -837,7 +835,7 @@ class Rotation:
                            omc*ax[...,0:1]*ax[...,2:3] + s*ax[...,1:2],
                            omc*ax[...,1:2]*ax[...,2:3] - s*ax[...,0:1],
                            c+omc*ax[...,2:3]**2]).reshape(ax.shape[:-1]+(3,3))
-            return om # TODO: TRANSPOSE FOR P = 1
+        return om if P < 0.0 else np.swapaxes(om,(-1,-2))
 
     @staticmethod
     def ax2eu(ax):
@@ -989,7 +987,7 @@ class Rotation:
             for i in range(2,16):
                 hm *= hmag_squared
                 s  += tfit[i] * hm
-            with np.errstate(invalid='ignore',divide='ignore'):
+            with np.errstate(invalid='ignore'):
                 ax = np.where(np.broadcast_to(np.abs(hmag_squared)<1.e-6,ho.shape[:-1]+(4,)),
                               np.array([ 0.0, 0.0, 1.0, 0.0 ]),
                               np.block([ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0))]))
