@@ -968,19 +968,31 @@ class Rotation:
                          +0.0001703481934140054,   -0.00012062065004116828,
                          +0.000059719705868660826, -0.00001980756723965647,
                          +0.000003953714684212874, -0.00000036555001439719544])
-        # normalize h and store the magnitude
-        hmag_squared = np.sum(ho**2.)
-        if iszero(hmag_squared):
-            ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
-        else:
-            hm = hmag_squared
+        if len(ho.shape) == 1:
+            # normalize h and store the magnitude
+            hmag_squared = np.sum(ho**2.)
+            if iszero(hmag_squared):
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+            else:
+                hm = hmag_squared
 
-            # convert the magnitude to the rotation angle
+                # convert the magnitude to the rotation angle
+                s = tfit[0] + tfit[1] * hmag_squared
+                for i in range(2,16):
+                    hm *= hmag_squared
+                    s  += tfit[i] * hm
+                ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
+        else:
+            hmag_squared = np.sum(ho**2.,axis=-1,keepdims=True)
+            hm = hmag_squared.copy()
             s = tfit[0] + tfit[1] * hmag_squared
             for i in range(2,16):
                 hm *= hmag_squared
                 s  += tfit[i] * hm
-            ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
+            with np.errstate(invalid='ignore',divide='ignore'):
+                ax = np.where(np.broadcast_to(np.abs(hmag_squared)<1.e-6,ho.shape[:-1]+(4,)),
+                              np.array([ 0.0, 0.0, 1.0, 0.0 ]),
+                              np.block([ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0))]))
         return ax
 
     @staticmethod

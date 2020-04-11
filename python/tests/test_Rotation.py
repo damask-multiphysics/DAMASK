@@ -226,3 +226,17 @@ class TestRotation:
         for r,c in zip(ro,co):
             print(r,c)
             assert np.allclose(conversion(r),c)
+
+    @pytest.mark.parametrize('conversion',[Rotation.ho2qu,
+                                           Rotation.ho2om,
+                                           Rotation.ho2eu,
+                                           Rotation.ho2ax,
+                                           Rotation.ho2ro,
+                                          ])
+    def test_homochoric_vectorization(self,default,conversion):
+        ho = np.array([rot.asHomochoric() for rot in default])
+        conversion(ho.reshape(ho.shape[0]//2,-1,3))
+        co = conversion(ho)
+        for h,c in zip(ho,co):
+            print(h,c)
+            assert np.allclose(conversion(h),c)
