@@ -123,7 +123,7 @@ class TestRotation:
             print(m,o,rot.asQuaternion())
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi++1.e-9
 
-    def test_Rodriques(self,default):
+    def test_Rodrigues(self,default):
         for rot in default:
             m = rot.asMatrix()
             o = Rotation.fromRodrigues(rot.asRodrigues()).asMatrix()
@@ -164,18 +164,21 @@ class TestRotation:
                                            Rotation.qu2ho])
     def test_quaternion_vectorization(self,default,conversion):
         qu = np.array([rot.asQuaternion() for rot in default])
-        dev_null = conversion(qu.reshape(qu.shape[0]//2,-1,4))
+        conversion(qu.reshape(qu.shape[0]//2,-1,4))
         co = conversion(qu)
         for q,c in zip(qu,co):
             print(q,c)
             assert np.allclose(conversion(q),c)
 
-    @pytest.mark.parametrize('conversion',[Rotation.om2eu,
+    @pytest.mark.parametrize('conversion',[Rotation.om2qu,
+                                           Rotation.om2eu,
                                            Rotation.om2ax,
+                                           Rotation.om2ro,
+                                           Rotation.om2ho,
                                           ])
     def test_matrix_vectorization(self,default,conversion):
         om = np.array([rot.asMatrix() for rot in default])
-        dev_null = conversion(om.reshape(om.shape[0]//2,-1,3,3))
+        conversion(om.reshape(om.shape[0]//2,-1,3,3))
         co = conversion(om)
         for o,c in zip(om,co):
             print(o,c)
@@ -185,10 +188,11 @@ class TestRotation:
                                            Rotation.eu2om,
                                            Rotation.eu2ax,
                                            Rotation.eu2ro,
+                                           Rotation.eu2ho,
                                           ])
     def test_Euler_vectorization(self,default,conversion):
         eu = np.array([rot.asEulers() for rot in default])
-        dev_null = conversion(eu.reshape(eu.shape[0]//2,-1,3))
+        conversion(eu.reshape(eu.shape[0]//2,-1,3))
         co = conversion(eu)
         for e,c in zip(eu,co):
             print(e,c)
@@ -196,13 +200,29 @@ class TestRotation:
 
     @pytest.mark.parametrize('conversion',[Rotation.ax2qu,
                                            Rotation.ax2om,
+                                           Rotation.ax2eu,
                                            Rotation.ax2ro,
                                            Rotation.ax2ho,
                                           ])
     def test_axisAngle_vectorization(self,default,conversion):
         ax = np.array([rot.asAxisAngle() for rot in default])
-        dev_null = conversion(ax.reshape(ax.shape[0]//2,-1,4))
+        conversion(ax.reshape(ax.shape[0]//2,-1,4))
         co = conversion(ax)
         for a,c in zip(ax,co):
             print(a,c)
             assert np.allclose(conversion(a),c)
+
+
+    @pytest.mark.parametrize('conversion',[Rotation.ro2qu,
+                                           Rotation.ro2om,
+                                           Rotation.ro2eu,
+                                           Rotation.ro2ax,
+                                           Rotation.ro2ho,
+                                          ])
+    def test_Rodrigues_vectorization(self,default,conversion):
+        ro = np.array([rot.asRodrigues() for rot in default])
+        conversion(ro.reshape(ro.shape[0]//2,-1,4))
+        co = conversion(ro)
+        for r,c in zip(ro,co):
+            print(r,c)
+            assert np.allclose(conversion(r),c)

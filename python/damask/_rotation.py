@@ -767,8 +767,8 @@ class Rotation:
     def eu2ro(eu):
         """Bunge-Euler angles to Rodrigues-Frank vector."""
         if len(eu.shape) == 1:
-            ro = Rotation.eu2ax(eu)                                                                     # convert to axis angle pair representation
-            if ro[3] >= np.pi:                                                                          # Differs from original implementation. check convention 5
+            ro = Rotation.eu2ax(eu)                                                                 # convert to axis angle pair representation
+            if ro[3] >= np.pi:                                                                      # Differs from original implementation. check convention 5
                 ro[3] = np.inf
             elif iszero(ro[3]):
                 ro = np.array([ 0.0, 0.0, P, 0.0 ])
@@ -902,27 +902,38 @@ class Rotation:
     @staticmethod
     def ro2ax(ro):
         """Rodrigues-Frank vector to axis angle pair."""
-        ta = ro[3]
-
-        if iszero(ta):
-            ax = [ 0.0, 0.0, 1.0, 0.0 ]
-        elif not np.isfinite(ta):
-            ax = [ ro[0], ro[1], ro[2], np.pi ]
+        if len(ro.shape) == 1:
+            if np.abs(ro[3]) < 1.e-6:
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+            elif not np.isfinite(ro[3]):
+                ax = np.array([ ro[0], ro[1], ro[2], np.pi ])
+            else:
+                angle = 2.0*np.arctan(ro[3])
+                ta = np.linalg.norm(ro[0:3])
+                ax = np.array([ ro[0]*ta, ro[1]*ta, ro[2]*ta, angle ])
         else:
-            angle = 2.0*np.arctan(ta)
-            ta = 1.0/np.linalg.norm(ro[0:3])
-            ax = [ ro[0]/ta, ro[1]/ta, ro[2]/ta, angle ]
-        return np.array(ax)
+            with np.errstate(invalid='ignore',divide='ignore'):
+                ax = np.where(np.isfinite(ro[...,3:4]),
+                     np.block([ro[...,0:3]*np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True),2.*np.arctan(ro[...,3:4])]),
+                     np.block([ro[...,0:3],np.broadcast_to(np.pi,ro[...,3:4].shape)]))
+            ax[np.abs(ro[...,3]) < 1.e-6]  = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+        return ax
 
     @staticmethod
     def ro2ho(ro):
         """Rodrigues-Frank vector to homochoric vector."""
-        if iszero(np.sum(ro[0:3]**2.0)):
-            ho = [ 0.0, 0.0, 0.0 ]
+        if len(ro.shape) == 1:
+            if np.sum(ro[0:3]**2.0) < 1.e-6:
+                ho = np.zeros(3)
+            else:
+                f = 2.0*np.arctan(ro[3]) -np.sin(2.0*np.arctan(ro[3])) if np.isfinite(ro[3]) else np.pi
+                ho = ro[0:3] * (0.75*f)**(1.0/3.0)
         else:
-            f = 2.0*np.arctan(ro[3]) -np.sin(2.0*np.arctan(ro[3])) if np.isfinite(ro[3]) else np.pi
-            ho = ro[0:3] * (0.75*f)**(1.0/3.0)
-        return np.array(ho)
+            f = np.where(np.isfinite(ro[...,3:4]),2.0*np.arctan(ro[...,3:4]) -np.sin(2.0*np.arctan(ro[...,3:4])),np.pi)
+            ho = np.where(np.broadcast_to(np.sum(ro[...,0:3]**2.0,axis=-1,keepdims=True) < 1.e-6,ro[...,0:3].shape),
+                          np.zeros(3), ro[...,0:3]* (0.75*f)**(1.0/3.0))
+
+        return ho
 
     @staticmethod
     def ro2cu(ro):
