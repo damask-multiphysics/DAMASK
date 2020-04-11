@@ -350,6 +350,9 @@ class Rotation:
                         else np.array(homochoric,dtype=float)
         if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
 
+        if np.linalg.norm(ho) > (3.*np.pi/4.)**(1./3.)+1e-9:
+            raise ValueError('Coordinate outside of the sphere: {} {} {}.'.format(ho))
+
         return Rotation(Rotation.ho2qu(ho))
 
     @staticmethod
@@ -358,6 +361,10 @@ class Rotation:
 
         cu = cubochoric if isinstance(cubochoric, np.ndarray) and cubochoric.dtype == np.dtype(float) \
                         else np.array(cubochoric,dtype=float)
+
+        if np.abs(np.max(cu))>np.pi**(2./3.) * 0.5+1e-9:
+            raise ValueError('Coordinate outside of the cube: {} {} {}.'.format(*cu))
+
         ho = Rotation.cu2ho(cu)
         if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
 
