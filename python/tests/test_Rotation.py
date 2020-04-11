@@ -98,7 +98,7 @@ class TestRotation:
             if np.isclose(rot.asQuaternion()[0],0.0,atol=atol):
                 ok = ok or np.allclose(m*-1.,o,atol=atol)
             print(m,o,rot.asQuaternion())
-            assert ok
+            assert ok and np.isclose(np.linalg.norm(o),1.0)
 
     def test_AxisAngle(self,default):
         for rot in default:
@@ -111,7 +111,7 @@ class TestRotation:
                 sum_phi = np.unwrap([m[0]+m[2],o[0]+o[2]])
                 ok = ok or np.isclose(sum_phi[0],sum_phi[1],atol=atol)
             print(m,o,rot.asQuaternion())
-            assert ok
+            assert ok and (np.zeros(3)-1.e-9 <= o).all() and (o <= np.array([np.pi*2.,np.pi,np.pi*2.])+1.e-9).all()
 
     def test_Matrix(self,default):
         for rot in default:
@@ -121,36 +121,41 @@ class TestRotation:
             if np.isclose(m[3],np.pi,atol=atol):
                 ok = ok or np.allclose(m*np.array([-1.,-1.,-1.,1.]),o,atol=atol)
             print(m,o,rot.asQuaternion())
-            assert ok
+            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi++1.e-9
 
     def test_Rodriques(self,default):
         for rot in default:
             m = rot.asMatrix()
             o = Rotation.fromRodrigues(rot.asRodrigues()).asMatrix()
+            ok = np.allclose(m,o,atol=atol)
             print(m,o)
-            assert np.allclose(m,o,atol=atol)
+            assert ok and np.isclose(np.linalg.det(o),1.0)
 
     def test_Homochoric(self,default):
+        cutoff = np.tan(np.pi*.5*(1.-1e-4))
         for rot in default:
             m = rot.asRodrigues()
             o = Rotation.fromHomochoric(rot.asHomochoric()).asRodrigues()
-            ok = np.allclose(np.clip(m,None,1.e9),np.clip(o,None,1.e9),atol=atol)
-            print(m,o,rot.asQuaternion())
+            ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
             ok = ok or np.isclose(m[3],0.0,atol=atol)
+            print(m,o,rot.asQuaternion())
+            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0)
 
     def test_Cubochoric(self,default):
         for rot in default:
             m = rot.asHomochoric()
             o = Rotation.fromCubochoric(rot.asCubochoric()).asHomochoric()
+            ok = np.allclose(m,o,atol=atol)
             print(m,o,rot.asQuaternion())
-            assert np.allclose(m,o,atol=atol)
+            assert ok and np.linalg.norm(o) < (3.*np.pi/4.)**(1./3.) + 1.e-9
 
     def test_Quaternion(self,default):
         for rot in default:
             m = rot.asCubochoric()
             o = Rotation.fromQuaternion(rot.asQuaternion()).asCubochoric()
+            ok = np.allclose(m,o,atol=atol)
             print(m,o,rot.asQuaternion())
-            assert np.allclose(m,o,atol=atol)
+            assert ok and o.max() < np.pi**(2./3.)*0.5+1.e-9
 
     @pytest.mark.parametrize('conversion',[Rotation.qu2om,
                                            Rotation.qu2eu,
@@ -159,7 +164,7 @@ class TestRotation:
                                            Rotation.qu2ho])
     def test_quaternion_vectorization(self,default,conversion):
         qu = np.array([rot.asQuaternion() for rot in default])
-        #dev_null = conversion(qu.reshape(qu.shape[0]//2,-1,4))
+        dev_null = conversion(qu.reshape(qu.shape[0]//2,-1,4))
         co = conversion(qu)
         for q,c in zip(qu,co):
             print(q,c)
@@ -170,7 +175,7 @@ class TestRotation:
                                           ])
     def test_matrix_vectorization(self,default,conversion):
         om = np.array([rot.asMatrix() for rot in default])
-        #dev_null = conversion(om.reshape(om.shape[0]//2,-1,3,3))
+        dev_null = conversion(om.reshape(om.shape[0]//2,-1,3,3))
         co = conversion(om)
         for o,c in zip(om,co):
             print(o,c)
@@ -183,7 +188,7 @@ class TestRotation:
                                           ])
     def test_Euler_vectorization(self,default,conversion):
         eu = np.array([rot.asEulers() for rot in default])
-        #dev_null = conversion(eu.reshape(eu.shape[0]//2,-1,3))
+        dev_null = conversion(eu.reshape(eu.shape[0]//2,-1,3))
         co = conversion(eu)
         for e,c in zip(eu,co):
             print(e,c)

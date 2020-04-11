@@ -105,7 +105,7 @@ def ball_to_cube(ball):
     """
     ball_ = ball/np.linalg.norm(ball)*R1 if np.isclose(np.linalg.norm(ball),R1,atol=1e-6) else ball
     rs = np.linalg.norm(ball_)
-    if rs > R1 and not np.isclose(rs,R1):
+    if rs > R1+1.e-9:
         raise ValueError('Coordinate outside of the sphere: {} {} {}.'.format(*ball))
 
     if np.allclose(ball_,0.0,rtol=0.0,atol=1.0e-16):
