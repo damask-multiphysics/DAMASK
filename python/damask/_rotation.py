@@ -1000,7 +1000,10 @@ class Rotation:
     @staticmethod
     def ho2cu(ho):
         """Homochoric vector to cubochoric vector."""
-        return ball_to_cube(ho)
+        if len(ho.shape) == 1:
+            return ball_to_cube(ho)
+        else:
+            raise NotImplementedError
 
 
     #---------- Cubochoric ----------
