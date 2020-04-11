@@ -2,7 +2,7 @@ import numpy as np
 
 from ._Lambert import ball_to_cube, cube_to_ball
 
-P = -1
+_P = -1
 
 def iszero(a):
     return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
@@ -89,7 +89,7 @@ class Rotation:
             other_q = other.quaternion[0]
             other_p = other.quaternion[1:]
             R = self.__class__(np.append(self_q*other_q - np.dot(self_p,other_p),
-                                         self_q*other_p + other_q*self_p + P * np.cross(self_p,other_p)))
+                                         self_q*other_p + other_q*self_p + _P * np.cross(self_p,other_p)))
             return R.standardize()
         elif isinstance(other, (tuple,np.ndarray)):
             if isinstance(other,tuple) or other.shape == (3,):                                      # rotate a single (3)-vector or meshgrid
@@ -97,7 +97,7 @@ class Rotation:
                 B = 2.0 * (  self.quaternion[1]*other[0]
                            + self.quaternion[2]*other[1]
                            + self.quaternion[3]*other[2])
-                C = 2.0 * P*self.quaternion[0]
+                C = 2.0 * _P*self.quaternion[0]
 
                 return np.array([
                   A*other[0] + B*self.quaternion[1] + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
@@ -464,7 +464,7 @@ class Rotation:
                            2.0*(qu[...,2:3]*qu[...,3:4]-qu[...,0:1]*qu[...,1:2]),
                            qq + 2.0*qu[...,3:4]**2,
                           ]).reshape(qu.shape[:-1]+(3,3))
-        return om if P < 0.0 else np.swapaxes(om,(-1,-2))
+        return om if _P < 0.0 else np.swapaxes(om,(-1,-2))
 
     @staticmethod
     def qu2eu(qu):
@@ -474,13 +474,13 @@ class Rotation:
             q12 = qu[1]**2+qu[2]**2
             chi = np.sqrt(q03*q12)
             if   np.abs(q12) < 1.e-8:
-                eu = np.array([np.arctan2(-P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0])
+                eu = np.array([np.arctan2(-_P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0])
             elif np.abs(q03) < 1.e-8:
                 eu = np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
             else:
-                eu = np.array([np.arctan2((-P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-P*qu[0]*qu[1]-qu[2]*qu[3])*chi ),
+                eu = np.array([np.arctan2((-_P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-_P*qu[0]*qu[1]-qu[2]*qu[3])*chi ),
                                np.arctan2( 2.0*chi, q03-q12 ),
-                               np.arctan2(( P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-P*qu[0]*qu[1]+qu[2]*qu[3])*chi )])
+                               np.arctan2(( _P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-_P*qu[0]*qu[1]+qu[2]*qu[3])*chi )])
         else:
             q02   = qu[...,0:1]*qu[...,2:3]
             q13   = qu[...,1:2]*qu[...,3:4]
@@ -491,15 +491,15 @@ class Rotation:
             chi = np.sqrt(q03_s*q12_s)
 
             eu = np.where(np.abs(q12_s) < 1.0e-8,
-                    np.block([np.arctan2(-P*2.0*qu[...,0:1]*qu[...,3:4],qu[...,0:1]**2-qu[...,3:4]**2),
+                    np.block([np.arctan2(-_P*2.0*qu[...,0:1]*qu[...,3:4],qu[...,0:1]**2-qu[...,3:4]**2),
                               np.zeros(qu.shape[:-1]+(2,))]),
                           np.where(np.abs(q03_s) < 1.0e-8,
                               np.block([np.arctan2(   2.0*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
                                         np.broadcast_to(np.pi,qu.shape[:-1]+(1,)),
                                         np.zeros(qu.shape[:-1]+(1,))]),
-                              np.block([np.arctan2((-P*q02+q13)*chi, (-P*q01-q23)*chi),
+                              np.block([np.arctan2((-_P*q02+q13)*chi, (-_P*q01-q23)*chi),
                                         np.arctan2( 2.0*chi,          q03_s-q12_s    ),
-                                        np.arctan2(( P*q02+q13)*chi, (-P*q01+q23)*chi)])
+                                        np.arctan2(( _P*q02+q13)*chi, (-_P*q01+q23)*chi)])
                                   )
                          )
         # reduce Euler angles to definition range
@@ -541,7 +541,7 @@ class Rotation:
                 ro = np.array([qu[1], qu[2], qu[3], np.inf])
             else:
                 s = np.linalg.norm(qu[1:4])
-                ro = np.array([0.0,0.0,P,0.0] if iszero(s) else \
+                ro = np.array([0.0,0.0,_P,0.0] if iszero(s) else \
                               [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))])
         else:
             with np.errstate(invalid='ignore',divide='ignore'):
@@ -552,7 +552,7 @@ class Rotation:
                                         np.tan(np.arccos(np.clip(qu[...,0:1],-1.0,1.0)))
                                        ])
                            )
-            ro[np.abs(s).squeeze(-1) < 1.0e-12] = [0.0,0.0,P,0.0]
+            ro[np.abs(s).squeeze(-1) < 1.0e-12] = [0.0,0.0,_P,0.0]
         return ro
 
     @staticmethod
@@ -636,11 +636,11 @@ class Rotation:
                 # next, find the eigenvalue (1,0j)
                 i = np.where(np.isclose(w,1.0+0.0j))[0][0]
                 ax[0:3] = np.real(vr[0:3,i])
-                diagDelta = -P*np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
+                diagDelta = -_P*np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
                 diagDelta[np.abs(diagDelta)<1.e-6] = 1.0
                 ax[0:3] = np.where(np.abs(diagDelta)<0, ax[0:3],np.abs(ax[0:3])*np.sign(diagDelta))
         else:
-            diag_delta = -P*np.block([om[...,1,2:3]-om[...,2,1:2],
+            diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
                                       om[...,2,0:1]-om[...,0,2:3],
                                       om[...,0,1:2]-om[...,1,0:1]
                                      ])
@@ -685,18 +685,18 @@ class Rotation:
             cPhi = np.cos(ee[1])
             sPhi = np.sin(ee[1])
             qu = np.array([   cPhi*np.cos(ee[0]+ee[2]),
-                           -P*sPhi*np.cos(ee[0]-ee[2]),
-                           -P*sPhi*np.sin(ee[0]-ee[2]),
-                           -P*cPhi*np.sin(ee[0]+ee[2]) ])
+                           -_P*sPhi*np.cos(ee[0]-ee[2]),
+                           -_P*sPhi*np.sin(ee[0]-ee[2]),
+                           -_P*cPhi*np.sin(ee[0]+ee[2]) ])
             if qu[0] < 0.0: qu*=-1
         else:
             ee = 0.5*eu
             cPhi = np.cos(ee[...,1:2])
             sPhi = np.sin(ee[...,1:2])
             qu = np.block([  cPhi*np.cos(ee[...,0:1]+ee[...,2:3]),
-                          -P*sPhi*np.cos(ee[...,0:1]-ee[...,2:3]),
-                          -P*sPhi*np.sin(ee[...,0:1]-ee[...,2:3]),
-                          -P*cPhi*np.sin(ee[...,0:1]+ee[...,2:3])])
+                          -_P*sPhi*np.cos(ee[...,0:1]-ee[...,2:3]),
+                          -_P*sPhi*np.sin(ee[...,0:1]-ee[...,2:3]),
+                          -_P*cPhi*np.sin(ee[...,0:1]+ee[...,2:3])])
             qu[qu[...,0]<0.0]*=-1
         return qu
 
@@ -741,7 +741,7 @@ class Rotation:
             if np.abs(alpha)<1.e-6:
                 ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
             else:
-                ax = -P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])         # passive axis angle pair so a minus sign in front
+                ax = -_P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])        # passive axis angle pair so a minus sign in front
                 ax = np.append(ax,alpha)
                 if alpha < 0.0: ax *= -1.0                                                          # ensure alpha is positive
         else:
@@ -753,9 +753,9 @@ class Rotation:
             with np.errstate(invalid='ignore',divide='ignore'):
                 ax = np.where(np.broadcast_to(np.abs(alpha)<1.0e-12,eu.shape[:-1]+(4,)),
                               [0.0,0.0,1.0,0.0],
-                              np.block([-P/tau*t*np.cos(delta),
-                                        -P/tau*t*np.sin(delta),
-                                        -P/tau*  np.sin(sigma),
+                              np.block([-_P/tau*t*np.cos(delta),
+                                        -_P/tau*t*np.sin(delta),
+                                        -_P/tau*  np.sin(sigma),
                                          alpha
                                         ]))
             ax[(alpha<0.0).squeeze()] *=-1
@@ -769,14 +769,14 @@ class Rotation:
             if ro[3] >= np.pi:                                                                      # Differs from original implementation. check convention 5
                 ro[3] = np.inf
             elif iszero(ro[3]):
-                ro = np.array([ 0.0, 0.0, P, 0.0 ])
+                ro = np.array([ 0.0, 0.0, _P, 0.0 ])
             else:
                 ro[3] = np.tan(ro[3]*0.5)
         else:
             ax = Rotation.eu2ax(eu)
             ro = np.block([ax[...,:3],np.tan(ax[...,3:4]*.5)])
             ro[ax[...,3]>=np.pi,3] = np.inf
-            ro[np.abs(ax[...,3])<1.e-16] = [ 0.0, 0.0, P, 0.0 ]
+            ro[np.abs(ax[...,3])<1.e-16] = [ 0.0, 0.0, _P, 0.0 ]
         return ro
 
     @staticmethod
@@ -834,7 +834,7 @@ class Rotation:
                            omc*ax[...,0:1]*ax[...,2:3] + s*ax[...,1:2],
                            omc*ax[...,1:2]*ax[...,2:3] - s*ax[...,0:1],
                            c+omc*ax[...,2:3]**2]).reshape(ax.shape[:-1]+(3,3))
-        return om if P < 0.0 else np.swapaxes(om,(-1,-2))
+        return om if _P < 0.0 else np.swapaxes(om,(-1,-2))
 
     @staticmethod
     def ax2eu(ax):
@@ -846,7 +846,7 @@ class Rotation:
         """Axis angle pair to Rodrigues-Frank vector."""
         if len(ax.shape) == 1:
             if np.abs(ax[3])<1.e-6:
-                ro = [ 0.0, 0.0, P, 0.0 ]
+                ro = [ 0.0, 0.0, _P, 0.0 ]
             else:
                 ro = [ax[0], ax[1], ax[2]]
                 # 180 degree case
@@ -859,7 +859,7 @@ class Rotation:
                                     np.inf,
                                     np.tan(ax[...,3:4]*0.5))
                           ])
-            ro[np.abs(ax[...,3])<1.e-6] = [.0,.0,P,.0]
+            ro[np.abs(ax[...,3])<1.e-6] = [.0,.0,_P,.0]
             return ro
 
     @staticmethod
