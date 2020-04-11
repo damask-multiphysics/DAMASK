@@ -446,13 +446,13 @@ class Rotation:
             qq = qu[0]**2-(qu[1]**2 + qu[2]**2 + qu[3]**2)
             om = np.diag(qq + 2.0*np.array([qu[1],qu[2],qu[3]])**2)
 
-            om[1,0] = 2.0*(qu[2]*qu[1]+qu[0]*qu[3])
-            om[0,1] = 2.0*(qu[1]*qu[2]-qu[0]*qu[3])
-            om[2,1] = 2.0*(qu[3]*qu[2]+qu[0]*qu[1])
-            om[1,2] = 2.0*(qu[2]*qu[3]-qu[0]*qu[1])
-            om[0,2] = 2.0*(qu[1]*qu[3]+qu[0]*qu[2])
-            om[2,0] = 2.0*(qu[3]*qu[1]-qu[0]*qu[2])
-            return om if P > 0.0 else om.T
+            om[0,1] = 2.0*(qu[2]*qu[1]+qu[0]*qu[3])
+            om[1,0] = 2.0*(qu[1]*qu[2]-qu[0]*qu[3])
+            om[1,2] = 2.0*(qu[3]*qu[2]+qu[0]*qu[1])
+            om[2,1] = 2.0*(qu[2]*qu[3]-qu[0]*qu[1])
+            om[2,0] = 2.0*(qu[1]*qu[3]+qu[0]*qu[2])
+            om[0,2] = 2.0*(qu[3]*qu[1]-qu[0]*qu[2])
+            return om if P < 0.0 else om.T
         else:
             qq = qu[...,0:1]**2-(qu[...,1:2]**2 + qu[...,2:3]**2 + qu[...,3:4]**2)
             om = np.block([qq + 2.0*qu[...,1:2]**2,
