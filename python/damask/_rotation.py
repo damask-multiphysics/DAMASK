@@ -501,7 +501,7 @@ class Rotation:
                           np.block([np.arctan2(   2.0*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
                                     np.ones( qu.shape[:-1]+(1,))*np.pi,
                                     np.zeros(qu.shape[:-1]+(1,))]),
-                          eu)                                                                       # TODO: Where not needed
+                          eu)                                                                       # TODO: Where can be nested
         # reduce Euler angles to definition range, i.e a lower limit of 0.0
         eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
@@ -515,7 +515,7 @@ class Rotation:
         Modified version of the original formulation, should be numerically more stable
         """
         if len(qu.shape) == 1:
-            if iszero(np.sum(qu[1:4]**2)):                                                          # set axis to [001] if the angle is 0/360
+            if np.abs(np.sum(qu[1:4]**2)) < 1.e-6:                                                  # set axis to [001] if the angle is 0/360
                 ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
             elif np.abs(qu[0]) > 1.e-6:
                 s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
@@ -546,14 +546,13 @@ class Rotation:
         else:
             with np.errstate(invalid='ignore',divide='ignore'):
                 s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
-                ro = np.where(np.abs(s) < 1.0e-12,
-                              [0.0,0.0,P,0.0],
+                ro = np.where(np.broadcast_to(np.abs(qu[...,0:1]) < 1.0e-12,qu.shape),
+                              np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.ones(qu.shape[:-1]+(1,))*np.inf]),
                               np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
                                         np.tan(np.arccos(np.clip(qu[...,0:1],-1.0,1.0)))
                                        ])
                            )
-            ro = np.where(np.abs(qu[...,0:1]) < 1.0e-12,
-                          np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.ones(qu.shape[:-1]+(1,))*np.inf]),ro) # TODO: Where not needed
+            ro[np.abs(s).squeeze(-1) < 1.0e-12] = [0.0,0.0,P,0.0]
         return ro
 
     @staticmethod
@@ -1033,4 +1032,7 @@ class Rotation:
     @staticmethod
     def cu2ho(cu):
         """Cubochoric vector to homochoric vector."""
-        return cube_to_ball(cu)
+        if len(cu.shape) == 1:
+            return cube_to_ball(cu)
+        else:
+            raise NotImplementedError
