@@ -167,7 +167,7 @@ class TestRotation:
         conversion(qu.reshape(qu.shape[0]//2,-1,4))
         co = conversion(qu)
         for q,c in zip(qu,co):
-            print(q,c)
+            #print(q,c)
             assert np.allclose(conversion(q),c)
 
     @pytest.mark.parametrize('conversion',[Rotation.om2qu,

@@ -517,7 +517,7 @@ class Rotation:
         if len(qu.shape) == 1:
             if np.abs(np.sum(qu[1:4]**2)) < 1.e-6:                                                  # set axis to [001] if the angle is 0/360
                 ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
-            elif np.abs(qu[0]) > 1.e-6:
+            elif qu[0] > 1.e-6:
                 s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
                 omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
                 ax = ax = np.array([ qu[1]*s, qu[2]*s, qu[3]*s, omega ])
@@ -527,10 +527,10 @@ class Rotation:
             with np.errstate(invalid='ignore',divide='ignore'):
                 s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
                 omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
-                ax = np.where(np.sum(np.abs(qu[:,1:4])**2,axis=-1,keepdims=True) < 1.0e-6,
-                              [0.0, 0.0, 1.0, 0.0], np.block([qu[...,1:4]*s,omega]))
-            ax = np.where(qu[...,0:1] < 1.0e-6,
-                          np.block([qu[...,1:4],np.ones(qu.shape[:-1]+(1,))*np.pi]),ax)             # TODO: Where not needed
+                ax = np.where(np.broadcast_to(qu[...,0:1] < 1.0e-6,qu.shape),
+                              np.block([qu[...,1:4],np.ones(qu.shape[:-1]+(1,))*np.pi]),
+                              np.block([qu[...,1:4]*s,omega]))
+            ax[np.sum(np.abs(qu[...,1:4])**2,axis=-1) < 1.0e-6,] =  [0.0, 0.0, 1.0, 0.0]
         return ax
 
     @staticmethod
