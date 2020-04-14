@@ -474,29 +474,29 @@ end subroutine materialpoint_stressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine partitionDeformation(subF,ip,el)
 
- real(pReal), intent(in), dimension(3,3) :: &
-   subF
- integer,     intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
+  real(pReal), intent(in), dimension(3,3) :: &
+    subF
+  integer,     intent(in) :: &
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element number
 
- chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
-   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-     crystallite_partionedF(1:3,1:3,1,ip,el) = subF
+    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+      crystallite_partionedF(1:3,1:3,1,ip,el) = subF
 
-   case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     call mech_isostrain_partitionDeformation(&
+    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+      call mech_isostrain_partitionDeformation(&
+                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                           subF)
+
+    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      call mech_RGC_partitionDeformation(&
                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                          subF)
-
-   case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     call mech_RGC_partitionDeformation(&
-                         crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                         subF,&
-                         ip, &
-                         el)
- end select chosenHomogenization
+                          subF,&
+                          ip, &
+                          el)
+  end select chosenHomogenization
 
 end subroutine partitionDeformation
 
@@ -507,47 +507,47 @@ end subroutine partitionDeformation
 !--------------------------------------------------------------------------------------------------
 function updateState(subdt,subF,ip,el)
 
- real(pReal), intent(in) :: &
-   subdt                                                                                            !< current time step
- real(pReal), intent(in), dimension(3,3) :: &
-   subF
- integer,     intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
- logical, dimension(2) :: updateState
+  real(pReal), intent(in) :: &
+    subdt                                                                                           !< current time step
+  real(pReal), intent(in), dimension(3,3) :: &
+    subF
+  integer,     intent(in) :: &
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element number
+  logical, dimension(2) :: updateState
 
- updateState = .true.
- chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
-   case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     updateState = &
-       updateState .and. &
-         mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                              crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                              crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
-                              subF,&
-                              subdt, &
-                              crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                              ip, &
-                              el)
- end select chosenHomogenization
+  updateState = .true.
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      updateState = &
+        updateState .and. &
+          mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
+                               subF,&
+                               subdt, &
+                               crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               ip, &
+                               el)
+  end select chosenHomogenization
 
- chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
-   case (THERMAL_adiabatic_ID) chosenThermal
-     updateState = &
-       updateState .and. &
-       thermal_adiabatic_updateState(subdt, &
-                                     ip, &
-                                     el)
- end select chosenThermal
+  chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
+    case (THERMAL_adiabatic_ID) chosenThermal
+      updateState = &
+        updateState .and. &
+        thermal_adiabatic_updateState(subdt, &
+                                      ip, &
+                                      el)
+  end select chosenThermal
 
- chosenDamage: select case (damage_type(material_homogenizationAt(el)))
-   case (DAMAGE_local_ID) chosenDamage
-     updateState = &
-       updateState .and. &
-       damage_local_updateState(subdt, &
-                                ip, &
-                                el)
- end select chosenDamage
+  chosenDamage: select case (damage_type(material_homogenizationAt(el)))
+    case (DAMAGE_local_ID) chosenDamage
+      updateState = &
+        updateState .and. &
+        damage_local_updateState(subdt, &
+                                 ip, &
+                                 el)
+  end select chosenDamage
 
 end function updateState
 
@@ -557,31 +557,31 @@ end function updateState
 !--------------------------------------------------------------------------------------------------
 subroutine averageStressAndItsTangent(ip,el)
 
- integer, intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
+  integer, intent(in) :: &
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element number
 
- chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
-   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-       materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
-       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+        materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
+        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
 
-   case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     call mech_isostrain_averageStressAndItsTangent(&
-       materialpoint_P(1:3,1:3,ip,el), &
-       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       homogenization_typeInstance(material_homogenizationAt(el)))
+    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+      call mech_isostrain_averageStressAndItsTangent(&
+        materialpoint_P(1:3,1:3,ip,el), &
+        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        homogenization_typeInstance(material_homogenizationAt(el)))
 
-   case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     call mech_RGC_averageStressAndItsTangent(&
-       materialpoint_P(1:3,1:3,ip,el), &
-       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       homogenization_typeInstance(material_homogenizationAt(el)))
- end select chosenHomogenization
+    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      call mech_RGC_averageStressAndItsTangent(&
+        materialpoint_P(1:3,1:3,ip,el), &
+        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        homogenization_typeInstance(material_homogenizationAt(el)))
+  end select chosenHomogenization
 
 end subroutine averageStressAndItsTangent
 
