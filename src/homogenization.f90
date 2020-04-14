@@ -161,7 +161,6 @@ subroutine homogenization_init
   allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
   materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)            ! initialize to identity
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
-  allocate(materialpoint_subF0(3,3,discretization_nIP,discretization_nElem),          source=0.0_pReal)
   allocate(materialpoint_subF(3,3,discretization_nIP,discretization_nElem),           source=0.0_pReal)
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
   allocate(materialpoint_subFrac(discretization_nIP,discretization_nElem),            source=0.0_pReal)
@@ -238,8 +237,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
       enddo
 
-
-      materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)
       materialpoint_subFrac(i,e) = 0.0_pReal
       materialpoint_subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                   ! <<added to adopt flexibility in cutback size>>
       materialpoint_converged(i,e) = .false.                                                        ! pretend failed step of twice the required size
@@ -326,8 +323,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                 damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
                 damageState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
 
-            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)
-
           endif steppingNeeded
 
         else converged
@@ -390,9 +385,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
         if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
           materialpoint_requested(i,e) = .true.
-          materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) &
-                                          + materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) &
-                                          - materialpoint_F0(1:3,1:3,i,e))
+          materialpoint_subF(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e) &
+                                          + (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e)) &
+                                             * (materialpoint_subStep(i,e)+materialpoint_subFrac(i,e))
           materialpoint_subdt(i,e) = materialpoint_subStep(i,e) * dt
           materialpoint_doneAndHappy(1:2,i,e) = [.false.,.true.]
         endif
