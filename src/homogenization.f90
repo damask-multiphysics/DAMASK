@@ -27,15 +27,17 @@ module homogenization
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-! General variables for the homogenization at a  material point
   logical, public :: &
     terminallyIll = .false.                                                                         !< at least one material point is terminally ill
-  real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
+
+!--------------------------------------------------------------------------------------------------
+! General variables for the homogenization at a  material point
+  real(pReal),   dimension(:,:,:,:),     allocatable, public :: &
     materialpoint_F0, &                                                                             !< def grad of IP at start of FE increment
-    materialpoint_F, &                                                                              !< def grad of IP to be reached at end of FE increment
+    materialpoint_F                                                                                 !< def grad of IP to be reached at end of FE increment
+  real(pReal),   dimension(:,:,:,:),     allocatable, public, protected :: &
     materialpoint_P                                                                                 !< first P--K stress of IP
-  real(pReal),   dimension(:,:,:,:,:,:), allocatable, public ::  &
+  real(pReal),   dimension(:,:,:,:,:,:), allocatable, public, protected ::  &
     materialpoint_dPdF                                                                              !< tangent of first P--K stress at IP
 
   real(pReal),   dimension(:,:),         allocatable :: &
@@ -49,7 +51,7 @@ module homogenization
 
   type :: tNumerics
     integer :: &
-      nMPstate                                                                                     !< materialpoint state loop limit
+      nMPstate                                                                                      !< materialpoint state loop limit
     real(pReal) :: &
       subStepMinHomog, &                                                                            !< minimum (relative) size of sub-step allowed during cutback in homogenization
       subStepSizeHomog, &                                                                           !< size of first substep when cutback in homogenization
