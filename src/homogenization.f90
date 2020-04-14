@@ -414,7 +414,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (      materialpoint_requested(i,e) .and. &                                            ! process requested but...
               .not. materialpoint_doneAndHappy(1,i,e)) then                                         ! ...not yet done material points
-            call partitionDeformation(i,e)                                                          ! partition deformation onto constituents
+            call partitionDeformation(materialpoint_subF(1:3,1:3,i,e),i,e)                          ! partition deformation onto constituents
             crystallite_dt(1:myNgrains,i,e) = materialpoint_subdt(i,e)                              ! propagate materialpoint dt to grains
             crystallite_requested(1:myNgrains,i,e) = .true.                                         ! request calculation for constituents
           else
@@ -441,7 +441,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             if (.not. materialpoint_converged(i,e)) then
               materialpoint_doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
-              materialpoint_doneAndHappy(1:2,i,e) = updateState(i,e)
+              materialpoint_doneAndHappy(1:2,i,e) = updateState(materialpoint_subdt(i,e), &
+                                                                materialpoint_subF(1:3,1:3,i,e), &
+                                                                i,e)
               materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))               ! converged if done and happy
             endif
           endif
@@ -476,26 +478,28 @@ end subroutine materialpoint_stressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief  partition material point def grad onto constituents
 !--------------------------------------------------------------------------------------------------
-subroutine partitionDeformation(ip,el)
+subroutine partitionDeformation(subF,ip,el)
 
- integer, intent(in) :: &
+ real(pReal), intent(in), dimension(3,3) :: &
+   subF
+ integer,     intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
 
  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-     crystallite_partionedF(1:3,1:3,1,ip,el) = materialpoint_subF(1:3,1:3,ip,el)
+     crystallite_partionedF(1:3,1:3,1,ip,el) = subF
 
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
      call mech_isostrain_partitionDeformation(&
                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                          materialpoint_subF(1:3,1:3,ip,el))
+                          subF)
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      call mech_RGC_partitionDeformation(&
                          crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                         materialpoint_subF(1:3,1:3,ip,el),&
+                         subF,&
                          ip, &
                          el)
  end select chosenHomogenization
@@ -507,9 +511,13 @@ end subroutine partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
-function updateState(ip,el)
+function updateState(subdt,subF,ip,el)
 
- integer, intent(in) :: &
+ real(pReal), intent(in) :: &
+   subdt                                                                                            !< current time step
+ real(pReal), intent(in), dimension(3,3) :: &
+   subF
+ integer,     intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
  logical, dimension(2) :: updateState
@@ -519,21 +527,21 @@ function updateState(ip,el)
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      updateState = &
        updateState .and. &
-        mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                             crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                             crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
-                             materialpoint_subF(1:3,1:3,ip,el),&
-                             materialpoint_subdt(ip,el), &
-                             crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                             ip, &
-                             el)
+         mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                              crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                              crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
+                              subF,&
+                              subdt, &
+                              crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                              ip, &
+                              el)
  end select chosenHomogenization
 
  chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
    case (THERMAL_adiabatic_ID) chosenThermal
      updateState = &
        updateState .and. &
-       thermal_adiabatic_updateState(materialpoint_subdt(ip,el), &
+       thermal_adiabatic_updateState(subdt, &
                                      ip, &
                                      el)
  end select chosenThermal
@@ -542,7 +550,7 @@ function updateState(ip,el)
    case (DAMAGE_local_ID) chosenDamage
      updateState = &
        updateState .and. &
-       damage_local_updateState(materialpoint_subdt(ip,el), &
+       damage_local_updateState(subdt, &
                                 ip, &
                                 el)
  end select chosenDamage
