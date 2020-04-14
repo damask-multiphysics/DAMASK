@@ -38,9 +38,6 @@ module homogenization
   real(pReal),   dimension(:,:,:,:,:,:), allocatable, public ::  &
     materialpoint_dPdF                                                                              !< tangent of first P--K stress at IP
 
-  real(pReal),   dimension(:,:,:,:),     allocatable :: &
-    materialpoint_subF0, &                                                                          !< def grad of IP at beginning of homogenization increment
-    materialpoint_subF                                                                              !< def grad of IP to be reached at end of homog inc
   real(pReal),   dimension(:,:),         allocatable :: &
     materialpoint_subFrac, &
     materialpoint_subStep
@@ -160,7 +157,6 @@ subroutine homogenization_init
   allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
   materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)            ! initialize to identity
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
-  allocate(materialpoint_subF(3,3,discretization_nIP,discretization_nElem),           source=0.0_pReal)
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
   allocate(materialpoint_subFrac(discretization_nIP,discretization_nElem),            source=0.0_pReal)
   allocate(materialpoint_subStep(discretization_nIP,discretization_nElem),            source=0.0_pReal)
@@ -200,6 +196,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     e, &                                                                                            !< element number
     mySource, &
     myNgrains
+  real(pReal), dimension(3,3) :: &
+    subF
 
 #ifdef DEBUG
   if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
@@ -383,9 +381,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
         if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
           materialpoint_requested(i,e) = .true.
-          materialpoint_subF(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e) &
-                                          + (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e)) &
-                                             * (materialpoint_subStep(i,e)+materialpoint_subFrac(i,e))
           materialpoint_doneAndHappy(1:2,i,e) = [.false.,.true.]
         endif
       enddo IpLooping1
@@ -405,13 +400,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! deformation partitioning
 ! based on materialpoint_subF0,.._subF,crystallite_partionedF0, and homogenization_state,
 ! results in crystallite_partionedF
-      !$OMP PARALLEL DO PRIVATE(myNgrains)
+      !$OMP PARALLEL DO PRIVATE(myNgrains,subF)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (      materialpoint_requested(i,e) .and. &                                            ! process requested but...
               .not. materialpoint_doneAndHappy(1,i,e)) then                                         ! ...not yet done material points
-            call partitionDeformation(materialpoint_subF(1:3,1:3,i,e),i,e)                          ! partition deformation onto constituents
+            subF = materialpoint_F0(1:3,1:3,i,e) &
+                 + (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e)) &
+                    * (materialpoint_subStep(i,e)+materialpoint_subFrac(i,e))
+            call partitionDeformation(subF,i,e)                                                     ! partition deformation onto constituents
             crystallite_dt(1:myNgrains,i,e) = dt*materialpoint_subStep(i,e)                         ! propagate materialpoint dt to grains
             crystallite_requested(1:myNgrains,i,e) = .true.                                         ! request calculation for constituents
           else
@@ -430,7 +428,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
 !--------------------------------------------------------------------------------------------------
 ! state update
-     !$OMP PARALLEL DO
+     !$OMP PARALLEL DO PRIVATE(subF)
       elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (      materialpoint_requested(i,e) .and. &
@@ -438,8 +436,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             if (.not. materialpoint_converged(i,e)) then
               materialpoint_doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
+              subF = materialpoint_F0(1:3,1:3,i,e) &
+                   + (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e)) &
+                      * (materialpoint_subStep(i,e)+materialpoint_subFrac(i,e))
               materialpoint_doneAndHappy(1:2,i,e) = updateState(dt*materialpoint_subStep(i,e), &
-                                                                materialpoint_subF(1:3,1:3,i,e), &
+                                                                subF, &
                                                                 i,e)
               materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))               ! converged if done and happy
             endif
