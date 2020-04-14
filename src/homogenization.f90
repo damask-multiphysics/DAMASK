@@ -43,8 +43,7 @@ module homogenization
     materialpoint_subF                                                                              !< def grad of IP to be reached at end of homog inc
   real(pReal),   dimension(:,:),         allocatable :: &
     materialpoint_subFrac, &
-    materialpoint_subStep, &
-    materialpoint_subdt
+    materialpoint_subStep
   logical,       dimension(:,:),         allocatable :: &
     materialpoint_requested, &
     materialpoint_converged
@@ -165,7 +164,6 @@ subroutine homogenization_init
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
   allocate(materialpoint_subFrac(discretization_nIP,discretization_nElem),            source=0.0_pReal)
   allocate(materialpoint_subStep(discretization_nIP,discretization_nElem),            source=0.0_pReal)
-  allocate(materialpoint_subdt(discretization_nIP,discretization_nElem),              source=0.0_pReal)
   allocate(materialpoint_requested(discretization_nIP,discretization_nElem),          source=.false.)
   allocate(materialpoint_converged(discretization_nIP,discretization_nElem),          source=.true.)
   allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
@@ -388,7 +386,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
           materialpoint_subF(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e) &
                                           + (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e)) &
                                              * (materialpoint_subStep(i,e)+materialpoint_subFrac(i,e))
-          materialpoint_subdt(i,e) = materialpoint_subStep(i,e) * dt
           materialpoint_doneAndHappy(1:2,i,e) = [.false.,.true.]
         endif
       enddo IpLooping1
@@ -415,7 +412,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
           if (      materialpoint_requested(i,e) .and. &                                            ! process requested but...
               .not. materialpoint_doneAndHappy(1,i,e)) then                                         ! ...not yet done material points
             call partitionDeformation(materialpoint_subF(1:3,1:3,i,e),i,e)                          ! partition deformation onto constituents
-            crystallite_dt(1:myNgrains,i,e) = materialpoint_subdt(i,e)                              ! propagate materialpoint dt to grains
+            crystallite_dt(1:myNgrains,i,e) = dt*materialpoint_subStep(i,e)                         ! propagate materialpoint dt to grains
             crystallite_requested(1:myNgrains,i,e) = .true.                                         ! request calculation for constituents
           else
             crystallite_requested(1:myNgrains,i,e) = .false.                                        ! calculation for constituents not required anymore
@@ -441,7 +438,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             if (.not. materialpoint_converged(i,e)) then
               materialpoint_doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
-              materialpoint_doneAndHappy(1:2,i,e) = updateState(materialpoint_subdt(i,e), &
+              materialpoint_doneAndHappy(1:2,i,e) = updateState(dt*materialpoint_subStep(i,e), &
                                                                 materialpoint_subF(1:3,1:3,i,e), &
                                                                 i,e)
               materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))               ! converged if done and happy
