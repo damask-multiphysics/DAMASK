@@ -40,15 +40,6 @@ module homogenization
   real(pReal),   dimension(:,:,:,:,:,:), allocatable, public, protected ::  &
     materialpoint_dPdF                                                                              !< tangent of first P--K stress at IP
 
-  real(pReal),   dimension(:,:),         allocatable :: &
-    materialpoint_subFrac, &
-    materialpoint_subStep
-  logical,       dimension(:,:),         allocatable :: &
-    materialpoint_requested, &
-    materialpoint_converged
-  logical,       dimension(:,:,:),       allocatable :: &
-    materialpoint_doneAndHappy
-
   type :: tNumerics
     integer :: &
       nMPstate                                                                                      !< materialpoint state loop limit
@@ -160,11 +151,6 @@ subroutine homogenization_init
   materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)            ! initialize to identity
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
-  allocate(materialpoint_subFrac(discretization_nIP,discretization_nElem),            source=0.0_pReal)
-  allocate(materialpoint_subStep(discretization_nIP,discretization_nElem),            source=0.0_pReal)
-  allocate(materialpoint_requested(discretization_nIP,discretization_nElem),          source=.false.)
-  allocate(materialpoint_converged(discretization_nIP,discretization_nElem),          source=.true.)
-  allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
 
   write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'; flush(6)
 
@@ -200,6 +186,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     myNgrains
   real(pReal), dimension(3,3) :: &
     subF
+  real(pReal), dimension(discretization_nIP,discretization_nElem) :: &
+    materialpoint_subFrac, &
+    materialpoint_subStep
+  logical,     dimension(discretization_nIP,discretization_nElem) :: &
+    materialpoint_requested, &
+    materialpoint_converged
+  logical,     dimension(2,discretization_nIP,discretization_nElem) :: &
+    materialpoint_doneAndHappy
 
 #ifdef DEBUG
   if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
