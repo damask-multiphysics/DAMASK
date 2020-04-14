@@ -321,7 +321,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
           if ( (myNgrains == 1 .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                     ! single grain already tried internal subStepping in crystallite
                num%subStepSizeHomog * materialpoint_subStep(i,e) <=  num%subStepMinHomog ) then     ! would require too small subStep
                                                                                                     ! cutback makes no sense
-            !$OMP FLUSH(terminallyIll)
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
               !$OMP CRITICAL (write2out)
               write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
