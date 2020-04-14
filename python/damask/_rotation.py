@@ -206,7 +206,7 @@ class Rotation:
         """
         ax = Rotation.qu2ax(self.quaternion)
         if degrees: ax[3] = np.degrees(ax[3])
-        return (ax[:3],np.degrees(ax[3])) if pair else ax
+        return (ax[:3],ax[3]) if pair else ax
 
     def asMatrix(self):
         """Rotation matrix."""
