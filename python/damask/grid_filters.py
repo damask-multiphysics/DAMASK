@@ -41,8 +41,8 @@ def curl(size,field):
     e[0, 2, 1] = e[2, 1, 0] = e[1, 0, 2] = -1.0
 
     field_fourier = _np.fft.rfftn(field,axes=(0,1,2))
-    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks', e,k_s,field_fourier)*2.0j*_np.pi if n == 3 else       # vector, 3   -> 3
-             _np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*2.0j*_np.pi)                     # tensor, 3x3 -> 3x3
+    curl_ = (_np.einsum('slm,ijkl,ijkm ->ijks', e,k_s,field_fourier)*2.0j*_np.pi if n == 3 else     # vector, 3   -> 3
+             _np.einsum('slm,ijkl,ijknm->ijksn',e,k_s,field_fourier)*2.0j*_np.pi)                   # tensor, 3x3 -> 3x3
 
     return _np.fft.irfftn(curl_,axes=(0,1,2),s=field.shape[:3])
 
@@ -61,8 +61,8 @@ def divergence(size,field):
     k_s = _ks(size,field.shape[:3],True)
 
     field_fourier = _np.fft.rfftn(field,axes=(0,1,2))
-    div_ = (_np.einsum('ijkl,ijkl ->ijk', k_s,field_fourier)*2.0j*_np.pi if n == 3 else               # vector, 3   -> 1
-            _np.einsum('ijkm,ijklm->ijkl',k_s,field_fourier)*2.0j*_np.pi)                             # tensor, 3x3 -> 3
+    div_ = (_np.einsum('ijkl,ijkl ->ijk', k_s,field_fourier)*2.0j*_np.pi if n == 3 else             # vector, 3   -> 1
+            _np.einsum('ijkm,ijklm->ijkl',k_s,field_fourier)*2.0j*_np.pi)                           # tensor, 3x3 -> 3
 
     return _np.fft.irfftn(div_,axes=(0,1,2),s=field.shape[:3])
 
@@ -81,8 +81,8 @@ def gradient(size,field):
     k_s = _ks(size,field.shape[:3],True)
 
     field_fourier = _np.fft.rfftn(field,axes=(0,1,2))
-    grad_ = (_np.einsum('ijkl,ijkm->ijkm', field_fourier,k_s)*2.0j*_np.pi if n == 1 else              # scalar, 1 -> 3
-             _np.einsum('ijkl,ijkm->ijklm',field_fourier,k_s)*2.0j*_np.pi)                            # vector, 3 -> 3x3
+    grad_ = (_np.einsum('ijkl,ijkm->ijkm', field_fourier,k_s)*2.0j*_np.pi if n == 1 else            # scalar, 1 -> 3
+             _np.einsum('ijkl,ijkm->ijklm',field_fourier,k_s)*2.0j*_np.pi)                          # vector, 3 -> 3x3
 
     return _np.fft.irfftn(grad_,axes=(0,1,2),s=field.shape[:3])
 
@@ -217,7 +217,7 @@ def cell_coord0_gridSizeOrigin(coord0,ordered=True):
         raise ValueError('Regular grid spacing violated.')
 
     if ordered and not _np.allclose(coord0.reshape(tuple(grid[::-1])+(3,)),cell_coord0(grid,size,origin)):
-        raise ValueError('I_nput data is not a regular grid.')
+        raise ValueError('Input data is not a regular grid.')
 
     return (grid,size,origin)
 
@@ -363,7 +363,7 @@ def node_coord0_gridSizeOrigin(coord0,ordered=False):
         raise ValueError('Regular grid spacing violated.')
 
     if ordered and not _np.allclose(coord0.reshape(tuple((grid+1)[::-1])+(3,)),node_coord0(grid,size,origin)):
-        raise ValueError('I_nput data is not a regular grid.')
+        raise ValueError('Input data is not a regular grid.')
 
     return (grid,size,origin)
 
