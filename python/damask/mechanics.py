@@ -135,16 +135,16 @@ def PK2(P,F):
 
     Parameters
     ----------
-    P : numpy.ndarray of shape (:,3,3) or (3,3)
+    P : numpy.ndarray of shape (...,3,3) or (3,3)
         First Piola-Kirchhoff stress.
-    F : numpy.ndarray of shape (:,3,3) or (3,3)
+    F : numpy.ndarray of shape (...,3,3) or (3,3)
         Deformation gradient.
 
     """
     if np.shape(F) == np.shape(P) == (3,3):
         S = np.dot(np.linalg.inv(F),P)
     else:
-        S = np.einsum('ijk,ikl->ijl',np.linalg.inv(F),P)
+        S = np.einsum('...jk,...kl->...jl',np.linalg.inv(F),P)
     return symmetric(S)
 
 
@@ -241,7 +241,7 @@ def symmetric(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3) or (3,3)
         Tensor of which the symmetrized values are computed.
 
     """
@@ -254,12 +254,12 @@ def transpose(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3) or (3,3)
         Tensor of which the transpose is computed.
 
     """
     return T.T if np.shape(T) == (3,3) else \
-           np.transpose(T,(0,2,1))
+           np.swapaxes(T,axis2=-2,axis1=-1)
 
 
 def _polar_decomposition(T,requested):
