@@ -187,13 +187,13 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   real(pReal), dimension(3,3) :: &
     subF
   real(pReal), dimension(discretization_nIP,discretization_nElem) :: &
-    materialpoint_subFrac, &
-    materialpoint_subStep
+    subFrac, &
+    subStep
   logical,     dimension(discretization_nIP,discretization_nElem) :: &
-    materialpoint_requested, &
-    materialpoint_converged
+    requested, &
+    converged
   logical,     dimension(2,discretization_nIP,discretization_nElem) :: &
-    materialpoint_doneAndHappy
+    doneAndHappy
 
 #ifdef DEBUG
   if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
@@ -229,10 +229,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
       enddo
 
-      materialpoint_subFrac(i,e) = 0.0_pReal
-      materialpoint_converged(i,e) = .false.                                                        ! pretend failed step ...
-      materialpoint_subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                   ! ... larger then the requested calculation
-      materialpoint_requested(i,e) = .true.                                                         ! everybody requires calculation
+      subFrac(i,e) = 0.0_pReal
+      converged(i,e) = .false.                                                                      ! pretend failed step ...
+      subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                                 ! ... larger then the requested calculation
+      requested(i,e) = .true.                                                                       ! everybody requires calculation
 
       if (homogState(material_homogenizationAt(e))%sizeState > 0) &
           homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
@@ -251,31 +251,30 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   NiterationHomog = 0
 
   cutBackLooping: do while (.not. terminallyIll .and. &
-       any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
+       any(subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
     !$OMP PARALLEL DO PRIVATE(myNgrains)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
       IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
 
-        converged: if (materialpoint_converged(i,e)) then
+        if (converged(i,e)) then
 #ifdef DEBUG
           if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0 &
              .and. ((e == debug_e .and. i == debug_i) &
                     .or. .not. iand(debug_level(debug_homogenization),debug_levelSelective) /= 0)) then
             write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
-              materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
-              materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
+              subFrac(i,e), 'to current subFrac', &
+              subFrac(i,e)+subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
           endif
 #endif
 
 !---------------------------------------------------------------------------------------------------
 ! calculate new subStep and new subFrac
-          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
-          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), &
-                                           num%stepIncreaseHomog*materialpoint_subStep(i,e))        ! introduce flexibility for step increase/acceleration
+          subFrac(i,e) = subFrac(i,e) + subStep(i,e)
+          subStep(i,e) = min(1.0_pReal-subFrac(i,e),num%stepIncreaseHomog*subStep(i,e))             ! introduce flexibility for step increase/acceleration
 
-          steppingNeeded: if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
+          steppingNeeded: if (subStep(i,e) > num%subStepMinHomog) then
 
             ! wind forward grain starting point
             crystallite_partionedF0 (1:3,1:3,1:myNgrains,i,e) = crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)
@@ -306,9 +305,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
           endif steppingNeeded
 
-        else converged
-          if ( (myNgrains == 1 .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                     ! single grain already tried internal subStepping in crystallite
-               num%subStepSizeHomog * materialpoint_subStep(i,e) <=  num%subStepMinHomog ) then     ! would require too small subStep
+        else
+          if ( (myNgrains == 1 .and. subStep(i,e) <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
+               num%subStepSizeHomog * subStep(i,e) <=  num%subStepMinHomog ) then                   ! would require too small subStep
                                                                                                     ! cutback makes no sense
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
               !$OMP CRITICAL (write2out)
@@ -317,21 +316,21 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             endif
             terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
-            materialpoint_subStep(i,e) = num%subStepSizeHomog * materialpoint_subStep(i,e)          ! crystallite had severe trouble, so do a significant cutback
+            subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
 #ifdef DEBUG
             if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0 &
                .and. ((e == debug_e .and. i == debug_i) &
                      .or. .not. iand(debug_level(debug_homogenization), debug_levelSelective) /= 0)) then
               write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &
-                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
-                materialpoint_subStep(i,e),' at el ip',e,i
+                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new subStep:',&
+                subStep(i,e),' at el ip',e,i
             endif
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! restore
-            if (materialpoint_subStep(i,e) < 1.0_pReal) then                                        ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
+            if (subStep(i,e) < 1.0_pReal) then                                                      ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
               crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)
               crystallite_Li(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)
             endif                                                                                   ! maybe protecting everything from overwriting (not only L) makes even more sense
@@ -356,11 +355,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                 damageState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
                 damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
           endif
-        endif converged
+        endif
 
-        if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
-          materialpoint_requested(i,e) = .true.
-          materialpoint_doneAndHappy(1:2,i,e) = [.false.,.true.]
+        if (subStep(i,e) > num%subStepMinHomog) then
+          requested(i,e) = .true.
+          doneAndHappy(1:2,i,e) = [.false.,.true.]
         endif
       enddo IpLooping1
     enddo elementLooping1
@@ -369,8 +368,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     NiterationMPstate = 0
 
     convergenceLooping: do while (.not. terminallyIll .and. &
-              any(            materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
-                  .and. .not. materialpoint_doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
+              any(                 requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
+                  .and. .not. doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  ) .and. &
               NiterationMPstate < num%nMPstate)
       NiterationMPstate = NiterationMPstate + 1
@@ -383,13 +382,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
-          if (      materialpoint_requested(i,e) .and. &                                            ! process requested but...
-              .not. materialpoint_doneAndHappy(1,i,e)) then                                         ! ...not yet done material points
+          if(requested(i,e) .and. .not. doneAndHappy(1,i,e)) then                                   ! requested but not yet done
             subF = materialpoint_F0(1:3,1:3,i,e) &
-                 + (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e)) &
-                    * (materialpoint_subStep(i,e)+materialpoint_subFrac(i,e))
+                 + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e))*(subStep(i,e)+subFrac(i,e))
             call partitionDeformation(subF,i,e)                                                     ! partition deformation onto constituents
-            crystallite_dt(1:myNgrains,i,e) = dt*materialpoint_subStep(i,e)                         ! propagate materialpoint dt to grains
+            crystallite_dt(1:myNgrains,i,e) = dt*subStep(i,e)                                       ! propagate materialpoint dt to grains
             crystallite_requested(1:myNgrains,i,e) = .true.                                         ! request calculation for constituents
           else
             crystallite_requested(1:myNgrains,i,e) = .false.                                        ! calculation for constituents not required anymore
@@ -403,25 +400,21 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
 
-      materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
+      converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
 ! state update
      !$OMP PARALLEL DO PRIVATE(subF)
       elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
-          if (      materialpoint_requested(i,e) .and. &
-              .not. materialpoint_doneAndHappy(1,i,e)) then
-            if (.not. materialpoint_converged(i,e)) then
-              materialpoint_doneAndHappy(1:2,i,e) = [.true.,.false.]
+          if (requested(i,e) .and. .not. doneAndHappy(1,i,e)) then
+            if (.not. converged(i,e)) then
+              doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
               subF = materialpoint_F0(1:3,1:3,i,e) &
-                   + (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e)) &
-                      * (materialpoint_subStep(i,e)+materialpoint_subFrac(i,e))
-              materialpoint_doneAndHappy(1:2,i,e) = updateState(dt*materialpoint_subStep(i,e), &
-                                                                subF, &
-                                                                i,e)
-              materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))               ! converged if done and happy
+                   + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e))*(subStep(i,e)+subFrac(i,e))
+              doneAndHappy(1:2,i,e) = updateState(dt*subStep(i,e),subF,i,e)
+              converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy
             endif
           endif
         enddo IpLooping3
