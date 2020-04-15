@@ -207,7 +207,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! initialize restoration points of ...
+! initialize restoration points
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
     do i = FEsolving_execIP(1),FEsolving_execIP(2);
@@ -230,21 +230,21 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
       enddo
 
       materialpoint_subFrac(i,e) = 0.0_pReal
-      materialpoint_subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                   ! <<added to adopt flexibility in cutback size>>
-      materialpoint_converged(i,e) = .false.                                                        ! pretend failed step of twice the required size
+      materialpoint_converged(i,e) = .false.                                                        ! pretend failed step ...
+      materialpoint_subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                   ! ... larger then the requested calculation
       materialpoint_requested(i,e) = .true.                                                         ! everybody requires calculation
 
       if (homogState(material_homogenizationAt(e))%sizeState > 0) &
           homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))        ! ...internal homogenization state
+          homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
 
       if (thermalState(material_homogenizationAt(e))%sizeState > 0) &
           thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))      ! ...internal thermal state
+          thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
 
       if (damageState(material_homogenizationAt(e))%sizeState > 0) &
           damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))       ! ...internal damage state
+          damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
     enddo
   enddo
 
@@ -277,24 +277,13 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
           steppingNeeded: if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
 
-            ! wind forward grain starting point of...
-            crystallite_partionedF0  (1:3,1:3,1:myNgrains,i,e) =  &
-               crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedFp0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Fp         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedLp0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Lp         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedFi0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Fi         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedLi0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Li         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedS0  (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_S          (1:3,1:3,1:myNgrains,i,e)
+            ! wind forward grain starting point
+            crystallite_partionedF0 (1:3,1:3,1:myNgrains,i,e) = crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fp        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fi        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Li        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedS0 (1:3,1:3,1:myNgrains,i,e) = crystallite_S         (1:3,1:3,1:myNgrains,i,e)
 
             do g = 1,myNgrains
               plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e)) = &
@@ -341,19 +330,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! restore...
+! restore
             if (materialpoint_subStep(i,e) < 1.0_pReal) then                                        ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
-              crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = &
-                crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)
-              crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
-                crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)
+              crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)
+              crystallite_Li(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)
             endif                                                                                   ! maybe protecting everything from overwriting (not only L) makes even more sense
-            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)
-            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)
-            crystallite_S(1:3,1:3,1:myNgrains,i,e) = &
-               crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e)
+            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)
+            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)
+            crystallite_S (1:3,1:3,1:myNgrains,i,e) = crystallite_partionedS0 (1:3,1:3,1:myNgrains,i,e)
             do g = 1, myNgrains
               plasticState    (material_phaseAt(g,e))%state(          :,material_phasememberAt(g,i,e)) = &
               plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e))
