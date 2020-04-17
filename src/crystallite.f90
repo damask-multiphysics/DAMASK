@@ -1312,7 +1312,7 @@ subroutine integrateStateRK4(todo)
     A = reshape([&
       0.5_pReal, 0.0_pReal, 0.0_pReal, &
       0.0_pReal, 0.5_pReal, 0.0_pReal, &
-      0.0_pReal, 0.0_pReal, 1.0_pReal],
+      0.0_pReal, 0.0_pReal, 1.0_pReal],&
       shape(A))
   real(pReal), dimension(3), parameter :: &
     C = [0.5_pReal, 0.5_pReal, 1.0_pReal]
@@ -1452,10 +1452,10 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
           if(present(DB)) &
-          broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) &
-                                                   * crystallite_subdt(g,i,e), &
-                                              plasticState(p)%state(1:sizeDotState,c), &
-                                              plasticState(p)%atol(1:sizeDotState))
+            broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) &
+                                                     * crystallite_subdt(g,i,e), &
+                                                plasticState(p)%state(1:sizeDotState,c), &
+                                                plasticState(p)%atol(1:sizeDotState))
 
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
@@ -1466,11 +1466,10 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
             if(present(DB)) &
-            broken = broken .or. .not. &
-                                      converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
-                                                      * crystallite_subdt(g,i,e), &
-                                                sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                sourceState(p)%p(s)%atol(1:sizeDotState))
+              broken = broken .or. .not. converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
+                                                         * crystallite_subdt(g,i,e), &
+                                                   sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                                                   sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
           if(broken) cycle
 
