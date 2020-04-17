@@ -1476,8 +1476,8 @@ subroutine integrateStateRKCK45(todo)
     sizeDotState
   logical :: &
     nonlocalBroken, broken
-  real(pReal), dimension(constitutive_source_maxSizeDotState,6,maxval(phase_Nsources)) :: source_RKdotState
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,6) :: plastic_RKdotState
+  real(pReal), dimension(constitutive_source_maxSizeDotState,size(B),maxval(phase_Nsources)) :: source_RKdotState
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B))                    :: plastic_RKdotState
 
   nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,plastic_RKdotState,source_RKdotState,broken)
@@ -1497,7 +1497,7 @@ subroutine integrateStateRKCK45(todo)
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
           if(broken) cycle
 
-          do stage = 1,5
+          do stage = 1,size(A,1)
             sizeDotState = plasticState(p)%sizeDotState
             plastic_RKdotState(1:sizeDotState,stage) = plasticState(p)%dotState(:,c)
             plasticState(p)%dotState(:,c) = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
@@ -1544,12 +1544,12 @@ subroutine integrateStateRKCK45(todo)
 
           sizeDotState = plasticState(p)%sizeDotState
 
-          plastic_RKdotState(1:sizeDotState,6) = plasticState (p)%dotState(:,c)
-          plasticState(p)%dotState(:,c) = matmul(plastic_RKdotState(1:sizeDotState,1:6),B)
+          plastic_RKdotState(1:sizeDotState,size(B)) = plasticState (p)%dotState(:,c)
+          plasticState(p)%dotState(:,c) = matmul(plastic_RKdotState(1:sizeDotState,1:size(B)),B)
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
-          broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:6),DB) &
+          broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) &
                                                    * crystallite_subdt(g,i,e), &
                                               plasticState(p)%state(1:sizeDotState,c), &
                                               plasticState(p)%atol(1:sizeDotState))
@@ -1558,12 +1558,12 @@ subroutine integrateStateRKCK45(todo)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
             source_RKdotState(1:sizeDotState,6,s) = sourceState(p)%p(s)%dotState(:,c)
-            sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:6,s),B)
+            sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:size(B),s),B)
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
             broken = broken .and. .not. &
-                                      converged(matmul(source_RKdotState(1:sizeDotState,1:6,s),DB) &
+                                      converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
                                                       * crystallite_subdt(g,i,e), &
                                                 sourceState(p)%p(s)%state(1:sizeDotState,c), &
                                                 sourceState(p)%p(s)%atol(1:sizeDotState))
