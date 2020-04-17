@@ -1240,10 +1240,10 @@ subroutine integrateStateAdaptiveEuler(todo)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
+                                                crystallite_partionedF0, &
+                                                crystallite_Fi(1:3,1:3,g,i,e), &
+                                                crystallite_partionedFp0, &
+                                                crystallite_subdt(g,i,e), g,i,e,p,c)
           if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
@@ -1269,10 +1269,10 @@ subroutine integrateStateAdaptiveEuler(todo)
           if(broken) cycle
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
+                                                crystallite_partionedF0, &
+                                                crystallite_Fi(1:3,1:3,g,i,e), &
+                                                crystallite_partionedFp0, &
+                                                crystallite_subdt(g,i,e), g,i,e,p,c)
           if(broken) cycle
 
 
@@ -1393,10 +1393,10 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
+                                                crystallite_partionedF0, &
+                                                crystallite_Fi(1:3,1:3,g,i,e), &
+                                                crystallite_partionedFp0, &
+                                                crystallite_subdt(g,i,e), g,i,e,p,c)
           if(broken) cycle
 
           do stage = 1,size(A,1)
@@ -1435,10 +1435,10 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
             if(broken) exit
 
             broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                              crystallite_partionedF0, &
-                                              crystallite_Fi(1:3,1:3,g,i,e), &
-                                              crystallite_partionedFp0, &
-                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
+                                                  crystallite_partionedF0, &
+                                                  crystallite_Fi(1:3,1:3,g,i,e), &
+                                                  crystallite_partionedFp0, &
+                                                  crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
             if(broken) exit
 
           enddo
