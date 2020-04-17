@@ -1466,7 +1466,7 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
             if(present(DB)) &
-            broken = broken .and. .not. &
+            broken = broken .or. .not. &
                                       converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
                                                       * crystallite_subdt(g,i,e), &
                                                 sourceState(p)%p(s)%state(1:sizeDotState,c), &
