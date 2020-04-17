@@ -1464,7 +1464,7 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-            source_RKdotState(1:sizeDotState,6,s) = sourceState(p)%p(s)%dotState(:,c)
+            source_RKdotState(1:sizeDotState,size(B),s) = sourceState(p)%p(s)%dotState(:,c)
             sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:size(B),s),B)
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
