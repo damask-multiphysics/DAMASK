@@ -838,8 +838,6 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
                                       jacoCounterLp, &
                                       jacoCounterLi                                                 ! counters to check for Jacobian update
   logical :: error,broken
-  external :: &
-    dgesv
 
   broken = .true.
 

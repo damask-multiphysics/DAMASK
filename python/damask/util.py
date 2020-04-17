@@ -9,37 +9,22 @@ from optparse import Option
 
 import numpy as np
 
-class bcolors:
-    """
-    ASCII Colors.
+# limit visibility
+__all__=[
+         'srepr',
+         'croak',
+         'report',
+         'emph','deemph','delete','strikeout',
+         'execute',
+         'show_progress',
+         'scale_to_coprime',
+         'return_message',
+         'extendableOption',
+        ]
 
-    https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
-    https://stackoverflow.com/questions/287871
-    """
-
-    HEADER    = '\033[95m'
-    OKBLUE    = '\033[94m'
-    OKGREEN   = '\033[92m'
-    WARNING   = '\033[93m'
-    FAIL      = '\033[91m'
-    ENDC      = '\033[0m'
-    BOLD      = '\033[1m'
-    DIM       = '\033[2m'
-    UNDERLINE = '\033[4m'
-    CROSSOUT  = '\033[9m'
-
-    def disable(self):
-        self.HEADER = ''
-        self.OKBLUE = ''
-        self.OKGREEN = ''
-        self.WARNING = ''
-        self.FAIL = ''
-        self.ENDC = ''
-        self.BOLD = ''
-        self.UNDERLINE = ''
-        self.CROSSOUT = ''
-
-
+####################################################################################################
+# Functions
+####################################################################################################
 def srepr(arg,glue = '\n'):
     r"""
     Join arguments as individual lines.
@@ -144,6 +129,52 @@ def execute(cmd,
     return out,error
 
 
+def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
+    """
+    Decorate a loop with a status bar.
+
+    Use similar like enumerate.
+
+    Parameters
+    ----------
+    iterable : iterable/function with yield statement
+        Iterable (or function with yield statement) to be decorated.
+    N_iter : int
+        Total # of iterations. Needed if number of iterations can not be obtained as len(iterable).
+    prefix : str, optional.
+        Prefix string.
+    bar_length : int, optional
+        Character length of bar. Defaults to 50.
+
+    """
+    status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
+
+    for i,item in enumerate(iterable):
+        yield item
+        status.update(i)
+
+
+def scale_to_coprime(v):
+    """Scale vector to co-prime (relatively prime) integers."""
+    MAX_DENOMINATOR = 1000
+
+    def get_square_denominator(x):
+        """Denominator of the square of a number."""
+        return fractions.Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
+
+    def lcm(a, b):
+        """Least common multiple."""
+        return a * b // np.gcd(a, b)
+
+    denominators = [int(get_square_denominator(i)) for i in v]
+    s = reduce(lcm, denominators) ** 0.5
+    m = (np.array(v)*s).astype(np.int)
+    return m//reduce(np.gcd,m)
+
+
+####################################################################################################
+# Classes
+####################################################################################################
 class extendableOption(Option):
     """
     Used for definition of new option parser action 'extend', which enables to take multiple option arguments.
@@ -215,47 +246,36 @@ class _ProgressBar:
             sys.stderr.write('\n')
             sys.stderr.flush()
 
-def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
+
+class bcolors:
     """
-    Decorate a loop with a status bar.
+    ASCII Colors.
 
-    Use similar like enumerate.
-
-    Parameters
-    ----------
-    iterable : iterable/function with yield statement
-        Iterable (or function with yield statement) to be decorated.
-    N_iter : int
-        Total # of iterations. Needed if number of iterations can not be obtained as len(iterable).
-    prefix : str, optional.
-        Prefix string.
-    bar_length : int, optional
-        Character length of bar. Defaults to 50.
-
+    https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
+    https://stackoverflow.com/questions/287871
     """
-    status = _ProgressBar(N_iter if N_iter else len(iterable),prefix,bar_length)
 
-    for i,item in enumerate(iterable):
-        yield item
-        status.update(i)
+    HEADER    = '\033[95m'
+    OKBLUE    = '\033[94m'
+    OKGREEN   = '\033[92m'
+    WARNING   = '\033[93m'
+    FAIL      = '\033[91m'
+    ENDC      = '\033[0m'
+    BOLD      = '\033[1m'
+    DIM       = '\033[2m'
+    UNDERLINE = '\033[4m'
+    CROSSOUT  = '\033[9m'
 
-
-def scale_to_coprime(v):
-    """Scale vector to co-prime (relatively prime) integers."""
-    MAX_DENOMINATOR = 1000
-
-    def get_square_denominator(x):
-        """Denominator of the square of a number."""
-        return fractions.Fraction(x ** 2).limit_denominator(MAX_DENOMINATOR).denominator
-
-    def lcm(a, b):
-        """Least common multiple."""
-        return a * b // np.gcd(a, b)
-
-    denominators = [int(get_square_denominator(i)) for i in v]
-    s = reduce(lcm, denominators) ** 0.5
-    m = (np.array(v)*s).astype(np.int)
-    return m//reduce(np.gcd,m)
+    def disable(self):
+        self.HEADER = ''
+        self.OKBLUE = ''
+        self.OKGREEN = ''
+        self.WARNING = ''
+        self.FAIL = ''
+        self.ENDC = ''
+        self.BOLD = ''
+        self.UNDERLINE = ''
+        self.CROSSOUT = ''
 
 
 class return_message:
@@ -276,4 +296,3 @@ class return_message:
     def __repr__(self):
         """Return message suitable for interactive shells."""
         return srepr(self.message)
-
