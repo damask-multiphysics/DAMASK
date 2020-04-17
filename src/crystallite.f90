@@ -1302,7 +1302,7 @@ end subroutine integrateStateAdaptiveEuler
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief Integrate state (including stress integration) with the classig Runge Kutta method
+!> @brief Integrate state (including stress integration) with the classic Runge Kutta method
 !---------------------------------------------------------------------------------------------------
 subroutine integrateStateRK4(todo)
 
@@ -1312,7 +1312,8 @@ subroutine integrateStateRK4(todo)
     A = reshape([&
       0.5_pReal, 0.0_pReal, 0.0_pReal, &
       0.0_pReal, 0.5_pReal, 0.0_pReal, &
-      0.0_pReal, 0.0_pReal, 1.0_pReal],[3,3])
+      0.0_pReal, 0.0_pReal, 1.0_pReal],
+      shape(A))
   real(pReal), dimension(3), parameter :: &
     C = [0.5_pReal, 0.5_pReal, 1.0_pReal]
   real(pReal), dimension(4), parameter :: &
@@ -1332,23 +1333,21 @@ subroutine integrateStateRKCK45(todo)
 
   real(pReal), dimension(5,5), parameter :: &
     A = reshape([&
-      .2_pReal, .075_pReal,   .3_pReal, -11.0_pReal/54.0_pReal,  1631.0_pReal/55296.0_pReal, &
-      .0_pReal, .225_pReal,  -.9_pReal,   2.5_pReal,              175.0_pReal/512.0_pReal, &
-      .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,   575.0_pReal/13824.0_pReal, &
-      .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal, 44275.0_pReal/110592.0_pReal, &
-      .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,              253.0_pReal/4096.0_pReal], &
-      [5,5], order=[2,1])
-
+      1._pReal/5._pReal,       .0_pReal,             .0_pReal,               .0_pReal,                  .0_pReal, &
+      3._pReal/40._pReal,      9._pReal/40._pReal,   .0_pReal,               .0_pReal,                  .0_pReal, &
+      3_pReal/10._pReal,       -9._pReal/10._pReal,  6._pReal/5._pReal,      .0_pReal,                  .0_pReal, &
+      -11._pReal/54._pReal,    5._pReal/2._pReal,    -70.0_pReal/27.0_pReal, 35.0_pReal/27.0_pReal,     .0_pReal, &
+      1631._pReal/55296._pReal,175._pReal/512._pReal,575._pReal/13824._pReal,44275._pReal/110592._pReal,253._pReal/4096._pReal],&
+      shape(A))
+  real(pReal), dimension(5), parameter :: &
+    C = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]
   real(pReal), dimension(6), parameter :: &
     B = &
       [37.0_pReal/378.0_pReal, .0_pReal, 250.0_pReal/621.0_pReal, &
       125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &
     DB = B - &
       [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
-      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]
-
-  real(pReal), dimension(5), parameter :: &
-    C = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]
+      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  1._pReal/4._pReal]
 
   call integrateStateRK(todo,A,B,C,DB)
 
@@ -1356,8 +1355,8 @@ end subroutine integrateStateRKCK45
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief integrate stress, state with 5th order Runge-Kutta Cash-Karp method with
-!> adaptive step size  (use 5th order solution to advance = "local extrapolation")
+!> @brief Integrate state (including stress integration) with an explicit Runge-Kutta method or an
+!! embedded explicit Runge-Kutta method
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRK(todo,A,B,CC,DB)
 
