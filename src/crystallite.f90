@@ -1301,9 +1301,9 @@ subroutine integrateStateAdaptiveEuler(todo)
 end subroutine integrateStateAdaptiveEuler
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief integrate stress, state with 4th order explicit Runge Kutta method
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!> @brief Integrate state (including stress integration) with the classig Runge Kutta method
+!---------------------------------------------------------------------------------------------------
 subroutine integrateStateRK4(todo)
 
   logical, dimension(:,:,:), intent(in) :: todo
@@ -1312,22 +1312,20 @@ subroutine integrateStateRK4(todo)
     A = reshape([&
       0.5_pReal, 0.0_pReal, 0.0_pReal, &
       0.0_pReal, 0.5_pReal, 0.0_pReal, &
-      0.0_pReal, 0.0_pReal, 1.0_pReal], &
-      [3,3])
+      0.0_pReal, 0.0_pReal, 1.0_pReal],[3,3])
   real(pReal), dimension(3), parameter :: &
-    CC = [0.5_pReal, 0.5_pReal, 1.0_pReal]                                   ! factor giving the fraction of the original timestep used for Runge Kutta Integration
+    C = [0.5_pReal, 0.5_pReal, 1.0_pReal]
   real(pReal), dimension(4), parameter :: &
-    B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]                                   ! weight of slope used for Runge Kutta integration (final weight divided by 6)
+    B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]
 
-  call integrateStateRK(todo,A,B,CC)
+  call integrateStateRK(todo,A,B,C)
 
 end subroutine integrateStateRK4
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief integrate stress, state with 5th order Runge-Kutta Cash-Karp method with
-!> adaptive step size  (use 5th order solution to advance = "local extrapolation")
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!> @brief Integrate state (including stress integration) with the Cash-Carp method
+!---------------------------------------------------------------------------------------------------
 subroutine integrateStateRKCK45(todo)
 
   logical, dimension(:,:,:), intent(in) :: todo
@@ -1339,21 +1337,20 @@ subroutine integrateStateRKCK45(todo)
       .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,   575.0_pReal/13824.0_pReal, &
       .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal, 44275.0_pReal/110592.0_pReal, &
       .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,              253.0_pReal/4096.0_pReal], &
-      [5,5], order=[2,1])                                                                           !< coefficients in Butcher tableau (used for preliminary integration in stages 2 to 6)
+      [5,5], order=[2,1])
 
   real(pReal), dimension(6), parameter :: &
     B = &
       [37.0_pReal/378.0_pReal, .0_pReal, 250.0_pReal/621.0_pReal, &
-      125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &                               !< coefficients in Butcher tableau (used for final integration and error estimate)
+      125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &
     DB = B - &
       [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
-      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]                      !< coefficients in Butcher tableau (used for final integration and error estimate)
+      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]
 
   real(pReal), dimension(5), parameter :: &
-    CC = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]                                  !< coefficients in Butcher tableau (fractions of original time step in stages 2 to 6)
+    C = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]
 
-  call integrateStateRK(todo,A,B,CC,DB)
-
+  call integrateStateRK(todo,A,B,C,DB)
 
 end subroutine integrateStateRKCK45
 
