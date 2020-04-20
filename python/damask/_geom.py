@@ -322,11 +322,10 @@ class Geom:
         if i != grid.prod():
             raise TypeError('Invalid file: expected {} entries, found {}'.format(grid.prod(),i))
 
-        microstructure = microstructure.reshape(grid,order='F')
-        if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                   # no float present
+        if not np.any(np.mod(microstructure,1) != 0.0):                                             # no float present
             microstructure = microstructure.astype('int')
 
-        return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
+        return Geom(microstructure.reshape(grid,order='F'),size,origin,homogenization,comments)
 
 
     @staticmethod
