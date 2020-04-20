@@ -61,7 +61,7 @@ if any(shift != 0): prefix += 'shift{:+}{:+}{:+}_'.format(*shift)
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
+
   table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   if (options.grid is None or options.size is None):
@@ -87,11 +87,11 @@ for name in filenames:
                   origin = list(-(packing//2)) + [0])\
                   [::packing[0],::packing[1],::packing[2],:].reshape((packedGrid.prod(),-1),order = 'F')
 
-  
+
   table = damask.Table(averagedDown,table.shapes,table.comments)
 
   coords = damask.grid_filters.cell_coord0(packedGrid,size,shift/packedGrid*size+origin)
-  table.set(options.pos, coords.reshape(-1,3))
+  table.set(options.pos, coords.reshape(-1,3,order='F'))
 
 
   outname = os.path.join(os.path.dirname(name),prefix+os.path.basename(name))
