@@ -224,7 +224,7 @@ for name in filenames:
 
     header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
            + config_header
-    geom = damask.Geom(indices.reshape(grid),size,origin,
+    geom = damask.Geom(indices.reshape(grid,order='F'),size,origin,
                        homogenization=options.homogenization,comments=header)
     damask.util.croak(geom)
 

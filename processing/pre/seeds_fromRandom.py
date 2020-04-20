@@ -128,7 +128,7 @@ for name in filenames:
 
 
     if not options.selective:
-        coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3)
+        coords = damask.grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
         seeds = coords[np.random.choice(np.prod(grid), options.N, replace=False)] \
               + np.broadcast_to(size/grid,(options.N,3))*(np.random.rand(options.N,3)*.5-.25)       # wobble without leaving grid
     else:
