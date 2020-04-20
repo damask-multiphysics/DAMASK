@@ -6,7 +6,7 @@ Notes
 The grids are defined as (x,y,z,...) where x is fastest and z is slowest.
 This convention is consistent with the geom file format.
 When converting to/from a plain list (e.g. storage in ASCII table),
-the following operations are required for tensorial:
+the following operations are required for tensorial data:
 
 D3 = D1.reshape(grid+(-1,),order='F').reshape(grid+(3,3))
 D1 = D3.reshape(grid+(-1,)).reshape(-1,9,order='F')
@@ -23,6 +23,10 @@ def _ks(size,grid,first_order=False):
     ----------
     size : numpy.ndarray of shape (3)
         physical size of the periodic field.
+    grid : numpy.ndarray of shape (3)
+        number of grid points.
+    first_order : bool, optional
+        correction for first order derivatives, defaults to False.
 
     """
     k_sk = _np.where(_np.arange(grid[0])>grid[0]//2,_np.arange(grid[0])-grid[0],_np.arange(grid[0]))/size[0]
@@ -44,6 +48,8 @@ def curl(size,field):
     ----------
     size : numpy.ndarray of shape (3)
         physical size of the periodic field.
+    field : numpy.ndarray of shape (:,:,:,3) or (:,:,:,3,3)
+        periodic field of which the curl is calculated.
 
     """
     n = _np.prod(field.shape[3:])
@@ -68,6 +74,8 @@ def divergence(size,field):
     ----------
     size : numpy.ndarray of shape (3)
         physical size of the periodic field.
+    field : numpy.ndarray of shape (:,:,:,3) or (:,:,:,3,3)
+        periodic field of which the divergence is calculated.
 
     """
     n = _np.prod(field.shape[3:])
@@ -82,12 +90,14 @@ def divergence(size,field):
 
 def gradient(size,field):
     """
-    Calculate gradient of a vector or scalar field in Fourier space.
+    Calculate gradient of a scalar or tensor field in Fourier space.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
         physical size of the periodic field.
+    field : numpy.ndarray of shape (:,:,:,1) or (:,:,:,3)
+        periodic field of which the gradient is calculated.
 
     """
     n = _np.prod(field.shape[3:])
@@ -394,9 +404,9 @@ def regrid(size,F,new_grid):
     ----------
     size : numpy.ndarray of shape (3)
         physical size
-    F : numpy.ndarray
+    F : numpy.ndarray of shape (:,:,:,3,3)
         deformation gradient field
-    new_grid : numpy.ndarray
+    new_grid : numpy.ndarray of shape (3)
         new grid for undeformed coordinates
 
     """
