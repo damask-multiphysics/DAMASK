@@ -105,7 +105,7 @@ class Result:
             select from 'set', 'add', and 'del'
         what : str
             attribute to change (must be from self.selection)
-        datasets : list of str or Boolean
+        datasets : list of str or bool
            name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
@@ -197,7 +197,7 @@ class Result:
         ----------
         what : str
             attribute to change (must be from self.selection)
-        datasets : list of str or Boolean
+        datasets : list of str or bool
             name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
@@ -213,7 +213,7 @@ class Result:
         ----------
         what : str
             attribute to change (must be from self.selection)
-        datasets : list of str or Boolean
+        datasets : list of str or bool
             name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
@@ -229,7 +229,7 @@ class Result:
         ----------
         what : str
             attribute to change (must be from self.selection)
-        datasets : list of str or Boolean
+        datasets : list of str or bool
             name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
@@ -256,10 +256,10 @@ class Result:
           datasets : iterable or str
           component : int
               homogenization component to consider for constituent data
-          tagged : Boolean
+          tagged : bool
               tag Table.column name with '#component'
               defaults to False
-          split : Boolean
+          split : bool
               split Table by increment and return dictionary of Tables
               defaults to True
 
@@ -320,7 +320,7 @@ class Result:
 
         Parameters
         ----------
-            datasets : iterable or str or Boolean
+            datasets : iterable or str or bool
 
         Examples
         --------
@@ -454,7 +454,7 @@ class Result:
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.cell_coord0(self.grid,self.size,self.origin).reshape(-1,3)
+            return grid_filters.cell_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
