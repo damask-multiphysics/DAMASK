@@ -80,10 +80,40 @@ class TestGridFilters:
          F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3))
          assert np.allclose(function(size,F),0.0)
 
-    def test_invalid_coordinates(self):
+    @pytest.mark.parametrize('function',[grid_filters.coord0_check,
+                                         grid_filters.node_coord0_gridSizeOrigin,
+                                         grid_filters.cell_coord0_gridSizeOrigin])
+    def test_invalid_coordinates(self,function):
         invalid_coordinates = np.random.random((np.random.randint(12,52),3))
         with pytest.raises(ValueError):
-            grid_filters.coord0_check(invalid_coordinates)
+            function(invalid_coordinates)
+
+    @pytest.mark.parametrize('function',[grid_filters.node_coord0_gridSizeOrigin,
+                                         grid_filters.cell_coord0_gridSizeOrigin])
+    def test_uneven_spaced_coordinates(self,function):
+        start = np.random.random(3)
+        end   = np.random.random(3)*10. + start
+        grid  = np.random.randint(8,32,(3))
+        uneven = np.stack(np.meshgrid(np.logspace(start[0],end[0],grid[0]),
+                                      np.logspace(start[1],end[1],grid[1]),
+                                      np.logspace(start[2],end[2],grid[2]),indexing = 'ij'),
+                           axis = -1).reshape((grid.prod(),3),order='F')
+        with pytest.raises(ValueError):
+            function(uneven)
+
+    @pytest.mark.parametrize('mode',[True,False])
+    @pytest.mark.parametrize('function',[grid_filters.node_coord0_gridSizeOrigin,
+                                         grid_filters.cell_coord0_gridSizeOrigin])
+    def test_unordered_coordinates(self,function,mode):
+        origin = np.random.random(3)
+        size   = np.random.random(3)*10.+origin
+        grid  = np.random.randint(8,32,(3))
+        unordered = grid_filters.node_coord0(grid,size,origin).reshape(-1,3)
+        if mode:
+            with pytest.raises(ValueError):
+                function(unordered,mode)
+        else:
+            function(unordered,mode)
 
     def test_regrid(self):
          size = np.random.random(3)
