@@ -24,22 +24,22 @@ def findClosestSeed(seeds, weights, point):
 def Laguerre_tessellation(grid, size, seeds, weights, origin = np.zeros(3), periodic = True, cpus = 2):
 
     if periodic:
-        weights_p = np.tile(weights,27).flatten(order='F')                                          # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+        weights_p = np.tile(weights.squeeze(),27)                                                   # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
         seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
         seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
         seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-        coords = damask.grid_filters.cell_coord0(grid*3,size*3,-origin-size).reshape(-1,3,order='F')
+        coords = damask.grid_filters.cell_coord0(grid*3,size*3,-origin-size).reshape(-1,3)
     else:
-        weights_p = weights.flatten()
+        weights_p = weights.squeeze()
         seeds_p   = seeds
-        coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
+        coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3)
 
     if cpus > 1:
         pool = multiprocessing.Pool(processes = cpus)
         result = pool.map_async(partial(findClosestSeed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
-        closest_seed = np.array(result.get())
+        closest_seed = np.array(result.get()).reshape(-1,3)
     else:
         closest_seed= np.array([findClosestSeed(seeds_p,weights_p,coord) for coord in coords])
 
@@ -52,7 +52,7 @@ def Laguerre_tessellation(grid, size, seeds, weights, origin = np.zeros(3), peri
 
 def Voronoi_tessellation(grid, size, seeds, origin = np.zeros(3), periodic = True):
 
-    coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3,order='F')
+    coords = damask.grid_filters.cell_coord0(grid,size,-origin).reshape(-1,3)
     KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
     devNull,closest_seed = KDTree.query(coords)
 
@@ -224,7 +224,7 @@ for name in filenames:
 
     header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
            + config_header
-    geom = damask.Geom(indices.reshape(grid,order='F'),size,origin,
+    geom = damask.Geom(indices.reshape(grid),size,origin,
                        homogenization=options.homogenization,comments=header)
     damask.util.croak(geom)
 
