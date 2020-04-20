@@ -1,3 +1,17 @@
+"""
+Filters for operations on regular grids.
+
+Notes
+-----
+The grids are defined as (x,y,z,...) where x is fastest and z is slowest.
+This convention is consistent with the geom file format.
+When converting to/from a plain list (e.g. storage in ASCII table),
+the following operations are required for tensorial:
+
+D3 = D1.reshape(grid+(-1,),order='F').reshape(grid+(3,3))
+D1 = D3.reshape(grid+(-1,)).reshape(-1,9,order='F')
+
+"""
 from scipy import spatial as _spatial
 import numpy as _np
 
