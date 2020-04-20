@@ -80,6 +80,11 @@ class TestGridFilters:
          F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3))
          assert np.allclose(function(size,F),0.0)
 
+    def test_invalid_coordinates(self):
+        invalid_coordinates = np.random.random((np.random.randint(12,52),3))
+        with pytest.raises(ValueError):
+            grid_filters.coord0_check(invalid_coordinates)
+
     def test_regrid(self):
          size = np.random.random(3)
          grid = np.random.randint(8,32,(3))
