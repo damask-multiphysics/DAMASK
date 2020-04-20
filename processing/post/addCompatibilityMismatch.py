@@ -93,7 +93,6 @@ def volumeMismatch(size,F,nodes):
   return vMismatch/(size.prod()/grid.prod())
 
 
-
 def shapeMismatch(size,F,nodes,centres):
   """
   Routine to calculate the shape mismatch.
@@ -102,20 +101,19 @@ def shapeMismatch(size,F,nodes,centres):
   the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
   the initial volume element with the  current deformation gradient.
   """
-  coordsInitial = np.empty([8,3])
   sMismatch     = np.empty(F.shape[:3])
 
 #--------------------------------------------------------------------------------------------------
 # initial positions
-  coordsInitial[0,0:3] = [-size[0]/grid[0],-size[1]/grid[1],-size[2]/grid[2]]
-  coordsInitial[1,0:3] = [+size[0]/grid[0],-size[1]/grid[1],-size[2]/grid[2]]
-  coordsInitial[2,0:3] = [+size[0]/grid[0],+size[1]/grid[1],-size[2]/grid[2]]
-  coordsInitial[3,0:3] = [-size[0]/grid[0],+size[1]/grid[1],-size[2]/grid[2]]
-  coordsInitial[4,0:3] = [-size[0]/grid[0],-size[1]/grid[1],+size[2]/grid[2]]
-  coordsInitial[5,0:3] = [+size[0]/grid[0],-size[1]/grid[1],+size[2]/grid[2]]
-  coordsInitial[6,0:3] = [+size[0]/grid[0],+size[1]/grid[1],+size[2]/grid[2]]
-  coordsInitial[7,0:3] = [-size[0]/grid[0],+size[1]/grid[1],+size[2]/grid[2]]
-  coordsInitial = coordsInitial/2.0
+  delta = size/grid*.5
+  coordsInitial = np.vstack((delta * np.array((-1,-1,-1)),
+                             delta * np.array((+1,-1,-1)),
+                             delta * np.array((+1,+1,-1)),
+                             delta * np.array((-1,+1,-1)),
+                             delta * np.array((-1,-1,+1)),
+                             delta * np.array((+1,-1,+1)),
+                             delta * np.array((+1,+1,+1)),
+                             delta * np.array((-1,+1,+1))))
 
 #--------------------------------------------------------------------------------------------------
 # compare deformed original and deformed positions to actual positions
