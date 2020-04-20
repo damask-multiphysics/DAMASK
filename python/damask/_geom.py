@@ -357,7 +357,6 @@ class Geom:
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
             coords  = grid_filters.cell_coord0(grid*3,size*3,-size).reshape(-1,3,order='F')
-
         else:
             weights_p = weights.flatten()
             seeds_p   = seeds
@@ -370,10 +369,10 @@ class Geom:
         microstructure = np.array(result.get())
 
         if periodic:
-            microstructure = microstructure.reshape(grid*3)
+            microstructure = microstructure.reshape(grid*3,order='F')
             microstructure = microstructure[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
         else:
-            microstructure = microstructure.reshape(grid)
+            microstructure = microstructure.reshape(grid,order='F')
 
         #comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
         return Geom(microstructure+1,size,homogenization=1)
@@ -401,7 +400,7 @@ class Geom:
         devNull,microstructure = KDTree.query(coords)
 
         #comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
-        return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
+        return Geom(microstructure.reshape(grid,order='F')+1,size,homogenization=1)
 
 
     def to_file(self,fname,pack=None):

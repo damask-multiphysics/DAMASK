@@ -51,23 +51,23 @@ for name in filenames:
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
-    
-    F = table.get(options.f).reshape(np.append(grid[::-1],(3,3)))
+
+    F = table.get(options.f).reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+(3,3))
     if options.nodal:
-        table = damask.Table(damask.grid_filters.node_coord0(grid[::-1],size[::-1]).reshape(-1,3),
+        table = damask.Table(damask.grid_filters.node_coord0(grid,size).reshape(-1,3,order='F'),
                              {'pos':(3,)})
         table.add('avg({}).{}'.format(options.f,options.pos),
-                  damask.grid_filters.node_displacement_avg(size[::-1],F).reshape(-1,3),
+                  damask.grid_filters.node_displacement_avg(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
         table.add('fluct({}).{}'.format(options.f,options.pos),
-                  damask.grid_filters.node_displacement_fluct(size[::-1],F).reshape(-1,3),
+                  damask.grid_filters.node_displacement_fluct(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
         table.to_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'_nodal.txt')
     else:
         table.add('avg({}).{}'.format(options.f,options.pos),
-                  damask.grid_filters.cell_displacement_avg(size[::-1],F).reshape(-1,3),
+                  damask.grid_filters.cell_displacement_avg(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
         table.add('fluct({}).{}'.format(options.f,options.pos),
-                  damask.grid_filters.cell_displacement_fluct(size[::-1],F).reshape(-1,3),
+                  damask.grid_filters.cell_displacement_fluct(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
         table.to_ASCII(sys.stdout if name is None else name)
