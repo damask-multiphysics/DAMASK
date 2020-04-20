@@ -146,7 +146,7 @@ def cell_displacement_avg(size,F):
 
     """
     F_avg = _np.average(F,axis=(0,1,2))
-    return _np.einsum('ml,ijkl->ijkm',F_avg-_np.eye(3),cell_coord0(F.shape[:3][::-1],size))
+    return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),cell_coord0(F.shape[:3][::-1],size))
 
 
 def cell_displacement(size,F):
@@ -250,8 +250,8 @@ def node_coord0(grid,size,origin=_np.zeros(3)):
 
     """
     return _np.mgrid[origin[0]:size[0]+origin[0]:(grid[0]+1)*1j,
-                    origin[1]:size[1]+origin[1]:(grid[1]+1)*1j,
-                    origin[2]:size[2]+origin[2]:(grid[2]+1)*1j].T
+                     origin[1]:size[1]+origin[1]:(grid[1]+1)*1j,
+                     origin[2]:size[2]+origin[2]:(grid[2]+1)*1j].T
 
 
 def node_displacement_fluct(size,F):
@@ -282,7 +282,7 @@ def node_displacement_avg(size,F):
 
     """
     F_avg = _np.average(F,axis=(0,1,2))
-    return _np.einsum('ml,ijkl->ijkm',F_avg-_np.eye(3),node_coord0(F.shape[:3][::-1],size))
+    return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),node_coord0(F.shape[:3][::-1],size))
 
 
 def node_displacement(size,F):
