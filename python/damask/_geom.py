@@ -355,11 +355,11 @@ class Geom:
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-            coords  = grid_filters.cell_coord0(grid*3,size*3,-size).reshape(-1,3,order='F')
+            coords  = grid_filters.cell_coord0(grid*3,size*3,-size).reshape(-1,3)
         else:
             weights_p = weights
             seeds_p   = seeds
-            coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+            coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
         pool = multiprocessing.Pool(processes = int(Environment().options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
@@ -368,10 +368,10 @@ class Geom:
         microstructure = np.array(result.get())
 
         if periodic:
-            microstructure = microstructure.reshape(grid*3,order='F')
+            microstructure = microstructure.reshape(grid*3)
             microstructure = microstructure[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
         else:
-            microstructure = microstructure.reshape(grid,order='F')
+            microstructure = microstructure.reshape(grid)
 
         #comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
         return Geom(microstructure+1,size,homogenization=1)
@@ -394,12 +394,12 @@ class Geom:
             perform a periodic tessellation. Defaults to True.
 
         """
-        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3)
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
         #comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
-        return Geom(microstructure.reshape(grid,order='F')+1,size,homogenization=1)
+        return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
 
 
     def to_file(self,fname,pack=None):
