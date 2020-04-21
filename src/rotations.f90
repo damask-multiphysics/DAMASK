@@ -595,8 +595,6 @@ function om2ax(om) result(ax)
   real(pReal), dimension(3,3)      :: VR, devNull, om_
   integer                          :: ierr, i
   
-  external :: dgeev
-  
   om_ = om
   
   ! first get the rotation angle

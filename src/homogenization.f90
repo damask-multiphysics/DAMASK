@@ -27,33 +27,22 @@ module homogenization
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-! General variables for the homogenization at a  material point
   logical, public :: &
     terminallyIll = .false.                                                                         !< at least one material point is terminally ill
-  real(pReal),   dimension(:,:,:,:),   allocatable, public :: &
-    materialpoint_F0, &                                                                             !< def grad of IP at start of FE increment
-    materialpoint_F, &                                                                              !< def grad of IP to be reached at end of FE increment
-    materialpoint_P                                                                                 !< first P--K stress of IP
-  real(pReal),   dimension(:,:,:,:,:,:), allocatable, public ::  &
-    materialpoint_dPdF                                                                              !< tangent of first P--K stress at IP
 
-  real(pReal),   dimension(:,:,:,:),     allocatable :: &
-    materialpoint_subF0, &                                                                          !< def grad of IP at beginning of homogenization increment
-    materialpoint_subF                                                                              !< def grad of IP to be reached at end of homog inc
-  real(pReal),   dimension(:,:),         allocatable :: &
-    materialpoint_subFrac, &
-    materialpoint_subStep, &
-    materialpoint_subdt
-  logical,       dimension(:,:),         allocatable :: &
-    materialpoint_requested, &
-    materialpoint_converged
-  logical,       dimension(:,:,:),       allocatable :: &
-    materialpoint_doneAndHappy
+!--------------------------------------------------------------------------------------------------
+! General variables for the homogenization at a  material point
+  real(pReal),   dimension(:,:,:,:),     allocatable, public :: &
+    materialpoint_F0, &                                                                             !< def grad of IP at start of FE increment
+    materialpoint_F                                                                                 !< def grad of IP to be reached at end of FE increment
+  real(pReal),   dimension(:,:,:,:),     allocatable, public, protected :: &
+    materialpoint_P                                                                                 !< first P--K stress of IP
+  real(pReal),   dimension(:,:,:,:,:,:), allocatable, public, protected ::  &
+    materialpoint_dPdF                                                                              !< tangent of first P--K stress at IP
 
   type :: tNumerics
     integer :: &
-      nMPstate                                                                                     !< materialpoint state loop limit
+      nMPstate                                                                                      !< materialpoint state loop limit
     real(pReal) :: &
       subStepMinHomog, &                                                                            !< minimum (relative) size of sub-step allowed during cutback in homogenization
       subStepSizeHomog, &                                                                           !< size of first substep when cutback in homogenization
@@ -161,15 +150,7 @@ subroutine homogenization_init
   allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
   materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)            ! initialize to identity
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
-  allocate(materialpoint_subF0(3,3,discretization_nIP,discretization_nElem),          source=0.0_pReal)
-  allocate(materialpoint_subF(3,3,discretization_nIP,discretization_nElem),           source=0.0_pReal)
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
-  allocate(materialpoint_subFrac(discretization_nIP,discretization_nElem),            source=0.0_pReal)
-  allocate(materialpoint_subStep(discretization_nIP,discretization_nElem),            source=0.0_pReal)
-  allocate(materialpoint_subdt(discretization_nIP,discretization_nElem),              source=0.0_pReal)
-  allocate(materialpoint_requested(discretization_nIP,discretization_nElem),          source=.false.)
-  allocate(materialpoint_converged(discretization_nIP,discretization_nElem),          source=.true.)
-  allocate(materialpoint_doneAndHappy(2,discretization_nIP,discretization_nElem),     source=.true.)
 
   write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'; flush(6)
 
@@ -203,6 +184,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     e, &                                                                                            !< element number
     mySource, &
     myNgrains
+  real(pReal), dimension(discretization_nIP,discretization_nElem) :: &
+    subFrac, &
+    subStep
+  logical,     dimension(discretization_nIP,discretization_nElem) :: &
+    requested, &
+    converged
+  logical,     dimension(2,discretization_nIP,discretization_nElem) :: &
+    doneAndHappy
 
 #ifdef DEBUG
   if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0) then
@@ -216,7 +205,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! initialize restoration points of ...
+! initialize restoration points
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
     do i = FEsolving_execIP(1),FEsolving_execIP(2);
@@ -238,74 +227,60 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
       enddo
 
-
-      materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)
-      materialpoint_subFrac(i,e) = 0.0_pReal
-      materialpoint_subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                   ! <<added to adopt flexibility in cutback size>>
-      materialpoint_converged(i,e) = .false.                                                        ! pretend failed step of twice the required size
-      materialpoint_requested(i,e) = .true.                                                         ! everybody requires calculation
+      subFrac(i,e) = 0.0_pReal
+      converged(i,e) = .false.                                                                      ! pretend failed step ...
+      subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                                 ! ... larger then the requested calculation
+      requested(i,e) = .true.                                                                       ! everybody requires calculation
 
       if (homogState(material_homogenizationAt(e))%sizeState > 0) &
           homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))        ! ...internal homogenization state
+          homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
 
       if (thermalState(material_homogenizationAt(e))%sizeState > 0) &
           thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))      ! ...internal thermal state
+          thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
 
       if (damageState(material_homogenizationAt(e))%sizeState > 0) &
           damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))       ! ...internal damage state
+          damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
     enddo
   enddo
 
   NiterationHomog = 0
 
   cutBackLooping: do while (.not. terminallyIll .and. &
-       any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
+       any(subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
     !$OMP PARALLEL DO PRIVATE(myNgrains)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
       IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
 
-        converged: if (materialpoint_converged(i,e)) then
+        if (converged(i,e)) then
 #ifdef DEBUG
           if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0 &
              .and. ((e == debug_e .and. i == debug_i) &
                     .or. .not. iand(debug_level(debug_homogenization),debug_levelSelective) /= 0)) then
             write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
-              materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
-              materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
+              subFrac(i,e), 'to current subFrac', &
+              subFrac(i,e)+subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
           endif
 #endif
 
 !---------------------------------------------------------------------------------------------------
 ! calculate new subStep and new subFrac
-          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
-          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), &
-                                           num%stepIncreaseHomog*materialpoint_subStep(i,e))        ! introduce flexibility for step increase/acceleration
+          subFrac(i,e) = subFrac(i,e) + subStep(i,e)
+          subStep(i,e) = min(1.0_pReal-subFrac(i,e),num%stepIncreaseHomog*subStep(i,e))             ! introduce flexibility for step increase/acceleration
 
-          steppingNeeded: if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
+          steppingNeeded: if (subStep(i,e) > num%subStepMinHomog) then
 
-            ! wind forward grain starting point of...
-            crystallite_partionedF0  (1:3,1:3,1:myNgrains,i,e) =  &
-               crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedFp0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Fp         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedLp0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Lp         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedFi0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Fi         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedLi0 (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_Li         (1:3,1:3,1:myNgrains,i,e)
-
-            crystallite_partionedS0  (1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_S          (1:3,1:3,1:myNgrains,i,e)
+            ! wind forward grain starting point
+            crystallite_partionedF0 (1:3,1:3,1:myNgrains,i,e) = crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fp        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fi        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Li        (1:3,1:3,1:myNgrains,i,e)
+            crystallite_partionedS0 (1:3,1:3,1:myNgrains,i,e) = crystallite_S         (1:3,1:3,1:myNgrains,i,e)
 
             do g = 1,myNgrains
               plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e)) = &
@@ -326,15 +301,12 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                 damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
                 damageState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
 
-            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)
-
           endif steppingNeeded
 
-        else converged
-          if ( (myNgrains == 1 .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                     ! single grain already tried internal subStepping in crystallite
-               num%subStepSizeHomog * materialpoint_subStep(i,e) <=  num%subStepMinHomog ) then     ! would require too small subStep
+        else
+          if ( (myNgrains == 1 .and. subStep(i,e) <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
+               num%subStepSizeHomog * subStep(i,e) <=  num%subStepMinHomog ) then                   ! would require too small subStep
                                                                                                     ! cutback makes no sense
-            !$OMP FLUSH(terminallyIll)
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
               !$OMP CRITICAL (write2out)
               write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
@@ -342,32 +314,27 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             endif
             terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
-            materialpoint_subStep(i,e) = num%subStepSizeHomog * materialpoint_subStep(i,e)          ! crystallite had severe trouble, so do a significant cutback
+            subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
 #ifdef DEBUG
             if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0 &
                .and. ((e == debug_e .and. i == debug_i) &
                      .or. .not. iand(debug_level(debug_homogenization), debug_levelSelective) /= 0)) then
               write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &
-                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
-                materialpoint_subStep(i,e),' at el ip',e,i
+                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new subStep:',&
+                subStep(i,e),' at el ip',e,i
             endif
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! restore...
-            if (materialpoint_subStep(i,e) < 1.0_pReal) then                                        ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
-              crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = &
-                crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)
-              crystallite_Li(1:3,1:3,1:myNgrains,i,e) = &
-                crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)
+! restore
+            if (subStep(i,e) < 1.0_pReal) then                                                      ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
+              crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)
+              crystallite_Li(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)
             endif                                                                                   ! maybe protecting everything from overwriting (not only L) makes even more sense
-            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)
-            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = &
-              crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)
-            crystallite_S(1:3,1:3,1:myNgrains,i,e) = &
-               crystallite_partionedS0(1:3,1:3,1:myNgrains,i,e)
+            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)
+            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)
+            crystallite_S (1:3,1:3,1:myNgrains,i,e) = crystallite_partionedS0 (1:3,1:3,1:myNgrains,i,e)
             do g = 1, myNgrains
               plasticState    (material_phaseAt(g,e))%state(          :,material_phasememberAt(g,i,e)) = &
               plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e))
@@ -386,15 +353,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                 damageState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
                 damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
           endif
-        endif converged
+        endif
 
-        if (materialpoint_subStep(i,e) > num%subStepMinHomog) then
-          materialpoint_requested(i,e) = .true.
-          materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) &
-                                          + materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) &
-                                          - materialpoint_F0(1:3,1:3,i,e))
-          materialpoint_subdt(i,e) = materialpoint_subStep(i,e) * dt
-          materialpoint_doneAndHappy(1:2,i,e) = [.false.,.true.]
+        if (subStep(i,e) > num%subStepMinHomog) then
+          requested(i,e) = .true.
+          doneAndHappy(1:2,i,e) = [.false.,.true.]
         endif
       enddo IpLooping1
     enddo elementLooping1
@@ -403,24 +366,24 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     NiterationMPstate = 0
 
     convergenceLooping: do while (.not. terminallyIll .and. &
-              any(            materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
-                  .and. .not. materialpoint_doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
+              any(                 requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
+                  .and. .not. doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  ) .and. &
               NiterationMPstate < num%nMPstate)
       NiterationMPstate = NiterationMPstate + 1
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
-! based on materialpoint_subF0,.._subF,crystallite_partionedF0, and homogenization_state,
-! results in crystallite_partionedF
       !$OMP PARALLEL DO PRIVATE(myNgrains)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
-          if (      materialpoint_requested(i,e) .and. &                                            ! process requested but...
-              .not. materialpoint_doneAndHappy(1,i,e)) then                                         ! ...not yet done material points
-            call partitionDeformation(i,e)                                                          ! partition deformation onto constituents
-            crystallite_dt(1:myNgrains,i,e) = materialpoint_subdt(i,e)                              ! propagate materialpoint dt to grains
+          if(requested(i,e) .and. .not. doneAndHappy(1,i,e)) then                                   ! requested but not yet done
+            call partitionDeformation(materialpoint_F0(1:3,1:3,i,e) &
+                                      + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e))&
+                                         *(subStep(i,e)+subFrac(i,e)), &
+                                      i,e)
+            crystallite_dt(1:myNgrains,i,e) = dt*subStep(i,e)                                       ! propagate materialpoint dt to grains
             crystallite_requested(1:myNgrains,i,e) = .true.                                         ! request calculation for constituents
           else
             crystallite_requested(1:myNgrains,i,e) = .false.                                        ! calculation for constituents not required anymore
@@ -431,23 +394,23 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
 !--------------------------------------------------------------------------------------------------
 ! crystallite integration
-! based on crystallite_partionedF0,.._partionedF
-! incrementing by crystallite_dt
-
-      materialpoint_converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
+      converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
 ! state update
      !$OMP PARALLEL DO
       elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
-          if (      materialpoint_requested(i,e) .and. &
-              .not. materialpoint_doneAndHappy(1,i,e)) then
-            if (.not. materialpoint_converged(i,e)) then
-              materialpoint_doneAndHappy(1:2,i,e) = [.true.,.false.]
+          if (requested(i,e) .and. .not. doneAndHappy(1,i,e)) then
+            if (.not. converged(i,e)) then
+              doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
-              materialpoint_doneAndHappy(1:2,i,e) = updateState(i,e)
-              materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(1:2,i,e))               ! converged if done and happy
+              doneAndHappy(1:2,i,e) = updateState(dt*subStep(i,e), &
+                                                  materialpoint_F0(1:3,1:3,i,e) &
+                                                  + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e)) &
+                                                     *(subStep(i,e)+subFrac(i,e)), &
+                                                 i,e)
+              converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy
             endif
           endif
         enddo IpLooping3
@@ -481,29 +444,31 @@ end subroutine materialpoint_stressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief  partition material point def grad onto constituents
 !--------------------------------------------------------------------------------------------------
-subroutine partitionDeformation(ip,el)
+subroutine partitionDeformation(subF,ip,el)
 
- integer, intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
+  real(pReal), intent(in), dimension(3,3) :: &
+    subF
+  integer,     intent(in) :: &
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element number
 
- chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
-   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-     crystallite_partionedF(1:3,1:3,1,ip,el) = materialpoint_subF(1:3,1:3,ip,el)
+    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+      crystallite_partionedF(1:3,1:3,1,ip,el) = subF
 
-   case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     call mech_isostrain_partitionDeformation(&
+    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+      call mech_isostrain_partitionDeformation(&
+                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                           subF)
+
+    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      call mech_RGC_partitionDeformation(&
                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                          materialpoint_subF(1:3,1:3,ip,el))
-
-   case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     call mech_RGC_partitionDeformation(&
-                         crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                         materialpoint_subF(1:3,1:3,ip,el),&
-                         ip, &
-                         el)
- end select chosenHomogenization
+                          subF,&
+                          ip, &
+                          el)
+  end select chosenHomogenization
 
 end subroutine partitionDeformation
 
@@ -512,45 +477,49 @@ end subroutine partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
-function updateState(ip,el)
+function updateState(subdt,subF,ip,el)
 
- integer, intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
- logical, dimension(2) :: updateState
+  real(pReal), intent(in) :: &
+    subdt                                                                                           !< current time step
+  real(pReal), intent(in), dimension(3,3) :: &
+    subF
+  integer,     intent(in) :: &
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element number
+  logical, dimension(2) :: updateState
 
- updateState = .true.
- chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
-   case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     updateState = &
-       updateState .and. &
-        mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                             crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                             crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
-                             materialpoint_subF(1:3,1:3,ip,el),&
-                             materialpoint_subdt(ip,el), &
-                             crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                             ip, &
-                             el)
- end select chosenHomogenization
+  updateState = .true.
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      updateState = &
+        updateState .and. &
+          mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
+                               subF,&
+                               subdt, &
+                               crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               ip, &
+                               el)
+  end select chosenHomogenization
 
- chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
-   case (THERMAL_adiabatic_ID) chosenThermal
-     updateState = &
-       updateState .and. &
-       thermal_adiabatic_updateState(materialpoint_subdt(ip,el), &
-                                     ip, &
-                                     el)
- end select chosenThermal
+  chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
+    case (THERMAL_adiabatic_ID) chosenThermal
+      updateState = &
+        updateState .and. &
+        thermal_adiabatic_updateState(subdt, &
+                                      ip, &
+                                      el)
+  end select chosenThermal
 
- chosenDamage: select case (damage_type(material_homogenizationAt(el)))
-   case (DAMAGE_local_ID) chosenDamage
-     updateState = &
-       updateState .and. &
-       damage_local_updateState(materialpoint_subdt(ip,el), &
-                                ip, &
-                                el)
- end select chosenDamage
+  chosenDamage: select case (damage_type(material_homogenizationAt(el)))
+    case (DAMAGE_local_ID) chosenDamage
+      updateState = &
+        updateState .and. &
+        damage_local_updateState(subdt, &
+                                 ip, &
+                                 el)
+  end select chosenDamage
 
 end function updateState
 
@@ -560,31 +529,31 @@ end function updateState
 !--------------------------------------------------------------------------------------------------
 subroutine averageStressAndItsTangent(ip,el)
 
- integer, intent(in) :: &
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element number
+  integer, intent(in) :: &
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element number
 
- chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
-   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-       materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
-       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
+  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
+    case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+        materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
+        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
 
-   case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-     call mech_isostrain_averageStressAndItsTangent(&
-       materialpoint_P(1:3,1:3,ip,el), &
-       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       homogenization_typeInstance(material_homogenizationAt(el)))
+    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+      call mech_isostrain_averageStressAndItsTangent(&
+        materialpoint_P(1:3,1:3,ip,el), &
+        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        homogenization_typeInstance(material_homogenizationAt(el)))
 
-   case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-     call mech_RGC_averageStressAndItsTangent(&
-       materialpoint_P(1:3,1:3,ip,el), &
-       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-       crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-       homogenization_typeInstance(material_homogenizationAt(el)))
- end select chosenHomogenization
+    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      call mech_RGC_averageStressAndItsTangent(&
+        materialpoint_P(1:3,1:3,ip,el), &
+        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        homogenization_typeInstance(material_homogenizationAt(el)))
+  end select chosenHomogenization
 
 end subroutine averageStressAndItsTangent
 
