@@ -265,9 +265,9 @@ class Rotation:
             qu[qu[...,0] < 0.0] *= -1
         else:
             if np.any(qu[...,0] < 0.0):
-                raise ValueError('Quaternions need to have positive first(real) component.')
+                raise ValueError('Quaternion with negative first (real) component.')
         if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0)):
-            raise ValueError('Quaternions need to have unit length.')
+            raise ValueError('Quaternion is not of unit length.')
 
         return Rotation(qu)
 
@@ -279,7 +279,7 @@ class Rotation:
 
         eu = np.radians(eu) if degrees else eu
         if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or np.any(eu[...,1] > np.pi):                 # ToDo: No separate check for PHI
-            raise ValueError('Euler angles need to be in [0..2π],[0..π],[0..2π].')
+            raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].')
 
         return Rotation(Rotation.eu2qu(eu))
 
@@ -315,11 +315,11 @@ class Rotation:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
             om = np.einsum('...ij,...jl->...il',U,Vh)
         if not np.all(np.isclose(np.linalg.det(om),1.0)):
-            raise ValueError('matrix is not a proper rotation: {}.'.format(om))
+            raise ValueError('Orientation matrix has determinant ≠ 1.')
         if    not np.all(np.isclose(np.einsum('...i,...i',om[...,0],om[...,1]), 0.0)) \
            or not np.all(np.isclose(np.einsum('...i,...i',om[...,1],om[...,2]), 0.0)) \
            or not np.all(np.isclose(np.einsum('...i,...i',om[...,2],om[...,0]), 0.0)):
-            raise ValueError('matrix is not orthogonal.')
+            raise ValueError('Orientation matrix is not orthogonal.')
 
         return Rotation(Rotation.om2qu(om))
 
@@ -338,9 +338,9 @@ class Rotation:
         if P > 0:     ro[...,0:3] *= -1                                                             # convert from P=1 to P=-1
         if normalise: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1)
         if np.any(ro[...,3] < 0.0):
-            raise ValueError('Rodrigues rotation angle not positive.')
+            raise ValueError('Rodrigues vector rotation angle not positive.')
         if not np.all(np.isclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0)):
-            raise ValueError('Rodrigues rotation axis is not of unit length.')
+            raise ValueError('Rodrigues vector rotation axis is not of unit length.')
 
         return Rotation(Rotation.ro2qu(ro))
 
@@ -353,7 +353,7 @@ class Rotation:
         if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
 
         if np.any(np.linalg.norm(ho,axis=-1) > (3.*np.pi/4.)**(1./3.)+1e-9):
-            raise ValueError('Coordinate outside of the sphere.')
+            raise ValueError('Homochoric coordinate outside of the sphere.')
 
         return Rotation(Rotation.ho2qu(ho))
 
@@ -364,7 +364,7 @@ class Rotation:
         cu = np.array(cubochoric,dtype=float)
 
         if np.abs(np.max(cu))>np.pi**(2./3.) * 0.5+1e-9:
-            raise ValueError('Coordinate outside of the cube: {} {} {}.'.format(*cu))
+            raise ValueError('Cubochoric coordinate outside of the cube: {} {} {}.'.format(*cu))
 
         ho = Rotation.cu2ho(cu)
         if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
@@ -408,14 +408,20 @@ class Rotation:
     def from_random(shape=None):
         if shape is None:
             r = np.random.random(3)
-        else:
+        elif hasattr(shape, '__iter__'):
             r = np.random.random(tuple(shape)+(3,))
+        else:
+            r = np.random.random((shape,3))
+
         A = np.sqrt(r[...,2])
         B = np.sqrt(1.0-r[...,2])
-        return Rotation(np.block([np.cos(2.0*np.pi*r[...,0])*A,
-                                  np.sin(2.0*np.pi*r[...,1])*B,
-                                  np.cos(2.0*np.pi*r[...,1])*B,
-                                  np.sin(2.0*np.pi*r[...,0])*A])).standardize()
+        q = np.stack([np.cos(2.0*np.pi*r[...,0])*A,
+                      np.sin(2.0*np.pi*r[...,1])*B,
+                      np.cos(2.0*np.pi*r[...,1])*B,
+                      np.sin(2.0*np.pi*r[...,0])*A],axis=-1)
+
+        return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q).standardize()
+
 
     # for compatibility (old names do not follow convention)
     fromQuaternion = from_quaternion
@@ -820,12 +826,11 @@ class Rotation:
                 c = np.cos(ax[3]*0.5)
                 s = np.sin(ax[3]*0.5)
                 qu = np.array([ c, ax[0]*s, ax[1]*s, ax[2]*s ])
-            return qu
         else:
             c = np.cos(ax[...,3:4]*.5)
             s = np.sin(ax[...,3:4]*.5)
             qu = np.where(np.abs(ax[...,3:4])<1.e-6,[1.0, 0.0, 0.0, 0.0],np.block([c, ax[...,:3]*s]))
-            return qu
+        return qu
 
     @staticmethod
     def ax2om(ax):
@@ -871,7 +876,7 @@ class Rotation:
                 # 180 degree case
                 ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
                       [np.tan(ax[3]*0.5)]
-            return np.array(ro)
+            ro = np.array(ro)
         else:
             ro = np.block([ax[...,:3],
                            np.where(np.isclose(ax[...,3:4],np.pi,atol=1.e-15,rtol=.0),
@@ -879,7 +884,7 @@ class Rotation:
                                     np.tan(ax[...,3:4]*0.5))
                           ])
             ro[np.abs(ax[...,3])<1.e-6] = [.0,.0,_P,.0]
-            return ro
+        return ro
 
     @staticmethod
     def ax2ho(ax):
@@ -887,11 +892,10 @@ class Rotation:
         if len(ax.shape) == 1:
             f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
             ho = ax[0:3] * f
-            return ho
         else:
             f = (0.75 * ( ax[...,3:4] - np.sin(ax[...,3:4]) ))**(1.0/3.0)
             ho = ax[...,:3] * f
-            return ho
+        return ho
 
     @staticmethod
     def ax2cu(ax):
@@ -948,7 +952,6 @@ class Rotation:
             f = np.where(np.isfinite(ro[...,3:4]),2.0*np.arctan(ro[...,3:4]) -np.sin(2.0*np.arctan(ro[...,3:4])),np.pi)
             ho = np.where(np.broadcast_to(np.sum(ro[...,0:3]**2.0,axis=-1,keepdims=True) < 1.e-6,ro[...,0:3].shape),
                           np.zeros(3), ro[...,0:3]* (0.75*f)**(1.0/3.0))
-
         return ho
 
     @staticmethod
