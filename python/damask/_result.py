@@ -68,12 +68,12 @@ class Result:
             self.con_physics = []
             for c in self.constituents:
                 self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
-            self.con_physics = list(set(self.con_physics))                                            # make unique
+            self.con_physics = list(set(self.con_physics))                                          # make unique
 
             self.mat_physics = []
             for m in self.materialpoints:
                 self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
-            self.mat_physics = list(set(self.mat_physics))                                            # make unique
+            self.mat_physics = list(set(self.mat_physics))                                          # make unique
 
         self.selection = {'increments':     self.increments,
                           'constituents':   self.constituents,'materialpoints': self.materialpoints,
@@ -86,13 +86,19 @@ class Result:
     def __repr__(self):
         """Show selected data."""
         all_selected_increments = self.selection['increments']
+
         self.pick('increments',all_selected_increments[0:1])
         first = self.list_data()
+
         self.pick('increments',all_selected_increments[-1:])
-        last  = self.list_data()
+        last  = '' if len(all_selected_increments) < 2 else self.list_data()
+
         self.pick('increments',all_selected_increments)
-        in_between = ''.join(['\n{}\n  ...\n'.format(inc) for inc in all_selected_increments[1:-2]])
-        return util.srepr(first+ in_between + last)
+
+        in_between = '' if len(all_selected_increments) < 3 else \
+                     ''.join(['\n{}\n  ...\n'.format(inc) for inc in all_selected_increments[1:-2]])
+
+        return util.srepr(first + in_between + last)
 
 
     def _manage_selection(self,action,what,datasets):
@@ -1009,7 +1015,7 @@ class Result:
                 continue
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
-                try:
+                try:                                                                                # ToDo: Replace if exists?
                     dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
                     for l,v in result[1]['meta'].items():
                         dataset.attrs[l]=v.encode()
