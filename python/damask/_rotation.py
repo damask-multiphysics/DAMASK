@@ -166,7 +166,7 @@ class Rotation:
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
-    def asQuaternion(self):
+    def as_quaternion(self):
         """
         Unit quaternion [q, p_1, p_2, p_3].
 
@@ -178,8 +178,8 @@ class Rotation:
         """
         return self.quaternion
 
-    def asEulers(self,
-                 degrees = False):
+    def as_Eulers(self,
+                  degrees = False):
         """
         Bunge-Euler angles: (φ_1, ϕ, φ_2).
 
@@ -193,9 +193,9 @@ class Rotation:
         if degrees: eu = np.degrees(eu)
         return eu
 
-    def asAxisAngle(self,
-                    degrees = False,
-                    pair = False):
+    def as_axis_angle(self,
+                      degrees = False,
+                      pair = False):
         """
         Axis angle representation [n_1, n_2, n_3, ω] unless pair == True: ([n_1, n_2, n_3], ω).
 
@@ -208,15 +208,15 @@ class Rotation:
 
         """
         ax = Rotation.qu2ax(self.quaternion)
-        if degrees: ax[3] = np.degrees(ax[3])
-        return (ax[:3],np.degrees(ax[3])) if pair else ax
+        if degrees: ax[...,3] = np.degrees(ax[...,3])
+        return (ax[...,:3],ax[...,3]) if pair else ax
 
-    def asMatrix(self):
+    def as_matrix(self):
         """Rotation matrix."""
         return Rotation.qu2om(self.quaternion)
 
-    def asRodrigues(self,
-                    vector = False):
+    def as_Rodrigues(self,
+                     vector = False):
         """
         Rodrigues-Frank vector representation [n_1, n_2, n_3, tan(ω/2)] unless vector == True: [n_1, n_2, n_3] * tan(ω/2).
 
@@ -227,9 +227,9 @@ class Rotation:
 
         """
         ro = Rotation.qu2ro(self.quaternion)
-        return ro[:3]*ro[3] if vector else ro
+        return ro[...,:3]*ro[...,3] if vector else ro
 
-    def asHomochoric(self):
+    def as_homochoric(self):
         """Homochoric vector: (h_1, h_2, h_3)."""
         return Rotation.qu2ho(self.quaternion)
 
@@ -237,7 +237,7 @@ class Rotation:
         """Cubochoric vector: (c_1, c_2, c_3)."""
         return Rotation.qu2cu(self.quaternion)
 
-    def asM(self):
+    def M(self): # ToDo not sure about the name: as_M or M? we do not have a from_M
         """
         Intermediate representation supporting quaternion averaging.
 
@@ -247,12 +247,20 @@ class Rotation:
         https://doi.org/10.2514/1.28949
 
         """
-        return np.outer(self.quaternion,self.quaternion)
+        return np.einsum('...i,...j',self.quaternion,self.quaternion)
 
+    # for compatibility (old names do not follow convention)
+    asM          = M
+    asQuaternion = as_quaternion
+    asEulers     = as_Eulers
+    asAxisAngle  = as_axis_angle
+    asMatrix     = as_matrix
+    asRodrigues  = as_Rodrigues
+    asHomochoric = as_homochoric
 
     ################################################################################################
-    # static constructors. The input data needs to follow the convention, options allow to
-    # relax these convections
+    # Static constructors. The input data needs to follow the conventions, options allow to
+    # relax the conventions.
     @staticmethod
     def from_quaternion(quaternion,
                         acceptHomomorph = False,
