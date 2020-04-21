@@ -90,7 +90,7 @@ def divergence(size,field):
 
 def gradient(size,field):
     """
-    Calculate gradient of a scalar or tensor field in Fourier space.
+    Calculate gradient of a scalar or vector field in Fourier space.
 
     Parameters
     ----------
