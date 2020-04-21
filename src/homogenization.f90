@@ -184,8 +184,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     e, &                                                                                            !< element number
     mySource, &
     myNgrains
-  real(pReal), dimension(3,3) :: &
-    subF
   real(pReal), dimension(discretization_nIP,discretization_nElem) :: &
     subFrac, &
     subStep
@@ -376,16 +374,15 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
-! based on materialpoint_subF0,.._subF,crystallite_partionedF0, and homogenization_state,
-! results in crystallite_partionedF
-      !$OMP PARALLEL DO PRIVATE(myNgrains,subF)
+      !$OMP PARALLEL DO PRIVATE(myNgrains)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if(requested(i,e) .and. .not. doneAndHappy(1,i,e)) then                                   ! requested but not yet done
-            subF = materialpoint_F0(1:3,1:3,i,e) &
-                 + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e))*(subStep(i,e)+subFrac(i,e))
-            call partitionDeformation(subF,i,e)                                                     ! partition deformation onto constituents
+            call partitionDeformation(materialpoint_F0(1:3,1:3,i,e) &
+                                      + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e))&
+                                         *(subStep(i,e)+subFrac(i,e)), &
+                                      i,e)
             crystallite_dt(1:myNgrains,i,e) = dt*subStep(i,e)                                       ! propagate materialpoint dt to grains
             crystallite_requested(1:myNgrains,i,e) = .true.                                         ! request calculation for constituents
           else
@@ -397,23 +394,22 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
 !--------------------------------------------------------------------------------------------------
 ! crystallite integration
-! based on crystallite_partionedF0,.._partionedF
-! incrementing by crystallite_dt
-
       converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
 !--------------------------------------------------------------------------------------------------
 ! state update
-     !$OMP PARALLEL DO PRIVATE(subF)
+     !$OMP PARALLEL DO
       elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (requested(i,e) .and. .not. doneAndHappy(1,i,e)) then
             if (.not. converged(i,e)) then
               doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
-              subF = materialpoint_F0(1:3,1:3,i,e) &
-                   + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e))*(subStep(i,e)+subFrac(i,e))
-              doneAndHappy(1:2,i,e) = updateState(dt*subStep(i,e),subF,i,e)
+              doneAndHappy(1:2,i,e) = updateState(dt*subStep(i,e), &
+                                                  materialpoint_F0(1:3,1:3,i,e) &
+                                                  + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e)) &
+                                                     *(subStep(i,e)+subFrac(i,e)), &
+                                                 i,e)
               converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy
             endif
           endif

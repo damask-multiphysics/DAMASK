@@ -24,6 +24,10 @@ def reference_dir(reference_dir_base):
 
 class TestResult:
 
+    def test_self_report(self,default):
+        print(default)
+
+
     def test_time_increments(self,default):
         shape = default.read_dataset(default.get_dataset_location('F'),0).shape
         default.set_by_time(0.0,20.0)
