@@ -984,7 +984,7 @@ recursive subroutine tList_finalize(self)
   current => self%first
   do while (associated(current))
    next => current%next
-   deallocate(current%node)
+   if(allocated(current%node)) deallocate(current%node)
    current => next
   end do
   nullify(self%first)
