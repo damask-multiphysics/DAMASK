@@ -33,25 +33,43 @@ module types
       asList       => tNode_asList
     procedure :: &
       asDict       => tNode_asDict
+   procedure :: &
+      tNode_get_byIndex           => tNode_get_byIndex
     procedure :: &
-      tNode_get_byIndex, &
-      tNode_get_byIndex_asFloat, &
-      tNode_get_byIndex_asFloats, &
-      tNode_get_byIndex_asInt, &
-      tNode_get_byIndex_asInts, &
-      tNode_get_byIndex_asBool, &
-      tNode_get_byIndex_asBools, &
-      tNode_get_byIndex_asString, &
-      tNode_get_byIndex_asStrings, &
-      tNode_get_byKey, &
-      tNode_get_byKey_asFloat, &
-      tNode_get_byKey_asFloats, &
-      tNode_get_byKey_asInt, &
-      tNode_get_byKey_asInts, &
-      tNode_get_byKey_asBool, &
-      tNode_get_byKey_asBools, &
-      tNode_get_byKey_asString, &
-      tNode_get_byKey_asStrings
+      tNode_get_byIndex_asFloat   => tNode_get_byIndex_asFloat
+    procedure :: &
+      tNode_get_byIndex_asFloats  => tNode_get_byIndex_asFloats
+    procedure :: &
+      tNode_get_byIndex_asInt     => tNode_get_byIndex_asInt
+    procedure :: &
+      tNode_get_byIndex_asInts    => tNode_get_byIndex_asInts
+    procedure :: &
+      tNode_get_byIndex_asBool    => tNode_get_byIndex_asBool
+    procedure :: &
+      tNode_get_byIndex_asBools   => tNode_get_byIndex_asBools
+    procedure :: &
+      tNode_get_byIndex_asString  => tNode_get_byIndex_asString
+    procedure :: &
+      tNode_get_byIndex_asStrings => tNode_get_byIndex_asStrings
+    procedure :: &
+      tNode_get_byKey             => tNode_get_byKey
+    procedure :: &
+      tNode_get_byKey_asFloat     => tNode_get_byKey_asFloat
+    procedure :: &
+      tNode_get_byKey_asFloats    => tNode_get_byKey_asFloats
+    procedure :: &
+      tNode_get_byKey_asInt       => tNode_get_byKey_asInt
+    procedure :: &
+      tNode_get_byKey_asInts      => tNode_get_byKey_asInts
+    procedure :: &
+      tNode_get_byKey_asBool      => tNode_get_byKey_asBool
+    procedure :: &
+      tNode_get_byKey_asBools     => tNode_get_byKey_asBools
+    procedure :: &
+      tNode_get_byKey_asString    => tNode_get_byKey_asString
+    procedure :: &
+      tNode_get_byKey_asStrings   => tNode_get_byKey_asStrings
+    
     generic :: &
       get           => tNode_get_byIndex, &
                        tNode_get_byKey
