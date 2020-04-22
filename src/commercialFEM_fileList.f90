@@ -12,7 +12,6 @@
 #include "LAPACK_interface.f90"
 #include "math.f90"
 #include "quaternions.f90"
-#include "Lambert.f90"
 #include "rotations.f90"
 #include "FEsolving.f90"
 #include "element.f90"
