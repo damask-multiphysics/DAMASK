@@ -49,6 +49,11 @@ class TestMechanics:
         assert np.allclose(mechanics.Cauchy(P,np.broadcast_to(np.eye(3),(self.n,3,3))),
                            mechanics.symmetric(P))
 
+    def test_deviatoric_part(self):
+        I_n = np.broadcast_to(np.eye(3),(self.n,3,3))
+        r   = np.logical_not(I_n)*np.random.rand(self.n,3,3)
+        assert np.allclose(mechanics.deviatoric_part(I_n+r),r)
+
     def test_polar_decomposition(self):
         """F = RU = VR."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
