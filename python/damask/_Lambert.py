@@ -32,9 +32,9 @@
 
 import numpy as np
 
-sc   = np.pi**(1./6.)/6.**(1./6.)
-beta = np.pi**(5./6.)/6.**(1./6.)/2.
-R1   = (3.*np.pi/4.)**(1./3.)
+_sc   = np.pi**(1./6.)/6.**(1./6.)
+_beta = np.pi**(5./6.)/6.**(1./6.)/2.
+_R1   = (3.*np.pi/4.)**(1./3.)
 
 def cube_to_ball(cube):
     """
@@ -59,7 +59,7 @@ def cube_to_ball(cube):
     else:
         # get pyramide and scale by grid parameter ratio
         p = _get_order(cube_)
-        XYZ = cube_[p[0]] * sc
+        XYZ = cube_[p[0]] * _sc
 
         # intercept all the points along the z-axis
         if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
@@ -69,7 +69,7 @@ def cube_to_ball(cube):
             q = np.pi/12.0 * XYZ[order[0]]/XYZ[order[1]]
             c = np.cos(q)
             s = np.sin(q)
-            q = R1*2.0**0.25/beta * XYZ[order[1]] / np.sqrt(np.sqrt(2.0)-c)
+            q = _R1*2.0**0.25/_beta * XYZ[order[1]] / np.sqrt(np.sqrt(2.0)-c)
             T = np.array([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
 
             # transform to sphere grid (inverse Lambert)
@@ -101,7 +101,7 @@ def ball_to_cube(ball):
     https://doi.org/10.1088/0965-0393/22/7/075013
 
     """
-    ball_ = ball/np.linalg.norm(ball)*R1 if np.isclose(np.linalg.norm(ball),R1,atol=1e-6) else ball
+    ball_ = ball/np.linalg.norm(ball)*_R1 if np.isclose(np.linalg.norm(ball),_R1,atol=1e-6) else ball
     rs = np.linalg.norm(ball_)
 
     if np.allclose(ball_,0.0,rtol=0.0,atol=1.0e-16):
@@ -121,14 +121,14 @@ def ball_to_cube(ball):
         else:
             q2 = qxy + np.max(np.abs(xyz2))**2
             sq2 = np.sqrt(q2)
-            q = (beta/np.sqrt(2.0)/R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2))*sq2))
+            q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2))*sq2))
             tt = np.clip((np.min(np.abs(xyz2))**2+np.max(np.abs(xyz2))*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
             Tinv = np.array([1.0,np.arccos(tt)/np.pi*12.0]) if np.abs(xyz2[1]) <= np.abs(xyz2[0]) else \
                    np.array([np.arccos(tt)/np.pi*12.0,1.0])
             Tinv = q * np.where(xyz2<0.0,-Tinv,Tinv)
 
         # inverse M_1
-        cube = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /sc
+        cube = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
         # reverse the coordinates back to the regular order according to the original pyramid number
         cube = cube[p[1]]
 
