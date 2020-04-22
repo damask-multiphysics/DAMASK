@@ -49,7 +49,7 @@ for name in filenames:
     for label in options.labels:
         field = table.get(label)
         shape = (1,) if np.prod(field.shape)//np.prod(grid) == 1 else (3,)                          # scalar or vector
-        field = field.reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+shape)
+        field = field.reshape(tuple(grid)+(-1,),order='F')
         grad  = damask.grid_filters.gradient(size,field)
         table.add('gradFFT({})'.format(label),
                   grad.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape)*3,order='F'),
