@@ -31,6 +31,10 @@ module IO
     IO_stringValue, &
     IO_floatValue, &
     IO_intValue, &
+    IO_stringAsInt, &
+    IO_stringAsFloat, &
+    IO_stringAsBool, &
+    IO_rmComment, &
     IO_lc, &
     IO_error, &
     IO_warning
@@ -250,7 +254,7 @@ integer function IO_intValue(string,chunkPos,myChunk)
   integer, dimension(:), intent(in) :: chunkPos                                                     !< positions of start and end of each tag/chunk in given string
   integer,               intent(in) :: myChunk                                                      !< position number of desired chunk
 
-  IO_intValue = verifyIntValue(IO_stringValue(string,chunkPos,myChunk))
+  IO_intValue = IO_stringAsInt(IO_stringValue(string,chunkPos,myChunk))
 
 end function IO_intValue
 
@@ -264,7 +268,7 @@ real(pReal) function IO_floatValue(string,chunkPos,myChunk)
   integer,   dimension(:), intent(in) :: chunkPos                                                   !< positions of start and end of each tag/chunk in given string
   integer,                 intent(in) :: myChunk                                                    !< position number of desired chunk
 
-  IO_floatValue = verifyFloatValue(IO_stringValue(string,chunkPos,myChunk))
+  IO_floatValue = IO_stringAsFloat(IO_stringValue(string,chunkPos,myChunk))
 
 end function IO_floatValue
 
@@ -335,7 +339,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid character for int:'
     case (112)
       msg = 'invalid character for float:'
-
+    case (113)
+      msg = 'invalid character for logical:'
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
     case (130)
@@ -607,12 +612,9 @@ end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
-! internal helper functions
-
+!> @brief return verified integer value in given string
 !--------------------------------------------------------------------------------------------------
-!> @brief returns verified integer value in given string
-!--------------------------------------------------------------------------------------------------
-integer function verifyIntValue(string)
+integer function IO_stringAsInt(string)
 
   character(len=*), intent(in) :: string                                                            !< string for conversion to int value
 
@@ -620,20 +622,20 @@ integer function verifyIntValue(string)
   character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
 
   valid: if (verify(string,VALIDCHARS) == 0) then
-    read(string,*,iostat=readStatus) verifyIntValue
+    read(string,*,iostat=readStatus) IO_stringAsInt
     if (readStatus /= 0) call IO_error(111,ext_msg=string)
   else valid
-    verifyIntValue = 0
+    IO_stringAsInt = 0
     call IO_error(111,ext_msg=string)
   endif valid
 
-end function verifyIntValue
+end function IO_stringAsInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns verified float value in given string
+!> @brief return verified float value in given string
 !--------------------------------------------------------------------------------------------------
-real(pReal) function verifyFloatValue(string)
+real(pReal) function IO_stringAsFloat(string)
 
   character(len=*), intent(in) :: string                                                            !< string for conversion to float value
 
@@ -641,14 +643,54 @@ real(pReal) function verifyFloatValue(string)
   character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
 
   valid: if (verify(string,VALIDCHARS) == 0) then
-    read(string,*,iostat=readStatus) verifyFloatValue
+    read(string,*,iostat=readStatus) IO_stringAsFloat
     if (readStatus /= 0) call IO_error(112,ext_msg=string)
   else valid
-    verifyFloatValue = 0.0_pReal
+    IO_stringAsFloat = 0.0_pReal
     call IO_error(112,ext_msg=string)
   endif valid
 
-end function verifyFloatValue
+end function IO_stringAsFloat
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return verified logical value in given string
+!--------------------------------------------------------------------------------------------------
+logical function IO_stringAsBool(string)
+
+  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
+
+  if     (trim(adjustl(string)) == 'True') then
+    IO_stringAsBool = .true.
+  elseif (trim(adjustl(string)) == 'False') then
+    IO_stringAsBool = .false.
+  else
+    IO_stringAsBool = .false.
+    call IO_error(113,ext_msg=string)
+  endif
+
+end function IO_stringAsBool
+
+
+!--------------------------------------------------------------------------------------------------
+! @brief Remove comments (characters beyond '#') and trailing space
+! ToDo: Discuss name (the trim aspect is not clear)
+!--------------------------------------------------------------------------------------------------
+function IO_rmComment(line)
+
+  character(len=*), intent(in)  :: line
+  character(len=:), allocatable :: IO_rmComment
+  integer :: split
+
+  split = index(line,IO_COMMENT)
+
+  if (split == 0) then
+    IO_rmComment = trim(line)
+  else
+    IO_rmComment = trim(line(:split-1))
+  endif
+
+end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
@@ -659,14 +701,19 @@ subroutine unitTest
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
 
-  if(dNeq(1.0_pReal, verifyFloatValue('1.0')))      call IO_error(0,ext_msg='verifyFloatValue')
-  if(dNeq(1.0_pReal, verifyFloatValue('1e0')))      call IO_error(0,ext_msg='verifyFloatValue')
-  if(dNeq(0.1_pReal, verifyFloatValue('1e-1')))     call IO_error(0,ext_msg='verifyFloatValue')
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
+  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     call IO_error(0,ext_msg='IO_stringAsFloat')
 
-  if(3112019  /= verifyIntValue( '3112019'))        call IO_error(0,ext_msg='verifyIntValue')
-  if(3112019  /= verifyIntValue(' 3112019'))        call IO_error(0,ext_msg='verifyIntValue')
-  if(-3112019 /= verifyIntValue('-3112019'))        call IO_error(0,ext_msg='verifyIntValue')
-  if(3112019  /= verifyIntValue('+3112019 '))       call IO_error(0,ext_msg='verifyIntValue')
+  if(3112019  /= IO_stringAsInt( '3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
+  if(3112019  /= IO_stringAsInt(' 3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
+  if(-3112019 /= IO_stringAsInt('-3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
+  if(3112019  /= IO_stringAsInt('+3112019 '))       call IO_error(0,ext_msg='IO_stringAsInt')
+
+  if(.not. IO_stringAsBool(' True'))                call IO_error(0,ext_msg='IO_stringAsBool')
+  if(.not. IO_stringAsBool(' True '))               call IO_error(0,ext_msg='IO_stringAsBool')
+  if(      IO_stringAsBool(' False'))               call IO_error(0,ext_msg='IO_stringAsBool')
+  if(      IO_stringAsBool('False'))                call IO_error(0,ext_msg='IO_stringAsBool')
 
   if(any([1,1,1]     /= IO_stringPos('a')))         call IO_error(0,ext_msg='IO_stringPos')
   if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     call IO_error(0,ext_msg='IO_stringPos')
@@ -682,6 +729,21 @@ subroutine unitTest
   if(.not. IO_isBlank('  '))                        call IO_error(0,ext_msg='IO_isBlank/1')
   if(.not. IO_isBlank('  #isBlank'))                call IO_error(0,ext_msg='IO_isBlank/2')
   if(      IO_isBlank('  i#s'))                     call IO_error(0,ext_msg='IO_isBlank/3')
+
+  str = IO_rmComment('#')
+  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/1')
+  str = IO_rmComment(' #')
+  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/2')
+  str = IO_rmComment(' # ')
+  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/3')
+  str = IO_rmComment(' # a')
+  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/4')
+  str = IO_rmComment(' # a')
+  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/5')
+  str = IO_rmComment(' a#')
+  if (str /= ' a' .or. len(str) /= 2)               call IO_error(0,ext_msg='IO_rmComment/6')
+  str = IO_rmComment(' ab #')
+  if (str /= ' ab'.or. len(str) /= 3)               call IO_error(0,ext_msg='IO_rmComment/7')
 
 end subroutine unitTest
 
