@@ -4,18 +4,18 @@ import numpy as np
 from damask import grid_filters
 
 class TestGridFilters:
-   
+
     def test_cell_coord0(self):
          size = np.random.random(3)
          grid = np.random.randint(8,32,(3))
          coord = grid_filters.cell_coord0(grid,size)
-         assert np.allclose(coord[0,0,0],size/grid*.5) and coord.shape == tuple(grid[::-1]) + (3,)
+         assert np.allclose(coord[0,0,0],size/grid*.5) and coord.shape == tuple(grid) + (3,)
 
     def test_node_coord0(self):
          size = np.random.random(3)
          grid = np.random.randint(8,32,(3))
          coord = grid_filters.node_coord0(grid,size)
-         assert np.allclose(coord[-1,-1,-1],size) and coord.shape == tuple(grid[::-1]+1) + (3,)
+         assert np.allclose(coord[-1,-1,-1],size) and coord.shape == tuple(grid+1) + (3,)
 
     def test_coord0(self):
          size = np.random.random(3)
@@ -31,7 +31,7 @@ class TestGridFilters:
          size   = np.random.random(3)
          origin = np.random.random(3)
          coord0 = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))                     # noqa
-         _grid,_size,_origin = eval('grid_filters.{}_coord0_gridSizeOrigin(coord0.reshape(-1,3))'.format(mode))
+         _grid,_size,_origin = eval('grid_filters.{}_coord0_gridSizeOrigin(coord0.reshape(-1,3,order="F"))'.format(mode))
          assert np.allclose(grid,_grid) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
     def test_displacement_fluct_equivalence(self):
@@ -57,9 +57,9 @@ class TestGridFilters:
          shifted   = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))
          unshifted = eval('grid_filters.{}_coord0(grid,size)'.format(mode))
          if   mode == 'cell':
-            assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(grid[::-1])  +(3,)))
+            assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(grid)  +(3,)))
          elif mode == 'node':
-            assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(grid[::-1]+1)+(3,)))
+            assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(grid+1)+(3,)))
 
     @pytest.mark.parametrize('function',[grid_filters.cell_displacement_avg,
                                          grid_filters.node_displacement_avg])
@@ -80,8 +80,43 @@ class TestGridFilters:
          F    = np.broadcast_to(np.random.random((3,3)), tuple(grid)+(3,3))
          assert np.allclose(function(size,F),0.0)
 
+    @pytest.mark.parametrize('function',[grid_filters.coord0_check,
+                                         grid_filters.node_coord0_gridSizeOrigin,
+                                         grid_filters.cell_coord0_gridSizeOrigin])
+    def test_invalid_coordinates(self,function):
+        invalid_coordinates = np.random.random((np.random.randint(12,52),3))
+        with pytest.raises(ValueError):
+            function(invalid_coordinates)
+
+    @pytest.mark.parametrize('function',[grid_filters.node_coord0_gridSizeOrigin,
+                                         grid_filters.cell_coord0_gridSizeOrigin])
+    def test_uneven_spaced_coordinates(self,function):
+        start = np.random.random(3)
+        end   = np.random.random(3)*10. + start
+        grid  = np.random.randint(8,32,(3))
+        uneven = np.stack(np.meshgrid(np.logspace(start[0],end[0],grid[0]),
+                                      np.logspace(start[1],end[1],grid[1]),
+                                      np.logspace(start[2],end[2],grid[2]),indexing = 'ij'),
+                           axis = -1).reshape((grid.prod(),3),order='F')
+        with pytest.raises(ValueError):
+            function(uneven)
+
+    @pytest.mark.parametrize('mode',[True,False])
+    @pytest.mark.parametrize('function',[grid_filters.node_coord0_gridSizeOrigin,
+                                         grid_filters.cell_coord0_gridSizeOrigin])
+    def test_unordered_coordinates(self,function,mode):
+        origin = np.random.random(3)
+        size   = np.random.random(3)*10.+origin
+        grid  = np.random.randint(8,32,(3))
+        unordered = grid_filters.node_coord0(grid,size,origin).reshape(-1,3)
+        if mode:
+            with pytest.raises(ValueError):
+                function(unordered,mode)
+        else:
+            function(unordered,mode)
+
     def test_regrid(self):
          size = np.random.random(3)
          grid = np.random.randint(8,32,(3))
-         F    = np.broadcast_to(np.eye(3), tuple(grid[::-1])+(3,3))
+         F    = np.broadcast_to(np.eye(3), tuple(grid)+(3,3))
          assert all(grid_filters.regrid(size,F,grid) == np.arange(grid.prod()))

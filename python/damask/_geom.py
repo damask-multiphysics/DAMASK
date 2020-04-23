@@ -322,11 +322,10 @@ class Geom:
         if i != grid.prod():
             raise TypeError('Invalid file: expected {} entries, found {}'.format(grid.prod(),i))
 
-        microstructure = microstructure.reshape(grid,order='F')
-        if not np.any(np.mod(microstructure.flatten(),1) != 0.0):                                   # no float present
+        if not np.any(np.mod(microstructure,1) != 0.0):                                             # no float present
             microstructure = microstructure.astype('int')
 
-        return Geom(microstructure.reshape(grid),size,origin,homogenization,comments)
+        return Geom(microstructure.reshape(grid,order='F'),size,origin,homogenization,comments)
 
 
     @staticmethod
@@ -352,16 +351,15 @@ class Geom:
 
         """
         if periodic:
-            weights_p = np.tile(weights,27).flatten(order='F')                                      # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
+            weights_p = np.tile(weights,27)                                                         # Laguerre weights (1,2,3,1,2,3,...,1,2,3)
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-            coords  = grid_filters.cell_coord0(grid*3,size*3,-size).reshape(-1,3,order='F')
-
+            coords  = grid_filters.cell_coord0(grid*3,size*3,-size).reshape(-1,3)
         else:
-            weights_p = weights.flatten()
+            weights_p = weights
             seeds_p   = seeds
-            coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+            coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
         pool = multiprocessing.Pool(processes = int(Environment().options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
@@ -396,7 +394,7 @@ class Geom:
             perform a periodic tessellation. Defaults to True.
 
         """
-        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3)
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
