@@ -67,7 +67,7 @@ subroutine source_thermal_dissipation_init
     prm%kappa = config%getFloat('dissipation_coldworkcoeff')
 
     NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,0,0,0)
+    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,0,0,0)
 
     end associate
   enddo
