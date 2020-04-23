@@ -214,7 +214,7 @@ subroutine unitTest
     call l1%append(s2)
     call l2%append(l1)
     n=> l1
-
+ 
     if(any(l1%asBools() .neqv. [.true., .false.]))           call IO_error(0,ext_msg='tList_asBools')
     if(any(l1%asStrings() /=   ['True ','False']))           call IO_error(0,ext_msg='tList_asStrings')
     if(n%get_asBool(2))                                      call IO_error(0,ext_msg='byIndex_asBool')
@@ -960,13 +960,13 @@ recursive subroutine tDict_finalize(self)
 
   type (tItem),pointer :: current, &
                           next
+  
   current => self%first
   do while (associated(current))
    next => current%next
-   deallocate(current%node)
+   deallocate(current)
    current => next
   end do
-  nullify(self%first)
 
 end subroutine tDict_finalize
 
@@ -981,13 +981,13 @@ recursive subroutine tList_finalize(self)
 
   type (tItem),pointer :: current, &
                           next
+  
   current => self%first
   do while (associated(current))
    next => current%next
-   if(allocated(current%node)) deallocate(current%node)
+   deallocate(current)
    current => next
   end do
-  nullify(self%first)
 
 end subroutine tList_finalize
 
