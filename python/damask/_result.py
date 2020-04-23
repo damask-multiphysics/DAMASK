@@ -80,7 +80,7 @@ class Result:
                           'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
                          }
 
-        self.fname = fname
+        self.fname = os.path.abspath(fname)
 
 
     def __repr__(self):
