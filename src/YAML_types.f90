@@ -138,7 +138,6 @@ module types
     contains
     procedure :: asFormattedString => tDict_asFormattedString
     procedure :: set               => tDict_set
-    final :: tDict_finalize
   end type tDict
 
 
@@ -951,28 +950,7 @@ end subroutine tDict_set
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  empties dictionary and frees associated memory
-!> @details called when variable goes out of scope. Triggers a chain reaction
-!--------------------------------------------------------------------------------------------------
-recursive subroutine tDict_finalize(self)
-
-  type (tDict),intent(inout) :: self
-
-  type (tItem),pointer :: current, &
-                          next
-  
-  current => self%first
-  do while (associated(current))
-   next => current%next
-   deallocate(current)
-   current => next
-  end do
-
-end subroutine tDict_finalize
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief empties lists and free associated memory
+!> @brief empties lists and dicts and free associated memory
 !> @details called when variable goes out of scope.
 !--------------------------------------------------------------------------------------------------
 recursive subroutine tList_finalize(self)
