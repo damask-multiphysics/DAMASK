@@ -320,6 +320,7 @@ module subroutine plastic_nonlocal_init
       prm%fEdgeMultiplication         = config%getFloat('edgemultiplication')
       prm%shortRangeStressCorrection  = config%keyExists('/shortrangestresscorrection/')
 
+
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
       if (any(prm%burgers          <  0.0_pReal)) extmsg = trim(extmsg)//' burgers'
@@ -384,9 +385,9 @@ module subroutine plastic_nonlocal_init
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
+    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
-    plasticState(p)%nonlocal = .true.
+    plasticState(p)%nonlocal         = config%KeyExists('/nonlocal/')
     plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
 
     st0%rho => plasticState(p)%state0                             (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)

@@ -20,8 +20,7 @@ module numerics
    iJacoStiffness             =  1, &                                                               !< frequency of stiffness update
    randomSeed                 =  0, &                                                               !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    worldrank                  =  0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
-   worldsize                  =  1, &                                                               !< MPI worldsize (/=1 for MPI simulations only)
-   numerics_integrator        =  1                                                                  !< method used for state integration Default 1: fix-point iteration
+   worldsize                  =  1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
@@ -134,8 +133,6 @@ subroutine numerics_init
          defgradTolerance = IO_floatValue(line,chunkPos,2)
        case ('ijacostiffness')
          iJacoStiffness = IO_intValue(line,chunkPos,2)
-       case ('integrator')
-         numerics_integrator = IO_intValue(line,chunkPos,2)
        case ('usepingpong')
          usepingpong = IO_intValue(line,chunkPos,2) > 0
        case ('unitlength')
@@ -176,6 +173,11 @@ subroutine numerics_init
        case ('maxstaggerediter')
          stagItMax = IO_intValue(line,chunkPos,2)
 
+#ifdef PETSC
+       case ('petsc_options')
+         petsc_options = trim(line(chunkPos(4):))
+#endif
+
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Grid
@@ -187,8 +189,6 @@ subroutine numerics_init
          err_stress_tolrel = IO_floatValue(line,chunkPos,2)
        case ('err_stress_tolabs')
          err_stress_tolabs = IO_floatValue(line,chunkPos,2)
-       case ('petsc_options')
-         petsc_options = trim(line(chunkPos(4):))
        case ('err_curl_tolabs')
          err_curl_tolAbs = IO_floatValue(line,chunkPos,2)
        case ('err_curl_tolrel')
@@ -206,8 +206,6 @@ subroutine numerics_init
          integrationorder = IO_intValue(line,chunkPos,2)
        case ('structorder')
          structorder = IO_intValue(line,chunkPos,2)
-       case ('petsc_options')
-         petsc_options = trim(line(chunkPos(4):))
        case ('bbarstabilisation')
          BBarStabilisation = IO_intValue(line,chunkPos,2) > 0
 #endif
@@ -223,7 +221,6 @@ subroutine numerics_init
 ! writing parameters to output
  write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
  write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
- write(6,'(a24,1x,i8)')     ' integrator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
@@ -266,7 +263,6 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
  write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
  write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
- write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -274,16 +270,17 @@ subroutine numerics_init
 #ifdef FEM
  write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
  write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
  write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
+#endif
+
+#ifdef PETSC
+ write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
  if (defgradTolerance <= 0.0_pReal)        call IO_error(301,ext_msg='defgradTolerance')
  if (iJacoStiffness < 1)                   call IO_error(301,ext_msg='iJacoStiffness')
- if (numerics_integrator <= 0 .or. numerics_integrator >= 6) &
-                                           call IO_error(301,ext_msg='integrator')
  if (numerics_unitlength <= 0.0_pReal)     call IO_error(301,ext_msg='unitlength')
  if (residualStiffness < 0.0_pReal)        call IO_error(301,ext_msg='residualStiffness')
  if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')

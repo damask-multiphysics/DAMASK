@@ -60,7 +60,7 @@ for name in filenames:
 
   table.head_read()
 
-# ------------------------------------------ process labels ---------------------------------------  
+# ------------------------------------------ process labels ---------------------------------------
 
   errors  = []
   remarks = []
@@ -80,7 +80,7 @@ for name in filenames:
     damask.util.croak(errors)
     table.close(dismiss = True)
     continue
-       
+
 # ------------------------------------------ assemble header ---------------------------------------
 
   randomSeed = int(os.urandom(4).hex(), 16) if options.randomSeed is None else options.randomSeed   # random seed per file
@@ -97,17 +97,17 @@ for name in filenames:
   for col,dim in zip(columns,dims):
     if options.unique:
       s = set(map(tuple,table.data[:,col:col+dim]))                                                 # generate set of (unique) values
-      uniques = np.array(map(np.array,s))                                                           # translate set to np.array
+      uniques = np.array(list(map(np.array,s)))                                                     # translate set to np.array
       shuffler = dict(zip(s,np.random.permutation(len(s))))                                         # random permutation
-      table.data[:,col:col+dim] = uniques[np.array(map(lambda x: shuffler[tuple(x)],
-                                                       table.data[:,col:col+dim]))]                 # fill table with mapped uniques
+      table.data[:,col:col+dim] = uniques[np.array(list(map(lambda x: shuffler[tuple(x)],
+                                                            table.data[:,col:col+dim])))]           # fill table with mapped uniques
     else:
       np.random.shuffle(table.data[:,col:col+dim])                                                  # independently shuffle every row
 
-# ------------------------------------------ output result -----------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
 
   table.data_writeArray()
 
-# ------------------------------------------ output finalization -----------------------------------  
+# ------------------------------------------ output finalization -----------------------------------
 
   table.close()                                                                                     # close ASCII tables

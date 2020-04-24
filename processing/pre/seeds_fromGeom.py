@@ -45,7 +45,7 @@ options.blacklist = [int(i) for i in options.blacklist]
 
 for name in filenames:
     damask.util.report(scriptName,name)
-    
+
     geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
     microstructure = geom.get_microstructure().reshape((-1,1),order='F')
 
@@ -53,9 +53,9 @@ for name in filenames:
                           np.full(geom.grid.prod(),True,dtype=bool),
                           np.in1d(microstructure,options.blacklist,invert=True)  if options.blacklist else \
                           np.full(geom.grid.prod(),True,dtype=bool))
-   
-    seeds = damask.grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3)
-    
+
+    seeds = damask.grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
+
     comments = geom.comments \
              + [scriptID + ' ' + ' '.join(sys.argv[1:]),
                 'grid\ta {}\tb {}\tc {}'.format(*geom.grid),

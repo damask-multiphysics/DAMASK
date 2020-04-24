@@ -327,7 +327,7 @@ module constitutive
     constitutive_initialFi, &
     constitutive_SandItsTangents, &
     constitutive_collectDotState, &
-    constitutive_collectDeltaState, &
+    constitutive_deltaState, &
     constitutive_results
 
 contains
@@ -709,12 +709,14 @@ end subroutine constitutive_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el)
+function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    el, &                                                                                              !< element
+    phase, &
+    of
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
   real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
@@ -730,16 +732,16 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
     ho, &                                                                                           !< homogenization
     tme, &                                                                                          !< thermal member position
     i, &                                                                                            !< counter in source loop
-    instance, of
+    instance
+  logical :: broken
 
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
-  of = material_phasememberAt(ipc,ip,el)
-  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
+  instance = phase_plasticityInstance(phase)
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+  plasticityType: select case (phase_plasticity(phase))
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
       call plastic_isotropic_dotState    (Mp,instance,of)
@@ -760,10 +762,11 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
       call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
                                           instance,of,ip,el)
   end select plasticityType
+  broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
 
-  SourceLoop: do i = 1, phase_Nsources(material_phaseAt(ipc,el))
+  SourceLoop: do i = 1, phase_Nsources(phase)
 
-    sourceType: select case (phase_source(i,material_phaseAt(ipc,el)))
+    sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
         call source_damage_anisoBrittle_dotState (S, ipc, ip, el) !< correct stress?
@@ -775,25 +778,29 @@ subroutine constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, 
         call source_damage_anisoDuctile_dotState (   ipc, ip, el)
 
       case (SOURCE_thermal_externalheat_ID) sourceType
-        call source_thermal_externalheat_dotState(material_phaseAt(ipc,el),of)
+        call source_thermal_externalheat_dotState(phase,of)
 
     end select sourceType
 
+    broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
+
   enddo SourceLoop
 
-end subroutine constitutive_collectDotState
+end function constitutive_collectDotState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
+function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+    el, &                                                                                           !< element
+    phase, &
+    of
   real(pReal),   intent(in), dimension(3,3) :: &
     S, &                                                                                            !< 2nd Piola Kirchhoff stress
     Fe, &                                                                                           !< elastic deformation gradient
@@ -802,35 +809,62 @@ subroutine constitutive_collectDeltaState(S, Fe, Fi, ipc, ip, el)
     Mp
   integer :: &
     i, &
-    instance, of
+    instance, &
+    myOffset, &
+    mySize
+  logical :: &
+    broken
 
   Mp  = matmul(matmul(transpose(Fi),Fi),S)
-  of = material_phasememberAt(ipc,ip,el)
-  instance = phase_plasticityInstance(material_phaseAt(ipc,el))
+  instance = phase_plasticityInstance(phase)
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+  plasticityType: select case (phase_plasticity(phase))
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
       call plastic_kinehardening_deltaState(Mp,instance,of)
+      broken = any(IEEE_is_NaN(plasticState(phase)%deltaState(:,of)))
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
       call plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
+      broken = any(IEEE_is_NaN(plasticState(phase)%deltaState(:,of)))
+
+    case default
+      broken = .false.
 
   end select plasticityType
 
-  sourceLoop: do i = 1, phase_Nsources(material_phaseAt(ipc,el))
+  if(.not. broken) then
+    select case(phase_plasticity(phase))
+      case (PLASTICITY_NONLOCAL_ID,PLASTICITY_KINEHARDENING_ID)
 
-     sourceType: select case (phase_source(i,material_phaseAt(ipc,el)))
+        myOffset = plasticState(phase)%offsetDeltaState
+        mySize   = plasticState(phase)%sizeDeltaState
+        plasticState(phase)%state(myOffset + 1:myOffset + mySize,of) = &
+        plasticState(phase)%state(myOffset + 1:myOffset + mySize,of) + plasticState(phase)%deltaState(1:mySize,of)
+    end select
+  endif
+
+
+  sourceLoop: do i = 1, phase_Nsources(phase)
+
+     sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_isoBrittle_ID) sourceType
         call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
                                                    ipc, ip, el)
+        broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%deltaState(:,of)))
+        if(.not. broken) then
+          myOffset = sourceState(phase)%p(i)%offsetDeltaState
+          mySize   = sourceState(phase)%p(i)%sizeDeltaState
+          sourceState(phase)%p(i)%state(myOffset + 1: myOffset + mySize,of) = &
+          sourceState(phase)%p(i)%state(myOffset + 1: myOffset + mySize,of) + sourceState(phase)%p(i)%deltaState(1:mySize,of)
+        endif
 
     end select sourceType
 
   enddo SourceLoop
 
-end subroutine constitutive_collectDeltaState
+end function constitutive_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
