@@ -63,7 +63,7 @@ class Rotation:
     def __repr__(self):
         """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
         if self.quaternion.shape != (4,):
-            raise NotImplementedError
+            raise NotImplementedError('Support for multiple rotations missing')
         return '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
                'Matrix:\n{}'.format(self.asMatrix()),
@@ -86,6 +86,8 @@ class Rotation:
         considere rotation of (3,3,3,3)-matrix
 
         """
+        if self.quaternion.shape != (4,):
+            raise NotImplementedError('Support for multiple rotations missing')
         if isinstance(other, Rotation):                                                             # rotate a rotation
             self_q  = self.quaternion[0]
             self_p  = self.quaternion[1:]
@@ -110,7 +112,7 @@ class Rotation:
             elif other.shape == (3,3,):                                                             # rotate a single (3x3)-matrix
                 return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
             elif other.shape == (3,3,3,3,):
-                raise NotImplementedError
+                raise NotImplementedError('Support for rotation of 4th order tensors missing')
             else:
                 return NotImplemented
         else:
@@ -133,7 +135,7 @@ class Rotation:
         return self
 
     def standardized(self):
-        """Quaternion representation with positive real."""
+        """Quaternion representation with positive real part."""
         return self.copy().standardize()
 
 
@@ -160,6 +162,8 @@ class Rotation:
             Rotation from which the average is rotated.
 
         """
+        if self.quaternion.shape != (4,) or other.quaternion.shape != (4,):
+            raise NotImplementedError('Support for multiple rotations missing')
         return Rotation.fromAverage([self,other])
 
 
@@ -1047,7 +1051,7 @@ class Rotation:
         if len(ho.shape) == 1:
             return ball_to_cube(ho)
         else:
-            raise NotImplementedError
+            raise NotImplementedError('Support for multiple rotations missing')
 
 
     #---------- Cubochoric ----------
@@ -1082,4 +1086,4 @@ class Rotation:
         if len(cu.shape) == 1:
             return cube_to_ball(cu)
         else:
-            raise NotImplementedError
+            raise NotImplementedError('Support for multiple rotations missing')
