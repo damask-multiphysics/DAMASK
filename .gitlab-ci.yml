@@ -203,7 +203,6 @@ Post_OrientationConversion:
   stage: postprocessing
   script:
     - OrientationConversion/test.py
-    - OrientationConversion/test2.py
   except:
     - master
     - release

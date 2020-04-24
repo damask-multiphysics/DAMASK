@@ -63,27 +63,27 @@ module quaternions
     module procedure assign_quat__
     module procedure assign_vec__
   end interface assignment (=)
-  
+
   interface quaternion
     module procedure init__
   end interface quaternion
-  
+
   interface abs
     procedure abs__
   end interface abs
-  
+
   interface dot_product
     procedure dot_product__
   end interface dot_product
-  
+
   interface conjg
     module procedure conjg__
   end interface conjg
-  
+
   interface exp
     module procedure exp__
   end interface exp
-  
+
   interface log
     module procedure log__
   end interface log
@@ -95,7 +95,7 @@ module quaternions
   interface aimag
     module procedure aimag__
   end interface aimag
- 
+
   public :: &
     quaternions_init, &
     assignment(=), &
@@ -118,7 +118,7 @@ end subroutine quaternions_init
 
 
 !---------------------------------------------------------------------------------------------------
-!> construct a quaternion from a 4-vector
+!> @brief construct a quaternion from a 4-vector
 !---------------------------------------------------------------------------------------------------
 type(quaternion) pure function init__(array)
 
@@ -133,7 +133,7 @@ end function init__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assign a quaternion
+!> @brief assign a quaternion
 !---------------------------------------------------------------------------------------------------
 elemental pure subroutine assign_quat__(self,other)
 
@@ -141,12 +141,12 @@ elemental pure subroutine assign_quat__(self,other)
   type(quaternion), intent(in)  :: other
 
   self = [other%w,other%x,other%y,other%z]
-  
+
 end subroutine assign_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> assign a 4-vector
+!> @brief assign a 4-vector
 !---------------------------------------------------------------------------------------------------
 pure subroutine assign_vec__(self,other)
 
@@ -162,7 +162,7 @@ end subroutine assign_vec__
 
 
 !---------------------------------------------------------------------------------------------------
-!> add a quaternion
+!> @brief add a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function add__(self,other)
 
@@ -170,24 +170,24 @@ type(quaternion) elemental pure function add__(self,other)
 
   add__ = [ self%w,  self%x,  self%y ,self%z] &
         + [other%w, other%x, other%y,other%z]
-  
+
 end function add__
 
 
 !---------------------------------------------------------------------------------------------------
-!> return (unary positive operator)
+!> @brief return (unary positive operator)
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function pos__(self)
 
   class(quaternion), intent(in) :: self
 
   pos__ = self * (+1.0_pReal)
-  
+
 end function pos__
 
 
 !---------------------------------------------------------------------------------------------------
-!> subtract a quaternion
+!> @brief subtract a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function sub__(self,other)
 
@@ -195,24 +195,24 @@ type(quaternion) elemental pure function sub__(self,other)
 
   sub__ = [ self%w,  self%x,  self%y ,self%z] &
         - [other%w, other%x, other%y,other%z]
-  
+
 end function sub__
 
 
 !---------------------------------------------------------------------------------------------------
-!> negate (unary negative operator)
+!> @brief negate (unary negative operator)
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function neg__(self)
 
   class(quaternion), intent(in) :: self
 
   neg__ = self * (-1.0_pReal)
-  
+
 end function neg__
 
 
 !---------------------------------------------------------------------------------------------------
-!> multiply with a quaternion
+!> @brief multiply with a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function mul_quat__(self,other)
 
@@ -227,7 +227,7 @@ end function mul_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> multiply with a scalar
+!> @brief multiply with a scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function mul_scal__(self,scal)
 
@@ -235,12 +235,12 @@ type(quaternion) elemental pure function mul_scal__(self,scal)
   real(pReal),       intent(in) :: scal
 
   mul_scal__ = [self%w,self%x,self%y,self%z]*scal
-  
+
 end function mul_scal__
 
 
 !---------------------------------------------------------------------------------------------------
-!> divide by a quaternion
+!> @brief divide by a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function div_quat__(self,other)
 
@@ -252,7 +252,7 @@ end function div_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> divide by a scalar
+!> @brief divide by a scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function div_scal__(self,scal)
 
@@ -265,7 +265,7 @@ end function div_scal__
 
 
 !---------------------------------------------------------------------------------------------------
-!> test equality
+!> @brief test equality
 !---------------------------------------------------------------------------------------------------
 logical elemental pure function eq__(self,other)
 
@@ -278,7 +278,7 @@ end function eq__
 
 
 !---------------------------------------------------------------------------------------------------
-!> test inequality
+!> @brief test inequality
 !---------------------------------------------------------------------------------------------------
 logical elemental pure function neq__(self,other)
 
@@ -290,7 +290,7 @@ end function neq__
 
 
 !---------------------------------------------------------------------------------------------------
-!> raise to the power of a quaternion
+!> @brief raise to the power of a quaternion
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function pow_quat__(self,expon)
 
@@ -303,7 +303,7 @@ end function pow_quat__
 
 
 !---------------------------------------------------------------------------------------------------
-!> raise to the power of a scalar
+!> @brief raise to the power of a scalar
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function pow_scal__(self,expon)
 
@@ -316,7 +316,7 @@ end function pow_scal__
 
 
 !---------------------------------------------------------------------------------------------------
-!> take exponential
+!> @brief take exponential
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function exp__(a)
 
@@ -336,7 +336,7 @@ end function exp__
 
 
 !---------------------------------------------------------------------------------------------------
-!> take logarithm
+!> @brief take logarithm
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function log__(a)
 
@@ -356,7 +356,7 @@ end function log__
 
 
 !---------------------------------------------------------------------------------------------------
-!> return norm
+!> @brief return norm
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental pure function abs__(self)
 
@@ -368,7 +368,7 @@ end function abs__
 
 
 !---------------------------------------------------------------------------------------------------
-!> calculate dot product
+!> @brief calculate dot product
 !---------------------------------------------------------------------------------------------------
 real(pReal) elemental pure function dot_product__(a,b)
 
@@ -380,7 +380,7 @@ end function dot_product__
 
 
 !---------------------------------------------------------------------------------------------------
-!> take conjugate complex
+!> @brief take conjugate complex
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function conjg__(self)
 
@@ -392,7 +392,7 @@ end function conjg__
 
 
 !---------------------------------------------------------------------------------------------------
-!> homomorph
+!> @brief homomorph
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function homomorphed(self)
 
@@ -404,7 +404,7 @@ end function homomorphed
 
 
 !---------------------------------------------------------------------------------------------------
-!> return as plain array
+!> @brief return as plain array
 !---------------------------------------------------------------------------------------------------
 pure function asArray(self)
 
@@ -417,7 +417,7 @@ end function asArray
 
 
 !---------------------------------------------------------------------------------------------------
-!> real part (scalar)
+!> @brief real part (scalar)
 !---------------------------------------------------------------------------------------------------
 pure function real__(self)
 
@@ -430,7 +430,7 @@ end function real__
 
 
 !---------------------------------------------------------------------------------------------------
-!> imaginary part (3-vector)
+!> @brief imaginary part (3-vector)
 !---------------------------------------------------------------------------------------------------
 pure function aimag__(self)
 
@@ -443,7 +443,7 @@ end function aimag__
 
 
 !---------------------------------------------------------------------------------------------------
-!> inverse
+!> @brief inverse
 !---------------------------------------------------------------------------------------------------
 type(quaternion) elemental pure function inverse(self)
 
