@@ -209,7 +209,7 @@ module subroutine plastic_disloUCLA_init
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
+    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization

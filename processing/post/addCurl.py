@@ -49,9 +49,10 @@ for name in filenames:
     for label in options.labels:
         field = table.get(label)
         shape = (3,) if np.prod(field.shape)//np.prod(grid) == 3 else (3,3)                         # vector or tensor
-        field = field.reshape(np.append(grid[::-1],shape))
+        field = field.reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+shape)
+        curl  = damask.grid_filters.curl(size,field)
         table.add('curlFFT({})'.format(label),
-                  damask.grid_filters.curl(size[::-1],field).reshape(-1,np.prod(shape)),
+                  curl.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape),order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
-    
+
     table.to_ASCII(sys.stdout if name is None else name)
