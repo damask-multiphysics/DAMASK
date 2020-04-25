@@ -9,12 +9,16 @@ all: grid mesh processing
 .PHONY: grid
 grid: build/grid
 	@(cd build/grid;make -j${DAMASK_NUM_THREADS} all install;)
+	@rm -f ${DAMASK_ROOT}/bin/DAMASK_spectral > /dev/null || true
+	@ln -s ${DAMASK_ROOT}/bin/DAMASK_grid ${DAMASK_ROOT}/bin/DAMASK_spectral
 .PHONY: spectral
 spectral: grid
 
 .PHONY: mesh
 mesh: build/mesh
 	@(cd build/mesh; make -j${DAMASK_NUM_THREADS} all install;)
+	@rm -f ${DAMASK_ROOT}/bin/DAMASK_FEM > /dev/null || true
+	@ln -s ${DAMASK_ROOT}/bin/DAMASK_mesh ${DAMASK_ROOT}/bin/DAMASK_FEM
 .PHONY: FEM
 FEM: mesh
 
