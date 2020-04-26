@@ -527,7 +527,7 @@ pure function qu2ho(qu) result(ho)
 
   omega = 2.0 * acos(math_clip(qu(1),-1.0_pReal,1.0_pReal))
 
-  if (dEq0(omega)) then
+  if (dEq0(omega,tol=1.e-5_pReal)) then
     ho = [ 0.0_pReal, 0.0_pReal, 0.0_pReal ]
   else
     ho = qu(2:4)
@@ -1298,7 +1298,7 @@ pure function Lambert_BallToCube(xyz) result(cube)
   integer,                 dimension(3,2) :: p
 
   rs = norm2(xyz)
-  if (rs > R1) then
+  if (rs > R1+1.e-6_pReal) then
     cube = IEEE_value(cube,IEEE_positive_inf)
     return
   endif
