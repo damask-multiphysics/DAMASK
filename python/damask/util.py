@@ -112,8 +112,8 @@ def execute(cmd,
 
     """
     initialPath = os.getcwd()
-    os.chdir(wd)
     myEnv = os.environ if env is None else env
+    os.chdir(wd)
     process = subprocess.Popen(shlex.split(cmd),
                                stdout = subprocess.PIPE,
                                stderr = subprocess.PIPE,
@@ -121,9 +121,9 @@ def execute(cmd,
                                env = myEnv)
     out,error = [i for i in (process.communicate() if streamIn is None
                                                    else process.communicate(streamIn.read().encode('utf-8')))]
+    os.chdir(initialPath)
     out   = out.decode('utf-8').replace('\x08','')
     error = error.decode('utf-8').replace('\x08','')
-    os.chdir(initialPath)
     if process.returncode != 0:
         raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
     return out,error
