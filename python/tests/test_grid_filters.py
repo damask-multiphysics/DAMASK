@@ -101,6 +101,7 @@ class TestGridFilters:
         with pytest.raises(ValueError):
             function(uneven)
 
+
     @pytest.mark.parametrize('mode',[True,False])
     @pytest.mark.parametrize('function',[grid_filters.node_coord0_gridSizeOrigin,
                                          grid_filters.cell_coord0_gridSizeOrigin])
@@ -120,3 +121,20 @@ class TestGridFilters:
          grid = np.random.randint(8,32,(3))
          F    = np.broadcast_to(np.eye(3), tuple(grid)+(3,3))
          assert all(grid_filters.regrid(size,F,grid) == np.arange(grid.prod()))
+
+
+    @pytest.mark.parametrize('differential_operator',[grid_filters.curl,
+                                                      grid_filters.divergence,
+                                                      grid_filters.gradient])
+    def test_differential_operator_constant(self,differential_operator):
+        size = np.random.random(3)+1.0
+        grid = np.random.randint(8,32,(3))
+        shapes = {
+                  grid_filters.curl:      [(3,),(3,3)],
+                  grid_filters.divergence:[(3,),(3,3)],
+                  grid_filters.gradient:  [(1,),(3,)]
+                 }
+        for shape in shapes[differential_operator]:
+            field = np.ones(tuple(grid)+shape)*np.random.random()*1.0e5
+            assert np.allclose(differential_operator(size,field),0.0)
+
