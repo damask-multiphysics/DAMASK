@@ -11,7 +11,7 @@ module CPFEM2
   use FEsolving
   use math
   use rotations
-  use types
+  use YAML_types
   use material
   use lattice
   use IO
@@ -51,7 +51,7 @@ subroutine CPFEM_initAll
   call config_init
   call math_init
   call rotations_init
-  call types_init
+  call YAML_types_init
   call lattice_init
   call HDF5_utilities_init
   call results_init

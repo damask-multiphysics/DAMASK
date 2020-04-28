@@ -8,7 +8,7 @@
 !! functions exist to convert this scalar type to its respective primitive data type.
 !--------------------------------------------------------------------------------------------------
 
-module types
+module YAML_types
 
   use IO
   use prec
@@ -17,11 +17,12 @@ module types
 
   private
 
-  public tNode
-  public tScalar
-  public tDict
-  public tList
-  public types_init
+  public :: &
+    tNode, &
+    tScalar, &
+    tDict, &
+    tList, &
+    YAML_types_init
 
   type, abstract :: tNode
     integer :: length = 0
@@ -69,7 +70,7 @@ module types
       tNode_get_byKey_asString    => tNode_get_byKey_asString
     procedure :: &
       tNode_get_byKey_asStrings   => tNode_get_byKey_asStrings
-    
+
     generic :: &
       get           => tNode_get_byIndex, &
                        tNode_get_byKey
@@ -102,7 +103,7 @@ module types
 
   type, extends(tNode) :: tScalar
 
-    character(len=:), allocatable, private :: value 
+    character(len=:), allocatable, private :: value
 
     contains
     procedure :: asFormattedString => tScalar_asFormattedString
@@ -117,7 +118,7 @@ module types
   end type tScalar
 
   type, extends(tNode) :: tList
-    
+
     class(tItem), pointer  :: first => null()
 
     contains
@@ -131,7 +132,9 @@ module types
       asBools   => tList_asBools
     procedure :: &
       asStrings => tList_asStrings
+#ifndef __GFORTRAN__
     final :: tList_finalize
+#endif
   end type tList
 
   type, extends(tList) :: tDict
@@ -168,14 +171,24 @@ module types
 
 contains
 
-subroutine types_init
+!--------------------------------------------------------------------------------------------------
+!> @brief do sanity checks
+!--------------------------------------------------------------------------------------------------
+subroutine YAML_types_init
+
+  write(6,'(/,a)') ' <<<+-  YAML_types init  -+>>>'
+
   call unitTest
-end subroutine types_init
+
+end subroutine YAML_types_init
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief check correctness of some type bound procedures
+!--------------------------------------------------------------------------------------------------
 subroutine unitTest
 
-  type(tScalar),target  :: s1,s2
+  type(tScalar),target :: s1,s2
 
   s1 = '1'
   if(s1%asInt() /= 1)              call IO_error(0,ext_msg='tScalar_asInt')
@@ -213,7 +226,7 @@ subroutine unitTest
     call l1%append(s2)
     call l2%append(l1)
     n=> l1
- 
+
     if(any(l1%asBools() .neqv. [.true., .false.]))           call IO_error(0,ext_msg='tList_asBools')
     if(any(l1%asStrings() /=   ['True ','False']))           call IO_error(0,ext_msg='tList_asStrings')
     if(n%get_asBool(2))                                      call IO_error(0,ext_msg='byIndex_asBool')
@@ -598,7 +611,7 @@ function tNode_get_byKey_asFloats(self,k) result(nodeAsFloats)
 
   class(tNode), pointer :: node
   type(tList),  pointer :: list
-  
+
   node   => self%get(k)
   list => node%asList()
   nodeAsFloats = list%asFloats()
@@ -926,7 +939,7 @@ subroutine tDict_set(self,key,node)
 
   type(tItem), pointer :: item
 
-  if (.not.associated(self%first)) then
+  if (.not. associated(self%first)) then
     allocate(self%first)
     item => self%first
     self%length = 1
@@ -944,7 +957,7 @@ subroutine tDict_set(self,key,node)
   end if
 
   item%key = key
-  allocate(item%node,source=node) ! ToDo: Discuss ownership (copy vs referencing)
+  allocate(item%node,source=node)
 
 end subroutine tDict_set
 
@@ -959,7 +972,7 @@ recursive subroutine tList_finalize(self)
 
   type (tItem),pointer :: current, &
                           next
-  
+
   current => self%first
   do while (associated(current))
    next => current%next
@@ -970,4 +983,4 @@ recursive subroutine tList_finalize(self)
 end subroutine tList_finalize
 
 
-end module types
+end module YAML_types
