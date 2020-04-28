@@ -21,7 +21,7 @@ module CPFEM2
   use homogenization
   use constitutive
   use crystallite
-#if    defined(FEM)
+#if    defined(Mesh)
   use FEM_quadrature
   use discretization_mesh
 #elif defined(Grid)
@@ -42,7 +42,7 @@ subroutine CPFEM_initAll
   call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
   call prec_init
   call IO_init
-#ifdef FEM
+#ifdef Mesh
   call FEM_quadrature_init
 #endif
   call numerics_init
@@ -53,7 +53,7 @@ subroutine CPFEM_initAll
   call lattice_init
   call HDF5_utilities_init
   call results_init
-#if    defined(FEM)
+#if    defined(Mesh)
   call discretization_mesh_init
 #elif defined(Grid)
   call discretization_grid_init
