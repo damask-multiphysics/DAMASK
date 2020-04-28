@@ -16,10 +16,6 @@ if not os.path.isdir(binDir):
 #define ToDo list
 processing_subDirs    = ['pre',
                          'post',
-                         'misc',
-                        ]
-processing_extensions = ['.py',
-                         '.sh',
                         ]
 
 sys.stdout.write('\nsymbolic linking...\n')
@@ -31,7 +27,7 @@ for subDir in processing_subDirs:
 
   for theFile in os.listdir(theDir):
     theName,theExt = os.path.splitext(theFile)
-    if theExt in processing_extensions:                                                             # only consider files with proper extensions
+    if theExt in ['.py']:
 
       src      = os.path.abspath(os.path.join(theDir,theFile))
       sym_link = os.path.abspath(os.path.join(binDir,theName))
