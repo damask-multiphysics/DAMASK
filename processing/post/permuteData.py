@@ -50,15 +50,12 @@ for name in filenames:
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     randomSeed = int(os.urandom(4).hex(), 16) if options.randomSeed is None else options.randomSeed # random seed per file
-    np.random.seed(randomSeed)
+    rng = np.random.default_rng(randomSeed)
 
     for label in options.label:
         data = table.get(label)
-        if options.unique:
-            uniques,inverse  = np.unique(data,return_inverse=True,axis=0)
-            np.random.shuffle(uniques)
-            table.set(label,uniques[inverse], scriptID+' '+' '.join(sys.argv[1:]))
-        else:
-            table.set(label,np.random.permutation(data), scriptID+' '+' '.join(sys.argv[1:]))
+        uniques,inverse  = np.unique(data,return_inverse=True,axis=0) if options.unique else (data,np.arange(len(data)))
+        rng.shuffle(uniques)
+        table.set(label,uniques[inverse], scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)
