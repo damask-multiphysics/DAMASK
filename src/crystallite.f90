@@ -303,6 +303,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     s
   logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
 
+    todo = .false.
 #ifdef DEBUG
   if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0 &
       .and. FEsolving_execElem(1) <= debug_e &
