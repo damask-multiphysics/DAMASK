@@ -29,13 +29,13 @@ module IO
     IO_getTag, &
     IO_stringPos, &
     IO_stringValue, &
-    IO_floatValue, &
     IO_intValue, &
+    IO_floatValue, &
+    IO_lc, &
+    IO_rmComment, &
     IO_stringAsInt, &
     IO_stringAsFloat, &
     IO_stringAsBool, &
-    IO_rmComment, &
-    IO_lc, &
     IO_error, &
     IO_warning
 
@@ -296,6 +296,88 @@ pure function IO_lc(string)
   enddo
 
 end function IO_lc
+
+
+!--------------------------------------------------------------------------------------------------
+! @brief Remove comments (characters beyond '#') and trailing space
+! ToDo: Discuss name (the trim aspect is not clear)
+!--------------------------------------------------------------------------------------------------
+function IO_rmComment(line)
+
+  character(len=*), intent(in)  :: line
+  character(len=:), allocatable :: IO_rmComment
+  integer :: split
+
+  split = index(line,IO_COMMENT)
+
+  if (split == 0) then
+    IO_rmComment = trim(line)
+  else
+    IO_rmComment = trim(line(:split-1))
+  endif
+
+end function IO_rmComment
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return verified integer value in given string
+!--------------------------------------------------------------------------------------------------
+integer function IO_stringAsInt(string)
+
+  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
+
+  integer                      :: readStatus
+  character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
+
+  valid: if (verify(string,VALIDCHARS) == 0) then
+    read(string,*,iostat=readStatus) IO_stringAsInt
+    if (readStatus /= 0) call IO_error(111,ext_msg=string)
+  else valid
+    IO_stringAsInt = 0
+    call IO_error(111,ext_msg=string)
+  endif valid
+
+end function IO_stringAsInt
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return verified float value in given string
+!--------------------------------------------------------------------------------------------------
+real(pReal) function IO_stringAsFloat(string)
+
+  character(len=*), intent(in) :: string                                                            !< string for conversion to float value
+
+  integer                      :: readStatus
+  character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
+
+  valid: if (verify(string,VALIDCHARS) == 0) then
+    read(string,*,iostat=readStatus) IO_stringAsFloat
+    if (readStatus /= 0) call IO_error(112,ext_msg=string)
+  else valid
+    IO_stringAsFloat = 0.0_pReal
+    call IO_error(112,ext_msg=string)
+  endif valid
+
+end function IO_stringAsFloat
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return verified logical value in given string
+!--------------------------------------------------------------------------------------------------
+logical function IO_stringAsBool(string)
+
+  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
+
+  if     (trim(adjustl(string)) == 'True') then
+    IO_stringAsBool = .true.
+  elseif (trim(adjustl(string)) == 'False') then
+    IO_stringAsBool = .false.
+  else
+    IO_stringAsBool = .false.
+    call IO_error(113,ext_msg=string)
+  endif
+
+end function IO_stringAsBool
 
 
 !--------------------------------------------------------------------------------------------------
@@ -609,88 +691,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   !$OMP END CRITICAL (write2out)
 
 end subroutine IO_warning
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return verified integer value in given string
-!--------------------------------------------------------------------------------------------------
-integer function IO_stringAsInt(string)
-
-  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
-
-  integer                      :: readStatus
-  character(len=*), parameter  :: VALIDCHARS = '0123456789+- '
-
-  valid: if (verify(string,VALIDCHARS) == 0) then
-    read(string,*,iostat=readStatus) IO_stringAsInt
-    if (readStatus /= 0) call IO_error(111,ext_msg=string)
-  else valid
-    IO_stringAsInt = 0
-    call IO_error(111,ext_msg=string)
-  endif valid
-
-end function IO_stringAsInt
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return verified float value in given string
-!--------------------------------------------------------------------------------------------------
-real(pReal) function IO_stringAsFloat(string)
-
-  character(len=*), intent(in) :: string                                                            !< string for conversion to float value
-
-  integer                      :: readStatus
-  character(len=*), parameter  :: VALIDCHARS = '0123456789eE.+- '
-
-  valid: if (verify(string,VALIDCHARS) == 0) then
-    read(string,*,iostat=readStatus) IO_stringAsFloat
-    if (readStatus /= 0) call IO_error(112,ext_msg=string)
-  else valid
-    IO_stringAsFloat = 0.0_pReal
-    call IO_error(112,ext_msg=string)
-  endif valid
-
-end function IO_stringAsFloat
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief return verified logical value in given string
-!--------------------------------------------------------------------------------------------------
-logical function IO_stringAsBool(string)
-
-  character(len=*), intent(in) :: string                                                            !< string for conversion to int value
-
-  if     (trim(adjustl(string)) == 'True') then
-    IO_stringAsBool = .true.
-  elseif (trim(adjustl(string)) == 'False') then
-    IO_stringAsBool = .false.
-  else
-    IO_stringAsBool = .false.
-    call IO_error(113,ext_msg=string)
-  endif
-
-end function IO_stringAsBool
-
-
-!--------------------------------------------------------------------------------------------------
-! @brief Remove comments (characters beyond '#') and trailing space
-! ToDo: Discuss name (the trim aspect is not clear)
-!--------------------------------------------------------------------------------------------------
-function IO_rmComment(line)
-
-  character(len=*), intent(in)  :: line
-  character(len=:), allocatable :: IO_rmComment
-  integer :: split
-
-  split = index(line,IO_COMMENT)
-
-  if (split == 0) then
-    IO_rmComment = trim(line)
-  else
-    IO_rmComment = trim(line(:split-1))
-  endif
-
-end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
