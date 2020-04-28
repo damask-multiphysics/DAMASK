@@ -399,7 +399,7 @@ module subroutine plastic_dislotwin_init
                  + size(['f_tr'])                           * prm%sum_N_tr
     sizeState = sizeDotState
 
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
+    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and atol

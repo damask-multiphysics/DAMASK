@@ -117,7 +117,7 @@ module subroutine plastic_isotropic_init
     sizeDotState = size(['xi               ','accumulated_shear'])
     sizeState = sizeDotState
 
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
+    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization

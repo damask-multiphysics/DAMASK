@@ -213,7 +213,7 @@ module subroutine plastic_phenopowerlaw_init
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
 
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,0)
+    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization

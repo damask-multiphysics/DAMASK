@@ -164,7 +164,7 @@ module subroutine plastic_kinehardening_init
     sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl
     sizeState = sizeDotState + sizeDeltaState
 
-    call material_allocatePlasticState(p,NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
+    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
