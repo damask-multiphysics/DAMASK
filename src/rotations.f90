@@ -927,7 +927,7 @@ function ax2cu(ax) result(cu)
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(3) :: cu
 
-  cu  = ho2cu(ax2ho(ax))
+  cu = ho2cu(ax2ho(ax))
 
 end function ax2cu
 
@@ -1133,20 +1133,6 @@ end function ho2ro
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert homochoric to cubochoric
-!---------------------------------------------------------------------------------------------------
-pure function ho2cu(ho) result(cu)
-
-  real(pReal), intent(in), dimension(3) :: ho
-  real(pReal),             dimension(3) :: cu
-
-  cu = Lambert_BallToCube(ho)
-
-end function ho2cu
-
-
-!---------------------------------------------------------------------------------------------------
-!> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to unit quaternion
 !---------------------------------------------------------------------------------------------------
 pure function cu2qu(cu) result(qu)
@@ -1215,25 +1201,12 @@ pure function cu2ro(cu) result(ro)
 end function cu2ro
 
 
-!---------------------------------------------------------------------------------------------------
-!> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert cubochoric to homochoric
-!---------------------------------------------------------------------------------------------------
-pure function cu2ho(cu) result(ho)
-
-  real(pReal), intent(in), dimension(3) :: cu
-  real(pReal),             dimension(3) :: ho
-
-  ho = Lambert_CubeToBall(cu)
-
-end function cu2ho
-
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D cubic grid to 3D ball
 !--------------------------------------------------------------------------
-pure function Lambert_CubeToBall(cu) result(ho)
+pure function cu2ho(cu) result(ho)
 
   real(pReal), intent(in), dimension(3)   :: cu
   real(pReal),             dimension(3)   :: ho, LamXYZ, XYZ
@@ -1281,15 +1254,15 @@ pure function Lambert_CubeToBall(cu) result(ho)
 
   endif center
 
-end function Lambert_CubeToBall
+end function cu2ho
 
 
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief map from 3D ball to 3D cubic grid
+!> @brief convert homochoric to cubochoric
 !--------------------------------------------------------------------------
-pure function Lambert_BallToCube(ho) result(cu)
+pure function ho2cu(ho) result(cu)
 
   real(pReal), intent(in), dimension(3)   :: ho
   real(pReal),             dimension(3)   :: cu, xyz1, xyz3
@@ -1335,7 +1308,7 @@ pure function Lambert_BallToCube(ho) result(cu)
 
   endif center
 
-end function Lambert_BallToCube
+end function ho2cu
 
 
 !--------------------------------------------------------------------------
