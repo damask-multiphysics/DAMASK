@@ -2,7 +2,7 @@ SHELL = /bin/sh
 ########################################################################################
 # Makefile for the installation of DAMASK
 ########################################################################################
-DAMASK_ROOT = $(shell python -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser('$(pwd)'))))")
+DAMASK_ROOT = $(shell python3 -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser('$(pwd)'))))")
 .PHONY: all
 all: grid mesh processing
 

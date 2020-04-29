@@ -2,7 +2,7 @@
 # usage:  source DAMASK.zsh
 
 function canonicalPath {
-  python -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser(sys.argv[1]))))" $1
+  python3 -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser(sys.argv[1]))))" $1
 }
 
 function blink {
