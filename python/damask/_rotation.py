@@ -1057,15 +1057,15 @@ class Rotation:
 
         """
         if len(ho.shape) == 1:
-            ball_ = ho/np.linalg.norm(ho)*_R1 if np.isclose(np.linalg.norm(ho),_R1,atol=1e-6) \
+            ho_ = ho/np.linalg.norm(ho)*_R1 if np.isclose(np.linalg.norm(ho),_R1,atol=1e-6) \
                   else ho
-            rs = np.linalg.norm(ball_)
+            rs = np.linalg.norm(ho_)
 
-            if np.allclose(ball_,0.0,rtol=0.0,atol=1.0e-16):
-                cube = np.zeros(3)
+            if np.allclose(ho_,0.0,rtol=0.0,atol=1.0e-16):
+                cu = np.zeros(3)
             else:
-                p = _get_order(ball_)
-                xyz3 = ball_[p[0]]
+                p = _get_order(ho_)
+                xyz3 = ho_[p[0]]
 
                 # inverse M_3
                 xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
@@ -1085,11 +1085,11 @@ class Rotation:
                     Tinv = q * np.where(xyz2<0.0,-Tinv,Tinv)
 
                 # inverse M_1
-                cube = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
+                cu = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
                 # reverse the coordinates back to the regular order according to the original pyramid number
-                cube = cube[p[1]]
+                cu = cu[p[1]]
 
-            return cube
+            return cu
         else:
             raise NotImplementedError
 
@@ -1133,20 +1133,20 @@ class Rotation:
         """
         if len(cu.shape) == 1:
 
-            cube_ = np.clip(cu,None,np.pi**(2./3.) * 0.5) if np.isclose(np.abs(np.max(cu)),np.pi**(2./3.) * 0.5,atol=1e-6) \
+            cu_ = np.clip(cu,None,np.pi**(2./3.) * 0.5) if np.isclose(np.abs(np.max(cu)),np.pi**(2./3.) * 0.5,atol=1e-6) \
                     else cu
 
             # transform to the sphere grid via the curved square, and intercept the zero point
-            if np.allclose(cube_,0.0,rtol=0.0,atol=1.0e-16):
-                ball = np.zeros(3)
+            if np.allclose(cu_,0.0,rtol=0.0,atol=1.0e-16):
+                ho = np.zeros(3)
             else:
                 # get pyramide and scale by grid parameter ratio
-                p = _get_order(cube_)
-                XYZ = cube_[p[0]] * _sc
+                p = _get_order(cu_)
+                XYZ = cu_[p[0]] * _sc
 
                 # intercept all the points along the z-axis
                 if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
-                    ball = np.array([0.0, 0.0, np.sqrt(6.0/np.pi) * XYZ[2]])
+                    ho = np.array([0.0, 0.0, np.sqrt(6.0/np.pi) * XYZ[2]])
                 else:
                     order = [1,0] if np.abs(XYZ[1]) <= np.abs(XYZ[0]) else [0,1]
                     q = np.pi/12.0 * XYZ[order[0]]/XYZ[order[1]]
@@ -1161,12 +1161,12 @@ class Rotation:
                     s = c *         np.pi/24.0 /XYZ[2]**2
                     c = c * np.sqrt(np.pi/24.0)/XYZ[2]
                     q = np.sqrt( 1.0 - s )
-                    ball = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
+                    ho = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
 
                 # reverse the coordinates back to the regular order according to the original pyramid number
-                ball = ball[p[1]]
+                ho = ho[p[1]]
 
-            return ball
+            return ho
         else:
             raise NotImplementedError
 

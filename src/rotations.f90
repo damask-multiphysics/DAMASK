@@ -1233,28 +1233,28 @@ end function cu2ho
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D cubic grid to 3D ball
 !--------------------------------------------------------------------------
-pure function Lambert_CubeToBall(cube) result(ball)
+pure function Lambert_CubeToBall(cu) result(ho)
 
-  real(pReal), intent(in), dimension(3)   :: cube
-  real(pReal),             dimension(3)   :: ball, LamXYZ, XYZ
+  real(pReal), intent(in), dimension(3)   :: cu
+  real(pReal),             dimension(3)   :: ho, LamXYZ, XYZ
   real(pReal),             dimension(2)   :: T
   real(pReal)                             :: c, s, q
   real(pReal), parameter                  :: eps = 1.0e-8_pReal
   integer,                 dimension(3,2) :: p
   integer,                 dimension(2)   :: order
 
-  if (maxval(abs(cube)) > AP/2.0+eps) then
-    ball = IEEE_value(cube,IEEE_positive_inf)
+  if (maxval(abs(cu)) > AP/2.0+eps) then
+    ho = IEEE_value(cu,IEEE_positive_inf)
     return
   end if
 
   ! transform to the sphere grid via the curved square, and intercept the zero point
-  center: if (all(dEq0(cube))) then
-    ball  = 0.0_pReal
+  center: if (all(dEq0(cu))) then
+    ho  = 0.0_pReal
   else center
     ! get pyramide and scale by grid parameter ratio
-    p = GetPyramidOrder(cube)
-    XYZ = cube(p(:,1)) * sc
+    p = GetPyramidOrder(cu)
+    XYZ = cu(p(:,1)) * sc
 
     ! intercept all the points along the z-axis
     special: if (all(dEq0(XYZ(1:2)))) then
@@ -1277,7 +1277,7 @@ pure function Lambert_CubeToBall(cube) result(ball)
     endif special
 
     ! reverse the coordinates back to order according to the original pyramid number
-    ball = LamXYZ(p(:,2))
+    ho = LamXYZ(p(:,2))
 
   endif center
 
@@ -1289,25 +1289,25 @@ end function Lambert_CubeToBall
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief map from 3D ball to 3D cubic grid
 !--------------------------------------------------------------------------
-pure function Lambert_BallToCube(xyz) result(cube)
+pure function Lambert_BallToCube(ho) result(cu)
 
-  real(pReal), intent(in), dimension(3)   :: xyz
-  real(pReal),             dimension(3)   :: cube, xyz1, xyz3
+  real(pReal), intent(in), dimension(3)   :: ho
+  real(pReal),             dimension(3)   :: cu, xyz1, xyz3
   real(pReal),             dimension(2)   :: Tinv, xyz2
   real(pReal)                             :: rs, qxy, q2, sq2, q, tt
   integer,                 dimension(3,2) :: p
 
-  rs = norm2(xyz)
+  rs = norm2(ho)
   if (rs > R1+1.e-6_pReal) then
-    cube = IEEE_value(cube,IEEE_positive_inf)
+    cu = IEEE_value(cu,IEEE_positive_inf)
     return
   endif
 
-  center: if (all(dEq0(xyz))) then
-    cube = 0.0_pReal
+  center: if (all(dEq0(ho))) then
+    cu = 0.0_pReal
   else center
-    p = GetPyramidOrder(xyz)
-    xyz3 = xyz(p(:,1))
+    p = GetPyramidOrder(ho)
+    xyz3 = ho(p(:,1))
 
     ! inverse M_3
     xyz2 = xyz3(1:2) * sqrt( 2.0*rs/(rs+abs(xyz3(3))) )
@@ -1331,7 +1331,7 @@ pure function Lambert_BallToCube(xyz) result(cube)
     xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
 
     ! reverse the coordinates back to order according to the original pyramid number
-    cube = xyz1(p(:,2))
+    cu = xyz1(p(:,2))
 
   endif center
 
