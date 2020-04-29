@@ -1131,6 +1131,60 @@ pure function ho2ro(ho) result(ro)
 end function ho2ro
 
 
+!--------------------------------------------------------------------------
+!> @author Marc De Graef, Carnegie Mellon University
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief convert homochoric to cubochoric
+!--------------------------------------------------------------------------
+pure function ho2cu(ho) result(cu)
+
+  real(pReal), intent(in), dimension(3)   :: ho
+  real(pReal),             dimension(3)   :: cu, xyz1, xyz3
+  real(pReal),             dimension(2)   :: Tinv, xyz2
+  real(pReal)                             :: rs, qxy, q2, sq2, q, tt
+  integer,                 dimension(3,2) :: p
+
+  rs = norm2(ho)
+  if (rs > R1+1.e-6_pReal) then
+    cu = IEEE_value(cu,IEEE_positive_inf)
+    return
+  endif
+
+  center: if (all(dEq0(ho))) then
+    cu = 0.0_pReal
+  else center
+    p = GetPyramidOrder(ho)
+    xyz3 = ho(p(:,1))
+
+    ! inverse M_3
+    xyz2 = xyz3(1:2) * sqrt( 2.0*rs/(rs+abs(xyz3(3))) )
+
+    ! inverse M_2
+    qxy = sum(xyz2**2)
+
+    special: if (dEq0(qxy)) then
+      Tinv = 0.0_pReal
+    else special
+      q2 = qxy + maxval(abs(xyz2))**2
+      sq2 = sqrt(q2)
+      q = (beta/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
+      tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/R2/qxy
+      Tinv = q * sign(1.0_pReal,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
+                                              [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
+                                               abs(xyz2(2)) <= abs(xyz2(1)))
+    endif special
+
+    ! inverse M_1
+    xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
+
+    ! reverse the coordinates back to order according to the original pyramid number
+    cu = xyz1(p(:,2))
+
+  endif center
+
+end function ho2cu
+
+
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief convert cubochoric to unit quaternion
@@ -1255,60 +1309,6 @@ pure function cu2ho(cu) result(ho)
   endif center
 
 end function cu2ho
-
-
-!--------------------------------------------------------------------------
-!> @author Marc De Graef, Carnegie Mellon University
-!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief convert homochoric to cubochoric
-!--------------------------------------------------------------------------
-pure function ho2cu(ho) result(cu)
-
-  real(pReal), intent(in), dimension(3)   :: ho
-  real(pReal),             dimension(3)   :: cu, xyz1, xyz3
-  real(pReal),             dimension(2)   :: Tinv, xyz2
-  real(pReal)                             :: rs, qxy, q2, sq2, q, tt
-  integer,                 dimension(3,2) :: p
-
-  rs = norm2(ho)
-  if (rs > R1+1.e-6_pReal) then
-    cu = IEEE_value(cu,IEEE_positive_inf)
-    return
-  endif
-
-  center: if (all(dEq0(ho))) then
-    cu = 0.0_pReal
-  else center
-    p = GetPyramidOrder(ho)
-    xyz3 = ho(p(:,1))
-
-    ! inverse M_3
-    xyz2 = xyz3(1:2) * sqrt( 2.0*rs/(rs+abs(xyz3(3))) )
-
-    ! inverse M_2
-    qxy = sum(xyz2**2)
-
-    special: if (dEq0(qxy)) then
-      Tinv = 0.0_pReal
-    else special
-      q2 = qxy + maxval(abs(xyz2))**2
-      sq2 = sqrt(q2)
-      q = (beta/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
-      tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/R2/qxy
-      Tinv = q * sign(1.0_pReal,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
-                                              [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
-                                               abs(xyz2(2)) <= abs(xyz2(1)))
-    endif special
-
-    ! inverse M_1
-    xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
-
-    ! reverse the coordinates back to order according to the original pyramid number
-    cu = xyz1(p(:,2))
-
-  endif center
-
-end function ho2cu
 
 
 !--------------------------------------------------------------------------
