@@ -1064,8 +1064,7 @@ class Rotation:
             if np.allclose(ho_,0.0,rtol=0.0,atol=1.0e-16):
                 cu = np.zeros(3)
             else:
-                p = _get_order(ho_)
-                xyz3 = ho_[p[0]]
+                xyz3 = ho_[Rotation._get_order(ho_,'forward')]
 
                 # inverse M_3
                 xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
@@ -1087,7 +1086,7 @@ class Rotation:
                 # inverse M_1
                 cu = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
                 # reverse the coordinates back to the regular order according to the original pyramid number
-                cu = cu[p[1]]
+                cu = cu[Rotation._get_order(ho_,'backward')]
 
             return cu
         else:
@@ -1141,8 +1140,7 @@ class Rotation:
                 ho = np.zeros(3)
             else:
                 # get pyramide and scale by grid parameter ratio
-                p = _get_order(cu_)
-                XYZ = cu_[p[0]] * _sc
+                XYZ = cu_[Rotation._get_order(cu_,'forward')] * _sc
 
                 # intercept all the points along the z-axis
                 if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
@@ -1164,37 +1162,46 @@ class Rotation:
                     ho = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
 
                 # reverse the coordinates back to the regular order according to the original pyramid number
-                ho = ho[p[1]]
+                ho = ho[Rotation._get_order(cu_,'backward')]
 
             return ho
         else:
             raise NotImplementedError
 
 
-def _get_order(xyz):
-    """
-    Get order of the coordinates.
+    @staticmethod
+    def _get_order(xyz,direction=None):
+        """
+        Get order of the coordinates.
 
-    Depending on the pyramid in which the point is located, the order need to be adjusted.
+        Depending on the pyramid in which the point is located, the order need to be adjusted.
 
-    Parameters
-    ----------
-    xyz : numpy.ndarray
-       coordinates of a point on a uniform refinable grid on a ball or
-       in a uniform refinable cubical grid.
+        Parameters
+        ----------
+        xyz : numpy.ndarray
+           coordinates of a point on a uniform refinable grid on a ball or
+           in a uniform refinable cubical grid.
 
-    References
-    ----------
-    D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
-    https://doi.org/10.1088/0965-0393/22/7/075013
+        References
+        ----------
+        D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+        https://doi.org/10.1088/0965-0393/22/7/075013
 
-    """
-    if   (abs(xyz[0])<= xyz[2]) and (abs(xyz[1])<= xyz[2]) or \
-         (abs(xyz[0])<=-xyz[2]) and (abs(xyz[1])<=-xyz[2]):
-        return [[0,1,2],[0,1,2]]
-    elif (abs(xyz[2])<= xyz[0]) and (abs(xyz[1])<= xyz[0]) or \
-         (abs(xyz[2])<=-xyz[0]) and (abs(xyz[1])<=-xyz[0]):
-        return [[1,2,0],[2,0,1]]
-    elif (abs(xyz[0])<= xyz[1]) and (abs(xyz[2])<= xyz[1]) or \
-         (abs(xyz[0])<=-xyz[1]) and (abs(xyz[2])<=-xyz[1]):
-        return [[2,0,1],[1,2,0]]
+        """
+        order = {'forward':np.array([[0,1,2],[1,2,0],[2,0,1]]),
+                'backward':np.array([[0,1,2],[2,0,1],[1,2,0]])}
+        if len(xyz.shape) == 1:
+            if   np.maximum(abs(xyz[0]),abs(xyz[1])) <= xyz[2] or \
+                 np.maximum(abs(xyz[0]),abs(xyz[1])) <=-xyz[2]:
+                p = 0
+            elif np.maximum(abs(xyz[1]),abs(xyz[2])) <= xyz[0] or \
+                 np.maximum(abs(xyz[1]),abs(xyz[2])) <=-xyz[0]:
+                p = 1
+            elif np.maximum(abs(xyz[2]),abs(xyz[0])) <= xyz[1] or \
+                 np.maximum(abs(xyz[2]),abs(xyz[0])) <=-xyz[1]:
+                p = 2
+        else:
+            p = np.where(np.maximum(np.abs(xyz[...,0]),np.abs(xyz[...,1])) <= np.abs(xyz[...,2]),0,
+                  np.where(np.maximum(np.abs(xyz[...,1]),np.abs(xyz[...,2])) <= np.abs(xyz[...,0]),2,3))
+
+        return order[direction][p]
