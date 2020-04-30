@@ -205,10 +205,9 @@ subroutine unitTest
 
   block
     class(tNode), pointer :: l1, l2, n
-    character(len=1) :: test = '2'
     select type(s1)
       class is(tScalar)
-        s1 = test
+        s1 = '2'
     endselect
    
     select type(s2)
