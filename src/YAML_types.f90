@@ -70,6 +70,8 @@ module YAML_types
       tNode_get_byKey_asString    => tNode_get_byKey_asString
     procedure :: &
       tNode_get_byKey_asStrings   => tNode_get_byKey_asStrings
+    procedure :: &  
+      getIndex                    => tNode_get_byKey_asIndex
 
     generic :: &
       get           => tNode_get_byIndex, &
@@ -132,9 +134,7 @@ module YAML_types
       asBools   => tList_asBools
     procedure :: &
       asStrings => tList_asStrings
-#ifndef __GFORTRAN__
     final :: tList_finalize
-#endif
   end type tList
 
   type, extends(tList) :: tDict
@@ -146,18 +146,20 @@ module YAML_types
 
   type :: tItem
     character(len=:), allocatable :: key
-    class(tNode),     allocatable :: node
+    class(tNode),     pointer     :: node => null()
     class(tItem),     pointer     :: next => null()
+    
+    contains
+    final :: tItem_finalize
   end type tItem
 
   abstract interface
 
-    recursive function asFormattedString(self,indent)
+    recursive subroutine asFormattedString(self,indent)
       import tNode
-      character(len=:), allocatable      :: asFormattedString
       class(tNode), intent(in), target   :: self
       integer,      intent(in), optional :: indent
-    end function asFormattedString
+    end subroutine asFormattedString
 
   end interface
 
@@ -188,52 +190,76 @@ end subroutine YAML_types_init
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
 
-  type(tScalar),target :: s1,s2
-
-  s1 = '1'
-  if(s1%asInt() /= 1)              call IO_error(0,ext_msg='tScalar_asInt')
-  if(dNeq(s1%asFloat(),1.0_pReal)) call IO_error(0,ext_msg='tScalar_asFloat')
-  s1 = 'True'
-  if(.not. s1%asBool())            call IO_error(0,ext_msg='tScalar_asBool')
-  if(s1%asString() /= 'True')      call IO_error(0,ext_msg='tScalar_asString')
-
-
-  block
-    type(tList),  target  :: l1, l2
-    class(tNode), pointer :: n
-
-    s1 = '2'
-    s2 = '3'
-    call l1%append(s1)
-    call l1%append(s2)
-    call l2%append(l1)
-    n => l1
-
-    if(any(l1%asInts() /= [2,3]))                            call IO_error(0,ext_msg='tList_asInts')
-    if(any(dNeq(l1%asFloats(),[2.0_pReal,3.0_pReal])))       call IO_error(0,ext_msg='tList_asFloats')
-    if(n%get_asInt(1) /= 2)                                  call IO_error(0,ext_msg='byIndex_asInt')
-    if(dNeq(n%get_asFloat(2),3.0_pReal))                     call IO_error(0,ext_msg='byIndex_asFloat')
-    if(any(l2%get_asInts(1) /= [2,3]))                       call IO_error(0,ext_msg='byIndex_asInts')
-    if(any(dNeq(l2%get_asFloats(1),[2.0_pReal,3.0_pReal])))  call IO_error(0,ext_msg='byIndex_asFloats')
-  end block
+  class(tNode), pointer  :: s1,s2
+  allocate(tScalar::s1)
+  allocate(tScalar::s2)
+  select type(s1)
+    class is(tScalar) 
+      s1 = '1'
+      if(s1%asInt() /= 1)              call IO_error(0,ext_msg='tScalar_asInt')
+      if(dNeq(s1%asFloat(),1.0_pReal)) call IO_error(0,ext_msg='tScalar_asFloat')
+      s1 = 'True'
+      if(.not. s1%asBool())            call IO_error(0,ext_msg='tScalar_asBool')
+      if(s1%asString() /= 'True')      call IO_error(0,ext_msg='tScalar_asString')
+  end select
 
   block
-    type(tList),  target  :: l1, l2
-    class(tNode), pointer :: n
-    s1 = 'True'
-    s2 = 'False'
-    call l1%append(s1)
-    call l1%append(s2)
-    call l2%append(l1)
-    n=> l1
+    class(tNode), pointer :: l1, l2, n
+    character(len=1) :: test = '2'
+    select type(s1)
+      class is(tScalar)
+        s1 = test
+    endselect
+   
+    select type(s2)
+      class is(tScalar)
+        s2 = '3'
+    endselect
 
-    if(any(l1%asBools() .neqv. [.true., .false.]))           call IO_error(0,ext_msg='tList_asBools')
-    if(any(l1%asStrings() /=   ['True ','False']))           call IO_error(0,ext_msg='tList_asStrings')
-    if(n%get_asBool(2))                                      call IO_error(0,ext_msg='byIndex_asBool')
-    if(n%get_asString(1) /= 'True')                          call IO_error(0,ext_msg='byIndex_asString')
-    if(any(l2%get_asBools(1) .neqv. [.true., .false.]))      call IO_error(0,ext_msg='byIndex_asBools')
-    if(any(l2%get_asStrings(1) /=   ['True ','False']))      call IO_error(0,ext_msg='byIndex_asStrings')
-  end block
+    allocate(tList::l1)
+    select type(l1)
+      class is(tList)
+        call l1%append(s1)
+        call l1%append(s2)
+        n => l1
+        if(any(l1%asInts() /= [2,3]))                            call IO_error(0,ext_msg='tList_asInts')
+        if(any(dNeq(l1%asFloats(),[2.0_pReal,3.0_pReal])))       call IO_error(0,ext_msg='tList_asFloats')
+        if(n%get_asInt(1) /= 2)                                  call IO_error(0,ext_msg='byIndex_asInt')
+        if(dNeq(n%get_asFloat(2),3.0_pReal))                     call IO_error(0,ext_msg='byIndex_asFloat')
+    endselect
+    
+    allocate(tList::l2)
+    select type(l2)
+      class is(tList)
+        call l2%append(l1)
+        if(any(l2%get_asInts(1) /= [2,3]))                       call IO_error(0,ext_msg='byIndex_asInts')
+        if(any(dNeq(l2%get_asFloats(1),[2.0_pReal,3.0_pReal])))  call IO_error(0,ext_msg='byIndex_asFloats')
+        n => l2
+    end select
+    deallocate(n)
+   end block
+
+   block
+     type(tList),  target  :: l1
+     type(tScalar),pointer :: s3,s4
+     class(tNode), pointer :: n
+    
+     allocate(tScalar::s1)
+     allocate(tScalar::s2)
+     s3 => s1%asScalar()
+     s4 => s2%asScalar()
+     s3 = 'True'
+     s4 = 'False'
+    
+     call l1%append(s1)
+     call l1%append(s2)
+     n => l1
+     
+     if(any(l1%asBools() .neqv. [.true., .false.]))               call IO_error(0,ext_msg='tList_asBools')
+     if(any(l1%asStrings() /=   ['True ','False']))               call IO_error(0,ext_msg='tList_asStrings')
+     if(n%get_asBool(2))                                          call IO_error(0,ext_msg='byIndex_asBool')
+     if(n%get_asString(1) /= 'True')                              call IO_error(0,ext_msg='byIndex_asString')
+   end block
 
 end subroutine unitTest
 
@@ -676,14 +702,40 @@ function tNode_get_byKey_asStrings(self,k) result(nodeAsStrings)
 end function tNode_get_byKey_asStrings
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Return scalar as string
-!--------------------------------------------------------------------------------------------------
-recursive function tScalar_asFormattedString(self,indent)
+!-------------------------------------------------------------------------------------------------------
+!> @brief Returns the index of a key in a dictionary
+!-------------------------------------------------------------------------------------------------------
+function tNode_get_byKey_asIndex(self,key)  result(keyIndex)
 
-  character(len=:), allocatable        :: tScalar_asFormattedString
-  class(tScalar),   intent(in), target :: self
-  integer, intent(in), optional :: indent
+  class(tNode),     intent(in), target  :: self
+  character(len=*), intent(in)          :: key
+
+  integer              :: keyIndex
+  integer              :: i
+  type(tDict), pointer :: dict
+  type(tItem), pointer :: item
+
+  dict => self%asDict()
+  item => dict%first
+  do i = 1, dict%length
+    if(key == item%key) then
+      keyIndex = i
+      exit
+    else
+      item => item%next
+    endif
+  enddo
+
+end function tNode_get_byKey_asIndex
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Prints scalar as string
+!--------------------------------------------------------------------------------------------------
+recursive subroutine tScalar_asFormattedString(self,indent)
+
+  class (tScalar), intent(in), target    :: self
+  integer,         intent(in), optional  :: indent
 
   integer :: indent_
 
@@ -693,22 +745,21 @@ recursive function tScalar_asFormattedString(self,indent)
     indent_ = 0
   endif
 
-  tScalar_asFormattedString = repeat(' ',indent_)//trim(self%value)//IO_EOL
+  write (6,'(a)') trim(self%value)
 
-end function tScalar_asFormattedString
+end subroutine tScalar_asFormattedString
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return list as string (YAML block style)
+!> @brief Prints list as string (YAML block style)
 !--------------------------------------------------------------------------------------------------
-recursive function tList_asFormattedString(self,indent) result(str)
+recursive subroutine tList_asFormattedString(self,indent)
 
-  class(tList), intent(in), target   :: self
-  integer,      intent(in), optional :: indent
+  class (tList),intent(in),target      :: self
+  integer,      intent(in),optional    :: indent
 
-  class(tItem),     pointer     :: item
-  character(len=:), allocatable :: str
-  integer :: i,indent_
+  type (tItem), pointer  :: item
+  integer :: i, indent_
 
   if(present(indent)) then
     indent_ = indent
@@ -718,24 +769,25 @@ recursive function tList_asFormattedString(self,indent) result(str)
 
   item => self%first
   do i = 1, self%length
-    str = str//repeat(' ',indent_)//'-'//IO_EOL//item%node%asFormattedString(indent_+2)
+    if( i /= 1) write (6,'(a)',advance='NO') repeat(' ',indent_)
+    write (6,'(a)',advance='NO') '- '
+    call item%node%asFormattedString(indent_+2)
     item => item%next
-  enddo
+  end do
 
-end function tList_asFormattedString
+end subroutine tList_asFormattedString
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Return dictionary as string (YAML block style)
+!> @brief Prints dictionary as string (YAML block style)
 !--------------------------------------------------------------------------------------------------
-recursive function tDict_asFormattedString(self,indent) result(str)
+recursive subroutine tDict_asFormattedString(self,indent)
 
-  class(tDict), intent(in), target   :: self
-  integer,      intent(in), optional :: indent
-
-  class(tItem),     pointer     :: item
-  character(len=:), allocatable :: str
-  integer :: i,indent_
+  class (tDict),intent(in),target      :: self
+  integer,      intent(in),optional    :: indent
+  
+  type (tItem),pointer  :: item
+  integer :: i, indent_
 
   if(present(indent)) then
     indent_ = indent
@@ -745,11 +797,20 @@ recursive function tDict_asFormattedString(self,indent) result(str)
 
   item => self%first
   do i = 1, self%length
-    str = str//repeat(' ',indent_)//item%key//':'//IO_EOL//item%node%asFormattedString(indent_+2)
+    if( i /= 1) write (6,'(a)',advance='NO') repeat(' ',indent_)
+    select type (node_ => item%node)
+      class is (tScalar)
+        write (6,'(a)',advance='NO') trim(item%key)//': '
+        call node_%asFormattedString(indent_+len_trim(item%key)+2)
+      class default
+        write (6,'(a)') trim(item%key)//':'
+        write (6,'(a)',advance='NO') repeat(' ',indent_+2)
+        call node_%asFormattedString(indent_+2)
+    end select
     item => item%next
-  enddo
+  end do
 
-end function tDict_asFormattedString
+end subroutine tDict_asFormattedString
 
 
 !--------------------------------------------------------------------------------------------------
@@ -905,8 +966,8 @@ end function tList_asStrings
 !--------------------------------------------------------------------------------------------------
 subroutine tList_append(self,node)
 
-  class(tList), intent(inout) :: self
-  class(tNode), intent(in)    :: node
+  class(tList), intent(inout)         :: self
+  class(tNode), intent(in), target    :: node
 
   type(tItem), pointer :: item
 
@@ -922,7 +983,7 @@ subroutine tList_append(self,node)
     item => item%next
   end if
 
-  allocate(item%node,source=node) ! ToDo: Discuss ownership (copy vs referencing)
+  item%node => node
   self%length = self%length + 1
 
 end subroutine tList_append
@@ -933,9 +994,9 @@ end subroutine tList_append
 !--------------------------------------------------------------------------------------------------
 subroutine tDict_set(self,key,node)
 
-  class (tDict),    intent(inout) :: self
-  character(len=*), intent(in)    :: key
-  class(tNode),     intent(in)    :: node
+  class (tDict),    intent(inout)         :: self
+  character(len=*), intent(in)            :: key
+  class(tNode),     intent(in), target    :: node
 
   type(tItem), pointer :: item
 
@@ -957,7 +1018,7 @@ subroutine tDict_set(self,key,node)
   end if
 
   item%key = key
-  allocate(item%node,source=node)
+  item%node => node
 
 end subroutine tDict_set
 
@@ -970,17 +1031,21 @@ recursive subroutine tList_finalize(self)
 
   type (tList),intent(inout) :: self
 
-  type (tItem),pointer :: current, &
-                          next
-
-  current => self%first
-  do while (associated(current))
-   next => current%next
-   deallocate(current)
-   current => next
-  end do
+  deallocate(self%first)
 
 end subroutine tList_finalize
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief empties nodes and frees associated memory
+!--------------------------------------------------------------------------------------------------
+recursive subroutine tItem_finalize(self)
+
+  type(tItem),intent(inout) :: self
+  
+  deallocate(self%node)
+  if(associated(self%next)) deallocate(self%next)
+
+end subroutine tItem_finalize
 
 end module YAML_types
