@@ -12,7 +12,6 @@ class TestMechanics:
     @pytest.mark.parametrize('function',[mechanics.deviatoric_part,
                                          mechanics.eigenvalues,
                                          mechanics.eigenvectors,
-                                         mechanics.deviatoric_part,
                                          mechanics.left_stretch,
                                          mechanics.maximum_shear,
                                          mechanics.Mises_strain,
@@ -42,12 +41,13 @@ class TestMechanics:
         assert np.allclose(mechanics.strain_tensor(F,t,m)[self.c],
                            mechanics.strain_tensor(F[self.c],t,m))
 
-
-    def test_Cauchy(self):
-        """Ensure Cauchy stress is symmetrized 1. Piola-Kirchhoff stress for no deformation."""
+    @pytest.mark.parametrize('function',[mechanics.Cauchy,
+                                         mechanics.PK2,
+                                        ])
+    def test_stress_measures(self,function):
+        """Ensure that all stress measures are equivalent for no deformation."""
         P = np.random.rand(self.n,3,3)
-        assert np.allclose(mechanics.Cauchy(P,np.broadcast_to(np.eye(3),(self.n,3,3))),
-                           mechanics.symmetric(P))
+        assert np.allclose(function(P,np.broadcast_to(np.eye(3),(self.n,3,3))),mechanics.symmetric(P))
 
     def test_deviatoric_part(self):
         I_n = np.broadcast_to(np.eye(3),(self.n,3,3))
@@ -62,12 +62,6 @@ class TestMechanics:
         U = mechanics.right_stretch(F)
         assert np.allclose(np.matmul(R,U),
                            np.matmul(V,R))
-
-    def test_PK2(self):
-        """Ensure 2. Piola-Kirchhoff stress is symmetrized 1. Piola-Kirchhoff stress for no deformation."""
-        P = np.random.rand(self.n,3,3)
-        assert np.allclose(mechanics.PK2(P,np.broadcast_to(np.eye(3),(self.n,3,3))),
-                           mechanics.symmetric(P))
 
     def test_strain_tensor_no_rotation(self):
         """Ensure that left and right stretch give same results for no rotation."""
