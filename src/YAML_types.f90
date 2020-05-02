@@ -155,11 +155,12 @@ module YAML_types
 
   abstract interface
 
-    recursive subroutine asFormattedString(self,indent)
+    recursive function asFormattedString(self,indent)
       import tNode
+      character(len=:), allocatable      :: asFormattedString
       class(tNode), intent(in), target   :: self
       integer,      intent(in), optional :: indent
-    end subroutine asFormattedString
+    end function asFormattedString
 
   end interface
 
@@ -731,8 +732,9 @@ end function tNode_get_byKey_asIndex
 !--------------------------------------------------------------------------------------------------
 !> @brief Prints scalar as string
 !--------------------------------------------------------------------------------------------------
-recursive subroutine tScalar_asFormattedString(self,indent)
+recursive function tScalar_asFormattedString(self,indent)
 
+  character(len=:), allocatable          :: tScalar_asFormattedString
   class (tScalar), intent(in), target    :: self
   integer,         intent(in), optional  :: indent
 
@@ -744,20 +746,21 @@ recursive subroutine tScalar_asFormattedString(self,indent)
     indent_ = 0
   endif
 
-  write (6,'(a)') trim(self%value)
+  tScalar_asFormattedString = trim(self%value)//IO_EOL
 
-end subroutine tScalar_asFormattedString
+end function tScalar_asFormattedString
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Prints list as string (YAML block style)
 !--------------------------------------------------------------------------------------------------
-recursive subroutine tList_asFormattedString(self,indent)
+recursive function tList_asFormattedString(self,indent) result(str)
 
   class (tList),intent(in),target      :: self
   integer,      intent(in),optional    :: indent
 
   type (tItem), pointer  :: item
+  character(len=:), allocatable :: str
   integer :: i, indent_
 
   if(present(indent)) then
@@ -768,24 +771,24 @@ recursive subroutine tList_asFormattedString(self,indent)
 
   item => self%first
   do i = 1, self%length
-    if( i /= 1) write (6,'(a)',advance='NO') repeat(' ',indent_)
-    write (6,'(a)',advance='NO') '- '
-    call item%node%asFormattedString(indent_+2)
+    if(i /= 1) str = str//repeat(' ',indent_)
+    str = str//'- '//item%node%asFormattedString(indent_+2)
     item => item%next
   end do
 
-end subroutine tList_asFormattedString
+end function tList_asFormattedString
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Prints dictionary as string (YAML block style)
 !--------------------------------------------------------------------------------------------------
-recursive subroutine tDict_asFormattedString(self,indent)
+recursive function tDict_asFormattedString(self,indent) result(str)
 
   class (tDict),intent(in),target      :: self
   integer,      intent(in),optional    :: indent
   
   type (tItem),pointer  :: item
+  character(len=:), allocatable :: str 
   integer :: i, indent_
 
   if(present(indent)) then
@@ -796,20 +799,17 @@ recursive subroutine tDict_asFormattedString(self,indent)
 
   item => self%first
   do i = 1, self%length
-    if( i /= 1) write (6,'(a)',advance='NO') repeat(' ',indent_)
-    select type (node_ => item%node)
-      class is (tScalar)
-        write (6,'(a)',advance='NO') trim(item%key)//': '
-        call node_%asFormattedString(indent_+len_trim(item%key)+2)
+    if(i /= 1) str = str//repeat(' ',indent_) 
+    select type(node_1 =>item%node)
+      class is(tScalar)
+        str = str//trim(item%key)//': '//item%node%asFormattedString(indent_+len_trim(item%key)+2)
       class default
-        write (6,'(a)') trim(item%key)//':'
-        write (6,'(a)',advance='NO') repeat(' ',indent_+2)
-        call node_%asFormattedString(indent_+2)
-    end select
+        str = str//trim(item%key)//':'//IO_EOL//repeat(' ',indent_+2)//item%node%asFormattedString(indent_+2)
+    endselect
     item => item%next
   end do
 
-end subroutine tDict_asFormattedString
+end function tDict_asFormattedString
 
 
 !--------------------------------------------------------------------------------------------------
