@@ -83,7 +83,7 @@ class Rotation:
         Todo
         ----
         Document details active/passive)
-        considere rotation of (3,3,3,3)-matrix
+        consider rotation of (3,3,3,3)-matrix
 
         """
         if self.quaternion.shape != (4,):
@@ -99,9 +99,7 @@ class Rotation:
         elif isinstance(other, (tuple,np.ndarray)):
             if isinstance(other,tuple) or other.shape == (3,):                                      # rotate a single (3)-vector or meshgrid
                 A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
-                B = 2.0 * (  self.quaternion[1]*other[0]
-                           + self.quaternion[2]*other[1]
-                           + self.quaternion[3]*other[2])
+                B = 2.0 * np.dot(self.quaternion[1:],other)
                 C = 2.0 * _P*self.quaternion[0]
 
                 return np.array([
@@ -118,6 +116,42 @@ class Rotation:
         else:
             return NotImplemented
 
+
+    def __matmul__(self, other):
+        """
+        Rotation.
+
+        details to be discussed
+        """
+        shape = self.quaternion.shape[:-1]
+
+        if isinstance(other, Rotation):                                                             # rotate a rotation
+            q_m = self.quaternion[...,0].reshape(shape+(1,))
+            p_m = self.quaternion[...,1:]
+            q_o = other.quaternion[...,0].reshape(shape+(1,))
+            p_o = other.quaternion[...,1:]
+            q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(shape+(1,)))
+            p = q_m*p_m + q_o*p_m + _P * np.cross(p_m,p_o)
+            return self.__class__(np.block([q,p])).standardize()
+
+        elif isinstance(other,np.ndarray):
+            if shape + (3,) == other.shape:
+                q_m = self.quaternion[...,0]
+                p_m = self.quaternion[...,1:]
+                A = q_m**2.0 - np.einsum('...i,...i',p_m,p_m)
+                B = 2.0 * np.einsum('...i,...i',p_m,p_m)
+                C = 2.0 * _P * q_m
+                return np.block([(A * other[...,i]).reshape(shape+(1,)) +
+                                 (B * p_m[...,i]).reshape(shape+(1,)) +
+                                 (C * (  p_m[...,(i+1)%3]*other[...,(i+2)%3]\
+                                       - p_m[...,(i+2)%3]*other[...,(i+1)%3])).reshape(shape+(1,))
+                                 for i in [0,1,2]])
+            if shape + (3,3) == other.shape:
+                R = self.asMatrix()
+                return np.einsum('...im,...jn,...mn',R,R,other)
+            if shape + (3,3,3,3) == other.shape:
+                R = self.asMatrix()
+                return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
 
     def inverse(self):
         """In-place inverse rotation/backward rotation."""
