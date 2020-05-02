@@ -53,8 +53,7 @@ module prec
     logical :: &
       nonlocal = .false.
     real(pReal), pointer,     dimension(:,:) :: &
-      slipRate, &                                                                                   !< slip rate
-      accumulatedSlip                                                                               !< accumulated plastic slip
+      slipRate                                                                                      !< slip rate
   end type
 
   type :: tSourceState

@@ -33,7 +33,7 @@ for filename in options.filenames:
     results = damask.Result(filename)
 
     if not results.structured: continue
-    coords = damask.grid_filters.cell_coord0(results.grid,results.size,results.origin)
+    coords = damask.grid_filters.cell_coord0(results.grid,results.size,results.origin).reshape(-1,3,order='F')
 
     N_digits = int(np.floor(np.log10(int(results.increments[-1][3:]))))+1
     N_digits = 5 # hack to keep test intact

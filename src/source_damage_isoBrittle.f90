@@ -83,7 +83,7 @@ subroutine source_damage_isoBrittle_init
     if (prm%critStrainEnergy <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
 
     NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,1)
+    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,1)
     sourceState(p)%p(sourceOffset)%atol = config%getFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
     if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 

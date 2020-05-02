@@ -38,6 +38,9 @@ class Orientation:
         else:
             self.rotation = Rotation.fromQuaternion(rotation)                                       # assume quaternion
 
+        if self.rotation.quaternion.shape != (4,):
+            raise NotImplementedError('Support for multiple rotations missing')
+
     def disorientation(self,
                        other,
                        SST = True,
