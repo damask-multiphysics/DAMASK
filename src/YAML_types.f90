@@ -762,7 +762,8 @@ recursive function tList_asFormattedString(self,indent) result(str)
   type (tItem), pointer  :: item
   character(len=:), allocatable :: str
   integer :: i, indent_
-
+  
+  str = ''
   if(present(indent)) then
     indent_ = indent
   else
@@ -791,6 +792,7 @@ recursive function tDict_asFormattedString(self,indent) result(str)
   character(len=:), allocatable :: str 
   integer :: i, indent_
 
+  str = ''
   if(present(indent)) then
     indent_ = indent
   else
