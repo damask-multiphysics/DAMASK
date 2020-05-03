@@ -1123,29 +1123,6 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
          + rhoDotAthermalAnnihilation &
          + rhoDotThermalAnnihilation
 
-#ifdef DEBUG
-  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0 &
-      .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0 )) then
-    write(6,'(a,/,4(12x,12(e12.5,1x),/))')  '<< CONST >> dislocation multiplication', &
-                                            rhoDotMultiplication(:,1:4) * timestep
-    write(6,'(a,/,8(12x,12(e12.5,1x),/))')  '<< CONST >> dislocation flux', &
-                                            rhoDotFlux(:,1:8) * timestep
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by glide', &
-                                            rhoDotSingle2DipoleGlide * timestep
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> athermal dipole annihilation', &
-                                            rhoDotAthermalAnnihilation * timestep
-    write(6,'(a,/,2(12x,12(e12.5,1x),/))')  '<< CONST >> thermally activated dipole annihilation', &
-                                            rhoDotThermalAnnihilation(:,9:10) * timestep
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> total density change', &
-                                            rhoDot * timestep
-    write(6,'(a,/,10(12x,12(f12.5,1x),/))') '<< CONST >> relative density change', &
-                                            rhoDot(:,1:8)  * timestep / (abs(stt%rho(:,sgl))+1.0e-10), &
-                                            rhoDot(:,9:10) * timestep / (stt%rho(:,dip)+1.0e-10)
-    write(6,*)
-  endif
-#endif
-
 
   if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
      .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
