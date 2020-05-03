@@ -241,7 +241,7 @@ class Rotation:
         """Homochoric vector: (h_1, h_2, h_3)."""
         return Rotation.qu2ho(self.quaternion)
 
-    def asCubochoric(self):
+    def as_cubochoric(self):
         """Cubochoric vector: (c_1, c_2, c_3)."""
         return Rotation.qu2cu(self.quaternion)
 
@@ -265,6 +265,7 @@ class Rotation:
     asMatrix     = as_matrix
     asRodrigues  = as_Rodrigues
     asHomochoric = as_homochoric
+    asCubochoric = as_cubochoric
 
     ################################################################################################
     # Static constructors. The input data needs to follow the conventions, options allow to
@@ -386,7 +387,7 @@ class Rotation:
         return Rotation(Rotation.ho2qu(ho))
 
     @staticmethod
-    def fromCubochoric(cubochoric,
+    def from_cubochoric(cubochoric,
                        P = -1):
 
         cu = np.array(cubochoric,dtype=float)
@@ -461,6 +462,7 @@ class Rotation:
     fromMatrix     = from_matrix
     fromRodrigues  = from_Rodrigues
     fromHomochoric = from_homochoric
+    fromCubochoric = from_cubochoric
     fromRandom     = from_random
 
 ####################################################################################################
@@ -1066,7 +1068,7 @@ class Rotation:
             if np.allclose(ho,0.0,rtol=0.0,atol=1.0e-16):
                 cu = np.zeros(3)
             else:
-                xyz3 = ho[Rotation._get_order(ho,'forward')]
+                xyz3 = ho[Rotation._get_pyramid_order(ho,'forward')]
 
                 # inverse M_3
                 xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
@@ -1087,20 +1089,35 @@ class Rotation:
 
                 # inverse M_1
                 cu = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
-                # reverse the coordinates back to the regular order according to the original pyramid number
-                cu = cu[Rotation._get_order(ho,'backward')]
-
-            return cu
+                cu = cu[Rotation._get_pyramid_order(ho,'backward')]
         else:
-            q2 = qxy + np.max(np.abs(xyz2))**2
-            sq2 = np.sqrt(q2)
-            q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2))*sq2))
-            tt = np.clip((np.min(np.abs(xyz2))**2+np.max(np.abs(xyz2))*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
-            Tinv = np.array([1.0,np.arccos(tt)/np.pi*12.0]) if np.abs(xyz2[1]) <= np.abs(xyz2[0]) else \
-                   np.array([np.arccos(tt)/np.pi*12.0,1.0])
-            Tinv = q * np.where(xyz2<0.0,-Tinv,Tinv)
-            raise NotImplementedError('Support for multiple rotations missing')
+            rs = np.linalg.norm(ho,axis=-1,keepdims=True)
 
+            xyz3 = np.take_along_axis(ho,Rotation._get_pyramid_order(ho,'forward'),-1)
+
+            with np.errstate(invalid='ignore',divide='ignore'):
+                # inverse M_3
+                xyz2 = xyz3[...,0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[...,2:3])) )
+                qxy = np.sum(xyz2**2,axis=-1,keepdims=True)
+
+                q2 = qxy + np.max(np.abs(xyz2),axis=-1,keepdims=True)**2
+                sq2 = np.sqrt(q2)
+                q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2),axis=-1,keepdims=True)*sq2))
+                tt = np.clip((np.min(np.abs(xyz2),axis=-1,keepdims=True)**2\
+                    +np.max(np.abs(xyz2),axis=-1,keepdims=True)*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
+                T_inv = np.where(np.abs(xyz2[...,1:2]) <= np.abs(xyz2[...,0:1]),
+                                    np.block([np.ones_like(tt),np.arccos(tt)/np.pi*12.0]),
+                                    np.block([np.arccos(tt)/np.pi*12.0,np.ones_like(tt)]))*q
+                T_inv[xyz2<0.0] *= -1.0
+                T_inv[np.broadcast_to(np.isclose(qxy,0.0,rtol=0.0,atol=1.0e-12),T_inv.shape)] = 0.0
+                cu = np.block([T_inv, np.where(xyz3[...,2:3]<0.0,-np.ones_like(xyz3[...,2:3]),np.ones_like(xyz3[...,2:3])) \
+                                      * rs/np.sqrt(6.0/np.pi),
+                              ])/ _sc
+
+            cu[np.isclose(np.sum(np.abs(ho),axis=-1),0.0,rtol=0.0,atol=1.0e-16)] = 0.0
+            cu = np.take_along_axis(cu,Rotation._get_pyramid_order(ho,'backward'),-1)
+
+        return cu
 
     #---------- Cubochoric ----------
     @staticmethod
@@ -1145,7 +1162,7 @@ class Rotation:
                 ho = np.zeros(3)
             else:
                 # get pyramide and scale by grid parameter ratio
-                XYZ = cu[Rotation._get_order(cu,'forward')] * _sc
+                XYZ = cu[Rotation._get_pyramid_order(cu,'forward')] * _sc
 
                 # intercept all the points along the z-axis
                 if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
@@ -1163,31 +1180,46 @@ class Rotation:
                     c = np.sum(T**2)
                     s = c *         np.pi/24.0 /XYZ[2]**2
                     c = c * np.sqrt(np.pi/24.0)/XYZ[2]
+
                     q = np.sqrt( 1.0 - s )
                     ho = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
 
-                # reverse the coordinates back to the regular order according to the original pyramid number
-                ho = ho[Rotation._get_order(cu,'backward')]
-
-            return ho
+                ho = ho[Rotation._get_pyramid_order(cu,'backward')]
         else:
-            # get pyramide and scale by grid parameter ratio
-            XYZ = cu[Rotation._get_order(cu,'forward')] * _sc
-            order = np.where(np.abs(XYZ[...,1]) <= np.abs(XYZ[...,0]),
-                             np.broadcast_to([1,0],XYZ.shape[:-1]+(2,)),
-                             np.broadcast_to([0,1],XYZ.shape[:-1]+(2,)))
-            q = np.pi/12.0 * XYZ[order[...,0]]/XYZ[order[...,1]]
-            c = np.cos(q)
-            s = np.sin(q)
-            q = _R1*2.0**0.25/_beta * XYZ[order[...,1]] / np.sqrt(np.sqrt(2.0)-c)
-            T = np.block([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
-            s = c *         np.pi/24.0 /XYZ[...,2]**2
-            c = c * np.sqrt(np.pi/24.0)/XYZ[...,2]
-            q = np.sqrt( 1.0 - s )
-            raise NotImplementedError('Support for multiple rotations missing')
+            with np.errstate(invalid='ignore',divide='ignore'):
+                # get pyramide and scale by grid parameter ratio
+                XYZ = np.take_along_axis(cu,Rotation._get_pyramid_order(cu,'forward'),-1) * _sc
+                order = np.abs(XYZ[...,1:2]) <= np.abs(XYZ[...,0:1])
+                q = np.pi/12.0 * np.where(order,XYZ[...,1:2],XYZ[...,0:1]) \
+                               / np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+                c = np.cos(q)
+                s = np.sin(q)
+                q = _R1*2.0**0.25/_beta/ np.sqrt(np.sqrt(2.0)-c) \
+                  * np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+
+                T = np.block([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
+
+                # transform to sphere grid (inverse Lambert)
+                c = np.sum(T**2,axis=-1,keepdims=True)
+                s = c *         np.pi/24.0 /XYZ[...,2:3]**2
+                c = c * np.sqrt(np.pi/24.0)/XYZ[...,2:3]
+                q = np.sqrt( 1.0 - s)
+
+                ho = np.where(np.isclose(np.sum(np.abs(XYZ[...,0:2]),axis=-1,keepdims=True),0.0,rtol=0.0,atol=1.0e-16),
+                              np.block([np.zeros_like(XYZ[...,0:2]),np.sqrt(6.0/np.pi) *XYZ[...,2:3]]),
+                              np.block([np.where(order,T[...,0:1],T[...,1:2])*q,
+                                        np.where(order,T[...,1:2],T[...,0:1])*q,
+                                        np.sqrt(6.0/np.pi) * XYZ[...,2:3] - c])
+                              )
+
+            ho[np.isclose(np.sum(np.abs(cu),axis=-1),0.0,rtol=0.0,atol=1.0e-16)] = 0.0
+            ho = np.take_along_axis(ho,Rotation._get_pyramid_order(cu,'backward'),-1)
+
+        return ho
+
 
     @staticmethod
-    def _get_order(xyz,direction=None):
+    def _get_pyramid_order(xyz,direction=None):
         """
         Get order of the coordinates.
 
@@ -1206,7 +1238,7 @@ class Rotation:
 
         """
         order = {'forward':np.array([[0,1,2],[1,2,0],[2,0,1]]),
-                'backward':np.array([[0,1,2],[2,0,1],[1,2,0]])}
+                 'backward':np.array([[0,1,2],[2,0,1],[1,2,0]])}
         if len(xyz.shape) == 1:
             if   np.maximum(abs(xyz[0]),abs(xyz[1])) <= xyz[2] or \
                  np.maximum(abs(xyz[0]),abs(xyz[1])) <=-xyz[2]:
