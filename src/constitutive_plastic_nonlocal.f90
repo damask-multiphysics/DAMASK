@@ -962,39 +962,24 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   integer ::  &
     ph, &
-    neighbor_instance, &                                                                            !< instance of my neighbor's plasticity
     ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
-    n, &                                                                                            !< index of my current neighbor
-    neighbor_el, &                                                                                  !< element number of my neighbor
-    neighbor_ip, &                                                                                  !< integration point of my neighbor
-    neighbor_n, &                                                                                   !< neighbor index pointing to me when looking from my neighbor
-    opposite_neighbor, &                                                                            !< index of my opposite neighbor
-    opposite_ip, &                                                                                  !< ip of my opposite neighbor
-    opposite_el, &                                                                                  !< element index of my opposite neighbor
-    opposite_n, &                                                                                   !< neighbor index pointing to me when looking from my opposite neighbor
     t, &                                                                                            !< type of dislocation
-    no,&                                                                                            !< neighbor offset shortcut
-    np,&                                                                                            !< neighbor phase shortcut
-    topp, &                                                                                         !< type of dislocation with opposite sign to t
     s                                                                                               !< index of my current slip system
   real(pReal), dimension(param(instance)%sum_N_sl,10) :: &
     rho, &
     rho0, &                                                                                         !< dislocation density at beginning of time step
     rhoDot, &                                                                                       !< density evolution
     rhoDotMultiplication, &                                                                         !< density evolution by multiplication
-    rhoDotFlux, &                                                                                   !< density evolution by flux
     rhoDotSingle2DipoleGlide, &                                                                     !< density evolution by dipole formation (by glide)
     rhoDotAthermalAnnihilation, &                                                                   !< density evolution by athermal annihilation
     rhoDotThermalAnnihilation                                                                       !< density evolution by thermal annihilation
   real(pReal), dimension(param(instance)%sum_N_sl,8) :: &
     rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
-    neighbor_rhoSgl0, &                                                                             !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
     my_rhoSgl0                                                                                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
   real(pReal), dimension(param(instance)%sum_N_sl,4) :: &
     v, &                                                                                            !< current dislocation glide velocity
     v0, &
-    neighbor_v0, &                                                                                  !< dislocation glide velocity of enighboring ip
     gdot                                                                                            !< shear rates
   real(pReal), dimension(param(instance)%sum_N_sl) :: &
     tau, &                                                                                          !< current resolved shear stress
@@ -1003,23 +988,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
     rhoDip, &                                                                                       !< current dipole dislocation densities (screw and edge dipoles)
     dLower, &                                                                                       !< minimum stable dipole distance for edges and screws
     dUpper                                                                                          !< current maximum stable dipole distance for edges and screws
-  real(pReal), dimension(3,param(instance)%sum_N_sl,4) :: &
-    m                                                                                               !< direction of dislocation motion
-  real(pReal), dimension(3,3) :: &
-    my_F, &                                                                                         !< my total deformation gradient
-    neighbor_F, &                                                                                   !< total deformation gradient of my neighbor
-    my_Fe, &                                                                                        !< my elastic deformation gradient
-    neighbor_Fe, &                                                                                  !< elastic deformation gradient of my neighbor
-    Favg                                                                                            !< average total deformation gradient of me and my neighbor
-  real(pReal), dimension(3) :: &
-    normal_neighbor2me, &                                                                           !< interface normal pointing from my neighbor to me in neighbor's lattice configuration
-    normal_neighbor2me_defConf, &                                                                   !< interface normal pointing from my neighbor to me in shared deformed configuration
-    normal_me2neighbor, &                                                                           !< interface normal pointing from me to my neighbor in my lattice configuration
-    normal_me2neighbor_defConf                                                                      !< interface normal pointing from me to my neighbor in shared deformed configuration
   real(pReal) :: &
-    area, &                                                                                         !< area of the current interface
-    transmissivity, &                                                                               !< overall transmissivity of dislocation flux to neighboring material point
-    lineLength, &                                                                                   !< dislocation line length leaving the current interface
     selfDiffusion                                                                                   !< self diffusion
 
   ph = material_phaseAt(1,el)
@@ -1093,153 +1062,6 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   endif isBCC
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,instance),of)
-
-  !****************************************************************************
-  !*** calculate dislocation fluxes (only for nonlocal plasticity)
-  rhoDotFlux = 0.0_pReal
-  if (.not. phase_localPlasticity(material_phaseAt(1,el))) then
-
-    !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
-    if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
-            .and. prm%CFLfactor * abs(v0) * timestep &
-                > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
-#ifdef DEBUG
-    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then
-      write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
-      write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
-        maxval(abs(v0), abs(gdot) > 0.0_pReal &
-                       .and.  prm%CFLfactor * abs(v0) * timestep &
-                             > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
-        ' at a timestep of ',timestep
-      write(6,'(a)') '<< CONST >> enforcing cutback !!!'
-    endif
-#endif
-      plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                               ! -> return NaN and, hence, enforce cutback
-      return
-    endif
-
-
-    !*** be aware of the definition of slip_transverse = slip_direction x slip_normal !!!
-    !*** opposite sign to our t vector in the (s,t,n) triplet !!!
-
-    m(1:3,:,1) =  prm%slip_direction
-    m(1:3,:,2) = -prm%slip_direction
-    m(1:3,:,3) = -prm%slip_transverse
-    m(1:3,:,4) =  prm%slip_transverse
-
-    my_F = F(1:3,1:3,1,ip,el)
-    my_Fe = matmul(my_F, math_inv33(Fp(1:3,1:3,1,ip,el)))
-
-    neighbors: do n = 1,nIPneighbors
-
-      neighbor_el = IPneighborhood(1,n,ip,el)
-      neighbor_ip = IPneighborhood(2,n,ip,el)
-      neighbor_n  = IPneighborhood(3,n,ip,el)
-      np = material_phaseAt(1,neighbor_el)
-      no = material_phasememberAt(1,neighbor_ip,neighbor_el)
-
-      opposite_neighbor = n + mod(n,2) - mod(n+1,2)
-      opposite_el = IPneighborhood(1,opposite_neighbor,ip,el)
-      opposite_ip = IPneighborhood(2,opposite_neighbor,ip,el)
-      opposite_n  = IPneighborhood(3,opposite_neighbor,ip,el)
-
-      if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
-        neighbor_instance = phase_plasticityInstance(material_phaseAt(1,neighbor_el))
-        neighbor_F = F(1:3,1:3,1,neighbor_ip,neighbor_el)
-        neighbor_Fe = matmul(neighbor_F, math_inv33(Fp(1:3,1:3,1,neighbor_ip,neighbor_el)))
-        Favg = 0.5_pReal * (my_F + neighbor_F)
-      else                                                                                          ! if no neighbor, take my value as average
-        Favg = my_F
-      endif
-
-      neighbor_v0 = 0.0_pReal        ! needed for check of sign change in flux density below
-
-      !* FLUX FROM MY NEIGHBOR TO ME
-      !* This is only considered, if I have a neighbor of nonlocal plasticity
-      !* (also nonlocal constitutive law with local properties) that is at least a little bit
-      !* compatible.
-      !* If it's not at all compatible, no flux is arriving, because everything is dammed in front of
-      !* my neighbor's interface.
-      !* The entering flux from my neighbor will be distributed on my slip systems according to the
-      !* compatibility
-      if (neighbor_n > 0) then
-      if (phase_plasticity(material_phaseAt(1,neighbor_el)) == PLASTICITY_NONLOCAL_ID .and. &
-          any(compatibility(:,:,:,n,ip,el) > 0.0_pReal)) then
-
-        forall (s = 1:ns, t = 1:4)
-          neighbor_v0(s,t) =          plasticState(np)%state0(iV   (s,t,neighbor_instance),no)
-          neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,neighbor_instance),no),0.0_pReal)
-        endforall
-
-        where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
-          .or. neighbor_rhoSgl0 < prm%significantRho) &
-          neighbor_rhoSgl0 = 0.0_pReal
-        normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
-                                     IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! normal of the interface in (average) deformed configuration (pointing neighbor => me)
-        normal_neighbor2me = matmul(transpose(neighbor_Fe), normal_neighbor2me_defConf) &
-                           / math_det33(neighbor_Fe)                                                ! interface normal in the lattice configuration of my neighbor
-        area = IParea(neighbor_n,neighbor_ip,neighbor_el) * norm2(normal_neighbor2me)
-        normal_neighbor2me = normal_neighbor2me / norm2(normal_neighbor2me)                         ! normalize the surface normal to unit length
-        do s = 1,ns
-          do t = 1,4
-            c = (t + 1) / 2
-            topp = t + mod(t,2) - mod(t+1,2)
-            if (neighbor_v0(s,t) * math_inner(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &         ! flux from my neighbor to me == entering flux for me
-                .and. v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal ) then                                ! ... only if no sign change in flux density
-              lineLength = neighbor_rhoSgl0(s,t) * neighbor_v0(s,t) &
-                         * math_inner(m(1:3,s,t), normal_neighbor2me) * area                        ! positive line length that wants to enter through this interface
-              where (compatibility(c,:,s,n,ip,el) > 0.0_pReal) &
-                rhoDotFlux(:,t) = rhoDotFlux(1:ns,t) &
-                                + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2.0_pReal    ! transferring to equally signed mobile dislocation type
-              where (compatibility(c,:,s,n,ip,el) < 0.0_pReal) &
-                rhoDotFlux(:,topp) = rhoDotFlux(:,topp) &
-                                   + lineLength/IPvolume(ip,el)*compatibility(c,:,s,n,ip,el)**2.0_pReal ! transferring to opposite signed mobile dislocation type
-
-            endif
-          enddo
-        enddo
-      endif; endif
-
-
-      !* FLUX FROM ME TO MY NEIGHBOR
-      !* This is not considered, if my opposite neighbor has a different constitutive law than nonlocal (still considered for nonlocal law with local properties).
-      !* Then, we assume, that the opposite(!) neighbor sends an equal amount of dislocations to me.
-      !* So the net flux in the direction of my neighbor is equal to zero:
-      !*    leaving flux to neighbor == entering flux from opposite neighbor
-      !* In case of reduced transmissivity, part of the leaving flux is stored as dead dislocation density.
-      !* That means for an interface of zero transmissivity the leaving flux is fully converted to dead dislocations.
-      if (opposite_n > 0) then
-      if (phase_plasticity(material_phaseAt(1,opposite_el)) == PLASTICITY_NONLOCAL_ID) then
-
-        normal_me2neighbor_defConf = math_det33(Favg) &
-                                   * matmul(math_inv33(transpose(Favg)),IPareaNormal(1:3,n,ip,el))  ! normal of the interface in (average) deformed configuration (pointing me => neighbor)
-        normal_me2neighbor = matmul(transpose(my_Fe), normal_me2neighbor_defConf) &
-                           / math_det33(my_Fe)                                                      ! interface normal in my lattice configuration
-        area = IParea(n,ip,el) * norm2(normal_me2neighbor)
-        normal_me2neighbor = normal_me2neighbor / norm2(normal_me2neighbor)                         ! normalize the surface normal to unit length
-        do s = 1,ns
-          do t = 1,4
-            c = (t + 1) / 2
-            if (v0(s,t) * math_inner(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then             ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
-              if (v0(s,t) * neighbor_v0(s,t) >= 0.0_pReal) then                                     ! no sign change in flux density
-                transmissivity = sum(compatibility(c,:,s,n,ip,el)**2.0_pReal)                       ! overall transmissivity from this slip system to my neighbor
-              else                                                                                  ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
-                transmissivity = 0.0_pReal
-              endif
-              lineLength = my_rhoSgl0(s,t) * v0(s,t) &
-                         * math_inner(m(1:3,s,t), normal_me2neighbor) * area                        ! positive line length of mobiles that wants to leave through this interface
-              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / IPvolume(ip,el)                      ! subtract dislocation flux from current type
-              rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) &
-                                + lineLength / IPvolume(ip,el) * (1.0_pReal - transmissivity) &
-                                * sign(1.0_pReal, v0(s,t))                                          ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
-            endif
-          enddo
-        enddo
-      endif; endif
-
-    enddo neighbors
-  endif
-
 
 
   !****************************************************************************
@@ -1454,7 +1276,7 @@ function plastic_nonlocal_dotState2(F,Fp,timestep,  instance,of,ip,el) result(rh
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
 #endif
-      plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                               ! -> return NaN and, hence, enforce cutback
+      rhoDotFlux = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                                             ! enforce cutback
       return
     endif
 
