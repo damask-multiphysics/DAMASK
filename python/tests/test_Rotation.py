@@ -264,3 +264,18 @@ class TestRotation:
         for h,c in zip(ho,co):
             print(h,c)
             assert np.allclose(conversion(h),c)
+
+
+    @pytest.mark.parametrize('direction',['forward',
+                                          'backward'])
+    def test_pyramid_vectorization(self,direction):
+        p = np.random.rand(n,3)
+        o = Rotation._get_order(p,direction)
+        for i,o_i in enumerate(o):
+            assert np.allclose(o_i,Rotation._get_order(p[i],direction))
+
+    def test_pyramid_invariant(self):
+        a = np.random.rand(n,3)
+        f = damask.Rotation._get_order(a,'forward')
+        b = damask.Rotation._get_order(a,'backward')
+        assert np.all(np.take_along_axis(np.take_along_axis(a,f,-1),b,-1) == a)
