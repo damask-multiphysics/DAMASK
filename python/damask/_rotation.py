@@ -1092,6 +1092,13 @@ class Rotation:
 
             return cu
         else:
+            q2 = qxy + np.max(np.abs(xyz2))**2
+            sq2 = np.sqrt(q2)
+            q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2))*sq2))
+            tt = np.clip((np.min(np.abs(xyz2))**2+np.max(np.abs(xyz2))*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
+            Tinv = np.array([1.0,np.arccos(tt)/np.pi*12.0]) if np.abs(xyz2[1]) <= np.abs(xyz2[0]) else \
+                   np.array([np.arccos(tt)/np.pi*12.0,1.0])
+            Tinv = q * np.where(xyz2<0.0,-Tinv,Tinv)
             raise NotImplementedError('Support for multiple rotations missing')
 
 
@@ -1164,6 +1171,19 @@ class Rotation:
 
             return ho
         else:
+            # get pyramide and scale by grid parameter ratio
+            XYZ = cu[Rotation._get_order(cu,'forward')] * _sc
+            order = np.where(np.abs(XYZ[...,1]) <= np.abs(XYZ[...,0]),
+                             np.broadcast_to([1,0],XYZ.shape[:-1]+(2,)),
+                             np.broadcast_to([0,1],XYZ.shape[:-1]+(2,)))
+            q = np.pi/12.0 * XYZ[order[...,0]]/XYZ[order[...,1]]
+            c = np.cos(q)
+            s = np.sin(q)
+            q = _R1*2.0**0.25/_beta * XYZ[order[...,1]] / np.sqrt(np.sqrt(2.0)-c)
+            T = np.block([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
+            s = c *         np.pi/24.0 /XYZ[...,2]**2
+            c = c * np.sqrt(np.pi/24.0)/XYZ[...,2]
+            q = np.sqrt( 1.0 - s )
             raise NotImplementedError('Support for multiple rotations missing')
 
     @staticmethod
