@@ -1061,14 +1061,12 @@ class Rotation:
 
         """
         if len(ho.shape) == 1:
-            ho_ = ho/np.linalg.norm(ho)*_R1 if np.isclose(np.linalg.norm(ho),_R1,atol=1e-6) \
-                  else ho
-            rs = np.linalg.norm(ho_)
+            rs = np.linalg.norm(ho)
 
-            if np.allclose(ho_,0.0,rtol=0.0,atol=1.0e-16):
+            if np.allclose(ho,0.0,rtol=0.0,atol=1.0e-16):
                 cu = np.zeros(3)
             else:
-                xyz3 = ho_[Rotation._get_order(ho_,'forward')]
+                xyz3 = ho[Rotation._get_order(ho,'forward')]
 
                 # inverse M_3
                 xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
@@ -1090,7 +1088,7 @@ class Rotation:
                 # inverse M_1
                 cu = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
                 # reverse the coordinates back to the regular order according to the original pyramid number
-                cu = cu[Rotation._get_order(ho_,'backward')]
+                cu = cu[Rotation._get_order(ho,'backward')]
 
             return cu
         else:
@@ -1135,16 +1133,12 @@ class Rotation:
 
         """
         if len(cu.shape) == 1:
-
-            cu_ = np.clip(cu,None,np.pi**(2./3.) * 0.5) if np.isclose(np.abs(np.max(cu)),np.pi**(2./3.) * 0.5,atol=1e-6) \
-                    else cu
-
             # transform to the sphere grid via the curved square, and intercept the zero point
-            if np.allclose(cu_,0.0,rtol=0.0,atol=1.0e-16):
+            if np.allclose(cu,0.0,rtol=0.0,atol=1.0e-16):
                 ho = np.zeros(3)
             else:
                 # get pyramide and scale by grid parameter ratio
-                XYZ = cu_[Rotation._get_order(cu_,'forward')] * _sc
+                XYZ = cu[Rotation._get_order(cu,'forward')] * _sc
 
                 # intercept all the points along the z-axis
                 if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
@@ -1166,7 +1160,7 @@ class Rotation:
                     ho = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
 
                 # reverse the coordinates back to the regular order according to the original pyramid number
-                ho = ho[Rotation._get_order(cu_,'backward')]
+                ho = ho[Rotation._get_order(cu,'backward')]
 
             return ho
         else:
