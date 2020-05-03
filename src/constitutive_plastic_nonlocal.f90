@@ -1295,7 +1295,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))    ! make sure that we do not annihilate more dipoles than we have
 
-  rhoDot = rhoDotFlux &
+  rhoDot = plastic_nonlocal_dotState2(F,Fp,timestep,  instance,of,ip,el) &
          + rhoDotMultiplication &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
@@ -1347,8 +1347,7 @@ end subroutine plastic_nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_dotState2(F, Fp,timestep, &
-                                      instance,of,ip,el)
+function plastic_nonlocal_dotState2(F,Fp,timestep,  instance,of,ip,el) result(rhoDotFlux)
 
   real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
@@ -1583,7 +1582,7 @@ subroutine plastic_nonlocal_dotState2(F, Fp,timestep, &
 
   end associate
 
-end subroutine plastic_nonlocal_dotState2
+end function plastic_nonlocal_dotState2
 
 
 !--------------------------------------------------------------------------------------------------
