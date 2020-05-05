@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -41,73 +42,20 @@ parser.set_defaults(label = [],
                    )
 
 (options,filenames) = parser.parse_args()
-
-if len(options.label) == 0:
-  parser.error('no labels specified.')
-
-# --- loop over input files -------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name)
-  except IOError:
-    continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
+    randomSeed = int(os.urandom(4).hex(), 16) if options.randomSeed is None else options.randomSeed # random seed per file
+    rng = np.random.default_rng(randomSeed)
 
-# ------------------------------------------ process labels ---------------------------------------
+    for label in options.label:
+        data = table.get(label)
+        uniques,inverse  = np.unique(data,return_inverse=True,axis=0) if options.unique else (data,np.arange(len(data)))
+        rng.shuffle(uniques)
+        table.set(label,uniques[inverse], scriptID+' '+' '.join(sys.argv[1:]))
 
-  errors  = []
-  remarks = []
-  columns = []
-  dims    = []
-
-  indices    = table.label_index    (options.label)
-  dimensions = table.label_dimension(options.label)
-  for i,index in enumerate(indices):
-    if index == -1: remarks.append('label "{}" not present...'.format(options.label[i]))
-    else:
-      columns.append(index)
-      dims.append(dimensions[i])
-
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
-
-# ------------------------------------------ assemble header ---------------------------------------
-
-  randomSeed = int(os.urandom(4).hex(), 16) if options.randomSeed is None else options.randomSeed   # random seed per file
-  np.random.seed(randomSeed)
-
-  table.info_append([scriptID + '\t' + ' '.join(sys.argv[1:]),
-                     'random seed {}'.format(randomSeed),
-                    ])
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  table.data_readArray()                                                                            # read all data at once
-  for col,dim in zip(columns,dims):
-    if options.unique:
-      s = set(map(tuple,table.data[:,col:col+dim]))                                                 # generate set of (unique) values
-      uniques = np.array(list(map(np.array,s)))                                                     # translate set to np.array
-      shuffler = dict(zip(s,np.random.permutation(len(s))))                                         # random permutation
-      table.data[:,col:col+dim] = uniques[np.array(list(map(lambda x: shuffler[tuple(x)],
-                                                            table.data[:,col:col+dim])))]           # fill table with mapped uniques
-    else:
-      np.random.shuffle(table.data[:,col:col+dim])                                                  # independently shuffle every row
-
-# ------------------------------------------ output result -----------------------------------------
-
-  table.data_writeArray()
-
-# ------------------------------------------ output finalization -----------------------------------
-
-  table.close()                                                                                     # close ASCII tables
+    table.to_ASCII(sys.stdout if name is None else name)

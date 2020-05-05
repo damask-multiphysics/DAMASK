@@ -214,7 +214,7 @@ for name in filenames:
 
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    o = damask.Rotation(list(map(float,table.data[column:column+4])))
+    o = damask.Rotation(np.array(list(map(float,table.data[column:column+4]))))
 
     table.data_append(  np.abs(  np.sum(slip_direction * (o * force) ,axis=1) \
                                * np.sum(slip_normal    * (o * normal),axis=1)))

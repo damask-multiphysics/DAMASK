@@ -303,6 +303,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     s
   logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
 
+    todo = .false.
 #ifdef DEBUG
   if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0 &
       .and. FEsolving_execElem(1) <= debug_e &
@@ -1240,10 +1241,10 @@ subroutine integrateStateAdaptiveEuler(todo)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
+                                                crystallite_partionedF0, &
+                                                crystallite_Fi(1:3,1:3,g,i,e), &
+                                                crystallite_partionedFp0, &
+                                                crystallite_subdt(g,i,e), g,i,e,p,c)
           if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
@@ -1269,10 +1270,10 @@ subroutine integrateStateAdaptiveEuler(todo)
           if(broken) cycle
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
+                                                crystallite_partionedF0, &
+                                                crystallite_Fi(1:3,1:3,g,i,e), &
+                                                crystallite_partionedFp0, &
+                                                crystallite_subdt(g,i,e), g,i,e,p,c)
           if(broken) cycle
 
 
@@ -1301,9 +1302,9 @@ subroutine integrateStateAdaptiveEuler(todo)
 end subroutine integrateStateAdaptiveEuler
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief integrate stress, state with 4th order explicit Runge Kutta method
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!> @brief Integrate state (including stress integration) with the classic Runge Kutta method
+!---------------------------------------------------------------------------------------------------
 subroutine integrateStateRK4(todo)
 
   logical, dimension(:,:,:), intent(in) :: todo
@@ -1312,157 +1313,59 @@ subroutine integrateStateRK4(todo)
     A = reshape([&
       0.5_pReal, 0.0_pReal, 0.0_pReal, &
       0.0_pReal, 0.5_pReal, 0.0_pReal, &
-      0.0_pReal, 0.0_pReal, 1.0_pReal], &
-      [3,3])
+      0.0_pReal, 0.0_pReal, 1.0_pReal],&
+      shape(A))
   real(pReal), dimension(3), parameter :: &
-    CC = [0.5_pReal, 0.5_pReal, 1.0_pReal]                                   ! factor giving the fraction of the original timestep used for Runge Kutta Integration
+    C = [0.5_pReal, 0.5_pReal, 1.0_pReal]
   real(pReal), dimension(4), parameter :: &
-    B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]                                   ! weight of slope used for Runge Kutta integration (final weight divided by 6)
+    B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]
 
-  integer :: &
-    e, &                                                                                            ! element index in element loop
-    i, &                                                                                            ! integration point index in ip loop
-    g, &                                                                                            ! grain index in grain loop
-    stage, &                                                                                        ! stage index in integration stage loop
-    n, &
-    p, &
-    c, &
-    s, &
-    sizeDotState
-  logical :: &
-    nonlocalBroken, broken
-
-  real(pReal), dimension(constitutive_source_maxSizeDotState,4,maxval(phase_Nsources)) :: source_RK4dotState
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,4) :: plastic_RK4dotState
-  nonlocalBroken = .false.
-  !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,source_RK4dotState,plastic_RK4dotState,broken)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        broken = .false.
-        p = material_phaseAt(g,e)
-        if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
-
-          c = material_phaseMemberAt(g,i,e)
-
-
-          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken) cycle
-
-          do stage = 1,3
-            sizeDotState = plasticState(p)%sizeDotState
-            plastic_RK4dotState(1:sizeDotState,stage) = plasticState(p)%dotState(:,c)
-            plasticState(p)%dotState(:,c) = A(1,stage) * plastic_RK4dotState(1:sizeDotState,1)
-            do s = 1, phase_Nsources(p)
-              sizeDotState = sourceState(p)%p(s)%sizeDotState
-              source_RK4dotState(1:sizeDotState,stage,s) = sourceState(p)%p(s)%dotState(:,c)
-              sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * source_RK4dotState(1:sizeDotState,1,s)
-            enddo
-
-            do n = 2, stage
-              sizeDotState = plasticState(p)%sizeDotState
-              plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
-                                            + A(n,stage) * plastic_RK4dotState(1:sizeDotState,n)
-              do s = 1, phase_Nsources(p)
-                sizeDotState = sourceState(p)%p(s)%sizeDotState
-                sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
-                                                  + A(n,stage) * source_RK4dotState(1:sizeDotState,n,s)
-              enddo
-            enddo
-
-            sizeDotState = plasticState(p)%sizeDotState
-            plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                    + plasticState(p)%dotState (1:sizeDotState,c) &
-                                                      * crystallite_subdt(g,i,e)
-            do s = 1, phase_Nsources(p)
-              sizeDotState = sourceState(p)%p(s)%sizeDotState
-              sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                          + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                            * crystallite_subdt(g,i,e)
-            enddo
-
-            broken = integrateStress(g,i,e,CC(stage))
-            if(broken) exit
-
-            broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                              crystallite_partionedF0, &
-                                              crystallite_Fi(1:3,1:3,g,i,e), &
-                                              crystallite_partionedFp0, &
-                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
-            if(broken) exit
-
-          enddo
-          if(broken) cycle
-
-          sizeDotState = plasticState(p)%sizeDotState
-
-          plastic_RK4dotState(1:sizeDotState,4) = plasticState (p)%dotState(:,c)
-
-          plasticState(p)%dotState(:,c) =  matmul(plastic_RK4dotState(1:sizeDotState,1:4),B)
-          plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                  + plasticState(p)%dotState (1:sizeDotState,c) &
-                                                    * crystallite_subdt(g,i,e)
-
-          do s = 1, phase_Nsources(p)
-            sizeDotState = sourceState(p)%p(s)%sizeDotState
-
-            source_RK4dotState(1:sizeDotState,4,s) = sourceState(p)%p(s)%dotState(:,c)
-
-            sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RK4dotState(1:sizeDotState,1:4,s),B)
-            sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                        + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                          * crystallite_subdt(g,i,e)
-          enddo
-
-          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                           crystallite_Fe(1:3,1:3,g,i,e), &
-                                           crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken) cycle
-
-          broken = integrateStress(g,i,e)
-          crystallite_converged(g,i,e) = .not. broken
-
-        endif
-        if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
-  enddo; enddo; enddo
-  !$OMP END PARALLEL DO
-
-  if (nonlocalBroken) call nonlocalConvergenceCheck
+  call integrateStateRK(todo,A,B,C)
 
 end subroutine integrateStateRK4
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief integrate stress, state with 5th order Runge-Kutta Cash-Karp method with
-!> adaptive step size  (use 5th order solution to advance = "local extrapolation")
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!> @brief Integrate state (including stress integration) with the Cash-Carp method
+!---------------------------------------------------------------------------------------------------
 subroutine integrateStateRKCK45(todo)
 
   logical, dimension(:,:,:), intent(in) :: todo
 
   real(pReal), dimension(5,5), parameter :: &
     A = reshape([&
-      .2_pReal, .075_pReal,   .3_pReal, -11.0_pReal/54.0_pReal,  1631.0_pReal/55296.0_pReal, &
-      .0_pReal, .225_pReal,  -.9_pReal,   2.5_pReal,              175.0_pReal/512.0_pReal, &
-      .0_pReal,   .0_pReal,  1.2_pReal, -70.0_pReal/27.0_pReal,   575.0_pReal/13824.0_pReal, &
-      .0_pReal,   .0_pReal,   .0_pReal,  35.0_pReal/27.0_pReal, 44275.0_pReal/110592.0_pReal, &
-      .0_pReal,   .0_pReal,   .0_pReal,    .0_pReal,              253.0_pReal/4096.0_pReal], &
-      [5,5], order=[2,1])                                                                           !< coefficients in Butcher tableau (used for preliminary integration in stages 2 to 6)
-
+      1._pReal/5._pReal,       .0_pReal,             .0_pReal,               .0_pReal,                  .0_pReal, &
+      3._pReal/40._pReal,      9._pReal/40._pReal,   .0_pReal,               .0_pReal,                  .0_pReal, &
+      3_pReal/10._pReal,       -9._pReal/10._pReal,  6._pReal/5._pReal,      .0_pReal,                  .0_pReal, &
+      -11._pReal/54._pReal,    5._pReal/2._pReal,    -70.0_pReal/27.0_pReal, 35.0_pReal/27.0_pReal,     .0_pReal, &
+      1631._pReal/55296._pReal,175._pReal/512._pReal,575._pReal/13824._pReal,44275._pReal/110592._pReal,253._pReal/4096._pReal],&
+      shape(A))
+  real(pReal), dimension(5), parameter :: &
+    C = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]
   real(pReal), dimension(6), parameter :: &
     B = &
       [37.0_pReal/378.0_pReal, .0_pReal, 250.0_pReal/621.0_pReal, &
-      125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &                               !< coefficients in Butcher tableau (used for final integration and error estimate)
+      125.0_pReal/594.0_pReal, .0_pReal, 512.0_pReal/1771.0_pReal], &
     DB = B - &
       [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
-      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,      0.25_pReal]                      !< coefficients in Butcher tableau (used for final integration and error estimate)
+      13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  1._pReal/4._pReal]
 
-  real(pReal), dimension(5), parameter :: &
-    CC = [0.2_pReal, 0.3_pReal, 0.6_pReal, 1.0_pReal, 0.875_pReal]                                  !< coefficients in Butcher tableau (fractions of original time step in stages 2 to 6)
+  call integrateStateRK(todo,A,B,C,DB)
+
+end subroutine integrateStateRKCK45
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Integrate state (including stress integration) with an explicit Runge-Kutta method or an
+!! embedded explicit Runge-Kutta method
+!--------------------------------------------------------------------------------------------------
+subroutine integrateStateRK(todo,A,B,CC,DB)
+
+  logical, dimension(:,:,:), intent(in) :: todo
+
+  real(pReal), dimension(:,:), intent(in) :: A
+  real(pReal), dimension(:),   intent(in) :: B, CC
+  real(pReal), dimension(:),   intent(in), optional :: DB
 
   integer :: &
     e, &                                                                                            ! element index in element loop
@@ -1476,8 +1379,8 @@ subroutine integrateStateRKCK45(todo)
     sizeDotState
   logical :: &
     nonlocalBroken, broken
-  real(pReal), dimension(constitutive_source_maxSizeDotState,6,maxval(phase_Nsources)) :: source_RKdotState
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,6) :: plastic_RKdotState
+  real(pReal), dimension(constitutive_source_maxSizeDotState,size(B),maxval(phase_Nsources)) :: source_RKdotState
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B))                    :: plastic_RKdotState
 
   nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,plastic_RKdotState,source_RKdotState,broken)
@@ -1491,13 +1394,13 @@ subroutine integrateStateRKCK45(todo)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
+                                                crystallite_partionedF0, &
+                                                crystallite_Fi(1:3,1:3,g,i,e), &
+                                                crystallite_partionedFp0, &
+                                                crystallite_subdt(g,i,e), g,i,e,p,c)
           if(broken) cycle
 
-          do stage = 1,5
+          do stage = 1,size(A,1)
             sizeDotState = plasticState(p)%sizeDotState
             plastic_RKdotState(1:sizeDotState,stage) = plasticState(p)%dotState(:,c)
             plasticState(p)%dotState(:,c) = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
@@ -1533,10 +1436,10 @@ subroutine integrateStateRKCK45(todo)
             if(broken) exit
 
             broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                              crystallite_partionedF0, &
-                                              crystallite_Fi(1:3,1:3,g,i,e), &
-                                              crystallite_partionedFp0, &
-                                              crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
+                                                  crystallite_partionedF0, &
+                                                  crystallite_Fi(1:3,1:3,g,i,e), &
+                                                  crystallite_partionedFp0, &
+                                                  crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
             if(broken) exit
 
           enddo
@@ -1544,29 +1447,30 @@ subroutine integrateStateRKCK45(todo)
 
           sizeDotState = plasticState(p)%sizeDotState
 
-          plastic_RKdotState(1:sizeDotState,6) = plasticState (p)%dotState(:,c)
-          plasticState(p)%dotState(:,c) = matmul(plastic_RKdotState(1:sizeDotState,1:6),B)
+          plastic_RKdotState(1:sizeDotState,size(B)) = plasticState (p)%dotState(:,c)
+          plasticState(p)%dotState(:,c) = matmul(plastic_RKdotState(1:sizeDotState,1:size(B)),B)
           plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                                   + plasticState(p)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
-          broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:6),DB) &
-                                                   * crystallite_subdt(g,i,e), &
-                                              plasticState(p)%state(1:sizeDotState,c), &
-                                              plasticState(p)%atol(1:sizeDotState))
+          if(present(DB)) &
+            broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) &
+                                                     * crystallite_subdt(g,i,e), &
+                                                plasticState(p)%state(1:sizeDotState,c), &
+                                                plasticState(p)%atol(1:sizeDotState))
 
           do s = 1, phase_Nsources(p)
             sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-            source_RKdotState(1:sizeDotState,6,s) = sourceState(p)%p(s)%dotState(:,c)
-            sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:6,s),B)
+            source_RKdotState(1:sizeDotState,size(B),s) = sourceState(p)%p(s)%dotState(:,c)
+            sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:size(B),s),B)
             sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
                                                         + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                           * crystallite_subdt(g,i,e)
-            broken = broken .and. .not. &
-                                      converged(matmul(source_RKdotState(1:sizeDotState,1:6,s),DB) &
-                                                      * crystallite_subdt(g,i,e), &
-                                                sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                sourceState(p)%p(s)%atol(1:sizeDotState))
+            if(present(DB)) &
+              broken = broken .or. .not. converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
+                                                         * crystallite_subdt(g,i,e), &
+                                                   sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                                                   sourceState(p)%p(s)%atol(1:sizeDotState))
           enddo
           if(broken) cycle
 
@@ -1585,7 +1489,7 @@ subroutine integrateStateRKCK45(todo)
 
   if(nonlocalBroken) call nonlocalConvergenceCheck
 
-end subroutine integrateStateRKCK45
+end subroutine integrateStateRK
 
 
 !--------------------------------------------------------------------------------------------------
