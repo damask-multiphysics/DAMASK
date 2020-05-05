@@ -1209,10 +1209,6 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
     lineLength                                                                                      !< dislocation line length leaving the current interface
 
   ph = material_phaseAt(1,el)
-  if (timestep <= 0.0_pReal) then
-    plasticState(ph)%dotState = 0.0_pReal
-    return
-  endif
 
   associate(prm => param(instance), &
             dst => microstructure(instance), &
