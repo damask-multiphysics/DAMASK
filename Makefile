@@ -10,7 +10,7 @@ all: grid mesh processing
 grid: build/grid
 	@(cd build/grid;make -j${DAMASK_NUM_THREADS} all install;)
 	@rm -f ${DAMASK_ROOT}/bin/DAMASK_spectral > /dev/null || true
-	@ln -s ${DAMASK_ROOT}/bin/DAMASK_grid ${DAMASK_ROOT}/bin/DAMASK_spectral
+	@ln -s ${DAMASK_ROOT}/bin/DAMASK_grid ${DAMASK_ROOT}/bin/DAMASK_spectral || true
 .PHONY: spectral
 spectral: grid
 
@@ -18,7 +18,7 @@ spectral: grid
 mesh: build/mesh
 	@(cd build/mesh; make -j${DAMASK_NUM_THREADS} all install;)
 	@rm -f ${DAMASK_ROOT}/bin/DAMASK_FEM > /dev/null || true
-	@ln -s ${DAMASK_ROOT}/bin/DAMASK_mesh ${DAMASK_ROOT}/bin/DAMASK_FEM
+	@ln -s ${DAMASK_ROOT}/bin/DAMASK_mesh ${DAMASK_ROOT}/bin/DAMASK_FEM || true
 .PHONY: FEM
 FEM: mesh
 
