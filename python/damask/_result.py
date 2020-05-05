@@ -2,6 +2,8 @@ import multiprocessing
 import re
 import glob
 import os
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
 from functools import partial
 
 import h5py
@@ -1033,6 +1035,100 @@ class Result:
 
         pool.close()
         pool.join()
+
+
+    def write_XMDF(self):
+        """
+        Write XDMF file to directly visualize data in DADF5 file.
+
+        This works only for scalar, 3-vector and 3x3-tensor data.
+        Selection is not taken into account.
+        """
+        if len(self.constituents) != 1 or not self.structured:
+            raise NotImplementedError
+
+        xdmf=ET.Element('Xdmf')
+        xdmf.attrib={'Version':  '3.0',
+                     'xmlns:xi': 'http://www.w3.org/2001/XInclude'}
+
+        domain=ET.SubElement(xdmf, 'Domain')
+
+        collection = ET.SubElement(domain, 'Grid')
+        collection.attrib={'GridType':       'Collection',
+                           'CollectionType': 'Temporal'}
+
+        time = ET.SubElement(collection, 'Time')
+        time.attrib={'TimeType': 'List'}
+
+        time_data = ET.SubElement(time, 'DataItem')
+        time_data.attrib={'Dimensions': '{}'.format(len(self.times))}
+        time_data.text = ' '.join(map(str,self.times))
+
+        attributes = []
+        data_items = []
+
+        for inc in self.increments:
+
+            grid=ET.SubElement(collection,'Grid')
+            grid.attrib = {'GridType': 'Uniform',
+                           'Name':      inc}
+
+            topology=ET.SubElement(grid, 'Topology')
+            topology.attrib={'TopologyType': '3DCORECTMESH',
+                             'Dimensions':   '{} {} {}'.format(*self.grid+1)}
+
+            geometry=ET.SubElement(grid, 'Geometry')
+            geometry.attrib={'GeometryType':'Origin_DxDyDz'}
+
+            origin=ET.SubElement(geometry, 'DataItem')
+            origin.attrib={'Format':     'XML',
+                           'NumberType': 'Float',
+                           'Dimensions': '3'}
+            origin.text="{} {} {}".format(*self.origin)
+
+            delta=ET.SubElement(geometry, 'DataItem')
+            delta.attrib={'Format':     'XML',
+                          'NumberType': 'Float',
+                          'Dimensions': '3'}
+            delta.text="{} {} {}".format(*(self.size/self.grid))
+
+
+            with h5py.File(self.fname,'r') as f:
+                attributes.append(ET.SubElement(grid, 'Attribute'))
+                attributes[-1].attrib={'Name':          'u',
+                                       'Center':        'Node',
+                                       'AttributeType': 'Vector'}
+                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
+                data_items[-1].attrib={'Format':     'HDF',
+                                       'Precision':  '8',
+                                       'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
+                data_items[-1].text='{}:/{}/geometry/u_n'.format(self.fname,inc)
+
+                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                    for oo in getattr(self,o):
+                        for pp in getattr(self,p):
+                            g = '/'.join([inc,o[:-1],oo,pp])
+                            for l in f[g]:
+                                name = '/'.join([g,l])
+                                shape = f[name].shape[1:]
+                                dtype = f[name].dtype
+                                prec  = f[name].dtype.itemsize
+
+                                if (shape not in [(1,), (3,), (3,3)]) or dtype != np.float64: continue
+
+                                attributes.append(ET.SubElement(grid, 'Attribute'))
+                                attributes[-1].attrib={'Name':          '{}'.format(name.split('/',2)[2]),
+                                                       'Center':        'Cell',
+                                                       'AttributeType': 'Tensor'}
+                                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
+                                data_items[-1].attrib={'Format':     'HDF',
+                                                       'NumberType': 'Float',
+                                                       'Precision':  '{}'.format(prec),
+                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
+                                data_items[-1].text='{}:{}'.format(self.fname,name)
+
+        with open(os.path.splitext(self.fname)[0]+'.xdmf','w') as f:
+            f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
     def to_vtk(self,labels=[],mode='cell'):
