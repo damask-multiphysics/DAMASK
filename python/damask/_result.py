@@ -1102,7 +1102,7 @@ class Result:
                 data_items[-1].attrib={'Format':     'HDF',
                                        'Precision':  '8',
                                        'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
-                data_items[-1].text='{}:/{}/geometry/u_n'.format(self.fname,inc)
+                data_items[-1].text='{}:/{}/geometry/u_n'.format(os.path.split(self.fname)[1],inc)
 
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
                     for oo in getattr(self,o):
@@ -1125,7 +1125,7 @@ class Result:
                                                        'NumberType': 'Float',
                                                        'Precision':  '{}'.format(prec),
                                                        'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
-                                data_items[-1].text='{}:{}'.format(self.fname,name)
+                                data_items[-1].text='{}:{}'.format(os.path.split(self.fname)[1],name)
 
         with open(os.path.splitext(self.fname)[0]+'.xdmf','w') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
