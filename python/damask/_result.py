@@ -64,8 +64,8 @@ class Result:
             self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
             self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
-            self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
-            self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
+            self.materialpoints  = [m for m in f['inc0/materialpoint']]
+            self.constituents    = [c for c in f['inc0/constituent']]
 
             self.con_physics = []
             for c in self.constituents:
