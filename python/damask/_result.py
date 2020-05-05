@@ -465,6 +465,14 @@ class Result:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
+    def node_coordinates(self):
+        """Return initial coordinates of the cell centers."""
+        if self.structured:
+            return grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
+        else:
+            with h5py.File(self.fname,'r') as f:
+                return f['geometry/x_n'][()]
+
 
     @staticmethod
     def _add_absolute(x):

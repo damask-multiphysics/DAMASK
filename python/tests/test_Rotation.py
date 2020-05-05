@@ -157,6 +157,30 @@ class TestRotation:
             print(m,o,rot.asQuaternion())
             assert ok and o.max() < np.pi**(2./3.)*0.5+1.e-9
 
+    @pytest.mark.parametrize('function',[Rotation.from_quaternion,
+                                         Rotation.from_Eulers,
+                                         Rotation.from_axis_angle,
+                                         Rotation.from_matrix,
+                                         Rotation.from_Rodrigues,
+                                         Rotation.from_homochoric])
+    def test_invalid_shape(self,function):
+        invalid_shape = np.random.random(np.random.randint(8,32,(3)))
+        with pytest.raises(ValueError):
+            function(invalid_shape)
+
+    @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion, np.array([-1,0,0,0])),
+                                                 (Rotation.from_quaternion, np.array([1,1,1,0])),
+                                                 (Rotation.from_Eulers,     np.array([1,4,0])),
+                                                 (Rotation.from_axis_angle, np.array([1,0,0,4])),
+                                                 (Rotation.from_axis_angle, np.array([1,1,0,1])),
+                                                 (Rotation.from_matrix,     np.random.rand(3,3)),
+                                                 (Rotation.from_Rodrigues,  np.array([1,0,0,-1])),
+                                                 (Rotation.from_Rodrigues,  np.array([1,1,0,1])),
+                                                 (Rotation.from_homochoric, np.array([2,2,2]))  ])
+    def test_invalid(self,function,invalid):
+        with pytest.raises(ValueError):
+            function(invalid)
+
     @pytest.mark.parametrize('conversion',[Rotation.qu2om,
                                            Rotation.qu2eu,
                                            Rotation.qu2ax,
