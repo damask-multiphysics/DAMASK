@@ -1223,7 +1223,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
   rho0 = getRho0(instance,of,ip,el)
   my_rhoSgl0 = rho0(:,sgl)
 
-  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)
+  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)                   !ToDo: MD: I think we should use state0 here
   gdot = rhoSgl(:,1:4) * v * spread(prm%burgers,2,4)
 
 
