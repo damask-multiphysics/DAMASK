@@ -181,7 +181,10 @@ class TestGridFilters:
         grad = grad.reshape(tuple(grid) + ((3,3) if len(grad_def)==9 else (3,)))
 
         assert np.allclose(grad,grid_filters.gradient(size,field))
-
+        
+        
+        
+        
         
     curl_test_data =[
     (['np.sin(np.pi*2*nodes[...,2]/size[2])', '0.0', '0.0',
@@ -208,7 +211,9 @@ class TestGridFilters:
      ['0.0', '0.0', '-2*np.pi*2/size[1]*np.sin(np.pi*2*nodes[...,1]/size[1])',
       '0.0', '0.0', '0.0',
       '0.0', '0.0', '0.0']),
-    (['4*np.sin(np.pi*2*nodes[...,2]/size[2])', '8*np.sin(np.pi*2*nodes[...,0]/size[0])', '16*np.sin(np.pi*2*nodes[...,1]/size[1])'],
+    (['4*np.sin(np.pi*2*nodes[...,2]/size[2])', \
+      '8*np.sin(np.pi*2*nodes[...,0]/size[0])', \
+      '16*np.sin(np.pi*2*nodes[...,1]/size[1])'],
      ['16*np.pi*2/size[1]*np.cos(np.pi*2*nodes[...,1]/size[1])', \
       '4*np.pi*2/size[2]*np.cos(np.pi*2*nodes[...,2]/size[2])', \
       '8*np.pi*2/size[0]*np.cos(np.pi*2*nodes[...,0]/size[0])']),
@@ -251,11 +256,17 @@ class TestGridFilters:
     ([ '23.0',                         '0.0',                            'np.sin(np.pi*2*nodes[...,2]/size[2])',    
        '0.0',                          '100.0',                          'np.sin(np.pi*2*nodes[...,2]/size[2])',              
        '0.0',                          '0.0',                            'np.sin(np.pi*2*nodes[...,2]/size[2])'],
-      ['np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]','np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',    'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
+      ['np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',\
+      'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]', \
+      'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
     (['400.0',                        '0.0',                            '0.0',
-      'np.sin(np.pi*2*nodes[...,0]/size[0])',            'np.sin(np.pi*2*nodes[...,1]/size[1])',              'np.sin(np.pi*2*nodes[...,2]/size[2])', 
+      'np.sin(np.pi*2*nodes[...,0]/size[0])', \
+      'np.sin(np.pi*2*nodes[...,1]/size[1])', \
+      'np.sin(np.pi*2*nodes[...,2]/size[2])', 
       '0.0',          '10.0',                           '6.0'                              ],
-     ['0.0','np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]+np.cos(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]+np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]','0.0' ]),
+     ['0.0','np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]'\
+      '+np.cos(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]'\
+      '+np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]','0.0' ]),
     (['np.sin(np.pi*2*nodes[...,0]/size[0])',            '0.0',                            '0.0'],
      ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]',]),
     (['0.0',                          'np.cos(np.pi*2*nodes[...,1]/size[1])',              '0.0' ],
