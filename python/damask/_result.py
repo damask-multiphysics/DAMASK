@@ -64,8 +64,12 @@ class Result:
             self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
             self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
-            self.materialpoints  = [m for m in f['inc0/materialpoint']]
-            self.constituents    = [c for c in f['inc0/constituent']]
+            self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
+            self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
+            
+            # faster, but does not work with (deprecated) DADF5_postResults
+            #self.materialpoints  = [m for m in f['inc0/materialpoint']]
+            #self.constituents    = [c for c in f['inc0/constituent']]
 
             self.con_physics = []
             for c in self.constituents:
@@ -428,8 +432,10 @@ class Result:
         """
         with h5py.File(self.fname,'r') as f:
             shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
+            print(path[0])
             if len(shape) == 1: shape = shape +(1,)
             dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
+            print('dataset shape', dataset.shape)
             for pa in path:
                 label = pa.split('/')[2]
 
@@ -437,12 +443,19 @@ class Result:
                     dataset = np.array(f[pa])
                     continue
 
+                print(label)
                 p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+                print(len(p))
                 if len(p)>0:
                     u = (f['mapping/cellResults/constituent']['Position'][p,c])
+                    print('pa',pa)
                     a = np.array(f[pa])
+                    print(a.shape)
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
+                    print('u',u)
+                    print('a[u]',a[u,:].shape)
+                    print('dataset[p]',dataset[p,:].shape)
                     dataset[p,:] = a[u,:]
 
                 p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
