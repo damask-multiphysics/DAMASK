@@ -52,13 +52,13 @@ subroutine CPFEM_initAll
   call rotations_init
   call lattice_init
   call HDF5_utilities_init
-  call results_init
+  call results_init(restart=interface_restartInc>0)
 #if    defined(Mesh)
-  call discretization_mesh_init
+  call discretization_mesh_init(restart=interface_restartInc>0)
 #elif defined(Grid)
-  call discretization_grid_init
+  call discretization_grid_init(restart=interface_restartInc>0)
 #endif
-  call material_init
+  call material_init(restart=interface_restartInc>0)
   call constitutive_init
   call crystallite_init
   call homogenization_init

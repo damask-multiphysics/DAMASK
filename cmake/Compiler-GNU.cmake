@@ -26,7 +26,7 @@ set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input")
 # preprocessor
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIC -fPIE")
-# position independent conde
+# position independent code
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132")
 # restrict line length to the standard 132 characters (lattice.f90 require more characters)

@@ -42,7 +42,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief reads the geometry file to obtain information on discretization
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_grid_init
+subroutine discretization_grid_init(restart)
+
+  logical, intent(in) :: restart
 
   include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
@@ -100,13 +102,14 @@ subroutine discretization_grid_init
 
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing
-  call results_openJobFile
-  call results_closeGroup(results_addGroup('geometry'))
-  call results_addAttribute('grid',  grid,    'geometry')
-  call results_addAttribute('size',  geomSize,'geometry')
-  call results_addAttribute('origin',origin,  'geometry')
-  call results_closeJobFile
-
+  if(.not. restart) then
+    call results_openJobFile
+    call results_closeGroup(results_addGroup('geometry'))
+    call results_addAttribute('grid',  grid,    'geometry')
+    call results_addAttribute('size',  geomSize,'geometry')
+    call results_addAttribute('origin',origin,  'geometry')
+    call results_closeJobFile
+  endif
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
   call geometry_plastic_nonlocal_setIPvolume(reshape([(product(mySize/real(myGrid,pReal)),j=1,product(myGrid))], &

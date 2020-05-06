@@ -63,7 +63,9 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_mesh_init
+subroutine discretization_mesh_init(restart)
+
+  integer, intent(in) :: restart
 
   integer, dimension(1), parameter:: FE_geomtype = [1]                                              !< geometry type of particular element type
   integer, dimension(1) :: FE_Nips                                                                  !< number of IPs in a specific type of element
