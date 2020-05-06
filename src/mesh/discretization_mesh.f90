@@ -65,7 +65,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine discretization_mesh_init(restart)
 
-  integer, intent(in) :: restart
+  logical, intent(in) :: restart
 
   integer, dimension(1), parameter:: FE_geomtype = [1]                                              !< geometry type of particular element type
   integer, dimension(1) :: FE_Nips                                                                  !< number of IPs in a specific type of element
