@@ -172,7 +172,7 @@ for name in filenames:
       
     elif inputtype == 'matrix':
       d = representations['matrix'][1]
-      o = damask.Rotation.fromMatrix(list(map(float,table.data[column:column+d])))
+      o = damask.Rotation.fromMatrix(np.array(list(map(float,table.data[column:column+d]))).reshape(3,3))
 
     elif inputtype == 'frame':
       M = np.array(list(map(float,table.data[column[0]:column[0]+3] + \

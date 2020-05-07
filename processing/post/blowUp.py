@@ -59,13 +59,13 @@ for name in filenames:
   packing = np.array(options.packing,'i')
   outSize = grid*packing
   
-  data = table.data.values.reshape(tuple(grid)+(-1,))
-  blownUp = ndimage.interpolation.zoom(data,tuple(packing)+(1,),order=0,mode='nearest').reshape(outSize.prod(),-1)
+  data = table.data.values.reshape(tuple(grid)+(-1,),order='F')
+  blownUp = ndimage.interpolation.zoom(data,tuple(packing)+(1,),order=0,mode='nearest').reshape(outSize.prod(),-1,order='F')
 
   table = damask.Table(blownUp,table.shapes,table.comments)
 
   coords = damask.grid_filters.cell_coord0(outSize,size,origin)
-  table.set(options.pos,coords.reshape(-1,3))
+  table.set(options.pos,coords.reshape(-1,3,order='F'))
   table.set('elem',np.arange(1,outSize.prod()+1))
   
   outname = os.path.join(os.path.dirname(name),prefix+os.path.basename(name))
