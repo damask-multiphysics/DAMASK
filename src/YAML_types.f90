@@ -638,7 +638,7 @@ function tNode_get_byKey_asFloats(self,k) result(nodeAsFloats)
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node   => self%get(k)
+  node => self%get(k)
   list => node%asList()
   nodeAsFloats = list%asFloats()
 
@@ -657,7 +657,7 @@ function tNode_get_byKey_asInts(self,k) result(nodeAsInts)
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node   => self%get(k)
+  node => self%get(k)
   list => node%asList()
   nodeAsInts = list%asInts()
 
@@ -676,7 +676,7 @@ function tNode_get_byKey_asBools(self,k) result(nodeAsBools)
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node   => self%get(k)
+  node => self%get(k)
   list => node%asList()
   nodeAsBools = list%asBools()
 
@@ -695,7 +695,7 @@ function tNode_get_byKey_asStrings(self,k) result(nodeAsStrings)
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node   => self%get(k)
+  node => self%get(k)
   list => node%asList()
   nodeAsStrings = list%asStrings()
 
