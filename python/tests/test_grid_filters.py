@@ -140,44 +140,45 @@ class TestGridFilters:
 
 
     grad_test_data = [
-    (['np.sin(np.pi*2*nodes[...,0]/size[0])',                '0.0',                            '0.0'],
-     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]','0.0',                            '0.0',
-      '0.0',                                                 '0.0',                            '0.0',
-      '0.0',                                                 '0.0',                            '0.0']),              
+    (['np.sin(np.pi*2*nodes[...,0]/size[0])', '0.0', '0.0'],
+     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]', '0.0', '0.0',
+      '0.0',                                                  '0.0', '0.0',
+      '0.0',                                                  '0.0', '0.0']),
 
-    (['0.0',                                'np.cos(np.pi*2*nodes[...,1]/size[1])',                   '0.0' ],
-     ['0.0',                                '0.0',                                                    '0.0',
-      '0.0',                                '-np.pi*2/size[1]*np.sin(np.pi*2*nodes[...,1]/size[1])',  '0.0',
-      '0.0',                                '0.0',                                                    '0.0' ]),
+    (['0.0', 'np.cos(np.pi*2*nodes[...,1]/size[1])', '0.0' ],
+     ['0.0', '0.0',                                                   '0.0',
+      '0.0', '-np.pi*2/size[1]*np.sin(np.pi*2*nodes[...,1]/size[1])', '0.0',
+      '0.0', '0.0',                                                   '0.0' ]),
 
-    (['1.0',                                '0.0',                '2.0*np.cos(np.pi*2*nodes[...,2]/size[2])'],
-     ['0.0',                                '0.0',                '0.0',
-      '0.0',                                '0.0',                '0.0',
-      '0.0',                                '0.0',                '-2.0*np.pi*2/size[2]*np.sin(np.pi*2*nodes[...,2]/size[2])']), 
+    (['1.0', '0.0', '2.0*np.cos(np.pi*2*nodes[...,2]/size[2])'],
+     ['0.0', '0.0', '0.0',
+      '0.0', '0.0', '0.0',
+      '0.0', '0.0', '-2.0*np.pi*2/size[2]*np.sin(np.pi*2*nodes[...,2]/size[2])']),
 
-    (['np.cos(np.pi*2*nodes[...,2]/size[2])', '3.0',  'np.sin(np.pi*2*nodes[...,2]/size[2])'],
-     ['0.0',                                  '0.0',  '-np.sin(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',
-      '0.0',                                  '0.0',  '0.0',
-      '0.0',                                  '0.0',  'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
+    (['np.cos(np.pi*2*nodes[...,2]/size[2])', '3.0', 'np.sin(np.pi*2*nodes[...,2]/size[2])'],
+     ['0.0', '0.0', '-np.sin(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',
+      '0.0', '0.0', '0.0',
+      '0.0', '0.0', ' np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
 
-    (['np.sin(np.pi*2*nodes[...,0]/size[0])','np.sin(np.pi*2*nodes[...,1]/size[1])',\
-                                             'np.sin(np.pi*2*nodes[...,2]/size[2])'],
-     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]', '0.0',                            '0.0',  
-      '0.0',          'np.cos(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]',   '0.0',
-      '0.0',          '0.0',                          'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
+    (['np.sin(np.pi*2*nodes[...,0]/size[0])',
+      'np.sin(np.pi*2*nodes[...,1]/size[1])',
+      'np.sin(np.pi*2*nodes[...,2]/size[2])'],
+     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]', '0.0', '0.0',
+      '0.0', 'np.cos(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]', '0.0',
+      '0.0', '0.0', 'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
 
-    (['np.sin(np.pi*2*nodes[...,0]/size[0])'                                                               ],
-     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]', '0.0',                            '0.0'      ]),
+    (['np.sin(np.pi*2*nodes[...,0]/size[0])'],
+     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]', '0.0', '0.0']),
 
-    (['8.0'                                                                                                ],
-     ['0.0',                          '0.0',                            '0.0'                              ])]
+    (['8.0'],
+     ['0.0', '0.0', '0.0' ])
+                    ]
 
     @pytest.mark.parametrize('field_def,grad_def',grad_test_data)
-
     def test_grad(self,field_def,grad_def):
         size = np.random.random(3)+1.0
         grid = np.random.randint(8,32,(3))
- 
+
         nodes = grid_filters.cell_coord0(grid,size)
         my_locals = locals()                                                                        # needed for list comprehension
 
@@ -187,22 +188,19 @@ class TestGridFilters:
         grad = grad.reshape(tuple(grid) + ((3,3) if len(grad_def)==9 else (3,)))
 
         assert np.allclose(grad,grid_filters.gradient(size,field))
-        
-        
-        
-        
-        
-    curl_test_data =[
-    (['np.sin(np.pi*2*nodes[...,2]/size[2])',                 '0.0', '0.0',
-      '0.0',                                                  '0.0', '0.0',
-      '0.0',                                                  '0.0', '0.0'],
+
+
+    curl_test_data = [
+    (['np.sin(np.pi*2*nodes[...,2]/size[2])', '0.0', '0.0',
+      '0.0',                                  '0.0', '0.0',
+      '0.0',                                  '0.0', '0.0'],
      ['0.0'                                                 , '0.0', '0.0',
       'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]', '0.0', '0.0',
       '0.0',                                                  '0.0', '0.0']),
 
-    (['np.cos(np.pi*2*nodes[...,1]/size[1])',                 '0.0', '0.0',
-      '0.0',                                                  '0.0', '0.0',
-      'np.cos(np.pi*2*nodes[...,0]/size[0])',                 '0.0', '0.0'],
+    (['np.cos(np.pi*2*nodes[...,1]/size[1])', '0.0', '0.0',
+      '0.0',                                  '0.0', '0.0',
+      'np.cos(np.pi*2*nodes[...,0]/size[0])', '0.0', '0.0'],
      ['0.0',                                                  '0.0', '0.0',
       '0.0',                                                  '0.0', '0.0',
       'np.sin(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]', '0.0', '0.0']),
@@ -221,20 +219,22 @@ class TestGridFilters:
       '0.0', '0.0', '0.0',
       '0.0', '0.0', '0.0']),
 
-    (['4*np.sin(np.pi*2*nodes[...,2]/size[2])', \
-      '8*np.sin(np.pi*2*nodes[...,0]/size[0])', \
+    ([ '4*np.sin(np.pi*2*nodes[...,2]/size[2])',
+       '8*np.sin(np.pi*2*nodes[...,0]/size[0])',
       '16*np.sin(np.pi*2*nodes[...,1]/size[1])'],
-     ['16*np.pi*2/size[1]*np.cos(np.pi*2*nodes[...,1]/size[1])', \
-       '4*np.pi*2/size[2]*np.cos(np.pi*2*nodes[...,2]/size[2])', \
+     ['16*np.pi*2/size[1]*np.cos(np.pi*2*nodes[...,1]/size[1])',
+       '4*np.pi*2/size[2]*np.cos(np.pi*2*nodes[...,2]/size[2])',
        '8*np.pi*2/size[0]*np.cos(np.pi*2*nodes[...,0]/size[0])']),
 
-    (['0.0', 'np.cos(np.pi*2*nodes[...,0]/size[0])+5*np.cos(np.pi*2*nodes[...,2]/size[2])', '0.0'],
-     ['5*np.sin(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',\
-      '0.0',\
-      '-np.sin(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]'])]
+    (['0.0',
+      'np.cos(np.pi*2*nodes[...,0]/size[0])+5*np.cos(np.pi*2*nodes[...,2]/size[2])',
+      '0.0'],
+     ['5*np.sin(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',
+      '0.0',
+      '-np.sin(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]'])
+                     ]
 
-    @pytest.mark.parametrize('field_def,curl_def',curl_test_data)                        
-                             
+    @pytest.mark.parametrize('field_def,curl_def',curl_test_data)
     def test_curl(self,field_def,curl_def):
         size = np.random.random(3)+1.0
         grid = np.random.randint(8,32,(3))
@@ -251,47 +251,43 @@ class TestGridFilters:
 
 
     div_test_data =[
-    (['np.sin(np.pi*2*nodes[...,0]/size[0])',                 '0.0', '0.0',
-      '0.0'                                 ,                 '0.0', '0.0',
-      '0.0'                                 ,                 '0.0', '0.0'],
-     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]' ,'0.0', '0.0']),
+    (['np.sin(np.pi*2*nodes[...,0]/size[0])', '0.0', '0.0',
+      '0.0'                                 , '0.0', '0.0',
+      '0.0'                                 , '0.0', '0.0'],
+     ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]','0.0', '0.0']),
 
-    (['0.0',                                                   '0.0', '0.0',
-      '0.0',                  'np.cos(np.pi*2*nodes[...,1]/size[1])', '0.0',
-      '0.0',                                                   '0.0', '0.0'],
+    (['0.0', '0.0',                                  '0.0',
+      '0.0', 'np.cos(np.pi*2*nodes[...,1]/size[1])', '0.0',
+      '0.0', '0.0',                                  '0.0'],
      ['0.0', '-np.sin(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]', '0.0']),
 
-    (['1.0',                          '0.0',                          '0.0',
-      '0.0',                          '0.0',                          '0.0',           
-      '0.0',                          '0.0',                          '2*np.cos(np.pi*2*nodes[...,2]/size[2])'            ],
-     ['0.0',                          '0.0',                          '-2.0*np.pi*2/size[2]*np.sin(np.pi*2*nodes[...,2]/size[2])']
+    (['1.0', '0.0', '0.0',
+      '0.0', '0.0', '0.0',
+      '0.0', '0.0', '2*np.cos(np.pi*2*nodes[...,2]/size[2])' ],
+     ['0.0', '0.0', '-2.0*np.pi*2/size[2]*np.sin(np.pi*2*nodes[...,2]/size[2])']
      ),
 
-    ([ '23.0',                         '0.0',                         'np.sin(np.pi*2*nodes[...,2]/size[2])',    
-       '0.0',                          '100.0',                       'np.sin(np.pi*2*nodes[...,2]/size[2])',              
-       '0.0',                          '0.0',                         'np.sin(np.pi*2*nodes[...,2]/size[2])'],
+    ([ '23.0', '0.0',   'np.sin(np.pi*2*nodes[...,2]/size[2])',
+       '0.0',  '100.0', 'np.sin(np.pi*2*nodes[...,2]/size[2])',
+       '0.0',  '0.0',   'np.sin(np.pi*2*nodes[...,2]/size[2])'],
       ['np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',\
-      'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]', \
-      'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
+       'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]', \
+       'np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]']),
 
-    (['400.0',                        '0.0',                            '0.0',
-      'np.sin(np.pi*2*nodes[...,0]/size[0])', \
-      'np.sin(np.pi*2*nodes[...,1]/size[1])', \
-      'np.sin(np.pi*2*nodes[...,2]/size[2])', 
-      '0.0',                          '10.0',                           '6.0'],
-     ['0.0','np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]'\
-           '+np.cos(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]'\
-           '+np.cos(np.pi*2*nodes[...,2]/size[2])*np.pi*2/size[2]',    '0.0' ]),
+    (['400.0',                                '0.0',                                  '0.0',
+      'np.sin(np.pi*2*nodes[...,0]/size[0])', 'np.sin(np.pi*2*nodes[...,1]/size[1])', 'np.sin(np.pi*2*nodes[...,2]/size[2])',
+      '0.0',                                  '10.0',                                 '6.0'],
+     ['0.0','np.sum(np.cos(np.pi*2*nodes/size)*np.pi*2/size,axis=-1)', '0.0' ]),
 
-    (['np.sin(np.pi*2*nodes[...,0]/size[0])',            '0.0',                            '0.0'],
+    (['np.sin(np.pi*2*nodes[...,0]/size[0])', '0.0', '0.0'],
      ['np.cos(np.pi*2*nodes[...,0]/size[0])*np.pi*2/size[0]',]),
 
-    (['0.0',                          'np.cos(np.pi*2*nodes[...,1]/size[1])',              '0.0' ],
+    (['0.0', 'np.cos(np.pi*2*nodes[...,1]/size[1])', '0.0' ],
      ['-np.sin(np.pi*2*nodes[...,1]/size[1])*np.pi*2/size[1]'])
      ]
-     
-    @pytest.mark.parametrize('field_def,div_def',div_test_data)                        
-                             
+
+    @pytest.mark.parametrize('field_def,div_def',div_test_data)
+
     def test_div(self,field_def,div_def):
         size = np.random.random(3)+1.0
         grid = np.random.randint(8,32,(3))
@@ -308,5 +304,3 @@ class TestGridFilters:
             div=div.reshape(tuple(grid))
 
         assert np.allclose(div,grid_filters.divergence(size,field))
-
-
