@@ -738,14 +738,6 @@ recursive function tScalar_asFormattedString(self,indent)
   class (tScalar), intent(in), target    :: self
   integer,         intent(in), optional  :: indent
 
-  integer :: indent_
-
-  if(present(indent)) then
-    indent_ = indent
-  else
-    indent_ = 0
-  endif
-
   tScalar_asFormattedString = trim(self%value)//IO_EOL
 
 end function tScalar_asFormattedString
