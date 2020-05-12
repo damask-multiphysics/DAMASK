@@ -7,6 +7,7 @@
 #include "numerics.f90"
 #include "debug.f90"
 #include "list.f90"
+#include "YAML_types.f90"
 #include "future.f90"
 #include "config.f90"
 #include "LAPACK_interface.f90"
