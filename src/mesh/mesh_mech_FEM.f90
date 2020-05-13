@@ -73,7 +73,7 @@ subroutine FEM_mech_init(fieldBC)
   PetscQuadrature                        :: mechQuad, functional
   PetscDS                                :: mechDS
   PetscDualSpace                         :: mechDualSpace
-  DMLabel, dimension(:),pointer          :: pBCLabel
+  DMLabel, dimension(:),pointer          :: nolabel=>  NULL()
   DMLabel                                :: BCLabel
 
   PetscInt,  dimension(:),       pointer :: pNumComp, pNumDof, pBcField, pBcPoint
@@ -182,8 +182,7 @@ subroutine FEM_mech_init(fieldBC)
   call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
 #else
-  allocate(pBClabel(1),source=BClabel)
-  call DMPlexCreateSection(mech_mesh,pBClabel,pNumComp,pNumDof, &
+  call DMPlexCreateSection(mech_mesh,nolabel,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
 
 #endif
