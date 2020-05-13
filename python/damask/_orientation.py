@@ -10,6 +10,7 @@ class Orientation:
     A crystallographic orientation contains a rotation and a lattice.
 
     """
+
     __slots__ = ['rotation','lattice']
 
     def __repr__(self):

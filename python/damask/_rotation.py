@@ -16,6 +16,7 @@ def iszero(a):
 class Rotation:
     u"""
     Orientation stored with functionality for conversion to different representations.
+    
     The following conventions apply:
 
     - coordinate frames are right-handed.
@@ -42,6 +43,7 @@ class Rotation:
     https://doi.org/10.1088/0965-0393/23/8/083501
 
     """
+
     __slots__ = ['quaternion']
 
     def __init__(self,quaternion = np.array([1.0,0.0,0.0,0.0])):

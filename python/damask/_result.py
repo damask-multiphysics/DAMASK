@@ -316,9 +316,10 @@ class Result:
         Return groups that contain all requested datasets.
 
         Only groups within
-          - inc?????/constituent/*_*/*
-          - inc?????/materialpoint/*_*/*
-          - inc?????/geometry/*
+          - inc*/constituent/*/*
+          - inc*/materialpoint/*/*
+          - inc*/geometry/*
+
         are considered as they contain user-relevant data.
         Single strings will be treated as list with one entry.
 
