@@ -132,11 +132,11 @@ subroutine grid_mech_FEM_init
          [grid(1)],[grid(2)],localK, &
          mech_grid,ierr)
   CHKERRQ(ierr)
-  call DMDASetUniformCoordinates(mech_grid,0.0_pReal,geomSize(1),0.0_pReal,geomSize(2),0.0_pReal,geomSize(3),ierr)
-  CHKERRQ(ierr)
   call SNESSetDM(mech_snes,mech_grid,ierr); CHKERRQ(ierr)
   call DMsetFromOptions(mech_grid,ierr); CHKERRQ(ierr)
   call DMsetUp(mech_grid,ierr); CHKERRQ(ierr)
+  call DMDASetUniformCoordinates(mech_grid,0.0_pReal,geomSize(1),0.0_pReal,geomSize(2),0.0_pReal,geomSize(3),ierr)
+  CHKERRQ(ierr)
   call DMCreateGlobalVector(mech_grid,solution_current,ierr); CHKERRQ(ierr)
   call DMCreateGlobalVector(mech_grid,solution_lastInc,ierr); CHKERRQ(ierr)
   call DMCreateGlobalVector(mech_grid,solution_rate   ,ierr); CHKERRQ(ierr)

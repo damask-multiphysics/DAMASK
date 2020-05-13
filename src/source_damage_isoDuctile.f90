@@ -82,7 +82,7 @@ subroutine source_damage_isoDuctile_init
     if (prm%critPlasticStrain <= 0.0_pReal) extmsg = trim(extmsg)//' isoductile_criticalplasticstrain'
 
     NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,0)
+    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
     sourceState(p)%p(sourceOffset)%atol = config%getFloat('isoductile_atol',defaultVal=1.0e-3_pReal)
     if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
 

@@ -3,27 +3,27 @@
 ! Modified      2017-2020, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 ! All rights reserved.
 !
-! Redistribution and use in source and binary forms, with or without modification, are 
+! Redistribution and use in source and binary forms, with or without modification, are
 ! permitted provided that the following conditions are met:
 !
-!     - Redistributions of source code must retain the above copyright notice, this list 
+!     - Redistributions of source code must retain the above copyright notice, this list
 !        of conditions and the following disclaimer.
-!     - Redistributions in binary form must reproduce the above copyright notice, this 
-!        list of conditions and the following disclaimer in the documentation and/or 
+!     - Redistributions in binary form must reproduce the above copyright notice, this
+!        list of conditions and the following disclaimer in the documentation and/or
 !        other materials provided with the distribution.
-!     - Neither the names of Marc De Graef, Carnegie Mellon University nor the names 
-!        of its contributors may be used to endorse or promote products derived from 
+!     - Neither the names of Marc De Graef, Carnegie Mellon University nor the names
+!        of its contributors may be used to endorse or promote products derived from
 !        this software without specific prior written permission.
 !
-! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-! ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
-! LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-! DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-! SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-! OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE 
+! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+! ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+! LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+! DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+! SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+! OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 ! USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ! ###################################################################
 
@@ -31,7 +31,7 @@
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief rotation storage and conversion
-!> @details: rotation is internally stored as quaternion. It can be inialized from different 
+!> @details: rotation is internally stored as quaternion. It can be inialized from different
 !> representations and also returns itself in different representations.
 !
 !  All methods and naming conventions based on Rowenhorst_etal2015
@@ -50,9 +50,8 @@ module rotations
   use prec
   use IO
   use math
-  use Lambert
   use quaternions
- 
+
   implicit none
   private
 
@@ -80,7 +79,19 @@ module rotations
       procedure, public  :: misorientation
       procedure, public  :: standardize
   end type rotation
-  
+
+  real(pReal), parameter :: &
+    SPI  = sqrt(PI), &
+    PREF = sqrt(6.0_pReal/PI), &
+    A    = PI**(5.0_pReal/6.0_pReal)/6.0_pReal**(1.0_pReal/6.0_pReal), &
+    AP   = PI**(2.0_pReal/3.0_pReal), &
+    SC   = A/AP, &
+    BETA = A/2.0_pReal, &
+    R1   = (3.0_pReal*PI/4.0_pReal)**(1.0_pReal/3.0_pReal), &
+    R2   = sqrt(2.0_pReal), &
+    PI12 = PI/12.0_pReal, &
+    PREK = R1 * 2.0_pReal**(1.0_pReal/4.0_pReal)/BETA
+
   public :: &
     rotations_init, &
     eu2om
@@ -106,16 +117,16 @@ pure function asQuaternion(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asQuaternion
- 
+
   asQuaternion = self%q%asArray()
 
 end function asQuaternion
 !---------------------------------------------------------------------------------------------------
 pure function asEulers(self)
-  
+
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asEulers
-   
+
   asEulers = qu2eu(self%q%asArray())
 
 end function asEulers
@@ -124,16 +135,16 @@ pure function asAxisAngle(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asAxisAngle
- 
+
   asAxisAngle = qu2ax(self%q%asArray())
 
 end function asAxisAngle
 !---------------------------------------------------------------------------------------------------
 pure function asMatrix(self)
- 
+
   class(rotation), intent(in) :: self
   real(pReal), dimension(3,3) :: asMatrix
- 
+
   asMatrix = qu2om(self%q%asArray())
 
 end function asMatrix
@@ -142,20 +153,20 @@ pure function asRodrigues(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asRodrigues
- 
+
   asRodrigues = qu2ro(self%q%asArray())
- 
+
 end function asRodrigues
 !---------------------------------------------------------------------------------------------------
 pure function asHomochoric(self)
 
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asHomochoric
- 
+
   asHomochoric = qu2ho(self%q%asArray())
 
 end function asHomochoric
- 
+
 !---------------------------------------------------------------------------------------------------
 ! Initialize rotation from different representations
 !---------------------------------------------------------------------------------------------------
@@ -207,7 +218,7 @@ subroutine fromAxisAngle(self,ax,degrees,P)
   else
     angle = merge(ax(4)*INRAD,ax(4),degrees)
   endif
-  
+
   if (.not. present(P)) then
     axis = ax(1:3)
   else
@@ -217,7 +228,7 @@ subroutine fromAxisAngle(self,ax,degrees,P)
 
   if(dNeq(norm2(axis),1.0_pReal) .or. angle < 0.0_pReal .or. angle > PI) &
     call IO_error(402,ext_msg='fromAxisAngle')
-  
+
   self%q = ax2qu([axis,angle])
 
 end subroutine fromAxisAngle
@@ -240,10 +251,10 @@ end subroutine fromMatrix
 !> @brief: Rotate a rotation
 !---------------------------------------------------------------------------------------------------
 pure elemental function rotRot__(self,R) result(rRot)
-    
+
   type(rotation)              :: rRot
   class(rotation), intent(in) :: self,R
-  
+
   rRot = rotation(self%q*R%q)
   call rRot%standardize()
 
@@ -251,12 +262,12 @@ end function rotRot__
 
 
 !---------------------------------------------------------------------------------------------------
-!> @brief quaternion representation with positive q 
+!> @brief quaternion representation with positive q
 !---------------------------------------------------------------------------------------------------
 pure elemental subroutine standardize(self)
 
   class(rotation), intent(inout) :: self
-  
+
   if (real(self%q) < 0.0_pReal) self%q = self%q%homomorphed()
 
 end subroutine standardize
@@ -267,22 +278,22 @@ end subroutine standardize
 !> @brief rotate a vector passively (default) or actively
 !---------------------------------------------------------------------------------------------------
 pure function rotVector(self,v,active) result(vRot)
-    
+
   real(pReal),                 dimension(3) :: vRot
   class(rotation), intent(in)               :: self
   real(pReal),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
-  
+
   real(pReal),    dimension(3) :: v_normed
   type(quaternion)             :: q
   logical                      :: passive
- 
+
   if (present(active)) then
     passive = .not. active
   else
     passive = .true.
   endif
- 
+
   if (dEq0(norm2(v))) then
     vRot = v
   else
@@ -304,12 +315,12 @@ end function rotVector
 !> @details: rotation is based on rotation matrix
 !---------------------------------------------------------------------------------------------------
 pure function rotTensor2(self,T,active) result(tRot)
-  
+
   real(pReal),                 dimension(3,3) :: tRot
   class(rotation), intent(in)                 :: self
   real(pReal),     intent(in), dimension(3,3) :: T
   logical,         intent(in), optional       :: active
-   
+
   logical           :: passive
 
   if (present(active)) then
@@ -317,7 +328,7 @@ pure function rotTensor2(self,T,active) result(tRot)
   else
     passive = .true.
   endif
- 
+
   if (passive) then
     tRot = matmul(matmul(self%asMatrix(),T),transpose(self%asMatrix()))
   else
@@ -339,7 +350,7 @@ pure function rotTensor4(self,T,active) result(tRot)
   class(rotation), intent(in)                     :: self
   real(pReal),     intent(in), dimension(3,3,3,3) :: T
   logical,         intent(in), optional           :: active
- 
+
   real(pReal), dimension(3,3) :: R
   integer :: i,j,k,l,m,n,o,p
 
@@ -370,7 +381,7 @@ pure function rotTensor4sym(self,T,active) result(tRot)
   class(rotation), intent(in)                 :: self
   real(pReal),     intent(in), dimension(6,6) :: T
   logical,         intent(in), optional       :: active
- 
+
   if (present(active)) then
     tRot = math_sym3333to66(rotTensor4(self,math_66toSym3333(T),active))
   else
@@ -384,10 +395,10 @@ end function rotTensor4sym
 !> @brief misorientation
 !---------------------------------------------------------------------------------------------------
 pure elemental function misorientation(self,other)
-  
+
   type(rotation)              :: misorientation
   class(rotation), intent(in) :: self, other
-  
+
   misorientation%q = other%q * conjg(self%q)
 
 end function misorientation
@@ -401,7 +412,7 @@ pure function qu2om(qu) result(om)
 
   real(pReal), intent(in), dimension(4)   :: qu
   real(pReal),             dimension(3,3) :: om
-  
+
   real(pReal)                             :: qq
 
   qq = qu(1)**2-sum(qu(2:4)**2)
@@ -431,19 +442,18 @@ pure function qu2eu(qu) result(eu)
 
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(3) :: eu
-  
-  real(pReal)                           :: q12, q03, chi, chiInv
-  
+
+  real(pReal)                           :: q12, q03, chi
+
   q03 = qu(1)**2+qu(4)**2
   q12 = qu(2)**2+qu(3)**2
   chi = sqrt(q03*q12)
-  
-  degenerated: if (dEq0(chi)) then
-    eu = merge([atan2(-P*2.0_pReal*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal], &
-               [atan2(   2.0_pReal*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal], &
-               dEq0(q12))
+
+  degenerated: if (dEq0(q12)) then
+    eu = [atan2(-P*2.0_pReal*qu(1)*qu(4),qu(1)**2-qu(4)**2), 0.0_pReal, 0.0_pReal]
+  elseif          (dEq0(q03)) then
+    eu = [atan2(   2.0_pReal*qu(2)*qu(3),qu(2)**2-qu(3)**2), PI,        0.0_pReal]
   else degenerated
-    chiInv = 1.0_pReal/chi
     eu = [atan2((-P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)-qu(3)*qu(4))*chi ), &
           atan2( 2.0_pReal*chi, q03-q12 ), &
           atan2(( P*qu(1)*qu(3)+qu(2)*qu(4))*chi, (-P*qu(1)*qu(2)+qu(3)*qu(4))*chi )]
@@ -461,7 +471,7 @@ pure function qu2ax(qu) result(ax)
 
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(4) :: ax
-  
+
   real(pReal)                           :: omega, s
 
   if (dEq0(sum(qu(2:4)**2))) then
@@ -482,13 +492,13 @@ end function qu2ax
 !> @brief convert unit quaternion to Rodrigues vector
 !---------------------------------------------------------------------------------------------------
 pure function qu2ro(qu) result(ro)
-  
+
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(4) :: ro
-  
+
   real(pReal)                           :: s
   real(pReal), parameter                :: thr = 1.0e-8_pReal
-  
+
   if (abs(qu(1)) < thr) then
     ro =   [qu(2),  qu(3),  qu(4), IEEE_value(1.0_pReal,IEEE_positive_inf)]
   else
@@ -498,7 +508,7 @@ pure function qu2ro(qu) result(ro)
     else
       ro = [qu(2)/s,qu(3)/s,qu(4)/s, tan(acos(math_clip(qu(1),-1.0_pReal,1.0_pReal)))]
     endif
-    
+
   end if
 
 end function qu2ro
@@ -512,12 +522,12 @@ pure function qu2ho(qu) result(ho)
 
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(3) :: ho
-  
+
   real(pReal)                           :: omega, f
 
   omega = 2.0 * acos(math_clip(qu(1),-1.0_pReal,1.0_pReal))
-  
-  if (dEq0(omega)) then
+
+  if (dEq0(omega,tol=1.e-5_pReal)) then
     ho = [ 0.0_pReal, 0.0_pReal, 0.0_pReal ]
   else
     ho = qu(2:4)
@@ -533,7 +543,7 @@ end function qu2ho
 !> @brief convert unit quaternion to cubochoric
 !---------------------------------------------------------------------------------------------------
 pure function qu2cu(qu) result(cu)
- 
+
   real(pReal), intent(in), dimension(4) :: qu
   real(pReal),             dimension(3) :: cu
 
@@ -566,18 +576,18 @@ pure function om2eu(om) result(eu)
   real(pReal), intent(in), dimension(3,3) :: om
   real(pReal),             dimension(3)   :: eu
   real(pReal)                             :: zeta
-  
+
   if (abs(om(3,3)) < 1.0_pReal) then
     zeta = 1.0_pReal/sqrt(1.0_pReal-om(3,3)**2.0_pReal)
     eu = [atan2(om(3,1)*zeta,-om(3,2)*zeta), &
           acos(om(3,3)), &
           atan2(om(1,3)*zeta, om(2,3)*zeta)]
-  else 
+  else
     eu = [atan2(om(1,2),om(1,1)), 0.5_pReal*PI*(1.0_pReal-om(3,3)),0.0_pReal ]
   end if
 
   where(eu<0.0_pReal) eu = mod(eu+2.0_pReal*PI,[2.0_pReal*PI,PI,2.0_pReal*PI])
- 
+
 end function om2eu
 
 
@@ -589,19 +599,19 @@ function om2ax(om) result(ax)
 
   real(pReal), intent(in), dimension(3,3) :: om
   real(pReal),             dimension(4)   :: ax
-  
+
   real(pReal)                      :: t
   real(pReal), dimension(3)        :: Wr, Wi
   real(pReal), dimension((64+2)*3) :: work
   real(pReal), dimension(3,3)      :: VR, devNull, om_
   integer                          :: ierr, i
-  
+
   om_ = om
-  
+
   ! first get the rotation angle
   t = 0.5_pReal * (math_trace33(om) - 1.0_pReal)
   ax(4) = acos(math_clip(t,-1.0_pReal,1.0_pReal))
-  
+
   if (dEq0(ax(4))) then
     ax(1:3) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal ]
   else
@@ -675,7 +685,7 @@ pure function eu2qu(eu) result(qu)
   real(pReal)                           :: cPhi, sPhi
 
   ee = 0.5_pReal*eu
-  
+
   cPhi = cos(ee(2))
   sPhi = sin(ee(2))
 
@@ -693,15 +703,15 @@ end function eu2qu
 !> @brief Euler angles to orientation matrix
 !---------------------------------------------------------------------------------------------------
 pure function eu2om(eu) result(om)
-  
+
   real(pReal), intent(in), dimension(3)   :: eu
   real(pReal),             dimension(3,3) :: om
-  
-  real(pReal),             dimension(3)   :: c, s      
- 
+
+  real(pReal),             dimension(3)   :: c, s
+
   c = cos(eu)
   s = sin(eu)
- 
+
   om(1,1) =  c(1)*c(3)-s(1)*s(3)*c(2)
   om(1,2) =  s(1)*c(3)+c(1)*s(3)*c(2)
   om(1,3) =  s(3)*s(2)
@@ -711,7 +721,7 @@ pure function eu2om(eu) result(om)
   om(3,1) =  s(1)*s(2)
   om(3,2) = -c(1)*s(2)
   om(3,3) =  c(2)
- 
+
   where(dEq0(om)) om = 0.0_pReal
 
 end function eu2om
@@ -722,19 +732,19 @@ end function eu2om
 !> @brief convert euler to axis angle
 !---------------------------------------------------------------------------------------------------
 pure function eu2ax(eu) result(ax)
- 
+
   real(pReal), intent(in), dimension(3) :: eu
   real(pReal),             dimension(4) :: ax
-  
+
   real(pReal)                           :: t, delta, tau, alpha, sigma
-  
+
   t     = tan(eu(2)*0.5_pReal)
   sigma = 0.5_pReal*(eu(1)+eu(3))
   delta = 0.5_pReal*(eu(1)-eu(3))
   tau   = sqrt(t**2+sin(sigma)**2)
-  
+
   alpha = merge(PI, 2.0_pReal*atan(tau/cos(sigma)), dEq(sigma,PI*0.5_pReal,tol=1.0e-15_pReal))
-  
+
   if (dEq0(alpha)) then                                                                             ! return a default identity axis-angle pair
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   else
@@ -742,7 +752,7 @@ pure function eu2ax(eu) result(ax)
     ax(4) = alpha
     if (alpha < 0.0_pReal) ax = -ax                                                                 ! ensure alpha is positive
   end if
- 
+
 end function eu2ax
 
 
@@ -754,7 +764,7 @@ pure function eu2ro(eu) result(ro)
 
   real(pReal), intent(in), dimension(3) :: eu
   real(pReal),             dimension(4) :: ro
-  
+
   ro = eu2ax(eu)
   if (ro(4) >= PI) then
     ro(4) = IEEE_value(ro(4),IEEE_positive_inf)
@@ -763,7 +773,7 @@ pure function eu2ro(eu) result(ro)
   else
     ro(4) = tan(ro(4)*0.5_pReal)
   end if
- 
+
 end function eu2ro
 
 
@@ -800,7 +810,7 @@ end function eu2cu
 !> @brief convert axis angle pair to quaternion
 !---------------------------------------------------------------------------------------------------
 pure function ax2qu(ax) result(qu)
-    
+
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(4) :: qu
 
@@ -826,7 +836,7 @@ pure function ax2om(ax) result(om)
 
   real(pReal), intent(in), dimension(4)   :: ax
   real(pReal),             dimension(3,3) :: om
-  
+
   real(pReal)                             :: q, c, s, omc
 
   c = cos(ax(4))
@@ -840,11 +850,11 @@ pure function ax2om(ax) result(om)
   q = omc*ax(1)*ax(2)
   om(1,2) = q + s*ax(3)
   om(2,1) = q - s*ax(3)
-  
+
   q = omc*ax(2)*ax(3)
   om(2,3) = q + s*ax(1)
   om(3,2) = q - s*ax(1)
-  
+
   q = omc*ax(3)*ax(1)
   om(3,1) = q + s*ax(2)
   om(1,3) = q - s*ax(2)
@@ -876,12 +886,12 @@ pure function ax2ro(ax) result(ro)
 
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(4) :: ro
-  
+
   real(pReal), parameter                :: thr = 1.0e-7_pReal
-  
+
   if (dEq0(ax(4))) then
     ro = [ 0.0_pReal, 0.0_pReal, P, 0.0_pReal ]
-  else 
+  else
     ro(1:3) =  ax(1:3)
     ! we need to deal with the 180 degree case
     ro(4) = merge(IEEE_value(ro(4),IEEE_positive_inf),tan(ax(4)*0.5_pReal),abs(ax(4)-PI) < thr)
@@ -898,9 +908,9 @@ pure function ax2ho(ax) result(ho)
 
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(3) :: ho
-  
+
   real(pReal)                           :: f
-  
+
   f = 0.75_pReal * ( ax(4) - sin(ax(4)) )
   f = f**(1.0_pReal/3.0_pReal)
   ho = ax(1:3) * f
@@ -917,7 +927,7 @@ function ax2cu(ax) result(cu)
   real(pReal), intent(in), dimension(4) :: ax
   real(pReal),             dimension(3) :: cu
 
-  cu  = ho2cu(ax2ho(ax))
+  cu = ho2cu(ax2ho(ax))
 
 end function ax2cu
 
@@ -930,7 +940,7 @@ pure function ro2qu(ro) result(qu)
 
   real(pReal), intent(in), dimension(4) :: ro
   real(pReal),             dimension(4) :: qu
-  
+
   qu = ax2qu(ro2ax(ro))
 
 end function ro2qu
@@ -958,7 +968,7 @@ pure function ro2eu(ro) result(eu)
 
   real(pReal), intent(in), dimension(4) :: ro
   real(pReal),             dimension(3) :: eu
-         
+
   eu = om2eu(ro2om(ro))
 
 end function ro2eu
@@ -972,14 +982,14 @@ pure function ro2ax(ro) result(ax)
 
   real(pReal), intent(in), dimension(4) :: ro
   real(pReal),             dimension(4) :: ax
-  
+
   real(pReal)                           :: ta, angle
-  
+
   ta = ro(4)
-  
+
   if (.not. IEEE_is_finite(ta)) then
     ax = [ ro(1), ro(2), ro(3), PI ]
-  elseif (dEq0(ta))  then 
+  elseif (dEq0(ta))  then
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   else
     angle = 2.0_pReal*atan(ta)
@@ -998,9 +1008,9 @@ pure function ro2ho(ro) result(ho)
 
   real(pReal), intent(in), dimension(4) :: ro
   real(pReal),             dimension(3) :: ho
-  
+
   real(pReal)                           :: f
-  
+
   if (dEq0(norm2(ro(1:3)))) then
     ho = [ 0.0_pReal, 0.0_pReal, 0.0_pReal ]
   else
@@ -1075,26 +1085,26 @@ pure function ho2ax(ho) result(ax)
 
   real(pReal), intent(in), dimension(3) :: ho
   real(pReal),             dimension(4) :: ax
-  
+
   integer                               :: i
   real(pReal)                           :: hmag_squared, s, hm
   real(pReal), parameter, dimension(16) :: &
-    tfit = [ 1.0000000000018852_pReal,      -0.5000000002194847_pReal, & 
-            -0.024999992127593126_pReal,    -0.003928701544781374_pReal, & 
-            -0.0008152701535450438_pReal,   -0.0002009500426119712_pReal, & 
-            -0.00002397986776071756_pReal,  -0.00008202868926605841_pReal, & 
-            +0.00012448715042090092_pReal,  -0.0001749114214822577_pReal, & 
-            +0.0001703481934140054_pReal,   -0.00012062065004116828_pReal, & 
-            +0.000059719705868660826_pReal, -0.00001980756723965647_pReal, & 
+    tfit = [ 1.0000000000018852_pReal,      -0.5000000002194847_pReal, &
+            -0.024999992127593126_pReal,    -0.003928701544781374_pReal, &
+            -0.0008152701535450438_pReal,   -0.0002009500426119712_pReal, &
+            -0.00002397986776071756_pReal,  -0.00008202868926605841_pReal, &
+            +0.00012448715042090092_pReal,  -0.0001749114214822577_pReal, &
+            +0.0001703481934140054_pReal,   -0.00012062065004116828_pReal, &
+            +0.000059719705868660826_pReal, -0.00001980756723965647_pReal, &
             +0.000003953714684212874_pReal, -0.00000036555001439719544_pReal ]
-  
+
   ! normalize h and store the magnitude
   hmag_squared = sum(ho**2.0_pReal)
   if (dEq0(hmag_squared)) then
     ax = [ 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal ]
   else
     hm = hmag_squared
-  
+
   ! convert the magnitude to the rotation angle
     s = tfit(1) + tfit(2) * hmag_squared
     do i=3,16
@@ -1121,16 +1131,56 @@ pure function ho2ro(ho) result(ro)
 end function ho2ro
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief convert homochoric to cubochoric
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------
 pure function ho2cu(ho) result(cu)
 
-  real(pReal), intent(in), dimension(3) :: ho
-  real(pReal),             dimension(3) :: cu
+  real(pReal), intent(in), dimension(3)   :: ho
+  real(pReal),             dimension(3)   :: cu, xyz1, xyz3
+  real(pReal),             dimension(2)   :: Tinv, xyz2
+  real(pReal)                             :: rs, qxy, q2, sq2, q, tt
+  integer,                 dimension(3,2) :: p
 
-  cu = Lambert_BallToCube(ho)
+  rs = norm2(ho)
+  if (rs > R1+1.e-6_pReal) then
+    cu = IEEE_value(cu,IEEE_positive_inf)
+    return
+  endif
+
+  center: if (all(dEq0(ho))) then
+    cu = 0.0_pReal
+  else center
+    p = GetPyramidOrder(ho)
+    xyz3 = ho(p(:,1))
+
+    ! inverse M_3
+    xyz2 = xyz3(1:2) * sqrt( 2.0*rs/(rs+abs(xyz3(3))) )
+
+    ! inverse M_2
+    qxy = sum(xyz2**2)
+
+    special: if (dEq0(qxy)) then
+      Tinv = 0.0_pReal
+    else special
+      q2 = qxy + maxval(abs(xyz2))**2
+      sq2 = sqrt(q2)
+      q = (beta/R2/R1) * sqrt(q2*qxy/(q2-maxval(abs(xyz2))*sq2))
+      tt = (minval(abs(xyz2))**2+maxval(abs(xyz2))*sq2)/R2/qxy
+      Tinv = q * sign(1.0_pReal,xyz2) * merge([ 1.0_pReal, acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12], &
+                                              [ acos(math_clip(tt,-1.0_pReal,1.0_pReal))/PI12, 1.0_pReal], &
+                                               abs(xyz2(2)) <= abs(xyz2(1)))
+    endif special
+
+    ! inverse M_1
+    xyz1 = [ Tinv(1), Tinv(2), sign(1.0_pReal,xyz3(3)) * rs / pref ] /sc
+
+    ! reverse the coordinates back to order according to the original pyramid number
+    cu = xyz1(p(:,2))
+
+  endif center
 
 end function ho2cu
 
@@ -1205,25 +1255,93 @@ pure function cu2ro(cu) result(ro)
 end function cu2ro
 
 
-!---------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief convert cubochoric to homochoric
-!---------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief map from 3D cubic grid to 3D ball
+!--------------------------------------------------------------------------
 pure function cu2ho(cu) result(ho)
 
-  real(pReal), intent(in), dimension(3) :: cu
-  real(pReal),             dimension(3) :: ho
+  real(pReal), intent(in), dimension(3)   :: cu
+  real(pReal),             dimension(3)   :: ho, LamXYZ, XYZ
+  real(pReal),             dimension(2)   :: T
+  real(pReal)                             :: c, s, q
+  real(pReal), parameter                  :: eps = 1.0e-8_pReal
+  integer,                 dimension(3,2) :: p
+  integer,                 dimension(2)   :: order
 
-  ho = Lambert_CubeToBall(cu)
+  if (maxval(abs(cu)) > AP/2.0+eps) then
+    ho = IEEE_value(cu,IEEE_positive_inf)
+    return
+  end if
+
+  ! transform to the sphere grid via the curved square, and intercept the zero point
+  center: if (all(dEq0(cu))) then
+    ho  = 0.0_pReal
+  else center
+    ! get pyramide and scale by grid parameter ratio
+    p = GetPyramidOrder(cu)
+    XYZ = cu(p(:,1)) * sc
+
+    ! intercept all the points along the z-axis
+    special: if (all(dEq0(XYZ(1:2)))) then
+      LamXYZ = [ 0.0_pReal, 0.0_pReal, pref * XYZ(3) ]
+    else special
+      order = merge( [2,1], [1,2], abs(XYZ(2)) <= abs(XYZ(1)))                                      ! order of absolute values of XYZ
+      q = PI12 *  XYZ(order(1))/XYZ(order(2))                                                       ! smaller by larger
+      c = cos(q)
+      s = sin(q)
+      q = prek * XYZ(order(2))/ sqrt(R2-c)
+      T = [ (R2*c - 1.0), R2 * s] * q
+
+      ! transform to sphere grid (inverse Lambert)
+      ! [note that there is no need to worry about dividing by zero, since XYZ(3) can not become zero]
+      c = sum(T**2)
+      s = Pi * c/(24.0*XYZ(3)**2)
+      c = sPi * c / sqrt(24.0_pReal) / XYZ(3)
+      q = sqrt( 1.0 - s )
+      LamXYZ = [ T(order(2)) * q, T(order(1)) * q, pref * XYZ(3) - c ]
+    endif special
+
+    ! reverse the coordinates back to order according to the original pyramid number
+    ho = LamXYZ(p(:,2))
+
+  endif center
 
 end function cu2ho
+
+
+!--------------------------------------------------------------------------
+!> @author Marc De Graef, Carnegie Mellon University
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief determine to which pyramid a point in a cubic grid belongs
+!--------------------------------------------------------------------------
+pure function GetPyramidOrder(xyz)
+
+  real(pReal),intent(in),dimension(3)   :: xyz
+  integer,               dimension(3,2) :: GetPyramidOrder
+
+  if      (((abs(xyz(1)) <=  xyz(3)).and.(abs(xyz(2)) <=  xyz(3))) .or. &
+           ((abs(xyz(1)) <= -xyz(3)).and.(abs(xyz(2)) <= -xyz(3)))) then
+    GetPyramidOrder = reshape([[1,2,3],[1,2,3]],[3,2])
+  else if (((abs(xyz(3)) <=  xyz(1)).and.(abs(xyz(2)) <=  xyz(1))) .or. &
+           ((abs(xyz(3)) <= -xyz(1)).and.(abs(xyz(2)) <= -xyz(1)))) then
+    GetPyramidOrder = reshape([[2,3,1],[3,1,2]],[3,2])
+  else if (((abs(xyz(1)) <=  xyz(2)).and.(abs(xyz(3)) <=  xyz(2))) .or. &
+           ((abs(xyz(1)) <= -xyz(2)).and.(abs(xyz(3)) <= -xyz(2)))) then
+    GetPyramidOrder = reshape([[3,1,2],[2,3,1]],[3,2])
+  else
+    GetPyramidOrder = -1                                                                            ! should be impossible, but might simplify debugging
+  end if
+
+end function GetPyramidOrder
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some rotations functions
 !--------------------------------------------------------------------------------------------------
 subroutine unitTest
-  
+
   type(rotation)                  :: R
   real(pReal), dimension(4)       :: qu, ax, ro
   real(pReal), dimension(3)       :: x, eu, ho, v3
@@ -1234,7 +1352,7 @@ subroutine unitTest
   integer :: i
 
   do i=1,10
-  
+
     msg = ''
 
 #if defined(__GFORTRAN__) && __GNUC__<9
@@ -1308,15 +1426,15 @@ subroutine unitTest
 #endif
 
     call R%fromMatrix(om)
-    
+
     call random_number(v3)
     if(all(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
       msg = trim(msg)//'rotVector,'
-    
+
     call random_number(t33)
     if(all(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
       msg = trim(msg)//'rotTensor2,'
-    
+
     call random_number(t3333)
     if(all(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
       msg = trim(msg)//'rotTensor4,'

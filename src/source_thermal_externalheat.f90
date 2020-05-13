@@ -74,7 +74,7 @@ subroutine source_thermal_externalheat_init
     prm%heat_rate = config%getFloats('externalheat_rate',requiredSize = size(prm%time))
 
     NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateSourceState(p,sourceOffset,NipcMyPhase,1,1,0)
+    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
 
     end associate
   enddo

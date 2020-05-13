@@ -1,8 +1,13 @@
 import numpy as np
 
-from ._Lambert import ball_to_cube, cube_to_ball
+from . import mechanics
 
-P = -1
+_P = -1
+
+# parameters for conversion from/to cubochoric
+_sc   = np.pi**(1./6.)/6.**(1./6.)
+_beta = np.pi**(5./6.)/6.**(1./6.)/2.
+_R1   = (3.*np.pi/4.)**(1./3.)
 
 def iszero(a):
     return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
@@ -60,6 +65,8 @@ class Rotation:
 
     def __repr__(self):
         """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
+        if self.quaternion.shape != (4,):
+            raise NotImplementedError('Support for multiple rotations missing')
         return '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
                'Matrix:\n{}'.format(self.asMatrix()),
@@ -82,13 +89,15 @@ class Rotation:
         considere rotation of (3,3,3,3)-matrix
 
         """
+        if self.quaternion.shape != (4,):
+            raise NotImplementedError('Support for multiple rotations missing')
         if isinstance(other, Rotation):                                                             # rotate a rotation
             self_q  = self.quaternion[0]
             self_p  = self.quaternion[1:]
             other_q = other.quaternion[0]
             other_p = other.quaternion[1:]
             R = self.__class__(np.append(self_q*other_q - np.dot(self_p,other_p),
-                                         self_q*other_p + other_q*self_p + P * np.cross(self_p,other_p)))
+                                         self_q*other_p + other_q*self_p + _P * np.cross(self_p,other_p)))
             return R.standardize()
         elif isinstance(other, (tuple,np.ndarray)):
             if isinstance(other,tuple) or other.shape == (3,):                                      # rotate a single (3)-vector or meshgrid
@@ -96,7 +105,7 @@ class Rotation:
                 B = 2.0 * (  self.quaternion[1]*other[0]
                            + self.quaternion[2]*other[1]
                            + self.quaternion[3]*other[2])
-                C = 2.0 * P*self.quaternion[0]
+                C = 2.0 * _P*self.quaternion[0]
 
                 return np.array([
                   A*other[0] + B*self.quaternion[1] + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
@@ -106,7 +115,7 @@ class Rotation:
             elif other.shape == (3,3,):                                                             # rotate a single (3x3)-matrix
                 return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
             elif other.shape == (3,3,3,3,):
-                raise NotImplementedError
+                raise NotImplementedError('Support for rotation of 4th order tensors missing')
             else:
                 return NotImplemented
         else:
@@ -115,7 +124,7 @@ class Rotation:
 
     def inverse(self):
         """In-place inverse rotation/backward rotation."""
-        self.quaternion[1:] *= -1
+        self.quaternion[...,1:] *= -1
         return self
 
     def inversed(self):
@@ -124,12 +133,12 @@ class Rotation:
 
 
     def standardize(self):
-        """In-place quaternion representation with positive q."""
-        if self.quaternion[0] < 0.0: self.quaternion*=-1
+        """In-place quaternion representation with positive real part."""
+        self.quaternion[self.quaternion[...,0] < 0.0] *= -1
         return self
 
     def standardized(self):
-        """Quaternion representation with positive q."""
+        """Quaternion representation with positive real part."""
         return self.copy().standardize()
 
 
@@ -156,15 +165,17 @@ class Rotation:
             Rotation from which the average is rotated.
 
         """
+        if self.quaternion.shape != (4,) or other.quaternion.shape != (4,):
+            raise NotImplementedError('Support for multiple rotations missing')
         return Rotation.fromAverage([self,other])
 
 
     ################################################################################################
     # convert to different orientation representations (numpy arrays)
 
-    def asQuaternion(self):
+    def as_quaternion(self):
         """
-        Unit quaternion [q, p_1, p_2, p_3] unless quaternion == True: damask.quaternion object.
+        Unit quaternion [q, p_1, p_2, p_3].
 
         Parameters
         ----------
@@ -174,8 +185,8 @@ class Rotation:
         """
         return self.quaternion
 
-    def asEulers(self,
-                 degrees = False):
+    def as_Eulers(self,
+                  degrees = False):
         """
         Bunge-Euler angles: (φ_1, ϕ, φ_2).
 
@@ -189,9 +200,9 @@ class Rotation:
         if degrees: eu = np.degrees(eu)
         return eu
 
-    def asAxisAngle(self,
-                    degrees = False,
-                    pair = False):
+    def as_axis_angle(self,
+                      degrees = False,
+                      pair = False):
         """
         Axis angle representation [n_1, n_2, n_3, ω] unless pair == True: ([n_1, n_2, n_3], ω).
 
@@ -204,15 +215,15 @@ class Rotation:
 
         """
         ax = Rotation.qu2ax(self.quaternion)
-        if degrees: ax[3] = np.degrees(ax[3])
-        return (ax[:3],np.degrees(ax[3])) if pair else ax
+        if degrees: ax[...,3] = np.degrees(ax[...,3])
+        return (ax[...,:3],ax[...,3]) if pair else ax
 
-    def asMatrix(self):
+    def as_matrix(self):
         """Rotation matrix."""
         return Rotation.qu2om(self.quaternion)
 
-    def asRodrigues(self,
-                    vector = False):
+    def as_Rodrigues(self,
+                     vector = False):
         """
         Rodrigues-Frank vector representation [n_1, n_2, n_3, tan(ω/2)] unless vector == True: [n_1, n_2, n_3] * tan(ω/2).
 
@@ -223,17 +234,17 @@ class Rotation:
 
         """
         ro = Rotation.qu2ro(self.quaternion)
-        return ro[:3]*ro[3] if vector else ro
+        return ro[...,:3]*ro[...,3] if vector else ro
 
-    def asHomochoric(self):
+    def as_homochoric(self):
         """Homochoric vector: (h_1, h_2, h_3)."""
         return Rotation.qu2ho(self.quaternion)
 
-    def asCubochoric(self):
+    def as_cubochoric(self):
         """Cubochoric vector: (c_1, c_2, c_3)."""
         return Rotation.qu2cu(self.quaternion)
 
-    def asM(self):
+    def M(self): # ToDo not sure about the name: as_M or M? we do not have a from_M
         """
         Intermediate representation supporting quaternion averaging.
 
@@ -243,120 +254,148 @@ class Rotation:
         https://doi.org/10.2514/1.28949
 
         """
-        return np.outer(self.quaternion,self.quaternion)
+        return np.einsum('...i,...j',self.quaternion,self.quaternion)
 
+    # for compatibility (old names do not follow convention)
+    asM          = M
+    asQuaternion = as_quaternion
+    asEulers     = as_Eulers
+    asAxisAngle  = as_axis_angle
+    asMatrix     = as_matrix
+    asRodrigues  = as_Rodrigues
+    asHomochoric = as_homochoric
+    asCubochoric = as_cubochoric
 
     ################################################################################################
-    # static constructors. The input data needs to follow the convention, options allow to
-    # relax these convections
+    # Static constructors. The input data needs to follow the conventions, options allow to
+    # relax the conventions.
     @staticmethod
-    def fromQuaternion(quaternion,
-                       acceptHomomorph = False,
-                       P = -1):
+    def from_quaternion(quaternion,
+                        acceptHomomorph = False,
+                        P = -1):
 
-        qu =   quaternion if isinstance(quaternion,np.ndarray) and quaternion.dtype == np.dtype(float) \
-                          else np.array(quaternion,dtype=float)
-        if P > 0: qu[1:4] *= -1                                                                     # convert from P=1 to P=-1
-        if qu[0] < 0.0:
-            if acceptHomomorph:
-                qu *= -1.
-            else:
-                raise ValueError('Quaternion has negative first component.\n{}'.format(qu[0]))
-        if not np.isclose(np.linalg.norm(qu), 1.0):
-            raise ValueError('Quaternion is not of unit length.\n{} {} {} {}'.format(*qu))
+        qu = np.array(quaternion,dtype=float)
+        if qu.shape[:-2:-1] != (4,):
+            raise ValueError('Invalid shape.')
+
+        if P > 0: qu[...,1:4] *= -1                                                                 # convert from P=1 to P=-1
+        if acceptHomomorph:
+            qu[qu[...,0] < 0.0] *= -1
+        else:
+            if np.any(qu[...,0] < 0.0):
+                raise ValueError('Quaternion with negative first (real) component.')
+        if not np.all(np.isclose(np.linalg.norm(qu,axis=-1), 1.0)):
+            raise ValueError('Quaternion is not of unit length.')
 
         return Rotation(qu)
 
     @staticmethod
-    def fromEulers(eulers,
-                   degrees = False):
+    def from_Eulers(eulers,
+                    degrees = False):
 
-        eu = eulers if isinstance(eulers, np.ndarray) and eulers.dtype == np.dtype(float) \
-                    else np.array(eulers,dtype=float)
+        eu = np.array(eulers,dtype=float)
+        if eu.shape[:-2:-1] != (3,):
+            raise ValueError('Invalid shape.')
+
         eu = np.radians(eu) if degrees else eu
-        if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or eu[1] > np.pi:
-            raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].\n{} {} {}.'.format(*eu))
+        if np.any(eu < 0.0) or np.any(eu > 2.0*np.pi) or np.any(eu[...,1] > np.pi):                 # ToDo: No separate check for PHI
+            raise ValueError('Euler angles outside of [0..2π],[0..π],[0..2π].')
 
         return Rotation(Rotation.eu2qu(eu))
 
     @staticmethod
-    def fromAxisAngle(angleAxis,
-                      degrees = False,
-                      normalise = False,
-                      P = -1):
+    def from_axis_angle(axis_angle,
+                        degrees = False,
+                        normalise = False,
+                        P = -1):
 
-        ax = angleAxis if isinstance(angleAxis, np.ndarray) and angleAxis.dtype == np.dtype(float) \
-                       else np.array(angleAxis,dtype=float)
-        if P > 0:     ax[0:3] *= -1                                                                 # convert from P=1 to P=-1
-        if degrees:   ax[  3]  = np.radians(ax[3])
-        if normalise: ax[0:3] /= np.linalg.norm(ax[0:3])
-        if ax[3] < 0.0 or ax[3] > np.pi:
-            raise ValueError('Axis angle rotation angle outside of [0..π].\n{}'.format(ax[3]))
-        if not np.isclose(np.linalg.norm(ax[0:3]), 1.0):
-            raise ValueError('Axis angle rotation axis is not of unit length.\n{} {} {}'.format(*ax[0:3]))
+        ax = np.array(axis_angle,dtype=float)
+        if ax.shape[:-2:-1] != (4,):
+            raise ValueError('Invalid shape.')
+
+        if P > 0:     ax[...,0:3] *= -1                                                             # convert from P=1 to P=-1
+        if degrees:   ax[...,  3]  = np.radians(ax[...,3])
+        if normalise: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1)
+        if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
+            raise ValueError('Axis angle rotation angle outside of [0..π].')
+        if not np.all(np.isclose(np.linalg.norm(ax[...,0:3],axis=-1), 1.0)):
+            raise ValueError('Axis angle rotation axis is not of unit length.')
 
         return Rotation(Rotation.ax2qu(ax))
 
     @staticmethod
-    def fromBasis(basis,
-                  orthonormal = True,
-                  reciprocal = False,
-                 ):
+    def from_basis(basis,
+                   orthonormal = True,
+                   reciprocal = False):
 
-        om = basis if isinstance(basis, np.ndarray) else np.array(basis).reshape(3,3)
+        om = np.array(basis,dtype=float)
+        if om.shape[:-3:-1] != (3,3):
+            raise ValueError('Invalid shape.')
+
         if reciprocal:
-            om = np.linalg.inv(om.T/np.pi)                                                          # transform reciprocal basis set
+            om = np.linalg.inv(mechanics.transpose(om)/np.pi)                                       # transform reciprocal basis set
             orthonormal = False                                                                     # contains stretch
         if not orthonormal:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
-            om = np.dot(U,Vh)
-        if not np.isclose(np.linalg.det(om),1.0):
-            raise ValueError('matrix is not a proper rotation.\n{}'.format(om))
-        if    not np.isclose(np.dot(om[0],om[1]), 0.0) \
-           or not np.isclose(np.dot(om[1],om[2]), 0.0) \
-           or not np.isclose(np.dot(om[2],om[0]), 0.0):
-            raise ValueError('matrix is not orthogonal.\n{}'.format(om))
+            om = np.einsum('...ij,...jl->...il',U,Vh)
+        if not np.all(np.isclose(np.linalg.det(om),1.0)):
+            raise ValueError('Orientation matrix has determinant ≠ 1.')
+        if    not np.all(np.isclose(np.einsum('...i,...i',om[...,0],om[...,1]), 0.0)) \
+           or not np.all(np.isclose(np.einsum('...i,...i',om[...,1],om[...,2]), 0.0)) \
+           or not np.all(np.isclose(np.einsum('...i,...i',om[...,2],om[...,0]), 0.0)):
+            raise ValueError('Orientation matrix is not orthogonal.')
 
         return Rotation(Rotation.om2qu(om))
 
     @staticmethod
-    def fromMatrix(om,
-                  ):
+    def from_matrix(om):
 
-        return Rotation.fromBasis(om)
+        return Rotation.from_basis(om)
 
     @staticmethod
-    def fromRodrigues(rodrigues,
-                      normalise = False,
-                      P = -1):
+    def from_Rodrigues(rodrigues,
+                       normalise = False,
+                       P = -1):
 
-        ro = rodrigues if isinstance(rodrigues, np.ndarray) and rodrigues.dtype == np.dtype(float) \
-                       else np.array(rodrigues,dtype=float)
-        if P > 0:     ro[0:3] *= -1                                                                 # convert from P=1 to P=-1
-        if normalise: ro[0:3] /= np.linalg.norm(ro[0:3])
-        if not np.isclose(np.linalg.norm(ro[0:3]), 1.0):
-            raise ValueError('Rodrigues rotation axis is not of unit length.\n{} {} {}'.format(*ro[0:3]))
-        if ro[3] < 0.0:
-            raise ValueError('Rodrigues rotation angle not positive.\n{}'.format(ro[3]))
+        ro = np.array(rodrigues,dtype=float)
+        if ro.shape[:-2:-1] != (4,):
+            raise ValueError('Invalid shape.')
+
+        if P > 0:     ro[...,0:3] *= -1                                                             # convert from P=1 to P=-1
+        if normalise: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1)
+        if np.any(ro[...,3] < 0.0):
+            raise ValueError('Rodrigues vector rotation angle not positive.')
+        if not np.all(np.isclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0)):
+            raise ValueError('Rodrigues vector rotation axis is not of unit length.')
 
         return Rotation(Rotation.ro2qu(ro))
 
     @staticmethod
-    def fromHomochoric(homochoric,
-                       P = -1):
+    def from_homochoric(homochoric,
+                        P = -1):
 
-        ho = homochoric if isinstance(homochoric, np.ndarray) and homochoric.dtype == np.dtype(float) \
-                        else np.array(homochoric,dtype=float)
+        ho = np.array(homochoric,dtype=float)
+        if ho.shape[:-2:-1] != (3,):
+            raise ValueError('Invalid shape.')
+
         if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
+
+        if np.any(np.linalg.norm(ho,axis=-1) > (3.*np.pi/4.)**(1./3.)+1e-9):
+            raise ValueError('Homochoric coordinate outside of the sphere.')
 
         return Rotation(Rotation.ho2qu(ho))
 
     @staticmethod
-    def fromCubochoric(cubochoric,
+    def from_cubochoric(cubochoric,
                        P = -1):
 
-        cu = cubochoric if isinstance(cubochoric, np.ndarray) and cubochoric.dtype == np.dtype(float) \
-                        else np.array(cubochoric,dtype=float)
+        cu = np.array(cubochoric,dtype=float)
+        if cu.shape[:-2:-1] != (3,):
+            raise ValueError('Invalid shape.')
+
+        if np.abs(np.max(cu))>np.pi**(2./3.) * 0.5+1e-9:
+            raise ValueError('Cubochoric coordinate outside of the cube: {} {} {}.'.format(*cu))
+
         ho = Rotation.cu2ho(cu)
         if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
 
@@ -382,7 +421,7 @@ class Rotation:
 
         """
         if not all(isinstance(item, Rotation) for item in rotations):
-            raise TypeError("Only instances of Rotation can be averaged.")
+            raise TypeError('Only instances of Rotation can be averaged.')
 
         N = len(rotations)
         if not weights:
@@ -395,17 +434,35 @@ class Rotation:
 
         return Rotation.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
 
-
     @staticmethod
-    def fromRandom():
-        r = np.random.random(3)
-        A = np.sqrt(r[2])
-        B = np.sqrt(1.0-r[2])
-        return Rotation(np.array([np.cos(2.0*np.pi*r[0])*A,
-                                  np.sin(2.0*np.pi*r[1])*B,
-                                  np.cos(2.0*np.pi*r[1])*B,
-                                  np.sin(2.0*np.pi*r[0])*A])).standardize()
+    def from_random(shape=None):
+        if shape is None:
+            r = np.random.random(3)
+        elif hasattr(shape, '__iter__'):
+            r = np.random.random(tuple(shape)+(3,))
+        else:
+            r = np.random.random((shape,3))
 
+        A = np.sqrt(r[...,2])
+        B = np.sqrt(1.0-r[...,2])
+        q = np.stack([np.cos(2.0*np.pi*r[...,0])*A,
+                      np.sin(2.0*np.pi*r[...,1])*B,
+                      np.cos(2.0*np.pi*r[...,1])*B,
+                      np.sin(2.0*np.pi*r[...,0])*A],axis=-1)
+
+        return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q).standardize()
+
+
+    # for compatibility (old names do not follow convention)
+    fromQuaternion = from_quaternion
+    fromEulers     = from_Eulers
+    fromAxisAngle  = from_axis_angle
+    fromBasis      = from_basis
+    fromMatrix     = from_matrix
+    fromRodrigues  = from_Rodrigues
+    fromHomochoric = from_homochoric
+    fromCubochoric = from_cubochoric
+    fromRandom     = from_random
 
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
@@ -440,34 +497,69 @@ class Rotation:
     #---------- Quaternion ----------
     @staticmethod
     def qu2om(qu):
-        """Quaternion to rotation matrix."""
-        qq = qu[0]**2-(qu[1]**2 + qu[2]**2 + qu[3]**2)
-        om = np.diag(qq + 2.0*np.array([qu[1],qu[2],qu[3]])**2)
+        if len(qu.shape) == 1:
+            """Quaternion to rotation matrix."""
+            qq = qu[0]**2-(qu[1]**2 + qu[2]**2 + qu[3]**2)
+            om = np.diag(qq + 2.0*np.array([qu[1],qu[2],qu[3]])**2)
 
-        om[1,0] = 2.0*(qu[2]*qu[1]+qu[0]*qu[3])
-        om[0,1] = 2.0*(qu[1]*qu[2]-qu[0]*qu[3])
-        om[2,1] = 2.0*(qu[3]*qu[2]+qu[0]*qu[1])
-        om[1,2] = 2.0*(qu[2]*qu[3]-qu[0]*qu[1])
-        om[0,2] = 2.0*(qu[1]*qu[3]+qu[0]*qu[2])
-        om[2,0] = 2.0*(qu[3]*qu[1]-qu[0]*qu[2])
-        return om if P > 0.0 else om.T
+            om[0,1] = 2.0*(qu[2]*qu[1]+qu[0]*qu[3])
+            om[1,0] = 2.0*(qu[1]*qu[2]-qu[0]*qu[3])
+            om[1,2] = 2.0*(qu[3]*qu[2]+qu[0]*qu[1])
+            om[2,1] = 2.0*(qu[2]*qu[3]-qu[0]*qu[1])
+            om[2,0] = 2.0*(qu[1]*qu[3]+qu[0]*qu[2])
+            om[0,2] = 2.0*(qu[3]*qu[1]-qu[0]*qu[2])
+        else:
+            qq = qu[...,0:1]**2-(qu[...,1:2]**2 + qu[...,2:3]**2 + qu[...,3:4]**2)
+            om = np.block([qq + 2.0*qu[...,1:2]**2,
+                           2.0*(qu[...,2:3]*qu[...,1:2]+qu[...,0:1]*qu[...,3:4]),
+                           2.0*(qu[...,3:4]*qu[...,1:2]-qu[...,0:1]*qu[...,2:3]),
+                           2.0*(qu[...,1:2]*qu[...,2:3]-qu[...,0:1]*qu[...,3:4]),
+                           qq + 2.0*qu[...,2:3]**2,
+                           2.0*(qu[...,3:4]*qu[...,2:3]+qu[...,0:1]*qu[...,1:2]),
+                           2.0*(qu[...,1:2]*qu[...,3:4]+qu[...,0:1]*qu[...,2:3]),
+                           2.0*(qu[...,2:3]*qu[...,3:4]-qu[...,0:1]*qu[...,1:2]),
+                           qq + 2.0*qu[...,3:4]**2,
+                          ]).reshape(qu.shape[:-1]+(3,3))
+        return om if _P < 0.0 else np.swapaxes(om,(-1,-2))
 
     @staticmethod
     def qu2eu(qu):
         """Quaternion to Bunge-Euler angles."""
-        q03 = qu[0]**2+qu[3]**2
-        q12 = qu[1]**2+qu[2]**2
-        chi = np.sqrt(q03*q12)
-
-        if iszero(chi):
-            eu = np.array([np.arctan2(-P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0]) if iszero(q12) else \
-                 np.array([np.arctan2(2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2),    np.pi, 0.0])
+        if len(qu.shape) == 1:
+            q03 = qu[0]**2+qu[3]**2
+            q12 = qu[1]**2+qu[2]**2
+            chi = np.sqrt(q03*q12)
+            if   np.abs(q12) < 1.e-8:
+                eu = np.array([np.arctan2(-_P*2.0*qu[0]*qu[3],qu[0]**2-qu[3]**2), 0.0,   0.0])
+            elif np.abs(q03) < 1.e-8:
+                eu = np.array([np.arctan2(   2.0*qu[1]*qu[2],qu[1]**2-qu[2]**2), np.pi, 0.0])
+            else:
+                eu = np.array([np.arctan2((-_P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-_P*qu[0]*qu[1]-qu[2]*qu[3])*chi ),
+                               np.arctan2( 2.0*chi, q03-q12 ),
+                               np.arctan2(( _P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-_P*qu[0]*qu[1]+qu[2]*qu[3])*chi )])
         else:
-            eu = np.array([np.arctan2((-P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-P*qu[0]*qu[1]-qu[2]*qu[3])*chi ),
-                           np.arctan2( 2.0*chi, q03-q12 ),
-                           np.arctan2(( P*qu[0]*qu[2]+qu[1]*qu[3])*chi, (-P*qu[0]*qu[1]+qu[2]*qu[3])*chi )])
+            q02   = qu[...,0:1]*qu[...,2:3]
+            q13   = qu[...,1:2]*qu[...,3:4]
+            q01   = qu[...,0:1]*qu[...,1:2]
+            q23   = qu[...,2:3]*qu[...,3:4]
+            q03_s = qu[...,0:1]**2+qu[...,3:4]**2
+            q12_s = qu[...,1:2]**2+qu[...,2:3]**2
+            chi = np.sqrt(q03_s*q12_s)
 
-        # reduce Euler angles to definition range, i.e a lower limit of 0.0
+            eu = np.where(np.abs(q12_s) < 1.0e-8,
+                    np.block([np.arctan2(-_P*2.0*qu[...,0:1]*qu[...,3:4],qu[...,0:1]**2-qu[...,3:4]**2),
+                              np.zeros(qu.shape[:-1]+(2,))]),
+                          np.where(np.abs(q03_s) < 1.0e-8,
+                              np.block([np.arctan2(   2.0*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
+                                        np.broadcast_to(np.pi,qu.shape[:-1]+(1,)),
+                                        np.zeros(qu.shape[:-1]+(1,))]),
+                              np.block([np.arctan2((-_P*q02+q13)*chi, (-_P*q01-q23)*chi),
+                                        np.arctan2( 2.0*chi,          q03_s-q12_s    ),
+                                        np.arctan2(( _P*q02+q13)*chi, (-_P*q01+q23)*chi)])
+                                  )
+                         )
+        # reduce Euler angles to definition range
+        eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
 
@@ -478,38 +570,65 @@ class Rotation:
 
         Modified version of the original formulation, should be numerically more stable
         """
-        if iszero(qu[1]**2+qu[2]**2+qu[3]**2):                                                      # set axis to [001] if the angle is 0/360
-            ax = [ 0.0, 0.0, 1.0, 0.0 ]
-        elif not iszero(qu[0]):
-            s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
-            omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
-            ax = [ qu[1]*s, qu[2]*s, qu[3]*s, omega ]
+        if len(qu.shape) == 1:
+            if np.abs(np.sum(qu[1:4]**2)) < 1.e-6:                                                  # set axis to [001] if the angle is 0/360
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+            elif qu[0] > 1.e-6:
+                s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
+                omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
+                ax = ax = np.array([ qu[1]*s, qu[2]*s, qu[3]*s, omega ])
+            else:
+                ax = ax = np.array([ qu[1], qu[2], qu[3], np.pi])
         else:
-            ax = [ qu[1], qu[2], qu[3], np.pi]
-        return np.array(ax)
+            with np.errstate(invalid='ignore',divide='ignore'):
+                s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
+                omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
+                ax = np.where(np.broadcast_to(qu[...,0:1] < 1.0e-6,qu.shape),
+                              np.block([qu[...,1:4],np.broadcast_to(np.pi,qu.shape[:-1]+(1,))]),
+                              np.block([qu[...,1:4]*s,omega]))
+            ax[np.sum(np.abs(qu[...,1:4])**2,axis=-1) < 1.0e-6,] = [0.0, 0.0, 1.0, 0.0]
+        return ax
 
     @staticmethod
     def qu2ro(qu):
         """Quaternion to Rodrigues-Frank vector."""
-        if iszero(qu[0]):
-            ro = [qu[1], qu[2], qu[3], np.inf]
+        if len(qu.shape) == 1:
+            if iszero(qu[0]):
+                ro = np.array([qu[1], qu[2], qu[3], np.inf])
+            else:
+                s = np.linalg.norm(qu[1:4])
+                ro = np.array([0.0,0.0,_P,0.0] if iszero(s) else \
+                              [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))])
         else:
-            s = np.linalg.norm([qu[1],qu[2],qu[3]])
-            ro = [0.0,0.0,P,0.0] if iszero(s) else \
-                [ qu[1]/s,  qu[2]/s,  qu[3]/s, np.tan(np.arccos(np.clip(qu[0],-1.0,1.0)))]
-        return np.array(ro)
+            with np.errstate(invalid='ignore',divide='ignore'):
+                s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
+                ro = np.where(np.broadcast_to(np.abs(qu[...,0:1]) < 1.0e-12,qu.shape),
+                              np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.broadcast_to(np.inf,qu.shape[:-1]+(1,))]),
+                              np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
+                                        np.tan(np.arccos(np.clip(qu[...,0:1],-1.0,1.0)))
+                                       ])
+                           )
+            ro[np.abs(s).squeeze(-1) < 1.0e-12] = [0.0,0.0,_P,0.0]
+        return ro
 
     @staticmethod
     def qu2ho(qu):
         """Quaternion to homochoric vector."""
-        omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
-
-        if iszero(omega):
-            ho = np.array([ 0.0, 0.0, 0.0 ])
+        if len(qu.shape) == 1:
+            omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
+            if np.abs(omega) < 1.0e-12:
+                ho = np.zeros(3)
+            else:
+                ho = np.array([qu[1], qu[2], qu[3]])
+                f  = 0.75 * ( omega - np.sin(omega) )
+                ho = ho/np.linalg.norm(ho) * f**(1./3.)
         else:
-            ho = np.array([qu[1], qu[2], qu[3]])
-            f  = 0.75 * ( omega - np.sin(omega) )
-            ho = ho/np.linalg.norm(ho) * f**(1./3.)
+            with np.errstate(invalid='ignore'):
+                omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
+                ho = np.where(np.abs(omega) < 1.0e-12,
+                              np.zeros(3),
+                              qu[...,1:4]/np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True) \
+                              * (0.75*(omega - np.sin(omega)))**(1./3.))
         return ho
 
     @staticmethod
@@ -531,37 +650,71 @@ class Rotation:
     @staticmethod
     def om2eu(om):
         """Rotation matrix to Bunge-Euler angles."""
-        if abs(om[2,2]) < 1.0:
-            zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
-            eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
-                           np.arccos(om[2,2]),
-                           np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
+        if len(om.shape) == 2:
+            if not np.isclose(np.abs(om[2,2]),1.0,1.e-4):
+                zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
+                eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
+                               np.arccos(om[2,2]),
+                               np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
+            else:
+                eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])            # following the paper, not the reference implementation
         else:
-            eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                # following the paper, not the reference implementation
-
-        # reduce Euler angles to definition range, i.e a lower limit of 0.0
+            with np.errstate(invalid='ignore',divide='ignore'):
+                zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
+                eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,1e-4),
+                              np.block([np.arctan2(om[...,0,1:2],om[...,0,0:1]),
+                                        np.pi*0.5*(1-om[...,2,2:3]),
+                                        np.zeros(om.shape[:-2]+(1,)),
+                                       ]),
+                              np.block([np.arctan2(om[...,2,0:1]*zeta,-om[...,2,1:2]*zeta),
+                                        np.arccos(om[...,2,2:3]),
+                                        np.arctan2(om[...,0,2:3]*zeta,+om[...,1,2:3]*zeta)
+                                       ])
+                              )
+        eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
+
 
     @staticmethod
     def om2ax(om):
         """Rotation matrix to axis angle pair."""
-        ax=np.empty(4)
+        if len(om.shape) == 2:
+            ax=np.empty(4)
 
-        # first get the rotation angle
-        t = 0.5*(om.trace() -1.0)
-        ax[3] = np.arccos(np.clip(t,-1.0,1.0))
-
-        if iszero(ax[3]):
-            ax = [ 0.0, 0.0, 1.0, 0.0]
+            # first get the rotation angle
+            t = 0.5*(om.trace() -1.0)
+            ax[3] = np.arccos(np.clip(t,-1.0,1.0))
+            if np.abs(ax[3])<1.e-6:
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0])
+            else:
+                w,vr = np.linalg.eig(om)
+                # next, find the eigenvalue (1,0j)
+                i = np.where(np.isclose(w,1.0+0.0j))[0][0]
+                ax[0:3] = np.real(vr[0:3,i])
+                diagDelta = -_P*np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
+                diagDelta[np.abs(diagDelta)<1.e-6] = 1.0
+                ax[0:3] = np.where(np.abs(diagDelta)<0, ax[0:3],np.abs(ax[0:3])*np.sign(diagDelta))
         else:
+            diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
+                                      om[...,2,0:1]-om[...,0,2:3],
+                                      om[...,0,1:2]-om[...,1,0:1]
+                                     ])
+            diag_delta[np.abs(diag_delta)<1.e-6] = 1.0
+            t = 0.5*(om.trace(axis2=-2,axis1=-1) -1.0).reshape(om.shape[:-2]+(1,))
             w,vr = np.linalg.eig(om)
-            # next, find the eigenvalue (1,0j)
-            i = np.where(np.isclose(w,1.0+0.0j))[0][0]
-            ax[0:3] = np.real(vr[0:3,i])
-            diagDelta = np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
-            ax[0:3] = np.where(iszero(diagDelta), ax[0:3],np.abs(ax[0:3])*np.sign(-P*diagDelta))
-        return np.array(ax)
+            # mask duplicated real eigenvalues
+            w[np.isclose(w[...,0],1.0+0.0j),1:] = 0.
+            w[np.isclose(w[...,1],1.0+0.0j),2:] = 0.
+            vr = np.swapaxes(vr,-1,-2)
+            ax = np.where(np.abs(diag_delta)<0,
+                                 np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,)),
+                          np.abs(np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,))) \
+                          *np.sign(diag_delta))
+            ax = np.block([ax,np.arccos(np.clip(t,-1.0,1.0))])
+            ax[np.abs(ax[...,3])<1.e-6] = [ 0.0, 0.0, 1.0, 0.0]
+        return ax
+
 
     @staticmethod
     def om2ro(om):
@@ -583,57 +736,103 @@ class Rotation:
     @staticmethod
     def eu2qu(eu):
         """Bunge-Euler angles to quaternion."""
-        ee = 0.5*eu
-        cPhi = np.cos(ee[1])
-        sPhi = np.sin(ee[1])
-        qu = np.array([     cPhi*np.cos(ee[0]+ee[2]),
-                         -P*sPhi*np.cos(ee[0]-ee[2]),
-                         -P*sPhi*np.sin(ee[0]-ee[2]),
-                         -P*cPhi*np.sin(ee[0]+ee[2]) ])
-        if qu[0] < 0.0: qu*=-1
+        if len(eu.shape) == 1:
+            ee = 0.5*eu
+            cPhi = np.cos(ee[1])
+            sPhi = np.sin(ee[1])
+            qu = np.array([   cPhi*np.cos(ee[0]+ee[2]),
+                           -_P*sPhi*np.cos(ee[0]-ee[2]),
+                           -_P*sPhi*np.sin(ee[0]-ee[2]),
+                           -_P*cPhi*np.sin(ee[0]+ee[2]) ])
+            if qu[0] < 0.0: qu*=-1
+        else:
+            ee = 0.5*eu
+            cPhi = np.cos(ee[...,1:2])
+            sPhi = np.sin(ee[...,1:2])
+            qu = np.block([  cPhi*np.cos(ee[...,0:1]+ee[...,2:3]),
+                          -_P*sPhi*np.cos(ee[...,0:1]-ee[...,2:3]),
+                          -_P*sPhi*np.sin(ee[...,0:1]-ee[...,2:3]),
+                          -_P*cPhi*np.sin(ee[...,0:1]+ee[...,2:3])])
+            qu[qu[...,0]<0.0]*=-1
         return qu
+
 
     @staticmethod
     def eu2om(eu):
         """Bunge-Euler angles to rotation matrix."""
-        c = np.cos(eu)
-        s = np.sin(eu)
+        if len(eu.shape) == 1:
+            c = np.cos(eu)
+            s = np.sin(eu)
 
-        om = np.array([[+c[0]*c[2]-s[0]*s[2]*c[1], +s[0]*c[2]+c[0]*s[2]*c[1], +s[2]*s[1]],
-                       [-c[0]*s[2]-s[0]*c[2]*c[1], -s[0]*s[2]+c[0]*c[2]*c[1], +c[2]*s[1]],
-                       [+s[0]*s[1],                -c[0]*s[1],                +c[1]     ]])
-
-        om[np.where(iszero(om))] = 0.0
+            om = np.array([[+c[0]*c[2]-s[0]*s[2]*c[1], +s[0]*c[2]+c[0]*s[2]*c[1], +s[2]*s[1]],
+                           [-c[0]*s[2]-s[0]*c[2]*c[1], -s[0]*s[2]+c[0]*c[2]*c[1], +c[2]*s[1]],
+                           [+s[0]*s[1],                -c[0]*s[1],                +c[1]     ]])
+        else:
+            c = np.cos(eu)
+            s = np.sin(eu)
+            om = np.block([+c[...,0:1]*c[...,2:3]-s[...,0:1]*s[...,2:3]*c[...,1:2],
+                           +s[...,0:1]*c[...,2:3]+c[...,0:1]*s[...,2:3]*c[...,1:2],
+                           +s[...,2:3]*s[...,1:2],
+                           -c[...,0:1]*s[...,2:3]-s[...,0:1]*c[...,2:3]*c[...,1:2],
+                           -s[...,0:1]*s[...,2:3]+c[...,0:1]*c[...,2:3]*c[...,1:2],
+                           +c[...,2:3]*s[...,1:2],
+                           +s[...,0:1]*s[...,1:2],
+                           -c[...,0:1]*s[...,1:2],
+                           +c[...,1:2]
+                           ]).reshape(eu.shape[:-1]+(3,3))
+        om[np.abs(om)<1.e-12] = 0.0
         return om
 
     @staticmethod
     def eu2ax(eu):
         """Bunge-Euler angles to axis angle pair."""
-        t = np.tan(eu[1]*0.5)
-        sigma = 0.5*(eu[0]+eu[2])
-        delta = 0.5*(eu[0]-eu[2])
-        tau   = np.linalg.norm([t,np.sin(sigma)])
-        alpha = np.pi if iszero(np.cos(sigma)) else \
-                2.0*np.arctan(tau/np.cos(sigma))
+        if len(eu.shape) == 1:
+            t = np.tan(eu[1]*0.5)
+            sigma = 0.5*(eu[0]+eu[2])
+            delta = 0.5*(eu[0]-eu[2])
+            tau   = np.linalg.norm([t,np.sin(sigma)])
+            alpha = np.pi if iszero(np.cos(sigma)) else \
+                    2.0*np.arctan(tau/np.cos(sigma))
 
-        if iszero(alpha):
-            ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+            if np.abs(alpha)<1.e-6:
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+            else:
+                ax = -_P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])        # passive axis angle pair so a minus sign in front
+                ax = np.append(ax,alpha)
+                if alpha < 0.0: ax *= -1.0                                                          # ensure alpha is positive
         else:
-            ax = -P/tau * np.array([ t*np.cos(delta), t*np.sin(delta), np.sin(sigma) ])             # passive axis angle pair so a minus sign in front
-            ax = np.append(ax,alpha)
-            if alpha < 0.0: ax *= -1.0                                                              # ensure alpha is positive
+            t = np.tan(eu[...,1:2]*0.5)
+            sigma = 0.5*(eu[...,0:1]+eu[...,2:3])
+            delta = 0.5*(eu[...,0:1]-eu[...,2:3])
+            tau   = np.linalg.norm(np.block([t,np.sin(sigma)]),axis=-1,keepdims=True)
+            alpha = np.where(np.abs(np.cos(sigma))<1.e-12,np.pi,2.0*np.arctan(tau/np.cos(sigma)))
+            with np.errstate(invalid='ignore',divide='ignore'):
+                ax = np.where(np.broadcast_to(np.abs(alpha)<1.0e-12,eu.shape[:-1]+(4,)),
+                              [0.0,0.0,1.0,0.0],
+                              np.block([-_P/tau*t*np.cos(delta),
+                                        -_P/tau*t*np.sin(delta),
+                                        -_P/tau*  np.sin(sigma),
+                                         alpha
+                                        ]))
+            ax[(alpha<0.0).squeeze()] *=-1
         return ax
 
     @staticmethod
     def eu2ro(eu):
         """Bunge-Euler angles to Rodrigues-Frank vector."""
-        ro = Rotation.eu2ax(eu)                                                                     # convert to axis angle pair representation
-        if ro[3] >= np.pi:                                                                          # Differs from original implementation. check convention 5
-            ro[3] = np.inf
-        elif iszero(ro[3]):
-            ro = np.array([ 0.0, 0.0, P, 0.0 ])
+        if len(eu.shape) == 1:
+            ro = Rotation.eu2ax(eu)                                                                 # convert to axis angle pair representation
+            if ro[3] >= np.pi:                                                                      # Differs from original implementation. check convention 5
+                ro[3] = np.inf
+            elif iszero(ro[3]):
+                ro = np.array([ 0.0, 0.0, _P, 0.0 ])
+            else:
+                ro[3] = np.tan(ro[3]*0.5)
         else:
-            ro[3] = np.tan(ro[3]*0.5)
+            ax = Rotation.eu2ax(eu)
+            ro = np.block([ax[...,:3],np.tan(ax[...,3:4]*.5)])
+            ro[ax[...,3]>=np.pi,3] = np.inf
+            ro[np.abs(ax[...,3])<1.e-16] = [ 0.0, 0.0, _P, 0.0 ]
         return ro
 
     @staticmethod
@@ -651,27 +850,46 @@ class Rotation:
     @staticmethod
     def ax2qu(ax):
         """Axis angle pair to quaternion."""
-        if iszero(ax[3]):
-            qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
+        if len(ax.shape) == 1:
+            if np.abs(ax[3])<1.e-6:
+                qu = np.array([ 1.0, 0.0, 0.0, 0.0 ])
+            else:
+                c = np.cos(ax[3]*0.5)
+                s = np.sin(ax[3]*0.5)
+                qu = np.array([ c, ax[0]*s, ax[1]*s, ax[2]*s ])
         else:
-            c = np.cos(ax[3]*0.5)
-            s = np.sin(ax[3]*0.5)
-            qu = np.array([ c, ax[0]*s, ax[1]*s, ax[2]*s ])
+            c = np.cos(ax[...,3:4]*.5)
+            s = np.sin(ax[...,3:4]*.5)
+            qu = np.where(np.abs(ax[...,3:4])<1.e-6,[1.0, 0.0, 0.0, 0.0],np.block([c, ax[...,:3]*s]))
         return qu
 
     @staticmethod
     def ax2om(ax):
         """Axis angle pair to rotation matrix."""
-        c = np.cos(ax[3])
-        s = np.sin(ax[3])
-        omc = 1.0-c
-        om=np.diag(ax[0:3]**2*omc + c)
+        if len(ax.shape) == 1:
+            c = np.cos(ax[3])
+            s = np.sin(ax[3])
+            omc = 1.0-c
+            om=np.diag(ax[0:3]**2*omc + c)
 
-        for idx in [[0,1,2],[1,2,0],[2,0,1]]:
-            q = omc*ax[idx[0]] * ax[idx[1]]
-            om[idx[0],idx[1]] = q + s*ax[idx[2]]
-            om[idx[1],idx[0]] = q - s*ax[idx[2]]
-        return om if P < 0.0 else om.T
+            for idx in [[0,1,2],[1,2,0],[2,0,1]]:
+                q = omc*ax[idx[0]] * ax[idx[1]]
+                om[idx[0],idx[1]] = q + s*ax[idx[2]]
+                om[idx[1],idx[0]] = q - s*ax[idx[2]]
+        else:
+            c = np.cos(ax[...,3:4])
+            s = np.sin(ax[...,3:4])
+            omc = 1. -c
+            om = np.block([c+omc*ax[...,0:1]**2,
+                           omc*ax[...,0:1]*ax[...,1:2] + s*ax[...,2:3],
+                           omc*ax[...,0:1]*ax[...,2:3] - s*ax[...,1:2],
+                           omc*ax[...,0:1]*ax[...,1:2] - s*ax[...,2:3],
+                           c+omc*ax[...,1:2]**2,
+                           omc*ax[...,1:2]*ax[...,2:3] + s*ax[...,0:1],
+                           omc*ax[...,0:1]*ax[...,2:3] + s*ax[...,1:2],
+                           omc*ax[...,1:2]*ax[...,2:3] - s*ax[...,0:1],
+                           c+omc*ax[...,2:3]**2]).reshape(ax.shape[:-1]+(3,3))
+        return om if _P < 0.0 else np.swapaxes(om,(-1,-2))
 
     @staticmethod
     def ax2eu(ax):
@@ -681,20 +899,33 @@ class Rotation:
     @staticmethod
     def ax2ro(ax):
         """Axis angle pair to Rodrigues-Frank vector."""
-        if iszero(ax[3]):
-            ro = [ 0.0, 0.0, P, 0.0 ]
+        if len(ax.shape) == 1:
+            if np.abs(ax[3])<1.e-6:
+                ro = [ 0.0, 0.0, _P, 0.0 ]
+            else:
+                ro = [ax[0], ax[1], ax[2]]
+                # 180 degree case
+                ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
+                      [np.tan(ax[3]*0.5)]
+            ro = np.array(ro)
         else:
-            ro = [ax[0], ax[1], ax[2]]
-            # 180 degree case
-            ro += [np.inf] if np.isclose(ax[3],np.pi,atol=1.0e-15,rtol=0.0) else \
-                  [np.tan(ax[3]*0.5)]
-        return np.array(ro)
+            ro = np.block([ax[...,:3],
+                           np.where(np.isclose(ax[...,3:4],np.pi,atol=1.e-15,rtol=.0),
+                                    np.inf,
+                                    np.tan(ax[...,3:4]*0.5))
+                          ])
+            ro[np.abs(ax[...,3])<1.e-6] = [.0,.0,_P,.0]
+        return ro
 
     @staticmethod
     def ax2ho(ax):
         """Axis angle pair to homochoric vector."""
-        f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
-        ho = ax[0:3] * f
+        if len(ax.shape) == 1:
+            f = (0.75 * ( ax[3] - np.sin(ax[3]) ))**(1.0/3.0)
+            ho = ax[0:3] * f
+        else:
+            f = (0.75 * ( ax[...,3:4] - np.sin(ax[...,3:4]) ))**(1.0/3.0)
+            ho = ax[...,:3] * f
         return ho
 
     @staticmethod
@@ -722,27 +953,37 @@ class Rotation:
     @staticmethod
     def ro2ax(ro):
         """Rodrigues-Frank vector to axis angle pair."""
-        ta = ro[3]
-
-        if iszero(ta):
-            ax = [ 0.0, 0.0, 1.0, 0.0 ]
-        elif not np.isfinite(ta):
-            ax = [ ro[0], ro[1], ro[2], np.pi ]
+        if len(ro.shape) == 1:
+            if np.abs(ro[3]) < 1.e-6:
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+            elif not np.isfinite(ro[3]):
+                ax = np.array([ ro[0], ro[1], ro[2], np.pi ])
+            else:
+                angle = 2.0*np.arctan(ro[3])
+                ta = np.linalg.norm(ro[0:3])
+                ax = np.array([ ro[0]*ta, ro[1]*ta, ro[2]*ta, angle ])
         else:
-            angle = 2.0*np.arctan(ta)
-            ta = 1.0/np.linalg.norm(ro[0:3])
-            ax = [ ro[0]/ta, ro[1]/ta, ro[2]/ta, angle ]
-        return np.array(ax)
+            with np.errstate(invalid='ignore',divide='ignore'):
+                ax = np.where(np.isfinite(ro[...,3:4]),
+                     np.block([ro[...,0:3]*np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True),2.*np.arctan(ro[...,3:4])]),
+                     np.block([ro[...,0:3],np.broadcast_to(np.pi,ro[...,3:4].shape)]))
+            ax[np.abs(ro[...,3]) < 1.e-6]  = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+        return ax
 
     @staticmethod
     def ro2ho(ro):
         """Rodrigues-Frank vector to homochoric vector."""
-        if iszero(np.sum(ro[0:3]**2.0)):
-            ho = [ 0.0, 0.0, 0.0 ]
+        if len(ro.shape) == 1:
+            if np.sum(ro[0:3]**2.0) < 1.e-6:
+                ho = np.zeros(3)
+            else:
+                f = 2.0*np.arctan(ro[3]) -np.sin(2.0*np.arctan(ro[3])) if np.isfinite(ro[3]) else np.pi
+                ho = ro[0:3] * (0.75*f)**(1.0/3.0)
         else:
-            f = 2.0*np.arctan(ro[3]) -np.sin(2.0*np.arctan(ro[3])) if np.isfinite(ro[3]) else np.pi
-            ho = ro[0:3] * (0.75*f)**(1.0/3.0)
-        return np.array(ho)
+            f = np.where(np.isfinite(ro[...,3:4]),2.0*np.arctan(ro[...,3:4]) -np.sin(2.0*np.arctan(ro[...,3:4])),np.pi)
+            ho = np.where(np.broadcast_to(np.sum(ro[...,0:3]**2.0,axis=-1,keepdims=True) < 1.e-6,ro[...,0:3].shape),
+                          np.zeros(3), ro[...,0:3]* (0.75*f)**(1.0/3.0))
+        return ho
 
     @staticmethod
     def ro2cu(ro):
@@ -777,19 +1018,31 @@ class Rotation:
                          +0.0001703481934140054,   -0.00012062065004116828,
                          +0.000059719705868660826, -0.00001980756723965647,
                          +0.000003953714684212874, -0.00000036555001439719544])
-        # normalize h and store the magnitude
-        hmag_squared = np.sum(ho**2.)
-        if iszero(hmag_squared):
-            ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
-        else:
-            hm = hmag_squared
+        if len(ho.shape) == 1:
+            # normalize h and store the magnitude
+            hmag_squared = np.sum(ho**2.)
+            if iszero(hmag_squared):
+                ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+            else:
+                hm = hmag_squared
 
-            # convert the magnitude to the rotation angle
+                # convert the magnitude to the rotation angle
+                s = tfit[0] + tfit[1] * hmag_squared
+                for i in range(2,16):
+                    hm *= hmag_squared
+                    s  += tfit[i] * hm
+                ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
+        else:
+            hmag_squared = np.sum(ho**2.,axis=-1,keepdims=True)
+            hm = hmag_squared.copy()
             s = tfit[0] + tfit[1] * hmag_squared
             for i in range(2,16):
                 hm *= hmag_squared
                 s  += tfit[i] * hm
-            ax = np.append(ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0)))
+            with np.errstate(invalid='ignore'):
+                ax = np.where(np.broadcast_to(np.abs(hmag_squared)<1.e-6,ho.shape[:-1]+(4,)),
+                              [ 0.0, 0.0, 1.0, 0.0 ],
+                              np.block([ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0))]))
         return ax
 
     @staticmethod
@@ -799,9 +1052,71 @@ class Rotation:
 
     @staticmethod
     def ho2cu(ho):
-        """Homochoric vector to cubochoric vector."""
-        return ball_to_cube(ho)
+        """
+        Homochoric vector to cubochoric vector.
 
+        References
+        ----------
+        D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+        https://doi.org/10.1088/0965-0393/22/7/075013
+
+        """
+        if len(ho.shape) == 1:
+            rs = np.linalg.norm(ho)
+
+            if np.allclose(ho,0.0,rtol=0.0,atol=1.0e-16):
+                cu = np.zeros(3)
+            else:
+                xyz3 = ho[Rotation._get_pyramid_order(ho,'forward')]
+
+                # inverse M_3
+                xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
+
+                # inverse M_2
+                qxy = np.sum(xyz2**2)
+
+                if np.isclose(qxy,0.0,rtol=0.0,atol=1.0e-16):
+                    Tinv = np.zeros(2)
+                else:
+                    q2 = qxy + np.max(np.abs(xyz2))**2
+                    sq2 = np.sqrt(q2)
+                    q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2))*sq2))
+                    tt = np.clip((np.min(np.abs(xyz2))**2+np.max(np.abs(xyz2))*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
+                    Tinv = np.array([1.0,np.arccos(tt)/np.pi*12.0]) if np.abs(xyz2[1]) <= np.abs(xyz2[0]) else \
+                           np.array([np.arccos(tt)/np.pi*12.0,1.0])
+                    Tinv = q * np.where(xyz2<0.0,-Tinv,Tinv)
+
+                # inverse M_1
+                cu = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
+                cu = cu[Rotation._get_pyramid_order(ho,'backward')]
+        else:
+            rs = np.linalg.norm(ho,axis=-1,keepdims=True)
+
+            xyz3 = np.take_along_axis(ho,Rotation._get_pyramid_order(ho,'forward'),-1)
+
+            with np.errstate(invalid='ignore',divide='ignore'):
+                # inverse M_3
+                xyz2 = xyz3[...,0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[...,2:3])) )
+                qxy = np.sum(xyz2**2,axis=-1,keepdims=True)
+
+                q2 = qxy + np.max(np.abs(xyz2),axis=-1,keepdims=True)**2
+                sq2 = np.sqrt(q2)
+                q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2),axis=-1,keepdims=True)*sq2))
+                tt = np.clip((np.min(np.abs(xyz2),axis=-1,keepdims=True)**2\
+                    +np.max(np.abs(xyz2),axis=-1,keepdims=True)*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
+                T_inv = np.where(np.abs(xyz2[...,1:2]) <= np.abs(xyz2[...,0:1]),
+                                    np.block([np.ones_like(tt),np.arccos(tt)/np.pi*12.0]),
+                                    np.block([np.arccos(tt)/np.pi*12.0,np.ones_like(tt)]))*q
+                T_inv[xyz2<0.0] *= -1.0
+                T_inv[np.broadcast_to(np.isclose(qxy,0.0,rtol=0.0,atol=1.0e-12),T_inv.shape)] = 0.0
+                cu = np.block([T_inv, np.where(xyz3[...,2:3]<0.0,-np.ones_like(xyz3[...,2:3]),np.ones_like(xyz3[...,2:3])) \
+                                      * rs/np.sqrt(6.0/np.pi),
+                              ])/ _sc
+
+            cu[np.isclose(np.sum(np.abs(ho),axis=-1),0.0,rtol=0.0,atol=1.0e-16)] = 0.0
+            cu = np.take_along_axis(cu,Rotation._get_pyramid_order(ho,'backward'),-1)
+
+        return cu
 
     #---------- Cubochoric ----------
     @staticmethod
@@ -831,5 +1146,110 @@ class Rotation:
 
     @staticmethod
     def cu2ho(cu):
-        """Cubochoric vector to homochoric vector."""
-        return cube_to_ball(cu)
+        """
+        Cubochoric vector to homochoric vector.
+
+        References
+        ----------
+        D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+        https://doi.org/10.1088/0965-0393/22/7/075013
+
+        """
+        if len(cu.shape) == 1:
+            # transform to the sphere grid via the curved square, and intercept the zero point
+            if np.allclose(cu,0.0,rtol=0.0,atol=1.0e-16):
+                ho = np.zeros(3)
+            else:
+                # get pyramide and scale by grid parameter ratio
+                XYZ = cu[Rotation._get_pyramid_order(cu,'forward')] * _sc
+
+                # intercept all the points along the z-axis
+                if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
+                    ho = np.array([0.0, 0.0, np.sqrt(6.0/np.pi) * XYZ[2]])
+                else:
+                    order = [1,0] if np.abs(XYZ[1]) <= np.abs(XYZ[0]) else [0,1]
+                    q = np.pi/12.0 * XYZ[order[0]]/XYZ[order[1]]
+                    c = np.cos(q)
+                    s = np.sin(q)
+                    q = _R1*2.0**0.25/_beta * XYZ[order[1]] / np.sqrt(np.sqrt(2.0)-c)
+                    T = np.array([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
+
+                    # transform to sphere grid (inverse Lambert)
+                    # note that there is no need to worry about dividing by zero, since XYZ[2] can not become zero
+                    c = np.sum(T**2)
+                    s = c *         np.pi/24.0 /XYZ[2]**2
+                    c = c * np.sqrt(np.pi/24.0)/XYZ[2]
+
+                    q = np.sqrt( 1.0 - s )
+                    ho = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
+
+                ho = ho[Rotation._get_pyramid_order(cu,'backward')]
+        else:
+            with np.errstate(invalid='ignore',divide='ignore'):
+                # get pyramide and scale by grid parameter ratio
+                XYZ = np.take_along_axis(cu,Rotation._get_pyramid_order(cu,'forward'),-1) * _sc
+                order = np.abs(XYZ[...,1:2]) <= np.abs(XYZ[...,0:1])
+                q = np.pi/12.0 * np.where(order,XYZ[...,1:2],XYZ[...,0:1]) \
+                               / np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+                c = np.cos(q)
+                s = np.sin(q)
+                q = _R1*2.0**0.25/_beta/ np.sqrt(np.sqrt(2.0)-c) \
+                  * np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+
+                T = np.block([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
+
+                # transform to sphere grid (inverse Lambert)
+                c = np.sum(T**2,axis=-1,keepdims=True)
+                s = c *         np.pi/24.0 /XYZ[...,2:3]**2
+                c = c * np.sqrt(np.pi/24.0)/XYZ[...,2:3]
+                q = np.sqrt( 1.0 - s)
+
+                ho = np.where(np.isclose(np.sum(np.abs(XYZ[...,0:2]),axis=-1,keepdims=True),0.0,rtol=0.0,atol=1.0e-16),
+                              np.block([np.zeros_like(XYZ[...,0:2]),np.sqrt(6.0/np.pi) *XYZ[...,2:3]]),
+                              np.block([np.where(order,T[...,0:1],T[...,1:2])*q,
+                                        np.where(order,T[...,1:2],T[...,0:1])*q,
+                                        np.sqrt(6.0/np.pi) * XYZ[...,2:3] - c])
+                              )
+
+            ho[np.isclose(np.sum(np.abs(cu),axis=-1),0.0,rtol=0.0,atol=1.0e-16)] = 0.0
+            ho = np.take_along_axis(ho,Rotation._get_pyramid_order(cu,'backward'),-1)
+
+        return ho
+
+
+    @staticmethod
+    def _get_pyramid_order(xyz,direction=None):
+        """
+        Get order of the coordinates.
+
+        Depending on the pyramid in which the point is located, the order need to be adjusted.
+
+        Parameters
+        ----------
+        xyz : numpy.ndarray
+           coordinates of a point on a uniform refinable grid on a ball or
+           in a uniform refinable cubical grid.
+
+        References
+        ----------
+        D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+        https://doi.org/10.1088/0965-0393/22/7/075013
+
+        """
+        order = {'forward':np.array([[0,1,2],[1,2,0],[2,0,1]]),
+                 'backward':np.array([[0,1,2],[2,0,1],[1,2,0]])}
+        if len(xyz.shape) == 1:
+            if   np.maximum(abs(xyz[0]),abs(xyz[1])) <= xyz[2] or \
+                 np.maximum(abs(xyz[0]),abs(xyz[1])) <=-xyz[2]:
+                p = 0
+            elif np.maximum(abs(xyz[1]),abs(xyz[2])) <= xyz[0] or \
+                 np.maximum(abs(xyz[1]),abs(xyz[2])) <=-xyz[0]:
+                p = 1
+            elif np.maximum(abs(xyz[2]),abs(xyz[0])) <= xyz[1] or \
+                 np.maximum(abs(xyz[2]),abs(xyz[0])) <=-xyz[1]:
+                p = 2
+        else:
+            p = np.where(np.maximum(np.abs(xyz[...,0]),np.abs(xyz[...,1])) <= np.abs(xyz[...,2]),0,
+                  np.where(np.maximum(np.abs(xyz[...,1]),np.abs(xyz[...,2])) <= np.abs(xyz[...,0]),1,2))
+
+        return order[direction][p]
