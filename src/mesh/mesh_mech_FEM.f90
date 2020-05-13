@@ -136,7 +136,7 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
@@ -329,7 +329,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   allocate(pinvcellJ(dimPlex**2))
   allocate(x_scal(cellDof))
 
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
@@ -483,7 +483,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
