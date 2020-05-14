@@ -106,7 +106,7 @@ subroutine DAMASK_interface_init
     typeSize
   integer, dimension(8) :: &
     dateAndTime
-  integer        :: mpi_err
+  integer        :: err
   PetscErrorCode :: petsc_err
   external :: &
     quit
@@ -118,8 +118,8 @@ subroutine DAMASK_interface_init
 #ifdef _OPENMP
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
   ! Otherwise, the first call to PETSc will do the initialization.
-  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,mpi_err)
-  if (mpi_err /= 0) call quit(1)
+  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err)
+  if (err /= 0) call quit(1)
   if (threadLevel<MPI_THREAD_FUNNELED) then
     write(6,'(/,a)') ' ERROR: MPI library does not support OpenMP'
     call quit(1)
@@ -128,10 +128,10 @@ subroutine DAMASK_interface_init
   call PETScInitializeNoArguments(petsc_err)                                                        ! according to PETSc manual, that should be the first line in the code
   CHKERRQ(petsc_err)                                                                                ! this is a macro definition, it is case sensitive
 
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,mpi_err)
-  if (mpi_err /= 0) call quit(1)
-  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,mpi_err)
-  if (mpi_err /= 0) call quit(1)
+  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
+  if (err /= 0) call quit(1)
+  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,err)
+  if (err /= 0) call quit(1)
 
   mainProcess: if (worldrank == 0) then
     if (output_unit /= 6) then
@@ -181,22 +181,23 @@ subroutine DAMASK_interface_init
   write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
   write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
 
-  call MPI_Type_size(MPI_INTEGER,typeSize,mpi_err)
-  if (mpi_err /= 0) call quit(1)
+  call MPI_Type_size(MPI_INTEGER,typeSize,err)
+  if (err /= 0) call quit(1)
   if (typeSize*8 /= bit_size(0)) then
     write(6,'(a)') ' Mismatch between MPI and DAMASK integer' 
     call quit(1)
   endif
 
-  call MPI_Type_size(MPI_DOUBLE,typeSize,mpi_err)
-  if (mpi_err /= 0) call quit(1)
+  call MPI_Type_size(MPI_DOUBLE,typeSize,err)
+  if (err /= 0) call quit(1)
   if (typeSize*8 /= storage_size(0.0_pReal)) then
     write(6,'(a)') ' Mismatch between MPI and DAMASK real' 
     call quit(1)
   endif
 
   do i = 1, command_argument_count()
-    call get_command_argument(i,arg)
+    call get_command_argument(i,arg,status=err)
+    if (err /= 0) call quit(1)
     select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
         write(6,'(a)')  ' #######################################################################'
@@ -236,19 +237,20 @@ subroutine DAMASK_interface_init
         write(6,'(a,/)')'        Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
-        call get_command_argument(i+1,loadCaseArg)
+        call get_command_argument(i+1,loadCaseArg,err)
       case ('-g', '--geom', '--geometry')
-        call get_command_argument(i+1,geometryArg)
+        call get_command_argument(i+1,geometryArg,err)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
-        call get_command_argument(i+1,workingDirArg)
+        call get_command_argument(i+1,workingDirArg,err)
       case ('-r', '--rs', '--restart')
-        call get_command_argument(i+1,arg)
+        call get_command_argument(i+1,arg,err)
         read(arg,*,iostat=stat) interface_restartInc
         if (interface_restartInc < 0 .or. stat /=0) then
           write(6,'(/,a)') ' ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         endif
     end select
+    if (err /= 0) call quit(1)
   enddo
 
   if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
