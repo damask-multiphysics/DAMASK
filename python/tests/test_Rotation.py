@@ -300,3 +300,10 @@ class TestRotation:
         f = Rotation._get_pyramid_order(a,'forward')
         b = Rotation._get_pyramid_order(a,'backward')
         assert np.all(np.take_along_axis(np.take_along_axis(a,f,-1),b,-1) == a)
+
+
+    @pytest.mark.parametrize('x',[np.random.rand(3),
+                                  np.random.rand(3,3)])
+    def test_rotation_identity(self,x):
+        R = Rotation()
+        assert np.allclose(x,R*x)

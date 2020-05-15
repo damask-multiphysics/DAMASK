@@ -112,11 +112,8 @@ class Rotation:
                 B = 2.0 * np.dot(self.quaternion[1:],other)
                 C = 2.0 * _P*self.quaternion[0]
 
-                return np.array([
-                  A*other[0] + B*self.quaternion[1] + C*(self.quaternion[2]*other[2] - self.quaternion[3]*other[1]),
-                  A*other[1] + B*self.quaternion[2] + C*(self.quaternion[3]*other[0] - self.quaternion[1]*other[2]),
-                  A*other[2] + B*self.quaternion[3] + C*(self.quaternion[1]*other[1] - self.quaternion[2]*other[0]),
-                  ])
+                return A*other + B*self.quaternion[1:] + C * np.cross(self.quaternion[1:],other)
+
             elif other.shape == (3,3,):                                                             # rotate a single (3x3)-matrix
                 return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
             elif other.shape == (3,3,3,3,):
