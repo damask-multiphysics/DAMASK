@@ -160,7 +160,7 @@ module subroutine plastic_phenopowerlaw_init
                                                                 config%getFloats('interaction_twintwin'), &
                                                                 config%getString('lattice_structure'))
       prm%gamma_twin_char      = lattice_characteristicShear_twin(N_tw,config%getString('lattice_structure'),&
-                                                                  config%getFloat('c/a'))
+                                                                  config%getFloat('c/a',defaultVal=0.0_pReal))
 
       xi_twin_0       = config%getFloats('tau0_twin',requiredSize=size(N_tw))
 

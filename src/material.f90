@@ -207,7 +207,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief parses material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_init
+subroutine material_init(restart)
+
+  logical, intent(in) :: restart
 
   integer            :: i,e,m,c,h, myDebug, myPhase, myHomog, myMicro
   integer, dimension(:), allocatable :: &
@@ -339,11 +341,12 @@ subroutine material_init
   call config_deallocate('material.config/microstructure')
   call config_deallocate('material.config/texture')
 
-  call results_openJobFile
-  call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,config_name_phase)
-  call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,config_name_homogenization)
-  call results_closeJobFile
-
+  if (.not. restart) then
+    call results_openJobFile
+    call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,config_name_phase)
+    call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,config_name_homogenization)
+    call results_closeJobFile
+  endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED

@@ -3,7 +3,7 @@
 
 set CALLED=($_)
 set ENV_ROOT=`dirname $CALLED[2]`
-set DAMASK_ROOT=`python -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $ENV_ROOT"/../"`
+set DAMASK_ROOT=`python3 -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" $ENV_ROOT"/../"`
 
 source $ENV_ROOT/CONFIG
 

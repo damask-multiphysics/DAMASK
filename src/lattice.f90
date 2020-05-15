@@ -2304,7 +2304,6 @@ subroutine unitTest
 
   system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
   CoSy   = buildCoordinateSystem([1],[1],system,'fcc',0.0_pReal)
-
   if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) &
     call IO_error(0)
 
