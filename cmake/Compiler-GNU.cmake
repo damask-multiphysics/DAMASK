@@ -14,7 +14,7 @@ elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
   set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
 endif ()
 
-set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
+set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
 set (LINKER_FLAGS  "${LINKER_FLAGS} -Wl")
 # options parsed directly to the linker
 set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined,dynamic_lookup" )
