@@ -1,9 +1,13 @@
 import numpy as np
 
-from ._Lambert import ball_to_cube, cube_to_ball
 from . import mechanics
 
 _P = -1
+
+# parameters for conversion from/to cubochoric
+_sc   = np.pi**(1./6.)/6.**(1./6.)
+_beta = np.pi**(5./6.)/6.**(1./6.)/2.
+_R1   = (3.*np.pi/4.)**(1./3.)
 
 def iszero(a):
     return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
@@ -288,7 +292,7 @@ class Rotation:
         """Homochoric vector: (h_1, h_2, h_3)."""
         return Rotation.qu2ho(self.quaternion)
 
-    def asCubochoric(self):
+    def as_cubochoric(self):
         """Cubochoric vector: (c_1, c_2, c_3)."""
         return Rotation.qu2cu(self.quaternion)
 
@@ -312,6 +316,7 @@ class Rotation:
     asMatrix     = as_matrix
     asRodrigues  = as_Rodrigues
     asHomochoric = as_homochoric
+    asCubochoric = as_cubochoric
 
     ################################################################################################
     # Static constructors. The input data needs to follow the conventions, options allow to
@@ -433,7 +438,7 @@ class Rotation:
         return Rotation(Rotation.ho2qu(ho))
 
     @staticmethod
-    def fromCubochoric(cubochoric,
+    def from_cubochoric(cubochoric,
                        P = -1):
 
         cu = np.array(cubochoric,dtype=float)
@@ -508,6 +513,7 @@ class Rotation:
     fromMatrix     = from_matrix
     fromRodrigues  = from_Rodrigues
     fromHomochoric = from_homochoric
+    fromCubochoric = from_cubochoric
     fromRandom     = from_random
 
 ####################################################################################################
@@ -1098,12 +1104,71 @@ class Rotation:
 
     @staticmethod
     def ho2cu(ho):
-        """Homochoric vector to cubochoric vector."""
-        if len(ho.shape) == 1:
-            return ball_to_cube(ho)
-        else:
-            raise NotImplementedError('Support for multiple rotations missing')
+        """
+        Homochoric vector to cubochoric vector.
 
+        References
+        ----------
+        D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+        https://doi.org/10.1088/0965-0393/22/7/075013
+
+        """
+        if len(ho.shape) == 1:
+            rs = np.linalg.norm(ho)
+
+            if np.allclose(ho,0.0,rtol=0.0,atol=1.0e-16):
+                cu = np.zeros(3)
+            else:
+                xyz3 = ho[Rotation._get_pyramid_order(ho,'forward')]
+
+                # inverse M_3
+                xyz2 = xyz3[0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[2])) )
+
+                # inverse M_2
+                qxy = np.sum(xyz2**2)
+
+                if np.isclose(qxy,0.0,rtol=0.0,atol=1.0e-16):
+                    Tinv = np.zeros(2)
+                else:
+                    q2 = qxy + np.max(np.abs(xyz2))**2
+                    sq2 = np.sqrt(q2)
+                    q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2))*sq2))
+                    tt = np.clip((np.min(np.abs(xyz2))**2+np.max(np.abs(xyz2))*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
+                    Tinv = np.array([1.0,np.arccos(tt)/np.pi*12.0]) if np.abs(xyz2[1]) <= np.abs(xyz2[0]) else \
+                           np.array([np.arccos(tt)/np.pi*12.0,1.0])
+                    Tinv = q * np.where(xyz2<0.0,-Tinv,Tinv)
+
+                # inverse M_1
+                cu = np.array([ Tinv[0], Tinv[1],  (-1.0 if xyz3[2] < 0.0 else 1.0) * rs / np.sqrt(6.0/np.pi) ]) /_sc
+                cu = cu[Rotation._get_pyramid_order(ho,'backward')]
+        else:
+            rs = np.linalg.norm(ho,axis=-1,keepdims=True)
+
+            xyz3 = np.take_along_axis(ho,Rotation._get_pyramid_order(ho,'forward'),-1)
+
+            with np.errstate(invalid='ignore',divide='ignore'):
+                # inverse M_3
+                xyz2 = xyz3[...,0:2] * np.sqrt( 2.0*rs/(rs+np.abs(xyz3[...,2:3])) )
+                qxy = np.sum(xyz2**2,axis=-1,keepdims=True)
+
+                q2 = qxy + np.max(np.abs(xyz2),axis=-1,keepdims=True)**2
+                sq2 = np.sqrt(q2)
+                q = (_beta/np.sqrt(2.0)/_R1) * np.sqrt(q2*qxy/(q2-np.max(np.abs(xyz2),axis=-1,keepdims=True)*sq2))
+                tt = np.clip((np.min(np.abs(xyz2),axis=-1,keepdims=True)**2\
+                    +np.max(np.abs(xyz2),axis=-1,keepdims=True)*sq2)/np.sqrt(2.0)/qxy,-1.0,1.0)
+                T_inv = np.where(np.abs(xyz2[...,1:2]) <= np.abs(xyz2[...,0:1]),
+                                    np.block([np.ones_like(tt),np.arccos(tt)/np.pi*12.0]),
+                                    np.block([np.arccos(tt)/np.pi*12.0,np.ones_like(tt)]))*q
+                T_inv[xyz2<0.0] *= -1.0
+                T_inv[np.broadcast_to(np.isclose(qxy,0.0,rtol=0.0,atol=1.0e-12),T_inv.shape)] = 0.0
+                cu = np.block([T_inv, np.where(xyz3[...,2:3]<0.0,-np.ones_like(xyz3[...,2:3]),np.ones_like(xyz3[...,2:3])) \
+                                      * rs/np.sqrt(6.0/np.pi),
+                              ])/ _sc
+
+            cu[np.isclose(np.sum(np.abs(ho),axis=-1),0.0,rtol=0.0,atol=1.0e-16)] = 0.0
+            cu = np.take_along_axis(cu,Rotation._get_pyramid_order(ho,'backward'),-1)
+
+        return cu
 
     #---------- Cubochoric ----------
     @staticmethod
@@ -1133,8 +1198,110 @@ class Rotation:
 
     @staticmethod
     def cu2ho(cu):
-        """Cubochoric vector to homochoric vector."""
+        """
+        Cubochoric vector to homochoric vector.
+
+        References
+        ----------
+        D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+        https://doi.org/10.1088/0965-0393/22/7/075013
+
+        """
         if len(cu.shape) == 1:
-            return cube_to_ball(cu)
+            # transform to the sphere grid via the curved square, and intercept the zero point
+            if np.allclose(cu,0.0,rtol=0.0,atol=1.0e-16):
+                ho = np.zeros(3)
+            else:
+                # get pyramide and scale by grid parameter ratio
+                XYZ = cu[Rotation._get_pyramid_order(cu,'forward')] * _sc
+
+                # intercept all the points along the z-axis
+                if np.allclose(XYZ[0:2],0.0,rtol=0.0,atol=1.0e-16):
+                    ho = np.array([0.0, 0.0, np.sqrt(6.0/np.pi) * XYZ[2]])
+                else:
+                    order = [1,0] if np.abs(XYZ[1]) <= np.abs(XYZ[0]) else [0,1]
+                    q = np.pi/12.0 * XYZ[order[0]]/XYZ[order[1]]
+                    c = np.cos(q)
+                    s = np.sin(q)
+                    q = _R1*2.0**0.25/_beta * XYZ[order[1]] / np.sqrt(np.sqrt(2.0)-c)
+                    T = np.array([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
+
+                    # transform to sphere grid (inverse Lambert)
+                    # note that there is no need to worry about dividing by zero, since XYZ[2] can not become zero
+                    c = np.sum(T**2)
+                    s = c *         np.pi/24.0 /XYZ[2]**2
+                    c = c * np.sqrt(np.pi/24.0)/XYZ[2]
+
+                    q = np.sqrt( 1.0 - s )
+                    ho = np.array([ T[order[1]] * q, T[order[0]] * q, np.sqrt(6.0/np.pi) * XYZ[2] - c ])
+
+                ho = ho[Rotation._get_pyramid_order(cu,'backward')]
         else:
-            raise NotImplementedError('Support for multiple rotations missing')
+            with np.errstate(invalid='ignore',divide='ignore'):
+                # get pyramide and scale by grid parameter ratio
+                XYZ = np.take_along_axis(cu,Rotation._get_pyramid_order(cu,'forward'),-1) * _sc
+                order = np.abs(XYZ[...,1:2]) <= np.abs(XYZ[...,0:1])
+                q = np.pi/12.0 * np.where(order,XYZ[...,1:2],XYZ[...,0:1]) \
+                               / np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+                c = np.cos(q)
+                s = np.sin(q)
+                q = _R1*2.0**0.25/_beta/ np.sqrt(np.sqrt(2.0)-c) \
+                  * np.where(order,XYZ[...,0:1],XYZ[...,1:2])
+
+                T = np.block([ (np.sqrt(2.0)*c - 1.0), np.sqrt(2.0) * s]) * q
+
+                # transform to sphere grid (inverse Lambert)
+                c = np.sum(T**2,axis=-1,keepdims=True)
+                s = c *         np.pi/24.0 /XYZ[...,2:3]**2
+                c = c * np.sqrt(np.pi/24.0)/XYZ[...,2:3]
+                q = np.sqrt( 1.0 - s)
+
+                ho = np.where(np.isclose(np.sum(np.abs(XYZ[...,0:2]),axis=-1,keepdims=True),0.0,rtol=0.0,atol=1.0e-16),
+                              np.block([np.zeros_like(XYZ[...,0:2]),np.sqrt(6.0/np.pi) *XYZ[...,2:3]]),
+                              np.block([np.where(order,T[...,0:1],T[...,1:2])*q,
+                                        np.where(order,T[...,1:2],T[...,0:1])*q,
+                                        np.sqrt(6.0/np.pi) * XYZ[...,2:3] - c])
+                              )
+
+            ho[np.isclose(np.sum(np.abs(cu),axis=-1),0.0,rtol=0.0,atol=1.0e-16)] = 0.0
+            ho = np.take_along_axis(ho,Rotation._get_pyramid_order(cu,'backward'),-1)
+
+        return ho
+
+
+    @staticmethod
+    def _get_pyramid_order(xyz,direction=None):
+        """
+        Get order of the coordinates.
+
+        Depending on the pyramid in which the point is located, the order need to be adjusted.
+
+        Parameters
+        ----------
+        xyz : numpy.ndarray
+           coordinates of a point on a uniform refinable grid on a ball or
+           in a uniform refinable cubical grid.
+
+        References
+        ----------
+        D. Roşca et al., Modelling and Simulation in Materials Science and Engineering 22:075013, 2014
+        https://doi.org/10.1088/0965-0393/22/7/075013
+
+        """
+        order = {'forward':np.array([[0,1,2],[1,2,0],[2,0,1]]),
+                 'backward':np.array([[0,1,2],[2,0,1],[1,2,0]])}
+        if len(xyz.shape) == 1:
+            if   np.maximum(abs(xyz[0]),abs(xyz[1])) <= xyz[2] or \
+                 np.maximum(abs(xyz[0]),abs(xyz[1])) <=-xyz[2]:
+                p = 0
+            elif np.maximum(abs(xyz[1]),abs(xyz[2])) <= xyz[0] or \
+                 np.maximum(abs(xyz[1]),abs(xyz[2])) <=-xyz[0]:
+                p = 1
+            elif np.maximum(abs(xyz[2]),abs(xyz[0])) <= xyz[1] or \
+                 np.maximum(abs(xyz[2]),abs(xyz[0])) <=-xyz[1]:
+                p = 2
+        else:
+            p = np.where(np.maximum(np.abs(xyz[...,0]),np.abs(xyz[...,1])) <= np.abs(xyz[...,2]),0,
+                  np.where(np.maximum(np.abs(xyz[...,1]),np.abs(xyz[...,2])) <= np.abs(xyz[...,0]),1,2))
+
+        return order[direction][p]

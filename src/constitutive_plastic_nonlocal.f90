@@ -962,39 +962,24 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   integer ::  &
     ph, &
-    neighbor_instance, &                                                                            !< instance of my neighbor's plasticity
     ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
-    n, &                                                                                            !< index of my current neighbor
-    neighbor_el, &                                                                                  !< element number of my neighbor
-    neighbor_ip, &                                                                                  !< integration point of my neighbor
-    neighbor_n, &                                                                                   !< neighbor index pointing to me when looking from my neighbor
-    opposite_neighbor, &                                                                            !< index of my opposite neighbor
-    opposite_ip, &                                                                                  !< ip of my opposite neighbor
-    opposite_el, &                                                                                  !< element index of my opposite neighbor
-    opposite_n, &                                                                                   !< neighbor index pointing to me when looking from my opposite neighbor
     t, &                                                                                            !< type of dislocation
-    no,&                                                                                            !< neighbor offset shortcut
-    np,&                                                                                            !< neighbor phase shortcut
-    topp, &                                                                                         !< type of dislocation with opposite sign to t
     s                                                                                               !< index of my current slip system
   real(pReal), dimension(param(instance)%sum_N_sl,10) :: &
     rho, &
     rho0, &                                                                                         !< dislocation density at beginning of time step
     rhoDot, &                                                                                       !< density evolution
     rhoDotMultiplication, &                                                                         !< density evolution by multiplication
-    rhoDotFlux, &                                                                                   !< density evolution by flux
     rhoDotSingle2DipoleGlide, &                                                                     !< density evolution by dipole formation (by glide)
     rhoDotAthermalAnnihilation, &                                                                   !< density evolution by athermal annihilation
     rhoDotThermalAnnihilation                                                                       !< density evolution by thermal annihilation
   real(pReal), dimension(param(instance)%sum_N_sl,8) :: &
     rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
-    neighbor_rhoSgl0, &                                                                             !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
     my_rhoSgl0                                                                                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
   real(pReal), dimension(param(instance)%sum_N_sl,4) :: &
     v, &                                                                                            !< current dislocation glide velocity
     v0, &
-    neighbor_v0, &                                                                                  !< dislocation glide velocity of enighboring ip
     gdot                                                                                            !< shear rates
   real(pReal), dimension(param(instance)%sum_N_sl) :: &
     tau, &                                                                                          !< current resolved shear stress
@@ -1003,23 +988,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
     rhoDip, &                                                                                       !< current dipole dislocation densities (screw and edge dipoles)
     dLower, &                                                                                       !< minimum stable dipole distance for edges and screws
     dUpper                                                                                          !< current maximum stable dipole distance for edges and screws
-  real(pReal), dimension(3,param(instance)%sum_N_sl,4) :: &
-    m                                                                                               !< direction of dislocation motion
-  real(pReal), dimension(3,3) :: &
-    my_F, &                                                                                         !< my total deformation gradient
-    neighbor_F, &                                                                                   !< total deformation gradient of my neighbor
-    my_Fe, &                                                                                        !< my elastic deformation gradient
-    neighbor_Fe, &                                                                                  !< elastic deformation gradient of my neighbor
-    Favg                                                                                            !< average total deformation gradient of me and my neighbor
-  real(pReal), dimension(3) :: &
-    normal_neighbor2me, &                                                                           !< interface normal pointing from my neighbor to me in neighbor's lattice configuration
-    normal_neighbor2me_defConf, &                                                                   !< interface normal pointing from my neighbor to me in shared deformed configuration
-    normal_me2neighbor, &                                                                           !< interface normal pointing from me to my neighbor in my lattice configuration
-    normal_me2neighbor_defConf                                                                      !< interface normal pointing from me to my neighbor in shared deformed configuration
   real(pReal) :: &
-    area, &                                                                                         !< area of the current interface
-    transmissivity, &                                                                               !< overall transmissivity of dislocation flux to neighboring material point
-    lineLength, &                                                                                   !< dislocation line length leaving the current interface
     selfDiffusion                                                                                   !< self diffusion
 
   ph = material_phaseAt(1,el)
@@ -1094,6 +1063,172 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,instance),of)
 
+
+  !****************************************************************************
+  !*** calculate dipole formation and annihilation
+
+  !*** formation by glide
+  do c = 1,2
+    rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+                                                   * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &   ! negative mobile --> positive mobile
+                                                      +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) & ! positive mobile --> negative mobile
+                                                      + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)))  ! positive mobile --> negative immobile
+
+    rhoDotSingle2DipoleGlide(:,2*c) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+                                                 * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &     ! negative mobile --> positive mobile
+                                                    +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) &   ! positive mobile --> negative mobile
+                                                    + abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)))      ! negative mobile --> positive immobile
+
+    rhoDotSingle2DipoleGlide(:,2*c+3) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+                                                   * rhoSgl(:,2*c+3) * abs(gdot(:,2*c))             ! negative mobile --> positive immobile
+
+    rhoDotSingle2DipoleGlide(:,2*c+4) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+                                                   * rhoSgl(:,2*c+4) * abs(gdot(:,2*c-1))           ! positive mobile --> negative immobile
+
+    rhoDotSingle2DipoleGlide(:,c+8) = abs(rhoDotSingle2DipoleGlide(:,2*c+3)) &
+                                    + abs(rhoDotSingle2DipoleGlide(:,2*c+4)) &
+                                    - rhoDotSingle2DipoleGlide(:,2*c-1) &
+                                    - rhoDotSingle2DipoleGlide(:,2*c)
+  enddo
+
+
+  !*** athermal annihilation
+  rhoDotAthermalAnnihilation = 0.0_pReal
+  forall (c=1:2) &
+    rhoDotAthermalAnnihilation(:,c+8) = -2.0_pReal * dLower(:,c) / prm%burgers &
+       * (  2.0_pReal * (rhoSgl(:,2*c-1) * abs(gdot(:,2*c)) + rhoSgl(:,2*c) * abs(gdot(:,2*c-1))) &             ! was single hitting single
+          + 2.0_pReal * (abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
+          + rhoDip(:,c) * (abs(gdot(:,2*c-1)) + abs(gdot(:,2*c))))                                              ! single knocks dipole constituent
+
+  ! annihilated screw dipoles leave edge jogs behind on the colinear system
+  if (lattice_structure(ph) == LATTICE_fcc_ID) &
+    forall (s = 1:ns, prm%colinearSystem(s) > 0) &
+      rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
+        * 0.25_pReal * sqrt(stt%rho_forest(s,of)) * (dUpper(s,2) + dLower(s,2)) * prm%edgeJogFactor
+
+
+  !*** thermally activated annihilation of edge dipoles by climb
+  rhoDotThermalAnnihilation = 0.0_pReal
+  selfDiffusion = prm%Dsd0 * exp(-prm%selfDiffusionEnergy / (kB * Temperature))
+  vClimb = prm%atomicVolume * selfDiffusion * prm%mu &
+         / ( kB * Temperature  * PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)))
+  forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
+    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
+                                         - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
+                                                                  - rhoDotSingle2DipoleGlide(s,9))    ! make sure that we do not annihilate more dipoles than we have
+
+  rhoDot = rhoDotFlux(F,Fp,timestep,  instance,of,ip,el) &
+         + rhoDotMultiplication &
+         + rhoDotSingle2DipoleGlide &
+         + rhoDotAthermalAnnihilation &
+         + rhoDotThermalAnnihilation
+
+
+  if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
+     .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
+#ifdef DEBUG
+    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then
+      write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
+      write(6,'(a)') '<< CONST >> enforcing cutback !!!'
+    endif
+#endif
+    plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
+  else
+    dot%rho(:,of) = pack(rhoDot,.true.)
+    dot%gamma(:,of) = sum(gdot,2)
+  endif
+
+  end associate
+
+end subroutine plastic_nonlocal_dotState
+
+
+!---------------------------------------------------------------------------------------------------
+!> @brief calculates the rate of change of microstructure
+!---------------------------------------------------------------------------------------------------
+function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
+
+  real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+    F, &                                                                                            !< elastic deformation gradient
+    Fp                                                                                              !< plastic deformation gradient
+  real(pReal), intent(in) :: &
+    timestep                                                                                        !< substepped crystallite time increment
+  integer, intent(in) :: &
+    instance, &
+    of, &
+    ip, &                                                                                           !< current integration point
+    el                                                                                              !< current element number
+
+  integer ::  &
+    ph, &
+    neighbor_instance, &                                                                            !< instance of my neighbor's plasticity
+    ns, &                                                                                           !< short notation for the total number of active slip systems
+    c, &                                                                                            !< character of dislocation
+    n, &                                                                                            !< index of my current neighbor
+    neighbor_el, &                                                                                  !< element number of my neighbor
+    neighbor_ip, &                                                                                  !< integration point of my neighbor
+    neighbor_n, &                                                                                   !< neighbor index pointing to me when looking from my neighbor
+    opposite_neighbor, &                                                                            !< index of my opposite neighbor
+    opposite_ip, &                                                                                  !< ip of my opposite neighbor
+    opposite_el, &                                                                                  !< element index of my opposite neighbor
+    opposite_n, &                                                                                   !< neighbor index pointing to me when looking from my opposite neighbor
+    t, &                                                                                            !< type of dislocation
+    no,&                                                                                            !< neighbor offset shortcut
+    np,&                                                                                            !< neighbor phase shortcut
+    topp, &                                                                                         !< type of dislocation with opposite sign to t
+    s                                                                                               !< index of my current slip system
+  real(pReal), dimension(param(instance)%sum_N_sl,10) :: &
+    rho, &
+    rho0, &                                                                                         !< dislocation density at beginning of time step
+    rhoDotFlux                                                                                      !< density evolution by flux
+  real(pReal), dimension(param(instance)%sum_N_sl,8) :: &
+    rhoSgl, &                                                                                       !< current single dislocation densities (positive/negative screw and edge without dipoles)
+    neighbor_rhoSgl0, &                                                                             !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
+    my_rhoSgl0                                                                                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
+  real(pReal), dimension(param(instance)%sum_N_sl,4) :: &
+    v, &                                                                                            !< current dislocation glide velocity
+    v0, &
+    neighbor_v0, &                                                                                  !< dislocation glide velocity of enighboring ip
+    gdot                                                                                            !< shear rates
+  real(pReal), dimension(3,param(instance)%sum_N_sl,4) :: &
+    m                                                                                               !< direction of dislocation motion
+  real(pReal), dimension(3,3) :: &
+    my_F, &                                                                                         !< my total deformation gradient
+    neighbor_F, &                                                                                   !< total deformation gradient of my neighbor
+    my_Fe, &                                                                                        !< my elastic deformation gradient
+    neighbor_Fe, &                                                                                  !< elastic deformation gradient of my neighbor
+    Favg                                                                                            !< average total deformation gradient of me and my neighbor
+  real(pReal), dimension(3) :: &
+    normal_neighbor2me, &                                                                           !< interface normal pointing from my neighbor to me in neighbor's lattice configuration
+    normal_neighbor2me_defConf, &                                                                   !< interface normal pointing from my neighbor to me in shared deformed configuration
+    normal_me2neighbor, &                                                                           !< interface normal pointing from me to my neighbor in my lattice configuration
+    normal_me2neighbor_defConf                                                                      !< interface normal pointing from me to my neighbor in shared deformed configuration
+  real(pReal) :: &
+    area, &                                                                                         !< area of the current interface
+    transmissivity, &                                                                               !< overall transmissivity of dislocation flux to neighboring material point
+    lineLength                                                                                      !< dislocation line length leaving the current interface
+
+  ph = material_phaseAt(1,el)
+
+  associate(prm => param(instance), &
+            dst => microstructure(instance), &
+            dot => dotState(instance), &
+            stt => state(instance))
+  ns = prm%sum_N_sl
+
+  gdot = 0.0_pReal
+
+  rho  = getRho(instance,of,ip,el)
+  rhoSgl = rho(:,sgl)
+  rho0 = getRho0(instance,of,ip,el)
+  my_rhoSgl0 = rho0(:,sgl)
+
+  forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)                   !ToDo: MD: I think we should use state0 here
+  gdot = rhoSgl(:,1:4) * v * spread(prm%burgers,2,4)
+
+
+  forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,instance),of)
+
   !****************************************************************************
   !*** calculate dislocation fluxes (only for nonlocal plasticity)
   rhoDotFlux = 0.0_pReal
@@ -1114,7 +1249,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
 #endif
-      plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                               ! -> return NaN and, hence, enforce cutback
+      rhoDotFlux = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                                             ! enforce cutback
       return
     endif
 
@@ -1240,108 +1375,9 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
     enddo neighbors
   endif
 
-
-
-  !****************************************************************************
-  !*** calculate dipole formation and annihilation
-
-  !*** formation by glide
-  do c = 1,2
-    rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pReal * dUpper(:,c) / prm%burgers &
-                                                   * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &   ! negative mobile --> positive mobile
-                                                      +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) & ! positive mobile --> negative mobile
-                                                      + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)))  ! positive mobile --> negative immobile
-
-    rhoDotSingle2DipoleGlide(:,2*c) = -2.0_pReal * dUpper(:,c) / prm%burgers &
-                                                 * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &     ! negative mobile --> positive mobile
-                                                    +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) &   ! positive mobile --> negative mobile
-                                                    + abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)))      ! negative mobile --> positive immobile
-
-    rhoDotSingle2DipoleGlide(:,2*c+3) = -2.0_pReal * dUpper(:,c) / prm%burgers &
-                                                   * rhoSgl(:,2*c+3) * abs(gdot(:,2*c))             ! negative mobile --> positive immobile
-
-    rhoDotSingle2DipoleGlide(:,2*c+4) = -2.0_pReal * dUpper(:,c) / prm%burgers &
-                                                   * rhoSgl(:,2*c+4) * abs(gdot(:,2*c-1))           ! positive mobile --> negative immobile
-
-    rhoDotSingle2DipoleGlide(:,c+8) = abs(rhoDotSingle2DipoleGlide(:,2*c+3)) &
-                                    + abs(rhoDotSingle2DipoleGlide(:,2*c+4)) &
-                                    - rhoDotSingle2DipoleGlide(:,2*c-1) &
-                                    - rhoDotSingle2DipoleGlide(:,2*c)
-  enddo
-
-
-  !*** athermal annihilation
-  rhoDotAthermalAnnihilation = 0.0_pReal
-  forall (c=1:2) &
-    rhoDotAthermalAnnihilation(:,c+8) = -2.0_pReal * dLower(:,c) / prm%burgers &
-       * (  2.0_pReal * (rhoSgl(:,2*c-1) * abs(gdot(:,2*c)) + rhoSgl(:,2*c) * abs(gdot(:,2*c-1))) &             ! was single hitting single
-          + 2.0_pReal * (abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
-          + rhoDip(:,c) * (abs(gdot(:,2*c-1)) + abs(gdot(:,2*c))))                                              ! single knocks dipole constituent
-
-  ! annihilated screw dipoles leave edge jogs behind on the colinear system
-  if (lattice_structure(ph) == LATTICE_fcc_ID) &
-    forall (s = 1:ns, prm%colinearSystem(s) > 0) &
-      rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
-        * 0.25_pReal * sqrt(stt%rho_forest(s,of)) * (dUpper(s,2) + dLower(s,2)) * prm%edgeJogFactor
-
-
-  !*** thermally activated annihilation of edge dipoles by climb
-  rhoDotThermalAnnihilation = 0.0_pReal
-  selfDiffusion = prm%Dsd0 * exp(-prm%selfDiffusionEnergy / (kB * Temperature))
-  vClimb = prm%atomicVolume * selfDiffusion * prm%mu &
-         / ( kB * Temperature  * PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)))
-  forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
-    rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
-                                         - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
-                                                                  - rhoDotSingle2DipoleGlide(s,9))    ! make sure that we do not annihilate more dipoles than we have
-
-  rhoDot = rhoDotFlux &
-         + rhoDotMultiplication &
-         + rhoDotSingle2DipoleGlide &
-         + rhoDotAthermalAnnihilation &
-         + rhoDotThermalAnnihilation
-
-#ifdef DEBUG
-  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0 &
-      .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0 )) then
-    write(6,'(a,/,4(12x,12(e12.5,1x),/))')  '<< CONST >> dislocation multiplication', &
-                                            rhoDotMultiplication(:,1:4) * timestep
-    write(6,'(a,/,8(12x,12(e12.5,1x),/))')  '<< CONST >> dislocation flux', &
-                                            rhoDotFlux(:,1:8) * timestep
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by glide', &
-                                            rhoDotSingle2DipoleGlide * timestep
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> athermal dipole annihilation', &
-                                            rhoDotAthermalAnnihilation * timestep
-    write(6,'(a,/,2(12x,12(e12.5,1x),/))')  '<< CONST >> thermally activated dipole annihilation', &
-                                            rhoDotThermalAnnihilation(:,9:10) * timestep
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> total density change', &
-                                            rhoDot * timestep
-    write(6,'(a,/,10(12x,12(f12.5,1x),/))') '<< CONST >> relative density change', &
-                                            rhoDot(:,1:8)  * timestep / (abs(stt%rho(:,sgl))+1.0e-10), &
-                                            rhoDot(:,9:10) * timestep / (stt%rho(:,dip)+1.0e-10)
-    write(6,*)
-  endif
-#endif
-
-
-  if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
-     .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
-#ifdef DEBUG
-    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0) then
-      write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
-      write(6,'(a)') '<< CONST >> enforcing cutback !!!'
-    endif
-#endif
-    plasticState(ph)%dotState = IEEE_value(1.0_pReal,IEEE_quiet_NaN)
-  else
-    dot%rho(:,of) = pack(rhoDot,.true.)
-    dot%gamma(:,of) = sum(gdot,2)
-  endif
-
   end associate
 
-end subroutine plastic_nonlocal_dotState
+end function rhoDotFlux
 
 
 !--------------------------------------------------------------------------------------------------
