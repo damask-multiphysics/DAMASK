@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -24,14 +25,8 @@ Additional (globally fixed) rotations of the lab frame and/or crystal frame can 
 
 """, version = scriptID)
 
-representations = {
-                  'quaternion': ['qu',4],
-                  'rodrigues':  ['ro',4],
-                  'Rodrigues':  ['Ro',3],
-                  'eulers':     ['eu',3],
-                  'matrix':     ['om',9],
-                  'angleaxis':  ['ax',4],
-                  }
+representations = ['quaternion', 'rodrigues', 'eulers', 'matrix', 'axisangle']
+
 
 parser.add_option('-o',
                   '--output',
@@ -93,10 +88,10 @@ parser.set_defaults(output = [],
                    )
 
 (options, filenames) = parser.parse_args()
+if filenames == []: filenames = [None]
 
-#options.output = list(map(lambda x: x.lower(), options.output))
 if options.output == [] or (not set(options.output).issubset(set(representations))):
-  parser.error('output must be chosen from {}.'.format(', '.join(representations)))
+    parser.error('output must be chosen from {}.'.format(', '.join(representations)))
 
 input = [options.eulers     is not None,
          options.rodrigues  is not None,
@@ -109,95 +104,47 @@ input = [options.eulers     is not None,
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
 
-(label,dim,inputtype) = [(options.eulers,representations['eulers'][1],'eulers'),
-                         (options.rodrigues,representations['rodrigues'][1],'rodrigues'),
-                         ([options.x,options.y,options.z],[3,3,3],'frame'),
-                         (options.matrix,representations['matrix'][1],'matrix'),
-                         (options.quaternion,representations['quaternion'][1],'quaternion'),
-                        ][np.where(input)[0][0]]                                                    # select input label that was requested
-
-r = damask.Rotation.fromAxisAngle(np.array(options.crystalrotation),options.degrees,normalise=True)
-R = damask.Rotation.fromAxisAngle(np.array(options.labrotation),options.degrees,normalise=True)
-
-
-# --- loop over input files ------------------------------------------------------------------------
-
-if filenames == []: filenames = [None]
+r = damask.Rotation.from_axis_angle(np.array(options.crystalrotation),options.degrees,normalise=True)
+R = damask.Rotation.from_axis_angle(np.array(options.labrotation),options.degrees,normalise=True)
 
 for name in filenames:
-  try: 
-    table = damask.ASCIItable(name = name)
-  except IOError:
-    continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
+    if   options.eulers is not None:
+        label = options.eulers
+        print(np.max(table.get(options.eulers),axis=0))
+        o = damask.Rotation.from_Eulers(table.get(options.eulers), options.degrees)
+    elif options.rodrigues is not None:
+        label = options.rodrigues
+        o = damask.Rotation.from_Rodrigues(table.get(options.rodrigues))
+    elif options.matrix is not None:
+        label = options.matrix
+        o = damask.Rotation.from_matrix(table.get(options.matrix).reshape(-1,3,3))
+    elif options.x is not None:
+        label = '<{},{},{}>'.format(options.x,options.y,options.z)
+        M = np.block([table.get(options.x),table.get(options.y),table.get(options.z)]).reshape(-1,3,3)
+        o = damask.Rotation.from_matrix(M/np.linalg.norm(M,axis=0))
+    elif options.quaternion is not None:
+        label = options.quaternion
+        o = damask.Rotation.from_quaternion(table.get(options.quaternion))
 
-# ------------------------------------------ sanity checks -----------------------------------------
+    o = r.broadcast_to(o.shape) @ o @ R.broadcast_to(o.shape)
 
-  errors  = []
-  remarks = []
-  
-  if not np.all(table.label_dimension(label) == dim):  errors.append('input {} does not have dimension {}.'.format(label,dim))
-  else:  column = table.label_index(label)
+    #if options.lattice is not None:
+    #  o = damask.Orientation(rotation = o,lattice = options.lattice).reduced().rotation
 
-  if remarks != []: damask.util.croak(remarks)
-  if errors  != []:
-    damask.util.croak(errors)
-    table.close(dismiss = True)
-    continue
 
-# ------------------------------------------ assemble header ---------------------------------------
+    if 'rodrigues' in options.output:
+        table.add('ro({})'.format(label),o.as_rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
+    if 'eulers' in options.output:
+        table.add('eu({})'.format(label),o.as_Eulers(options.degrees),    scriptID+' '+' '.join(sys.argv[1:]))
+    if 'quaternion' in options.output:
+        table.add('qu({})'.format(label),o.as_quaternion(),               scriptID+' '+' '.join(sys.argv[1:]))
+    if 'matrix' in options.output:
+        table.add('om({})'.format(label),o.as_matrix(),                   scriptID+' '+' '.join(sys.argv[1:]))
+    if 'axisangle' in options.output:
+        table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  for output in options.output:
-    if output in representations:
-      table.labels_append(['{}_{}({})'.format(i+1,representations[output][0],label) \
-                           for i in range(representations[output][1])])
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    if   inputtype == 'eulers':
-      d = representations['eulers'][1]
-      o = damask.Rotation.fromEulers(list(map(float,table.data[column:column+d])),options.degrees)
-      
-    elif inputtype == 'rodrigues':
-      d = representations['rodrigues'][1]
-      o = damask.Rotation.fromRodrigues(list(map(float,table.data[column:column+d])))
-      
-    elif inputtype == 'matrix':
-      d = representations['matrix'][1]
-      o = damask.Rotation.fromMatrix(np.array(list(map(float,table.data[column:column+d]))).reshape(3,3))
-
-    elif inputtype == 'frame':
-      M = np.array(list(map(float,table.data[column[0]:column[0]+3] + \
-                                  table.data[column[1]:column[1]+3] + \
-                                  table.data[column[2]:column[2]+3]))).reshape(3,3).T
-      o = damask.Rotation.fromMatrix(M/np.linalg.norm(M,axis=0))
-      
-    elif inputtype == 'quaternion':
-      d = representations['quaternion'][1]
-      o = damask.Rotation.fromQuaternion(list(map(float,table.data[column:column+d])))
-
-    o = r*o*R                                                                                       # apply additional lab and crystal frame rotations
-
-    if options.lattice is not None:
-      o = damask.Orientation(rotation = o,lattice = options.lattice).reduced().rotation
-
-    for output in options.output:
-      if   output == 'quaternion': table.data_append(o.asQuaternion())
-      elif output == 'rodrigues':  table.data_append(o.asRodrigues())
-      elif output == 'Rodrigues':  table.data_append(o.asRodrigues(vector=True))
-      elif output == 'eulers':     table.data_append(o.asEulers(degrees=options.degrees))
-      elif output == 'matrix':     table.data_append(o.asMatrix())
-      elif output == 'angleaxis':  table.data_append(o.asAxisAngle(degrees=options.degrees))
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
+    table.to_ASCII(sys.stdout if name is None else name)
