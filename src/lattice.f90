@@ -529,7 +529,7 @@ subroutine lattice_init
     lattice_DamageMobility(p) = config_phase(p)%getFloat('damage_mobility',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
 
-    call unitTest
+    call selfTest
 
   enddo
 
@@ -2295,7 +2295,7 @@ end function equivalent_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some lattice functions
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   real(pReal), dimension(:,:,:), allocatable :: CoSy
   real(pReal), dimension(:,:),   allocatable :: system
@@ -2324,6 +2324,6 @@ subroutine unitTest
   if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'reuss')),equivalent_nu(C,'reuss'),1.0e-12_pReal)) &
     call IO_error(0,ext_msg='equivalent_nu/reuss')
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module lattice

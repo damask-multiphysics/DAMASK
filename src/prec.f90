@@ -75,7 +75,7 @@ module prec
     emptyStringArray = [character(len=pStringLen)::]
 
   private :: &
-    unitTest
+    selfTest
 
 contains
 
@@ -94,7 +94,7 @@ subroutine prec_init
   write(6,'(a,e10.3)') '   Minimum value:        ',tiny(0.0_pReal)
   write(6,'(a,i3)')    '   Decimal precision:    ',precision(0.0_pReal)
 
-  call unitTest
+  call selfTest
 
 end subroutine prec_init
 
@@ -233,7 +233,7 @@ end function cNeq
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some prec functions
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   integer, allocatable, dimension(:) :: realloc_lhs_test
   real(pReal), dimension(2) :: r
@@ -249,6 +249,6 @@ subroutine unitTest
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2])) call quit(9000)
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module prec
