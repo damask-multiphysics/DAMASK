@@ -634,6 +634,6 @@ class Lattice:
             otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
             otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
 
-            r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix.T,myMatrix)))
+            r['rotations'].append(Rotation.from_matrix(np.dot(otherMatrix.T,myMatrix)))
 
         return r

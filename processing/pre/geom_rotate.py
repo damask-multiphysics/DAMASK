@@ -59,13 +59,13 @@ if [options.rotation,options.eulers,options.matrix,options.quaternion].count(Non
   parser.error('no rotation specified.')
 
 if options.quaternion is not None:
-  rot = damask.Rotation.fromQuaternion(np.array(options.quaternion))                            # we might need P=+1 here, too...
+  rot = damask.Rotation.from_quaternion(np.array(options.quaternion))                               # we might need P=+1 here, too...
 if options.rotation is not None:
-  rot = damask.Rotation.fromAxisAngle(np.array(options.rotation),degrees=options.degrees,normalise=True,P=+1)
+  rot = damask.Rotation.from_axis_angle(np.array(options.rotation),degrees=options.degrees,normalise=True,P=+1)
 if options.matrix is not None:
-  rot = damask.Rotation.fromMatrix(np.array(options.Matrix))
+  rot = damask.Rotation.from_matrix(np.array(options.Matrix))
 if options.eulers is not None:
-  rot = damask.Rotation.fromEulers(np.array(options.eulers),degrees=options.degrees)
+  rot = damask.Rotation.from_Eulers(np.array(options.eulers),degrees=options.degrees)
 
 eulers = rot.asEulers(degrees=True)
 

@@ -36,7 +36,7 @@ class Orientation:
         if isinstance(rotation, Rotation):
             self.rotation = rotation
         else:
-            self.rotation = Rotation.fromQuaternion(rotation)                                       # assume quaternion
+            self.rotation = Rotation.from_quaternion(rotation)                                      # assume quaternion
 
         if self.rotation.quaternion.shape != (4,):
             raise NotImplementedError('Support for multiple rotations missing')

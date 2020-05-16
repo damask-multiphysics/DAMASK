@@ -14,7 +14,7 @@ n = 1000
 @pytest.fixture
 def default():
     """A set of n random rotations."""
-    return [Rotation.fromRandom() for r in range(n)]
+    return [Rotation.from_random() for r in range(n)]
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
@@ -36,7 +36,7 @@ class TestOrientation:
     @pytest.mark.parametrize('lattice',Lattice.lattices)
     def test_IPF(self,lattice):
         direction = np.random.random(3)*2.0-1
-        for rot in [Rotation.fromRandom() for r in range(n//100)]:
+        for rot in [Rotation.from_random() for r in range(n//100)]:
             R = damask.Orientation(rot,lattice)
             color = R.IPFcolor(direction)
             for equivalent in R.equivalentOrientations():
@@ -45,7 +45,7 @@ class TestOrientation:
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['fcc','bcc'])
     def test_relationship_forward_backward(self,model,lattice):
-        ori = Orientation(Rotation.fromRandom(),lattice)
+        ori = Orientation(Rotation.from_random(),lattice)
         for i,r in enumerate(ori.relatedOrientations(model)):
             ori2 = r.relatedOrientations(model)[i]
             misorientation = ori.rotation.misorientation(ori2.rotation)
