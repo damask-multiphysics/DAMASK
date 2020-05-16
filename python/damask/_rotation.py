@@ -131,12 +131,12 @@ class Rotation:
         details to be discussed
         """
         if isinstance(other, Rotation):                                                             # rotate a rotation
-            q_m = self.quaternion[...,0].reshape(self.shape+(1,))
+            q_m = self.quaternion[...,0:1]
             p_m = self.quaternion[...,1:]
-            q_o = other.quaternion[...,0].reshape(self.shape+(1,))
+            q_o = other.quaternion[...,0:1]
             p_o = other.quaternion[...,1:]
             q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
-            p = q_m*p_m + q_o*p_m + _P * np.cross(p_m,p_o)
+            p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
             return self.__class__(np.block([q,p])).standardize()
 
         elif isinstance(other,np.ndarray):
