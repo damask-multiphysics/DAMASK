@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 
 from damask import Rotation
+import rotation_conversion
 
 n = 1100
 atol=1.e-4
@@ -181,111 +182,83 @@ class TestRotation:
         with pytest.raises(ValueError):
             function(invalid)
 
-    @pytest.mark.parametrize('conversion',[Rotation.qu2om,
-                                           Rotation.qu2eu,
-                                           Rotation.qu2ax,
-                                           Rotation.qu2ro,
-                                           Rotation.qu2ho,
-                                           Rotation.qu2cu
-                                          ])
-    def test_quaternion_vectorization(self,default,conversion):
+    @pytest.mark.parametrize('vectorized, single',[(Rotation.qu2om,rotation_conversion.qu2om),
+                                                   (Rotation.qu2eu,rotation_conversion.qu2eu),
+                                                   (Rotation.qu2ax,rotation_conversion.qu2ax),
+                                                   (Rotation.qu2ro,rotation_conversion.qu2ro),
+                                                   (Rotation.qu2ho,rotation_conversion.qu2ho)])
+    def test_quaternion_vectorization(self,default,vectorized,single):
         qu = np.array([rot.as_quaternion() for rot in default])
-        conversion(qu.reshape(qu.shape[0]//2,-1,4))
-        co = conversion(qu)
+        vectorized(qu.reshape(qu.shape[0]//2,-1,4))
+        co = vectorized(qu)
         for q,c in zip(qu,co):
             print(q,c)
-            assert np.allclose(conversion(q),c)
+            assert np.allclose(single(q),c) and np.allclose(single(q),vectorized(q))
 
-    @pytest.mark.parametrize('conversion',[Rotation.om2qu,
-                                           Rotation.om2eu,
-                                           Rotation.om2ax,
-                                           Rotation.om2ro,
-                                           Rotation.om2ho,
-                                           Rotation.om2cu
-                                          ])
-    def test_matrix_vectorization(self,default,conversion):
+
+    @pytest.mark.parametrize('vectorized, single',[(Rotation.om2eu,rotation_conversion.om2eu),
+                                                   (Rotation.om2ax,rotation_conversion.om2ax)])
+    def test_matrix_vectorization(self,default,vectorized,single):
         om = np.array([rot.as_matrix() for rot in default])
-        conversion(om.reshape(om.shape[0]//2,-1,3,3))
-        co = conversion(om)
+        vectorized(om.reshape(om.shape[0]//2,-1,3,3))
+        co = vectorized(om)
         for o,c in zip(om,co):
             print(o,c)
-            assert np.allclose(conversion(o),c)
+            assert np.allclose(single(o),c) and np.allclose(single(o),vectorized(o))
 
-    @pytest.mark.parametrize('conversion',[Rotation.eu2qu,
-                                           Rotation.eu2om,
-                                           Rotation.eu2ax,
-                                           Rotation.eu2ro,
-                                           Rotation.eu2ho,
-                                           Rotation.eu2cu
-                                          ])
-    def test_Euler_vectorization(self,default,conversion):
+    @pytest.mark.parametrize('vectorized, single',[(Rotation.eu2qu,rotation_conversion.eu2qu),
+                                                   (Rotation.eu2om,rotation_conversion.eu2om),
+                                                   (Rotation.eu2ax,rotation_conversion.eu2ax),
+                                                   (Rotation.eu2ro,rotation_conversion.eu2ro)])
+    def test_Euler_vectorization(self,default,vectorized,single):
         eu = np.array([rot.as_Eulers() for rot in default])
-        conversion(eu.reshape(eu.shape[0]//2,-1,3))
-        co = conversion(eu)
+        vectorized(eu.reshape(eu.shape[0]//2,-1,3))
+        co = vectorized(eu)
         for e,c in zip(eu,co):
             print(e,c)
-            assert np.allclose(conversion(e),c)
+            assert np.allclose(single(e),c) and np.allclose(single(e),vectorized(e))
 
-    @pytest.mark.parametrize('conversion',[Rotation.ax2qu,
-                                           Rotation.ax2om,
-                                           Rotation.ax2eu,
-                                           Rotation.ax2ro,
-                                           Rotation.ax2ho,
-                                           Rotation.ax2cu
-                                          ])
-    def test_axisAngle_vectorization(self,default,conversion):
+    @pytest.mark.parametrize('vectorized, single',[(Rotation.ax2qu,rotation_conversion.ax2qu),
+                                                   (Rotation.ax2om,rotation_conversion.ax2om),
+                                                   (Rotation.ax2ro,rotation_conversion.ax2ro),
+                                                   (Rotation.ax2ho,rotation_conversion.ax2ho)])
+    def test_axisAngle_vectorization(self,default,vectorized,single):
         ax = np.array([rot.as_axis_angle() for rot in default])
-        conversion(ax.reshape(ax.shape[0]//2,-1,4))
-        co = conversion(ax)
+        vectorized(ax.reshape(ax.shape[0]//2,-1,4))
+        co = vectorized(ax)
         for a,c in zip(ax,co):
             print(a,c)
-            assert np.allclose(conversion(a),c)
+            assert np.allclose(single(a),c) and np.allclose(single(a),vectorized(a))
 
 
-    @pytest.mark.parametrize('conversion',[Rotation.ro2qu,
-                                           Rotation.ro2om,
-                                           Rotation.ro2eu,
-                                           Rotation.ro2ax,
-                                           Rotation.ro2ho,
-                                           Rotation.ro2cu
-                                          ])
-    def test_Rodrigues_vectorization(self,default,conversion):
+    @pytest.mark.parametrize('vectorized, single',[(Rotation.ro2ax,rotation_conversion.ro2ax),
+                                                   (Rotation.ro2ho,rotation_conversion.ro2ho)])
+    def test_Rodrigues_vectorization(self,default,vectorized,single):
         ro = np.array([rot.as_Rodrigues() for rot in default])
-        conversion(ro.reshape(ro.shape[0]//2,-1,4))
-        co = conversion(ro)
+        vectorized(ro.reshape(ro.shape[0]//2,-1,4))
+        co = vectorized(ro)
         for r,c in zip(ro,co):
             print(r,c)
-            assert np.allclose(conversion(r),c)
+            assert np.allclose(single(r),c) and np.allclose(single(r),vectorized(r))
 
-    @pytest.mark.parametrize('conversion',[Rotation.ho2qu,
-                                           Rotation.ho2om,
-                                           Rotation.ho2eu,
-                                           Rotation.ho2ax,
-                                           Rotation.ho2ro,
-                                           Rotation.ho2cu
-                                          ])
-    def test_homochoric_vectorization(self,default,conversion):
+    @pytest.mark.parametrize('vectorized, single',[(Rotation.ho2ax,rotation_conversion.ho2ax),
+                                                   (Rotation.ho2cu,rotation_conversion.ho2cu)])
+    def test_homochoric_vectorization(self,default,vectorized,single):
         ho = np.array([rot.as_homochoric() for rot in default])
-        conversion(ho.reshape(ho.shape[0]//2,-1,3))
-        co = conversion(ho)
+        vectorized(ho.reshape(ho.shape[0]//2,-1,3))
+        co = vectorized(ho)
         for h,c in zip(ho,co):
             print(h,c)
-            assert np.allclose(conversion(h),c)
+            assert np.allclose(single(h),c) and np.allclose(single(h),vectorized(h))
 
-    @pytest.mark.parametrize('conversion',[Rotation.cu2qu,
-                                           Rotation.cu2om,
-                                           Rotation.cu2eu,
-                                           Rotation.cu2ax,
-                                           Rotation.cu2ro,
-                                           Rotation.cu2ho
-                                          ])
-    def test_cubochoric_vectorization(self,default,conversion):
+    @pytest.mark.parametrize('vectorized, single',[(Rotation.cu2ho,rotation_conversion.cu2ho)])
+    def test_cubochoric_vectorization(self,default,vectorized,single):
         cu = np.array([rot.as_cubochoric() for rot in default])
-        conversion(cu.reshape(cu.shape[0]//2,-1,3))
-        co = conversion(cu)
+        vectorized(cu.reshape(cu.shape[0]//2,-1,3))
+        co = vectorized(cu)
         for u,c in zip(cu,co):
             print(u,c)
-            assert np.allclose(conversion(u),c)
+            assert np.allclose(single(u),c) and np.allclose(single(u),vectorized(u))
 
     @pytest.mark.parametrize('direction',['forward',
                                           'backward'])
