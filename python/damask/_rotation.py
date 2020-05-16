@@ -52,7 +52,7 @@ class Rotation:
         Parameters
         ----------
         quaternion : numpy.ndarray, optional
-            Unit quaternion that follows the conventions. Use .fromQuaternion to perform a sanity check.
+            Unit quaternion that follows the conventions. Use .from_quaternion to perform a sanity check.
 
         """
         self.quaternion = quaternion.copy()
@@ -144,7 +144,7 @@ class Rotation:
                 q_m = self.quaternion[...,0]
                 p_m = self.quaternion[...,1:]
                 A = q_m**2.0 - np.einsum('...i,...i',p_m,p_m)
-                B = 2.0 * np.einsum('...i,...i',p_m,p_m)
+                B = 2.0 * np.einsum('...i,...i',p_m,other)
                 C = 2.0 * _P * q_m
                 return np.block([(A * other[...,i]).reshape(self.shape+(1,)) +
                                  (B * p_m[...,i]).reshape(self.shape+(1,)) +
@@ -481,7 +481,7 @@ class Rotation:
                 else M + r.asM() * n                                                                # noqa add (multiples) of this rotation to average noqa
         eig, vec = np.linalg.eig(M/N)
 
-        return Rotation.fromQuaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
+        return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
 
     @staticmethod
     def from_random(shape=None):
