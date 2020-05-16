@@ -49,7 +49,7 @@ subroutine IO_init
 
   write(6,'(/,a)') ' <<<+-  IO init  -+>>>'; flush(6)
 
-  call unitTest
+  call selfTest
 
 end subroutine IO_init
 
@@ -696,7 +696,7 @@ end subroutine IO_warning
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some IO functions
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
@@ -745,6 +745,6 @@ subroutine unitTest
   str = IO_rmComment(' ab #')
   if (str /= ' ab'.or. len(str) /= 3)               call IO_error(0,ext_msg='IO_rmComment/7')
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module IO

@@ -529,7 +529,7 @@ subroutine lattice_init
     lattice_DamageMobility(p) = config_phase(p)%getFloat('damage_mobility',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
 
-    call unitTest
+    call selfTest
 
   enddo
 
@@ -1436,6 +1436,7 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
+      allocate(NslipMax(0))
       call IO_error(137,ext_msg='lattice_SchmidMatrix_slip: '//trim(structure))
   end select
 
@@ -1485,6 +1486,7 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
       NtwinMax    = HEX_NTWINSYSTEM
       twinSystems = HEX_SYSTEMTWIN
     case default
+      allocate(NtwinMax(0))
       call IO_error(137,ext_msg='lattice_SchmidMatrix_twin: '//trim(structure))
   end select
 
@@ -1564,6 +1566,7 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
       NcleavageMax    = BCC_NCLEAVAGESYSTEM
       cleavageSystems = BCC_SYSTEMCLEAVAGE
     case default
+      allocate(NcleavageMax(0))
       call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(structure))
   end select
 
@@ -1919,6 +1922,7 @@ function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
+      allocate(NslipMax(0))
       call IO_error(137,ext_msg='coordinateSystem_slip: '//trim(structure))
   end select
 
@@ -2291,7 +2295,7 @@ end function equivalent_mu
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some lattice functions
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   real(pReal), dimension(:,:,:), allocatable :: CoSy
   real(pReal), dimension(:,:),   allocatable :: system
@@ -2320,6 +2324,6 @@ subroutine unitTest
   if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'reuss')),equivalent_nu(C,'reuss'),1.0e-12_pReal)) &
     call IO_error(0,ext_msg='equivalent_nu/reuss')
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module lattice
