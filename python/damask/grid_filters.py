@@ -361,7 +361,7 @@ def node_2_cell(node_data):
          + _np.roll(node_data,1,(0,))  + _np.roll(node_data,1,(1,))  + _np.roll(node_data,1,(2,))
          + _np.roll(node_data,1,(0,1)) + _np.roll(node_data,1,(1,2)) + _np.roll(node_data,1,(2,0)))*0.125
 
-    return c[:-1,:-1,:-1]
+    return c[1:,1:,1:]
 
 
 def node_coord0_gridSizeOrigin(coord0,ordered=True):
