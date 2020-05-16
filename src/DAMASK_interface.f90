@@ -237,13 +237,13 @@ subroutine DAMASK_interface_init
         write(6,'(a,/)')'        Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
-        call get_command_argument(i+1,loadCaseArg,err)
+        call get_command_argument(i+1,loadCaseArg,status=err)
       case ('-g', '--geom', '--geometry')
-        call get_command_argument(i+1,geometryArg,err)
+        call get_command_argument(i+1,geometryArg,status=err)
       case ('-w', '--wd', '--workingdir', '--workingdirectory')
-        call get_command_argument(i+1,workingDirArg,err)
+        call get_command_argument(i+1,workingDirArg,status=err)
       case ('-r', '--rs', '--restart')
-        call get_command_argument(i+1,arg,err)
+        call get_command_argument(i+1,arg,status=err)
         read(arg,*,iostat=stat) interface_restartInc
         if (interface_restartInc < 0 .or. stat /=0) then
           write(6,'(/,a)') ' ERROR: Could not parse restart increment: '//trim(arg)
