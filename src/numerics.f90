@@ -63,8 +63,8 @@ module numerics
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! FEM parameters:
-#ifdef FEM
+! Mesh parameters:
+#ifdef Mesh
  integer, protected, public :: &
    integrationOrder           =  2, &                                                              !< order of quadrature rule required
    structOrder                =  2                                                                 !< order of displacement shape functions
@@ -200,8 +200,8 @@ subroutine numerics_init
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! FEM parameters
-#ifdef FEM
+! Mesh parameters
+#ifdef Mesh
        case ('integrationorder')
          integrationorder = IO_intValue(line,chunkPos,2)
        case ('structorder')
@@ -267,7 +267,7 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
-#ifdef FEM
+#ifdef Mesh
  write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
  write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
  write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation

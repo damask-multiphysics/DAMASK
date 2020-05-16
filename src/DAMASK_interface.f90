@@ -206,7 +206,7 @@ subroutine DAMASK_interface_init
         write(6,'(a,/)')' Valid command line switches:'
         write(6,'(a)')  '    --geom         (-g, --geometry)'
         write(6,'(a)')  '    --load         (-l, --loadcase)'
-        write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
+        write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory)'
         write(6,'(a)')  '    --restart      (-r, --rs)'
         write(6,'(a)')  '    --help         (-h)'
         write(6,'(/,a)')' -----------------------------------------------------------------------'
@@ -223,12 +223,12 @@ subroutine DAMASK_interface_init
         write(6,'(a)')  '            directory.'
         write(6,'(a)')  '        For further configuration place "numerics.config"'
         write(6,'(a)')'            and "debug.config" in that directory.'
-        write(6,'(/,a)')'   --restart XX'
-        write(6,'(a)')  '        Reads in increment XX and continues with calculating'
-        write(6,'(a)')  '            increment XX+1 based on this.'
+        write(6,'(/,a)')'   --restart N'
+        write(6,'(a)')  '        Reads in increment N and continues with calculating'
+        write(6,'(a)')  '            increment N+1 based on this.'
         write(6,'(a)')  '        Appends to existing results file'
-        write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile".'
-        write(6,'(a)')  '        Works only if the restart information for increment XX'
+        write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.hdf5".'
+        write(6,'(a)')  '        Works only if the restart information for increment N'
         write(6,'(a)')  '            is available in the working directory.'
         write(6,'(/,a)')' -----------------------------------------------------------------------'
         write(6,'(a)')  ' Help:'
@@ -239,7 +239,7 @@ subroutine DAMASK_interface_init
         call get_command_argument(i+1,loadCaseArg)
       case ('-g', '--geom', '--geometry')
         call get_command_argument(i+1,geometryArg)
-      case ('-w', '-d', '--wd', '--directory', '--workingdir', '--workingdirectory')
+      case ('-w', '--wd', '--workingdir', '--workingdirectory')
         call get_command_argument(i+1,workingDirArg)
       case ('-r', '--rs', '--restart')
         call get_command_argument(i+1,arg)

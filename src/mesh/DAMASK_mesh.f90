@@ -6,7 +6,7 @@
 !> @details doing cutbacking, reporting statistics, writing
 !> results
 !--------------------------------------------------------------------------------------------------
-program DAMASK_FEM 
+program DAMASK_mesh
 #include <petsc/finclude/petscsys.h>
   use PetscDM
   use prec
@@ -367,4 +367,4 @@ program DAMASK_FEM
 
   call quit(0)                                                                                      ! no complains ;)
 
-end program DAMASK_FEM
+end program DAMASK_mesh
