@@ -177,7 +177,7 @@ class TestRotation:
                                                  (Rotation.from_Rodrigues,  np.array([1,0,0,-1])),
                                                  (Rotation.from_Rodrigues,  np.array([1,1,0,1])),
                                                  (Rotation.from_homochoric, np.array([2,2,2]))  ])
-    def test_invalid(self,function,invalid):
+    def test_invalid_value(self,function,invalid):
         with pytest.raises(ValueError):
             function(invalid)
 
@@ -302,8 +302,42 @@ class TestRotation:
         assert np.all(np.take_along_axis(np.take_along_axis(a,f,-1),b,-1) == a)
 
 
-    @pytest.mark.parametrize('x',[np.random.rand(3),
-                                  np.random.rand(3,3)])
-    def test_rotation_identity(self,x):
+    @pytest.mark.parametrize('data',[np.random.rand(3),
+                                     np.random.rand(3,3),
+                                     np.random.rand(3,3,3,3)])
+    def test_rotate_identity(self,data):
         R = Rotation()
-        assert np.allclose(x,R*x)
+        assert np.allclose(data,R*data)
+
+    @pytest.mark.parametrize('data',[np.random.rand(3),
+                                     np.random.rand(3,3),
+                                     np.random.rand(3,3,3,3)])
+    def test_rotate_360deg(self,data):
+        phi_1 = np.random.random() * np.pi
+        phi_2 = 2*np.pi - phi_1
+        R_1 = Rotation.from_Eulers(np.array([phi_1,0.,0.]))
+        R_2 = Rotation.from_Eulers(np.array([0.,0.,phi_2]))
+        assert np.allclose(data,R_2*(R_1*data))
+
+    @pytest.mark.parametrize('data',[np.random.rand(3),
+                                     np.random.rand(3,3),
+                                     np.random.rand(3,3,3,3)])
+    def test_rotate_inverse(self,data):
+        R = Rotation.from_random()
+        assert np.allclose(data,R.inversed()*(R*data))
+
+    @pytest.mark.parametrize('data',[np.random.rand(4),
+                                     np.random.rand(3,2),
+                                     np.random.rand(3,2,3,3)])
+    def test_rotate_invalid_shape(self,data):
+        R = Rotation.from_random()
+        with pytest.raises(ValueError):
+            R*data
+
+    @pytest.mark.parametrize('data',['does_not_work',
+                                     (1,2),
+                                     5])
+    def test_rotate_invalid_type(self,data):
+        R = Rotation.from_random()
+        with pytest.raises(TypeError):
+            R*data

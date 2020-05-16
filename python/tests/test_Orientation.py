@@ -8,13 +8,8 @@ import damask
 from damask import Rotation
 from damask import Orientation
 from damask import Lattice
-   
-n = 1000
 
-@pytest.fixture
-def default():
-    """A set of n random rotations."""
-    return [Rotation.from_random() for r in range(n)]
+n = 1000
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
@@ -28,10 +23,10 @@ class TestOrientation:
                                       {'label':'green','RGB':[0,1,0],'direction':[0,1,1]},
                                       {'label':'blue', 'RGB':[0,0,1],'direction':[1,1,1]}])
     @pytest.mark.parametrize('lattice',['fcc','bcc'])
-    def test_IPF_cubic(self,default,color,lattice):
+    def test_IPF_cubic(self,color,lattice):
         cube = damask.Orientation(damask.Rotation(),lattice)
         for direction in set(permutations(np.array(color['direction']))):
-            assert np.allclose(cube.IPFcolor(direction),np.array(color['RGB']))
+            assert np.allclose(cube.IPFcolor(np.array(direction)),np.array(color['RGB']))
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)
     def test_IPF(self,lattice):
@@ -57,7 +52,7 @@ class TestOrientation:
         reference = os.path.join(reference_dir,'{}_{}.txt'.format(lattice,model))
         ori = Orientation(Rotation(),lattice)
         eu = np.array([o.rotation.asEulers(degrees=True) for o in ori.relatedOrientations(model)])
-        if update: 
+        if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
             table = damask.Table(eu,{'Eulers':(3,)})
             table.add('pos',coords)
