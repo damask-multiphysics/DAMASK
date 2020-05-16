@@ -112,7 +112,7 @@ contains
 subroutine quaternions_init
 
   write(6,'(/,a)') ' <<<+-  quaternions init  -+>>>'; flush(6)
-  call unitTest
+  call selfTest
 
 end subroutine quaternions_init
 
@@ -457,7 +457,7 @@ end function inverse
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some quaternions functions
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   real(pReal), dimension(4) :: qu
   type(quaternion)          :: q, q_2
@@ -524,7 +524,7 @@ subroutine unitTest
   endif
 #endif
 
-end subroutine unitTest
+end subroutine selfTest
 
 
 end module quaternions

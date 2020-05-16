@@ -81,7 +81,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open libary and do sanity checks
+!> @brief initialize HDF5 libary and do sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_utilities_init
 

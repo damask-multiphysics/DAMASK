@@ -2,19 +2,23 @@ SHELL = /bin/sh
 ########################################################################################
 # Makefile for the installation of DAMASK
 ########################################################################################
-DAMASK_ROOT = $(shell python -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser('$(pwd)'))))")
+DAMASK_ROOT = $(shell python3 -c "import os,sys; print(os.path.normpath(os.path.realpath(os.path.expanduser('$(pwd)'))))")
 .PHONY: all
 all: grid mesh processing
 
 .PHONY: grid
 grid: build/grid
 	@(cd build/grid;make -j${DAMASK_NUM_THREADS} all install;)
+	@rm -f ${DAMASK_ROOT}/bin/DAMASK_spectral > /dev/null || true
+	@ln -s ${DAMASK_ROOT}/bin/DAMASK_grid ${DAMASK_ROOT}/bin/DAMASK_spectral || true
 .PHONY: spectral
 spectral: grid
 
 .PHONY: mesh
 mesh: build/mesh
 	@(cd build/mesh; make -j${DAMASK_NUM_THREADS} all install;)
+	@rm -f ${DAMASK_ROOT}/bin/DAMASK_FEM > /dev/null || true
+	@ln -s ${DAMASK_ROOT}/bin/DAMASK_mesh ${DAMASK_ROOT}/bin/DAMASK_FEM || true
 .PHONY: FEM
 FEM: mesh
 

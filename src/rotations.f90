@@ -105,7 +105,7 @@ subroutine rotations_init
 
   call quaternions_init
   write(6,'(/,a)') ' <<<+-  rotations init  -+>>>'; flush(6)
-  call unitTest
+  call selfTest
 
 end subroutine rotations_init
 
@@ -1340,7 +1340,7 @@ end function GetPyramidOrder
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some rotations functions
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   type(rotation)                  :: R
   real(pReal), dimension(4)       :: qu, ax, ro
@@ -1443,7 +1443,7 @@ subroutine unitTest
 
   enddo
 
-end subroutine unitTest
+end subroutine selfTest
 
 
 end module rotations

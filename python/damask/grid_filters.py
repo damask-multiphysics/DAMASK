@@ -238,12 +238,13 @@ def cell_coord0_gridSizeOrigin(coord0,ordered=True):
     start = origin + delta*.5
     end   = origin - delta*.5 + size
 
-    if not (_np.allclose(coords[0],_np.linspace(start[0],end[0],grid[0])) and \
-            _np.allclose(coords[1],_np.linspace(start[1],end[1],grid[1])) and \
-            _np.allclose(coords[2],_np.linspace(start[2],end[2],grid[2]))):
+    atol = _np.max(size)*5e-2
+    if not (_np.allclose(coords[0],_np.linspace(start[0],end[0],grid[0]),atol=atol) and \
+            _np.allclose(coords[1],_np.linspace(start[1],end[1],grid[1]),atol=atol) and \
+            _np.allclose(coords[2],_np.linspace(start[2],end[2],grid[2]),atol=atol)):
         raise ValueError('Regular grid spacing violated.')
 
-    if ordered and not _np.allclose(coord0.reshape(tuple(grid)+(3,),order='F'),cell_coord0(grid,size,origin)):
+    if ordered and not _np.allclose(coord0.reshape(tuple(grid)+(3,),order='F'),cell_coord0(grid,size,origin),atol=atol):
         raise ValueError('Input data is not ordered (x fast, z slow).')
 
     return (grid,size,origin)
@@ -360,7 +361,7 @@ def node_2_cell(node_data):
          + _np.roll(node_data,1,(0,))  + _np.roll(node_data,1,(1,))  + _np.roll(node_data,1,(2,))
          + _np.roll(node_data,1,(0,1)) + _np.roll(node_data,1,(1,2)) + _np.roll(node_data,1,(2,0)))*0.125
 
-    return c[:-1,:-1,:-1]
+    return c[1:,1:,1:]
 
 
 def node_coord0_gridSizeOrigin(coord0,ordered=True):
@@ -385,12 +386,13 @@ def node_coord0_gridSizeOrigin(coord0,ordered=True):
     if (grid+1).prod() != len(coord0):
         raise ValueError('Data count {} does not match grid {}.'.format(len(coord0),grid))
 
-    if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],grid[0]+1)) and \
-            _np.allclose(coords[1],_np.linspace(mincorner[1],maxcorner[1],grid[1]+1)) and \
-            _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],grid[2]+1))):
+    atol = _np.max(size)*5e-2
+    if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],grid[0]+1),atol=atol) and \
+            _np.allclose(coords[1],_np.linspace(mincorner[1],maxcorner[1],grid[1]+1),atol=atol) and \
+            _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],grid[2]+1),atol=atol)):
         raise ValueError('Regular grid spacing violated.')
 
-    if ordered and not _np.allclose(coord0.reshape(tuple(grid+1)+(3,),order='F'),node_coord0(grid,size,origin)):
+    if ordered and not _np.allclose(coord0.reshape(tuple(grid+1)+(3,),order='F'),node_coord0(grid,size,origin),atol=atol):
         raise ValueError('Input data is not ordered (x fast, z slow).')
 
     return (grid,size,origin)

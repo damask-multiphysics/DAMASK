@@ -180,7 +180,7 @@ subroutine YAML_types_init
 
   write(6,'(/,a)') ' <<<+-  YAML_types init  -+>>>'
 
-  call unitTest
+  call selfTest
 
 end subroutine YAML_types_init
 
@@ -188,7 +188,7 @@ end subroutine YAML_types_init
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some type bound procedures
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   class(tNode), pointer  :: s1,s2
   allocate(tScalar::s1)
@@ -260,7 +260,7 @@ subroutine unitTest
      if(n%get_asString(1) /= 'True')                call IO_error(0,ext_msg='byIndex_asString')
   end block
 
-end subroutine unitTest
+end subroutine selfTest
 
 
 !---------------------------------------------------------------------------------------------------

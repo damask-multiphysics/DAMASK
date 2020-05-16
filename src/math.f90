@@ -79,7 +79,7 @@ module math
 
 !---------------------------------------------------------------------------------------------------
  private :: &
-   unitTest
+   selfTest
 
 contains
 
@@ -113,7 +113,7 @@ subroutine math_init
 
   call random_seed(put = randInit)
 
-  call unitTest
+  call selfTest
 
 end subroutine math_init
 
@@ -1192,7 +1192,7 @@ end function math_clip
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some math functions
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   integer, dimension(2,4) :: &
     sort_in_   = reshape([+1,+5,  +5,+6,  -1,-1,  +3,-2],[2,4])
@@ -1330,6 +1330,6 @@ subroutine unitTest
   if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3))))&
     call IO_error(0,ext_msg='math_LeviCivita')
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module math

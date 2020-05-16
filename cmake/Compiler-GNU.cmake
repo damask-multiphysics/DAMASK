@@ -14,7 +14,7 @@ elseif (OPTIMIZATION STREQUAL "AGGRESSIVE")
   set (OPTIMIZATION_FLAGS "-O3 -ffast-math -funroll-loops -ftree-vectorize")
 endif ()
 
-set (STANDARD_CHECK "-std=f2008ts -pedantic-errors" )
+set (STANDARD_CHECK "-std=f2018 -pedantic-errors" )
 set (LINKER_FLAGS  "${LINKER_FLAGS} -Wl")
 # options parsed directly to the linker
 set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined,dynamic_lookup" )
@@ -24,6 +24,9 @@ set (LINKER_FLAGS  "${LINKER_FLAGS},-undefined,dynamic_lookup" )
 # Fine tuning compilation options
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -xf95-cpp-input")
 # preprocessor
+
+set (COMPILE_FLAGS "${COMPILE_FLAGS} -fPIC -fPIE")
+# position independent code
 
 set (COMPILE_FLAGS "${COMPILE_FLAGS} -ffree-line-length-132")
 # restrict line length to the standard 132 characters (lattice.f90 require more characters)
