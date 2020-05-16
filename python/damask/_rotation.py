@@ -98,7 +98,7 @@ class Rotation:
         """
         if self.quaternion.shape != (4,):
             raise NotImplementedError('Support for multiple rotations missing')
-        if isinstance(other, Rotation):                                                             # rotate a rotation
+        if isinstance(other, Rotation):
             self_q  = self.quaternion[0]
             self_p  = self.quaternion[1:]
             other_q = other.quaternion[0]
@@ -106,22 +106,23 @@ class Rotation:
             R = self.__class__(np.append(self_q*other_q - np.dot(self_p,other_p),
                                          self_q*other_p + other_q*self_p + _P * np.cross(self_p,other_p)))
             return R.standardize()
-        elif isinstance(other, (tuple,np.ndarray)):
-            if isinstance(other,tuple) or other.shape == (3,):                                      # rotate a single (3)-vector or meshgrid
+        elif isinstance(other, np.ndarray):
+            if other.shape == (3,):
                 A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
                 B = 2.0 * np.dot(self.quaternion[1:],other)
                 C = 2.0 * _P*self.quaternion[0]
 
                 return A*other + B*self.quaternion[1:] + C * np.cross(self.quaternion[1:],other)
 
-            elif other.shape == (3,3,):                                                             # rotate a single (3x3)-matrix
+            elif other.shape == (3,3,):
                 return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
             elif other.shape == (3,3,3,3,):
-                raise NotImplementedError('Support for rotation of 4th order tensors missing')
+                R = self.asMatrix()
+                return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
-                return NotImplemented
+                raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
         else:
-            return NotImplemented
+            raise TypeError('Cannot rotate {}'.format(type(other)))
 
 
     def __matmul__(self, other):
@@ -130,7 +131,7 @@ class Rotation:
 
         details to be discussed
         """
-        if isinstance(other, Rotation):                                                             # rotate a rotation
+        if isinstance(other, Rotation):
             q_m = self.quaternion[...,0:1]
             p_m = self.quaternion[...,1:]
             q_o = other.quaternion[...,0:1]
@@ -157,8 +158,10 @@ class Rotation:
             if self.shape + (3,3,3,3) == other.shape:
                 R = self.asMatrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
+            else:
+                raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
         else:
-            raise ValueError
+            raise TypeError('Cannot rotate {}'.format(type(other)))
 
     def inverse(self):
         """In-place inverse rotation/backward rotation."""
