@@ -137,7 +137,7 @@ for name in filenames:
 
 
     if 'rodrigues' in options.output:
-        table.add('ro({})'.format(label),o.as_rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
+        table.add('ro({})'.format(label),o.as_Rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
     if 'eulers' in options.output:
         table.add('eu({})'.format(label),o.as_Eulers(options.degrees),    scriptID+' '+' '.join(sys.argv[1:]))
     if 'quaternion' in options.output:

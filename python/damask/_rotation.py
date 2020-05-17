@@ -9,9 +9,6 @@ _sc   = np.pi**(1./6.)/6.**(1./6.)
 _beta = np.pi**(5./6.)/6.**(1./6.)/2.
 _R1   = (3.*np.pi/4.)**(1./3.)
 
-def iszero(a):
-    return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
-
 
 class Rotation:
     u"""
