@@ -67,7 +67,7 @@ if options.matrix is not None:
 if options.eulers is not None:
   rot = damask.Rotation.from_Eulers(np.array(options.eulers),degrees=options.degrees)
 
-eulers = rot.asEulers(degrees=True)
+eulers = rot.as_Eulers(degrees=True)
 
 
 if filenames == []: filenames = [None]

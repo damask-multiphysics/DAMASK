@@ -140,7 +140,7 @@ for name in filenames:
   config_header = ['<texture>']
   for i in range(np.nanmax(microstructure)):
     config_header += ['[{}{}]'.format(label,i+1),
-                      '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*rot[i].asEulers(degrees = True)),
+                      '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*rot[i].as_Eulers(degrees = True)),
                      ]
   config_header += ['<microstructure>']
   for i in range(np.nanmax(microstructure)):

@@ -305,15 +305,6 @@ class Rotation:
         """
         return np.einsum('...i,...j',self.quaternion,self.quaternion)
 
-    # for compatibility (old names do not follow convention)
-    asM          = M
-    asQuaternion = as_quaternion
-    asEulers     = as_Eulers
-    asAxisAngle  = as_axis_angle
-    asMatrix     = as_matrix
-    asRodrigues  = as_Rodrigues
-    asHomochoric = as_homochoric
-    asCubochoric = as_cubochoric
 
     ################################################################################################
     # Static constructors. The input data needs to follow the conventions, options allow to
@@ -505,13 +496,8 @@ class Rotation:
     # for compatibility (old names do not follow convention)
     fromQuaternion = from_quaternion
     fromEulers     = from_Eulers
-    fromAxisAngle  = from_axis_angle
-    fromBasis      = from_basis
-    fromMatrix     = from_matrix
-    fromRodrigues  = from_Rodrigues
-    fromHomochoric = from_homochoric
-    fromCubochoric = from_cubochoric
-    fromRandom     = from_random
+    asAxisAngle    = as_axis_angle
+
 
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
