@@ -35,8 +35,8 @@ class Rotation:
     -----
     Vector "a" (defined in coordinate system "A") is passively rotated
                resulting in new coordinates "b" when expressed in system "B".
-    b = Q * a
-    b = np.dot(Q.asMatrix(),a)
+    b = Q @ a
+    b = np.dot(Q.as_matrix(),a)
 
     """
 
@@ -73,8 +73,8 @@ class Rotation:
             raise NotImplementedError('Support for multiple rotations missing')
         return '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
-               'Matrix:\n{}'.format(self.asMatrix()),
-               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.asEulers(degrees=True)),
+               'Matrix:\n{}'.format(self.as_matrix()),
+               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
                 ])
 
 
@@ -112,9 +112,9 @@ class Rotation:
                 return A*other + B*self.quaternion[1:] + C * np.cross(self.quaternion[1:],other)
 
             elif other.shape == (3,3,):
-                return np.dot(self.asMatrix(),np.dot(other,self.asMatrix().T))
+                return np.dot(self.as_matrix(),np.dot(other,self.as_matrix().T))
             elif other.shape == (3,3,3,3,):
-                R = self.asMatrix()
+                R = self.as_matrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
                 raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
@@ -150,10 +150,10 @@ class Rotation:
                                        - p_m[...,(i+2)%3]*other[...,(i+1)%3])).reshape(self.shape+(1,))
                                  for i in [0,1,2]])
             if self.shape + (3,3) == other.shape:
-                R = self.asMatrix()
+                R = self.as_matrix()
                 return np.einsum('...im,...jn,...mn',R,R,other)
             if self.shape + (3,3,3,3) == other.shape:
-                R = self.asMatrix()
+                R = self.as_matrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
                 raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
@@ -654,8 +654,8 @@ class Rotation:
     def om2ax(om):
         """Rotation matrix to axis angle pair."""
         diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
-                                  om[...,2,0:1]-om[...,0,2:3],
-                                  om[...,0,1:2]-om[...,1,0:1]
+                                   om[...,2,0:1]-om[...,0,2:3],
+                                   om[...,0,1:2]-om[...,1,0:1]
                                  ])
         diag_delta[np.abs(diag_delta)<1.e-6] = 1.0
         t = 0.5*(om.trace(axis2=-2,axis1=-1) -1.0).reshape(om.shape[:-2]+(1,))

@@ -51,7 +51,7 @@ class TestOrientation:
     def test_relationship_reference(self,update,reference_dir,model,lattice):
         reference = os.path.join(reference_dir,'{}_{}.txt'.format(lattice,model))
         ori = Orientation(Rotation(),lattice)
-        eu = np.array([o.rotation.asEulers(degrees=True) for o in ori.relatedOrientations(model)])
+        eu = np.array([o.rotation.as_Eulers(degrees=True) for o in ori.relatedOrientations(model)])
         if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
             table = damask.Table(eu,{'Eulers':(3,)})
