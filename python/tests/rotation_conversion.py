@@ -31,12 +31,14 @@
 
 import numpy as np
 
-_P = -1
+from damask import _rotation
+
+_P = _rotation._P
 
 # parameters for conversion from/to cubochoric
-_sc   = np.pi**(1./6.)/6.**(1./6.)
-_beta = np.pi**(5./6.)/6.**(1./6.)/2.
-_R1   = (3.*np.pi/4.)**(1./3.)
+_sc   = _rotation._sc
+_beta = _rotation._beta
+_R1   = _rotation._R1
 
 def iszero(a):
     return np.isclose(a,0.0,atol=1.0e-12,rtol=0.0)
@@ -53,7 +55,7 @@ def qu2om(qu):
     om[2,1] = 2.0*(qu[2]*qu[3]-qu[0]*qu[1])
     om[2,0] = 2.0*(qu[1]*qu[3]+qu[0]*qu[2])
     om[0,2] = 2.0*(qu[3]*qu[1]-qu[0]*qu[2])
-    return om if _P < 0.0 else np.swapaxes(om,(-1,-2))
+    return om if _P < 0.0 else np.swapaxes(om,-1,-2)
 
 def qu2eu(qu):
     """Quaternion to Bunge-Euler angles."""
@@ -127,7 +129,7 @@ def om2qu(a):
         else:
             s = 2.0 * np.sqrt( 1.0 + a[2,2] - a[0,0] - a[1,1] )
             qu = np.array([ (a[1,0] - a[0,1]) / s,(a[0,2] + a[2,0]) / s,(a[1,2] + a[2,1]) / s,0.25 * s])
-    return qu
+    return qu*np.array([1.,_P,_P,_P])
 
 def om2eu(om):
     """Rotation matrix to Bunge-Euler angles."""
@@ -167,7 +169,7 @@ def eu2qu(eu):
     ee = 0.5*eu
     cPhi = np.cos(ee[1])
     sPhi = np.sin(ee[1])
-    qu = np.array([   cPhi*np.cos(ee[0]+ee[2]),
+    qu = np.array([    cPhi*np.cos(ee[0]+ee[2]),
                    -_P*sPhi*np.cos(ee[0]-ee[2]),
                    -_P*sPhi*np.sin(ee[0]-ee[2]),
                    -_P*cPhi*np.sin(ee[0]+ee[2]) ])

@@ -716,10 +716,10 @@ class Rotation:
         ee = 0.5*eu
         cPhi = np.cos(ee[...,1:2])
         sPhi = np.sin(ee[...,1:2])
-        qu = np.block([  cPhi*np.cos(ee[...,0:1]+ee[...,2:3]),
-                      -_P*sPhi*np.cos(ee[...,0:1]-ee[...,2:3]),
-                      -_P*sPhi*np.sin(ee[...,0:1]-ee[...,2:3]),
-                      -_P*cPhi*np.sin(ee[...,0:1]+ee[...,2:3])])
+        qu = np.block([    cPhi*np.cos(ee[...,0:1]+ee[...,2:3]),
+                       -_P*sPhi*np.cos(ee[...,0:1]-ee[...,2:3]),
+                       -_P*sPhi*np.sin(ee[...,0:1]-ee[...,2:3]),
+                       -_P*cPhi*np.sin(ee[...,0:1]+ee[...,2:3])])
         qu[qu[...,0]<0.0]*=-1
         return qu
 
@@ -804,7 +804,7 @@ class Rotation:
                        omc*ax[...,0:1]*ax[...,2:3] + s*ax[...,1:2],
                        omc*ax[...,1:2]*ax[...,2:3] - s*ax[...,0:1],
                        c+omc*ax[...,2:3]**2]).reshape(ax.shape[:-1]+(3,3))
-        return om if _P < 0.0 else np.swapaxes(om,(-1,-2))
+        return om if _P < 0.0 else np.swapaxes(om,-1,-2)
 
     @staticmethod
     def ax2eu(ax):
