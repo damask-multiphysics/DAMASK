@@ -112,6 +112,23 @@ def qu2ho(qu):
 
 
 #---------- Rotation matrix ----------
+def om2qu(a):
+    trace = a[0,0] + a[1,1] + a[2,2]
+    if trace > 0:
+        s = 0.5 / np.sqrt(trace+ 1.0)
+        qu = np.array([0.25 / s,( a[2,1] - a[1,2] ) * s,( a[0,2] - a[2,0] ) * s,( a[1,0] - a[0,1] ) * s])
+    else:
+        if ( a[0,0] > a[1,1] and a[0,0] > a[2,2] ):
+            s = 2.0 * np.sqrt( 1.0 + a[0,0] - a[1,1] - a[2,2])
+            qu = np.array([ (a[2,1] - a[1,2]) / s,0.25 * s,(a[0,1] + a[1,0]) / s,(a[0,2] + a[2,0]) / s])
+        elif (a[1,1] > a[2,2]):
+            s = 2.0 * np.sqrt( 1.0 + a[1,1] - a[0,0] - a[2,2])
+            qu = np.array([ (a[0,2] - a[2,0]) / s,(a[0,1] + a[1,0]) / s,0.25 * s,(a[1,2] + a[2,1]) / s])
+        else:
+            s = 2.0 * np.sqrt( 1.0 + a[2,2] - a[0,0] - a[1,1] )
+            qu = np.array([ (a[1,0] - a[0,1]) / s,(a[0,2] + a[2,0]) / s,(a[1,2] + a[2,1]) / s,0.25 * s])
+    return qu
+
 def om2eu(om):
     """Rotation matrix to Bunge-Euler angles."""
     if not np.isclose(np.abs(om[2,2]),1.0,1.e-4):

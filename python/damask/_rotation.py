@@ -534,13 +534,13 @@ class Rotation:
     def qu2om(qu):
         qq = qu[...,0:1]**2-(qu[...,1:2]**2 + qu[...,2:3]**2 + qu[...,3:4]**2)
         om = np.block([qq + 2.0*qu[...,1:2]**2,
-                       2.0*(qu[...,2:3]*qu[...,1:2]+_P*qu[...,0:1]*qu[...,3:4]),
-                       2.0*(qu[...,3:4]*qu[...,1:2]-_P*qu[...,0:1]*qu[...,2:3]),
-                       2.0*(qu[...,1:2]*qu[...,2:3]-_P*qu[...,0:1]*qu[...,3:4]),
+                       2.0*(qu[...,2:3]*qu[...,1:2]-_P*qu[...,0:1]*qu[...,3:4]),
+                       2.0*(qu[...,3:4]*qu[...,1:2]+_P*qu[...,0:1]*qu[...,2:3]),
+                       2.0*(qu[...,1:2]*qu[...,2:3]+_P*qu[...,0:1]*qu[...,3:4]),
                        qq + 2.0*qu[...,2:3]**2,
-                       2.0*(qu[...,3:4]*qu[...,2:3]+_P*qu[...,0:1]*qu[...,1:2]),
-                       2.0*(qu[...,1:2]*qu[...,3:4]+_P*qu[...,0:1]*qu[...,2:3]),
-                       2.0*(qu[...,2:3]*qu[...,3:4]-_P*qu[...,0:1]*qu[...,1:2]),
+                       2.0*(qu[...,3:4]*qu[...,2:3]-_P*qu[...,0:1]*qu[...,1:2]),
+                       2.0*(qu[...,1:2]*qu[...,3:4]-_P*qu[...,0:1]*qu[...,2:3]),
+                       2.0*(qu[...,2:3]*qu[...,3:4]+_P*qu[...,0:1]*qu[...,1:2]),
                        qq + 2.0*qu[...,3:4]**2,
                       ]).reshape(qu.shape[:-1]+(3,3))
         return om
@@ -626,9 +626,31 @@ class Rotation:
         """
         Rotation matrix to quaternion.
 
-        The original formulation (direct conversion) had (numerical?) issues
+        This formulation is from  www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion.
+        The original formulation had issues.
         """
-        return Rotation.eu2qu(Rotation.om2eu(om))
+        def x(a):
+          trace = a[0,0] + a[1,1] + a[2,2]
+          if trace > 0:
+            s = 0.5 / np.sqrt(trace+ 1.0)
+            qu = np.array([0.25 / s,( a[2,1] - a[1,2] ) * s,( a[0,2] - a[2,0] ) * s,( a[1,0] - a[0,1] ) * s])
+          else:
+            if ( a[0,0] > a[1,1] and a[0,0] > a[2,2] ):
+              s = 2.0 * np.sqrt( 1.0 + a[0,0] - a[1,1] - a[2,2])
+              qu = np.array([ (a[2,1] - a[1,2]) / s,0.25 * s,(a[0,1] + a[1,0]) / s,(a[0,2] + a[2,0]) / s])
+            elif (a[1,1] > a[2,2]):
+              s = 2.0 * np.sqrt( 1.0 + a[1,1] - a[0,0] - a[2,2])
+              qu = np.array([ (a[0,2] - a[2,0]) / s,(a[0,1] + a[1,0]) / s,0.25 * s,(a[1,2] + a[2,1]) / s])
+            else:
+              s = 2.0 * np.sqrt( 1.0 + a[2,2] - a[0,0] - a[1,1] )
+              qu = np.array([ (a[1,0] - a[0,1]) / s,(a[0,2] + a[2,0]) / s,(a[1,2] + a[2,1]) / s,0.25 * s])
+          return qu
+        if len(om.shape) > 2:
+          om_ = om.reshape(-1,3,3)
+          qu = np.array([x(o) for o in om_]).reshape(om.shape[:-2]+(4,))
+        else:
+          qu = x(om)
+        return qu*np.array([1,_P,_P,_P])
 
     @staticmethod
     def om2eu(om):
@@ -648,7 +670,6 @@ class Rotation:
         eu[np.abs(eu)<1.e-6] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
-
 
     @staticmethod
     def om2ax(om):
@@ -671,7 +692,6 @@ class Rotation:
         ax = np.block([ax,np.arccos(np.clip(t,-1.0,1.0))])
         ax[np.abs(ax[...,3])<1.e-6] = [ 0.0, 0.0, 1.0, 0.0]
         return ax
-
 
     @staticmethod
     def om2ro(om):
@@ -702,7 +722,6 @@ class Rotation:
                       -_P*cPhi*np.sin(ee[...,0:1]+ee[...,2:3])])
         qu[qu[...,0]<0.0]*=-1
         return qu
-
 
     @staticmethod
     def eu2om(eu):
