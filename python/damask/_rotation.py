@@ -311,7 +311,7 @@ class Rotation:
     # relax the conventions.
     @staticmethod
     def from_quaternion(quaternion,
-                        acceptHomomorph = False,
+                        accept_homomorph = False,
                         P = -1):
 
         qu = np.array(quaternion,dtype=float)
@@ -319,7 +319,7 @@ class Rotation:
             raise ValueError('Invalid shape.')
 
         if P > 0: qu[...,1:4] *= -1                                                                 # convert from P=1 to P=-1
-        if acceptHomomorph:
+        if accept_homomorph:
             qu[qu[...,0] < 0.0] *= -1
         else:
             if np.any(qu[...,0] < 0.0):
@@ -472,7 +472,7 @@ class Rotation:
                 else M + r.asM() * n                                                                # noqa add (multiples) of this rotation to average noqa
         eig, vec = np.linalg.eig(M/N)
 
-        return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),acceptHomomorph = True)
+        return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),accept_homomorph = True)
 
     @staticmethod
     def from_random(shape=None):
