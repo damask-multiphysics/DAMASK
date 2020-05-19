@@ -584,10 +584,10 @@ class Rotation:
         with np.errstate(invalid='ignore',divide='ignore'):
             s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
             omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
-            ax = np.where(np.broadcast_to(qu[...,0:1] < 1.0e-6,qu.shape),
+            ax = np.where(np.broadcast_to(qu[...,0:1] < 1.0e-8,qu.shape),
                           np.block([qu[...,1:4],np.broadcast_to(np.pi,qu.shape[:-1]+(1,))]),
                           np.block([qu[...,1:4]*s,omega]))
-        ax[np.sum(np.abs(qu[...,1:4])**2,axis=-1) < 1.0e-6,] = [0.0, 0.0, 1.0, 0.0]
+        ax[np.isclose(qu[...,0],1.,rtol=0.0)] = [0.0, 0.0, 1.0, 0.0]
         return ax
 
     @staticmethod
@@ -804,7 +804,6 @@ class Rotation:
     @staticmethod
     def ax2om(ax):
         """Axis angle pair to rotation matrix."""
-        return Rotation.qu2om(Rotation.ax2qu(ax))  # HOTFIX
         c = np.cos(ax[...,3:4])
         s = np.sin(ax[...,3:4])
         omc = 1. -c

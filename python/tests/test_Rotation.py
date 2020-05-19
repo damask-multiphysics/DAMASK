@@ -110,9 +110,9 @@ class TestRotation:
     @pytest.mark.parametrize('forward,backward',[(Rotation.om2qu,Rotation.qu2om),
                                                  (Rotation.om2eu,Rotation.eu2om),
                                                  (Rotation.om2ax,Rotation.ax2om),
-                                                 (Rotation.om2ro,Rotation.ro2om)])
-                                                 #(Rotation.om2ho,Rotation.ho2om),
-                                                 #(Rotation.om2cu,Rotation.cu2om)])
+                                                 (Rotation.om2ro,Rotation.ro2om),
+                                                 (Rotation.om2ho,Rotation.ho2om),
+                                                 (Rotation.om2cu,Rotation.cu2om)])
     def test_matrix_internal(self,default,forward,backward):
         for rot in default:
             m = rot.as_matrix()

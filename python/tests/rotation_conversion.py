@@ -81,9 +81,9 @@ def qu2ax(qu):
 
     Modified version of the original formulation, should be numerically more stable
     """
-    if np.abs(np.sum(qu[1:4]**2)) < 1.e-6:                                                          # set axis to [001] if the angle is 0/360
+    if np.isclose(qu[0],1.,rtol=0.0):                                                              # set axis to [001] if the angle is 0/360
         ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
-    elif qu[0] > 1.e-6:
+    elif qu[0] > 1.e-8:
         s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
         omega = 2.0 * np.arccos(np.clip(qu[0],-1.0,1.0))
         ax = ax = np.array([ qu[1]*s, qu[2]*s, qu[3]*s, omega ])
@@ -229,7 +229,6 @@ def ax2qu(ax):
 
 def ax2om(ax):
     """Axis angle pair to rotation matrix."""
-    return qu2om(ax2qu(ax)) # HOTFIX
     c = np.cos(ax[3])
     s = np.sin(ax[3])
     omc = 1.0-c
@@ -239,7 +238,7 @@ def ax2om(ax):
         q = omc*ax[idx[0]] * ax[idx[1]]
         om[idx[0],idx[1]] = q + s*ax[idx[2]]
         om[idx[1],idx[0]] = q - s*ax[idx[2]]
-    return om if _P < 0.0 else np.swapaxes(om,(-1,-2))
+    return om if _P < 0.0 else om.T
 
 def ax2ro(ax):
     """Axis angle pair to Rodrigues-Frank vector."""
