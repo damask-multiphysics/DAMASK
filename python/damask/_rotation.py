@@ -316,8 +316,11 @@ class Rotation:
     @staticmethod
     def from_quaternion(quaternion,
                         accept_homomorph = False,
-                        P = -1):
+                        P = -1,
+                        acceptHomomorph = None):
 
+        if acceptHomomorph is not None:
+            accept_homomorph = acceptHomomorph
         qu = np.array(quaternion,dtype=float)
         if qu.shape[:-2:-1] != (4,):
             raise ValueError('Invalid shape.')
