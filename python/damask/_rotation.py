@@ -629,28 +629,38 @@ class Rotation:
         This formulation is from  www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion.
         The original formulation had issues.
         """
-        def x(a):
-          trace = a[0,0] + a[1,1] + a[2,2]
-          if trace > 0:
-            s = 0.5 / np.sqrt(trace+ 1.0)
-            qu = np.array([0.25 / s,( a[2,1] - a[1,2] ) * s,( a[0,2] - a[2,0] ) * s,( a[1,0] - a[0,1] ) * s])
-          else:
-            if ( a[0,0] > a[1,1] and a[0,0] > a[2,2] ):
-              s = 2.0 * np.sqrt( 1.0 + a[0,0] - a[1,1] - a[2,2])
-              qu = np.array([ (a[2,1] - a[1,2]) / s,0.25 * s,(a[0,1] + a[1,0]) / s,(a[0,2] + a[2,0]) / s])
-            elif (a[1,1] > a[2,2]):
-              s = 2.0 * np.sqrt( 1.0 + a[1,1] - a[0,0] - a[2,2])
-              qu = np.array([ (a[0,2] - a[2,0]) / s,(a[0,1] + a[1,0]) / s,0.25 * s,(a[1,2] + a[2,1]) / s])
-            else:
-              s = 2.0 * np.sqrt( 1.0 + a[2,2] - a[0,0] - a[1,1] )
-              qu = np.array([ (a[1,0] - a[0,1]) / s,(a[0,2] + a[2,0]) / s,(a[1,2] + a[2,1]) / s,0.25 * s])
-          return qu
-        if len(om.shape) > 2:
-          om_ = om.reshape(-1,3,3)
-          qu = np.array([x(o) for o in om_]).reshape(om.shape[:-2]+(4,))
-        else:
-          qu = x(om)
-        return qu*np.array([1,_P,_P,_P])
+        trace = om[...,0,0:1]+om[...,1,1:2]+om[...,2,2:3]
+
+        with np.errstate(invalid='ignore',divide='ignore'):
+            s = [
+                 0.5 / np.sqrt( 1.0 + trace),
+                 2.0 * np.sqrt( 1.0 + om[...,0,0:1] - om[...,1,1:2] - om[...,2,2:3]),
+                 2.0 * np.sqrt( 1.0 + om[...,1,1:2] - om[...,2,2:3] - om[...,0,0:1]),
+                 2.0 * np.sqrt( 1.0 + om[...,2,2:3] - om[...,0,0:1] - om[...,1,1:2] )
+                 ]
+            qu= np.where(trace>0,
+                         np.block([0.25 / s[0],
+                                  (om[...,2,1:2] - om[...,1,2:3] ) * s[0],
+                                  (om[...,0,2:3] - om[...,2,0:1] ) * s[0],
+                                  (om[...,1,0:1] - om[...,0,1:2] ) * s[0]]),
+                         np.where(om[...,0,0:1] > np.maximum(om[...,1,1:2],om[...,2,2:3]),
+                                  np.block([(om[...,2,1:2] - om[...,1,2:3]) / s[1],
+                                            0.25 * s[1],
+                                            (om[...,0,1:2] + om[...,1,0:1]) / s[1],
+                                            (om[...,0,2:3] + om[...,2,0:1]) / s[1]]),
+                                  np.where(om[...,1,1:2] > om[...,2,2:3],
+                                           np.block([(om[...,0,2:3] - om[...,2,0:1]) / s[2],
+                                                     (om[...,0,1:2] + om[...,1,0:1]) / s[2],
+                                                     0.25 * s[2],
+                                                     (om[...,1,2:3] + om[...,2,1:2]) / s[2]]),
+                                           np.block([(om[...,1,0:1] - om[...,0,1:2]) / s[3],
+                                                     (om[...,0,2:3] + om[...,2,0:1]) / s[3],
+                                                     (om[...,1,2:3] + om[...,2,1:2]) / s[3],
+                                                     0.25 * s[3]]),
+                                          )
+                                 )
+                        )*np.array([1,_P,_P,_P])
+        return qu
 
     @staticmethod
     def om2eu(om):
