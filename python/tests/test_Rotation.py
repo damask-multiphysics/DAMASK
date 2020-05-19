@@ -154,8 +154,37 @@ class TestRotation:
             if np.isclose(m[3],np.pi,atol=atol):
                 ok = ok or np.allclose(m*np.array([-1.,-1.,-1.,1.]),o,atol=atol)
             print(m,o,rot.as_quaternion())
-            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi+1.e-7
+            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi+1.e-9
 
+    @pytest.mark.parametrize('forward,backward',[(Rotation.ro2qu,Rotation.qu2ro),
+                                                 #(Rotation.ro2om,Rotation.om2ro),
+                                                 #(Rotation.ro2eu,Rotation.eu2ro),
+                                                 (Rotation.ro2ax,Rotation.ax2ro),
+                                                 (Rotation.ro2ho,Rotation.ho2ro),
+                                                 (Rotation.ro2cu,Rotation.cu2ro)])
+    def test_Rodrigues_internal(self,default,forward,backward):
+        cutoff = np.tan(np.pi*.5*(1.-1e-4))
+        for rot in default:
+            m = rot.as_Rodrigues()
+            o = backward(forward(m))
+            ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
+            ok = ok or np.isclose(m[3],0.0,atol=atol)
+            print(m,o,rot.as_quaternion())
+            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0)
+
+    @pytest.mark.parametrize('forward,backward',[(Rotation.ho2qu,Rotation.qu2ho),
+                                                 (Rotation.ho2om,Rotation.om2ho),
+                                                 #(Rotation.ho2eu,Rotation.eu2ho),
+                                                 (Rotation.ho2ax,Rotation.ax2ho),
+                                                 (Rotation.ho2ro,Rotation.ro2ho),
+                                                 (Rotation.ho2cu,Rotation.cu2ho)])
+    def test_homochoric_internal(self,default,forward,backward):
+        for rot in default:
+            m = rot.as_homochoric()
+            o = backward(forward(m))
+            ok = np.allclose(m,o,atol=atol)
+            print(m,o,rot.as_quaternion())
+            assert ok and np.linalg.norm(o) < (3.*np.pi/4.)**(1./3.) + 1.e-9
 
     @pytest.mark.parametrize('degrees',[True,False])
     def test_Eulers(self,default,degrees):
@@ -193,7 +222,7 @@ class TestRotation:
             if np.isclose(m[3],np.pi,atol=atol):
                 ok = ok or np.allclose(m*np.array([-1.,-1.,-1.,1.]),o,atol=atol)
             print(m,o,rot.as_quaternion())
-            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi+1.e-7
+            assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi+1.e-9
 
     @pytest.mark.parametrize('P',[1,-1])
     @pytest.mark.parametrize('normalise',[True,False])

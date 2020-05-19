@@ -112,10 +112,14 @@ class Rotation:
                 return A*other + B*self.quaternion[1:] + C * np.cross(self.quaternion[1:],other)
 
             elif other.shape == (3,3,):
-                return np.dot(self.as_matrix(),np.dot(other,self.as_matrix().T))
+                R = self.as_matrix()
+                return np.dot(R,np.dot(other,R.T))
             elif other.shape == (3,3,3,3,):
                 R = self.as_matrix()
-                return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
+                RR = np.outer(R, R)
+                RRRR = np.outer(RR, RR).reshape(4 * (3,3))
+                axes = ((0, 2, 4, 6), (0, 1, 2, 3))
+                return np.tensordot(RRRR, other, axes)
             else:
                 raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
         else:
