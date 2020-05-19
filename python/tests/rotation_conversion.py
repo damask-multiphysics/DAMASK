@@ -134,25 +134,26 @@ def om2qu(a):
 
 def om2eu(om):
     """Rotation matrix to Bunge-Euler angles."""
-    if not np.isclose(np.abs(om[2,2]),1.0,1.e-4):
+    if not np.isclose(np.abs(om[2,2]),1.0,1.e-9):
         zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
         eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
                        np.arccos(om[2,2]),
                        np.arctan2(om[0,2]*zeta, om[1,2]*zeta)])
     else:
         eu = np.array([np.arctan2( om[0,1],om[0,0]), np.pi*0.5*(1-om[2,2]),0.0])                    # following the paper, not the reference implementation
-    eu[np.abs(eu)<1.e-6] = 0.0
+    eu[np.abs(eu)<1.e-8] = 0.0
     eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
     return eu
 
 def om2ax(om):
     """Rotation matrix to axis angle pair."""
+    return qu2ax(om2qu(om)) # HOTFIX
     ax=np.empty(4)
 
     # first get the rotation angle
     t = 0.5*(om.trace() -1.0)
     ax[3] = np.arccos(np.clip(t,-1.0,1.0))
-    if np.abs(ax[3])<1.e-6:
+    if np.abs(ax[3])<1.e-8:
         ax = np.array([ 0.0, 0.0, 1.0, 0.0])
     else:
         w,vr = np.linalg.eig(om)
@@ -160,8 +161,7 @@ def om2ax(om):
         i = np.where(np.isclose(w,1.0+0.0j))[0][0]
         ax[0:3] = np.real(vr[0:3,i])
         diagDelta = -_P*np.array([om[1,2]-om[2,1],om[2,0]-om[0,2],om[0,1]-om[1,0]])
-        diagDelta[np.abs(diagDelta)<1.e-6] = 1.0
-        ax[0:3] = np.where(np.abs(diagDelta)<0, ax[0:3],np.abs(ax[0:3])*np.sign(diagDelta))
+        ax[0:3] = np.where(np.abs(diagDelta)<1e-12, ax[0:3],np.abs(ax[0:3])*np.sign(diagDelta))
     return ax
 
 #---------- Bunge-Euler angles ----------
@@ -229,6 +229,7 @@ def ax2qu(ax):
 
 def ax2om(ax):
     """Axis angle pair to rotation matrix."""
+    return qu2om(ax2qu(ax)) # HOTFIX
     c = np.cos(ax[3])
     s = np.sin(ax[3])
     omc = 1.0-c

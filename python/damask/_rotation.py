@@ -669,7 +669,7 @@ class Rotation:
         """Rotation matrix to Bunge-Euler angles."""
         with np.errstate(invalid='ignore',divide='ignore'):
             zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
-            eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,1e-4),
+            eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,1e-9),
                           np.block([np.arctan2(om[...,0,1:2],om[...,0,0:1]),
                                     np.pi*0.5*(1-om[...,2,2:3]),
                                     np.zeros(om.shape[:-2]+(1,)),
@@ -679,30 +679,30 @@ class Rotation:
                                     np.arctan2(om[...,0,2:3]*zeta,+om[...,1,2:3]*zeta)
                                    ])
                           )
-        eu[np.abs(eu)<1.e-6] = 0.0
+        eu[np.abs(eu)<1.e-8] = 0.0
         eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
         return eu
 
     @staticmethod
     def om2ax(om):
         """Rotation matrix to axis angle pair."""
+        return Rotation.qu2ax(Rotation.om2qu(om)) # HOTFIX
         diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
                                    om[...,2,0:1]-om[...,0,2:3],
                                    om[...,0,1:2]-om[...,1,0:1]
                                  ])
-        diag_delta[np.abs(diag_delta)<1.e-6] = 1.0
         t = 0.5*(om.trace(axis2=-2,axis1=-1) -1.0).reshape(om.shape[:-2]+(1,))
         w,vr = np.linalg.eig(om)
         # mask duplicated real eigenvalues
         w[np.isclose(w[...,0],1.0+0.0j),1:] = 0.
         w[np.isclose(w[...,1],1.0+0.0j),2:] = 0.
         vr = np.swapaxes(vr,-1,-2)
-        ax = np.where(np.abs(diag_delta)<0,
+        ax = np.where(np.abs(diag_delta)<1e-12,
                              np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,)),
                       np.abs(np.real(vr[np.isclose(w,1.0+0.0j)]).reshape(om.shape[:-2]+(3,))) \
                       *np.sign(diag_delta))
         ax = np.block([ax,np.arccos(np.clip(t,-1.0,1.0))])
-        ax[np.abs(ax[...,3])<1.e-6] = [ 0.0, 0.0, 1.0, 0.0]
+        ax[np.abs(ax[...,3])<1.e-8] = [ 0.0, 0.0, 1.0, 0.0]
         return ax
 
     @staticmethod
@@ -804,6 +804,7 @@ class Rotation:
     @staticmethod
     def ax2om(ax):
         """Axis angle pair to rotation matrix."""
+        return Rotation.qu2om(Rotation.ax2qu(ax))  # HOTFIX
         c = np.cos(ax[...,3:4])
         s = np.sin(ax[...,3:4])
         omc = 1. -c
