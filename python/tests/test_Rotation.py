@@ -91,20 +91,25 @@ def reference_dir(reference_dir_base):
 
 class TestRotation:
 
-    def test_Eulers(self,default):
+    @pytest.mark.parametrize('degrees',[True,False])
+    def test_Eulers(self,default,degrees):
         for rot in default:
             m = rot.as_quaternion()
-            o = Rotation.from_Eulers(rot.as_Eulers()).as_quaternion()
+            o = Rotation.from_Eulers(rot.as_Eulers(degrees),degrees).as_quaternion()
             ok = np.allclose(m,o,atol=atol)
             if np.isclose(rot.as_quaternion()[0],0.0,atol=atol):
                 ok = ok or np.allclose(m*-1.,o,atol=atol)
             print(m,o,rot.as_quaternion())
             assert ok and np.isclose(np.linalg.norm(o),1.0)
 
-    def test_AxisAngle(self,default):
+    @pytest.mark.parametrize('P',[1,-1])
+    @pytest.mark.parametrize('normalise',[True,False])
+    @pytest.mark.parametrize('degrees',[True,False])
+    def test_AxisAngle(self,default,degrees,normalise,P):
+        c = np.array([P*-1,P*-1,P*-1,1.])
         for rot in default:
             m = rot.as_Eulers()
-            o = Rotation.from_axis_angle(rot.as_axis_angle()).as_Eulers()
+            o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalise,P).as_Eulers()
             u = np.array([np.pi*2,np.pi,np.pi*2])
             ok = np.allclose(m,o,atol=atol)
             ok = ok or np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
@@ -124,36 +129,43 @@ class TestRotation:
             print(m,o,rot.as_quaternion())
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi++1.e-9
 
-    def test_Rodrigues(self,default):
+    @pytest.mark.parametrize('P',[1,-1])
+    @pytest.mark.parametrize('normalise',[True,False])
+    def test_Rodrigues(self,default,normalise,P):
+        c = np.array([P*-1,P*-1,P*-1,1.])
         for rot in default:
             m = rot.as_matrix()
-            o = Rotation.from_Rodrigues(rot.as_Rodrigues()).as_matrix()
+            o = Rotation.from_Rodrigues(rot.as_Rodrigues()*c,normalise,P).as_matrix()
             ok = np.allclose(m,o,atol=atol)
             print(m,o)
             assert ok and np.isclose(np.linalg.det(o),1.0)
 
-    def test_Homochoric(self,default):
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_Homochoric(self,default,P):
         cutoff = np.tan(np.pi*.5*(1.-1e-4))
         for rot in default:
             m = rot.as_Rodrigues()
-            o = Rotation.from_homochoric(rot.as_homochoric()).as_Rodrigues()
+            o = Rotation.from_homochoric(rot.as_homochoric()*P*-1,P).as_Rodrigues()
             ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
             ok = ok or np.isclose(m[3],0.0,atol=atol)
             print(m,o,rot.as_quaternion())
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0)
 
-    def test_Cubochoric(self,default):
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_Cubochoric(self,default,P):
         for rot in default:
             m = rot.as_homochoric()
-            o = Rotation.from_cubochoric(rot.as_cubochoric()).as_homochoric()
+            o = Rotation.from_cubochoric(rot.as_cubochoric()*P*-1,P).as_homochoric()
             ok = np.allclose(m,o,atol=atol)
             print(m,o,rot.as_quaternion())
             assert ok and np.linalg.norm(o) < (3.*np.pi/4.)**(1./3.) + 1.e-9
 
-    def test_Quaternion(self,default):
+    @pytest.mark.parametrize('P',[1,-1])
+    def test_Quaternion(self,default,P):
+        c = np.array([1,P*-1,P*-1,P*-1])
         for rot in default:
             m = rot.as_cubochoric()
-            o = Rotation.from_quaternion(rot.as_quaternion()).as_cubochoric()
+            o = Rotation.from_quaternion(rot.as_quaternion()*c,False,P).as_cubochoric()
             ok = np.allclose(m,o,atol=atol)
             print(m,o,rot.as_quaternion())
             assert ok and o.max() < np.pi**(2./3.)*0.5+1.e-9

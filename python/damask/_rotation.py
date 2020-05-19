@@ -494,6 +494,7 @@ class Rotation:
 
 
     # for compatibility (old names do not follow convention)
+    asM            = M
     fromQuaternion = from_quaternion
     fromEulers     = from_Eulers
     asAxisAngle    = as_axis_angle
