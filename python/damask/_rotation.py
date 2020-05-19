@@ -502,6 +502,7 @@ class Rotation:
     fromQuaternion = from_quaternion
     fromEulers     = from_Eulers
     asAxisAngle    = as_axis_angle
+    asRodrigues    = as_Rodrigues
 
 
 ####################################################################################################
