@@ -468,8 +468,8 @@ class Rotation:
             weights = np.ones(N,dtype='i')
 
         for i,(r,n) in enumerate(zip(rotations,weights)):
-            M =          r.asM() * n if i == 0 \
-                else M + r.asM() * n                                                                # noqa add (multiples) of this rotation to average noqa
+            M =          r.M() * n if i == 0 \
+                else M + r.M() * n                                                                  # noqa add (multiples) of this rotation to average noqa
         eig, vec = np.linalg.eig(M/N)
 
         return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),accept_homomorph = True)
@@ -661,6 +661,7 @@ class Rotation:
                                           )
                                  )
                         )*np.array([1,_P,_P,_P])
+            qu[qu[...,0]<0] *=-1
         return qu
 
     @staticmethod

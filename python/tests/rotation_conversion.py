@@ -129,6 +129,7 @@ def om2qu(a):
         else:
             s = 2.0 * np.sqrt( 1.0 + a[2,2] - a[0,0] - a[1,1] )
             qu = np.array([ (a[1,0] - a[0,1]) / s,(a[0,2] + a[2,0]) / s,(a[1,2] + a[2,1]) / s,0.25 * s])
+    if qu[0]<0: qu*=-1
     return qu*np.array([1.,_P,_P,_P])
 
 def om2eu(om):

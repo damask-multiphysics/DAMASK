@@ -91,6 +91,56 @@ def reference_dir(reference_dir_base):
 
 class TestRotation:
 
+    @pytest.mark.parametrize('forward,backward',[(Rotation.qu2om,Rotation.om2qu),
+                                                 (Rotation.qu2eu,Rotation.eu2qu),
+                                                 (Rotation.qu2ax,Rotation.ax2qu),
+                                                 (Rotation.qu2ro,Rotation.ro2qu),
+                                                 (Rotation.qu2ho,Rotation.ho2qu),
+                                                 (Rotation.qu2cu,Rotation.cu2qu)])
+    def test_quaternion_internal(self,default,forward,backward):
+        for rot in default:
+            m = rot.as_quaternion()
+            o = backward(forward(m))
+            ok = np.allclose(m,o,atol=atol)
+            if np.isclose(rot.as_quaternion()[0],0.0,atol=atol):
+                ok = ok or np.allclose(m*-1.,o,atol=atol)
+            print(m,o,rot.as_quaternion())
+            assert ok and np.isclose(np.linalg.norm(o),1.0)
+
+    @pytest.mark.parametrize('forward,backward',[(Rotation.om2qu,Rotation.qu2om)])
+                                                 #(Rotation.om2eu,Rotation.eu2om),
+                                                 #(Rotation.om2ax,Rotation.ax2om),
+                                                 #(Rotation.om2ro,Rotation.ro2om),
+                                                 #(Rotation.om2ho,Rotation.ho2om),
+                                                 #(Rotation.om2cu,Rotation.cu2om)])
+    def test_matrix_internal(self,default,forward,backward):
+        for rot in default:
+            m = rot.as_matrix()
+            o = backward(forward(m))
+            ok = np.allclose(m,o,atol=atol)
+            print(m,o,rot.as_quaternion())
+            assert ok and np.isclose(np.linalg.det(o),1.0)
+
+    @pytest.mark.parametrize('forward,backward',[(Rotation.eu2qu,Rotation.qu2eu)])
+                                                #(Rotation.eu2om,Rotation.om2eu),
+                                                #(Rotation.eu2ax,Rotation.ax2eu),
+                                                #(Rotation.eu2ro,Rotation.ro2eu),
+                                                #(Rotation.eu2ho,Rotation.ho2eu),
+                                                #(Rotation.eu2cu,Rotation.cu2eu)])
+    def test_Eulers_internal(self,default,forward,backward):
+        for rot in default:
+            m = rot.as_Eulers()
+            o = backward(forward(m))
+            u = np.array([np.pi*2,np.pi,np.pi*2])
+            ok = np.allclose(m,o,atol=atol)
+            ok = ok or np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
+            if np.isclose(m[1],0.0,atol=atol) or np.isclose(m[1],np.pi,atol=atol):
+                sum_phi = np.unwrap([m[0]+m[2],o[0]+o[2]])
+                ok = ok or np.isclose(sum_phi[0],sum_phi[1],atol=atol)
+            print(m,o,rot.as_quaternion())
+            assert ok and (np.zeros(3)-1.e-9 <= o).all() and (o <= np.array([np.pi*2.,np.pi,np.pi*2.])+1.e-9).all()
+
+
     @pytest.mark.parametrize('degrees',[True,False])
     def test_Eulers(self,default,degrees):
         for rot in default:
