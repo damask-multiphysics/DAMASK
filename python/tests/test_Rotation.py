@@ -91,12 +91,12 @@ def reference_dir(reference_dir_base):
 
 class TestRotation:
 
-    @pytest.mark.parametrize('forward,backward',[(Rotation.qu2om,Rotation.om2qu),
-                                                 (Rotation.qu2eu,Rotation.eu2qu),
-                                                 (Rotation.qu2ax,Rotation.ax2qu),
-                                                 (Rotation.qu2ro,Rotation.ro2qu),
-                                                 (Rotation.qu2ho,Rotation.ho2qu),
-                                                 (Rotation.qu2cu,Rotation.cu2qu)])
+    @pytest.mark.parametrize('forward,backward',[(Rotation._qu2om,Rotation._om2qu),
+                                                 (Rotation._qu2eu,Rotation._eu2qu),
+                                                 (Rotation._qu2ax,Rotation._ax2qu),
+                                                 (Rotation._qu2ro,Rotation._ro2qu),
+                                                 (Rotation._qu2ho,Rotation._ho2qu),
+                                                 (Rotation._qu2cu,Rotation._cu2qu)])
     def test_quaternion_internal(self,default,forward,backward):
         for rot in default:
             m = rot.as_quaternion()
@@ -107,12 +107,12 @@ class TestRotation:
             print(m,o,rot.as_quaternion())
             assert ok and np.isclose(np.linalg.norm(o),1.0)
 
-    @pytest.mark.parametrize('forward,backward',[(Rotation.om2qu,Rotation.qu2om),
-                                                 (Rotation.om2eu,Rotation.eu2om),
-                                                 (Rotation.om2ax,Rotation.ax2om),
-                                                 (Rotation.om2ro,Rotation.ro2om),
-                                                 (Rotation.om2ho,Rotation.ho2om),
-                                                 (Rotation.om2cu,Rotation.cu2om)])
+    @pytest.mark.parametrize('forward,backward',[(Rotation._om2qu,Rotation._qu2om),
+                                                 (Rotation._om2eu,Rotation._eu2om),
+                                                 (Rotation._om2ax,Rotation._ax2om),
+                                                 (Rotation._om2ro,Rotation._ro2om),
+                                                 (Rotation._om2ho,Rotation._ho2om),
+                                                 (Rotation._om2cu,Rotation._cu2om)])
     def test_matrix_internal(self,default,forward,backward):
         for rot in default:
             m = rot.as_matrix()
@@ -121,12 +121,12 @@ class TestRotation:
             print(m,o,rot.as_quaternion())
             assert ok and np.isclose(np.linalg.det(o),1.0)
 
-    @pytest.mark.parametrize('forward,backward',[(Rotation.eu2qu,Rotation.qu2eu),
-                                                 (Rotation.eu2om,Rotation.om2eu),
-                                                 (Rotation.eu2ax,Rotation.ax2eu),
-                                                 (Rotation.eu2ro,Rotation.ro2eu),
-                                                 (Rotation.eu2ho,Rotation.ho2eu),
-                                                 (Rotation.eu2cu,Rotation.cu2eu)])
+    @pytest.mark.parametrize('forward,backward',[(Rotation._eu2qu,Rotation._qu2eu),
+                                                 (Rotation._eu2om,Rotation._om2eu),
+                                                 (Rotation._eu2ax,Rotation._ax2eu),
+                                                 (Rotation._eu2ro,Rotation._ro2eu),
+                                                 (Rotation._eu2ho,Rotation._ho2eu),
+                                                 (Rotation._eu2cu,Rotation._cu2eu)])
     def test_Eulers_internal(self,default,forward,backward):
         for rot in default:
             m = rot.as_Eulers()
@@ -140,12 +140,12 @@ class TestRotation:
             print(m,o,rot.as_quaternion())
             assert ok and (np.zeros(3)-1.e-9 <= o).all() and (o <= np.array([np.pi*2.,np.pi,np.pi*2.])+1.e-9).all()
 
-    @pytest.mark.parametrize('forward,backward',[(Rotation.ax2qu,Rotation.qu2ax),
-                                                 (Rotation.ax2om,Rotation.om2ax),
-                                                 (Rotation.ax2eu,Rotation.eu2ax),
-                                                 (Rotation.ax2ro,Rotation.ro2ax),
-                                                 (Rotation.ax2ho,Rotation.ho2ax),
-                                                 (Rotation.ax2cu,Rotation.cu2ax)])
+    @pytest.mark.parametrize('forward,backward',[(Rotation._ax2qu,Rotation._qu2ax),
+                                                 (Rotation._ax2om,Rotation._om2ax),
+                                                 (Rotation._ax2eu,Rotation._eu2ax),
+                                                 (Rotation._ax2ro,Rotation._ro2ax),
+                                                 (Rotation._ax2ho,Rotation._ho2ax),
+                                                 (Rotation._ax2cu,Rotation._cu2ax)])
     def test_axis_angle_internal(self,default,forward,backward):
         for rot in default:
             m = rot.as_axis_angle()
@@ -156,12 +156,12 @@ class TestRotation:
             print(m,o,rot.as_quaternion())
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi+1.e-9
 
-    @pytest.mark.parametrize('forward,backward',[(Rotation.ro2qu,Rotation.qu2ro),
-                                                 #(Rotation.ro2om,Rotation.om2ro),
-                                                 #(Rotation.ro2eu,Rotation.eu2ro),
-                                                 (Rotation.ro2ax,Rotation.ax2ro),
-                                                 (Rotation.ro2ho,Rotation.ho2ro),
-                                                 (Rotation.ro2cu,Rotation.cu2ro)])
+    @pytest.mark.parametrize('forward,backward',[(Rotation._ro2qu,Rotation._qu2ro),
+                                                 #(Rotation._ro2om,Rotation._om2ro),
+                                                 #(Rotation._ro2eu,Rotation._eu2ro),
+                                                 (Rotation._ro2ax,Rotation._ax2ro),
+                                                 (Rotation._ro2ho,Rotation._ho2ro),
+                                                 (Rotation._ro2cu,Rotation._cu2ro)])
     def test_Rodrigues_internal(self,default,forward,backward):
         cutoff = np.tan(np.pi*.5*(1.-1e-4))
         for rot in default:
@@ -172,12 +172,12 @@ class TestRotation:
             print(m,o,rot.as_quaternion())
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0)
 
-    @pytest.mark.parametrize('forward,backward',[(Rotation.ho2qu,Rotation.qu2ho),
-                                                 (Rotation.ho2om,Rotation.om2ho),
-                                                 #(Rotation.ho2eu,Rotation.eu2ho),
-                                                 (Rotation.ho2ax,Rotation.ax2ho),
-                                                 (Rotation.ho2ro,Rotation.ro2ho),
-                                                 (Rotation.ho2cu,Rotation.cu2ho)])
+    @pytest.mark.parametrize('forward,backward',[(Rotation._ho2qu,Rotation._qu2ho),
+                                                 (Rotation._ho2om,Rotation._om2ho),
+                                                 #(Rotation._ho2eu,Rotation._eu2ho),
+                                                 (Rotation._ho2ax,Rotation._ax2ho),
+                                                 (Rotation._ho2ro,Rotation._ro2ho),
+                                                 (Rotation._ho2cu,Rotation._cu2ho)])
     def test_homochoric_internal(self,default,forward,backward):
         for rot in default:
             m = rot.as_homochoric()
@@ -289,11 +289,11 @@ class TestRotation:
         with pytest.raises(ValueError):
             function(invalid)
 
-    @pytest.mark.parametrize('vectorized, single',[(Rotation.qu2om,rotation_conversion.qu2om),
-                                                   (Rotation.qu2eu,rotation_conversion.qu2eu),
-                                                   (Rotation.qu2ax,rotation_conversion.qu2ax),
-                                                   (Rotation.qu2ro,rotation_conversion.qu2ro),
-                                                   (Rotation.qu2ho,rotation_conversion.qu2ho)])
+    @pytest.mark.parametrize('vectorized, single',[(Rotation._qu2om,rotation_conversion.qu2om),
+                                                   (Rotation._qu2eu,rotation_conversion.qu2eu),
+                                                   (Rotation._qu2ax,rotation_conversion.qu2ax),
+                                                   (Rotation._qu2ro,rotation_conversion.qu2ro),
+                                                   (Rotation._qu2ho,rotation_conversion.qu2ho)])
     def test_quaternion_vectorization(self,default,vectorized,single):
         qu = np.array([rot.as_quaternion() for rot in default])
         vectorized(qu.reshape(qu.shape[0]//2,-1,4))
@@ -303,9 +303,9 @@ class TestRotation:
             assert np.allclose(single(q),c) and np.allclose(single(q),vectorized(q))
 
 
-    @pytest.mark.parametrize('vectorized, single',[(Rotation.om2qu,rotation_conversion.om2qu),
-                                                   (Rotation.om2eu,rotation_conversion.om2eu),
-                                                   (Rotation.om2ax,rotation_conversion.om2ax)])
+    @pytest.mark.parametrize('vectorized, single',[(Rotation._om2qu,rotation_conversion.om2qu),
+                                                   (Rotation._om2eu,rotation_conversion.om2eu),
+                                                   (Rotation._om2ax,rotation_conversion.om2ax)])
     def test_matrix_vectorization(self,default,vectorized,single):
         om = np.array([rot.as_matrix() for rot in default])
         vectorized(om.reshape(om.shape[0]//2,-1,3,3))
@@ -314,10 +314,10 @@ class TestRotation:
             print(o,c)
             assert np.allclose(single(o),c) and np.allclose(single(o),vectorized(o))
 
-    @pytest.mark.parametrize('vectorized, single',[(Rotation.eu2qu,rotation_conversion.eu2qu),
-                                                   (Rotation.eu2om,rotation_conversion.eu2om),
-                                                   (Rotation.eu2ax,rotation_conversion.eu2ax),
-                                                   (Rotation.eu2ro,rotation_conversion.eu2ro)])
+    @pytest.mark.parametrize('vectorized, single',[(Rotation._eu2qu,rotation_conversion.eu2qu),
+                                                   (Rotation._eu2om,rotation_conversion.eu2om),
+                                                   (Rotation._eu2ax,rotation_conversion.eu2ax),
+                                                   (Rotation._eu2ro,rotation_conversion.eu2ro)])
     def test_Euler_vectorization(self,default,vectorized,single):
         eu = np.array([rot.as_Eulers() for rot in default])
         vectorized(eu.reshape(eu.shape[0]//2,-1,3))
@@ -326,10 +326,10 @@ class TestRotation:
             print(e,c)
             assert np.allclose(single(e),c) and np.allclose(single(e),vectorized(e))
 
-    @pytest.mark.parametrize('vectorized, single',[(Rotation.ax2qu,rotation_conversion.ax2qu),
-                                                   (Rotation.ax2om,rotation_conversion.ax2om),
-                                                   (Rotation.ax2ro,rotation_conversion.ax2ro),
-                                                   (Rotation.ax2ho,rotation_conversion.ax2ho)])
+    @pytest.mark.parametrize('vectorized, single',[(Rotation._ax2qu,rotation_conversion.ax2qu),
+                                                   (Rotation._ax2om,rotation_conversion.ax2om),
+                                                   (Rotation._ax2ro,rotation_conversion.ax2ro),
+                                                   (Rotation._ax2ho,rotation_conversion.ax2ho)])
     def test_axisAngle_vectorization(self,default,vectorized,single):
         ax = np.array([rot.as_axis_angle() for rot in default])
         vectorized(ax.reshape(ax.shape[0]//2,-1,4))
@@ -339,8 +339,8 @@ class TestRotation:
             assert np.allclose(single(a),c) and np.allclose(single(a),vectorized(a))
 
 
-    @pytest.mark.parametrize('vectorized, single',[(Rotation.ro2ax,rotation_conversion.ro2ax),
-                                                   (Rotation.ro2ho,rotation_conversion.ro2ho)])
+    @pytest.mark.parametrize('vectorized, single',[(Rotation._ro2ax,rotation_conversion.ro2ax),
+                                                   (Rotation._ro2ho,rotation_conversion.ro2ho)])
     def test_Rodrigues_vectorization(self,default,vectorized,single):
         ro = np.array([rot.as_Rodrigues() for rot in default])
         vectorized(ro.reshape(ro.shape[0]//2,-1,4))
@@ -349,8 +349,8 @@ class TestRotation:
             print(r,c)
             assert np.allclose(single(r),c) and np.allclose(single(r),vectorized(r))
 
-    @pytest.mark.parametrize('vectorized, single',[(Rotation.ho2ax,rotation_conversion.ho2ax),
-                                                   (Rotation.ho2cu,rotation_conversion.ho2cu)])
+    @pytest.mark.parametrize('vectorized, single',[(Rotation._ho2ax,rotation_conversion.ho2ax),
+                                                   (Rotation._ho2cu,rotation_conversion.ho2cu)])
     def test_homochoric_vectorization(self,default,vectorized,single):
         ho = np.array([rot.as_homochoric() for rot in default])
         vectorized(ho.reshape(ho.shape[0]//2,-1,3))
@@ -359,7 +359,7 @@ class TestRotation:
             print(h,c)
             assert np.allclose(single(h),c) and np.allclose(single(h),vectorized(h))
 
-    @pytest.mark.parametrize('vectorized, single',[(Rotation.cu2ho,rotation_conversion.cu2ho)])
+    @pytest.mark.parametrize('vectorized, single',[(Rotation._cu2ho,rotation_conversion.cu2ho)])
     def test_cubochoric_vectorization(self,default,vectorized,single):
         cu = np.array([rot.as_cubochoric() for rot in default])
         vectorized(cu.reshape(cu.shape[0]//2,-1,3))
