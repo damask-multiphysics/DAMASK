@@ -77,9 +77,9 @@ class Rotation:
                 ])
 
 
-    def __mul__(self, other):
+    def __matmul__(self, other):
         """
-        Multiplication.
+        Rotation of vector, second or fourth order tensor, or rotation object.
 
         Parameters
         ----------
@@ -89,47 +89,6 @@ class Rotation:
         Todo
         ----
         Document details active/passive)
-        consider rotation of (3,3,3,3)-matrix
-
-        """
-        if self.quaternion.shape != (4,):
-            raise NotImplementedError('Support for multiple rotations missing')
-        if isinstance(other, Rotation):
-            self_q  = self.quaternion[0]
-            self_p  = self.quaternion[1:]
-            other_q = other.quaternion[0]
-            other_p = other.quaternion[1:]
-            R = self.__class__(np.append(self_q*other_q - np.dot(self_p,other_p),
-                                         self_q*other_p + other_q*self_p + _P * np.cross(self_p,other_p)))
-            return R.standardize()
-        elif isinstance(other, np.ndarray):
-            if other.shape == (3,):
-                A = self.quaternion[0]**2.0 - np.dot(self.quaternion[1:],self.quaternion[1:])
-                B = 2.0 * np.dot(self.quaternion[1:],other)
-                C = 2.0 * _P*self.quaternion[0]
-
-                return A*other + B*self.quaternion[1:] + C * np.cross(self.quaternion[1:],other)
-
-            elif other.shape == (3,3,):
-                R = self.as_matrix()
-                return np.dot(R,np.dot(other,R.T))
-            elif other.shape == (3,3,3,3,):
-                R = self.as_matrix()
-                RR = np.outer(R, R)
-                RRRR = np.outer(RR, RR).reshape(4 * (3,3))
-                axes = ((0, 2, 4, 6), (0, 1, 2, 3))
-                return np.tensordot(RRRR, other, axes)
-            else:
-                raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
-        else:
-            raise TypeError('Cannot rotate {}'.format(type(other)))
-
-
-    def __matmul__(self, other):
-        """
-        Rotation.
-
-        details to be discussed
         """
         if isinstance(other, Rotation):
             q_m = self.quaternion[...,0:1]
@@ -505,7 +464,7 @@ class Rotation:
     fromEulers     = from_Eulers
     asAxisAngle    = as_axis_angle
     asRodrigues    = as_Rodrigues
-
+    __mul__        = __matmul__
 
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
