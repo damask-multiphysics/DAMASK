@@ -119,7 +119,7 @@ class Rotation:
                 R = self.as_matrix()
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
-                raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
+                raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
         else:
             raise TypeError('Cannot rotate {}'.format(type(other)))
 
@@ -464,7 +464,6 @@ class Rotation:
     fromQuaternion = from_quaternion
     fromEulers     = from_Eulers
     asAxisAngle    = as_axis_angle
-    asRodrigues    = as_Rodrigues
     __mul__        = __matmul__
 
 ####################################################################################################
