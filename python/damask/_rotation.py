@@ -88,7 +88,8 @@ class Rotation:
 
         Todo
         ----
-        Document details active/passive)
+        Check rotation of 4th order tensor
+
         """
         if isinstance(other, Rotation):
             q_m = self.quaternion[...,0:1]
