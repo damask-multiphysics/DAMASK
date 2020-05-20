@@ -9,7 +9,6 @@ _sc   = np.pi**(1./6.)/6.**(1./6.)
 _beta = np.pi**(5./6.)/6.**(1./6.)/2.
 _R1   = (3.*np.pi/4.)**(1./3.)
 
-
 class Rotation:
     u"""
     Orientation stored with functionality for conversion to different representations.
@@ -427,7 +426,7 @@ class Rotation:
 
         if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
 
-        if np.any(np.linalg.norm(ho,axis=-1) > (3.*np.pi/4.)**(1./3.)+1e-9):
+        if np.any(np.linalg.norm(ho,axis=-1) >_R1+1e-9):
             raise ValueError('Homochoric coordinate outside of the sphere.')
 
         return Rotation(Rotation._ho2qu(ho))
