@@ -694,7 +694,7 @@ class Rotation:
     @staticmethod
     def om2ax(om):
         """Rotation matrix to axis angle pair."""
-        return Rotation.qu2ax(Rotation.om2qu(om)) # HOTFIX
+        #return Rotation.qu2ax(Rotation.om2qu(om)) # HOTFIX
         diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
                                    om[...,2,0:1]-om[...,0,2:3],
                                    om[...,0,1:2]-om[...,1,0:1]
@@ -878,14 +878,14 @@ class Rotation:
             ax = np.where(np.isfinite(ro[...,3:4]),
                  np.block([ro[...,0:3]*np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True),2.*np.arctan(ro[...,3:4])]),
                  np.block([ro[...,0:3],np.broadcast_to(np.pi,ro[...,3:4].shape)]))
-        ax[np.abs(ro[...,3]) < 1.e-6]  = np.array([ 0.0, 0.0, 1.0, 0.0 ])
+        ax[np.abs(ro[...,3]) < 1.e-8]  = np.array([ 0.0, 0.0, 1.0, 0.0 ])
         return ax
 
     @staticmethod
     def ro2ho(ro):
         """Rodrigues-Frank vector to homochoric vector."""
         f = np.where(np.isfinite(ro[...,3:4]),2.0*np.arctan(ro[...,3:4]) -np.sin(2.0*np.arctan(ro[...,3:4])),np.pi)
-        ho = np.where(np.broadcast_to(np.sum(ro[...,0:3]**2.0,axis=-1,keepdims=True) < 1.e-6,ro[...,0:3].shape),
+        ho = np.where(np.broadcast_to(np.sum(ro[...,0:3]**2.0,axis=-1,keepdims=True) < 1.e-8,ro[...,0:3].shape),
                       np.zeros(3), ro[...,0:3]* (0.75*f)**(1.0/3.0))
         return ho
 
@@ -929,7 +929,7 @@ class Rotation:
             hm *= hmag_squared
             s  += tfit[i] * hm
         with np.errstate(invalid='ignore'):
-            ax = np.where(np.broadcast_to(np.abs(hmag_squared)<1.e-6,ho.shape[:-1]+(4,)),
+            ax = np.where(np.broadcast_to(np.abs(hmag_squared)<1.e-8,ho.shape[:-1]+(4,)),
                           [ 0.0, 0.0, 1.0, 0.0 ],
                           np.block([ho/np.sqrt(hmag_squared),2.0*np.arccos(np.clip(s,-1.0,1.0))]))
         return ax

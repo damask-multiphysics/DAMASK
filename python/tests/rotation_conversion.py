@@ -147,7 +147,7 @@ def om2eu(om):
 
 def om2ax(om):
     """Rotation matrix to axis angle pair."""
-    return qu2ax(om2qu(om)) # HOTFIX
+    #return qu2ax(om2qu(om)) # HOTFIX
     ax=np.empty(4)
 
     # first get the rotation angle
@@ -262,7 +262,7 @@ def ax2ho(ax):
 #---------- Rodrigues-Frank vector ----------
 def ro2ax(ro):
     """Rodrigues-Frank vector to axis angle pair."""
-    if np.abs(ro[3]) < 1.e-6:
+    if np.abs(ro[3]) < 1.e-8:
         ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
     elif not np.isfinite(ro[3]):
         ax = np.array([ ro[0], ro[1], ro[2], np.pi ])
@@ -274,7 +274,7 @@ def ro2ax(ro):
 
 def ro2ho(ro):
     """Rodrigues-Frank vector to homochoric vector."""
-    if np.sum(ro[0:3]**2.0) < 1.e-6:
+    if np.sum(ro[0:3]**2.0) < 1.e-8:
         ho = np.zeros(3)
     else:
         f = 2.0*np.arctan(ro[3]) -np.sin(2.0*np.arctan(ro[3])) if np.isfinite(ro[3]) else np.pi
