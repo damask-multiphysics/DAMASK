@@ -65,7 +65,7 @@ subroutine results_init(restart)
 
   character(len=pStringLen) :: commandLine
 
-  write(6,'(/,a)') ' <<<+-  results init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  results init  -+>>>'; flush(6)
 
   write(6,'(/,a)') ' Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   write(6,'(a)')   ' https://doi.org/10.1007/s40192-017-0084-5'

@@ -123,7 +123,7 @@ class Result:
 
         """
         # allow True/False and string arguments
-        if datasets is True:
+        if  datasets is True:
             datasets = ['*']
         elif datasets is False:
             datasets = []
