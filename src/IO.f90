@@ -536,6 +536,19 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (602)
       msg = 'invalid selection for debug'
 
+!------------------------------------------------------------------------------------------------
+! errors related to YAML input files
+    case (701)
+      msg = 'Incorrect indent/Null value not allowed'
+    case (702)
+      msg = 'Invalid use of flow yaml'
+    case (703)
+      msg = 'Space expected after a list indicator - '
+    case (704)
+      msg = 'Space expected after a colon for <key>: <value> pair'
+    case (705)
+      msg = 'Unsupported feature'
+
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
     case (809)
