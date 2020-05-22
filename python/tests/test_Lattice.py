@@ -9,7 +9,7 @@ from damask import Lattice
 class TestSymmetry:
 
     @pytest.mark.parametrize('invalid_symmetry',['fcc','bcc','hello'])
-    def test_invalid(self,invalid_symmetry):
+    def test_invalid_symmetry(self,invalid_symmetry):
         with pytest.raises(KeyError):
             s = Symmetry(invalid_symmetry)
 
@@ -35,7 +35,7 @@ class TestSymmetry:
           assert Symmetry(lattice).inSST(np.zeros(3),proper)
 
     @pytest.mark.parametrize('function',['inFZ','inDisorientationSST'])
-    def test_invalid(self,function):
+    def test_invalid_argument(self,function):
         s = Symmetry()
         with pytest.raises(ValueError):
             eval('s.{}(np.ones(4))'.format(function))
