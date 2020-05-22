@@ -185,3 +185,7 @@ class TestResult:
         in_memory = mechanics.left_stretch(default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['V(F)'],0)
         assert np.allclose(in_memory,in_file)
+
+    @pytest.mark.parametrize('output',['F',[],['F','P']])
+    def test_vtk(self,default,output):
+        default.to_vtk(output)
