@@ -160,10 +160,10 @@ class Rotation:
         if self.shape == ():
             q = np.broadcast_to(self.quaternion,shape+(4,))
         else:
-            q = np.block([np.broadcast_to(self.quaternion[...,0:1],shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,1:2],shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,2:3],shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,3:4],shape+(1,))])
+            q = np.block([np.broadcast_to(self.quaternion[...,0:1],shape),
+                          np.broadcast_to(self.quaternion[...,1:2],shape),
+                          np.broadcast_to(self.quaternion[...,2:3],shape),
+                          np.broadcast_to(self.quaternion[...,3:4],shape)]).reshape(shape+(4,))
         return self.__class__(q)
 
 
@@ -537,7 +537,7 @@ class Rotation:
                      )
         # reduce Euler angles to definition range
         eu[np.abs(eu)<1.e-6] = 0.0
-        eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)
+        eu = np.where(eu<0, (eu+2.0*np.pi)%np.array([2.0*np.pi,np.pi,2.0*np.pi]),eu)                # needed?
         return eu
 
     @staticmethod

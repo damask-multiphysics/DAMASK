@@ -866,6 +866,16 @@ class TestRotation:
         with pytest.raises(ValueError):
             function(invalid_shape)
 
+    @pytest.mark.parametrize('shape',[None,(3,),(4,2)])
+    def test_broadcast(self,shape):
+        rot = Rotation.from_random(shape)
+        new_shape = tuple(np.random.randint(8,32,(3))) if shape is None else \
+                    rot.shape + (np.random.randint(8,32),)
+        rot_broadcast = rot.broadcast_to(tuple(new_shape))
+        for i in range(rot_broadcast.shape[-1]):
+            assert (rot_broadcast.quaternion[...,i,:], rot.quaternion)
+
+
     @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion, np.array([-1,0,0,0])),
                                                  (Rotation.from_quaternion, np.array([1,1,1,0])),
                                                  (Rotation.from_Eulers,     np.array([1,4,0])),
