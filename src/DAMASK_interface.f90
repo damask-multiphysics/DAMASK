@@ -9,8 +9,6 @@
 !>           by DAMASK. Interpretating the command line arguments to get load case, geometry file,
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
-#define GCC_MIN 6
-#define INTEL_MIN 1700
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 10
 #define PETSC_MINOR_MAX 13
@@ -50,29 +48,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
 #include <petsc/finclude/petscsys.h>
-#if defined(__GFORTRAN__) &&  __GNUC__<GCC_MIN
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-===============   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ======================
-==================   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ===================
-=====================   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ================
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-#endif
-
-#if defined(__INTEL_COMPILER) && __INTEL_COMPILER<INTEL_MIN
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-=================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   =======================
-====================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   ====================
-=======================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   =================
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-#endif
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
 ===================================================================================================
