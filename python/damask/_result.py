@@ -599,9 +599,6 @@ class Result:
 
     @staticmethod
     def _add_deviator(T):
-        if not T['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
                 'data':  mechanics.deviatoric_part(T['data']),
                 'label': 's_{}'.format(T['label']),
@@ -867,8 +864,6 @@ class Result:
 
     @staticmethod
     def _add_rotational_part(F):
-        if not F['data'].shape[1:] == (3,3):
-            raise ValueError
         return {
                 'data':  mechanics.rotational_part(F['data']),
                 'label': 'R({})'.format(F['label']),
@@ -893,9 +888,6 @@ class Result:
 
     @staticmethod
     def _add_spherical(T):
-        if not T['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
                 'data':  mechanics.spherical_part(T['data']),
                 'label': 'p_{}'.format(T['label']),
@@ -920,9 +912,6 @@ class Result:
 
     @staticmethod
     def _add_strain_tensor(F,t,m):
-        if not F['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
                 'data':  mechanics.strain_tensor(F['data'],t,m),
                 'label': 'epsilon_{}^{}({})'.format(t,m,F['label']),
@@ -954,9 +943,6 @@ class Result:
 
     @staticmethod
     def _add_stretch_tensor(F,t):
-        if not F['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
                 'data':  mechanics.left_stretch(F['data']) if t == 'V' else mechanics.right_stretch(F['data']),
                 'label': '{}({})'.format(t,F['label']),
@@ -1047,7 +1033,7 @@ class Result:
         Selection is not taken into account.
         """
         if len(self.constituents) != 1 or not self.structured:
-            raise NotImplementedError
+            raise NotImplementedError('XDMF only available for grid results with 1 constituent.')
 
         xdmf=ET.Element('Xdmf')
         xdmf.attrib={'Version':  '2.0',
@@ -1215,14 +1201,6 @@ class Result:
 ###################################################################################################
 # BEGIN DEPRECATED
 
-    def _time_to_inc(self,start,end):
-        selected = []
-        for i,time in enumerate(self.times):
-            if start <= time <= end:
-                selected.append(self.increments[i])
-        return selected
-
-
     def set_by_time(self,start,end):
         """
         Set active increments based on start and end time.
@@ -1235,4 +1213,4 @@ class Result:
           end time (included)
 
         """
-        self._manage_selection('set','increments',self._time_to_inc(start,end))
+        self._manage_selection('set','times',self.times_in_range(start,end))
