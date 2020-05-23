@@ -832,14 +832,12 @@ class Result:
         pole      = np.array(p)
         unit_pole = pole/np.linalg.norm(pole)
         m         = util.scale_to_coprime(pole)
-        coords    = np.empty((len(q['data']),2))
+        rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
 
-        for i,qu in enumerate(q['data']):
-            o = Rotation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]))
-            rotatedPole = o*unit_pole                                                               # rotate pole according to crystal orientation
-            (x,y) = rotatedPole[0:2]/(1.+abs(unit_pole[2]))                                         # stereographic projection
-            coords[i] = [np.sqrt(x*x+y*y),np.arctan2(y,x)] if polar else [x,y]
-
+        rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
+        xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
+        coords = xy if not polar else \
+                 np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
         return {
                 'data': coords,
                 'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
