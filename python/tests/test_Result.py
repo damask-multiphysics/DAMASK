@@ -4,6 +4,7 @@ import os
 import pytest
 import numpy as np
 
+import damask
 from damask import Result
 from damask import mechanics
 
@@ -13,7 +14,7 @@ def default(tmp_path,reference_dir):
     fname = '12grains6x7x8_tensionY.hdf5'
     shutil.copy(os.path.join(reference_dir,fname),tmp_path)
     f = Result(os.path.join(tmp_path,fname))
-    f.set_by_time(20.0,20.0)
+    f.pick('times',20.0)
     return f
 
 @pytest.fixture
@@ -141,6 +142,20 @@ class TestResult:
         in_memory = mechanics.PK2(default.read_dataset(loc['P'],0),
                                   default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['S'],0)
+        assert np.allclose(in_memory,in_file)
+
+    @pytest.mark.parametrize('polar',[True,False])
+    def test_add_pole(self,default,polar):
+        pole = np.array([1.,0.,0.])
+        default.add_pole('orientation',pole,polar)
+        loc = {'orientation': default.get_dataset_location('orientation'),
+               'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
+        rot = damask.Rotation(default.read_dataset(loc['orientation']).view(np.double))
+        rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
+        xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
+        in_memory = xy if not polar else \
+                    np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
+        in_file = default.read_dataset(loc['pole'])
         assert np.allclose(in_memory,in_file)
 
     def test_add_rotational_part(self,default):
