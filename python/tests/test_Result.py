@@ -29,11 +29,56 @@ class TestResult:
         print(default)
 
 
-    def test_time_increments(self,default):
-        shape = default.read_dataset(default.get_dataset_location('F'),0).shape
-        default.set_by_time(0.0,20.0)
-        for i in default.iterate('increments'):
-           assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
+    def test_pick_all(self,default):
+        default.pick('increments',True)
+        a = default.get_dataset_location('F')
+        default.pick('increments','*')
+        b = default.get_dataset_location('F')
+        default.pick('increments',default.incs_in_range(0,np.iinfo(int).max))
+        c = default.get_dataset_location('F')
+
+        default.pick('times',True)
+        d = default.get_dataset_location('F')
+        default.pick('times','*')
+        e = default.get_dataset_location('F')
+        default.pick('times',default.times_in_range(0.0,np.inf))
+        f = default.get_dataset_location('F')
+        assert a == b == c == d == e ==f
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_none(self,default,what):
+        default.pick(what,False)
+        a = default.get_dataset_location('F')
+        default.pick(what,[])
+        b = default.get_dataset_location('F')
+
+        assert a == b == []
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_more(self,default,what):
+        default.pick(what,False)
+        default.pick_more(what,'*')
+        a = default.get_dataset_location('F')
+
+        default.pick(what,True)
+        b = default.get_dataset_location('F')
+
+        assert a == b
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_less(self,default,what):
+        default.pick(what,True)
+        default.pick_less(what,'*')
+        a = default.get_dataset_location('F')
+
+        default.pick(what,False)
+        b = default.get_dataset_location('F')
+
+        assert a == b == []
+
+    def test_pick_invalid(self,default):
+        with pytest.raises(AttributeError):
+            default.pick('invalid',True)
 
 
     def test_add_absolute(self,default):
