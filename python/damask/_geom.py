@@ -10,6 +10,7 @@ from . import VTK
 from . import util
 from . import Environment
 from . import grid_filters
+from . import Rotation
 
 
 class Geom:
@@ -581,3 +582,54 @@ class Geom:
 
         #self.add_comments('geom.py:renumber v{}'.format(version)
         return self.update(renumbered)
+
+
+    def rotate(self,R,fill=None):
+        """Rotate microstructure (pad if required)."""
+        if fill is None: fill = np.nanmax(self.microstructure) + 1
+        dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
+
+        Eulers = R.as_Eulers(degrees=True)
+        # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
+        # this seems to be ok, see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
+        microstructure = ndimage.rotate(self.microstructure,Eulers[2],(0,1),order=0,
+                                        prefilter=False,output=dtype,cval=fill)                     # rotation around z
+        microstructure = ndimage.rotate(microstructure,Eulers[1],(1,2),order=0,
+                                        prefilter=False,output=dtype,cval=fill)                     # rotation around x
+        microstructure = ndimage.rotate(microstructure,Eulers[0],(0,1),order=0,
+                                        prefilter=False,output=dtype,cval=fill)                     # rotation around z
+
+        origin = self.origin-(np.asarray(microstructure.shape)-self.grid)//2 * self.size/self.grid
+
+        #self.add_comments('geom.py:renumber v{}'.format(version)
+        return self.update(microstructure,origin=origin,rescale=True)
+
+
+    def canvas(self,grid=None,offset=None,fill=None):
+        """Rotate microstructure (pad if required)."""
+        if fill is None: fill = np.nanmax(self.microstructure) + 1
+        dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
+
+        canvas = np.full(self.grid if grid is None else grid,
+                         fill if fill is not None else np.nanmax(self.microstructure)+1,
+                         self.microstructure.dtype)
+        if offset is None: offset = 0
+
+        l = np.clip( offset,          0,np.minimum(self.grid  +offset,grid))                        # noqa
+        r = np.clip( offset+self.grid,0,np.minimum(self.grid*2+offset,grid))
+        L = np.clip(-offset,          0,np.minimum(grid       -offset,self.grid))
+        R = np.clip(-offset+grid,     0,np.minimum(grid*2     -offset,self.grid))
+
+        canvas[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = self.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
+
+        #self.add_comments('geom.py:renumber v{}'.format(version)
+        return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
+
+
+    def substitute(self,from_microstructure,to_microstructure):
+        """Substitude microstructure indices."""
+        substituted = self.get_microstructure()
+        for from_ms,to_ms in zip(from_microstructure,to_microstructure):
+            substituted[self.microstructure==from_ms] = to_ms
+
+        return self.update(substituted)

@@ -40,35 +40,22 @@ parser.add_option('-f','--fill',
 parser.set_defaults(offset = (0,0,0))
 
 (options, filenames) = parser.parse_args()
-
-
 if filenames == []: filenames = [None]
+
 
 for name in filenames:
   damask.util.report(scriptName,name)
 
   geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  origin = geom.get_origin()
-  size   = geom.get_size()
-  old = new = geom.get_grid()
   offset = np.asarray(options.offset)
 
   if options.grid is not None:
-    new = np.maximum(1,
-                     np.array([int(o*float(n.lower().replace('x',''))) if n.lower().endswith('x') \
-                          else int(n) for o,n in zip(old,options.grid)],dtype=int))
+      grid = np.maximum(1,
+                        np.array([int(o*float(n.lower().replace('x',''))) if n.lower().endswith('x') \
+                                   else int(n) for o,n in zip(geom.grid,options.grid)],dtype=int))
+  else:
+      grid = np.array(options.grid,dtype=int)
 
-  canvas = np.full(new,options.fill if options.fill is not None
-                  else np.nanmax(geom.microstructure)+1,geom.microstructure.dtype)
-
-  l = np.clip( offset,    0,np.minimum(old  +offset,new))                                           # noqa
-  r = np.clip( offset+old,0,np.minimum(old*2+offset,new))
-  L = np.clip(-offset,    0,np.minimum(new  -offset,old))
-  R = np.clip(-offset+new,0,np.minimum(new*2-offset,old))
-  canvas[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = geom.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
-
-
-  damask.util.croak(geom.update(canvas,origin=origin+offset*size/old,rescale=True))
+  damask.util.croak(geom.canvas(grid,np.asarray(options.offset),options.fill))
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
   geom.to_file(sys.stdout if name is None else name,pack=False)

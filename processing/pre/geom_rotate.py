@@ -52,47 +52,27 @@ parser.add_option('-f', '--fill',
 parser.set_defaults(degrees = False)
 
 (options, filenames) = parser.parse_args()
-
-if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) < 3:
-  parser.error('more than one rotation specified.')
-if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) > 3:
-  parser.error('no rotation specified.')
-
-if options.quaternion is not None:
-  rot = damask.Rotation.from_quaternion(np.array(options.quaternion))                               # we might need P=+1 here, too...
-if options.rotation is not None:
-  rot = damask.Rotation.from_axis_angle(np.array(options.rotation),degrees=options.degrees,normalise=True,P=+1)
-if options.matrix is not None:
-  rot = damask.Rotation.from_matrix(np.array(options.Matrix))
-if options.eulers is not None:
-  rot = damask.Rotation.from_Eulers(np.array(options.eulers),degrees=options.degrees)
-
-eulers = rot.as_Eulers(degrees=True)
-
-
 if filenames == []: filenames = [None]
 
+if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) < 3:
+    parser.error('more than one rotation specified.')
+if [options.rotation,options.eulers,options.matrix,options.quaternion].count(None) > 3:
+    parser.error('no rotation specified.')
+
+if options.quaternion is not None:
+    rot = damask.Rotation.from_quaternion(np.array(options.quaternion))                             # we might need P=+1 here, too...
+if options.rotation is not None:
+    rot = damask.Rotation.from_axis_angle(np.array(options.rotation),degrees=options.degrees,normalise=True,P=+1)
+if options.matrix is not None:
+    rot = damask.Rotation.from_matrix(np.array(options.Matrix))
+if options.eulers is not None:
+    rot = damask.Rotation.from_Eulers(np.array(options.eulers),degrees=options.degrees)
+
+
 for name in filenames:
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  size   = geom.get_size()
-  grid   = geom.get_grid()
-  origin = geom.get_origin()
-  microstructure = geom.get_microstructure()
-  fill = np.nanmax(microstructure)+1 if options.fill is None else options.fill
-  dtype = float if np.isnan(fill) or int(fill) != fill or microstructure.dtype==np.float else int
-
-  # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
-  # this seems to be ok, see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
-  microstructure = ndimage.rotate(microstructure,eulers[2],(0,1),order=0,
-                                  prefilter=False,output=dtype,cval=fill)            # rotation around z
-  microstructure = ndimage.rotate(microstructure,eulers[1],(1,2),order=0,
-                                  prefilter=False,output=dtype,cval=fill)            # rotation around x
-  microstructure = ndimage.rotate(microstructure,eulers[0],(0,1),order=0,
-                                  prefilter=False,output=dtype,cval=fill)            # rotation around z
-
-  damask.util.croak(geom.update(microstructure,origin=origin-(np.asarray(microstructure.shape)-grid)/2*size/grid,rescale=True))
-  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
-  geom.to_file(sys.stdout if name is None else name,pack=False)
+    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    damask.util.croak(geom.rotate(rot,options.fill))
+    geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
+    geom.to_file(sys.stdout if name is None else name,pack=False)
