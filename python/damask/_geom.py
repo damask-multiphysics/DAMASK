@@ -612,12 +612,12 @@ class Geom:
     def canvas(self,grid=None,offset=None,fill=None):
         """Crop or enlarge/pad microstructure."""
         if fill is None: fill = np.nanmax(self.microstructure) + 1
+        if offset is None: offset = 0
         dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
 
         canvas = np.full(self.grid if grid is None else grid,
                          fill if fill is not None else np.nanmax(self.microstructure)+1,
                          self.microstructure.dtype)
-        if offset is None: offset = 0
 
         l = np.clip( offset,          0,np.minimum(self.grid  +offset,grid))                        # noqa
         r = np.clip( offset+self.grid,0,np.minimum(self.grid*2+offset,grid))
