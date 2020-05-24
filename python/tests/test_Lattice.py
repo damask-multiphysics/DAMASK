@@ -15,6 +15,7 @@ class TestSymmetry:
 
     def test_equal(self):
         symmetry = random.choice(Symmetry.lattices)
+        print(symmetry)
         assert Symmetry(symmetry) == Symmetry(symmetry)
 
     def test_not_equal(self):

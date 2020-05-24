@@ -882,6 +882,7 @@ class TestRotation:
                                                  (Rotation.from_axis_angle, np.array([1,0,0,4])),
                                                  (Rotation.from_axis_angle, np.array([1,1,0,1])),
                                                  (Rotation.from_matrix,     np.random.rand(3,3)),
+                                                 (Rotation.from_matrix,     np.array([[1,1,0],[1,2,0],[0,0,1]])),
                                                  (Rotation.from_Rodrigues,  np.array([1,0,0,-1])),
                                                  (Rotation.from_Rodrigues,  np.array([1,1,0,1])),
                                                  (Rotation.from_homochoric, np.array([2,2,2])),

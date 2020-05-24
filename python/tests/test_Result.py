@@ -80,6 +80,9 @@ class TestResult:
         with pytest.raises(AttributeError):
             default.pick('invalid',True)
 
+    def test_add_invalid(self,default):
+        with pytest.raises(Exception):
+            default.add_calculation('#invalid#*2')
 
     def test_add_absolute(self,default):
         default.add_absolute('Fe')
