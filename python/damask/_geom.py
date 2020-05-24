@@ -590,23 +590,23 @@ class Geom:
         dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
 
         Eulers = R.as_Eulers(degrees=True)
-        # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
-        # this seems to be ok, see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
-        microstructure = ndimage.rotate(self.microstructure,Eulers[2],(0,1),order=0,
-                                        prefilter=False,output=dtype,cval=fill)                     # rotation around z
-        microstructure = ndimage.rotate(microstructure,Eulers[1],(1,2),order=0,
-                                        prefilter=False,output=dtype,cval=fill)                     # rotation around x
-        microstructure = ndimage.rotate(microstructure,Eulers[0],(0,1),order=0,
-                                        prefilter=False,output=dtype,cval=fill)                     # rotation around z
 
-        origin = self.origin-(np.asarray(microstructure.shape)-self.grid)//2 * self.size/self.grid
+        microstructure_in = self.get_microstructure()
+        # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
+        # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
+        for angle,axis in zip(Eulers[::-1], [(0,1),(1,2),(0,1)]):
+            microstructure_out = ndimage.rotate(microstructure_in,angle,axis,order=0,
+                                                prefilter=False,output=dtype,cval=fill)
+            microstructure_in = microstructure_out
+
+        origin = self.origin-(np.asarray(microstructure_out.shape)-self.grid)//2 * self.size/self.grid
 
         #self.add_comments('geom.py:renumber v{}'.format(version)
-        return self.update(microstructure,origin=origin,rescale=True)
+        return self.update(microstructure_out,origin=origin,rescale=True)
 
 
     def canvas(self,grid=None,offset=None,fill=None):
-        """Rotate microstructure (pad if required)."""
+        """Crop or enlarge/pad microstructure."""
         if fill is None: fill = np.nanmax(self.microstructure) + 1
         dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
 
