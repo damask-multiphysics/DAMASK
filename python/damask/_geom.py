@@ -590,19 +590,23 @@ class Geom:
         dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
 
         Eulers = R.as_Eulers(degrees=True)
-
         microstructure_in = self.get_microstructure()
+
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
         # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
-        for angle,axis in zip(Eulers[::-1], [(0,1),(1,2),(0,1)]):
-            microstructure_out = ndimage.rotate(microstructure_in,angle,axis,order=0,
+        for angle,axes in zip(Eulers[::-1], [(0,1),(1,2),(0,1)]):
+            microstructure_out = ndimage.rotate(microstructure_in,angle,axes,order=0,
                                                 prefilter=False,output=dtype,cval=fill)
-            microstructure_in = microstructure_out
+            if np.prod(microstructure_in.shape) == np.prod(microstructure_out.shape):
+                # avoid scipy interpolation errors for rotations close to multiples of 90°
+                microstructure_in = np.rot90(microstructure_in,k=np.rint(angle/90.).astype(int),axes=axes)
+            else:
+                microstructure_in = microstructure_out
 
-        origin = self.origin-(np.asarray(microstructure_out.shape)-self.grid)//2 * self.size/self.grid
+        origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
         #self.add_comments('geom.py:renumber v{}'.format(version)
-        return self.update(microstructure_out,origin=origin,rescale=True)
+        return self.update(microstructure_in,origin=origin,rescale=True)
 
 
     def canvas(self,grid=None,offset=None,fill=None):
