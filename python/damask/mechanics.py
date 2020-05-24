@@ -17,7 +17,8 @@ def Cauchy(P,F):
     if _np.shape(F) == _np.shape(P) == (3,3):
         sigma = 1.0/_np.linalg.det(F) * _np.dot(P,F.T)
     else:
-        sigma = _np.einsum('i,ijk,ilk->ijl',1.0/_np.linalg.det(F),P,F)
+        #sigma = _np.einsum('i,ijk,ilk->ijl',1.0/_np.linalg.det(F),P,F)
+        sigma = _np.einsum('...,...ij,...kj->...ij',1.0/_np.linalg.det(F),P,F)
     return symmetric(sigma)
 
 
@@ -190,7 +191,7 @@ def spherical_part(T,tensor=False):
         sph = _np.trace(T)/3.0
         return sph if not tensor else _np.eye(3)*sph
     else:
-        sph = _np.trace(T,axis1=1,axis2=2)/3.0
+        sph = _np.trace(T,axis2=-2,axis1=-1)/3.0
         if not tensor:
             return sph
         else:
