@@ -10,7 +10,6 @@ from . import VTK
 from . import util
 from . import Environment
 from . import grid_filters
-from . import Rotation
 
 
 class Geom:
@@ -605,7 +604,7 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        #self.add_comments('geom.py:renumber v{}'.format(version)
+        #self.add_comments('geom.py:rotate v{}'.format(version)
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -613,11 +612,10 @@ class Geom:
         """Crop or enlarge/pad microstructure."""
         if fill is None: fill = np.nanmax(self.microstructure) + 1
         if offset is None: offset = 0
-        dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
+        dtype = float if int(fill) != fill or self.microstructure.dtype==np.float else int
 
         canvas = np.full(self.grid if grid is None else grid,
-                         fill if fill is not None else np.nanmax(self.microstructure)+1,
-                         self.microstructure.dtype)
+                         fill if fill is not None else np.nanmax(self.microstructure)+1,dtype)
 
         l = np.clip( offset,          0,np.minimum(self.grid  +offset,grid))                        # noqa
         r = np.clip( offset+self.grid,0,np.minimum(self.grid*2+offset,grid))
@@ -626,7 +624,7 @@ class Geom:
 
         canvas[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = self.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
 
-        #self.add_comments('geom.py:renumber v{}'.format(version)
+        #self.add_comments('geom.py:canvas v{}'.format(version)
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -636,4 +634,5 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
+        #self.add_comments('geom.py:substitute v{}'.format(version)
         return self.update(substituted)

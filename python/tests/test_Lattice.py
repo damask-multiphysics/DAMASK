@@ -4,14 +4,13 @@ import pytest
 import numpy as np
 
 from damask import Symmetry
-from damask import Lattice
 
 class TestSymmetry:
 
     @pytest.mark.parametrize('invalid_symmetry',['fcc','bcc','hello'])
     def test_invalid_symmetry(self,invalid_symmetry):
         with pytest.raises(KeyError):
-            s = Symmetry(invalid_symmetry)
+            s = Symmetry(invalid_symmetry)                                                          # noqa
 
     def test_equal(self):
         symmetry = random.choice(Symmetry.lattices)
@@ -37,6 +36,6 @@ class TestSymmetry:
 
     @pytest.mark.parametrize('function',['inFZ','inDisorientationSST'])
     def test_invalid_argument(self,function):
-        s = Symmetry()
+        s = Symmetry()                                                                              # noqa
         with pytest.raises(ValueError):
             eval('s.{}(np.ones(4))'.format(function))
