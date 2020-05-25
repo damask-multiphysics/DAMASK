@@ -502,7 +502,7 @@ class Result:
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
-                          'Creator':     'result.py:add_abs v{}'.format(version)
+                          'Creator':     'damask.Result.add_abs v{}'.format(version)
                           }
                  }
     def add_absolute(self,x):
@@ -530,7 +530,7 @@ class Result:
                 'meta':  {
                           'Unit':        kwargs['unit'],
                           'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
-                          'Creator':     'result.py:add_calculation v{}'.format(version)
+                          'Creator':     'damask.Result.add_calculation v{}'.format(version)
                           }
                  }
     def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
@@ -569,7 +569,7 @@ class Result:
                           'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],
                                                                                          P['meta']['Description'])+\
                                          'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_Cauchy v{}'.format(version)
+                          'Creator':     'damask.Result.add_Cauchy v{}'.format(version)
                           }
                 }
     def add_Cauchy(self,P='P',F='F'):
@@ -595,7 +595,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Determinant of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'result.py:add_determinant v{}'.format(version)
+                          'Creator':     'damask.Result.add_determinant v{}'.format(version)
                           }
                 }
     def add_determinant(self,T):
@@ -619,7 +619,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Deviator of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'result.py:add_deviator v{}'.format(version)
+                          'Creator':     'damask.Result.add_deviator v{}'.format(version)
                           }
                  }
     def add_deviator(self,T):
@@ -643,7 +643,7 @@ class Result:
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
                           'Description': 'Eigenvalues of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_eigenvalues v{}'.format(version)
+                          'Creator':     'damask.Result.add_eigenvalues v{}'.format(version)
                          }
                 }
     def add_eigenvalues(self,T_sym):
@@ -667,7 +667,7 @@ class Result:
                 'meta' : {
                           'Unit':        '1',
                           'Description': 'Eigenvectors of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_eigenvectors v{}'.format(version)
+                          'Creator':     'damask.Result.add_eigenvectors v{}'.format(version)
                          }
                 }
     def add_eigenvectors(self,T_sym):
@@ -703,7 +703,7 @@ class Result:
                           'Unit':        'RGB (8bit)',
                           'Lattice':     lattice,
                           'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
-                          'Creator':     'result.py:add_IPFcolor v{}'.format(version)
+                          'Creator':     'damask.Result.add_IPFcolor v{}'.format(version)
                          }
                }
     def add_IPFcolor(self,q,l):
@@ -729,7 +729,7 @@ class Result:
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
                           'Description': 'Maximum shear component of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_maximum_shear v{}'.format(version)
+                          'Creator':     'damask.Result.add_maximum_shear v{}'.format(version)
                           }
                  }
     def add_maximum_shear(self,T_sym):
@@ -756,7 +756,7 @@ class Result:
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
                           'Description': 'Mises equivalent {} of {} ({})'.format(t,T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_Mises v{}'.format(version)
+                          'Creator':     'damask.Result.add_Mises v{}'.format(version)
                           }
                 }
     def add_Mises(self,T_sym):
@@ -792,7 +792,7 @@ class Result:
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': '{}-norm of {} {} ({})'.format(o,t,x['label'],x['meta']['Description']),
-                          'Creator':     'result.py:add_norm v{}'.format(version)
+                          'Creator':     'damask.Result.add_norm v{}'.format(version)
                           }
                  }
     def add_norm(self,x,ord=None):
@@ -820,7 +820,7 @@ class Result:
                           'Description': '2. Kirchhoff stress calculated from {} ({}) '.format(P['label'],
                                                                                                P['meta']['Description'])+\
                                          'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_PK2 v{}'.format(version)
+                          'Creator':     'damask.Result.add_PK2 v{}'.format(version)
                           }
                 }
     def add_PK2(self,P='P',F='F'):
@@ -856,7 +856,7 @@ class Result:
                           'Unit': '1',
                           'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
                                          .format('Polar' if polar else 'Cartesian'),
-                          'Creator' : 'result.py:add_pole v{}'.format(version)
+                          'Creator' : 'damask.Result.add_pole v{}'.format(version)
                          }
                }
     def add_pole(self,q,p,polar=False):
@@ -884,7 +884,7 @@ class Result:
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': 'Rotational part of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_rotational_part v{}'.format(version)
+                          'Creator':     'damask.Result.add_rotational_part v{}'.format(version)
                           }
                  }
     def add_rotational_part(self,F):
@@ -908,7 +908,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Spherical component of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'result.py:add_spherical v{}'.format(version)
+                          'Creator':     'damask.Result.add_spherical v{}'.format(version)
                           }
                  }
     def add_spherical(self,T):
@@ -932,7 +932,7 @@ class Result:
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': 'Strain tensor of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_strain_tensor v{}'.format(version)
+                          'Creator':     'damask.Result.add_strain_tensor v{}'.format(version)
                           }
                  }
     def add_strain_tensor(self,F='F',t='V',m=0.0):
@@ -964,7 +964,7 @@ class Result:
                           'Unit':        F['meta']['Unit'],
                           'Description': '{} stretch tensor of {} ({})'.format('Left' if t == 'V' else 'Right',
                                                                                F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_stretch_tensor v{}'.format(version)
+                          'Creator':     'damask.Result.add_stretch_tensor v{}'.format(version)
                           }
                  }
     def add_stretch_tensor(self,F='F',t='V'):
