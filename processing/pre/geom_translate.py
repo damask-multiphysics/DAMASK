@@ -48,8 +48,9 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    geom.renumber(sub[0::2],sub[1::2],origin=geom.origin+options.origin)
-    geom.microstructure+= options.microstructure
+    geom.substitute(sub[0::2],sub[1::2])
+    geom.set_origin(geom.origin+options.origin)
+    geom.set_microstructure(geom.microstructure+options.microstructure)
     damask.util.croak(geom)
     geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
     geom.to_file(sys.stdout if name is None else name,pack=False)
