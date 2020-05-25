@@ -312,7 +312,7 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now())
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_real
@@ -343,7 +343,7 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now())
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
@@ -396,7 +396,7 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now())
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_real
@@ -428,7 +428,7 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now())
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int
@@ -460,7 +460,7 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now())
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_int
@@ -492,7 +492,7 @@ subroutine results_writeScalarDataset_rotation(group,dataset,label,description,l
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
   if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now())
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_rotation
@@ -772,6 +772,7 @@ character(len=24) function now()
   character(len=5)      :: zone
   integer, dimension(8) :: values
 
+  call date_and_time(values=values,zone=zone)
   write(now,'(i4.4,5(a,i2.2),a)') &
     values(1),'-',values(2),'-',values(3),' ',values(5),':',values(6),':',values(7),zone
 
