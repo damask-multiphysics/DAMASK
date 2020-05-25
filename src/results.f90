@@ -767,6 +767,10 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
 
 end subroutine results_mapping_materialpoint
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief current date and time (including time zone information)
+!--------------------------------------------------------------------------------------------------
 character(len=24) function now()
 
   character(len=5)      :: zone
@@ -777,6 +781,7 @@ character(len=24) function now()
     values(1),'-',values(2),'-',values(3),' ',values(5),':',values(6),':',values(7),zone
 
 end function now
+
 
 !!--------------------------------------------------------------------------------------------------
 !!> @brief adds the backward mapping from spatial position and constituent ID to results
