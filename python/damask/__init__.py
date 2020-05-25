@@ -1,4 +1,4 @@
-"""Main aggregator."""
+"""Tools for pre and post processing of DAMASK simulations."""
 import os as _os
 import re as _re
 
