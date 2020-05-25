@@ -89,6 +89,8 @@ class Result:
 
         self.fname = os.path.abspath(fname)
 
+        self._allow_overwrite = False
+
 
     def __repr__(self):
         """Show selected data."""
@@ -161,6 +163,16 @@ class Result:
             diff = existing.difference(valid)
             diff_sorted = sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
             self.selection[what] = diff_sorted
+
+
+    def enable_overwrite(self):
+        print(util.bcolors().WARNING,util.bcolors().BOLD,
+              'Warning: Enabled overwrite of existing datasets!',
+              util.bcolors().ENDC)
+        self._allow_overwrite = True
+
+    def disable_overwrite(self):
+        self._allow_overwrite = False
 
 
     def incs_in_range(self,start,end):
@@ -1015,8 +1027,13 @@ class Result:
                 continue
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
-                try:                                                                                # ToDo: Replace if exists?
-                    dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                try:
+                    if self._allow_overwrite and result[0]+'/'+result[1]['label'] in f:
+                        dataset = f[result[0]+'/'+result[1]['label']]
+                        datset  = result[1]['data']
+                        dataset.attrs['Overwritten'] = True
+                    else:
+                        dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
                     for l,v in result[1]['meta'].items():
