@@ -292,5 +292,6 @@ class TestResult:
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('output',['F',[],['F','P']])
-    def test_vtk(self,default,output):
+    def test_vtk(self,tmp_path,default,output):
+        os.chdir(tmp_path)
         default.to_vtk(output)
