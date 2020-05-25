@@ -503,7 +503,7 @@ class Result:
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
-                          'Creator':     'add_absolute'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_absolute(self,x):
@@ -531,7 +531,7 @@ class Result:
                 'meta':  {
                           'Unit':        kwargs['unit'],
                           'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
-                          'Creator':     'add_calculation'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
@@ -570,7 +570,7 @@ class Result:
                           'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],
                                                                                          P['meta']['Description'])+\
                                          'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'add_Cauchy'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
     def add_Cauchy(self,P='P',F='F'):
@@ -596,7 +596,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Determinant of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'add_determinant'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
     def add_determinant(self,T):
@@ -620,7 +620,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Deviator of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'add_deviator'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_deviator(self,T):
@@ -644,7 +644,7 @@ class Result:
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
                           'Description': 'Eigenvalues of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'add_eigenvalues'
+                          'Creator':     inspect.stack()[0][3][1:]
                          }
                 }
     def add_eigenvalues(self,T_sym):
@@ -668,7 +668,7 @@ class Result:
                 'meta' : {
                           'Unit':        '1',
                           'Description': 'Eigenvectors of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'add_eigenvectors'
+                          'Creator':     inspect.stack()[0][3][1:]
                          }
                 }
     def add_eigenvectors(self,T_sym):
@@ -704,7 +704,7 @@ class Result:
                           'Unit':        'RGB (8bit)',
                           'Lattice':     lattice,
                           'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
-                          'Creator':     'add_IPFcolor'
+                          'Creator':     inspect.stack()[0][3][1:]
                          }
                }
     def add_IPFcolor(self,q,l):
@@ -730,7 +730,7 @@ class Result:
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
                           'Description': 'Maximum shear component of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'add_maximum_shear'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_maximum_shear(self,T_sym):
@@ -757,7 +757,7 @@ class Result:
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
                           'Description': 'Mises equivalent {} of {} ({})'.format(t,T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'add_Mises'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
     def add_Mises(self,T_sym):
@@ -793,7 +793,7 @@ class Result:
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': '{}-norm of {} {} ({})'.format(o,t,x['label'],x['meta']['Description']),
-                          'Creator':     'add_norm'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_norm(self,x,ord=None):
@@ -821,7 +821,7 @@ class Result:
                           'Description': '2. Kirchhoff stress calculated from {} ({}) '.format(P['label'],
                                                                                                P['meta']['Description'])+\
                                          'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'add_PK2'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
     def add_PK2(self,P='P',F='F'):
@@ -854,10 +854,10 @@ class Result:
                 'data': coords,
                 'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
                 'meta' : {
-                          'Unit': '1',
+                          'Unit':        '1',
                           'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
                                          .format('Polar' if polar else 'Cartesian'),
-                          'Creator' : 'add_pole'
+                          'Creator':     inspect.stack()[0][3][1:]
                          }
                }
     def add_pole(self,q,p,polar=False):
@@ -885,7 +885,7 @@ class Result:
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': 'Rotational part of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'add_rotational_part'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_rotational_part(self,F):
@@ -909,7 +909,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': 'Spherical component of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'add_spherical'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_spherical(self,T):
@@ -933,7 +933,7 @@ class Result:
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': 'Strain tensor of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'add_strain_tensor'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_strain_tensor(self,F='F',t='V',m=0.0):
@@ -965,7 +965,7 @@ class Result:
                           'Unit':        F['meta']['Unit'],
                           'Description': '{} stretch tensor of {} ({})'.format('Left' if t == 'V' else 'Right',
                                                                                F['label'],F['meta']['Description']),
-                          'Creator':     'add_stretch_tensor'
+                          'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
     def add_stretch_tensor(self,F='F',t='V'):
