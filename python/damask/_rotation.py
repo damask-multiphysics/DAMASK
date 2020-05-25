@@ -12,7 +12,7 @@ _R1   = (3.*np.pi/4.)**(1./3.)
 class Rotation:
     u"""
     Orientation stored with functionality for conversion to different representations.
-    
+
     The following conventions apply:
 
     - coordinate frames are right-handed.
@@ -161,10 +161,10 @@ class Rotation:
         if self.shape == ():
             q = np.broadcast_to(self.quaternion,shape+(4,))
         else:
-            q = np.block([np.broadcast_to(self.quaternion[...,0:1],shape),
-                          np.broadcast_to(self.quaternion[...,1:2],shape),
-                          np.broadcast_to(self.quaternion[...,2:3],shape),
-                          np.broadcast_to(self.quaternion[...,3:4],shape)]).reshape(shape+(4,))
+            q = np.block([np.broadcast_to(self.quaternion[...,0:1],shape).reshape(shape+(1,)),
+                          np.broadcast_to(self.quaternion[...,1:2],shape).reshape(shape+(1,)),
+                          np.broadcast_to(self.quaternion[...,2:3],shape).reshape(shape+(1,)),
+                          np.broadcast_to(self.quaternion[...,3:4],shape).reshape(shape+(1,))])
         return self.__class__(q)
 
 

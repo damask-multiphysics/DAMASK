@@ -873,7 +873,7 @@ class TestRotation:
                     rot.shape + (np.random.randint(8,32),)
         rot_broadcast = rot.broadcast_to(tuple(new_shape))
         for i in range(rot_broadcast.shape[-1]):
-            assert (rot_broadcast.quaternion[...,i,:], rot.quaternion)
+            assert np.allclose(rot_broadcast.quaternion[...,i,:], rot.quaternion)
 
 
     @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion, np.array([-1,0,0,0])),
