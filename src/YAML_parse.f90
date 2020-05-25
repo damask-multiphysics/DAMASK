@@ -11,12 +11,15 @@ module YAML_parse
 
 contains
 
-
+!--------------------------------------------------------------------------------------------------
+!> @brief do sanity checks
+!--------------------------------------------------------------------------------------------------
 subroutine YAML_init
 
   call selfTest
 
 end subroutine YAML_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
@@ -188,7 +191,8 @@ logical function isKey(line)
   if(len(IO_rmComment(line)) == 0) then
     isKey = .false.
   else
-    isKey = IO_rmComment(line(len(IO_rmComment(line)):len(IO_rmComment(line)))) == ':' .and. .not. isFlow(line)
+    isKey = IO_rmComment(line(len(IO_rmComment(line)):len(IO_rmComment(line)))) == ':' & 
+                                                                .and. .not. isFlow(line)
   endif
 
 end function isKey
@@ -535,6 +539,7 @@ function to_flow(blck)
 
 end function to_flow
 
+
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest()
 
@@ -567,7 +572,6 @@ subroutine selfTest()
   if(       isScalar('- a:'))     call IO_error(0,ext_msg='isScalar')
   if(.not.  isScalar('   a'))     call IO_error(0,ext_msg='isScalar')
 
- !ToDo :some more advanced tests?
   basic_list: block
   character(len=*), parameter :: block_list = &
     " - Casablanca"//IO_EOL//&
