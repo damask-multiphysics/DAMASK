@@ -146,6 +146,7 @@ class Result:
                 choice = []
                 for c in iterator:
                     idx = np.searchsorted(self.times,c)
+                    if idx >= len(self.times): continue
                     if   np.isclose(c,self.times[idx]):
                         choice.append(self.increments[idx])
                     elif np.isclose(c,self.times[idx+1]):
@@ -1031,7 +1032,7 @@ class Result:
                 try:
                     if self._allow_overwrite and result[0]+'/'+result[1]['label'] in f:
                         dataset = f[result[0]+'/'+result[1]['label']]
-                        datset  = result[1]['data']
+                        dataset[...] = result[1]['data']
                         dataset.attrs['Overwritten'] = 'Yes'.encode()
                     else:
                         dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
