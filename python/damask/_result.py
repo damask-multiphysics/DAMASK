@@ -2,6 +2,7 @@ import multiprocessing
 import re
 import glob
 import os
+import datetime
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 from functools import partial
@@ -1016,6 +1017,8 @@ class Result:
             with h5py.File(self.fname, 'a') as f:
                 try:                                                                                # ToDo: Replace if exists?
                     dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                    now = datetime.datetime.now().astimezone()
+                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
                     for l,v in result[1]['meta'].items():
                         dataset.attrs[l]=v.encode()
                 except OSError as err:
