@@ -8,6 +8,7 @@ class Orientation:
     Crystallographic orientation.
 
     A crystallographic orientation contains a rotation and a lattice.
+
     """
 
     __slots__ = ['rotation','lattice']
@@ -49,8 +50,10 @@ class Orientation:
         Disorientation between myself and given other orientation.
 
         Rotation axis falls into SST if SST == True.
-        (Currently requires same symmetry for both orientations.
-         Look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
+
+        Currently requires same symmetry for both orientations.
+        Look into A. Heinz and P. Neumann 1991 for cases with differing sym.
+
         """
         if self.lattice.symmetry != other.lattice.symmetry:
             raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
