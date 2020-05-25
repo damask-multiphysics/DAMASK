@@ -242,7 +242,7 @@ class Geom:
 
     def get_grid(self):
         """Return the grid discretization."""
-        return np.as:array(self.microstructure.shape)
+        return np.asarray(self.microstructure.shape)
 
 
     def get_homogenization(self):
