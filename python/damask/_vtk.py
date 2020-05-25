@@ -120,9 +120,9 @@ class VTK:
         Parameters
         ----------
         fname : str
-            Filename for reading. Valid extensions are *.vtr, *.vtu, *.vtp, and *.vtk.
+            Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
         dataset_type : str, optional
-            Name of the vtk.vtkDataSet subclass when opening an *.vtk file. Valid types are vtkRectilinearGrid,
+            Name of the vtk.vtkDataSet subclass when opening an .vtk file. Valid types are vtkRectilinearGrid,
             vtkUnstructuredGrid, and vtkPolyData.
 
         """

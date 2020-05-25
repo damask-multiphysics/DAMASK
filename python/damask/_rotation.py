@@ -12,30 +12,31 @@ _R1   = (3.*np.pi/4.)**(1./3.)
 class Rotation:
     u"""
     Orientation stored with functionality for conversion to different representations.
+    
+    The following conventions apply:
+
+    - coordinate frames are right-handed.
+    - a rotation angle ω is taken to be positive for a counterclockwise rotation
+      when viewing from the end point of the rotation axis towards the origin.
+    - rotations will be interpreted in the passive sense.
+    - Euler angle triplets are implemented using the Bunge convention,
+      with the angular ranges as [0, 2π],[0, π],[0, 2π].
+    - the rotation angle ω is limited to the interval [0, π].
+    - the real part of a quaternion is positive, Re(q) > 0
+    - P = -1 (as default).
+
+    Examples
+    --------
+    Rotate vector "a" (defined in coordinate system "A") to
+    coordinates "b" expressed in system "B":
+
+    - b = Q @ a
+    - b = np.dot(Q.asMatrix(),a)
 
     References
     ----------
     D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015
     https://doi.org/10.1088/0965-0393/23/8/083501
-
-    Conventions
-    -----------
-    Convention 1: Coordinate frames are right-handed.
-    Convention 2: A rotation angle ω is taken to be positive for a counterclockwise rotation
-                  when viewing from the end point of the rotation axis towards the origin.
-    Convention 3: Rotations will be interpreted in the passive sense.
-    Convention 4: Euler angle triplets are implemented using the Bunge convention,
-                  with the angular ranges as [0, 2π],[0, π],[0, 2π].
-    Convention 5: The rotation angle ω is limited to the interval [0, π].
-    Convention 6: the real part of a quaternion is positive, Re(q) > 0
-    Convention 7: P = -1 (as default).
-
-    Usage
-    -----
-    Vector "a" (defined in coordinate system "A") is passively rotated
-               resulting in new coordinates "b" when expressed in system "B".
-    b = Q @ a
-    b = np.dot(Q.as_matrix(),a)
 
     """
 
