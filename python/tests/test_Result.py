@@ -1,8 +1,11 @@
+import time
 import shutil
 import os
+from datetime import datetime
 
 import pytest
 import numpy as np
+import h5py
 
 import damask
 from damask import Result
@@ -81,8 +84,33 @@ class TestResult:
             default.pick('invalid',True)
 
     def test_add_invalid(self,default):
-        with pytest.raises(Exception):
+        with pytest.raises(TypeError):
             default.add_calculation('#invalid#*2')
+
+    @pytest.mark.parametrize('overwrite',['off','on'])
+    def test_add_overwrite(self,default,overwrite):
+        default.pick('times',default.times_in_range(0,np.inf)[-1])
+
+        default.add_Cauchy()
+        dset = default.groups_with_datasets('sigma')[0]+'/sigma'
+        with h5py.File(default.fname,'r') as f:
+            created_first = f[dset].attrs['Created'].decode()
+        created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
+
+        if overwrite == 'on':
+            default.enable_overwrite()
+        else:
+            default.disable_overwrite()
+
+        time.sleep(2.)
+        default.add_Cauchy()
+        with h5py.File(default.fname,'r') as f:
+            created_second = f[dset].attrs['Created'].decode()
+        created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
+        if overwrite == 'on':
+            assert created_first < created_second
+        else:
+            assert created_first == created_second
 
     def test_add_absolute(self,default):
         default.add_absolute('Fe')
