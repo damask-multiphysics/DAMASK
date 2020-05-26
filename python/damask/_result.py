@@ -1045,7 +1045,7 @@ class Result:
                     creator = 'damask.Result.{} v{}'.format(dataset.attrs['Creator'].decode(),version)
                     dataset.attrs['Creator'] = creator.encode()
 
-                except OSError as err:
+                except (OSError,RuntimeError) as err:
                     print('Could not add dataset: {}.'.format(err))
             lock.release()
 
