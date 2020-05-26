@@ -1,3 +1,10 @@
+!----------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Sharan Roongta, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Parser for YAML files
+!> @details module converts a YAML input file to an equivalent YAML flow style which is then parsed.
+!----------------------------------------------------------------------------------------------------
+
 module YAML_parse
 
   use prec
