@@ -1,8 +1,11 @@
+import time
 import shutil
 import os
+from datetime import datetime
 
 import pytest
 import numpy as np
+import h5py
 
 import damask
 from damask import Result
@@ -79,10 +82,6 @@ class TestResult:
     def test_pick_invalid(self,default):
         with pytest.raises(AttributeError):
             default.pick('invalid',True)
-
-    def test_add_invalid(self,default):
-        with pytest.raises(Exception):
-            default.add_calculation('#invalid#*2')
 
     def test_add_absolute(self,default):
         default.add_absolute('Fe')
@@ -263,6 +262,37 @@ class TestResult:
         in_file   = default.read_dataset(loc['V(F)'],0)
         assert np.allclose(in_memory,in_file)
 
+    def test_add_invalid(self,default):
+        with pytest.raises(TypeError):
+            default.add_calculation('#invalid#*2')
+
+    @pytest.mark.parametrize('overwrite',['off','on'])
+    def test_add_overwrite(self,default,overwrite):
+        default.pick('times',default.times_in_range(0,np.inf)[-1])
+
+        default.add_Cauchy()
+        loc = default.get_dataset_location('sigma')
+        print(loc)
+        with h5py.File(default.fname,'r') as f:
+            created_first = f[loc[0]].attrs['Created'].decode()
+        created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
+
+        if overwrite == 'on':
+            default.enable_overwrite()
+        else:
+            default.disable_overwrite()
+
+        time.sleep(2.)
+        default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        with h5py.File(default.fname,'r') as f:
+            created_second = f[loc[0]].attrs['Created'].decode()
+        created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
+        if overwrite == 'on':
+            assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
+        else:
+            assert created_first == created_second and not np.allclose(default.read_dataset(loc),311.)
+
     @pytest.mark.parametrize('output',['F',[],['F','P']])
-    def test_vtk(self,default,output):
+    def test_vtk(self,tmp_path,default,output):
+        os.chdir(tmp_path)
         default.to_vtk(output)
