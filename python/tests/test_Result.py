@@ -21,6 +21,13 @@ def default(tmp_path,reference_dir):
     return f
 
 @pytest.fixture
+def single_phase(tmp_path,reference_dir):
+    """Single phase Result file in temp location for modification."""
+    fname = '6grains6x7x8_single_phase_tensionY.hdf5'
+    shutil.copy(os.path.join(reference_dir,fname),tmp_path)
+    return Result(os.path.join(tmp_path,fname))
+
+@pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
     return os.path.join(reference_dir_base,'Result')
@@ -296,3 +303,7 @@ class TestResult:
     def test_vtk(self,tmp_path,default,output):
         os.chdir(tmp_path)
         default.to_vtk(output)
+
+    def test_XDMF(self,tmp_path,single_phase):
+        os.chdir(tmp_path)
+        single_phase.write_XDMF
