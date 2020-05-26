@@ -92,9 +92,9 @@ class TestResult:
         default.pick('times',default.times_in_range(0,np.inf)[-1])
 
         default.add_Cauchy()
-        dset = default.groups_with_datasets('sigma')[0]+'/sigma'
+        loc = default.get_dataset_location('sigma')[0]
         with h5py.File(default.fname,'r') as f:
-            created_first = f[dset].attrs['Created'].decode()
+            created_first = f[loc].attrs['Created'].decode()
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
@@ -103,14 +103,14 @@ class TestResult:
             default.disable_overwrite()
 
         time.sleep(2.)
-        default.add_Cauchy()
+        default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
         with h5py.File(default.fname,'r') as f:
-            created_second = f[dset].attrs['Created'].decode()
+            created_second = f[loc].attrs['Created'].decode()
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
         if overwrite == 'on':
-            assert created_first < created_second
+            assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
         else:
-            assert created_first == created_second
+            assert created_first == created_second and not np.allclose(default.read_dataset(loc),311.)
 
     def test_add_absolute(self,default):
         default.add_absolute('Fe')
