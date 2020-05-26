@@ -18,7 +18,7 @@ def Cauchy(P,F):
         sigma = 1.0/_np.linalg.det(F) * _np.dot(P,F.T)
     else:
         #sigma = _np.einsum('i,ijk,ilk->ijl',1.0/_np.linalg.det(F),P,F)
-        sigma = _np.einsum('...,...ij,...kj->...ij',1.0/_np.linalg.det(F),P,F)
+        sigma = _np.einsum('...,...ij,...kj->...ik',1.0/_np.linalg.det(F),P,F)
     return symmetric(sigma)
 
 
@@ -33,8 +33,7 @@ def deviatoric_part(T):
 
     """
     return T - _np.eye(3)*spherical_part(T) if _np.shape(T) == (3,3) else \
-           T - _np.einsum('ijk,i->ijk',_np.broadcast_to(_np.eye(3),[T.shape[0],3,3]),spherical_part(T))
-
+           T - _np.einsum('...ij,...->...ij',_np.eye(3),spherical_part(T))
 
 def eigenvalues(T_sym):
     """
@@ -101,7 +100,7 @@ def maximum_shear(T_sym):
     """
     w = eigenvalues(T_sym)
     return (w[0] - w[2])*0.5 if _np.shape(T_sym) == (3,3) else \
-           (w[:,0] - w[:,2])*0.5
+           (w[...,0] - w[...,2])*0.5
 
 
 def Mises_strain(epsilon):
@@ -195,7 +194,8 @@ def spherical_part(T,tensor=False):
         if not tensor:
             return sph
         else:
-            return _np.einsum('ijk,i->ijk',_np.broadcast_to(_np.eye(3),(T.shape[0],3,3)),sph)
+            #return _np.einsum('ijk,i->ijk',_np.broadcast_to(_np.eye(3),(T.shape[0],3,3)),sph)
+            return _np.einsum('...jk,...->...jk',_np.eye(3),sph)
 
 
 def strain_tensor(F,t,m):
@@ -224,13 +224,16 @@ def strain_tensor(F,t,m):
         w,n = _np.linalg.eigh(C)
 
     if   m > 0.0:
-        eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
-                                  - _np.broadcast_to(_np.eye(3),[F_.shape[0],3,3]))
+        #eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
+        #                          - _np.broadcast_to(_np.eye(3),[F_.shape[0],3,3]))
+        eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
+                                  - _np.einsum('...jk->...jk',_np.eye(3)))
+        
     elif m < 0.0:
-        eps = 1.0/(2.0*abs(m)) * (- _np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
-                                  + _np.broadcast_to(_np.eye(3),[F_.shape[0],3,3]))
+        eps = 1.0/(2.0*abs(m)) * (- _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
+                                  + _np.einsum('...jk->...jk',_np.eye(3)))
     else:
-        eps = _np.matmul(n,_np.einsum('ij,ikj->ijk',0.5*_np.log(w),n))
+        eps = _np.matmul(n,_np.einsum('...j,...kj->....jk',0.5*_np.log(w),n))
 
     return eps.reshape(3,3) if _np.shape(F) == (3,3) else \
            eps
@@ -278,15 +281,15 @@ def _polar_decomposition(T,requested):
     """
     u, s, vh = _np.linalg.svd(T)
     R = _np.dot(u,vh) if _np.shape(T) == (3,3) else \
-        _np.einsum('ijk,ikl->ijl',u,vh)
+        _np.einsum('...ij,...jk->...ik',u,vh)
 
     output = []
     if 'R' in requested:
         output.append(R)
     if 'V' in requested:
-        output.append(_np.dot(T,R.T) if _np.shape(T) == (3,3) else _np.einsum('ijk,ilk->ijl',T,R))
+        output.append(_np.dot(T,R.T) if _np.shape(T) == (3,3) else _np.einsum('...ij,...kj->...ik',T,R))
     if 'U' in requested:
-        output.append(_np.dot(R.T,T) if _np.shape(T) == (3,3) else _np.einsum('ikj,ikl->ijl',R,T))
+        output.append(_np.dot(R.T,T) if _np.shape(T) == (3,3) else _np.einsum('...ji,...jk->...ik',R,T))
 
     return tuple(output)
 
@@ -305,4 +308,4 @@ def _Mises(T_sym,s):
     """
     d = deviatoric_part(T_sym)
     return _np.sqrt(s*(_np.sum(d**2.0))) if _np.shape(T_sym) == (3,3) else \
-           _np.sqrt(s*_np.einsum('ijk->i',d**2.0))
+           _np.sqrt(s*_np.einsum('...jk->...',d**2.0))
