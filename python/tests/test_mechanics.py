@@ -20,9 +20,10 @@ class TestMechanics:
                                                   (mechanics.spherical_part,  spherical_part)
                                                  ])
     def test_vectorize_1_arg_(self,vectorized,single):
-        test_data = np.random.rand(self.n,3,3)
-        for i,v in enumerate(vectorized(test_data)):
-            assert np.allclose(single(test_data[i]),v)
+        test_data_flat = np.random.rand(self.n,3,3)
+        test_data = np.reshape(test_data_flat,(self.n//10,10,3,3))
+        for i,v in enumerate(np.reshape(vectorized(test_data),vectorized(test_data_flat).shape)):
+            assert np.allclose(single(test_data_flat[i]),v)
 
     @pytest.mark.parametrize('function',[mechanics.deviatoric_part,
                                          mechanics.eigenvalues,
