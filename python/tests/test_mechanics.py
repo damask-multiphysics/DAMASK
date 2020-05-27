@@ -3,11 +3,26 @@ import numpy as np
 
 from damask import mechanics
 
+def deviatoric_part(T):
+    return T - np.eye(3)*spherical_part(T)
+
+def spherical_part(T,tensor=False):
+    sph = np.trace(T)/3.0
+    return sph if not tensor else np.eye(3)*sph
+
 class TestMechanics:
 
     n = 1000
     c = np.random.randint(n)
 
+
+    @pytest.mark.parametrize('vectorized,single',[(mechanics.deviatoric_part, deviatoric_part),
+                                                  (mechanics.spherical_part,  spherical_part)
+                                                 ])
+    def test_vectorize_1_arg_(self,vectorized,single):
+        test_data = np.random.rand(self.n,3,3)
+        for i,v in enumerate(vectorized(test_data)):
+            assert np.allclose(single(test_data[i]),v)
 
     @pytest.mark.parametrize('function',[mechanics.deviatoric_part,
                                          mechanics.eigenvalues,

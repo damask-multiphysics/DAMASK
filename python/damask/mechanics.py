@@ -28,12 +28,12 @@ def deviatoric_part(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the deviatoric part is computed.
 
     """
-    return T - _np.eye(3)*spherical_part(T) if _np.shape(T) == (3,3) else \
-           T - _np.einsum('...ij,...->...ij',_np.eye(3),spherical_part(T))
+    return T - _np.einsum('...ij,...->...ij',_np.eye(3),spherical_part(T))
+
 
 def eigenvalues(T_sym):
     """
@@ -180,22 +180,14 @@ def spherical_part(T,tensor=False):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the hydrostatic part is computed.
     tensor : bool, optional
         Map spherical part onto identity tensor. Default is false
 
     """
-    if T.shape == (3,3):
-        sph = _np.trace(T)/3.0
-        return sph if not tensor else _np.eye(3)*sph
-    else:
-        sph = _np.trace(T,axis2=-2,axis1=-1)/3.0
-        if not tensor:
-            return sph
-        else:
-            #return _np.einsum('ijk,i->ijk',_np.broadcast_to(_np.eye(3),(T.shape[0],3,3)),sph)
-            return _np.einsum('...jk,...->...jk',_np.eye(3),sph)
+    sph = _np.trace(T,axis2=-2,axis1=-1)/3.0
+    return _np.einsum('...jk,...->...jk',_np.eye(3),sph) if tensor else sph
 
 
 def strain_tensor(F,t,m):
