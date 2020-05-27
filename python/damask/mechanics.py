@@ -216,8 +216,6 @@ def strain_tensor(F,t,m):
         w,n = _np.linalg.eigh(C)
 
     if   m > 0.0:
-        #eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
-        #                          - _np.broadcast_to(_np.eye(3),[F_.shape[0],3,3]))
         eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
                                   - _np.einsum('...jk->...jk',_np.eye(3)))
         
@@ -225,7 +223,7 @@ def strain_tensor(F,t,m):
         eps = 1.0/(2.0*abs(m)) * (- _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
                                   + _np.einsum('...jk->...jk',_np.eye(3)))
     else:
-        eps = _np.matmul(n,_np.einsum('...j,...kj->....jk',0.5*_np.log(w),n))
+        eps = _np.matmul(n,_np.einsum('...j,...kj->...jk',0.5*_np.log(w),n))
 
     return eps.reshape(3,3) if _np.shape(F) == (3,3) else \
            eps
