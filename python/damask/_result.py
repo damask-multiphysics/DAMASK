@@ -568,9 +568,8 @@ class Result:
                 'label': 'sigma',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
-                          'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],
-                                                                                         P['meta']['Description'])+\
-                                         'and {} ({})'.format(F['label'],F['meta']['Description']),
+                          'Description': 'Cauchy stress calculated from {} ({}) and {} ({})'\
+                                         .format(P['label'],P['meta']['Description'],F['label'],F['meta']['Description']),
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
@@ -638,17 +637,24 @@ class Result:
 
 
     @staticmethod
-    def _add_eigenvalue(T_sym):
+    def _add_eigenvalue(T_sym,eigenvalue):
+        if   eigenvalue == 'max':
+            label,p = 'Maximum',2
+        elif eigenvalue == 'mid':
+            label,p = 'Intermediate',1
+        elif eigenvalue == 'min':
+            label,p = 'Minimum',0
+
         return {
-                'data': mechanics.eigenvalues(T_sym['data']),
-                'label': 'lambda({})'.format(T_sym['label']),
+                'data': mechanics.eigenvalues(T_sym['data'])[:,p],
+                'label': 'lambda_{}({})'.format(eigenvalue,T_sym['label']),
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
-                          'Description': 'Eigenvalues of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
+                          'Description': '{} eigenvalue of {} ({})'.format(label,T_sym['label'],T_sym['meta']['Description']),
                           'Creator':     inspect.stack()[0][3][1:]
                          }
                 }
-    def add_eigenvalues(self,T_sym):
+    def add_eigenvalue(self,T_sym,eigenvalue='max'):
         """
         Add eigenvalues of symmetric tensor.
 
@@ -656,33 +662,46 @@ class Result:
         ----------
         T_sym : str
             Label of symmetric tensor dataset.
+        eigenvalue : str, optional
+            Eigenvalue. Select from ‘max’, ‘mid’, ‘min’. Defaults to ‘max’.
 
         """
-        self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym})
+        self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
 
 
     @staticmethod
-    def _add_eigenvector(T_sym):
+    def _add_eigenvector(T_sym,eigenvalue):
+        if   eigenvalue == 'max':
+            label,p = 'maximum',2
+        elif eigenvalue == 'mid':
+            label,p = 'intermediate',1
+        elif eigenvalue == 'min':
+            label,p = 'minimum',0
+        print('p',eigenvalue)
         return {
-                'data': mechanics.eigenvectors(T_sym['data']),
-                'label': 'v({})'.format(T_sym['label']),
+                'data': mechanics.eigenvectors(T_sym['data'])[:,p],
+                'label': 'v_{}({})'.format(eigenvalue,T_sym['label']),
                 'meta' : {
                           'Unit':        '1',
-                          'Description': 'Eigenvectors of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
+                          'Description': 'Eigenvector corresponding to {} eigenvalue of {} ({})'\
+                                         .format(label,T_sym['label'],T_sym['meta']['Description']),
                           'Creator':     inspect.stack()[0][3][1:]
                          }
                 }
-    def add_eigenvectors(self,T_sym):
+    def add_eigenvector(self,T_sym,eigenvalue='max'):
         """
-        Add eigenvectors of symmetric tensor.
+        Add eigenvector of symmetric tensor.
 
         Parameters
         ----------
         T_sym : str
             Label of symmetric tensor dataset.
+        eigenvalue : str, optional
+            Eigenvalue to which the eigenvector corresponds. Select from
+            ‘max’, ‘mid’, ‘min’. Defaults to ‘max’.
 
         """
-        self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym})
+        self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
 
 
     @staticmethod
@@ -819,9 +838,8 @@ class Result:
                 'label': 'S',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
-                          'Description': '2. Kirchhoff stress calculated from {} ({}) '.format(P['label'],
-                                                                                               P['meta']['Description'])+\
-                                         'and {} ({})'.format(F['label'],F['meta']['Description']),
+                          'Description': '2. Piola-Kirchhoff stress calculated from {} ({}) and {} ({})'\
+                                         .format(P['label'],P['meta']['Description'],F['label'],F['meta']['Description']),
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                 }

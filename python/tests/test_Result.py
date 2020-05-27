@@ -21,6 +21,13 @@ def default(tmp_path,reference_dir):
     return f
 
 @pytest.fixture
+def single_phase(tmp_path,reference_dir):
+    """Single phase Result file in temp location for modification."""
+    fname = '6grains6x7x8_single_phase_tensionY.hdf5'
+    shutil.copy(os.path.join(reference_dir,fname),tmp_path)
+    return Result(os.path.join(tmp_path,fname))
+
+@pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
     return os.path.join(reference_dir_base,'Result')
@@ -125,21 +132,23 @@ class TestResult:
         in_file   = default.read_dataset(loc['s_P'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_eigenvalues(self,default):
+    @pytest.mark.parametrize('eigenvalue,function',[('max',np.amax),('min',np.amin)])
+    def test_add_eigenvalue(self,default,eigenvalue,function):
         default.add_Cauchy('P','F')
-        default.add_eigenvalues('sigma')
-        loc = {'sigma'        :default.get_dataset_location('sigma'),
-               'lambda(sigma)':default.get_dataset_location('lambda(sigma)')}
-        in_memory = mechanics.eigenvalues(default.read_dataset(loc['sigma'],0))
-        in_file   = default.read_dataset(loc['lambda(sigma)'],0)
+        default.add_eigenvalue('sigma',eigenvalue)
+        loc = {'sigma' :default.get_dataset_location('sigma'),
+               'lambda':default.get_dataset_location('lambda_{}(sigma)'.format(eigenvalue))}
+        in_memory = function(mechanics.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
+        in_file   = default.read_dataset(loc['lambda'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_eigenvectors(self,default):
+    @pytest.mark.parametrize('eigenvalue,idx',[('max',2),('mid',1),('min',0)])
+    def test_add_eigenvector(self,default,eigenvalue,idx):
         default.add_Cauchy('P','F')
-        default.add_eigenvectors('sigma')
+        default.add_eigenvector('sigma',eigenvalue)
         loc = {'sigma'   :default.get_dataset_location('sigma'),
-               'v(sigma)':default.get_dataset_location('v(sigma)')}
-        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))
+               'v(sigma)':default.get_dataset_location('v_{}(sigma)'.format(eigenvalue))}
+        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
         in_file   = default.read_dataset(loc['v(sigma)'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -296,3 +305,7 @@ class TestResult:
     def test_vtk(self,tmp_path,default,output):
         os.chdir(tmp_path)
         default.to_vtk(output)
+
+    def test_XDMF(self,tmp_path,single_phase):
+        os.chdir(tmp_path)
+        single_phase.write_XDMF
