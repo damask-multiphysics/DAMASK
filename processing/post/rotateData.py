@@ -37,27 +37,26 @@ parser.add_option('--degrees',
 parser.set_defaults(rotation = (1.,1.,1.,0),                                                        # no rotation about (1,1,1)
                     degrees = False,
                    )
-                    
+
 (options,filenames) = parser.parse_args()
 if filenames == []: filenames = [None]
 
 if options.data is None:
-  parser.error('no data column specified.')
+    parser.error('no data column specified.')
 
-r = damask.Rotation.fromAxisAngle(options.rotation,options.degrees,normalise=True)
+r = damask.Rotation.from_axis_angle(options.rotation,options.degrees,normalise=True)
 
 for name in filenames:
     damask.util.report(scriptName,name)
-    
+
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     for data in options.data:
         d = table.get(data)
         if table.shapes[data] == (9,): d=d.reshape(-1,3,3)
-        for i,l in enumerate(d):
-            d[i] = r*l
+        d = r.broadcast_to(d.shape[0:1]) @ d
         if table.shapes[data] == (9,): d=d.reshape(-1,9)
-        
+
         table.set(data,d,scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)

@@ -84,9 +84,9 @@ if [options.angleaxis,options.quaternion].count(None) == 0:
   parser.error('more than one rotation specified.')
 
 if options.angleaxis is not None:
-  rotation = damask.Rotation.fromAxisAngle(np.array(options.angleaxis),options.degrees,normalise=True)
+  rotation = damask.Rotation.from_axis_angle(np.array(options.angleaxis),options.degrees,normalise=True)
 elif options.quaternion is not None:
-  rotation = damask.Rotation.fromQuaternion(options.quaternion)
+  rotation = damask.Rotation.from_quaternion(options.quaternion)
 else:
   rotation = damask.Rotation()
 
