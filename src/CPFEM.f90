@@ -11,6 +11,7 @@ module CPFEM
   use math
   use rotations
   use YAML_types
+  use YAML_parse
   use discretization_marc
   use material
   use config
@@ -84,6 +85,7 @@ subroutine CPFEM_initAll(el,ip)
   call math_init
   call rotations_init
   call YAML_types_init
+  call YAML_init
   call HDF5_utilities_init
   call results_init(.false.)
   call discretization_marc_init(ip, el)

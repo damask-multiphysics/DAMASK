@@ -12,6 +12,7 @@ module CPFEM2
   use math
   use rotations
   use YAML_types
+  use YAML_parse
   use material
   use lattice
   use IO
@@ -52,6 +53,7 @@ subroutine CPFEM_initAll
   call math_init
   call rotations_init
   call YAML_types_init
+  call YAML_init
   call lattice_init
   call HDF5_utilities_init
   call results_init(restart=interface_restartInc>0)
