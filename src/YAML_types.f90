@@ -16,14 +16,7 @@ module YAML_types
 
   private
 
-  public :: &
-    tNode, &
-    tScalar, &
-    tDict, &
-    tList, &
-    YAML_types_init
-
-  type, abstract :: tNode
+  type, abstract, public :: tNode
     integer :: length = 0
     contains
     procedure(asFormattedString), deferred :: asFormattedString
@@ -102,7 +95,7 @@ module YAML_types
   end type tNode
 
 
-  type, extends(tNode) :: tScalar
+  type, extends(tNode), public :: tScalar
 
     character(len=:), allocatable, private :: value
 
@@ -118,7 +111,7 @@ module YAML_types
       asString  => tScalar_asString
   end type tScalar
 
-  type, extends(tNode) :: tList
+  type, extends(tNode), public :: tList
 
     class(tItem), pointer  :: first => null()
 
@@ -136,7 +129,7 @@ module YAML_types
     final :: tList_finalize
   end type tList
 
-  type, extends(tList) :: tDict
+  type, extends(tList), public :: tDict
     contains
     procedure :: asFormattedString => tDict_asFormattedString
     procedure :: set               => tDict_set
@@ -170,6 +163,10 @@ module YAML_types
   interface assignment (=)
     module procedure tScalar_assign__
   end interface assignment (=)
+
+  public :: &
+    YAML_types_init, &
+    assignment(=)
 
 contains
 
