@@ -97,7 +97,7 @@ for name in filenames:
     dataset = os.path.join(group_pointwise,options.quaternion)
     try:
       quats = np.reshape(inFile[dataset][...],(np.product(grid),4))
-      rot   = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in quats]
+      rot   = [damask.Rotation.from_quaternion(q,True,P=+1) for q in quats]
     except KeyError:
       errors.append('Pointwise orientation (quaternion) data ({}) not readable'.format(dataset))
 
@@ -123,7 +123,7 @@ for name in filenames:
 
     dataset = os.path.join(group_average,options.quaternion)
     try:
-      rot = [damask.Rotation.fromQuaternion(q,True,P=+1) for q in inFile[dataset][...][1:]]         # skip first entry (unindexed)
+      rot = [damask.Rotation.from_quaternion(q,True,P=+1) for q in inFile[dataset][...][1:]]        # skip first entry (unindexed)
     except KeyError:
       errors.append('Average orientation data ({}) not readable'.format(dataset))
 
@@ -140,7 +140,7 @@ for name in filenames:
   config_header = ['<texture>']
   for i in range(np.nanmax(microstructure)):
     config_header += ['[{}{}]'.format(label,i+1),
-                      '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*rot[i].asEulers(degrees = True)),
+                      '(gauss)\tphi1 {:.2f}\tPhi {:.2f}\tphi2 {:.2f}'.format(*rot[i].as_Eulers(degrees = True)),
                      ]
   config_header += ['<microstructure>']
   for i in range(np.nanmax(microstructure)):
