@@ -56,7 +56,7 @@ submodule(constitutive) plastic_nonlocal
       rhoSglScrewNeg0, &                                                                            !< initial screw_neg dislocation density
       rhoDipEdge0, &                                                                                !< initial edge dipole dislocation density
       rhoDipScrew0                                                                                  !< initial screw dipole dislocation density
-    integer,     dimension(:) ,allocatable :: &
+    integer,     dimension(:), allocatable :: &
       N_sl
   end type tInitialParameters
 
