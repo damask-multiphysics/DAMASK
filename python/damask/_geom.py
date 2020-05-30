@@ -242,7 +242,7 @@ class Geom:
 
     def get_grid(self):
         """Return the grid discretization."""
-        return np.array(self.microstructure.shape)
+        return np.asarray(self.microstructure.shape)
 
 
     def get_homogenization(self):
@@ -533,8 +533,8 @@ class Geom:
 
         Parameters
         ----------
-        grid : iterable of int
-            new grid dimension
+        grid : numpy.ndarray of shape (3)
+            number of grid points in x,y,z direction.
 
         """
         #self.add_comments('geom.py:scale v{}'.format(version)
@@ -581,3 +581,90 @@ class Geom:
 
         #self.add_comments('geom.py:renumber v{}'.format(version)
         return self.update(renumbered)
+
+
+    def rotate(self,R,fill=None):
+        """
+        Rotate microstructure (pad if required).
+
+        Parameters
+        ----------
+        R : damask.Rotation
+            rotation to apply to the microstructure.
+        fill : int or float, optional
+            microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+
+        """
+        if fill is None: fill = np.nanmax(self.microstructure) + 1
+        dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
+
+        Eulers = R.as_Eulers(degrees=True)
+        microstructure_in = self.get_microstructure()
+
+        # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
+        # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
+        for angle,axes in zip(Eulers[::-1], [(0,1),(1,2),(0,1)]):
+            microstructure_out = ndimage.rotate(microstructure_in,angle,axes,order=0,
+                                                prefilter=False,output=dtype,cval=fill)
+            if np.prod(microstructure_in.shape) == np.prod(microstructure_out.shape):
+                # avoid scipy interpolation errors for rotations close to multiples of 90°
+                microstructure_in = np.rot90(microstructure_in,k=np.rint(angle/90.).astype(int),axes=axes)
+            else:
+                microstructure_in = microstructure_out
+
+        origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
+
+        #self.add_comments('geom.py:rotate v{}'.format(version)
+        return self.update(microstructure_in,origin=origin,rescale=True)
+
+
+    def canvas(self,grid=None,offset=None,fill=None):
+        """
+        Crop or enlarge/pad microstructure.
+
+        Parameters
+        ----------
+        grid : numpy.ndarray of shape (3)
+            number of grid points in x,y,z direction.
+        offset : numpy.ndarray of shape (3)
+            offset (measured in grid points) from old to new microstructue[0,0,0].
+        fill : int or float, optional
+            microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+
+        """
+        if fill is None: fill = np.nanmax(self.microstructure) + 1
+        if offset is None: offset = 0
+        dtype = float if int(fill) != fill or self.microstructure.dtype==np.float else int
+
+        canvas = np.full(self.grid if grid is None else grid,
+                         fill if fill is not None else np.nanmax(self.microstructure)+1,dtype)
+
+        l = np.clip( offset,          0,np.minimum(self.grid  +offset,grid))                        # noqa
+        r = np.clip( offset+self.grid,0,np.minimum(self.grid*2+offset,grid))
+        L = np.clip(-offset,          0,np.minimum(grid       -offset,self.grid))
+        R = np.clip(-offset+grid,     0,np.minimum(grid*2     -offset,self.grid))
+
+        canvas[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = self.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
+
+        #self.add_comments('geom.py:canvas v{}'.format(version)
+        return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
+
+
+    def substitute(self,from_microstructure,to_microstructure):
+        """
+        Substitude microstructure indices.
+
+        Parameters
+        ----------
+        from_microstructure : iterable of ints
+            microstructure indices to be substituted.
+        to_microstructure : iterable of ints
+            new microstructure indices.
+
+        """
+        substituted = self.get_microstructure()
+        for from_ms,to_ms in zip(from_microstructure,to_microstructure):
+            substituted[self.microstructure==from_ms] = to_ms
+
+        #self.add_comments('geom.py:substitute v{}'.format(version)
+        return self.update(substituted)

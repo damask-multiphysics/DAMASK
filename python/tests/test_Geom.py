@@ -5,12 +5,13 @@ import pytest
 import numpy as np
 
 from damask import Geom
+from damask import Rotation
 
 
 def geom_equal(a,b):
     return np.all(a.get_microstructure() == b.get_microstructure()) and \
-           np.all(a.get_size()           == b.get_size())           and \
-           np.all(a.get_grid()           == b.get_grid())
+           np.all(a.get_grid()           == b.get_grid()) and \
+           np.allclose(a.get_size(), b.get_size())
 
 @pytest.fixture
 def default():
@@ -36,6 +37,7 @@ class TestGeom:
                         default.get_size(),
                         default.get_origin()
                        )
+        print(modified)
         assert geom_equal(modified,default)
 
 
@@ -56,6 +58,22 @@ class TestGeom:
         default.to_file(tmpdir.join('default.geom'),pack=pack)
         new = Geom.from_file(tmpdir.join('default.geom'))
         assert geom_equal(new,default)
+
+    def test_invalid_combination(self,default):
+        with pytest.raises(ValueError):
+            default.update(default.microstructure[1:,1:,1:],size=np.ones(3), rescale=True)
+
+    def test_invalid_size(self,default):
+        with pytest.raises(ValueError):
+            default.update(default.microstructure[1:,1:,1:],size=np.ones(2))
+
+    def test_invalid_microstructure(self,default):
+        with pytest.raises(ValueError):
+            default.update(default.microstructure[1])
+
+    def test_invalid_homogenization(self,default):
+        with pytest.raises(TypeError):
+            default.set_homogenization(homogenization=0)
 
     @pytest.mark.parametrize('directions,reflect',[
                                                    (['x'],        False),
@@ -97,6 +115,52 @@ class TestGeom:
         reference = os.path.join(reference_dir,'scale_{}.geom'.format(tag))
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
+
+    def test_renumber(self,default):
+        modified = copy.deepcopy(default)
+        microstructure = modified.get_microstructure()
+        for m in np.unique(microstructure):
+            microstructure[microstructure==m] = microstructure.max() + np.random.randint(1,30)
+        modified.update(microstructure)
+        assert not geom_equal(modified,default)
+        modified.renumber()
+        assert geom_equal(modified,default)
+
+    def test_substitute(self,default):
+        modified = copy.deepcopy(default)
+        microstructure = modified.get_microstructure()
+        offset = np.random.randint(1,500)
+        microstructure+=offset
+        modified.update(microstructure)
+        assert not geom_equal(modified,default)
+        modified.substitute(np.arange(default.microstructure.max())+1+offset,
+                            np.arange(default.microstructure.max())+1)
+        assert geom_equal(modified,default)
+
+    @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
+                                           np.array([1,0,0,175]),np.array([0,-1,0,178]),np.array([0,0,1,180])])
+    def test_rotate360(self,default,axis_angle):
+        modified = copy.deepcopy(default)
+        for i in range(np.rint(360/axis_angle[3]).astype(int)):
+            modified.rotate(Rotation.from_axis_angle(axis_angle,degrees=True))
+        assert geom_equal(modified,default)
+
+    @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
+                                       [0.0,32.0,240.0]])
+    def test_rotate(self,default,update,reference_dir,Eulers):
+        modified = copy.deepcopy(default)
+        modified.rotate(Rotation.from_Eulers(Eulers,degrees=True))
+        tag = 'Eulers={}-{}-{}'.format(*Eulers)
+        reference = os.path.join(reference_dir,'rotate_{}.geom'.format(tag))
+        if update: modified.to_file(reference)
+        assert geom_equal(modified,Geom.from_file(reference))
+
+    def test_canvas(self,default):
+        grid_add = np.random.randint(0,30,(3))
+        modified = copy.deepcopy(default)
+        modified.canvas(modified.grid + grid_add)
+        e = default.grid
+        assert np.all(modified.microstructure[:e[0],:e[1],:e[2]] == default.microstructure)
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_tessellation_approaches(self,periodic):
