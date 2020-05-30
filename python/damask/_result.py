@@ -90,7 +90,7 @@ class Result:
 
         self.fname = os.path.abspath(fname)
 
-        self._allow_overwrite = False
+        self._allow_modification = False
 
 
     def __repr__(self):
@@ -167,14 +167,14 @@ class Result:
             self.selection[what] = diff_sorted
 
 
-    def enable_overwrite(self):
-        print(util.bcolors().WARNING,util.bcolors().BOLD,
-              'Warning: Enabled overwrite of existing datasets!',
+    def allow_modification(self):
+        print(util.bcolors().WARNING+util.bcolors().BOLD+
+              'Warning: Modification of existing datasets allowed!'+
               util.bcolors().ENDC)
-        self._allow_overwrite = True
+        self._allow_modification = True
 
-    def disable_overwrite(self):
-        self._allow_overwrite = False
+    def forbid_modification(self):
+        self._allow_modification = False
 
 
     def incs_in_range(self,start,end):
@@ -262,6 +262,23 @@ class Result:
 
         """
         self._manage_selection('del',what,datasets)
+
+
+    def rename(self,name_old,name_new):
+        """
+        Rename datasets.
+
+        """
+        if self._allow_modification:
+            with h5py.File(self.fname,'a') as f:
+                for path_old in self.get_dataset_location(name_old):
+                    path_new = os.path.join(os.path.dirname(path_old),name_new)
+                    f[path_new] = f[path_old]
+                    f[path_new].attrs['Renamed'] = 'Original name: {}'.encode()
+                    del f[path_old]
+        else:
+            print('Rename operation not permitted')
+
 
   # def datamerger(regular expression to filter groups into one copy)
 
@@ -397,8 +414,11 @@ class Result:
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    message += '      {} / ({}): {}\n'.\
-                                               format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
+                                    description = dataset.attrs['Description'].decode()
+                                    if 'Unit' in dataset.attrs:
+                                        message += '      {} / ({}): {}\n'.format(d,dataset.attrs['Unit'].decode(),description)
+                                    else:
+                                        message += '      {}: {}\n'.format(d,description)
                                 except KeyError:
                                     pass
         return message
@@ -1048,7 +1068,7 @@ class Result:
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
                 try:
-                    if self._allow_overwrite and result[0]+'/'+result[1]['label'] in f:
+                    if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
                         dataset = f[result[0]+'/'+result[1]['label']]
                         dataset[...] = result[1]['data']
                         dataset.attrs['Overwritten'] = 'Yes'.encode()
