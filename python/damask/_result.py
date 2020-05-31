@@ -36,7 +36,7 @@ class Result:
         Parameters
         ----------
         fname : str
-            name of the DADF5 file to be openend.
+            name of the DADF5 file to be opened.
 
         """
         with h5py.File(fname,'r') as f:
