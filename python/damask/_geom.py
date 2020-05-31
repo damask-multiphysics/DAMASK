@@ -533,8 +533,8 @@ class Geom:
 
         Parameters
         ----------
-        grid : iterable of int
-            new grid dimension
+        grid : numpy.ndarray of shape (3)
+            number of grid points in x,y,z direction.
 
         """
         #self.add_comments('geom.py:scale v{}'.format(version)
@@ -584,7 +584,17 @@ class Geom:
 
 
     def rotate(self,R,fill=None):
-        """Rotate microstructure (pad if required)."""
+        """
+        Rotate microstructure (pad if required).
+
+        Parameters
+        ----------
+        R : damask.Rotation
+            rotation to apply to the microstructure.
+        fill : int or float, optional
+            microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+
+        """
         if fill is None: fill = np.nanmax(self.microstructure) + 1
         dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
 
@@ -609,7 +619,19 @@ class Geom:
 
 
     def canvas(self,grid=None,offset=None,fill=None):
-        """Crop or enlarge/pad microstructure."""
+        """
+        Crop or enlarge/pad microstructure.
+
+        Parameters
+        ----------
+        grid : numpy.ndarray of shape (3)
+            number of grid points in x,y,z direction.
+        offset : numpy.ndarray of shape (3)
+            offset (measured in grid points) from old to new microstructue[0,0,0].
+        fill : int or float, optional
+            microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+
+        """
         if fill is None: fill = np.nanmax(self.microstructure) + 1
         if offset is None: offset = 0
         dtype = float if int(fill) != fill or self.microstructure.dtype==np.float else int
@@ -629,7 +651,17 @@ class Geom:
 
 
     def substitute(self,from_microstructure,to_microstructure):
-        """Substitude microstructure indices."""
+        """
+        Substitude microstructure indices.
+
+        Parameters
+        ----------
+        from_microstructure : iterable of ints
+            microstructure indices to be substituted.
+        to_microstructure : iterable of ints
+            new microstructure indices.
+
+        """
         substituted = self.get_microstructure()
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
