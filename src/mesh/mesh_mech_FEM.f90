@@ -314,7 +314,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   PetscReal,  pointer,dimension(:)   :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
   PetscInt                           :: cellStart, cellEnd, cell, field, face, &
                                         qPt, basis, comp, cidx, &
-                                        numFields, depth ! < DEBUG
+                                        numFields
   PetscReal                          :: detFAvg
   PetscReal                          :: BMat(dimPlex*dimPlex,cellDof)
 
@@ -357,9 +357,6 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
     
     call PetscSectionGetNumFields(section,numFields,ierr)
     CHKERRQ(ierr)
-    call DMPlexGetDepth(dm_local,depth,ierr)
-    CHKERRQ(ierr)
-    
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,ierr)                             !< get Dofs belonging to element
     CHKERRQ(ierr)
     call  DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)
