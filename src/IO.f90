@@ -68,7 +68,7 @@ function IO_read_ASCII(fileName) result(fileContent)
     fileLength, &
     fileUnit, &
     startPos, endPos, &
-    myTotalLines, &                                                                                 !< # lines read from file
+    N_lines, &                                                                                      !< # lines read from file
     l, &
     myStat
   logical :: warned
@@ -89,19 +89,19 @@ function IO_read_ASCII(fileName) result(fileContent)
 
 !--------------------------------------------------------------------------------------------------
 ! count lines to allocate string array
-  myTotalLines = 1
+  N_lines = 1
   do l=1, len(rawData)
-    if (rawData(l:l) == IO_EOL) myTotalLines = myTotalLines+1
+    if (rawData(l:l) == IO_EOL) N_lines = N_lines+1
   enddo
-  allocate(fileContent(myTotalLines))
+  allocate(fileContent(N_lines))
 
 !--------------------------------------------------------------------------------------------------
 ! split raw data at end of line
   warned = .false.
   startPos = 1
   l = 1
-  do while (l <= myTotalLines)
-    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= myTotalLines)
+  do while (l <= N_lines)
+    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= N_lines)
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
