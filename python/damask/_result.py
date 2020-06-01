@@ -1270,20 +1270,3 @@ class Result:
                                             inc[3:].zfill(N_digits))
 
             v.write(file_out)
-
-###################################################################################################
-# BEGIN DEPRECATED
-
-    def set_by_time(self,start,end):
-        """
-        Set active increments based on start and end time.
-
-        Parameters
-        ----------
-        start : float
-          start time (included)
-        end : float
-          end time (included)
-
-        """
-        self._manage_selection('set','times',self.times_in_range(start,end))

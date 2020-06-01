@@ -158,6 +158,7 @@ class Rotation:
 
 
     def broadcast_to(self,shape):
+        if isinstance(shape,int): shape = (shape,)
         if self.shape == ():
             q = np.broadcast_to(self.quaternion,shape+(4,))
         else:
