@@ -70,16 +70,13 @@ function IO_read_ASCII(fileName) result(fileContent)
     startPos, endPos, &
     N_lines, &                                                                                      !< # lines read from file
     l, &
+    i, &
     myStat
   logical :: warned
 
 !--------------------------------------------------------------------------------------------------
 ! read data as stream
   inquire(file = fileName, size=fileLength)
-  if (fileLength == 0) then
-    allocate(fileContent(0))
-    return
-  endif
   open(newunit=fileUnit, file=fileName, access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
   if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
@@ -89,10 +86,15 @@ function IO_read_ASCII(fileName) result(fileContent)
 
 !--------------------------------------------------------------------------------------------------
 ! count lines to allocate string array
-  N_lines = 1
+  N_lines = 0
+  i = 0
   do l=1, len(rawData)
-    if (rawData(l:l) == IO_EOL) N_lines = N_lines+1
+    if (rawData(l:l) == IO_EOL) then
+      N_lines = N_lines+1
+      i = l
+    endif
   enddo
+  if(i+1/=l) N_lines = N_lines+1                                                                      ! no EOL in last line
   allocate(fileContent(N_lines))
 
 !--------------------------------------------------------------------------------------------------
