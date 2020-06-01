@@ -17,11 +17,9 @@ module mesh_mech_FEM
   use prec
   use FEM_utilities
   use discretization_mesh
-  use IO
   use DAMASK_interface
   use numerics
   use FEM_quadrature
-  use FEsolving
   use homogenization
   use math
 

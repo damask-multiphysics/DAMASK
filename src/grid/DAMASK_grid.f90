@@ -6,7 +6,7 @@
 !> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
 !> results
 !--------------------------------------------------------------------------------------------------
-program DAMASK_spectral
+program DAMASK_grid
 #include <petsc/finclude/petscsys.h>
  use PETScsys
  use prec
@@ -495,4 +495,4 @@ program DAMASK_spectral
 
  call quit(0)                                                                                       ! no complains ;)
 
-end program DAMASK_spectral
+end program DAMASK_grid

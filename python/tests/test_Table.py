@@ -18,7 +18,7 @@ def reference_dir(reference_dir_base):
     return os.path.join(reference_dir_base,'Table')
 
 class TestTable:
-    
+
     def test_get_scalar(self,default):
         d = default.get('s')
         assert np.allclose(d,1.0) and d.shape[1:] == (1,)
@@ -29,12 +29,12 @@ class TestTable:
 
     def test_get_tensor(self,default):
         d = default.get('F')
-        assert np.allclose(d,1.0) and d.shape[1:] == (3,3) 
+        assert np.allclose(d,1.0) and d.shape[1:] == (3,3)
 
     def test_get_component(self,default):
         d = default.get('5_F')
         assert np.allclose(d,1.0) and d.shape[1:] == (1,)
-  
+
     def test_write_read_str(self,default,tmpdir):
         default.to_ASCII(str(tmpdir.join('default.txt')))
         new = Table.from_ASCII(str(tmpdir.join('default.txt')))
@@ -69,15 +69,20 @@ class TestTable:
     def test_read_strange(self,reference_dir,fname):
         with open(os.path.join(reference_dir,fname)) as f:
             Table.from_ASCII(f)
-    
+
     def test_set(self,default):
         default.set('F',np.zeros((5,3,3)),'set to zero')
         d=default.get('F')
         assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
 
+    def test_set_component(self,default):
+        default.set('1_F',np.zeros((5)),'set to zero')
+        d=default.get('F')
+        assert np.allclose(d[...,0,0],0.0) and d.shape[1:] == (3,3)
+
     def test_labels(self,default):
         assert default.labels == ['F','v','s']
-        
+
     def test_add(self,default):
         d = np.random.random((5,9))
         default.add('nine',d,'random data')

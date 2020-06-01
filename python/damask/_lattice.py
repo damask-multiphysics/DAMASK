@@ -229,19 +229,20 @@ class Symmetry:
         Return inverse pole figure color if requested.
         Bases are computed from
 
-        basis = {'cubic' :        np.linalg.inv(np.array([[0.,0.,1.],                               # direction of red
-                                                          [1.,0.,1.]/np.sqrt(2.),                   # direction of green
-                                                          [1.,1.,1.]/np.sqrt(3.)]).T),              # direction of blue
-                 'hexagonal' :    np.linalg.inv(np.array([[0.,0.,1.],                               # direction of red
-                                                          [1.,0.,0.],                               # direction of green
-                                                          [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).T),     # direction of blue
-                 'tetragonal' :   np.linalg.inv(np.array([[0.,0.,1.],                               # direction of red
-                                                          [1.,0.,0.],                               # direction of green
-                                                          [1.,1.,0.]/np.sqrt(2.)]).T),              # direction of blue
-                 'orthorhombic' : np.linalg.inv(np.array([[0.,0.,1.],                               # direction of red
-                                                          [1.,0.,0.],                               # direction of green
-                                                          [0.,1.,0.]]).T),                          # direction of blue
-                }
+        >>> basis = {'cubic' :       np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,1.]/np.sqrt(2.),                # direction of green
+        ...                                                  [1.,1.,1.]/np.sqrt(3.)]).T),           # direction of blue
+        ...          'hexagonal' :   np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,0.],                            # direction of green
+        ...                                                  [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).T),  # direction of blue
+        ...          'tetragonal' :  np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,0.],                            # direction of green
+        ...                                                  [1.,1.,0.]/np.sqrt(2.)]).T),           # direction of blue
+        ...          'orthorhombic': np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,0.],                            # direction of green
+        ...                                                  [0.,1.,0.]]).T),                       # direction of blue
+        ...         }
+
         """
         if self.lattice == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
@@ -634,6 +635,6 @@ class Lattice:
             otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
             otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
 
-            r['rotations'].append(Rotation.fromMatrix(np.dot(otherMatrix.T,myMatrix)))
+            r['rotations'].append(Rotation.from_matrix(np.dot(otherMatrix.T,myMatrix)))
 
         return r

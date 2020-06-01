@@ -1,9 +1,13 @@
+import time
 import shutil
 import os
+from datetime import datetime
 
 import pytest
 import numpy as np
+import h5py
 
+import damask
 from damask import Result
 from damask import mechanics
 
@@ -13,8 +17,15 @@ def default(tmp_path,reference_dir):
     fname = '12grains6x7x8_tensionY.hdf5'
     shutil.copy(os.path.join(reference_dir,fname),tmp_path)
     f = Result(os.path.join(tmp_path,fname))
-    f.set_by_time(20.0,20.0)
+    f.pick('times',20.0)
     return f
+
+@pytest.fixture
+def single_phase(tmp_path,reference_dir):
+    """Single phase Result file in temp location for modification."""
+    fname = '6grains6x7x8_single_phase_tensionY.hdf5'
+    shutil.copy(os.path.join(reference_dir,fname),tmp_path)
+    return Result(os.path.join(tmp_path,fname))
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
@@ -28,12 +39,56 @@ class TestResult:
         print(default)
 
 
-    def test_time_increments(self,default):
-        shape = default.read_dataset(default.get_dataset_location('F'),0).shape
-        default.set_by_time(0.0,20.0)
-        for i in default.iterate('increments'):
-           assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
+    def test_pick_all(self,default):
+        default.pick('increments',True)
+        a = default.get_dataset_location('F')
+        default.pick('increments','*')
+        b = default.get_dataset_location('F')
+        default.pick('increments',default.incs_in_range(0,np.iinfo(int).max))
+        c = default.get_dataset_location('F')
 
+        default.pick('times',True)
+        d = default.get_dataset_location('F')
+        default.pick('times','*')
+        e = default.get_dataset_location('F')
+        default.pick('times',default.times_in_range(0.0,np.inf))
+        f = default.get_dataset_location('F')
+        assert a == b == c == d == e ==f
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_none(self,default,what):
+        default.pick(what,False)
+        a = default.get_dataset_location('F')
+        default.pick(what,[])
+        b = default.get_dataset_location('F')
+
+        assert a == b == []
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_more(self,default,what):
+        default.pick(what,False)
+        default.pick_more(what,'*')
+        a = default.get_dataset_location('F')
+
+        default.pick(what,True)
+        b = default.get_dataset_location('F')
+
+        assert a == b
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_less(self,default,what):
+        default.pick(what,True)
+        default.pick_less(what,'*')
+        a = default.get_dataset_location('F')
+
+        default.pick(what,False)
+        b = default.get_dataset_location('F')
+
+        assert a == b == []
+
+    def test_pick_invalid(self,default):
+        with pytest.raises(AttributeError):
+            default.pick('invalid',True)
 
     def test_add_absolute(self,default):
         default.add_absolute('Fe')
@@ -77,22 +132,38 @@ class TestResult:
         in_file   = default.read_dataset(loc['s_P'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_eigenvalues(self,default):
+    @pytest.mark.parametrize('eigenvalue,function',[('max',np.amax),('min',np.amin)])
+    def test_add_eigenvalue(self,default,eigenvalue,function):
         default.add_Cauchy('P','F')
-        default.add_eigenvalues('sigma')
-        loc = {'sigma'        :default.get_dataset_location('sigma'),
-               'lambda(sigma)':default.get_dataset_location('lambda(sigma)')}
-        in_memory = mechanics.eigenvalues(default.read_dataset(loc['sigma'],0))
-        in_file   = default.read_dataset(loc['lambda(sigma)'],0)
+        default.add_eigenvalue('sigma',eigenvalue)
+        loc = {'sigma' :default.get_dataset_location('sigma'),
+               'lambda':default.get_dataset_location('lambda_{}(sigma)'.format(eigenvalue))}
+        in_memory = function(mechanics.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
+        in_file   = default.read_dataset(loc['lambda'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_eigenvectors(self,default):
+    @pytest.mark.parametrize('eigenvalue,idx',[('max',2),('mid',1),('min',0)])
+    def test_add_eigenvector(self,default,eigenvalue,idx):
         default.add_Cauchy('P','F')
-        default.add_eigenvectors('sigma')
+        default.add_eigenvector('sigma',eigenvalue)
         loc = {'sigma'   :default.get_dataset_location('sigma'),
-               'v(sigma)':default.get_dataset_location('v(sigma)')}
-        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))
+               'v(sigma)':default.get_dataset_location('v_{}(sigma)'.format(eigenvalue))}
+        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
         in_file   = default.read_dataset(loc['v(sigma)'],0)
+        assert np.allclose(in_memory,in_file)
+
+    @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
+    def test_add_IPFcolor(self,default,d):
+        default.add_IPFcolor('orientation',d)
+        loc = {'orientation': default.get_dataset_location('orientation'),
+               'color':       default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
+        qu = default.read_dataset(loc['orientation']).view(np.double).reshape(-1,4)
+        crystal_structure = default.get_crystal_structure()
+        in_memory = np.empty((qu.shape[0],3),np.uint8)
+        for i,q in enumerate(qu):
+            o = damask.Orientation(q,crystal_structure).reduced()
+            in_memory[i] = np.uint8(o.IPFcolor(np.array(d))*255)
+        in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 
     def test_add_maximum_shear(self,default):
@@ -143,6 +214,20 @@ class TestResult:
         in_file   = default.read_dataset(loc['S'],0)
         assert np.allclose(in_memory,in_file)
 
+    @pytest.mark.parametrize('polar',[True,False])
+    def test_add_pole(self,default,polar):
+        pole = np.array([1.,0.,0.])
+        default.add_pole('orientation',pole,polar)
+        loc = {'orientation': default.get_dataset_location('orientation'),
+               'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
+        rot = damask.Rotation(default.read_dataset(loc['orientation']).view(np.double))
+        rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
+        xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
+        in_memory = xy if not polar else \
+                    np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
+        in_file = default.read_dataset(loc['pole'])
+        assert np.allclose(in_memory,in_file)
+
     def test_add_rotational_part(self,default):
         default.add_rotational_part('F')
         loc = {'F':    default.get_dataset_location('F'),
@@ -185,3 +270,42 @@ class TestResult:
         in_memory = mechanics.left_stretch(default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['V(F)'],0)
         assert np.allclose(in_memory,in_file)
+
+    def test_add_invalid(self,default):
+        with pytest.raises(TypeError):
+            default.add_calculation('#invalid#*2')
+
+    @pytest.mark.parametrize('overwrite',['off','on'])
+    def test_add_overwrite(self,default,overwrite):
+        default.pick('times',default.times_in_range(0,np.inf)[-1])
+
+        default.add_Cauchy()
+        loc = default.get_dataset_location('sigma')
+        print(loc)
+        with h5py.File(default.fname,'r') as f:
+            created_first = f[loc[0]].attrs['Created'].decode()
+        created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
+
+        if overwrite == 'on':
+            default.enable_overwrite()
+        else:
+            default.disable_overwrite()
+
+        time.sleep(2.)
+        default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        with h5py.File(default.fname,'r') as f:
+            created_second = f[loc[0]].attrs['Created'].decode()
+        created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
+        if overwrite == 'on':
+            assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
+        else:
+            assert created_first == created_second and not np.allclose(default.read_dataset(loc),311.)
+
+    @pytest.mark.parametrize('output',['F',[],['F','P']])
+    def test_vtk(self,tmp_path,default,output):
+        os.chdir(tmp_path)
+        default.to_vtk(output)
+
+    def test_XDMF(self,tmp_path,single_phase):
+        os.chdir(tmp_path)
+        single_phase.write_XDMF

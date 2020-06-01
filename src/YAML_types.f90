@@ -16,14 +16,7 @@ module YAML_types
 
   private
 
-  public :: &
-    tNode, &
-    tScalar, &
-    tDict, &
-    tList, &
-    YAML_types_init
-
-  type, abstract :: tNode
+  type, abstract, public :: tNode
     integer :: length = 0
     contains
     procedure(asFormattedString), deferred :: asFormattedString
@@ -102,7 +95,7 @@ module YAML_types
   end type tNode
 
 
-  type, extends(tNode) :: tScalar
+  type, extends(tNode), public :: tScalar
 
     character(len=:), allocatable, private :: value
 
@@ -118,7 +111,7 @@ module YAML_types
       asString  => tScalar_asString
   end type tScalar
 
-  type, extends(tNode) :: tList
+  type, extends(tNode), public :: tList
 
     class(tItem), pointer  :: first => null()
 
@@ -136,7 +129,7 @@ module YAML_types
     final :: tList_finalize
   end type tList
 
-  type, extends(tList) :: tDict
+  type, extends(tList), public :: tDict
     contains
     procedure :: asFormattedString => tDict_asFormattedString
     procedure :: set               => tDict_set
@@ -171,6 +164,10 @@ module YAML_types
     module procedure tScalar_assign__
   end interface assignment (=)
 
+  public :: &
+    YAML_types_init, &
+    assignment(=)
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -180,7 +177,7 @@ subroutine YAML_types_init
 
   write(6,'(/,a)') ' <<<+-  YAML_types init  -+>>>'
 
-  call unitTest
+  call selfTest
 
 end subroutine YAML_types_init
 
@@ -188,7 +185,7 @@ end subroutine YAML_types_init
 !--------------------------------------------------------------------------------------------------
 !> @brief check correctness of some type bound procedures
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   class(tNode), pointer  :: s1,s2
   allocate(tScalar::s1)
@@ -260,7 +257,7 @@ subroutine unitTest
      if(n%get_asString(1) /= 'True')                call IO_error(0,ext_msg='byIndex_asString')
   end block
 
-end subroutine unitTest
+end subroutine selfTest
 
 
 !---------------------------------------------------------------------------------------------------

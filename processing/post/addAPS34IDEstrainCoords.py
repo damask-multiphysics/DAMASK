@@ -32,15 +32,12 @@ parser.add_option('--depth',     dest='depth', metavar='string',
 if filenames == []: filenames = [None]
 
 if options.frame is None:
-  parser.error('frame not specified')
+    parser.error('frame not specified')
 if options.depth is None:
-  parser.error('depth not specified')
+    parser.error('depth not specified')
 
 
-theta=-0.75*np.pi
-RotMat2TSL=np.array([[1.,  0.,            0.],
-                     [0.,  np.cos(theta), np.sin(theta)],                                           # Orientation to account for -135 deg
-                     [0., -np.sin(theta), np.cos(theta)]])                                          # rotation for TSL convention
+rot_to_TSL = damask.Rotation.from_axis_angle([-1,0,0,.75*np.pi])
 
 for name in filenames:
     damask.util.report(scriptName,name)
@@ -50,8 +47,6 @@ for name in filenames:
     coord      = - table.get(options.frame)
     coord[:,2] += table.get(options.depth)[:,0]
 
-    table.add('coord',
-              np.einsum('ijk,ik->ij',np.broadcast_to(RotMat2TSL,(coord.shape[0],3,3)),coord),
-              scriptID+' '+' '.join(sys.argv[1:]))
+    table.add('coord',rot_to_TSL.broadcast_to(coord.shape[0]) @ coord,scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_ASCII(sys.stdout if name is None else name)

@@ -8,6 +8,7 @@ class Orientation:
     Crystallographic orientation.
 
     A crystallographic orientation contains a rotation and a lattice.
+
     """
 
     __slots__ = ['rotation','lattice']
@@ -36,7 +37,7 @@ class Orientation:
         if isinstance(rotation, Rotation):
             self.rotation = rotation
         else:
-            self.rotation = Rotation.fromQuaternion(rotation)                                       # assume quaternion
+            self.rotation = Rotation.from_quaternion(rotation)                                      # assume quaternion
 
         if self.rotation.quaternion.shape != (4,):
             raise NotImplementedError('Support for multiple rotations missing')
@@ -49,8 +50,10 @@ class Orientation:
         Disorientation between myself and given other orientation.
 
         Rotation axis falls into SST if SST == True.
-        (Currently requires same symmetry for both orientations.
-         Look into A. Heinz and P. Neumann 1991 for cases with differing sym.)
+
+        Currently requires same symmetry for both orientations.
+        Look into A. Heinz and P. Neumann 1991 for cases with differing sym.
+
         """
         if self.lattice.symmetry != other.lattice.symmetry:
             raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
@@ -65,8 +68,8 @@ class Orientation:
                 r = b*aInv
                 for k in range(2):
                     r.inverse()
-                    breaker = self.lattice.symmetry.inFZ(r.asRodrigues(vector=True)) \
-                              and (not SST or other.lattice.symmetry.inDisorientationSST(r.asRodrigues(vector=True)))
+                    breaker = self.lattice.symmetry.inFZ(r.as_Rodrigues(vector=True)) \
+                              and (not SST or other.lattice.symmetry.inDisorientationSST(r.as_Rodrigues(vector=True)))
                     if breaker: break
                 if breaker: break
             if breaker: break
@@ -75,7 +78,7 @@ class Orientation:
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
     def inFZ(self):
-        return self.lattice.symmetry.inFZ(self.rotation.asRodrigues(vector=True))
+        return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
 
 
     def equivalentOrientations(self,members=[]):
@@ -97,7 +100,7 @@ class Orientation:
     def reduced(self):
         """Transform orientation to fall into fundamental zone according to symmetry."""
         for me in self.equivalentOrientations():
-            if self.lattice.symmetry.inFZ(me.rotation.asRodrigues(vector=True)): break
+            if self.lattice.symmetry.inFZ(me.rotation.as_Rodrigues(vector=True)): break
 
         return self.__class__(me.rotation,self.lattice)
 
