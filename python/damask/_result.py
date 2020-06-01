@@ -267,6 +267,13 @@ class Result:
     def rename(self,name_old,name_new):
         """
         Rename datasets.
+        
+        Parameters
+        ----------
+        name_old : str
+            name of the datasets to be renamed
+        name_new : str
+            new name of the datasets
 
         """
         if self._allow_modification:
