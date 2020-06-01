@@ -36,7 +36,7 @@ class Result:
         Parameters
         ----------
         fname : str
-            name of the DADF5 file to be openend.
+            name of the DADF5 file to be opened.
 
         """
         with h5py.File(fname,'r') as f:
@@ -173,7 +173,7 @@ class Result:
               util.bcolors().ENDC)
         self._allow_modification = True
 
-    def forbid_modification(self):
+    def disallow_modification(self):
         self._allow_modification = False
 
 
@@ -277,7 +277,7 @@ class Result:
                     f[path_new].attrs['Renamed'] = 'Original name: {}'.encode()
                     del f[path_old]
         else:
-            print('Rename operation not permitted')
+            raise PermissionError('Rename operation not permitted')
 
 
   # def datamerger(regular expression to filter groups into one copy)

@@ -281,15 +281,14 @@ class TestResult:
 
         default.add_Cauchy()
         loc = default.get_dataset_location('sigma')
-        print(loc)
         with h5py.File(default.fname,'r') as f:
             created_first = f[loc[0]].attrs['Created'].decode()
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
-            default.enable_overwrite()
+            default.allow_modification()
         else:
-            default.disable_overwrite()
+            default.disallow_modification()
 
         time.sleep(2.)
         default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
@@ -300,6 +299,18 @@ class TestResult:
             assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
         else:
             assert created_first == created_second and not np.allclose(default.read_dataset(loc),311.)
+
+    @pytest.mark.parametrize('allowed',['off','on'])
+    def test_rename(self,default,allowed):
+        F = default.read_dataset(default.get_dataset_location('F'))
+        if allowed == 'on':
+            default.allow_modification()
+            default.rename('F','new_name')
+            assert np.all(F == default.read_dataset(default.get_dataset_location('new_name')))
+            default.disallow_modification()
+
+        with pytest.raises(PermissionError):
+            default.rename('P','another_new_name')
 
     @pytest.mark.parametrize('output',['F',[],['F','P']])
     def test_vtk(self,tmp_path,default,output):
