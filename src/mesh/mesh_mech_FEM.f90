@@ -71,7 +71,7 @@ subroutine FEM_mech_init(fieldBC)
   PetscQuadrature                        :: mechQuad, functional
   PetscDS                                :: mechDS
   PetscDualSpace                         :: mechDualSpace
-  DMLabel, dimension(:),pointer          :: pBCLabel
+  DMLabel, dimension(:),pointer          :: nolabel=>  NULL()
   DMLabel                                :: BCLabel
 
   PetscInt,  dimension(:),       pointer :: pNumComp, pNumDof, pBcField, pBcPoint
@@ -134,7 +134,7 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
@@ -180,8 +180,7 @@ subroutine FEM_mech_init(fieldBC)
   call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
 #else
-  allocate(pBClabel(1),source=BClabel)
-  call DMPlexCreateSection(mech_mesh,pBClabel,pNumComp,pNumDof, &
+  call DMPlexCreateSection(mech_mesh,nolabel,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
 
 #endif
@@ -315,7 +314,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   PetscReal,  pointer,dimension(:)   :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
   PetscInt                           :: cellStart, cellEnd, cell, field, face, &
                                         qPt, basis, comp, cidx, &
-                                        numFields, depth ! < DEBUG
+                                        numFields
   PetscReal                          :: detFAvg
   PetscReal                          :: BMat(dimPlex*dimPlex,cellDof)
 
@@ -328,7 +327,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   allocate(pinvcellJ(dimPlex**2))
   allocate(x_scal(cellDof))
 
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
@@ -356,15 +355,8 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
 ! evaluate field derivatives
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
     
-    ! BEGIN DEBUG
     call PetscSectionGetNumFields(section,numFields,ierr)
     CHKERRQ(ierr)
-    write(6,*) 'numFields', numFields
-    call DMPlexGetDepth(dm_local,depth,ierr)
-    CHKERRQ(ierr)
-    write(6,*) 'depth', depth
-    ! END DEBUG
-    
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,ierr)                             !< get Dofs belonging to element
     CHKERRQ(ierr)
     call  DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)
@@ -482,7 +474,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
