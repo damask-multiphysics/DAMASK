@@ -3,7 +3,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief  input/output functions, partly depending on chosen solver
+!> @brief  input/output functions
 !--------------------------------------------------------------------------------------------------
 module IO
   use prec
@@ -21,8 +21,16 @@ module IO
                  '───────────────────'//&
                  '───────────────────'//&
                  '────────────'
+
+  ! Obsolete alias
+  interface IO_read_ASCII
+    module procedure IO_readlines
+  end interface IO_read_ASCII
+
   public :: &
     IO_init, &
+    IO_read, &
+    IO_readlines, &
     IO_read_ASCII, &
     IO_open_binary, &
     IO_isBlank, &
@@ -55,9 +63,9 @@ end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads an entire ASCII file into an array
+!> @brief read ASCII file and split at EOL
 !--------------------------------------------------------------------------------------------------
-function IO_read_ASCII(fileName) result(fileContent)
+function IO_readlines(fileName) result(fileContent)
 
   character(len=*),          intent(in)                :: fileName
 
@@ -65,23 +73,12 @@ function IO_read_ASCII(fileName) result(fileContent)
   character(len=pStringLen)                            :: line
   character(len=:),                        allocatable :: rawData
   integer ::  &
-    fileLength, &
-    fileUnit, &
     startPos, endPos, &
     N_lines, &                                                                                      !< # lines in file
-    l, &
-    myStat
+    l
   logical :: warned
 
-!--------------------------------------------------------------------------------------------------
-! read data as stream
-  inquire(file = fileName, size=fileLength)
-  open(newunit=fileUnit, file=fileName, access='stream',&
-       status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
-  allocate(character(len=fileLength)::rawData)
-  read(fileUnit) rawData
-  close(fileUnit)
+  rawData = IO_read(fileName)
 
 !--------------------------------------------------------------------------------------------------
 ! count lines to allocate string array
@@ -113,7 +110,30 @@ function IO_read_ASCII(fileName) result(fileContent)
     l = l + 1
   enddo
 
-end function IO_read_ASCII
+end function IO_readlines
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads an entire ASCII file into a string
+!--------------------------------------------------------------------------------------------------
+function IO_read(fileName) result(fileContent)
+
+  character(len=*),  intent(in) :: fileName
+  character(len=:), allocatable :: fileContent
+  integer ::  &
+    fileLength, &
+    fileUnit, &
+    myStat
+
+  inquire(file = fileName, size=fileLength)
+  open(newunit=fileUnit, file=fileName, access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  allocate(character(len=fileLength)::fileContent)
+  read(fileUnit) fileContent
+  close(fileUnit)
+
+end function IO_read
 
 
 !--------------------------------------------------------------------------------------------------
