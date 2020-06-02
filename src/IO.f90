@@ -131,7 +131,7 @@ function IO_read(fileName) result(fileContent)
   if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
   allocate(character(len=fileLength)::fileContent)
   read(fileUnit,iostat=myStat) fileContent
-  if(myStat > 0)  call IO_error(102,ext_msg=trim(fileName))
+  if(myStat > 0)  call IO_error(102,ext_msg=trim(fileName))                                         ! <0 for ifort (https://software.intel.com/en-us/comment/1960081)
   close(fileUnit)
 
 end function IO_read
