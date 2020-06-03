@@ -19,11 +19,7 @@ class Marc:
 
         """
         self.solver  = 'Marc'
-        try:
-            self.version = int(version)
-        except TypeError:
-            self.version = -1
-
+        self.version = version
 
     @property
     def library_path(self):
