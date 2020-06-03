@@ -6,7 +6,7 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-sys.path.append(damask.solver.Marc().libraryPath())
+sys.path.append(str(damask.solver.Marc().library_path))
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
