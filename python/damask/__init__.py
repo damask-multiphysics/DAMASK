@@ -1,9 +1,9 @@
 """Tools for pre and post processing of DAMASK simulations."""
-import os as _os
+from pathlib import Path as _Path
 import re as _re
 
 name = 'damask'
-with open(_os.path.join(_os.path.dirname(__file__),'VERSION')) as _f:
+with open(_Path(__file__).parent/_Path('VERSION')) as _f:
     version = _re.sub(r'^v','',_f.readline().strip())
 
 # make classes directly accessible as damask.Class

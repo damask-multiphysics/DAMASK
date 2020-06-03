@@ -6,6 +6,7 @@ import os
 import datetime
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
+from pathlib import Path
 from functools import partial
 
 import h5py
@@ -88,7 +89,7 @@ class Result:
                           'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
                          }
 
-        self.fname = os.path.abspath(fname)
+        self.fname = Path(fname).absolute()
 
         self._allow_overwrite = False
 
@@ -1163,7 +1164,7 @@ class Result:
                                                        'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
                                 data_items[-1].text='{}:{}'.format(os.path.split(self.fname)[1],name)
 
-        with open(os.path.splitext(self.fname)[0]+'.xdmf','w') as f:
+        with open(self.fname.with_suffix('.xdmf').name,'w') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
@@ -1239,7 +1240,4 @@ class Result:
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
-                                            inc[3:].zfill(N_digits))
-
-            v.write(file_out)
+            v.write('{}_inc{}'.format(self.fname.stem,inc[3:].zfill(N_digits)))
