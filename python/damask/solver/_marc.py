@@ -38,7 +38,7 @@ class Marc:
     def tools_path(self):
 
         path_MSC   = Environment().options['MSC_ROOT']
-        path_tools = '{}/marc{}/tools'.format(path_MSC,self.version)
+        path_tools = Path('{}/marc{}/tools'.format(path_MSC,self.version))
 
         return path_tools if path_tools.is_file() else None
 
