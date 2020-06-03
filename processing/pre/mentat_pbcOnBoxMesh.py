@@ -197,14 +197,15 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
 
   if mfd_data[i]['uid'] == 1705: del mfd_data[i]
   mfd_data.insert(i, links)
-  
+
+
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #-------------------------------------------------------------------------------------------------- 
+
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh.
 Use *py_connection to operate on model presently opened in MSC.Mentat.
-
 """, version = scriptID)
 
 parser.add_option('-p', '--port',
@@ -229,10 +230,7 @@ if remote and filenames != []:
 if filenames == []: filenames = [None]
 
 if remote:
-  try:    import py_mentat
-  except:
-    damask.util.croak('no valid Mentat release found.')
-    sys.exit(-1)
+  import py_mentat
 
   damask.util.report(scriptName, 'waiting to connect...')
   filenames = [os.path.join(tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()) + '.mfd')]
@@ -240,14 +238,14 @@ if remote:
     py_mentat.py_connect('',options.port)
     py_mentat.py_send('*set_save_formatted on')
     py_mentat.py_send('*save_as_model "{}" yes'.format(filenames[0]))
-    py_mentat.py_get_int("nnodes()")                                    # hopefully blocks until file is written
-  except:
-    damask.util.croak('failed. try setting Tools/Python/"Run as Separate Process" & "Initiate".')
-    sys.exit()
+    py_mentat.py_get_int("nnodes()")
+  except py_mentat.InputError as err:
+    damask.util.croak('{}. Try Tools/Python/"Run as Separate Process" & "Initiate".'.format(err))
+    sys.exit(-1)
   damask.util.croak( 'connected...')
 
 for name in filenames:
-  while remote and not os.path.exists(name): time.sleep(0.5)           # wait for Mentat to write MFD file
+  while remote and not os.path.exists(name): time.sleep(0.5)
   with  open( name,'r') if name is not None else sys.stdin as fileIn:
     damask.util.report(scriptName, name)
     mfd = parseMFD(fileIn)
@@ -257,5 +255,4 @@ for name in filenames:
     fileOut.write(asMFD(mfd))
 
 if remote:
-  try:    py_mentat.py_send('*open_model "{}"'.format(filenames[0]))
-  except: damask.util.croak('lost connection on sending open command for "{}".'.format(filenames[0]))
+  py_mentat.py_send('*open_model "{}"'.format(filenames[0]))
