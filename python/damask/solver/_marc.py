@@ -27,7 +27,7 @@ class Marc:
         path_MSC = Environment().options['MSC_ROOT']
         path_lib = Path('{}/mentat{}/shlib/linux64'.format(path_MSC,self.version))
 
-        return path_lib if path_lib.is_file() else None
+        return path_lib if path_lib.is_dir() else None
 
 
     @property
@@ -36,7 +36,7 @@ class Marc:
         path_MSC   = Environment().options['MSC_ROOT']
         path_tools = Path('{}/marc{}/tools'.format(path_MSC,self.version))
 
-        return path_tools if path_tools.is_file() else None
+        return path_tools if path_tools.is_dir() else None
 
 
 #--------------------------
