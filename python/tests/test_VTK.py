@@ -17,18 +17,24 @@ class TestVTK:
         size   = np.random.random(3) + 1.0
         origin = np.random.random(3)
         v = VTK.from_rectilinearGrid(grid,size,origin)
-        s = v.__repr__()
+        string = v.__repr__()
         v.write(os.path.join(tmp_path,'rectilinearGrid'))
-        v = VTK.from_file(os.path.join(tmp_path,'rectilinearGrid.vtr'))
-        assert(s == v.__repr__())
+        vtr = VTK.from_file(os.path.join(tmp_path,'rectilinearGrid.vtr'))
+        with open(os.path.join(tmp_path,'rectilinearGrid.vtk'),'w') as f:
+            f.write(string)
+        vtk = VTK.from_file(os.path.join(tmp_path,'rectilinearGrid.vtk'),'VTK_rectilinearGrid')
+        assert(string == vtr.__repr__() == vtk.__repr__())
 
     def test_polyData(self,tmp_path):
         points = np.random.rand(3,100)
         v = VTK.from_polyData(points)
-        s = v.__repr__()
+        string = v.__repr__()
         v.write(os.path.join(tmp_path,'polyData'))
-        v = VTK.from_file(os.path.join(tmp_path,'polyData.vtp'))
-        assert(s == v.__repr__())
+        vtp = VTK.from_file(os.path.join(tmp_path,'polyData.vtp'))
+        with open(os.path.join(tmp_path,'polyData.vtk'),'w') as f:
+            f.write(string)
+        vtk = VTK.from_file(os.path.join(tmp_path,'polyData.vtk'),'polyData')
+        assert(string == vtp.__repr__() == vtk.__repr__())
 
     @pytest.mark.parametrize('cell_type,n',[
                                             ('VTK_hexahedron',8),
@@ -41,7 +47,17 @@ class TestVTK:
         nodes = np.random.rand(n,3)
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructuredGrid(nodes,connectivity,cell_type)
-        s = v.__repr__()
+        string = v.__repr__()
         v.write(os.path.join(tmp_path,'unstructuredGrid'))
-        v = VTK.from_file(os.path.join(tmp_path,'unstructuredGrid.vtu'))
-        assert(s == v.__repr__())
+        vtu = VTK.from_file(os.path.join(tmp_path,'unstructuredGrid.vtu'))
+        with open(os.path.join(tmp_path,'unstructuredGrid.vtk'),'w') as f:
+            f.write(string)
+        vtk = VTK.from_file(os.path.join(tmp_path,'unstructuredGrid.vtk'),'unstructuredgrid')
+        assert(string == vtu.__repr__() == vtk.__repr__())
+
+    @pytest.mark.parametrize('name,dataset_type',[('this_file_does_not_exist.vtk',None),
+                                                  ('this_file_does_not_exist.vtk','vtk'),
+                                                  ('this_file_does_not_exist.vtx', None)])
+    def test_invalid_dataset_type(self,dataset_type,name):
+        with pytest.raises(TypeError):
+            VTK.from_file('this_file_does_not_exist.vtk',dataset_type)
