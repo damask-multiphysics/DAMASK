@@ -1,4 +1,3 @@
-import os
 import subprocess
 import shlex
 import string
@@ -56,7 +55,7 @@ class Marc:
 
         env = Environment()
 
-        user = env.root_dir/Path('src')/Path('DAMASK_marc{}'.format(version)).with_suffix('.f90' if compile else '.marc')
+        user = env.root_dir/Path('src/DAMASK_marc{}'.format(self.version)).with_suffix('.f90' if compile else '.marc')
         if not user.is_file():
             raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),user))
 
