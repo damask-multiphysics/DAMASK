@@ -1030,14 +1030,17 @@ class Result:
         Parameters
         ----------
         func : function
-            Callback function that calculates a new dataset from one or more datasets per HDF5 group.
+            Callback function that calculates a new dataset from one or
+            more datasets per HDF5 group.
         datasets : dictionary
-            Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+            Details of the datasets to be used: label (in HDF5 file) and
+            arg (argument to which the data is parsed in func).
         args : dictionary, optional
             Arguments parsed to func.
 
         """
-        pool = multiprocessing.Pool(int(Environment().options['DAMASK_NUM_THREADS']))
+        num_threads = Environment().options['DAMASK_NUM_THREADS']
+        pool = multiprocessing.Pool(int(num_threads) if num_threads is not None else None)
         lock = multiprocessing.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
