@@ -20,7 +20,7 @@ for sub_dir in ['pre','post']:
     for the_file in the_dir.glob('*.py'):
         src = the_dir/the_file
         dst = bin_dir/Path(the_file.with_suffix('').name)
-        dst.unlink(True)
+        if dst.is_file(): dst.unlink() # dst.unlink(True) for Python >3.8
         dst.symlink_to(src)
 
 
