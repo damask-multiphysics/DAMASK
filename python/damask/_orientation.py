@@ -82,10 +82,12 @@ class Orientation:
 
     def equivalent(self):
         """
+
         List of orientations which are symmetrically equivalent.
         Supported for multiple rotation with same lattice
         Returns list [i] being i=range(24)
         Returns list [i, num_rot] for multiple rotations
+
         """
         if not self.rotation.shape:
             return [self.__class__(q*self.rotation,self.lattice) \
