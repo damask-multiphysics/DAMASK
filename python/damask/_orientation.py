@@ -92,7 +92,8 @@ class Orientation:
                     for q in self.lattice.symmetry.symmetryOperations()]
         else:
             return np.reshape([self.__class__(q*Rotation.from_quaternion(self.rotation.as_quaternion()[l]),self.lattice) \
-                    for q in self.lattice.symmetry.symmetryOperations() for l in range(self.rotation.shape[0])], (24,self.rotation.shape[0]))
+                    for q in self.lattice.symmetry.symmetryOperations() \
+                    for l in range(self.rotation.shape[0])], (24,self.rotation.shape[0]))
 
 
     def equivalentOrientations(self,members=[]):
