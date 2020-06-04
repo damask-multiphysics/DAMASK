@@ -39,8 +39,8 @@ class Orientation:
         else:
             self.rotation = Rotation.from_quaternion(rotation)                                      # assume quaternion
 
-        if self.rotation.quaternion.shape != (4,):
-            raise NotImplementedError('Support for multiple rotations missing')
+#        if self.rotation.quaternion.shape != (4,):
+#            raise NotImplementedError('Support for multiple rotations missing')
 
     def disorientation(self,
                        other,
@@ -79,6 +79,20 @@ class Orientation:
                                                                                                     # self-->other: True, self<--other: False
     def inFZ(self):
         return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
+
+    def equivalent(self):
+        """
+        List of orientations which are symmetrically equivalent.
+        Supported for multiple rotation with same lattice
+        Returns list [i] being i=range(24)
+        Returns list [i, num_rot] for multiple rotations
+        """
+        if not self.rotation.shape:
+            return [self.__class__(q*self.rotation,self.lattice) \
+                    for q in self.lattice.symmetry.symmetryOperations()]
+        else:
+            return np.reshape([self.__class__(q*Rotation.from_quaternion(self.rotation.as_quaternion()[l]),self.lattice) \
+                    for q in self.lattice.symmetry.symmetryOperations() for l in range(self.rotation.shape[0])], (24,self.rotation.shape[0]))
 
 
     def equivalentOrientations(self,members=[]):
