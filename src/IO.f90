@@ -11,7 +11,6 @@ module IO
   implicit none
   private
   character(len=*), parameter, public :: &
-    IO_EOF = '#EOF#', &                                                                             !< end of file string
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
@@ -86,6 +85,7 @@ function IO_readlines(fileName) result(fileContent)
   do l=1, len(rawData)
     if (rawData(l:l) == IO_EOL) N_lines = N_lines+1
   enddo
+  if (l>1) then; if(rawData(l-1:l-1) /= IO_EOL) N_lines = N_lines+1; endif                          ! no EOL@EOF, need exception for empty file
   allocate(fileContent(N_lines))
 
 !--------------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ function IO_readlines(fileName) result(fileContent)
   startPos = 1
   l = 1
   do while (l <= N_lines)
-    endPos = startPos + scan(rawData(startPos:),IO_EOL) - 2
+    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= N_lines)
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
