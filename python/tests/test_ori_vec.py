@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 
-import damask
 from damask import Rotation
 from damask import Orientation
 from damask import Lattice
