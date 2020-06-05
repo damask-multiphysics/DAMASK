@@ -77,25 +77,37 @@ class Orientation:
         return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else r                      # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
+
+    def inFZ_vec(self):
+        """
+        Check if orientations falls into Fundamental Zone
+
+        self.rotation.as_Rodrigues() working fine
+        self.rotation.as_Rodrigues(vector=True) doesn't work for several rotations
+        i apply dirty fix
+
+        """
+        if not self.rotation.shape:
+            return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
+        else:
+            return [self.lattice.symmetry.inFZ(\
+                Rotation._qu2ro(self.rotation.as_quaternion())[l][...,:3]\
+                *Rotation._qu2ro(self.rotation.as_quaternion())[l][...,3])\
+                for l in range(self.rotation.shape[0])]
+                
     def inFZ(self):
         return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
 
-    def equivalent(self):
-        """
-        List of orientations which are symmetrically equivalent.
-
-        Supported for multiple rotation with same lattice
-        Returns list [i] being i=range(24)
-        Returns list [i, num_rot] for multiple rotations
-
-        """
+    def equivalent_vec(self):
+        """List of orientations which are symmetrically equivalent."""
         if not self.rotation.shape:
             return [self.__class__(q*self.rotation,self.lattice) \
                     for q in self.lattice.symmetry.symmetryOperations()]
         else:
             return np.reshape([self.__class__(q*Rotation.from_quaternion(self.rotation.as_quaternion()[l]),self.lattice) \
                     for q in self.lattice.symmetry.symmetryOperations() \
-                    for l in range(self.rotation.shape[0])], (24,self.rotation.shape[0]))
+                    for l in range(self.rotation.shape[0])], \
+                    (len(self.lattice.symmetry.symmetryOperations()),self.rotation.shape[0]))
 
 
     def equivalentOrientations(self,members=[]):
@@ -107,6 +119,18 @@ class Orientation:
         else:
             return [self.__class__(q*self.rotation,self.lattice) \
                                       for q in self.lattice.symmetry.symmetryOperations(members)]   # yes, return list of rotations
+
+    def relatedOrientations_vec(self,model):
+        """List of orientations related by the given orientation relationship."""
+        r = self.lattice.relationOperations(model)
+        if not self.rotation.shape:
+            return [self.__class__(o*self.rotation,r['lattice']) for o in r['rotations']]
+        else:
+            return np.reshape(\
+            [self.__class__(o*Rotation.from_quaternion(self.rotation.as_quaternion()[l])\
+            ,r['lattice']) for o in r['rotations'] for l in range(self.rotation.shape[0])]
+            ,(len(r['rotations']),self.rotation.shape[0]))
+             
 
     def relatedOrientations(self,model):
         """List of orientations related by the given orientation relationship."""
