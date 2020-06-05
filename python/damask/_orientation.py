@@ -80,7 +80,7 @@ class Orientation:
 
     def inFZ_vec(self):
         """
-        Check if orientations falls into Fundamental Zone
+        Check if orientations falls into Fundamental Zone.
 
         self.rotation.as_Rodrigues() working fine
         self.rotation.as_Rodrigues(vector=True) doesn't work for several rotations
