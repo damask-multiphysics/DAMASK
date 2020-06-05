@@ -94,7 +94,7 @@ function IO_readlines(fileName) result(fileContent)
   startPos = 1
   l = 1
   do while (l <= N_lines)
-    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= N_lines)
+    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData)-1,l /= N_lines)
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
@@ -106,7 +106,7 @@ function IO_readlines(fileName) result(fileContent)
     endif
     startPos = endPos + 2                                                                           ! jump to next line start
 
-    fileContent(l) = line
+    fileContent(l) = trim(line)//''
     l = l + 1
   enddo
 
