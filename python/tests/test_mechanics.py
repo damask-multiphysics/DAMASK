@@ -42,7 +42,7 @@ def Mises_stress(sigma):
 
 
 def PK2(P,F):
-    S = np.dot(_np.linalg.inv(F),P)
+    S = np.dot(np.linalg.inv(F),P)
     return symmetric(S)
 
 
@@ -69,10 +69,10 @@ def strain_tensor(F,t,m):
         w,n = np.linalg.eigh(C)
 
     if   m > 0.0:
-        eps = 1.0/(2.0*abs(m)) * (+ np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
+        eps = 1.0/(2.0*abs(m)) * (+ np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n))
                                   - np.einsum('ijk->ijk',np.eye(3)))
     elif m < 0.0:
-        eps = 1.0/(2.0*abs(m)) * (- np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
+        eps = 1.0/(2.0*abs(m)) * (- np.matmul(n,np.einsum('ij,ikj->ijk',w**m,n))
                                   + np.einsum('ijk->ijk',np.eye(3)))
     else:
         eps = np.matmul(n,np.einsum('ij,ikj->ijk',0.5*np.log(w),n))
@@ -157,7 +157,7 @@ class TestMechanics:
 
 
     @pytest.mark.parametrize('vectorized,single',[(mechanics.strain_tensor,strain_tensor)])
-    def test_vectorize_strain_tensor(self,vectroized,single):
+    def test_vectorize_strain_tensor(self,vectorized,single):
         F     = np.random.rand(self.n,3,3)
         F_vec = np.random.rand(self.n//10,10,3,3)
         t     = ['V','U'][np.random.randint(0,2)]
