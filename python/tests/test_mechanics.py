@@ -163,7 +163,7 @@ class TestMechanics:
         t     = ['V','U'][np.random.randint(0,2)]
         m     = np.random.random()*10.0 -5.0
         for i,v in enumerate(np.reshape(vectorized(F_vec,t,m),vectorized(F,t,m).shape)):
-            assert np.allcloase(single(F[i],t,m),v)
+            assert np.allclose(single(F[i],t,m),v)
 
     @pytest.mark.parametrize('function',[mechanics.Cauchy,
                                          mechanics.PK2,
