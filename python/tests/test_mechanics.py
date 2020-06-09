@@ -3,12 +3,109 @@ import numpy as np
 
 from damask import mechanics
 
+def Cauchy(P,F):
+    sigma = 1.0/np.linalg.det(F) * np.dot(P,F.T)
+    return mechanics.symmetric(sigma)
+
+
 def deviatoric_part(T):
     return T - np.eye(3)*spherical_part(T)
+
+
+def eigenvalues(T_sym):
+    return np.linalg.eigvalsh(symmetric(T_sym))
+
+
+def eigenvectors(T_sym,RHS=False):
+    (u,v) = np.linalg.eigh(symmetric(T_sym))
+
+    if RHS:
+        if np.linalg.det(v) < 0.0: v[:,2] *= -1.0
+    return v
+
+
+def left_stretch(T):
+    return polar_decomposition(T,'V')[0]
+
+
+def maximum_shear(T_sym):
+    w = eigenvalues(T_sym)
+    return (w[0] - w[2])*0.5
+
+
+def Mises_strain(epsilon):
+    return Mises(epsilon,2.0/3.0)
+
+
+def Mises_stress(sigma):
+    return Mises(sigma,3.0/2.0)
+
+
+def PK2(P,F):
+    S = np.dot(_np.linalg.inv(F),P)
+    return symmetric(S)
+
+
+def right_stretch(T):
+    return polar_decomposition(T,'U')[0]
+
+
+def rotational_part(T):
+    return polar_decomposition(T,'R')[0]
 
 def spherical_part(T,tensor=False):
     sph = np.trace(T)/3.0
     return sph if not tensor else np.eye(3)*sph
+
+
+def strain_tensor(F,t,m):
+    F_  = F.reshape(1,3,3)
+    
+    if   t == 'V':
+        B   = np.matmul(F_,transpose(F_))
+        w,n = np.linalg.eigh(B)
+    elif t == 'U':
+        C   = np.matmul(transpose(F_),F_)
+        w,n = np.linalg.eigh(C)
+
+    if   m > 0.0:
+        eps = 1.0/(2.0*abs(m)) * (+ np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
+                                  - np.einsum('ijk->ijk',np.eye(3)))
+    elif m < 0.0:
+        eps = 1.0/(2.0*abs(m)) * (- np.matmul(n,_np.einsum('ij,ikj->ijk',w**m,n))
+                                  + np.einsum('ijk->ijk',np.eye(3)))
+    else:
+        eps = np.matmul(n,np.einsum('ij,ikj->ijk',0.5*np.log(w),n))
+
+    return eps.reshape(3,3)
+
+
+def symmetric(T):
+    return (T+transpose(T))*0.5
+
+
+def transpose(T):
+    return T.T
+
+
+def polar_decomposition(T,requested):
+    u, s, vh = np.linalg.svd(T)
+    R = np.dot(u,vh)
+
+    output = []
+    if 'R' in requested:
+        output.append(R)
+    if 'V' in requested:
+        output.append(np.dot(T,R.T)) 
+    if 'U' in requested:
+        output.append(np.dot(R.T,T))
+
+    return tuple(output)
+
+def Mises(T_sym,s):
+    d = deviatoric_part(T_sym)
+    return np.sqrt(s*(np.sum(d**2.0)))
+
 
 class TestMechanics:
 
@@ -20,42 +117,53 @@ class TestMechanics:
                                                   (mechanics.spherical_part,  spherical_part)
                                                  ])
     def test_vectorize_1_arg_(self,vectorized,single):
+        print("done")
         test_data_flat = np.random.rand(self.n,3,3)
         test_data = np.reshape(test_data_flat,(self.n//10,10,3,3))
         for i,v in enumerate(np.reshape(vectorized(test_data),vectorized(test_data_flat).shape)):
             assert np.allclose(single(test_data_flat[i]),v)
 
-    @pytest.mark.parametrize('function',[mechanics.deviatoric_part,
-                                         mechanics.eigenvalues,
-                                         mechanics.eigenvectors,
-                                         mechanics.left_stretch,
-                                         mechanics.maximum_shear,
-                                         mechanics.Mises_strain,
-                                         mechanics.Mises_stress,
-                                         mechanics.right_stretch,
-                                         mechanics.rotational_part,
-                                         mechanics.spherical_part,
-                                         mechanics.symmetric,
-                                         mechanics.transpose,
+    @pytest.mark.parametrize('vectorized,single',[
+        (mechanics.deviatoric_part, deviatoric_part),
+        (mechanics.eigenvalues    , eigenvalues    ),
+        (mechanics.eigenvectors   , eigenvectors   ),
+        (mechanics.left_stretch   , left_stretch   ),
+        (mechanics.maximum_shear  , maximum_shear  ),
+        (mechanics.Mises_strain   , Mises_strain   ),
+        (mechanics.Mises_stress   , Mises_stress   ),
+        (mechanics.right_stretch  , right_stretch  ),
+        (mechanics.rotational_part, rotational_part),
+        (mechanics.spherical_part , spherical_part ),
+        (mechanics.symmetric      , symmetric      ),
+        (mechanics.transpose      , transpose      ),
                                         ])
-    def test_vectorize_1_arg(self,function):
-        epsilon = np.random.rand(self.n,3,3)
-        assert np.allclose(function(epsilon)[self.c],function(epsilon[self.c]))
+    def test_vectorize_1_arg(self,vectorized,single):
+        epsilon     = np.random.rand(self.n,3,3)
+        epsilon_vec = np.reshape(epsilon,(self.n//10,10,3,3))
+        for i,v in enumerate(np.reshape(vectorized(epsilon_vec),vectorized(epsilon).shape)):
+            assert np.allclose(single(epsilon[i]),v)
 
-    @pytest.mark.parametrize('function',[mechanics.Cauchy,
-                                         mechanics.PK2,
-                                        ])
-    def test_vectorize_2_arg(self,function):
-        P = np.random.rand(self.n,3,3)
-        F = np.random.rand(self.n,3,3)
-        assert np.allclose(function(P,F)[self.c],function(P[self.c],F[self.c]))
+    @pytest.mark.parametrize('vectorized,single',[
+        (mechanics.Cauchy,Cauchy),
+        (mechanics.PK2   ,PK2   )
+                                                 ])
+    def test_vectorize_2_arg(self,vectorized,single):
+        P     = np.random.rand(self.n,3,3)
+        F     = np.random.rand(self.n,3,3)
+        P_vec = np.random.rand(self.n//10,10,3,3)
+        F_vec = np.random.rand(self.n//10,10,3,3)
+        for i,v in enumerate(np.reshape(vectorized(P_vec,F_vec),vectorized(P,F).shape)):
+            assert np.allclose(single(P[i],F[i]),v)
 
-    def test_vectorize_strain_tensor(self):
-        F = np.random.rand(self.n,3,3)
-        t = ['V','U'][np.random.randint(0,2)]
-        m = np.random.random()*10. -5.0
-        assert np.allclose(mechanics.strain_tensor(F,t,m)[self.c],
-                           mechanics.strain_tensor(F[self.c],t,m))
+
+    @pytest.mark.parametrize('vectorized,single',[(mechanics.strain_tensor,strain_tensor)])
+    def test_vectorize_strain_tensor(self,vectroized,single):
+        F     = np.random.rand(self.n,3,3)
+        F_vec = np.random.rand(self.n//10,10,3,3)
+        t     = ['V','U'][np.random.randint(0,2)]
+        m     = np.random.random()*10.0 -5.0
+        for i,v in enumerate(np.reshape(vectorized(F_vec,t,m),vectorized(F,t,m).shape)):
+            assert np.allcloase(single(F[i],t,m),v)
 
     @pytest.mark.parametrize('function',[mechanics.Cauchy,
                                          mechanics.PK2,
