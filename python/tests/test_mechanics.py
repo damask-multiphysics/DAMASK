@@ -150,8 +150,8 @@ class TestMechanics:
     def test_vectorize_2_arg(self,vectorized,single):
         P     = np.random.rand(self.n,3,3)
         F     = np.random.rand(self.n,3,3)
-        P_vec = np.random.rand(self.n//10,10,3,3)
-        F_vec = np.random.rand(self.n//10,10,3,3)
+        P_vec = np.reshape(P,(self.n//10,10,3,3))
+        F_vec = np.reshape(F,(self.n//10,10,3,3))
         for i,v in enumerate(np.reshape(vectorized(P_vec,F_vec),vectorized(P,F).shape)):
             assert np.allclose(single(P[i],F[i]),v)
 
@@ -159,7 +159,7 @@ class TestMechanics:
     @pytest.mark.parametrize('vectorized,single',[(mechanics.strain_tensor,strain_tensor)])
     def test_vectorize_strain_tensor(self,vectorized,single):
         F     = np.random.rand(self.n,3,3)
-        F_vec = np.random.rand(self.n//10,10,3,3)
+        F_vec = np.reshape(F,(self.n//10,10,3,3))
         t     = ['V','U'][np.random.randint(0,2)]
         m     = np.random.random()*10.0 -5.0
         for i,v in enumerate(np.reshape(vectorized(F_vec,t,m),vectorized(F,t,m).shape)):
