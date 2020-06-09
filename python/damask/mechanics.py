@@ -8,17 +8,13 @@ def Cauchy(P,F):
 
     Parameters
     ----------
-    F : numpy.ndarray of shape (:,3,3) or (3,3)
+    F : numpy.ndarray of shape (...,3,3)
         Deformation gradient.
-    P : numpy.ndarray of shape (:,3,3) or (3,3)
+    P : numpy.ndarray of shape (...,3,3)
         First Piola-Kirchhoff stress.
 
     """
-    if _np.shape(F) == _np.shape(P) == (3,3):
-        sigma = 1.0/_np.linalg.det(F) * _np.dot(P,F.T)
-    else:
-        #sigma = _np.einsum('i,ijk,ilk->ijl',1.0/_np.linalg.det(F),P,F)
-        sigma = _np.einsum('...,...ij,...kj->...ik',1.0/_np.linalg.det(F),P,F)
+    sigma = _np.einsum('...,...ij,...kj->...ik',1.0/_np.linalg.det(F),P,F)
     return symmetric(sigma)
 
 
@@ -44,7 +40,7 @@ def eigenvalues(T_sym):
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (...,3,3)
         Symmetric tensor of which the eigenvalues are computed.
 
     """
@@ -59,7 +55,7 @@ def eigenvectors(T_sym,RHS=False):
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (...,3,3)
         Symmetric tensor of which the eigenvectors are computed.
     RHS: bool, optional
         Enforce right-handed coordinate system. Default is False.
@@ -68,10 +64,7 @@ def eigenvectors(T_sym,RHS=False):
     (u,v) = _np.linalg.eigh(symmetric(T_sym))
 
     if RHS:
-        if _np.shape(T_sym) == (3,3):
-            if _np.linalg.det(v) < 0.0: v[:,2] *= -1.0
-        else:
-            v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
+        v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
     return v
 
 
@@ -81,7 +74,7 @@ def left_stretch(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the left stretch is computed.
 
     """
@@ -94,13 +87,12 @@ def maximum_shear(T_sym):
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (...,3,3)
         Symmetric tensor of which the maximum shear is computed.
 
     """
     w = eigenvalues(T_sym)
-    return (w[0] - w[2])*0.5 if _np.shape(T_sym) == (3,3) else \
-           (w[...,0] - w[...,2])*0.5
+    return (w[...,0] - w[...,2])*0.5
 
 
 def Mises_strain(epsilon):
@@ -109,7 +101,7 @@ def Mises_strain(epsilon):
 
     Parameters
     ----------
-    epsilon : numpy.ndarray of shape (:,3,3) or (3,3)
+    epsilon : numpy.ndarray of shape (...,3,3)
         Symmetric strain tensor of which the von Mises equivalent is computed.
 
     """
@@ -122,7 +114,7 @@ def Mises_stress(sigma):
 
     Parameters
     ----------
-    sigma : numpy.ndarray of shape (:,3,3) or (3,3)
+    sigma : numpy.ndarray of shape (...,3,3)
         Symmetric stress tensor of which the von Mises equivalent is computed.
 
     """
@@ -135,16 +127,13 @@ def PK2(P,F):
 
     Parameters
     ----------
-    P : numpy.ndarray of shape (...,3,3) or (3,3)
+    P : numpy.ndarray of shape (...,3,3)
         First Piola-Kirchhoff stress.
-    F : numpy.ndarray of shape (...,3,3) or (3,3)
+    F : numpy.ndarray of shape (...,3,3)
         Deformation gradient.
 
     """
-    if _np.shape(F) == _np.shape(P) == (3,3):
-        S = _np.dot(_np.linalg.inv(F),P)
-    else:
-        S = _np.einsum('...jk,...kl->...jl',_np.linalg.inv(F),P)
+    S = _np.einsum('...jk,...kl->...jl',_np.linalg.inv(F),P)
     return symmetric(S)
 
 
@@ -154,7 +143,7 @@ def right_stretch(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the right stretch is computed.
 
     """
@@ -167,7 +156,7 @@ def rotational_part(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the rotational part is computed.
 
     """
@@ -199,7 +188,7 @@ def strain_tensor(F,t,m):
 
     Parameters
     ----------
-    F : numpy.ndarray of shape (:,3,3) or (3,3)
+    F : numpy.ndarray of shape (...,3,3)
         Deformation gradient.
     t : {‘V’, ‘U’}
         Type of the polar decomposition, ‘V’ for left stretch tensor and ‘U’ for right stretch tensor.
@@ -207,12 +196,11 @@ def strain_tensor(F,t,m):
         Order of the strain.
 
     """
-    F_ = F.reshape(1,3,3) if F.shape == (3,3) else F
     if   t == 'V':
-        B   = _np.matmul(F_,transpose(F_))
+        B   = _np.matmul(F,transpose(F))
         w,n = _np.linalg.eigh(B)
     elif t == 'U':
-        C   = _np.matmul(transpose(F_),F_)
+        C   = _np.matmul(transpose(F),F)
         w,n = _np.linalg.eigh(C)
 
     if   m > 0.0:
@@ -225,8 +213,7 @@ def strain_tensor(F,t,m):
     else:
         eps = _np.matmul(n,_np.einsum('...j,...kj->...jk',0.5*_np.log(w),n))
 
-    return eps.reshape(3,3) if _np.shape(F) == (3,3) else \
-           eps
+    return eps
 
 
 def symmetric(T):
@@ -235,7 +222,7 @@ def symmetric(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the symmetrized values are computed.
 
     """
@@ -248,12 +235,11 @@ def transpose(T):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (...,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the transpose is computed.
 
     """
-    return T.T if _np.shape(T) == (3,3) else \
-           _np.swapaxes(T,axis2=-2,axis1=-1)
+    return _np.swapaxes(T,axis2=-2,axis1=-1)
 
 
 def _polar_decomposition(T,requested):
@@ -262,7 +248,7 @@ def _polar_decomposition(T,requested):
 
     Parameters
     ----------
-    T : numpy.ndarray of shape (:,3,3) or (3,3)
+    T : numpy.ndarray of shape (...,3,3)
         Tensor of which the singular values are computed.
     requested : iterable of str
         Requested outputs: ‘R’ for the rotation tensor,
@@ -270,16 +256,15 @@ def _polar_decomposition(T,requested):
 
     """
     u, s, vh = _np.linalg.svd(T)
-    R = _np.dot(u,vh) if _np.shape(T) == (3,3) else \
-        _np.einsum('...ij,...jk->...ik',u,vh)
+    R = _np.einsum('...ij,...jk->...ik',u,vh)
 
     output = []
     if 'R' in requested:
         output.append(R)
     if 'V' in requested:
-        output.append(_np.dot(T,R.T) if _np.shape(T) == (3,3) else _np.einsum('...ij,...kj->...ik',T,R))
+        output.append(_np.einsum('...ij,...kj->...ik',T,R))
     if 'U' in requested:
-        output.append(_np.dot(R.T,T) if _np.shape(T) == (3,3) else _np.einsum('...ji,...jk->...ik',R,T))
+        output.append(_np.einsum('...ji,...jk->...ik',R,T))
 
     return tuple(output)
 
@@ -290,12 +275,11 @@ def _Mises(T_sym,s):
 
     Parameters
     ----------
-    T_sym : numpy.ndarray of shape (:,3,3) or (3,3)
+    T_sym : numpy.ndarray of shape (...,3,3)
         Symmetric tensor of which the von Mises equivalent is computed.
     s : float
         Scaling factor (2/3 for strain, 3/2 for stress).
 
     """
     d = deviatoric_part(T_sym)
-    return _np.sqrt(s*(_np.sum(d**2.0))) if _np.shape(T_sym) == (3,3) else \
-           _np.sqrt(s*_np.einsum('...jk->...',d**2.0))
+    return _np.sqrt(s*_np.einsum('...jk->...',d**2.0))
