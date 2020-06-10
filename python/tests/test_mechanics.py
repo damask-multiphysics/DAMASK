@@ -62,10 +62,10 @@ def strain_tensor(F,t,m):
     F_  = F.reshape(1,3,3)
     
     if   t == 'V':
-        B   = np.matmul(F_,mechanics.transpose(F_))
+        B   = np.matmul(F_,F_[1].T)
         w,n = np.linalg.eigh(B)
     elif t == 'U':
-        C   = np.matmul(mechanics.transpose(F_),F_)
+        C   = np.matmul(F_[1].T,F_)
         w,n = np.linalg.eigh(C)
 
     if   m > 0.0:
