@@ -124,7 +124,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
+subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyStress, jacobian)
 
   integer(pInt), intent(in) ::                        elFE, &                                       !< FE element number
                                                       ip                                            !< integration point number
@@ -133,17 +133,14 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
                                                       ffn1                                          !< deformation gradient for t=t1
   integer(pInt), intent(in) ::                        mode                                          !< computation mode  1: regular computation plus aging of results
   real(pReal), intent(in) ::                          temperature_inp                               !< temperature
-  logical, intent(in) ::                              parallelExecution                             !< flag indicating parallel computation of requested IPs
   real(pReal), dimension(6), intent(out) ::           cauchyStress                                  !< stress as 6 vector
   real(pReal), dimension(6,6), intent(out) ::         jacobian                                      !< jacobian as 66 tensor (Consistent tangent dcs/dE)
 
   real(pReal)                                         J_inverse, &                                  ! inverse of Jacobian
                                                       rnd
-  real(pReal), dimension (3,3) ::                     Kirchhoff, &                                  ! Piola-Kirchhoff stress
-                                                      cauchyStress33                                ! stress vector
+  real(pReal), dimension (3,3) ::                     Kirchhoff                                  ! Piola-Kirchhoff stress
   real(pReal), dimension (3,3,3,3) ::                 H_sym, &
-                                                      H, &
-                                                      jacobian3333                                  ! jacobian in Matrix notation
+                                                      H
 
   integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
                                                       i, j, k, l, m, n, ph, homog, mySource
@@ -178,9 +175,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
   if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) call CPFEM_forward
 
 
-  !*** collection of FEM input with returning of randomize odd stress and jacobian
-  !*   If no parallel execution is required, there is no need to collect FEM input
-  if (.not. parallelExecution) then
     chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
       case (THERMAL_conduction_ID) chosenThermal1
         temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
@@ -189,38 +183,11 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
     materialpoint_F0(1:3,1:3,ip,elCP) = ffn
     materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
-  elseif (iand(mode, CPFEM_COLLECT) /= 0_pInt) then
-    call random_number(rnd)
-    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
-    CPFEM_cs(1:6,ip,elCP) = rnd * ODD_STRESS
-    CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
-    chosenThermal2: select case (thermal_type(material_homogenizationAt(elCP)))
-      case (THERMAL_conduction_ID) chosenThermal2
-        temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
-          temperature_inp
-      end select chosenThermal2
-    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
-    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
-    CPFEM_calc_done = .false.
-  endif
-
-
   !*** calculation of stress and jacobian
   if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
 
     !*** deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
-    validCalculation: if (terminallyIll &
-                     .or. outdatedFFN1 &
-                     .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then
-      if (any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then
-        if (iand(debug_level(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
-            write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at elFE ip',elFE,ip
-            write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',&
-                                              transpose(materialpoint_F(1:3,1:3,ip,elCP))
-            write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 now:',transpose(ffn1)
-        endif
-        outdatedFFN1 = .true.
-      endif
+    validCalculation: if (terminallyIll .or. outdatedFFN1) then
       call random_number(rnd)
       if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
       CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
@@ -229,22 +196,11 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
     !*** deformation gradient is not outdated
     else validCalculation
       updateJaco = mod(cycleCounter,iJacoStiffness) == 0
-      !* no parallel computation, so we use just one single elFE and ip for computation
-      if (.not. parallelExecution) then
         FEsolving_execElem = elCP
         FEsolving_execIP   = ip
         if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
           write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
         call materialpoint_stressAndItsTangent(updateJaco, dt)
-
-      !* parallel computation and calulation not yet done
-      elseif (.not. CPFEM_calc_done) then
-        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
-          write(6,'(a,i8,a,i8)') '<< CPFEM >> calculation for elements ',FEsolving_execElem(1),&
-                                                                  ' to ',FEsolving_execElem(2)
-        call materialpoint_stressAndItsTangent(updateJaco, dt)
-        CPFEM_calc_done = .true.
-      endif
 
       !* map stress and stiffness (or return odd values if terminally ill)
       terminalIllness: if (terminallyIll) then
@@ -299,28 +255,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature_inp, dt
   !*** copy to output if using commercial FEM solver
   cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
   jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
-
-
-  !*** remember extreme values of stress ...
-  cauchyStress33 = math_6toSym33(CPFEM_cs(1:6,ip,elCP),weighted=.false.)
-  if (maxval(cauchyStress33) > debug_stressMax) then
-    debug_stressMaxLocation = [elCP, ip]
-    debug_stressMax = maxval(cauchyStress33)
-  endif
-  if (minval(cauchyStress33) < debug_stressMin) then
-    debug_stressMinLocation = [elCP, ip]
-    debug_stressMin = minval(cauchyStress33)
-  endif
-  !*** ... and Jacobian
-  jacobian3333 = math_66toSym3333(CPFEM_dcsdE(1:6,1:6,ip,elCP),weighted=.false.)
-  if (maxval(jacobian3333) > debug_jacobianMax) then
-    debug_jacobianMaxLocation = [elCP, ip]
-    debug_jacobianMax = maxval(jacobian3333)
-  endif
-  if (minval(jacobian3333) < debug_jacobianMin) then
-    debug_jacobianMinLocation = [elCP, ip]
-    debug_jacobianMin = minval(jacobian3333)
-  endif
 
 end subroutine CPFEM_general
 

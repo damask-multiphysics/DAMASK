@@ -261,7 +261,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  endif
 
  !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
- !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+ !$ call omp_set_num_threads(1)                                                                     ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
  if (.not. CPFEM_init_done) call CPFEM_initAll(m(1),nn)
 
@@ -331,7 +331,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  endif
  lastLovl = lovl                                                                                    ! record lovl
 
- call CPFEM_general(computationMode,.false.,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
+ call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
 
  d = ddsdde(1:ngens,1:ngens)
  s = stress(1:ndi+nshear)
