@@ -28,8 +28,6 @@ module numerics
    numerics_unitlength        =  1.0_pReal, &                                                       !< determines the physical length of one computational length unit
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage
- logical, protected, public :: &
-   usePingPong                = .true.
 
 !--------------------------------------------------------------------------------------------------
 ! field parameters:
@@ -133,8 +131,6 @@ subroutine numerics_init
          defgradTolerance = IO_floatValue(line,chunkPos,2)
        case ('ijacostiffness')
          iJacoStiffness = IO_intValue(line,chunkPos,2)
-       case ('usepingpong')
-         usepingpong = IO_intValue(line,chunkPos,2) > 0
        case ('unitlength')
          numerics_unitlength = IO_floatValue(line,chunkPos,2)
 
@@ -221,7 +217,6 @@ subroutine numerics_init
 ! writing parameters to output
  write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
  write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
- write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
 !--------------------------------------------------------------------------------------------------

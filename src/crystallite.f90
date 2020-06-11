@@ -245,7 +245,7 @@ subroutine crystallite_init
   enddo
   !$OMP END PARALLEL DO
 
-  if(any(plasticState%nonlocal) .and. .not. usePingPong) call IO_error(601)                         ! exit if nonlocal but no ping-pong ToDo: Why not check earlier? or in nonlocal?
+  !if(any(plasticState%nonlocal) .and. .not. usePingPong) call IO_error(601)
 
   crystallite_partionedFp0 = crystallite_Fp0
   crystallite_partionedFi0 = crystallite_Fi0
