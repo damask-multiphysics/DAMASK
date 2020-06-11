@@ -43,9 +43,6 @@ module DAMASK_interface
   logical,          protected, public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
 
-  logical, dimension(:,:), public, allocatable :: &
-    calcMode                                                                                        !< calculate or collect (ping pong scheme)
-
   public :: &
     DAMASK_interface_init, &
     getSolverJobName
@@ -263,7 +260,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
  !$ call omp_set_num_threads(1)                                                                     ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
- if (.not. CPFEM_init_done) call CPFEM_initAll(m(1),nn)
+ if (.not. CPFEM_init_done) call CPFEM_initAll
 
  computationMode = 0                                                                                ! save initialization value, since it does not result in any calculation
  if (lovl == 4 ) then                                                                               ! jacobian requested by marc
@@ -277,20 +274,17 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      if (inc == 0) then                                                                             ! >> start of analysis <<
        lastIncConverged = .false.                                                                   ! no Jacobian backup
        outdatedByNewInc = .false.                                                                   ! no aging of state
-       calcMode = .false.                                                                           ! pretend last step was collection
        lastLovl = lovl                                                                              ! pretend that this is NOT the first after a lovl change
        write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',m(1),nn
        flush(6)
      else if (inc - theInc > 1) then                                                                ! >> restart of broken analysis <<
        lastIncConverged = .false.                                                                   ! no Jacobian backup
        outdatedByNewInc = .false.                                                                   ! no aging of state
-       calcMode = .true.                                                                            ! pretend last step was calculation
        write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',m(1),nn
        flush(6)
      else                                                                                           ! >> just the next inc <<
        lastIncConverged = .true.                                                                    ! request Jacobian backup
        outdatedByNewInc = .true.                                                                    ! request aging of state
-       calcMode = .true.                                                                            ! assure last step was calculation
        write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',m(1),nn
        flush(6)
      endif
@@ -299,7 +293,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      outdatedByNewInc = .false.                                                                     ! no aging of state
      terminallyIll = .false.
      cycleCounter = -1                                                                              ! first calc step increments this to cycle = 0
-     calcMode = .true.                                                                              ! pretend last step was calculation
      write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> cutback detected..! ',m(1),nn
      flush(6)
    endif                                                                                            ! convergence treatment end
@@ -307,7 +300,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 
      computationMode = CPFEM_CALCRESULTS                                                            ! always calc
      if (lastLovl /= lovl) then
-       outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1
        !mesh_cellnode = mesh_build_cellnodes()                                                       ! update cell node coordinates
        !call mesh_build_ipCoordinates()                                                              ! update ip coordinates

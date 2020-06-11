@@ -43,7 +43,6 @@ module CPFEM
     theTime      = 0.0_pReal, &                                                                     !< needs description
     theDelta     = 0.0_pReal
   logical,                                       public :: &
-    outdatedFFN1      = .false., &                                                                  !< needs description
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false.                                                                     !< needs description
 
@@ -68,12 +67,9 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief call (thread safe) all module initializations
+!> @brief call all module initializations
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_initAll(el,ip)
-
-  integer(pInt), intent(in) :: el, &                                                                !< FE el number
-                               ip                                                                   !< FE integration point number
+subroutine CPFEM_initAll
 
   CPFEM_init_done = .true.
   call DAMASK_interface_init
@@ -88,7 +84,7 @@ subroutine CPFEM_initAll(el,ip)
   call YAML_init
   call HDF5_utilities_init
   call results_init(.false.)
-  call discretization_marc_init(ip, el)
+  call discretization_marc_init
   call lattice_init
   call material_init(.false.)
   call constitutive_init
@@ -187,7 +183,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
   if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
 
     !*** deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
-    validCalculation: if (terminallyIll .or. outdatedFFN1) then
+    validCalculation: if (terminallyIll) then
       call random_number(rnd)
       if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
       CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
