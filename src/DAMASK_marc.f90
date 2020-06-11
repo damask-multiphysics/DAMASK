@@ -307,9 +307,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 
      computationMode = CPFEM_CALCRESULTS                                                            ! always calc
      if (lastLovl /= lovl) then
-       if (.not. terminallyIll) &
-         call debug_info()                                                                          ! first reports (meaningful) debugging
-       call debug_reset()                                                                           ! and resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1
        !mesh_cellnode = mesh_build_cellnodes()                                                       ! update cell node coordinates

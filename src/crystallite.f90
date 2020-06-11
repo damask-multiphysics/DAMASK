@@ -276,9 +276,6 @@ subroutine crystallite_init
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
     flush(6)
   endif
-
-  call debug_info
-  call debug_reset
 #endif
 
 end subroutine crystallite_init
