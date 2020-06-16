@@ -35,19 +35,9 @@ module CPFEM
     CPFEM_dcsdE                                                                                     !< Cauchy stress tangent
   real(pReal), dimension (:,:,:,:), allocatable, private :: &
     CPFEM_dcsdE_knownGood                                                                           !< known good tangent
-  integer(pInt),                                 public :: &
-    cycleCounter =  0_pInt, &                                                                       !< needs description
-    theInc       = -1_pInt, &                                                                       !< needs description
-    lastLovl     =  0_pInt                                                                          !< lovl in previous call to marc hypela2
-  real(pReal),                                   public :: &
-    theTime      = 0.0_pReal, &                                                                     !< needs description
-    theDelta     = 0.0_pReal
-  logical,                                       public :: &
-    lastIncConverged  = .false., &                                                                  !< needs description
-    outdatedByNewInc  = .false.                                                                     !< needs description
 
-  logical,                                       public, protected :: &
-    CPFEM_init_done       = .false.                                                                 !< remember whether init has been done already
+  integer(pInt),                                 public :: &
+    cycleCounter =  0_pInt                                                                          !< needs description
 
   integer(pInt), parameter,                      public :: &
     CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
@@ -68,7 +58,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
-  CPFEM_init_done = .true.
   call DAMASK_interface_init
   call prec_init
   call IO_init
@@ -149,9 +138,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
     write(6,'(/,a)') '#############################################'
     write(6,'(a1,a22,1x,i8,a13)')   '#','element',        elCP,         '#'
     write(6,'(a1,a22,1x,i8,a13)')   '#','ip',             ip,           '#'
-    write(6,'(a1,a22,1x,f15.7,a6)') '#','theTime',        theTime,      '#'
-    write(6,'(a1,a22,1x,f15.7,a6)') '#','theDelta',       theDelta,     '#'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','theInc',         theInc,       '#'
     write(6,'(a1,a22,1x,i8,a13)')   '#','cycleCounter',   cycleCounter, '#'
     write(6,'(a1,a22,1x,i8,a13)')   '#','computationMode',mode,         '#'
     if (terminallyIll) &

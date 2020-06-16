@@ -42,6 +42,7 @@ module DAMASK_interface
 
   logical,          protected, public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
+  
 
   public :: &
     DAMASK_interface_init, &
@@ -241,6 +242,17 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   real(pReal), dimension(6,6) :: ddsdde
   integer :: computationMode, i, cp_en, node, CPnodeID
   integer(4) :: defaultNumThreadsInt                                                                !< default value set by Marc
+
+  integer(pInt), save :: &
+    theInc       = -1_pInt, &                                                                       !< needs description
+    lastLovl     =  0_pInt                                                                          !< lovl in previous call to marc hypela2
+  real(pReal), save :: &
+    theTime      = 0.0_pReal, &                                                                     !< needs description
+    theDelta     = 0.0_pReal
+  logical, save :: &
+    lastIncConverged  = .false., &                                                                  !< needs description
+    outdatedByNewInc  = .false., &                                                                  !< needs description
+    CPFEM_init_done   = .false.                                                                     !< remember whether init has been done already
  
   if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0) then
     write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
@@ -260,14 +272,17 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
   call omp_set_num_threads(1)                                                                       ! no openMP
 
-  if (.not. CPFEM_init_done) call CPFEM_initAll
+  if (.not. CPFEM_init_done) then
+    CPFEM_init_done = .true.
+    call CPFEM_initAll
+  endif
 
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
   if (lovl == 4 ) then                                                                              ! jacobian requested by marc
     if (timinc < theDelta .and. theInc == inc .and. lastLovl /= lovl) &                             ! first after cutback
       computationMode = CPFEM_RESTOREJACOBIAN
   elseif (lovl == 6) then                                                                           ! stress requested by marc
-    computationMode = CPFEM_CALCRESULTS                                                             ! always calc
+    computationMode = CPFEM_CALCRESULTS
     cp_en = mesh_FEM2DAMASK_elem(m(1))
     if (cptim > theTime .or. inc /= theInc) then                                                    ! reached "convergence"
       terminallyIll = .false.
