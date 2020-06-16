@@ -111,6 +111,7 @@ subroutine numerics_init
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
 
+ numerics_root => emptyDict
  inquire(file='numerics.yaml', exist=fexist)
  
  fileExists: if (fexist) then

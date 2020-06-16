@@ -23,6 +23,7 @@ module homogenization
   use damage_local
   use damage_nonlocal
   use results
+  use YAML_types
 
   implicit none
   private
@@ -59,7 +60,9 @@ module homogenization
     module subroutine mech_isostrain_init
     end subroutine mech_isostrain_init
 
-    module subroutine mech_RGC_init
+    module subroutine mech_RGC_init(num_homogMech)
+      class(tNode), pointer, intent(in) :: &
+        num_homogMech
     end subroutine mech_RGC_init
 
 
@@ -131,9 +134,18 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_init
 
+  class (tNode) , pointer :: &
+    num_homog, &
+    num_homogMech, &
+    num_homogGeneric
+
+  num_homog => numerics_root%get('homogenization',defaultVal=emptyDict)
+  num_homogMech => num_homog%get('mech',defaultVal=emptyDict)
+  num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
+
   if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
   if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call mech_isostrain_init
-  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call mech_RGC_init
+  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call mech_RGC_init(num_homogMech)
 
   if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
   if (any(thermal_type == THERMAL_adiabatic_ID))  call thermal_adiabatic_init
@@ -157,10 +169,12 @@ subroutine homogenization_init
   if (debug_g < 1 .or. debug_g > homogenization_Ngrains(material_homogenizationAt(debug_e))) &
     call IO_error(602,ext_msg='constituent', el=debug_e, g=debug_g)
 
-  num%nMPstate          = config_numerics%getInt(  'nmpstate',          defaultVal=10)
-  num%subStepMinHomog   = config_numerics%getFloat('substepminhomog',   defaultVal=1.0e-3_pReal)
-  num%subStepSizeHomog  = config_numerics%getFloat('substepsizehomog',  defaultVal=0.25_pReal)
-  num%stepIncreaseHomog = config_numerics%getFloat('stepincreasehomog', defaultVal=1.5_pReal)
+  num%nMPstate          = num_homogGeneric%get_asInt(  'nMPstate',     defaultVal=10)
+  num%subStepMinHomog   = num_homogGeneric%get_asFloat('subStepMin',   defaultVal=1.0e-3_pReal)
+  num%subStepSizeHomog  = num_homogGeneric%get_asFloat('subStepSize',  defaultVal=0.25_pReal)
+  num%stepIncreaseHomog = num_homogGeneric%get_asFloat('stepIncrease', defaultVal=1.5_pReal)
+
+  
   if (num%nMPstate < 1)                   call IO_error(301,ext_msg='nMPstate')
   if (num%subStepMinHomog <= 0.0_pReal)   call IO_error(301,ext_msg='subStepMinHomog')
   if (num%subStepSizeHomog <= 0.0_pReal)  call IO_error(301,ext_msg='subStepSizeHomog')

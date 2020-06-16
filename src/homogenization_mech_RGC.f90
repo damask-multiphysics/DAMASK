@@ -75,13 +75,19 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_RGC_init
+module subroutine mech_RGC_init(num_homogMech)
+
+  class(tNode), pointer, intent(in) :: &
+    num_homogMech
 
   integer :: &
     Ninstance, &
     h, &
     NofMyHomog, &
     sizeState, nIntFaceTot
+  
+  class (tNode), pointer :: &
+    num_RGC
 
   write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'; flush(6)
 
@@ -99,20 +105,23 @@ module subroutine mech_RGC_init
   allocate(state(Ninstance))
   allocate(state0(Ninstance))
   allocate(dependentState(Ninstance))
+ 
+  num_RGC => num_homogMech%get('RGC',defaultVal=emptyDict)
+  
+  num%atol         =  num_RGC%get_asFloat('atol',             defaultVal=1.0e+4_pReal)
+  num%rtol         =  num_RGC%get_asFloat('rtol',             defaultVal=1.0e-3_pReal)
+  num%absMax       =  num_RGC%get_asFloat('amax',             defaultVal=1.0e+10_pReal)
+  num%relMax       =  num_RGC%get_asFloat('rmax',             defaultVal=1.0e+2_pReal)
+  num%pPert        =  num_RGC%get_asFloat('perturbpenalty',   defaultVal=1.0e-7_pReal)
+  num%xSmoo        =  num_RGC%get_asFloat('relvantmismatch',  defaultVal=1.0e-5_pReal)
+  num%viscPower    =  num_RGC%get_asFloat('viscositypower',   defaultVal=1.0e+0_pReal)
+  num%viscModus    =  num_RGC%get_asFloat('viscositymodulus', defaultVal=0.0e+0_pReal)
+  num%refRelaxRate =  num_RGC%get_asFloat('refrelaxationrate',defaultVal=1.0e-3_pReal)
+  num%maxdRelax    =  num_RGC%get_asFloat('maxrelaxationrate',defaultVal=1.0e+0_pReal)
+  num%maxVolDiscr  =  num_RGC%get_asFloat('maxvoldiscrepancy',defaultVal=1.0e-5_pReal)
+  num%volDiscrMod  =  num_RGC%get_asFloat('voldiscrepancymod',defaultVal=1.0e+12_pReal)
+  num%volDiscrPow  =  num_RGC%get_asFloat('dicrepancypower',  defaultVal=5.0_pReal)
 
-  num%atol         =  config_numerics%getFloat('atol_rgc',             defaultVal=1.0e+4_pReal)
-  num%rtol         =  config_numerics%getFloat('rtol_rgc',             defaultVal=1.0e-3_pReal)
-  num%absMax       =  config_numerics%getFloat('amax_rgc',             defaultVal=1.0e+10_pReal)
-  num%relMax       =  config_numerics%getFloat('rmax_rgc',             defaultVal=1.0e+2_pReal)
-  num%pPert        =  config_numerics%getFloat('perturbpenalty_rgc',   defaultVal=1.0e-7_pReal)
-  num%xSmoo        =  config_numerics%getFloat('relvantmismatch_rgc',  defaultVal=1.0e-5_pReal)
-  num%viscPower    =  config_numerics%getFloat('viscositypower_rgc',   defaultVal=1.0e+0_pReal)
-  num%viscModus    =  config_numerics%getFloat('viscositymodulus_rgc', defaultVal=0.0e+0_pReal)
-  num%refRelaxRate =  config_numerics%getFloat('refrelaxationrate_rgc',defaultVal=1.0e-3_pReal)
-  num%maxdRelax    =  config_numerics%getFloat('maxrelaxationrate_rgc',defaultVal=1.0e+0_pReal)
-  num%maxVolDiscr  =  config_numerics%getFloat('maxvoldiscrepancy_rgc',defaultVal=1.0e-5_pReal)
-  num%volDiscrMod  =  config_numerics%getFloat('voldiscrepancymod_rgc',defaultVal=1.0e+12_pReal)
-  num%volDiscrPow  =  config_numerics%getFloat('dicrepancypower_rgc',  defaultVal=5.0_pReal)
 
   if (num%atol <= 0.0_pReal)         call IO_error(301,ext_msg='absTol_RGC')
   if (num%rtol <= 0.0_pReal)         call IO_error(301,ext_msg='relTol_RGC')

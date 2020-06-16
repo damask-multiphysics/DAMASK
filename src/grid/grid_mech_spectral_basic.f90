@@ -21,6 +21,7 @@ module grid_mech_spectral_basic
   use homogenization
   use discretization_grid
   use debug
+  use YAML_types
 
   implicit none
   private
@@ -87,7 +88,9 @@ subroutine grid_mech_spectral_basic_init
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
-
+  class (tNode), pointer :: &
+    num_grid
+ 
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
@@ -104,8 +107,9 @@ subroutine grid_mech_spectral_basic_init
   write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
 
-  num%update_gamma = config_numerics%getInt('update_gamma',defaultVal=0) > 0
-
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  num%update_gamma = num_grid%get_asInt('update_gamma',defaultVal=0) > 0 !ToDo: Make boolean
+    
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)

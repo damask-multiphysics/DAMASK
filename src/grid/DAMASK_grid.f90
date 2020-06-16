@@ -24,6 +24,7 @@ program DAMASK_grid
  use grid_damage_spectral
  use grid_thermal_spectral
  use results
+ use YAML_types
 
  implicit none
 
@@ -88,10 +89,13 @@ program DAMASK_grid
 
  external :: &
    quit
+ class (tNode), pointer :: &
+   num_grid
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
- call CPFEM_initAll
+ 
+ call CPFEM_initAll 
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(6)
 
  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
@@ -107,15 +111,18 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
- select case (trim(config_numerics%getString('spectral_solver',defaultVal='basic')))
-   case ('basic')
+ 
+ num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+
+ select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic'))) 
+   case ('Basic')
      mech_init         => grid_mech_spectral_basic_init
      mech_forward      => grid_mech_spectral_basic_forward
      mech_solution     => grid_mech_spectral_basic_solution
      mech_updateCoords => grid_mech_spectral_basic_updateCoords
      mech_restartWrite => grid_mech_spectral_basic_restartWrite
 
-   case ('polarisation')
+   case ('Polarisation')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
      mech_init         => grid_mech_spectral_polarisation_init
@@ -124,7 +131,7 @@ program DAMASK_grid
      mech_updateCoords => grid_mech_spectral_polarisation_updateCoords
      mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
 
-   case ('fem')
+   case ('FEM')
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42, ext_msg='debug Divergence')
      mech_init         => grid_mech_FEM_init
@@ -134,13 +141,14 @@ program DAMASK_grid
      mech_restartWrite => grid_mech_FEM_restartWrite
 
    case default
-     call IO_error(error_ID = 891, ext_msg = config_numerics%getString('spectral_solver'))
+     call IO_error(error_ID = 891, ext_msg = trim(num_grid%get_asString('solver')))
 
  end select
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
- fileContent = IO_read_ASCII(trim(loadCaseFile))
+ fileContent = IO_readlines(trim(loadCaseFile))
+ if(size(fileContent) == 0) call IO_error(307,ext_msg='No load case specified')
 
  allocate (loadCases(0))                                                                            ! array of load cases
  do currentLoadCase = 1, size(fileContent)

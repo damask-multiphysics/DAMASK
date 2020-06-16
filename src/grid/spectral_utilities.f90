@@ -19,6 +19,7 @@ module spectral_utilities
   use config
   use discretization
   use homogenization
+  use YAML_types
 
   implicit none
   private
@@ -117,7 +118,7 @@ module spectral_utilities
       divergence_correction                                                                         !< scale divergence/curl calculation: [0: no correction, 1: size scaled to 1, 2: size scaled to Npoints]
     logical :: &
       memory_efficient                                                                              !< calculate gamma operator on the fly
-    character(len=pStringLen) :: &
+    character(len=:), allocatable :: &
       spectral_derivative, &                                                                        !< approximation used for derivatives in Fourier space
       FFTW_plan_mode, &                                                                             !< FFTW plan mode, see www.fftw.org
       PETSc_options
@@ -188,6 +189,8 @@ subroutine utilities_init
     scalarSize = 1_C_INTPTR_T, &
     vecSize    = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
+  class (tNode) , pointer :: &
+    num_grid
 
   write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
 
@@ -226,12 +229,14 @@ subroutine utilities_init
 
   write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
   write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
-
-  num%memory_efficient      = config_numerics%getInt   ('memory_efficient',       defaultVal=1) > 0
-  num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
-  num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
-  num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
-  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_MEASURE')
+  
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  
+  num%memory_efficient      = num_grid%get_asInt   ('memory_efficient',       defaultVal=1) > 0
+  num%FFTW_timelimit        = num_grid%get_asFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
+  num%divergence_correction = num_grid%get_asInt   ('divergence_correction',  defaultVal=2)
+  num%spectral_derivative   = num_grid%get_asString('derivative',             defaultVal='continuous')
+  num%FFTW_plan_mode        = num_grid%get_asString('fftw_plan_mode',         defaultVal='FFTW_MEASURE')
 
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
@@ -241,7 +246,7 @@ subroutine utilities_init
       spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
     case ('central_difference')
       spectral_derivative_ID = DERIVATIVE_CENTRAL_DIFF_ID
-    case ('fwbw_difference')
+    case ('FWBW_difference')
       spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
     case default
       call IO_error(892,ext_msg=trim(num%spectral_derivative))

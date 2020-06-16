@@ -12,6 +12,8 @@ module config
   use IO
   use debug
   use list
+  use YAML_parse
+  use YAML_types
 
   implicit none
   private
@@ -24,9 +26,8 @@ module config
     config_crystallite
    
   type(tPartitionedStringList), public, protected :: &
-    config_numerics, &
     config_debug
- 
+  
   character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
     config_name_phase, &                                                                            !< name of each phase
     config_name_homogenization, &                                                                   !< name of each homogenization
@@ -109,13 +110,6 @@ subroutine config_init
     call IO_error(160,ext_msg='<texture>')
  
  
-  inquire(file='numerics.config', exist=fileExists)
-  if (fileExists) then
-    write(6,'(/,a)') ' reading numerics.config'; flush(6)
-    fileContent = IO_read_ASCII('numerics.config')
-    call parse_debugAndNumericsConfig(config_numerics,fileContent)
-  endif
-  
   inquire(file='debug.config', exist=fileExists)
   if (fileExists) then
     write(6,'(/,a)') ' reading debug.config'; flush(6)
@@ -140,31 +134,16 @@ recursive function read_materialConfig(fileName,cnt) result(fileContent)
   character(len=pStringLen), parameter                 :: dummy = 'https://damask.mpie.de'          !< to fill up remaining array
   character(len=:),                        allocatable :: rawData
   integer ::  &
-    fileLength, &
-    fileUnit, &
     startPos, endPos, &
     myTotalLines, &                                                                                 !< # lines read from file without include statements
-    l,i, &
-    myStat
+    l,i
   logical :: warned
   
   if (present(cnt)) then
     if (cnt>10) call IO_error(106,ext_msg=trim(fileName))
   endif
 
-!--------------------------------------------------------------------------------------------------
-! read data as stream
-  inquire(file = fileName, size=fileLength)
-  if (fileLength == 0) then
-    allocate(fileContent(0))
-    return
-  endif
-  open(newunit=fileUnit, file=fileName, access='stream',&
-       status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
-  allocate(character(len=fileLength)::rawData)
-  read(fileUnit) rawData
-  close(fileUnit)
+  rawData = IO_read(fileName)                                                                   ! read data as stream
 
 !--------------------------------------------------------------------------------------------------
 ! count lines to allocate string array
@@ -302,9 +281,6 @@ subroutine config_deallocate(what)
      
     case('debug.config')
       call config_debug%free
-     
-    case('numerics.config')
-      call config_numerics%free
      
     case default
       call IO_error(0,ext_msg='config_deallocate')
