@@ -6,6 +6,8 @@
 module numerics
  use prec
  use IO
+ use YAML_types
+ use YAML_parse
 
 #ifdef PETSc
 #include <petsc/finclude/petscsys.h>
@@ -16,6 +18,8 @@ module numerics
  implicit none
  private
 
+ class(tNode), pointer, public :: &
+   numerics_root
  integer, protected, public :: &
    iJacoStiffness             =  1, &                                                               !< frequency of stiffness update
    randomSeed                 =  0, &                                                               !< fixed seeding for pseudo-random number generator, Default 0: use random seed
@@ -33,11 +37,7 @@ module numerics
 ! field parameters:
  real(pReal), protected, public :: &
    err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for mechanical equilibrium
-   err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for mechanical equilibrium
-   err_thermal_tolAbs         =  1.0e-2_pReal, &                                                    !< absolute tolerance for thermal equilibrium
-   err_thermal_tolRel         =  1.0e-6_pReal, &                                                    !< relative tolerance for thermal equilibrium
-   err_damage_tolAbs          =  1.0e-2_pReal, &                                                    !< absolute tolerance for damage evolution
-   err_damage_tolRel          =  1.0e-6_pReal                                                       !< relative tolerance for damage evolution
+   err_struct_tolRel          =  1.0e-4_pReal                                                       !< relative tolerance for mechanical equilibrium
  integer, protected, public :: &
    itmax                      =  250, &                                                             !< maximum number of iterations
    itmin                      =  1, &                                                               !< minimum number of iterations
@@ -84,11 +84,14 @@ contains
 subroutine numerics_init
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer :: i,j, ierr
- integer, allocatable, dimension(:) :: chunkPos
- character(len=pStringLen), dimension(:), allocatable :: fileContent
- character(len=pStringLen) :: &
-   tag ,&
-   line
+ character(len=:), allocatable :: &
+   numerics_input, &
+   numerics_inFlow, &
+   key
+ class (tNode), pointer :: &
+   num_grid, &
+   num_mesh, &
+   num_generic
  logical :: fexist
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
@@ -108,110 +111,103 @@ subroutine numerics_init
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
 
- inquire(file='numerics.config', exist=fexist)
-
+ inquire(file='numerics.yaml', exist=fexist)
+ 
  fileExists: if (fexist) then
    write(6,'(a,/)') ' using values from config file'
    flush(6)
-   fileContent = IO_read_ASCII('numerics.config')
-   do j=1, size(fileContent)
-
+   numerics_input =  IO_read('numerics.yaml')
+   numerics_inFlow = to_flow(numerics_input)
+   numerics_root =>  parse_flow(numerics_inFlow,defaultVal=emptyDict)
 !--------------------------------------------------------------------------------------------------
-! read variables from config file and overwrite default parameters if keyword is present
-     line = fileContent(j)
-     do i=1,len(line)
-       if(line(i:i) == '=') line(i:i) = ' '                                                         ! also allow keyword = value version
-     enddo
-     if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
-     chunkPos = IO_stringPos(line)
-     tag = IO_lc(IO_stringValue(line,chunkPos,1))                                                   ! extract key
-
-     select case(tag)
+! spectral parameters
+   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+   do i=1,num_grid%length
+     key = num_grid%getKey(i)
+     select case(key) 
+#ifdef Grid
+       case ('err_div_tolabs')
+         err_div_tolAbs = num_grid%get_asFloat(key)
+       case ('err_div_tolrel')
+         err_div_tolRel = num_grid%get_asFloat(key)
+       case ('err_stress_tolrel')
+         err_stress_tolrel = num_grid%get_asFloat(key)
+       case ('err_stress_tolabs')
+         err_stress_tolabs = num_grid%get_asFloat(key)
+       case ('err_curl_tolabs')
+         err_curl_tolAbs = num_grid%get_asFloat(key)
+       case ('err_curl_tolrel')
+         err_curl_tolRel = num_grid%get_asFloat(key)
+       case ('polaralpha')
+         polarAlpha = num_grid%get_asFloat(key)
+       case ('polarbeta')
+         polarBeta = num_grid%get_asFloat(key)
+#endif
+       case ('itmax')
+         itmax = num_grid%get_asInt(key)
+       case ('itmin')
+         itmin = num_grid%get_asInt(key)
+       case ('maxCutBack')
+         maxCutBack = num_grid%get_asInt(key)
+       case ('maxStaggeredIter')
+         stagItMax = num_grid%get_asInt(key)
+#ifdef PETSC
+       case ('petsc_options')
+         petsc_options = num_grid%get_asString(key)
+#endif 
+     endselect
+   enddo
+   
+   num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+   do i=1,num_generic%length
+     key = num_generic%getKey(i)
+     select case(key)
        case ('defgradtolerance')
-         defgradTolerance = IO_floatValue(line,chunkPos,2)
+         defgradTolerance = num_generic%get_asFloat(key)
        case ('ijacostiffness')
-         iJacoStiffness = IO_intValue(line,chunkPos,2)
+         iJacoStiffness = num_generic%get_asInt(key)
        case ('unitlength')
-         numerics_unitlength = IO_floatValue(line,chunkPos,2)
+         numerics_unitlength = num_generic%get_asFloat(key)
 
 !--------------------------------------------------------------------------------------------------
 ! random seeding parameter
-       case ('random_seed','fixed_seed')
-         randomSeed = IO_intValue(line,chunkPos,2)
+       case ('fixed_seed', 'random_seed')
+         randomSeed = num_generic%get_asInt(key)
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
-       case ('charlength')
-         charLength = IO_floatValue(line,chunkPos,2)
-       case ('residualstiffness')
-         residualStiffness = IO_floatValue(line,chunkPos,2)
-
+       case ('charLength')
+         charLength = num_generic%get_asFloat(key)
+       case ('residualStiffness')
+         residualStiffness = num_generic%get_asFloat(key)
 !--------------------------------------------------------------------------------------------------
 ! field parameters
        case ('err_struct_tolabs')
-         err_struct_tolAbs = IO_floatValue(line,chunkPos,2)
+         err_struct_tolAbs = num_generic%get_asFloat(key)
        case ('err_struct_tolrel')
-         err_struct_tolRel = IO_floatValue(line,chunkPos,2)
-       case ('err_thermal_tolabs')
-         err_thermal_tolabs = IO_floatValue(line,chunkPos,2)
-       case ('err_thermal_tolrel')
-         err_thermal_tolrel = IO_floatValue(line,chunkPos,2)
-       case ('err_damage_tolabs')
-         err_damage_tolabs = IO_floatValue(line,chunkPos,2)
-       case ('err_damage_tolrel')
-         err_damage_tolrel = IO_floatValue(line,chunkPos,2)
-       case ('itmax')
-         itmax = IO_intValue(line,chunkPos,2)
-       case ('itmin')
-         itmin = IO_intValue(line,chunkPos,2)
-       case ('maxcutback')
-         maxCutBack = IO_intValue(line,chunkPos,2)
-       case ('maxstaggerediter')
-         stagItMax = IO_intValue(line,chunkPos,2)
+         err_struct_tolRel = num_generic%get_asFloat(key)
+     endselect
+   enddo
 
-#ifdef PETSC
-       case ('petsc_options')
-         petsc_options = trim(line(chunkPos(4):))
-#endif
-
-!--------------------------------------------------------------------------------------------------
-! spectral parameters
-#ifdef Grid
-       case ('err_div_tolabs')
-         err_div_tolAbs = IO_floatValue(line,chunkPos,2)
-       case ('err_div_tolrel')
-         err_div_tolRel = IO_floatValue(line,chunkPos,2)
-       case ('err_stress_tolrel')
-         err_stress_tolrel = IO_floatValue(line,chunkPos,2)
-       case ('err_stress_tolabs')
-         err_stress_tolabs = IO_floatValue(line,chunkPos,2)
-       case ('err_curl_tolabs')
-         err_curl_tolAbs = IO_floatValue(line,chunkPos,2)
-       case ('err_curl_tolrel')
-         err_curl_tolRel = IO_floatValue(line,chunkPos,2)
-       case ('polaralpha')
-         polarAlpha = IO_floatValue(line,chunkPos,2)
-       case ('polarbeta')
-         polarBeta = IO_floatValue(line,chunkPos,2)
-#endif
-
-!--------------------------------------------------------------------------------------------------
-! Mesh parameters
 #ifdef Mesh
+   num_grid => numerics_root%get('mesh',defaultVal=emptyDict)
+   do i=1,num_grid%length
+     key = num_grid%getKey(i)
+     select case(key) 
        case ('integrationorder')
-         integrationorder = IO_intValue(line,chunkPos,2)
+         integrationorder = num_generic%get_asInt(key)
        case ('structorder')
-         structorder = IO_intValue(line,chunkPos,2)
+         structorder = num_generic%get_asInt(key)
        case ('bbarstabilisation')
-         BBarStabilisation = IO_intValue(line,chunkPos,2) > 0
-#endif
+         BBarStabilisation = num_generic%get_asInt(key) > 0
      end select
    enddo
+#endif
+
  else fileExists
    write(6,'(a,/)') ' using standard values'
    flush(6)
  endif fileExists
-
 
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
@@ -242,10 +238,6 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
  write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
- write(6,'(a24,1x,es8.1)')   ' err_thermal_tolabs:     ',err_thermal_tolabs
- write(6,'(a24,1x,es8.1)')   ' err_thermal_tolrel:     ',err_thermal_tolrel
- write(6,'(a24,1x,es8.1)')   ' err_damage_tolabs:      ',err_damage_tolabs
- write(6,'(a24,1x,es8.1)')   ' err_damage_tolrel:      ',err_damage_tolrel
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
@@ -284,10 +276,6 @@ subroutine numerics_init
  if (stagItMax < 0)                        call IO_error(301,ext_msg='maxStaggeredIter')
  if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301,ext_msg='err_struct_tolRel')
  if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301,ext_msg='err_struct_tolAbs')
- if (err_thermal_tolabs <= 0.0_pReal)      call IO_error(301,ext_msg='err_thermal_tolabs')
- if (err_thermal_tolrel <= 0.0_pReal)      call IO_error(301,ext_msg='err_thermal_tolrel')
- if (err_damage_tolabs <= 0.0_pReal)       call IO_error(301,ext_msg='err_damage_tolabs')
- if (err_damage_tolrel <= 0.0_pReal)       call IO_error(301,ext_msg='err_damage_tolrel')
 #ifdef Grid
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolRel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolAbs')

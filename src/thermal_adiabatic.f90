@@ -101,9 +101,9 @@ function thermal_adiabatic_updateState(subdt, ip, el)
   T = T + subdt*Tdot/(thermal_adiabatic_getSpecificHeat(ip,el)*thermal_adiabatic_getMassDensity(ip,el))
   
   thermal_adiabatic_updateState = [     abs(T - thermalState(homog)%state(1,offset)) &
-                                     <= err_thermal_tolAbs &
+                                     <= 1.0e-2_pReal &
                                    .or. abs(T - thermalState(homog)%state(1,offset)) &
-                                     <= err_thermal_tolRel*abs(thermalState(homog)%state(1,offset)), &
+                                     <= 1.0e-6_pReal*abs(thermalState(homog)%state(1,offset)), &
                                    .true.]
  
   temperature    (homog)%p(thermalMapping(homog)%p(ip,el)) = T  

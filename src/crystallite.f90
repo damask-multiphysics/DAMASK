@@ -23,6 +23,7 @@ module crystallite
   use discretization
   use lattice
   use results
+  use YAML_types
 
   implicit none
   private
@@ -81,8 +82,9 @@ module crystallite
     integer :: &
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       nState, &                                                                                     !< state loop limit
-      nStress, &                                                                                    !< stress loop limit
-      integrator                                                                                    !< integration scheme (ToDo: better use a string)
+      nStress                                                                                       !< stress loop limit
+    character(len=pStringLen) :: & 
+      integrator                                                                                    !< integrator scheme
     real(pReal) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
       subStepSizeCryst, &                                                                           !< size of first substep when cutback
@@ -126,7 +128,9 @@ subroutine crystallite_init
     iMax, &                                                                                         !< maximum number of integration points
     eMax, &                                                                                         !< maximum number of elements
     myNcomponents                                                                                   !< number of components at current IP
-
+  
+  class(tNode) , pointer :: &
+    num_crystallite
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
 
   cMax = homogenization_maxNgrains
@@ -160,23 +164,20 @@ subroutine crystallite_init
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
-  num%subStepMinCryst        = config_numerics%getFloat('substepmincryst',       defaultVal=1.0e-3_pReal)
-  num%subStepSizeCryst       = config_numerics%getFloat('substepsizecryst',      defaultVal=0.25_pReal)
-  num%stepIncreaseCryst      = config_numerics%getFloat('stepincreasecryst',     defaultVal=1.5_pReal)
-
-  num%subStepSizeLp          = config_numerics%getFloat('substepsizelp',         defaultVal=0.5_pReal)
-  num%subStepSizeLi          = config_numerics%getFloat('substepsizeli',         defaultVal=0.5_pReal)
-
-  num%rtol_crystalliteState  = config_numerics%getFloat('rtol_crystallitestate', defaultVal=1.0e-6_pReal)
-  num%rtol_crystalliteStress = config_numerics%getFloat('rtol_crystallitestress',defaultVal=1.0e-6_pReal)
-  num%atol_crystalliteStress = config_numerics%getFloat('atol_crystallitestress',defaultVal=1.0e-8_pReal)
-
-  num%iJacoLpresiduum        = config_numerics%getInt  ('ijacolpresiduum',       defaultVal=1)
-
-  num%integrator             = config_numerics%getInt  ('integrator',            defaultVal=1)
-
-  num%nState                 = config_numerics%getInt  ('nstate',                defaultVal=20)
-  num%nStress                = config_numerics%getInt  ('nstress',               defaultVal=40)
+  num_crystallite => numerics_root%get('crystallite',defaultVal=emptyDict)
+  
+  num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
+  num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
+  num%stepIncreaseCryst      = num_crystallite%get_asFloat ('stepIncrease',     defaultVal=1.5_pReal)
+  num%subStepSizeLp          = num_crystallite%get_asFloat ('subStepSizeLp',    defaultVal=0.5_pReal)
+  num%subStepSizeLi          = num_crystallite%get_asFloat ('subStepSizeLi',    defaultVal=0.5_pReal)
+  num%rtol_crystalliteState  = num_crystallite%get_asFloat ('rtol_State',       defaultVal=1.0e-6_pReal)
+  num%rtol_crystalliteStress = num_crystallite%get_asFloat ('rtol_Stress',      defaultVal=1.0e-6_pReal)
+  num%atol_crystalliteStress = num_crystallite%get_asFloat ('atol_Stress',      defaultVal=1.0e-8_pReal)
+  num%iJacoLpresiduum        = num_crystallite%get_asInt   ('iJacoLpresiduum',  defaultVal=1)
+  num%integrator             = num_crystallite%get_asString('integrator',       defaultVal='FPI')
+  num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
+  num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
 
   if(num%subStepMinCryst   <= 0.0_pReal)      call IO_error(301,ext_msg='subStepMinCryst')
   if(num%subStepSizeCryst  <= 0.0_pReal)      call IO_error(301,ext_msg='subStepSizeCryst')
@@ -191,24 +192,23 @@ subroutine crystallite_init
 
   if(num%iJacoLpresiduum < 1)                 call IO_error(301,ext_msg='iJacoLpresiduum')
 
-  if(num%integrator < 1 .or. num%integrator > 5) &
-                                              call IO_error(301,ext_msg='integrator')
-
   if(num%nState < 1)                          call IO_error(301,ext_msg='nState')
   if(num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
 
 
-  select case(num%integrator)
-    case(1)
+  select case(trim(num%integrator))
+    case('FPI')
       integrateState => integrateStateFPI
-    case(2)
+    case('Euler')
       integrateState => integrateStateEuler
-    case(3)
+    case('AdaptiveEuler')
       integrateState => integrateStateAdaptiveEuler
-    case(4)
+    case('RK4')
       integrateState => integrateStateRK4
-    case(5)
+    case('RKCK45')
       integrateState => integrateStateRKCK45
+    case default
+     call IO_error(301,ext_msg='integrator')
   end select
 
   allocate(output_constituent(size(config_phase)))
@@ -245,7 +245,6 @@ subroutine crystallite_init
   enddo
   !$OMP END PARALLEL DO
 
-  !if(any(plasticState%nonlocal) .and. .not. usePingPong) call IO_error(601)
 
   crystallite_partionedFp0 = crystallite_Fp0
   crystallite_partionedFi0 = crystallite_Fi0
@@ -276,6 +275,7 @@ subroutine crystallite_init
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
     flush(6)
   endif
+
 #endif
 
 end subroutine crystallite_init

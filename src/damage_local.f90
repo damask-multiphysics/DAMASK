@@ -92,9 +92,9 @@ function damage_local_updateState(subdt, ip, el)
   phi = max(residualStiffness,min(1.0_pReal,phi + subdt*phiDot))
 
   damage_local_updateState = [     abs(phi - damageState(homog)%state(1,offset)) &
-                                <= err_damage_tolAbs &
+                                <= 1.0e-2_pReal &
                               .or. abs(phi - damageState(homog)%state(1,offset)) &
-                                <= err_damage_tolRel*abs(damageState(homog)%state(1,offset)), &
+                                <= 1.0e-6_pReal*abs(damageState(homog)%state(1,offset)), &
                               .true.]
 
   damageState(homog)%state(1,offset) = phi
