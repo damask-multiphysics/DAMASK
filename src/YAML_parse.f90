@@ -34,20 +34,24 @@ end subroutine YAML_init
 !> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
 !> @details  A node type pointer can either point to a dictionary, list or scalar type entities.
 !--------------------------------------------------------------------------------------------------
-recursive function parse_flow(flow_string) result(node)
+recursive function parse_flow(flow_string,defaultVal) result(node)
 
-  character(len=*), intent(inout) :: flow_string
-  class (tNode), pointer          :: node
-
+  character(len=*), intent(inout)             :: flow_string
+  class(tDict), intent(in), optional, target  :: defaultVal
+  class (tNode), pointer                      :: node
+ 
   class (tNode),    pointer       :: myVal
   character(len=pStringLen)       :: key
 
   integer                         :: e, &                                                           !> end position of dictionary or list
                                      s, &                                                           !> start position of dictionary or list
                                      d                                                              !> position of key: value separator (':')
-
+  
   flow_string = trim(adjustl(flow_string(:)))
-  if (flow_string(1:1) == '{') then                                                                 ! start of a dictionary
+  if (len_trim(flow_string) == 0 .and. present(defaultVal)) then
+    node => defaultVal
+    return
+  elseif (flow_string(1:1) == '{') then                                                                 ! start of a dictionary
     e = 1
     allocate(tDict::node)
     do while (e < len_trim(flow_string))
@@ -63,7 +67,6 @@ recursive function parse_flow(flow_string) result(node)
           call node%set(key,myVal)
       end select
     end do
-
   elseif (flow_string(1:1) == '[') then                                                             ! start of a list
     e = 1
     allocate(tList::node)
@@ -77,7 +80,6 @@ recursive function parse_flow(flow_string) result(node)
           call node%append(myVal)
       end select
     end do
-
   else                                                                                              ! scalar value
     allocate(tScalar::node)
       select type (node)
@@ -495,8 +497,10 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
 
-    ! exit here if '---' is found
-    if    (isListItem(line)) then
+    if(len_trim(line) == 0) then
+      s_blck = e_blck +2
+      call decide(blck,flow,s_blck,s_flow,offset)
+    elseif    (isListItem(line)) then
       flow(s_flow:s_flow) = '['
       s_flow = s_flow + 1
       call lst(blck,flow,s_blck,s_flow,offset)
@@ -543,7 +547,7 @@ function to_flow(blck)
     call decide(blck,to_flow,s_blck,s_flow,offset)
     to_flow = trim(to_flow(:s_flow-1))
   endif
-    end_line = index(to_flow,new_line(''))
+    end_line = index(to_flow,IO_EOL)
     if(end_line > 0) to_flow = to_flow(:end_line-1) 
 
 end function to_flow
