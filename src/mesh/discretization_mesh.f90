@@ -75,8 +75,9 @@ subroutine discretization_mesh_init(restart)
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   IS :: faceSetIS
   PetscErrorCode :: ierr
-  integer, dimension(:,:), allocatable :: &
-    mesh_element
+  integer, dimension(:), allocatable :: &
+    homogenizationAt, &
+    microstructureAt
 
 
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
@@ -149,12 +150,10 @@ subroutine discretization_mesh_init(restart)
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,integrationOrder)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
 
-  allocate (mesh_element (4,mesh_NcpElems)); mesh_element = 0
+  allocate(microstructureAt(mesh_NcpElems))
+  allocate(homogenizationAt(mesh_NcpElems),source=1)
   do j = 1, mesh_NcpElems
-    mesh_element( 1,j) = -1
-    mesh_element( 2,j) = -1
-    mesh_element( 3,j) = 1                                                                      ! homogenization
-    call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
+    call DMGetLabelValue(geomMesh,'material',j-1,microstructureAt(j),ierr)
     CHKERRQ(ierr)
   end do
 
@@ -166,7 +165,7 @@ subroutine discretization_mesh_init(restart)
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 
-  call discretization_init(mesh_element(3,:),mesh_element(4,:),&
+  call discretization_init(microstructureAt,homogenizationAt,&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
 
