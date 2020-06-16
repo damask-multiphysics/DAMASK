@@ -48,15 +48,12 @@ module CPFEM
 
   logical,                                       public, protected :: &
     CPFEM_init_done       = .false.                                                                 !< remember whether init has been done already
-  logical,                                       private :: &
-    CPFEM_calc_done       = .false.                                                                 !< remember whether first ip has already calced the results
 
   integer(pInt), parameter,                      public :: &
-    CPFEM_COLLECT         = 2_pInt**0_pInt, &
-    CPFEM_CALCRESULTS     = 2_pInt**1_pInt, &
-    CPFEM_AGERESULTS      = 2_pInt**2_pInt, &
-    CPFEM_BACKUPJACOBIAN  = 2_pInt**3_pInt, &
-    CPFEM_RESTOREJACOBIAN = 2_pInt**4_pInt
+    CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
+    CPFEM_AGERESULTS      = 2_pInt**1_pInt, &
+    CPFEM_BACKUPJACOBIAN  = 2_pInt**2_pInt, &
+    CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt
 
   public :: &
     CPFEM_general, &
@@ -134,7 +131,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
   real(pReal)                                         J_inverse, &                                  ! inverse of Jacobian
                                                       rnd
-  real(pReal), dimension (3,3) ::                     Kirchhoff                                  ! Piola-Kirchhoff stress
+  real(pReal), dimension (3,3) ::                     Kirchhoff                                     ! Piola-Kirchhoff stress
   real(pReal), dimension (3,3,3,3) ::                 H_sym, &
                                                       H
 
@@ -142,8 +139,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
                                                       i, j, k, l, m, n, ph, homog, mySource
   logical                                             updateJaco                                    ! flag indicating if Jacobian has to be updated
 
-  real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress in case of ping pong dummy cycle
-                                                     ODD_JACOBIAN  = 1e50_pReal                     !< return value for jacobian in case of ping pong dummy cycle
+  real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress if terminallyIll
+                                                     ODD_JACOBIAN  = 1e50_pReal                     !< return value for jacobian if terminallyIll
 
   elCP = mesh_FEM2DAMASK_elem(elFE)
 
@@ -167,9 +164,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
   if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
     CPFEM_dcsde = CPFEM_dcsde_knownGood
 
-  !*** age results
   if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) call CPFEM_forward
-
 
     chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
       case (THERMAL_conduction_ID) chosenThermal1
@@ -179,26 +174,22 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
     materialpoint_F0(1:3,1:3,ip,elCP) = ffn
     materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
-  !*** calculation of stress and jacobian
   if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
 
-    !*** deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
     validCalculation: if (terminallyIll) then
       call random_number(rnd)
       if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
       CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
       CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
 
-    !*** deformation gradient is not outdated
     else validCalculation
       updateJaco = mod(cycleCounter,iJacoStiffness) == 0
-        FEsolving_execElem = elCP
-        FEsolving_execIP   = ip
-        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
-          write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
-        call materialpoint_stressAndItsTangent(updateJaco, dt)
+      FEsolving_execElem = elCP
+      FEsolving_execIP   = ip
+      if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
+        write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
+      call materialpoint_stressAndItsTangent(updateJaco, dt)
 
-      !* map stress and stiffness (or return odd values if terminally ill)
       terminalIllness: if (terminallyIll) then
 
         call random_number(rnd)
@@ -208,7 +199,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
       else terminalIllness
 
-        ! translate from P to CS
+        ! translate from P to sigma
         Kirchhoff = matmul(materialpoint_P(1:3,1:3,ip,elCP), transpose(materialpoint_F(1:3,1:3,ip,elCP)))
         J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
         CPFEM_cs(1:6,ip,elCP) = math_sym33to6(J_inverse * Kirchhoff,weighted=.false.)
@@ -232,7 +223,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       endif terminalIllness
     endif validCalculation
 
-    !* report stress and stiffness
     if ((iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
          .and. ((debug_e == elCP .and. debug_i == ip) &
                 .or. .not. iand(debug_level(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
@@ -245,10 +235,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
   endif
 
-  !*** warn if stiffness close to zero
   if (all(abs(CPFEM_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) call IO_warning(601,elCP,ip)
 
-  !*** copy to output if using commercial FEM solver
   cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
   jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
 
