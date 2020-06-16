@@ -8,53 +8,50 @@ module discretization_mesh
 #include <petsc/finclude/petscdmplex.h>
 #include <petsc/finclude/petscis.h>
 #include <petsc/finclude/petscdmda.h>
- use PETScdmplex
- use PETScdmda
- use PETScis
+  use PETScdmplex
+  use PETScdmda
+  use PETScis
 
- use DAMASK_interface
- use IO
- use debug
- use discretization
- use numerics
- use FEsolving
- use FEM_quadrature
- use prec
- 
- implicit none
- private
- 
- integer, public, protected :: &
-   mesh_Nboundaries, &
-   mesh_NcpElemsGlobal
+  use DAMASK_interface
+  use IO
+  use debug
+  use discretization
+  use numerics
+  use FEsolving
+  use FEM_quadrature
+  use prec
 
- integer :: &
-   mesh_NcpElems                                                                                     !< total number of CP elements in mesh
+  implicit none
+  private
+
+  integer, public, protected :: &
+    mesh_Nboundaries, &
+    mesh_NcpElemsGlobal
+
+  integer :: &
+    mesh_NcpElems                                                                                   !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
- integer, public, protected :: &
-   mesh_maxNips                                                                                     !< max number of IPs in any CP element
+  integer, public, protected :: &
+    mesh_maxNips                                                                                    !< max number of IPs in any CP element
 !!!! BEGIN DEPRECATED !!!!!
 
- integer, dimension(:,:), allocatable :: &
-   mesh_element !DEPRECATED
+  real(pReal), dimension(:,:), allocatable :: &
+    mesh_ipVolume, &                                                                                !< volume associated with IP (initially!)
+    mesh_node0                                                                                      !< node x,y,z coordinates (initially!)
 
- real(pReal), dimension(:,:), allocatable :: &
-   mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
-   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
- 
- real(pReal), dimension(:,:,:), allocatable :: &
-   mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
+  real(pReal), dimension(:,:,:), allocatable :: &
+    mesh_ipCoordinates                                                                              !< IP x,y,z coordinates (after deformation!)
 
- DM, public :: geomMesh
- 
- PetscInt, dimension(:), allocatable, public, protected :: &
-   mesh_boundaries
+  DM, public :: geomMesh
 
- public :: &
-   discretization_mesh_init, &
-   mesh_FEM_build_ipVolumes, &
-   mesh_FEM_build_ipCoordinates
+  PetscInt, dimension(:), allocatable, public, protected :: &
+    mesh_boundaries
+
+  public :: &
+    discretization_mesh_init, &
+    mesh_FEM_build_ipVolumes, &
+    mesh_FEM_build_ipCoordinates
 
 contains
 
@@ -67,39 +64,32 @@ subroutine discretization_mesh_init(restart)
 
   logical, intent(in) :: restart
 
-  integer, dimension(1), parameter:: FE_geomtype = [1]                                              !< geometry type of particular element type
-  integer, dimension(1) :: FE_Nips                                                                  !< number of IPs in a specific type of element
-  
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
     j, l
-  integer, parameter :: &
-    mesh_ElemType=1                                                                                 !< Element type of the mesh (only support homogeneous meshes)
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets
   PetscInt, pointer, dimension(:) :: pFaceSets
   character(len=pStringLen), dimension(:), allocatable :: fileContent
-  IS :: faceSetIS 
+  IS :: faceSetIS
   PetscErrorCode :: ierr
+  integer, dimension(:,:), allocatable :: &
+    mesh_element
 
-  
+
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
 
-  ! read in file
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
-  ! get spatial dimension (2 or 3?)
   call DMGetDimension(globalMesh,dimPlex,ierr)
   CHKERRQ(ierr)
-  write(6,*) 'dimension',dimPlex;flush(6)
   call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_NcpElemsGlobal,ierr)
   CHKERRQ(ierr)
   ! get number of IDs in face sets (for boundary conditions?)
   call DMGetLabelSize(globalMesh,'Face Sets',mesh_Nboundaries,ierr)
   CHKERRQ(ierr)
-  write(6,*) 'number of "Face Sets"',mesh_Nboundaries;flush(6)
   call MPI_Bcast(mesh_Nboundaries,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
   call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
   call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
@@ -142,48 +132,44 @@ subroutine discretization_mesh_init(restart)
     enddo
     call DMClone(globalMesh,geomMesh,ierr)
     CHKERRQ(ierr)
-  else 
+  else
     call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
     CHKERRQ(ierr)
-  endif  
+  endif
 
   call DMDestroy(globalMesh,ierr); CHKERRQ(ierr)
-  
+
   call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,ierr)
   CHKERRQ(ierr)
   call DMGetStratumSize(geomMesh,'depth',0,mesh_Nnodes,ierr)
   CHKERRQ(ierr)
 
-  FE_Nips(FE_geomtype(1)) = FEM_nQuadrature(dimPlex,integrationOrder)
-  mesh_maxNips = FE_Nips(1)
-  
-  write(6,*) 'mesh_maxNips',mesh_maxNips
+  mesh_maxNips = FEM_nQuadrature(dimPlex,integrationOrder)
+
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,integrationOrder)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
-  
+
   allocate (mesh_element (4,mesh_NcpElems)); mesh_element = 0
   do j = 1, mesh_NcpElems
-    mesh_element( 1,j) = -1                                                                     ! DEPRECATED
-    mesh_element( 2,j) = mesh_elemType                                                               ! elem type
+    mesh_element( 1,j) = -1
+    mesh_element( 2,j) = -1
     mesh_element( 3,j) = 1                                                                      ! homogenization
     call DMGetLabelValue(geomMesh,'material',j-1,mesh_element(4,j),ierr)
     CHKERRQ(ierr)
-  end do 
+  end do
 
-  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
-    call IO_error(602,ext_msg='element')                                                        ! selected element does not exist
-  if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2,debug_e)))) &
-    call IO_error(602,ext_msg='IP')                                                             ! selected element does not have requested IP
-  
-  FEsolving_execElem = [ 1,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
-  FEsolving_execIP   = [1,FE_Nips(FE_geomtype(mesh_element(2,1)))]
-  
+  if (debug_e < 1 .or. debug_e > mesh_NcpElems) call IO_error(602,ext_msg='element')
+  if (debug_i < 1 .or. debug_i > mesh_maxNips)  call IO_error(602,ext_msg='IP')
+
+  FEsolving_execElem = [1,mesh_NcpElems]                                                            ! parallel loop bounds set to comprise all DAMASK elements
+  FEsolving_execIP   = [1,mesh_maxNips]
+
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 
   call discretization_init(mesh_element(3,:),mesh_element(4,:),&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
- 
+
 end subroutine discretization_mesh_init
 
 
@@ -191,23 +177,23 @@ end subroutine discretization_mesh_init
 !> @brief Calculates IP volume. Allocates global array 'mesh_ipVolume'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_FEM_build_ipVolumes(dimPlex)
- 
+
   PetscInt,intent(in):: dimPlex
   PetscReal          :: vol
   PetscReal, pointer,dimension(:) :: pCent, pNorm
   PetscInt           :: cellStart, cellEnd, cell
   PetscErrorCode     :: ierr
- 
+
   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
- 
+
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
   allocate(pCent(dimPlex))
   allocate(pNorm(dimPlex))
   do cell = cellStart, cellEnd-1
-    call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,ierr) 
+    call  DMPlexComputeCellGeometryFVM(geomMesh,cell,vol,pCent,pNorm,ierr)
     CHKERRQ(ierr)
     mesh_ipVolume(:,cell+1) = vol/real(mesh_maxNips,pReal)
-  enddo  
+  enddo
 
 end subroutine mesh_FEM_build_ipVolumes
 
@@ -219,20 +205,20 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
 
   PetscInt,      intent(in) :: dimPlex
   PetscReal,     intent(in) :: qPoints(mesh_maxNips*dimPlex)
-  
+
   PetscReal,        pointer,dimension(:) :: pV0, pCellJ, pInvcellJ
   PetscReal                 :: detJ
   PetscInt                  :: cellStart, cellEnd, cell, qPt, dirI, dirJ, qOffset
   PetscErrorCode            :: ierr
- 
- 
+
+
   allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
- 
+
   allocate(pV0(dimPlex))
   allocatE(pCellJ(dimPlex**2))
   allocatE(pinvCellJ(dimPlex**2))
   call DMPlexGetHeightStratum(geomMesh,0,cellStart,cellEnd,ierr); CHKERRQ(ierr)
-  do cell = cellStart, cellEnd-1                                                                     !< loop over all elements 
+  do cell = cellStart, cellEnd-1                                                                     !< loop over all elements
     call DMPlexComputeCellGeometryAffineFEM(geomMesh,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)
     CHKERRQ(ierr)
     qOffset = 0
@@ -246,7 +232,7 @@ subroutine mesh_FEM_build_ipCoordinates(dimPlex,qPoints)
       enddo
       qOffset = qOffset + dimPlex
     enddo
-  enddo  
+  enddo
 
 end subroutine mesh_FEM_build_ipCoordinates
 
