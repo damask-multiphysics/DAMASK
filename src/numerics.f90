@@ -44,15 +44,6 @@ module numerics
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
 #ifdef Grid
- real(pReal), protected, public :: &
-   err_div_tolAbs             =  1.0e-4_pReal, &                                                    !< absolute tolerance for equilibrium
-   err_div_tolRel             =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
-   err_curl_tolAbs            =  1.0e-10_pReal, &                                                   !< absolute tolerance for compatibility
-   err_curl_tolRel            =  5.0e-4_pReal, &                                                    !< relative tolerance for compatibility
-   err_stress_tolAbs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC
-   err_stress_tolRel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC
-   polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
-   polarBeta                  =  1.0_pReal                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
  character(len=pStringLen), protected, public :: &
    petsc_options              = ''
 #endif
@@ -117,24 +108,6 @@ subroutine numerics_init
    do i=1,num_grid%length
      key = num_grid%getKey(i)
      select case(key) 
-#ifdef Grid
-       case ('err_div_tolabs')
-         err_div_tolAbs = num_grid%get_asFloat(key)
-       case ('err_div_tolrel')
-         err_div_tolRel = num_grid%get_asFloat(key)
-       case ('err_stress_tolrel')
-         err_stress_tolrel = num_grid%get_asFloat(key)
-       case ('err_stress_tolabs')
-         err_stress_tolabs = num_grid%get_asFloat(key)
-       case ('err_curl_tolabs')
-         err_curl_tolAbs = num_grid%get_asFloat(key)
-       case ('err_curl_tolrel')
-         err_curl_tolRel = num_grid%get_asFloat(key)
-       case ('polaralpha')
-         polarAlpha = num_grid%get_asFloat(key)
-       case ('polarbeta')
-         polarBeta = num_grid%get_asFloat(key)
-#endif
        case ('itmax')
          itmax = num_grid%get_asInt(key)
        case ('itmin')
@@ -209,19 +182,6 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
 
 !--------------------------------------------------------------------------------------------------
-! spectral parameters
-#ifdef Grid
- write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
- write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
- write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
- write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
- write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
-#endif
-
-!--------------------------------------------------------------------------------------------------
 #ifdef PETSC
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
@@ -236,18 +196,6 @@ subroutine numerics_init
  if (itmin > itmax .or. itmin < 1)         call IO_error(301,ext_msg='itmin')
  if (maxCutBack < 0)                       call IO_error(301,ext_msg='maxCutBack')
  if (stagItMax < 0)                        call IO_error(301,ext_msg='maxStaggeredIter')
-#ifdef Grid
- if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolRel')
- if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolAbs')
- if (err_div_tolRel < 0.0_pReal)           call IO_error(301,ext_msg='err_div_tolRel')
- if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301,ext_msg='err_div_tolAbs')
- if (err_curl_tolRel < 0.0_pReal)          call IO_error(301,ext_msg='err_curl_tolRel')
- if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301,ext_msg='err_curl_tolAbs')
- if (polarAlpha <= 0.0_pReal .or. &
-     polarAlpha >  2.0_pReal)              call IO_error(301,ext_msg='polarAlpha')
- if (polarBeta < 0.0_pReal .or. &
-     polarBeta > 2.0_pReal)                call IO_error(301,ext_msg='polarBeta')
-#endif
 
 end subroutine numerics_init
 

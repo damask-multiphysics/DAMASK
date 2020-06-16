@@ -434,11 +434,28 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   real(pReal) :: &
     curlTol, &
     divTol, &
-    BCTol
+    BCTol, &
+    eps_div_atol, &
+    eps_div_rtol, &
+    eps_curl_atol, &
+    eps_curl_rtol, &
+    eps_stress_atol, &
+    eps_stress_rtol
+  class(tNode), pointer :: &
+    num_grid
+ 
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  eps_div_atol = num_grid%get_asFloat('eps_div_atol',defaultVal=1.0e-4_pReal)
+  eps_div_rtol = num_grid%get_asFloat('eps_div_rtol',defaultVal=5.0e-4_pReal)
+  eps_curl_atol = num_grid%get_asFloat('eps_curl_atol',defaultVal=1.0e-10_pReal)
+  eps_curl_rtol = num_grid%get_asFloat('eps_curl_rtol',defaultVal=5.0e-4_pReal)
+  eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
+  eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
 
-  curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel  ,err_curl_tolAbs)
-  divTol     = max(maxval(abs(P_av))         *err_div_tolRel   ,err_div_tolAbs)
-  BCTol      = max(maxval(abs(P_av))         *err_stress_tolRel,err_stress_tolAbs)
+
+  curlTol    = max(maxval(abs(F_aim-math_I3))*eps_curl_rtol  ,eps_curl_atol)
+  divTol     = max(maxval(abs(P_av))         *eps_div_rtol   ,eps_div_atol)
+  BCTol      = max(maxval(abs(P_av))         *eps_stress_rtol,eps_stress_atol)
 
   if ((totalIter >= itmin .and. &
                             all([ err_div /divTol, &
@@ -488,8 +505,17 @@ subroutine formResidual(in, FandF_tau, &
     nfuncs
   PetscObject :: dummy
   PetscErrorCode :: ierr
+  class(tNode), pointer :: &
+    num_grid
+  real(pReal) :: &
+    polarAlpha, &
+    polarBeta
   integer :: &
     i, j, k, e
+
+  num_grid       => numerics_root%get('grid',defaultVal = emptyDict)
+  polarAlpha     =  num_grid%get_asFloat('polaralpha',defaultVal=1.0_pReal)
+  polarBeta      =  num_grid%get_asFloat('polarbeta', defaultVal=1.0_pReal)
 
   F              => FandF_tau(1:3,1:3,1,&
                                  XG_RANGE,YG_RANGE,ZG_RANGE)

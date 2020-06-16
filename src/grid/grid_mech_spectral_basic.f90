@@ -386,10 +386,22 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   PetscErrorCode :: ierr
   real(pReal) :: &
     divTol, &
-    BCTol
+    BCTol, &
+    eps_div_atol, &
+    eps_div_rtol, &
+    eps_stress_atol, &
+    eps_stress_rtol
+  class(tNode), pointer :: &
+    num_grid
+ 
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  eps_div_atol = num_grid%get_asFloat('eps_div_atol',defaultVal=1.0e-4_pReal)
+  eps_div_rtol = num_grid%get_asFloat('eps_div_rtol',defaultVal=5.0e-4_pReal)
+  eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
+  eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
 
-  divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
-  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
+  divTol = max(maxval(abs(P_av))*eps_div_rtol   ,eps_div_atol)
+  BCTol  = max(maxval(abs(P_av))*eps_stress_rtol,eps_stress_atol)
 
   if ((totalIter >= itmin .and. &
                             all([ err_div/divTol, &
