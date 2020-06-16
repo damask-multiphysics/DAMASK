@@ -15,6 +15,7 @@ module FEM_utilities
   use FEsolving
   use homogenization
   use numerics
+  use YAML_types
   use debug
   use math
   use discretization_mesh
@@ -101,10 +102,17 @@ contains
 subroutine utilities_init
    
   character(len=pStringLen) :: petsc_optionsOrder
+  class(tNode), pointer :: &
+    numerics_mesh
+  integer :: structOrder
+
   PetscErrorCode            :: ierr
 
   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
  
+  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  structOrder = numerics_mesh%get_asInt('structOrder',defaultVal = 2)
+
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
   debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0

@@ -20,6 +20,7 @@ module discretization_mesh
  use FEsolving
  use FEM_quadrature
  use prec
+ use YAML_types
  
  implicit none
  private
@@ -83,6 +84,13 @@ subroutine discretization_mesh_init(restart)
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   IS :: faceSetIS 
   PetscErrorCode :: ierr
+
+  class(tNode), pointer :: &
+    numerics_mesh
+  integer :: integrationOrder
+
+  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  integrationOrder = numerics_mesh%get_asInt('integrationorder',defaultVal = 2)
 
   
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'

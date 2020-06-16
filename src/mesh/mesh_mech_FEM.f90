@@ -19,6 +19,7 @@ module mesh_mech_FEM
   use discretization_mesh
   use DAMASK_interface
   use numerics
+  use YAML_types
   use FEM_quadrature
   use homogenization
   use math
@@ -94,7 +95,14 @@ subroutine FEM_mech_init(fieldBC)
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: ierr
 
+  class(tNode), pointer :: &
+    numerics_mesh
+  integer :: integrationOrder
+
   write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'; flush(6)
+
+  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  integrationOrder = numerics_mesh%get_asInt('integrationorder',defaultVal = 2)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -321,6 +329,12 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   PetscInt                           :: bcSize
   IS                                 :: bcPoints
 
+  class(tNode), pointer :: &
+    numerics_mesh
+  logical :: BBarStabilisation
+
+  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  BBarStabilisation = numerics_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
 
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
@@ -464,6 +478,12 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
 
   IS                                   :: bcPoints
 
+  class(tNode), pointer :: &
+    numerics_mesh
+  logical :: BBarStabilisation
+
+  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  BBarStabilisation = numerics_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
 
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
@@ -647,7 +667,7 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
 
 !--------------------------------------------------------------------------------------------------
 ! report
-  divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*err_struct_tolRel,err_struct_tolAbs)
+  divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*1.0e-4_pReal,1.0e-10_pReal)
   call SNESConvergedDefault(snes_local,PETScIter,xnorm,snorm,fnorm/divTol,reason,dummy,ierr)
   CHKERRQ(ierr)
   if (terminallyIll) reason = SNES_DIVERGED_FUNCTION_DOMAIN

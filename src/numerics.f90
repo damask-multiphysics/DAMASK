@@ -35,9 +35,6 @@ module numerics
 
 !--------------------------------------------------------------------------------------------------
 ! field parameters:
- real(pReal), protected, public :: &
-   err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for mechanical equilibrium
-   err_struct_tolRel          =  1.0e-4_pReal                                                       !< relative tolerance for mechanical equilibrium
  integer, protected, public :: &
    itmax                      =  250, &                                                             !< maximum number of iterations
    itmin                      =  1, &                                                               !< minimum number of iterations
@@ -63,11 +60,6 @@ module numerics
 !--------------------------------------------------------------------------------------------------
 ! Mesh parameters:
 #ifdef Mesh
- integer, protected, public :: &
-   integrationOrder           =  2, &                                                              !< order of quadrature rule required
-   structOrder                =  2                                                                 !< order of displacement shape functions
- logical, protected, public :: &
-   BBarStabilisation          = .false.
  character(len=pStringLen), protected, public :: &
    petsc_options           = ''
 #endif
@@ -90,7 +82,6 @@ subroutine numerics_init
    key
  class (tNode), pointer :: &
    num_grid, &
-   num_mesh, &
    num_generic
  logical :: fexist
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
@@ -181,29 +172,8 @@ subroutine numerics_init
          charLength = num_generic%get_asFloat(key)
        case ('residualStiffness')
          residualStiffness = num_generic%get_asFloat(key)
-!--------------------------------------------------------------------------------------------------
-! field parameters
-       case ('err_struct_tolabs')
-         err_struct_tolAbs = num_generic%get_asFloat(key)
-       case ('err_struct_tolrel')
-         err_struct_tolRel = num_generic%get_asFloat(key)
      endselect
    enddo
-
-#ifdef Mesh
-   num_grid => numerics_root%get('mesh',defaultVal=emptyDict)
-   do i=1,num_grid%length
-     key = num_grid%getKey(i)
-     select case(key) 
-       case ('integrationorder')
-         integrationorder = num_generic%get_asInt(key)
-       case ('structorder')
-         structorder = num_generic%get_asInt(key)
-       case ('bbarstabilisation')
-         BBarStabilisation = num_generic%get_asInt(key) > 0
-     end select
-   enddo
-#endif
 
  else fileExists
    write(6,'(a,/)') ' using standard values'
@@ -237,8 +207,6 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
  write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
  write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
- write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
@@ -254,13 +222,6 @@ subroutine numerics_init
 #endif
 
 !--------------------------------------------------------------------------------------------------
-! spectral parameters
-#ifdef Mesh
- write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
- write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
-#endif
-
 #ifdef PETSC
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
@@ -275,8 +236,6 @@ subroutine numerics_init
  if (itmin > itmax .or. itmin < 1)         call IO_error(301,ext_msg='itmin')
  if (maxCutBack < 0)                       call IO_error(301,ext_msg='maxCutBack')
  if (stagItMax < 0)                        call IO_error(301,ext_msg='maxStaggeredIter')
- if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301,ext_msg='err_struct_tolRel')
- if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301,ext_msg='err_struct_tolAbs')
 #ifdef Grid
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolRel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301,ext_msg='err_stress_tolAbs')
