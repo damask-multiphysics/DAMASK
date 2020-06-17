@@ -25,25 +25,19 @@ module numerics
     worldsize                  =  1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
   integer(4), protected, public :: &
     DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
-
-!--------------------------------------------------------------------------------------------------
-! field parameters:
-  integer, protected, public :: &
-    itmax                      =  250, &                                                             !< maximum number of iterations
-    itmin                      =  1                                                                  !< minimum number of iterations
   
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
 #ifdef Grid
   character(len=pStringLen), protected, public :: &
-    petsc_options              = ''
+    petsc_options
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! Mesh parameters:
 #ifdef Mesh
   character(len=pStringLen), protected, public :: &
-    petsc_options           = ''
+    petsc_options
 #endif
 
   public :: numerics_init
@@ -58,7 +52,7 @@ contains
 subroutine numerics_init
 
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
-  integer :: i, ierr
+  integer :: ierr
   character(len=:), allocatable :: &
     numerics_input, &
     numerics_inFlow
@@ -95,8 +89,6 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! grid parameters
     num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-    itmax = num_grid%get_asInt('itmax',defaultVal=250)
-    itmin = num_grid%get_asInt('itmin',defaultVal=1)
 #ifdef PETSC
     petsc_options = num_grid%get_asString('petsc_options',defaultVal = '')
 #endif 
@@ -110,19 +102,9 @@ subroutine numerics_init
  !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
 
 !--------------------------------------------------------------------------------------------------
-! field parameters
-  write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
-  write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
-
-!--------------------------------------------------------------------------------------------------
 #ifdef PETSC
   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
-
-!--------------------------------------------------------------------------------------------------
-! sanity checks
-  if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')
-  if (itmin > itmax .or. itmin < 1)         call IO_error(301,ext_msg='itmin')
 
 end subroutine numerics_init
 

@@ -86,11 +86,11 @@ subroutine discretization_mesh_init(restart)
   PetscErrorCode :: ierr
 
   class(tNode), pointer :: &
-    numerics_mesh
+    num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
 
-  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  integrationOrder = numerics_mesh%get_asInt('integrationorder',defaultVal = 2)
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
 
   
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'

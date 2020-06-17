@@ -11,9 +11,11 @@ module grid_thermal_spectral
   use PETScsnes
 
   use prec
+  use IO
   use spectral_utilities
   use discretization_grid
   use thermal_conduction
+  use YAML_types
   use numerics
   use material
  
@@ -132,13 +134,22 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
     timeinc_old                                                                                     !< increment in time of last increment
-  integer :: i, j, k, cell
+  integer :: i, j, k, cell, &
+    itmax                                                                                           !< maximum number of iterations
   type(tSolutionState) :: solution
+  class(tNode), pointer :: &
+    num_generic
   PetscInt  :: devNull
   PetscReal :: T_min, T_max, stagNorm, solnNorm
 
   PetscErrorCode :: ierr   
   SNESConvergedReason :: reason
+
+!-------------------------------------------------------------------
+! reading numerical parameter and do sanity check
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  if (itmax <= 1)   call IO_error(301,ext_msg='itmax')
 
   solution%converged =.false.
  

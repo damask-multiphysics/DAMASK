@@ -410,22 +410,40 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: ierr
+  integer :: &
+    itmin, &                                                                                        !< minimum number of iterations
+    itmax                                                                                           !< maximum number of iterations
   real(pReal) :: &
     err_div, &
     divTol, &
     BCTol, &
-    eps_div_atol, &
-    eps_div_rtol, &
-    eps_stress_atol, &
-    eps_stress_rtol
+    eps_div_atol, &                                                                                 !< absolute tolerance for equilibrium
+    eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
+    eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
+    eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
   class(tNode), pointer :: &
-    num_grid
- 
+    num_grid, &
+    num_generic
+
+!-----------------------------------------------------------------------------------
+! reading numerical parameters and do sanity check 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
   eps_div_atol = num_grid%get_asFloat('eps_div_atol',defaultVal=1.0e-4_pReal)
   eps_div_rtol = num_grid%get_asFloat('eps_div_rtol',defaultVal=5.0e-4_pReal)
   eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
   eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
+
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  itmin = num_generic%get_asInt('itmin',defaultVal=1)
+  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+
+  if (eps_div_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_div_atol')
+  if (eps_div_rtol < 0.0_pReal)      call IO_error(301,ext_msg='eps_div_rtol')
+  if (eps_stress_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_stress_atol')
+  if (eps_stress_rtol < 0.0_pReal)   call IO_error(301,ext_msg='eps_stress_rtol')
+  if (itmax <= 1)                    call IO_error(301,ext_msg='itmax')
+  if (itmin > itmax .or. itmin < 1)  call IO_error(301,ext_msg='itmin')
+!------------------------------------------------------------------------------------
 
   err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
   divTol = max(maxval(abs(P_av))*eps_div_rtol   ,eps_div_atol)
@@ -474,7 +492,19 @@ subroutine formResidual(da_local,x_local, &
   PetscObject :: dummy
   PetscErrorCode :: ierr
   real(pReal), dimension(3,3,3,3) :: devNull
+  integer :: &
+    itmin, &
+    itmax
+  class(tNode), pointer :: &
+    num_generic
 
+!----------------------------------------------------------------------
+! read numerical paramteters and do sanity checks
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  itmin = num_generic%get_asInt('itmin',defaultVal=1)
+  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  if (itmax <= 1)   call IO_error(301,ext_msg='itmax')
+  if (itmin > itmax .or. itmin < 1)  call IO_error(301,ext_msg='itmin')
 
   call SNESGetNumberFunctionEvals(mech_snes,nfuncs,ierr); CHKERRQ(ierr)
   call SNESGetIterationNumber(mech_snes,PETScIter,ierr); CHKERRQ(ierr)

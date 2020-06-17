@@ -96,13 +96,22 @@ subroutine FEM_mech_init(fieldBC)
   PetscErrorCode                         :: ierr
 
   class(tNode), pointer :: &
-    numerics_mesh
-  integer :: integrationOrder                                                                       !< order of quadrature rule required
-
+    num_mesh, &
+    num_generic
+  integer :: &
+    integrationOrder, &                                                                     !< order of quadrature rule required
+    itmax
+   
   write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'; flush(6)
 
-  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  integrationOrder = numerics_mesh%get_asInt('integrationorder',defaultVal = 2)
+!-----------------------------------------------------------------------------
+! read numerical parametes and do sanity checks
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+  
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  if (itmax <= 1) call IO_error(301,ext_msg='itmax')
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -274,8 +283,20 @@ type(tSolutionState) function FEM_mech_solution( &
     incInfoIn
 
 !--------------------------------------------------------------------------------------------------
+  integer :: &
+    itmax
+  class(tNode), pointer :: &
+    num_generic
+
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
+
+!--------------------------------------------------------------------------------------------------
+! read numerical parameter and do sanity check  
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  if (itmax <= 1) call IO_error(301,ext_msg='itmax')
+!-------------------------------------------------------------------------------------------------
 
   incInfo = incInfoIn
   FEM_mech_solution%converged =.false.
@@ -330,11 +351,11 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   IS                                 :: bcPoints
 
   class(tNode), pointer :: &
-    numerics_mesh
+    num_mesh
   logical :: BBarStabilisation
 
-  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  BBarStabilisation = numerics_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
 
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
@@ -479,11 +500,11 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   IS                                   :: bcPoints
 
   class(tNode), pointer :: &
-    numerics_mesh
+    num_mesh
   logical :: BBarStabilisation
 
-  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  BBarStabilisation = numerics_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
 
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))

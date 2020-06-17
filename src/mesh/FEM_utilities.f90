@@ -103,15 +103,15 @@ subroutine FEM_utilities_init
    
   character(len=pStringLen) :: petsc_optionsOrder
   class(tNode), pointer :: &
-    numerics_mesh
+    num_mesh
   integer :: structOrder                                                                            !< order of displacement shape functions
 
   PetscErrorCode            :: ierr
 
   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
  
-  numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  structOrder = numerics_mesh%get_asInt('structOrder',defaultVal = 2)
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  structOrder = num_mesh%get_asInt('structOrder',defaultVal = 2)
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters

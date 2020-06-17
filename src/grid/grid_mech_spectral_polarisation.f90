@@ -431,19 +431,25 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: ierr
+  integer :: &
+    itmin, &                                                                                        !< minimum number of iterations
+    itmax                                                                                           !< maximum number of iterations
   real(pReal) :: &
     curlTol, &
     divTol, &
     BCTol, &
-    eps_div_atol, &
-    eps_div_rtol, &
-    eps_curl_atol, &
-    eps_curl_rtol, &
-    eps_stress_atol, &
-    eps_stress_rtol
+    eps_div_atol, &                                                                                 !< absolute tolerance for equilibrium
+    eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
+    eps_curl_atol, &                                                                                !< absolute tolerance for compatibility
+    eps_curl_rtol, &                                                                                !< relative tolerance for compatibility
+    eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
+    eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
   class(tNode), pointer :: &
-    num_grid
- 
+    num_grid, &
+    num_generic
+
+!-----------------------------------------------------------------------------------
+! reading numerical parameters and do sanity check 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
   eps_div_atol = num_grid%get_asFloat('eps_div_atol',defaultVal=1.0e-4_pReal)
   eps_div_rtol = num_grid%get_asFloat('eps_div_rtol',defaultVal=5.0e-4_pReal)
@@ -452,6 +458,19 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
   eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
 
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  itmin = num_generic%get_asInt('itmin',defaultVal=1)
+  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+
+  if (eps_div_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_div_atol')
+  if (eps_div_rtol < 0.0_pReal)      call IO_error(301,ext_msg='eps_div_rtol')
+  if (eps_curl_atol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_curl_atol')
+  if (eps_curl_rtol < 0.0_pReal)     call IO_error(301,ext_msg='eps_curl_rtol')
+  if (eps_stress_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_stress_atol')
+  if (eps_stress_rtol < 0.0_pReal)   call IO_error(301,ext_msg='eps_stress_rtol')
+  if (itmax <= 1)                    call IO_error(301,ext_msg='itmax')
+  if (itmin > itmax .or. itmin < 1)  call IO_error(301,ext_msg='itmin')
+!------------------------------------------------------------------------------------
 
   curlTol    = max(maxval(abs(F_aim-math_I3))*eps_curl_rtol  ,eps_curl_atol)
   divTol     = max(maxval(abs(P_av))         *eps_div_rtol   ,eps_div_atol)
@@ -506,22 +525,30 @@ subroutine formResidual(in, FandF_tau, &
   PetscObject :: dummy
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
-    num_grid
+    num_grid, &
+    num_generic
   real(pReal) :: &
     polarAlpha, &                                                                                   !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
     polarBeta                                                                                       !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
   integer :: &
-    i, j, k, e
+    i, j, k, e, &
+    itmin, itmax
 
+!--------------------------------------------------------------------------------------------------
+! read numerical paramteters and do sanity checks
   num_grid       => numerics_root%get('grid',defaultVal = emptyDict)
   polarAlpha     =  num_grid%get_asFloat('polaralpha',defaultVal=1.0_pReal)
   polarBeta      =  num_grid%get_asFloat('polarbeta', defaultVal=1.0_pReal)
 
-!-----------------------------------------------------------------------------------------------
-! sanity checks  
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  itmin = num_generic%get_asInt('itmin',defaultVal=1)
+  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+
+  if (itmax <= 1)                                           call IO_error(301,ext_msg='itmax')
+  if (itmin > itmax .or. itmin < 1)                         call IO_error(301,ext_msg='itmin')
   if (polarAlpha <= 0.0_pReal .or. polarAlpha >  2.0_pReal) call IO_error(301,ext_msg='polarAlpha')
   if (polarBeta < 0.0_pReal .or. polarBeta > 2.0_pReal)     call IO_error(301,ext_msg='polarBeta')
-!------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 
   F              => FandF_tau(1:3,1:3,1,&
                                  XG_RANGE,YG_RANGE,ZG_RANGE)
