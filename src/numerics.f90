@@ -20,9 +20,7 @@ module numerics
 
  class(tNode), pointer, public :: &
    numerics_root
- integer, protected, public :: &
-   iJacoStiffness             =  1, &                                                               !< frequency of stiffness update
-   randomSeed                 =  0, &                                                               !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+ integer, protected, public    :: &
    worldrank                  =  0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
    worldsize                  =  1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
  integer(4), protected, public :: &
@@ -129,15 +127,8 @@ subroutine numerics_init
      select case(key)
        case ('defgradtolerance')
          defgradTolerance = num_generic%get_asFloat(key)
-       case ('ijacostiffness')
-         iJacoStiffness = num_generic%get_asInt(key)
        case ('unitlength')
          numerics_unitlength = num_generic%get_asFloat(key)
-
-!--------------------------------------------------------------------------------------------------
-! random seeding parameter
-       case ('fixed_seed', 'random_seed')
-         randomSeed = num_generic%get_asInt(key)
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
@@ -156,14 +147,7 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
  write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
- write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
-
-!--------------------------------------------------------------------------------------------------
-! Random seeding parameter
- write(6,'(a16,1x,i16,/)')    ' random_seed:    ',randomSeed
- if (randomSeed <= 0) &
-   write(6,'(a,/)')           ' random seed will be generated!'
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
@@ -189,7 +173,6 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
  if (defgradTolerance <= 0.0_pReal)        call IO_error(301,ext_msg='defgradTolerance')
- if (iJacoStiffness < 1)                   call IO_error(301,ext_msg='iJacoStiffness')
  if (numerics_unitlength <= 0.0_pReal)     call IO_error(301,ext_msg='unitlength')
  if (residualStiffness < 0.0_pReal)        call IO_error(301,ext_msg='residualStiffness')
  if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')

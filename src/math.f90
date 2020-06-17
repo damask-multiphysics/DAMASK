@@ -9,6 +9,7 @@ module math
   use prec
   use IO
   use numerics
+  use YAML_types
   use LAPACK_interface
 
   implicit none
@@ -89,11 +90,16 @@ contains
 subroutine math_init
 
   real(pReal), dimension(4) :: randTest
-  integer :: randSize
+  integer :: randSize,randomSeed
   integer, dimension(:), allocatable :: randInit
-
+  class(tNode), pointer :: &
+    num_generic
+ 
   write(6,'(/,a)') ' <<<+-  math init  -+>>>'; flush(6)
 
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  randomSeed = num_generic%get_asInt('random_seed', defaultVal = 0)
+ 
   call random_seed(size=randSize)
   allocate(randInit(randSize))
   if (randomSeed > 0) then
