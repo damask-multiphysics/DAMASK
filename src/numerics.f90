@@ -26,7 +26,6 @@ module numerics
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
-   defgradTolerance           =  1.0e-7_pReal, &                                                    !< deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
    numerics_unitlength        =  1.0_pReal, &                                                       !< determines the physical length of one computational length unit
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage
@@ -125,8 +124,6 @@ subroutine numerics_init
    do i=1,num_generic%length
      key = num_generic%getKey(i)
      select case(key)
-       case ('defgradtolerance')
-         defgradTolerance = num_generic%get_asFloat(key)
        case ('unitlength')
          numerics_unitlength = num_generic%get_asFloat(key)
 
@@ -146,7 +143,6 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
- write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
 !--------------------------------------------------------------------------------------------------
@@ -172,7 +168,6 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
- if (defgradTolerance <= 0.0_pReal)        call IO_error(301,ext_msg='defgradTolerance')
  if (numerics_unitlength <= 0.0_pReal)     call IO_error(301,ext_msg='unitlength')
  if (residualStiffness < 0.0_pReal)        call IO_error(301,ext_msg='residualStiffness')
  if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')
