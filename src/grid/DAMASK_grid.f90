@@ -30,13 +30,13 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
-  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
-  logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
+  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                         !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
+  logical,     dimension(9) :: temp_maskVector  = .false.                                           !< temporarily from loadcase file when reading in tensors
   integer, allocatable, dimension(:) :: chunkPos
   integer :: &
-    N_t   = 0, &                                                                                     !< # of time indicators found in load case file
-    N_n   = 0, &                                                                                     !< # of increment specifiers found in load case file
-    N_def = 0                                                                                        !< # of rate of deformation specifiers found in load case file
+    N_t   = 0, &                                                                                    !< # of time indicators found in load case file
+    N_n   = 0, &                                                                                    !< # of increment specifiers found in load case file
+    N_def = 0                                                                                       !< # of rate of deformation specifiers found in load case file
   character(len=pStringLen) :: &
     line
 
@@ -46,36 +46,36 @@ program DAMASK_grid
     ones  = 1.0_pReal, &
     zeros = 0.0_pReal
   integer, parameter :: &
-    subStepFactor = 2                                                                                !< for each substep, divide the last time increment by 2.0
+    subStepFactor = 2                                                                               !< for each substep, divide the last time increment by 2.0
   real(pReal) :: &
-    time = 0.0_pReal, &                                                                              !< elapsed time
-    time0 = 0.0_pReal, &                                                                             !< begin of interval
-    timeinc = 1.0_pReal, &                                                                           !< current time interval
-    timeIncOld = 0.0_pReal, &                                                                        !< previous time interval
-    remainingLoadCaseTime = 0.0_pReal                                                                !< remaining time of current load case
+    time = 0.0_pReal, &                                                                             !< elapsed time
+    time0 = 0.0_pReal, &                                                                            !< begin of interval
+    timeinc = 1.0_pReal, &                                                                          !< current time interval
+    timeIncOld = 0.0_pReal, &                                                                       !< previous time interval
+    remainingLoadCaseTime = 0.0_pReal                                                               !< remaining time of current load case
   logical :: &
-    guess, &                                                                                         !< guess along former trajectory
+    guess, &                                                                                        !< guess along former trajectory
     stagIterate, &
     cutBack = .false.
   integer :: &
     i, j, k, l, field, &
     errorID = 0, &
-    cutBackLevel = 0, &                                                                              !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
-    maxCutBack, &                                                                                    !< max number of cut backs
-    stepFraction = 0                                                                                 !< fraction of current time interval
+    cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
+    maxCutBack, &                                                                                   !< max number of cut backs
+    stepFraction = 0                                                                                !< fraction of current time interval
   integer :: &
-    currentLoadcase = 0, &                                                                           !< current load case
-    inc, &                                                                                           !< current increment in current load case
-    totalIncsCounter = 0, &                                                                          !< total # of increments
-    statUnit = 0, &                                                                                  !< file unit for statistics output
+    currentLoadcase = 0, &                                                                          !< current load case
+    inc, &                                                                                          !< current increment in current load case
+    totalIncsCounter = 0, &                                                                         !< total # of increments
+    statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
-    stagItMax, &                                                                                     !< max number of field level staggered iterations
+    stagItMax, &                                                                                    !< max number of field level staggered iterations
     nActiveFields = 0
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
-  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
+  type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tLoadCase) :: newLoadCase
   type(tSolutionState), allocatable, dimension(:) :: solres
   procedure(grid_mech_spectral_basic_init), pointer :: &
@@ -163,13 +163,13 @@ program DAMASK_grid
   fileContent = IO_readlines(trim(loadCaseFile))
   if(size(fileContent) == 0) call IO_error(307,ext_msg='No load case specified')
   
-  allocate (loadCases(0))                                                                            ! array of load cases
+  allocate (loadCases(0))                                                                           ! array of load cases
   do currentLoadCase = 1, size(fileContent)
     line = fileContent(currentLoadCase)
     if (IO_isBlank(line)) cycle
     chunkPos = IO_stringPos(line)
   
-    do i = 1, chunkPos(1)                                                                            ! reading compulsory parameters for loadcase
+    do i = 1, chunkPos(1)                                                                           ! reading compulsory parameters for loadcase
       select case (IO_lc(IO_stringValue(line,chunkPos,i)))
         case('l','fdot','dotf','f')
           N_def = N_def + 1
@@ -179,12 +179,12 @@ program DAMASK_grid
           N_n = N_n + 1
       end select
     enddo
-    if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                             ! sanity check
-      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(loadCaseFile))                    ! error message for incomplete loadcase
+    if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
+      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(loadCaseFile))                   ! error message for incomplete loadcase
   
     newLoadCase%stress%myType='stress'
     field = 1
-    newLoadCase%ID(field) = FIELD_MECH_ID                                                            ! mechanical active by default
+    newLoadCase%ID(field) = FIELD_MECH_ID                                                           ! mechanical active by default
     thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
       field = field + 1
       newLoadCase%ID(field) = FIELD_THERMAL_ID
@@ -197,9 +197,9 @@ program DAMASK_grid
     call newLoadCase%rot%fromEulers(real([0.0,0.0,0.0],pReal))
     readIn: do i = 1, chunkPos(1)
       select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-        case('fdot','dotf','l','f')                                                                  ! assign values for the deformation BC matrix
+        case('fdot','dotf','l','f')                                                                 ! assign values for the deformation BC matrix
           temp_valueVector = 0.0_pReal
-          if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'fdot'.or. &                                 ! in case of Fdot, set type to fdot
+          if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'fdot'.or. &                                ! in case of Fdot, set type to fdot
               IO_lc(IO_stringValue(line,chunkPos,i)) == 'dotf') then
             newLoadCase%deformation%myType = 'fdot'
           else if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'f') then
@@ -208,41 +208,41 @@ program DAMASK_grid
             newLoadCase%deformation%myType = 'l'
           endif
           do j = 1, 9
-            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not a *
-            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
+            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                           ! true if not a *
+            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
           enddo
-          newLoadCase%deformation%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))           ! logical mask in 3x3 notation
-          newLoadCase%deformation%maskFloat   = merge(ones,zeros,newLoadCase%deformation%maskLogical)! float (1.0/0.0) mask in 3x3 notation
-          newLoadCase%deformation%values      = math_9to33(temp_valueVector)                         ! values in 3x3 notation
+          newLoadCase%deformation%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))          ! logical mask in 3x3 notation
+          newLoadCase%deformation%maskFloat = merge(ones,zeros,newLoadCase%deformation%maskLogical) ! float (1.0/0.0) mask in 3x3 notation
+          newLoadCase%deformation%values    = math_9to33(temp_valueVector)                          ! values in 3x3 notation
         case('p','stress', 's')
           temp_valueVector = 0.0_pReal
           do j = 1, 9
-            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                            ! true if not an asterisk
-            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)           ! read value where applicable
+            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                           ! true if not an asterisk
+            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
           enddo
           newLoadCase%stress%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
           newLoadCase%stress%maskFloat   = merge(ones,zeros,newLoadCase%stress%maskLogical)
           newLoadCase%stress%values      = math_9to33(temp_valueVector)
-        case('t','time','delta')                                                                     ! increment time
+        case('t','time','delta')                                                                    ! increment time
           newLoadCase%time = IO_floatValue(line,chunkPos,i+1)
-        case('n','incs','increments')                                                                ! number of increments
+        case('n','incs','increments')                                                               ! number of increments
           newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
-        case('logincs','logincrements')                                                              ! number of increments (switch to log time scaling)
+        case('logincs','logincrements')                                                             ! number of increments (switch to log time scaling)
           newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
           newLoadCase%logscale = 1
-        case('freq','frequency','outputfreq')                                                        ! frequency of result writings
+        case('freq','frequency','outputfreq')                                                       ! frequency of result writings
           newLoadCase%outputfrequency = IO_intValue(line,chunkPos,i+1)
-        case('r','restart','restartwrite')                                                           ! frequency of writing restart information
+        case('r','restart','restartwrite')                                                          ! frequency of writing restart information
           newLoadCase%restartfrequency = IO_intValue(line,chunkPos,i+1)
         case('guessreset','dropguessing')
-          newLoadCase%followFormerTrajectory = .false.                                               ! do not continue to predict deformation along former trajectory
-        case('euler')                                                                                ! rotation of load case given in euler angles
+          newLoadCase%followFormerTrajectory = .false.                                              ! do not continue to predict deformation along former trajectory
+        case('euler')                                                                               ! rotation of load case given in euler angles
           temp_valueVector = 0.0_pReal
-          l = 1                                                                                      ! assuming values given in degrees
-          k = 1                                                                                      ! assuming keyword indicating degree/radians present
+          l = 1                                                                                     ! assuming values given in degrees
+          k = 1                                                                                     ! assuming keyword indicating degree/radians present
           select case (IO_lc(IO_stringValue(line,chunkPos,i+1)))
             case('deg','degree')
-            case('rad','radian')                                                                     ! don't convert from degree to radian
+            case('rad','radian')                                                                    ! don't convert from degree to radian
               l = 0
             case default
               k = 0
@@ -251,7 +251,7 @@ program DAMASK_grid
             temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
           enddo
           call newLoadCase%rot%fromEulers(temp_valueVector(1:3),degrees=(l==1))
-        case('rotation','rot')                                                                       ! assign values for the rotation  matrix
+        case('rotation','rot')                                                                      ! assign values for the rotation  matrix
           temp_valueVector = 0.0_pReal
           do j = 1, 9
             temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
@@ -260,16 +260,17 @@ program DAMASK_grid
       end select
     enddo readIn
   
-    newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1)                   ! by default, guess from previous load case
+    newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1)                  ! by default, guess from previous load case
   
     reportAndCheck: if (worldrank == 0) then
       write (loadcase_string, '(i0)' ) currentLoadCase
       write(6,'(/,1x,a,i0)') 'load case: ', currentLoadCase
-      if (.not. newLoadCase%followFormerTrajectory) write(6,'(2x,a)') 'drop guessing along trajectory'
+      if (.not. newLoadCase%followFormerTrajectory) &
+        write(6,'(2x,a)') 'drop guessing along trajectory'
       if (newLoadCase%deformation%myType == 'l') then
         do j = 1, 3
           if (any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .true.) .and. &
-              any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .false.)) errorID = 832           ! each row should be either fully or not at all defined
+              any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .false.)) errorID = 832          ! each row should be either fully or not at all defined
         enddo
         write(6,'(2x,a)') 'velocity gradient:'
       else if (newLoadCase%deformation%myType == 'f') then
@@ -286,9 +287,9 @@ program DAMASK_grid
         enddo; write(6,'(/)',advance='no')
       enddo
       if (any(newLoadCase%stress%maskLogical .eqv. &
-              newLoadCase%deformation%maskLogical)) errorID = 831                                    ! exclusive or masking only
+              newLoadCase%deformation%maskLogical)) errorID = 831                                   ! exclusive or masking only
       if (any(newLoadCase%stress%maskLogical .and. transpose(newLoadCase%stress%maskLogical) &
-          .and. (math_I3<1))) errorID = 838                                                          ! no rotation is allowed by stress BC
+          .and. (math_I3<1))) errorID = 838                                                         ! no rotation is allowed by stress BC
       write(6,'(2x,a)') 'stress / GPa:'
       do i = 1, 3; do j = 1, 3
         if(newLoadCase%stress%maskLogical(i,j)) then
@@ -300,22 +301,22 @@ program DAMASK_grid
       enddo
       if (any(abs(matmul(newLoadCase%rot%asMatrix(), &
                          transpose(newLoadCase%rot%asMatrix()))-math_I3) > &
-                 reshape(spread(tol_math_check,1,9),[ 3,3]))) errorID = 846                          ! given rotation matrix contains strain
+                 reshape(spread(tol_math_check,1,9),[ 3,3]))) errorID = 846                         ! given rotation matrix contains strain
       if (any(dNeq(newLoadCase%rot%asMatrix(), math_I3))) &
         write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                  transpose(newLoadCase%rot%asMatrix())
-      if (newLoadCase%time < 0.0_pReal) errorID = 834                                                ! negative time increment
+      if (newLoadCase%time < 0.0_pReal) errorID = 834                                               ! negative time increment
       write(6,'(2x,a,f0.3)') 'time: ', newLoadCase%time
-      if (newLoadCase%incs < 1)    errorID = 835                                                     ! non-positive incs count
+      if (newLoadCase%incs < 1)    errorID = 835                                                    ! non-positive incs count
       write(6,'(2x,a,i0)')  'increments: ', newLoadCase%incs
-      if (newLoadCase%outputfrequency < 1)  errorID = 836                                            ! non-positive result frequency
+      if (newLoadCase%outputfrequency < 1)  errorID = 836                                           ! non-positive result frequency
       write(6,'(2x,a,i0)')  'output frequency: ', newLoadCase%outputfrequency
-      if (newLoadCase%restartfrequency < 1)  errorID = 839                                           ! non-positive restart frequency
+      if (newLoadCase%restartfrequency < 1)  errorID = 839                                          ! non-positive restart frequency
       if (newLoadCase%restartfrequency < huge(0)) &
         write(6,'(2x,a,i0)')  'restart frequency: ', newLoadCase%restartfrequency
-      if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                  ! exit with error message
+      if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
     endif reportAndCheck
-    loadCases = [loadCases,newLoadCase]                                                              ! load case is ok, append it
+    loadCases = [loadCases,newLoadCase]                                                             ! load case is ok, append it
   enddo
 
 
@@ -341,7 +342,7 @@ program DAMASK_grid
   if (worldrank == 0) then
     writeHeader: if (interface_restartInc < 1) then
       open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
-      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
+      write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
       if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
         write(6,'(/,a)') ' header of statistics file written out'
       flush(6)
@@ -357,25 +358,25 @@ program DAMASK_grid
   endif writeUndeformed
   
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
-    time0 = time                                                                                     ! load case start time
-    guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
+    time0 = time                                                                                    ! load case start time
+    guess = loadCases(currentLoadCase)%followFormerTrajectory                                       ! change of load case? homogeneous guess for the first inc
   
     incLooping: do inc = 1, loadCases(currentLoadCase)%incs
       totalIncsCounter = totalIncsCounter + 1
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
-      timeIncOld = timeinc                                                                           ! last timeinc that brought former inc to an end
-      if (loadCases(currentLoadCase)%logscale == 0) then                                             ! linear scale
+      timeIncOld = timeinc                                                                          ! last timeinc that brought former inc to an end
+      if (loadCases(currentLoadCase)%logscale == 0) then                                            ! linear scale
         timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
       else
-        if (currentLoadCase == 1) then                                                               ! 1st load case of logarithmic scale
-          if (inc == 1) then                                                                         ! 1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))            ! assume 1st inc is equal to 2nd
-          else                                                                                       ! not-1st inc of 1st load case of logarithmic scale
+        if (currentLoadCase == 1) then                                                              ! 1st load case of logarithmic scale
+          if (inc == 1) then                                                                        ! 1st inc of 1st load case of logarithmic scale
+            timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))           ! assume 1st inc is equal to 2nd
+          else                                                                                      ! not-1st inc of 1st load case of logarithmic scale
             timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1-loadCases(1)%incs ,pReal))
           endif
-        else                                                                                         ! not-1st load case of logarithmic scale
+        else                                                                                        ! not-1st load case of logarithmic scale
           timeinc = time0 * &
                ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc         ,pReal)/&
                                                      real(loadCases(currentLoadCase)%incs ,pReal))&
@@ -383,18 +384,18 @@ program DAMASK_grid
                                                      real(loadCases(currentLoadCase)%incs ,pReal)))
         endif
       endif
-      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                       ! depending on cut back level, decrease time step
+      timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
   
-      skipping: if (totalIncsCounter <= interface_restartInc) then                                   ! not yet at restart inc?
-        time = time + timeinc                                                                        ! just advance time, skip already performed calculation
-        guess = .true.                                                                               ! QUESTION:why forced guessing instead of inheriting loadcase preference
+      skipping: if (totalIncsCounter <= interface_restartInc) then                                  ! not yet at restart inc?
+        time = time + timeinc                                                                       ! just advance time, skip already performed calculation
+        guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
       else skipping
-        stepFraction = 0                                                                             ! fraction scaled by stepFactor**cutLevel
+        stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
   
         subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
           remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
-          time = time + timeinc                                                                      ! forward target time
-          stepFraction = stepFraction + 1                                                            ! count step
+          time = time + timeinc                                                                     ! forward target time
+          stepFraction = stepFraction + 1                                                           ! count step
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
@@ -447,45 +448,45 @@ program DAMASK_grid
   
               end select
   
-              if (.not. solres(field)%converged) exit                                                ! no solution found
+              if (.not. solres(field)%converged) exit                                               ! no solution found
   
             enddo
             stagIter = stagIter + 1
             stagIterate =            stagIter < stagItMax &
                          .and.       all(solres(:)%converged) &
-                         .and. .not. all(solres(:)%stagConverged)                                    ! stationary with respect to staggered iteration
+                         .and. .not. all(solres(:)%stagConverged)                                   ! stationary with respect to staggered iteration
           enddo
 
 !--------------------------------------------------------------------------------------------------
 ! check solution for either advance or retry
 
-          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                            ! converged
-               .and. .not. solres(1)%termIll) then                                                   ! and acceptable solution found
+          if ( (all(solres(:)%converged .and. solres(:)%stagConverged)) &                           ! converged
+               .and. .not. solres(1)%termIll) then                                                  ! and acceptable solution found
             call mech_updateCoords
             timeIncOld = timeinc
             cutBack = .false.
-            guess = .true.                                                                           ! start guessing after first converged (sub)inc
+            guess = .true.                                                                          ! start guessing after first converged (sub)inc
             if (worldrank == 0) then
               write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                                 solres%converged, solres%iterationsNeeded
               flush(statUnit)
             endif
-          elseif (cutBackLevel < maxCutBack) then                                                    ! further cutbacking tolerated?
+          elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?
             cutBack = .true.
-            stepFraction = (stepFraction - 1) * subStepFactor                                        ! adjust to new denominator
+            stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
-            time    = time - timeinc                                                                 ! rewind time
-            timeinc = timeinc/real(subStepFactor,pReal)                                              ! cut timestep
+            time    = time - timeinc                                                                ! rewind time
+            timeinc = timeinc/real(subStepFactor,pReal)                                             ! cut timestep
             write(6,'(/,a)') ' cutting back '
-          else                                                                                       ! no more options to continue
+          else                                                                                      ! no more options to continue
             call IO_warning(850)
             if (worldrank == 0) close(statUnit)
-            call quit(0)                                                                             ! quit
+            call quit(0)                                                                            ! quit
           endif
   
         enddo subStepLooping
   
-        cutBackLevel = max(0, cutBackLevel - 1)                                                      ! try half number of subincs next inc
+        cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
   
         if (all(solres(:)%converged)) then
           write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' converged'
@@ -493,7 +494,7 @@ program DAMASK_grid
           write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' NOT converged'
         endif; flush(6)
   
-        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                           ! at output frequency
+        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                          ! at output frequency
           write(6,'(1/,a)') ' ... writing results to file ......................................'
           flush(6)
           call CPFEM_results(totalIncsCounter,time)
@@ -514,6 +515,6 @@ program DAMASK_grid
   write(6,'(/,a)') ' ###########################################################################'
   if (worldrank == 0) close(statUnit)
   
-  call quit(0)                                                                                       ! no complains ;)
+  call quit(0)                                                                                      ! no complains ;)
   
 end program DAMASK_grid

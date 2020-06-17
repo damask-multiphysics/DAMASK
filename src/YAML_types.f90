@@ -312,7 +312,7 @@ function tNode_asScalar(self) result(scalar)
     class is(tScalar)
       scalar => self
     class default
-      call IO_error(0)
+      call IO_error(706,ext_msg='tNode_asScalar')
   end select
 
 end function tNode_asScalar
@@ -330,7 +330,7 @@ function tNode_asList(self) result(list)
     class is(tList)
       list => self
     class default
-      call IO_error(0)
+      call IO_error(706,ext_msg='tNode_asList')
   end select
 
 end function tNode_asList
@@ -348,7 +348,7 @@ function tNode_asDict(self) result(dict)
     class is(tDict)
       dict => self
     class default
-      call IO_error(0)
+      call IO_error(706,ext_msg='tNode_asDict')
   end select
 
 end function tNode_asDict
@@ -419,7 +419,7 @@ function tNode_get_byIndex(self,i) result(node)
   integer :: j
 
   self_ => self%asList()
-  if(i < 1 .or. i > self_%length) call IO_error(0)
+  if(i < 1 .or. i > self_%length) call IO_error(150,ext_msg='tNode_get_byIndex')
 
   j = 1
   item => self_%first
@@ -642,7 +642,7 @@ function tNode_contains(self,k)  result(exists)
       endif
     enddo
   else
-     call IO_error(0)
+     call IO_error(706,ext_msg='tNode_contains')
   endif
 
 end function tNode_contains

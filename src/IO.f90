@@ -554,7 +554,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid selection for debug'
 
 !------------------------------------------------------------------------------------------------
-! errors related to YAML input files
+! errors related to YAML data
     case (701)
       msg = 'Incorrect indent/Null value not allowed'
     case (702)
@@ -565,6 +565,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Space expected after a colon for <key>: <value> pair'
     case (705)
       msg = 'Unsupported feature'
+    case (706)
+      msg = 'Access by incorrect node type'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
