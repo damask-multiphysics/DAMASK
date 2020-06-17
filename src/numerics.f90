@@ -26,16 +26,13 @@ module numerics
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
-   numerics_unitlength        =  1.0_pReal, &                                                       !< determines the physical length of one computational length unit
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage
 
 !--------------------------------------------------------------------------------------------------
 ! field parameters:
  integer, protected, public :: &
    itmax                      =  250, &                                                             !< maximum number of iterations
-   itmin                      =  1, &                                                               !< minimum number of iterations
-   stagItMax                  =  10, &                                                              !< max number of field level staggered iterations
-   maxCutBack                 =  3                                                                  !< max number of cut backs
+   itmin                      =  1                                                                  !< minimum number of iterations
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
@@ -108,10 +105,6 @@ subroutine numerics_init
          itmax = num_grid%get_asInt(key)
        case ('itmin')
          itmin = num_grid%get_asInt(key)
-       case ('maxCutBack')
-         maxCutBack = num_grid%get_asInt(key)
-       case ('maxStaggeredIter')
-         stagItMax = num_grid%get_asInt(key)
 #ifdef PETSC
        case ('petsc_options')
          petsc_options = num_grid%get_asString(key)
@@ -123,11 +116,6 @@ subroutine numerics_init
    do i=1,num_generic%length
      key = num_generic%getKey(i)
      select case(key)
-       case ('unitlength')
-         numerics_unitlength = num_generic%get_asFloat(key)
-
-!--------------------------------------------------------------------------------------------------
-! gradient parameter
        case ('residualStiffness')
          residualStiffness = num_generic%get_asFloat(key)
      endselect
@@ -137,10 +125,6 @@ subroutine numerics_init
    write(6,'(a,/)') ' using standard values'
    flush(6)
  endif fileExists
-
-!--------------------------------------------------------------------------------------------------
-! writing parameters to output
- write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
@@ -154,8 +138,6 @@ subroutine numerics_init
 ! field parameters
  write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
  write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
- write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
- write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
 
 !--------------------------------------------------------------------------------------------------
 #ifdef PETSC
@@ -164,12 +146,9 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
- if (numerics_unitlength <= 0.0_pReal)     call IO_error(301,ext_msg='unitlength')
  if (residualStiffness < 0.0_pReal)        call IO_error(301,ext_msg='residualStiffness')
  if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1)         call IO_error(301,ext_msg='itmin')
- if (maxCutBack < 0)                       call IO_error(301,ext_msg='maxCutBack')
- if (stagItMax < 0)                        call IO_error(301,ext_msg='maxStaggeredIter')
 
 end subroutine numerics_init
 

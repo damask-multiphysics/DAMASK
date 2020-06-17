@@ -13,6 +13,7 @@ module discretization_marc
   use IO
   use debug
   use numerics
+  use YAML_types
   use FEsolving
   use element
   use discretization
@@ -58,7 +59,7 @@ subroutine discretization_marc_init
   integer:: &
     Nnodes, &                                                                                       !< total number of nodes in the mesh
     Nelems                                                                                          !< total number of elements in the mesh
-   
+
   real(pReal), dimension(:,:), allocatable :: &
     IP_reshaped
   integer,dimension(:,:,:), allocatable :: &
@@ -67,10 +68,15 @@ subroutine discretization_marc_init
     connectivity_elem
   real(pReal), dimension(:,:,:,:),allocatable :: &
     unscaledNormals
-
+ 
+  class(tNode), pointer :: &
+    num_commercialFEM
+  
   write(6,'(/,a)') ' <<<+-  discretization_marc init  -+>>>'; flush(6)
  
-  mesh_unitlength = numerics_unitlength                                                             ! set physical extent of a length unit in mesh
+  num_commercialFEM => numerics_root%get('commercialFEM',defaultVal = emptyDict)
+  mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
+  if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
 
   call inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
   nElems = size(connectivity_elem,2)

@@ -16,6 +16,7 @@ program DAMASK_mesh
   use CPFEM2
   use FEsolving
   use numerics
+  use YAML_types
   use discretization_mesh
   use FEM_Utilities
   use mesh_mech_FEM
@@ -48,6 +49,7 @@ program DAMASK_mesh
     i, &
     errorID, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
+    maxCutBack, &                                                                                   !< max number of cutbacks
     stepFraction = 0, &                                                                             !< fraction of current time interval
     currentLoadcase = 0, &                                                                          !< current load case
     currentFace = 0, &
@@ -55,7 +57,10 @@ program DAMASK_mesh
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
+    stagItMax, &                                                                                    !< max number of field level staggered iterations
     component  
+  class(tNode), pointer :: &
+    num_generic
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
     incInfo, &
@@ -72,7 +77,16 @@ program DAMASK_mesh
 ! init DAMASK (all modules)
   call CPFEM_initAll
   write(6,'(/,a)') ' <<<+-  DAMASK_FEM init  -+>>>'; flush(6)
- 
+
+!--------------------------------------------------------------------- 
+! reading field information from numerics file and do sanity checks
+  num_generic => numerics_root%get('generic', defaultVal=emptyDict)
+  stagItMax  = num_generic%get_asInt('maxStaggeredIter',defaultVal=10)
+  maxCutBack = num_generic%get_asInt('maxCutBack',defaultVal=3)
+
+  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
+  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  
 ! reading basic information from load case file and allocate data structure containing load cases
   call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                         !< dimension of mesh (2D or 3D)
   nActiveFields = 1

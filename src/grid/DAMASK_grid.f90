@@ -61,6 +61,7 @@ program DAMASK_grid
    i, j, k, l, field, &
    errorID = 0, &
    cutBackLevel = 0, &                                                                              !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
+   maxCutBack, &                                                                                    !< max number of cut backs
    stepFraction = 0                                                                                 !< fraction of current time interval
  integer :: &
    currentLoadcase = 0, &                                                                           !< current load case
@@ -68,6 +69,7 @@ program DAMASK_grid
    totalIncsCounter = 0, &                                                                          !< total # of increments
    statUnit = 0, &                                                                                  !< file unit for statistics output
    stagIter, &
+   stagItMax, &                                                                                     !< max number of field level staggered iterations
    nActiveFields = 0
  character(len=pStringLen), dimension(:), allocatable :: fileContent
  character(len=pStringLen) :: &
@@ -90,7 +92,8 @@ program DAMASK_grid
  external :: &
    quit
  class (tNode), pointer :: &
-   num_grid
+   num_grid, &
+   num_generic
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -144,6 +147,15 @@ program DAMASK_grid
      call IO_error(error_ID = 891, ext_msg = trim(num_grid%get_asString('solver')))
 
  end select
+
+!-------------------------------------------------------------------------------------------------
+! reading field paramters from numerics file and do sanity checks
+ num_generic => numerics_root%get('generic', defaultVal=emptyDict)
+ stagItMax  = num_generic%get_asInt('maxStaggeredIter',defaultVal=10)
+ maxCutBack = num_generic%get_asInt('maxCutBack',defaultVal=3)
+
+ if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
+ if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
