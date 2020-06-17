@@ -136,7 +136,7 @@ module spectral_utilities
     spectral_derivative_ID
 
   public :: &
-    utilities_init, &
+    spectral_utilities_init, &
     utilities_updateGamma, &
     utilities_FFTtensorForward, &
     utilities_FFTtensorBackward, &
@@ -173,7 +173,7 @@ contains
 !> level chosen.
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_init
+subroutine spectral_utilities_init
 
   PetscErrorCode :: ierr
   integer        :: i, j, k, &
@@ -382,7 +382,7 @@ subroutine utilities_init
     allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
   endif
 
-end subroutine utilities_init
+end subroutine spectral_utilities_init
 
 
 !---------------------------------------------------------------------------------------------------

@@ -85,7 +85,7 @@ module FEM_utilities
   end type tLoadCase
   
   public :: &
-    utilities_init, &
+    FEM_utilities_init, &
     utilities_constitutiveResponse, &
     utilities_projectBCValues, &
     FIELD_MECH_ID, &
@@ -99,7 +99,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_init
+subroutine FEM_utilities_init
    
   character(len=pStringLen) :: petsc_optionsOrder
   class(tNode), pointer :: &
@@ -141,7 +141,7 @@ subroutine utilities_init
   wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
 
 
-end subroutine utilities_init
+end subroutine FEM_utilities_init
 
 
 !--------------------------------------------------------------------------------------------------

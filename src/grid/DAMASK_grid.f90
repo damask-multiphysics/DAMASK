@@ -320,7 +320,7 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
- call Utilities_init
+ call spectral_Utilities_init
  do field = 1, nActiveFields
    select case (loadCases(1)%ID(field))
      case(FIELD_MECH_ID)

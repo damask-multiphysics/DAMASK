@@ -236,7 +236,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
-  call Utilities_init
+  call FEM_Utilities_init
   do field = 1, nActiveFields
     select case (loadCases(1)%fieldBC(field)%ID)
       case(FIELD_MECH_ID)
