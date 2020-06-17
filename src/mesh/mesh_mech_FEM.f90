@@ -97,7 +97,7 @@ subroutine FEM_mech_init(fieldBC)
 
   class(tNode), pointer :: &
     numerics_mesh
-  integer :: integrationOrder
+  integer :: integrationOrder                                                                       !< order of quadrature rule required
 
   write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'; flush(6)
 

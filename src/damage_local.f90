@@ -4,9 +4,11 @@
 !--------------------------------------------------------------------------------------------------
 module damage_local
   use prec
+  use IO
   use material
   use config
   use numerics
+  use YAML_types
   use source_damage_isoBrittle
   use source_damage_isoDuctile
   use source_damage_anisoBrittle
@@ -83,8 +85,15 @@ function damage_local_updateState(subdt, ip, el)
     homog, &
     offset
   real(pReal) :: &
-    phi, phiDot, dPhiDot_dPhi
+    phi, phiDot, dPhiDot_dPhi, &
+    residualStiffness                                                                               !< non-zero residual damage
+  class(tNode), pointer :: &
+    num_generic
 
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
+  if (residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
+  
   homog  = material_homogenizationAt(el)
   offset = material_homogenizationMemberAt(ip,el)
   phi = damageState(homog)%subState0(1,offset)

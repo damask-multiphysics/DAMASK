@@ -11,10 +11,12 @@ module grid_damage_spectral
   use PETScsnes
 
   use prec
+  use IO
   use spectral_utilities
   use discretization_grid
   use damage_nonlocal
   use numerics
+  use YAML_types
  
   implicit none
   private
@@ -236,8 +238,15 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscObject :: dummy
   PetscErrorCode :: ierr
   integer :: i, j, k, cell
-  real(pReal)   :: phiDot, dPhiDot_dPhi, mobility
- 
+  real(pReal)   :: phiDot, dPhiDot_dPhi, mobility, &
+                   residualStiffness                                                                !< non-zero residual damage
+  class(tNode), pointer :: &
+    num_generic
+
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
+  if (residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
+
   phi_current = x_scal 
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field

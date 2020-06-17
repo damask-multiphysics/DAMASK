@@ -90,7 +90,9 @@ contains
 subroutine math_init
 
   real(pReal), dimension(4) :: randTest
-  integer :: randSize,randomSeed
+  integer :: &
+    randSize, &
+    randomSeed                                                                                      !< fixed seeding for pseudo-random number generator, Default 0: use random seed
   integer, dimension(:), allocatable :: randInit
   class(tNode), pointer :: &
     num_generic

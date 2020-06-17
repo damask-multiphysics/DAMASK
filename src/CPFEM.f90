@@ -126,7 +126,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
   integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
                                                       i, j, k, l, m, n, ph, homog, mySource, &
-                                                      iJacoStiffness
+                                                      iJacoStiffness                                !< frequency of stiffness update
   logical                                             updateJaco                                    ! flag indicating if Jacobian has to be updated
 
   real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress if terminallyIll
@@ -134,14 +134,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
   class(tNode), pointer :: &
     num_commercialFEM
- 
+
+!------------------------------------------------------------------------------
+! read numerical parameters and do sanity check 
   num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
   iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
-
-!----------------------------------------------------------------------
-! sanity check
   if (iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
-!----------------------------------------------------------------------  
+!------------------------------------------------------------------------------
 
   elCP = mesh_FEM2DAMASK_elem(elFE)
 

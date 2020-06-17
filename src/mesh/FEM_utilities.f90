@@ -104,7 +104,7 @@ subroutine utilities_init
   character(len=pStringLen) :: petsc_optionsOrder
   class(tNode), pointer :: &
     numerics_mesh
-  integer :: structOrder
+  integer :: structOrder                                                                            !< order of displacement shape functions
 
   PetscErrorCode            :: ierr
 

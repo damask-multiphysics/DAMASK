@@ -87,7 +87,7 @@ subroutine discretization_mesh_init(restart)
 
   class(tNode), pointer :: &
     numerics_mesh
-  integer :: integrationOrder
+  integer :: integrationOrder                                                                       !< order of quadrature rule required
 
   numerics_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
   integrationOrder = numerics_mesh%get_asInt('integrationorder',defaultVal = 2)

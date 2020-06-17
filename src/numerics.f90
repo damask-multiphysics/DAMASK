@@ -25,8 +25,6 @@ module numerics
    worldsize                  =  1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
  integer(4), protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
- real(pReal), protected, public :: &
-   residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage
 
 !--------------------------------------------------------------------------------------------------
 ! field parameters:
@@ -65,8 +63,7 @@ subroutine numerics_init
    numerics_inFlow, &
    key
  class (tNode), pointer :: &
-   num_grid, &
-   num_generic
+   num_grid
  logical :: fexist
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
@@ -111,24 +108,10 @@ subroutine numerics_init
 #endif 
      endselect
    enddo
-   
-   num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-   do i=1,num_generic%length
-     key = num_generic%getKey(i)
-     select case(key)
-       case ('residualStiffness')
-         residualStiffness = num_generic%get_asFloat(key)
-     endselect
-   enddo
-
  else fileExists
    write(6,'(a,/)') ' using standard values'
    flush(6)
  endif fileExists
-
-!--------------------------------------------------------------------------------------------------
-! gradient parameter
- write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
 
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter
@@ -146,7 +129,6 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
- if (residualStiffness < 0.0_pReal)        call IO_error(301,ext_msg='residualStiffness')
  if (itmax <= 1)                           call IO_error(301,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1)         call IO_error(301,ext_msg='itmin')
 
