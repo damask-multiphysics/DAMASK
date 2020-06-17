@@ -7,6 +7,7 @@ module damage_nonlocal
   use material
   use config
   use numerics
+  use YAML_types
   use crystallite
   use lattice
   use source_damage_isoBrittle
@@ -138,6 +139,13 @@ function damage_nonlocal_getDiffusion(ip,el)
   integer :: &
     homog, &
     grain
+  real(pReal) :: &
+    charLength                                                                                      !< characteristic length scale for gradient problems
+  class(tNode), pointer :: &
+    num_generic
+  
+  num_generic => numerics_root%get('generic',defaultVal= emptyDict)
+  charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
   homog  = material_homogenizationAt(el)
   damage_nonlocal_getDiffusion = 0.0_pReal

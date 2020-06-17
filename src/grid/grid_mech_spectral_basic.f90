@@ -108,7 +108,7 @@ subroutine grid_mech_spectral_basic_init
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  num%update_gamma = num_grid%get_asInt('update_gamma',defaultVal=0) > 0 !ToDo: Make boolean
+  num%update_gamma = num_grid%get_asBool('update_gamma',defaultVal=.false.)
     
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc

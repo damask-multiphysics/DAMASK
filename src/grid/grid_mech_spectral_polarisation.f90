@@ -114,7 +114,7 @@ subroutine grid_mech_spectral_polarisation_init
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  num%update_gamma = num_grid%get_asInt('update_gamma',defaultVal=0) > 0
+  num%update_gamma = num_grid%get_asBool('update_gamma',defaultVal=.false.)
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -516,6 +516,12 @@ subroutine formResidual(in, FandF_tau, &
   num_grid       => numerics_root%get('grid',defaultVal = emptyDict)
   polarAlpha     =  num_grid%get_asFloat('polaralpha',defaultVal=1.0_pReal)
   polarBeta      =  num_grid%get_asFloat('polarbeta', defaultVal=1.0_pReal)
+
+!-----------------------------------------------------------------------------------------------
+! sanity checks  
+  if (polarAlpha <= 0.0_pReal .or. polarAlpha >  2.0_pReal) call IO_error(301,ext_msg='polarAlpha')
+  if (polarBeta < 0.0_pReal .or. polarBeta > 2.0_pReal)     call IO_error(301,ext_msg='polarBeta')
+!------------------------------------------------------------------------------------------------
 
   F              => FandF_tau(1:3,1:3,1,&
                                  XG_RANGE,YG_RANGE,ZG_RANGE)

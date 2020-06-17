@@ -138,6 +138,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
   num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
   iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
 
+!----------------------------------------------------------------------
+! sanity check
+  if (iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
+!----------------------------------------------------------------------  
+
   elCP = mesh_FEM2DAMASK_elem(elFE)
 
   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt &

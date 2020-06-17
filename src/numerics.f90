@@ -27,7 +27,6 @@ module numerics
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  real(pReal), protected, public :: &
    numerics_unitlength        =  1.0_pReal, &                                                       !< determines the physical length of one computational length unit
-   charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage
 
 !--------------------------------------------------------------------------------------------------
@@ -63,7 +62,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine numerics_init
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
- integer :: i,j, ierr
+ integer :: i, ierr
  character(len=:), allocatable :: &
    numerics_input, &
    numerics_inFlow, &
@@ -129,8 +128,6 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
-       case ('charLength')
-         charLength = num_generic%get_asFloat(key)
        case ('residualStiffness')
          residualStiffness = num_generic%get_asFloat(key)
      endselect
@@ -147,7 +144,6 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
- write(6,'(a24,1x,es8.1)')   ' charLength:             ',charLength
  write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
 
 !--------------------------------------------------------------------------------------------------
