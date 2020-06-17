@@ -25,20 +25,6 @@ module numerics
     worldsize                  =  1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
   integer(4), protected, public :: &
     DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
-  
-!--------------------------------------------------------------------------------------------------
-! spectral parameters:
-#ifdef Grid
-  character(len=pStringLen), protected, public :: &
-    petsc_options
-#endif
-
-!--------------------------------------------------------------------------------------------------
-! Mesh parameters:
-#ifdef Mesh
-  character(len=pStringLen), protected, public :: &
-    petsc_options
-#endif
 
   public :: numerics_init
 
@@ -56,8 +42,6 @@ subroutine numerics_init
   character(len=:), allocatable :: &
     numerics_input, &
     numerics_inFlow
-  class (tNode), pointer :: &
-    num_grid
   logical :: fexist
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
@@ -86,12 +70,6 @@ subroutine numerics_init
     numerics_input =  IO_read('numerics.yaml')
     numerics_inFlow = to_flow(numerics_input)
     numerics_root =>  parse_flow(numerics_inFlow,defaultVal=emptyDict)
-!--------------------------------------------------------------------------------------------------
-! grid parameters
-    num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-#ifdef PETSC
-    petsc_options = num_grid%get_asString('petsc_options',defaultVal = '')
-#endif 
   else fileExists
     write(6,'(a,/)') ' using standard values'
     flush(6)
@@ -100,11 +78,6 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter
  !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
-
-!--------------------------------------------------------------------------------------------------
-#ifdef PETSC
-  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
-#endif
 
 end subroutine numerics_init
 

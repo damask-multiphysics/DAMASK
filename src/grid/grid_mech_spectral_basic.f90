@@ -89,7 +89,8 @@ subroutine grid_mech_spectral_basic_init
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   class (tNode), pointer :: &
-    num_grid
+    num_grid, &
+    num_generic
  
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -97,7 +98,9 @@ subroutine grid_mech_spectral_basic_init
   PetscInt, dimension(worldsize) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   integer        :: fileUnit
-  character(len=pStringLen) :: fileName
+  character(len=pStringLen) :: &
+    fileName, &
+    petsc_options
 
   write(6,'(/,a)') ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(6)
 
@@ -106,6 +109,11 @@ subroutine grid_mech_spectral_basic_init
 
   write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+
+!-------------------------------------------------------------------------------------------------
+! read numerical parameters
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
   num%update_gamma = num_grid%get_asBool('update_gamma',defaultVal=.false.)

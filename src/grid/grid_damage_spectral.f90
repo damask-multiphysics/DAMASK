@@ -60,13 +60,22 @@ subroutine grid_damage_spectral_init
   DM :: damage_grid
   Vec :: uBound, lBound
   PetscErrorCode :: ierr
-  character(len=pStringLen) :: snes_type
+  class(tNode), pointer :: &
+    num_generic
+  character(len=pStringLen) :: &
+    snes_type, &
+    petsc_options
  
   write(6,'(/,a)') ' <<<+-  grid_spectral_damage init  -+>>>'
 
   write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
  
+!-------------------------------------------------------------------------------------------------
+! read numerical parameter
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
+
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &

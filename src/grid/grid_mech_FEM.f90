@@ -96,12 +96,21 @@ subroutine grid_mech_FEM_init
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
   PetscErrorCode :: ierr
   integer(HID_T) :: fileHandle, groupHandle
-  character(len=pStringLen) :: fileName
+  character(len=pStringLen) :: &
+    fileName, &
+    petsc_options
+  class(tNode), pointer :: &
+    num_generic
   real(pReal), dimension(3,3,3,3) :: devNull
   PetscScalar, pointer, dimension(:,:,:,:) :: &
   u_current,u_lastInc
 
   write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'; flush(6)
+
+!-------------------------------------------------------------------------------------------------
+! read numerical parameter
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc

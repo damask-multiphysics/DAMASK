@@ -62,11 +62,20 @@ subroutine grid_thermal_spectral_init
   DM :: thermal_grid
   PetscScalar,  dimension(:,:,:), pointer :: x_scal
   PetscErrorCode :: ierr
+  class(tNode), pointer :: &
+    num_generic
+  character(len=pStringLen) :: &
+    petsc_options
 
   write(6,'(/,a)') ' <<<+-  grid_thermal_spectral init  -+>>>'
 
   write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+
+!-------------------------------------------------------------------------------------------------
+! read numerical parameter
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc

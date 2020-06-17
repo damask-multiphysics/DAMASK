@@ -189,8 +189,11 @@ subroutine spectral_utilities_init
     scalarSize = 1_C_INTPTR_T, &
     vecSize    = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
+  character(len=pStringLen) :: &
+    petsc_options
   class (tNode) , pointer :: &
-    num_grid
+    num_grid, &
+    num_generic
 
   write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
 
@@ -216,6 +219,9 @@ subroutine spectral_utilities_init
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
                  ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
+
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
 
   call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
