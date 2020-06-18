@@ -159,7 +159,7 @@ class Symmetry:
 
     @property
     def symmetry_operations(self):
-        """List (or single element) of symmetry operations as rotations."""
+        """Symmetry operations as Rotations."""
         if self.lattice == 'cubic':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
@@ -236,7 +236,7 @@ class Symmetry:
         if (len(rodrigues) != 3):
             raise ValueError('Input is not a Rodrigues-Frank vector.\n')
 
-        if np.any(rodrigues == np.inf): return False
+        if np.any(rodrigues == np.inf): return False # ToDo: MD: not sure if needed
 
         Rabs = abs(rodrigues)
 

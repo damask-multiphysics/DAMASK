@@ -3,7 +3,7 @@ import numpy as np
 from . import Lattice
 from . import Rotation
 
-class Orientation:
+class Orientation: # make subclass or Rotation?
     """
     Crystallographic orientation.
 
@@ -39,8 +39,6 @@ class Orientation:
         else:
             self.rotation = Rotation.from_quaternion(rotation)                                      # assume quaternion
 
-#        if self.rotation.quaternion.shape != (4,):
-#            raise NotImplementedError('Support for multiple rotations missing')
 
     def disorientation(self,
                        other,
@@ -94,20 +92,25 @@ class Orientation:
                 Rotation._qu2ro(self.rotation.as_quaternion())[l][...,:3]\
                 *Rotation._qu2ro(self.rotation.as_quaternion())[l][...,3])\
                 for l in range(self.rotation.shape[0])]
-                
+
     def inFZ(self):
         return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
 
-    def equivalent_vec(self):
-        """List of orientations which are symmetrically equivalent."""
-        if not self.rotation.shape:
-            return [self.__class__(q*self.rotation,self.lattice) \
-                    for q in self.lattice.symmetry.symmetryOperations()]
-        else:
-            return np.reshape([self.__class__(q*Rotation.from_quaternion(self.rotation.as_quaternion()[l]),self.lattice) \
-                    for q in self.lattice.symmetry.symmetryOperations() \
-                    for l in range(self.rotation.shape[0])], \
-                    (len(self.lattice.symmetry.symmetryOperations()),self.rotation.shape[0]))
+    @property
+    def equivalent(self):
+        """
+        Return orientations which are symmetrically equivalent.
+
+        One dimension (length according to symmetrically equivalent orientations)
+        is added to the left of the rotation array.
+
+        """
+        symmetry_operations = self.lattice.symmetry.symmetry_operations
+
+        q = np.block([self.rotation.quaternion]*symmetry_operations.shape[0])
+        r = Rotation(q.reshape(symmetry_operations.shape+self.rotation.quaternion.shape))
+
+        return self.__class__(symmetry_operations.broadcast_to(r.shape)@r,self.lattice)
 
 
     def equivalentOrientations(self,members=[]):
@@ -130,7 +133,7 @@ class Orientation:
             [self.__class__(o*Rotation.from_quaternion(self.rotation.as_quaternion()[l])\
             ,r['lattice']) for o in r['rotations'] for l in range(self.rotation.shape[0])]
             ,(len(r['rotations']),self.rotation.shape[0]))
-             
+
 
     def relatedOrientations(self,model):
         """List of orientations related by the given orientation relationship."""

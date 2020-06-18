@@ -129,6 +129,7 @@ class Rotation:
         self.quaternion[...,1:] *= -1
         return self
 
+    #@property
     def inversed(self):
         """Inverse rotation/backward rotation."""
         return self.copy().inverse()
@@ -139,6 +140,7 @@ class Rotation:
         self.quaternion[self.quaternion[...,0] < 0.0] *= -1
         return self
 
+    #@property
     def standardized(self):
         """Quaternion representation with positive real part."""
         return self.copy().standardize()
@@ -154,11 +156,12 @@ class Rotation:
             Rotation to which the misorientation is computed.
 
         """
-        return other*self.inversed()
+        return other@self.inversed()
 
 
     def broadcast_to(self,shape):
-        if isinstance(shape,int): shape = (shape,)
+        if isinstance(shape,int):
+            shape = (shape,)
         N = np.prod(shape)//np.prod(self.shape,dtype=int)
 
         q = np.block([np.repeat(self.quaternion[...,0:1],N).reshape(shape+(1,)),
@@ -257,6 +260,7 @@ class Rotation:
         """Cubochoric vector: (c_1, c_2, c_3)."""
         return Rotation._qu2cu(self.quaternion)
 
+    @property
     def M(self): # ToDo not sure about the name: as_M or M? we do not have a from_M
         """
         Intermediate representation supporting quaternion averaging.
@@ -435,8 +439,8 @@ class Rotation:
             weights = np.ones(N,dtype='i')
 
         for i,(r,n) in enumerate(zip(rotations,weights)):
-            M =          r.M() * n if i == 0 \
-                else M + r.M() * n                                                                  # noqa add (multiples) of this rotation to average noqa
+            M =          r.M * n if i == 0 \
+                else M + r.M * n                                                                    # noqa add (multiples) of this rotation to average noqa
         eig, vec = np.linalg.eig(M/N)
 
         return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),accept_homomorph = True)
@@ -461,7 +465,8 @@ class Rotation:
 
 
     # for compatibility (old names do not follow convention)
-    asM            = M
+    def asM(self):
+        return self.M
     fromQuaternion = from_quaternion
     fromEulers     = from_Eulers
     asAxisAngle    = as_axis_angle
