@@ -253,8 +253,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false., &                                                                  !< needs description
     CPFEM_init_done   = .false.                                                                     !< remember whether init has been done already
- 
-  if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0) then
+
+  if(debug_marc_basic) then
     write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
     write(6,'(a,2(i1))')      ' Jacobian:                      ', ngens,ngens
     write(6,'(a,i1)')         ' Direct stress:                 ', ndi
