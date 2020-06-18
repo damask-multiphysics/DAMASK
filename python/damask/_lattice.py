@@ -13,7 +13,7 @@ class Symmetry:
 
     """
 
-    lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic',]
+    lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic']
 
     def __init__(self, symmetry = None):
         """
@@ -156,6 +156,75 @@ class Symmetry:
             return symOps[0]                                                                        # no, return rotation object
         else:
             return symOps                                                                           # yes, return list of rotations
+
+    @property
+    def symmetry_operations(self):
+        """List (or single element) of symmetry operations as rotations."""
+        if self.lattice == 'cubic':
+            symQuats =  [
+                          [ 1.0,            0.0,            0.0,            0.0            ],
+                          [ 0.0,            1.0,            0.0,            0.0            ],
+                          [ 0.0,            0.0,            1.0,            0.0            ],
+                          [ 0.0,            0.0,            0.0,            1.0            ],
+                          [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
+                          [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
+                          [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
+                          [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
+                          [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                          [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
+                          [ 0.5,            0.5,            0.5,            0.5            ],
+                          [-0.5,            0.5,            0.5,            0.5            ],
+                          [-0.5,            0.5,            0.5,           -0.5            ],
+                          [-0.5,            0.5,           -0.5,            0.5            ],
+                          [-0.5,           -0.5,            0.5,            0.5            ],
+                          [-0.5,           -0.5,            0.5,           -0.5            ],
+                          [-0.5,           -0.5,           -0.5,            0.5            ],
+                          [-0.5,            0.5,           -0.5,           -0.5            ],
+                          [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                          [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                          [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
+                          [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
+                          [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
+                          [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
+                        ]
+        elif self.lattice == 'hexagonal':
+            symQuats =  [
+                          [ 1.0,            0.0,            0.0,            0.0            ],
+                          [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
+                          [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                          [ 0.0,            0.0,            0.0,            1.0            ],
+                          [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
+                          [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
+                          [ 0.0,            1.0,            0.0,            0.0            ],
+                          [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
+                          [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
+                          [ 0.0,            0.0,            1.0,            0.0            ],
+                          [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
+                          [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
+                        ]
+        elif self.lattice == 'tetragonal':
+            symQuats =  [
+                          [ 1.0,            0.0,            0.0,            0.0            ],
+                          [ 0.0,            1.0,            0.0,            0.0            ],
+                          [ 0.0,            0.0,            1.0,            0.0            ],
+                          [ 0.0,            0.0,            0.0,            1.0            ],
+                          [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                          [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
+                          [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                          [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
+                        ]
+        elif self.lattice == 'orthorhombic':
+            symQuats =  [
+                          [ 1.0,0.0,0.0,0.0 ],
+                          [ 0.0,1.0,0.0,0.0 ],
+                          [ 0.0,0.0,1.0,0.0 ],
+                          [ 0.0,0.0,0.0,1.0 ],
+                        ]
+        else:
+            symQuats =  [
+                          [ 1.0,0.0,0.0,0.0 ],
+                        ]
+        return Rotation(np.array(symQuats))
 
 
     def inFZ(self,rodrigues):
