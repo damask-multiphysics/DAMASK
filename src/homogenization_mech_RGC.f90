@@ -75,16 +75,19 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all necessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_RGC_init(num_homogMech)
+module subroutine mech_RGC_init(num_homogMech,debug_homogenization)
 
   class(tNode), pointer, intent(in) :: &
-    num_homogMech
+    num_homogMech, &
+    debug_homogenization
 
   integer :: &
     Ninstance, &
     h, &
     NofMyHomog, &
-    sizeState, nIntFaceTot
+    sizeState, nIntFaceTot, &
+    debug_e, &
+    debug_i 
   
   class (tNode), pointer :: &
     num_RGC
@@ -98,7 +101,7 @@ module subroutine mech_RGC_init(num_homogMech)
   write(6,'(a)')   ' https://doi.org/10.1088/0965-0393/18/1/015006'
 
   Ninstance = count(homogenization_type == HOMOGENIZATION_RGC_ID)
-  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
+  if (debug_homogenization%contains('basic')) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   allocate(param(Ninstance))
@@ -146,6 +149,8 @@ module subroutine mech_RGC_init(num_homogMech)
               config => config_homogenization(h))
 
 #ifdef DEBUG
+    debug_e = debug_root%get_asInt('element',defaultVal=1)
+    debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
     if  (h==material_homogenizationAt(debug_e)) then
       prm%of_debug = material_homogenizationMemberAt(debug_i,debug_e)
     endif
@@ -200,7 +205,7 @@ end subroutine mech_RGC_init
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
+module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of,debug_homogenization)
 
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partioned F  per grain
 
@@ -208,6 +213,8 @@ module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
   integer,                          intent(in)  :: &
     instance, &
     of
+  class(tNode), pointer, intent(in) :: &
+    debug_homogenization
 
   real(pReal), dimension(3) :: aVect,nVect
   integer,     dimension(4) :: intFace
@@ -231,7 +238,7 @@ module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
     F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                    ! resulting relaxed deformation gradient
 
 #ifdef DEBUG
-    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0) then
+    if (debug_homogenization%contains('extensive')) then
       write(6,'(1x,a32,1x,i3)')'Deformation gradient of grain: ',iGrain
       do i = 1,3
         write(6,'(1x,3(e15.8,1x))')(F(i,j,iGrain), j = 1,3)
@@ -294,7 +301,7 @@ module procedure mech_RGC_updateState
   drelax = stt%relaxationVector(:,of) - st0%relaxationVector(:,of)
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0) then
+  if (debug_homogenization%contains('extensive')) then
     write(6,'(1x,a30)')'Obtained state: '
     do i = 1,size(stt%relaxationVector(:,of))
       write(6,'(1x,2(e15.8,1x))') stt%relaxationVector(i,of)
@@ -305,14 +312,14 @@ module procedure mech_RGC_updateState
 
 !--------------------------------------------------------------------------------------------------
 ! computing interface mismatch and stress penalty tensor for all interfaces of all grains
-  call stressPenalty(R,NN,avgF,F,ip,el,instance,of)
+  call stressPenalty(R,NN,avgF,F,ip,el,instance,of,debug_homogenization)
 
 !--------------------------------------------------------------------------------------------------
 ! calculating volume discrepancy and stress penalty related to overall volume discrepancy
-  call volumePenalty(D,dst%volumeDiscrepancy(of),avgF,F,nGrain,instance,of)
+  call volumePenalty(D,dst%volumeDiscrepancy(of),avgF,F,nGrain,instance,of,debug_homogenization)
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0) then
+  if (debug_homogenization%contains('extensive')) then
     do iGrain = 1,nGrain
       write(6,'(1x,a30,1x,i3,1x,a4,3(1x,e15.8))')'Mismatch magnitude of grain(',iGrain,') :',&
         NN(1,iGrain),NN(2,iGrain),NN(3,iGrain)
@@ -360,7 +367,7 @@ module procedure mech_RGC_updateState
     enddo
 
 #ifdef DEBUG
-    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0) then
+    if (debug_homogenization%contains('extensive')) then
       write(6,'(1x,a30,1x,i3)')'Traction at interface: ',iNum
       write(6,'(1x,3(e15.8,1x))')(tract(iNum,j), j = 1,3)
       write(6,*)' '
@@ -374,7 +381,7 @@ module procedure mech_RGC_updateState
   residMax = maxval(abs(tract))                                                                     ! get the maximum of the residual
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 .and. prm%of_debug == of) then
+  if (debug_homogenization%contains('extensive') .and. prm%of_debug == of) then
     stresLoc = maxloc(abs(P))
     residLoc = maxloc(abs(tract))
     write(6,'(1x,a)')' '
@@ -394,7 +401,7 @@ module procedure mech_RGC_updateState
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
     mech_RGC_updateState = .true.
 #ifdef DEBUG
-    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 .and. prm%of_debug == of) &
+    if (debug_homogenization%contains('extensive') .and. prm%of_debug == of) &
       write(6,'(1x,a55,/)')'... done and happy'; flush(6)
 #endif
 
@@ -414,7 +421,7 @@ module procedure mech_RGC_updateState
     dst%relaxationRate_max(of) = maxval(abs(drelax))/dt
 
 #ifdef DEBUG
-    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 .and. prm%of_debug == of) then
+    if (debug_homogenization%contains('extensive') .and. prm%of_debug == of) then
       write(6,'(1x,a30,1x,e15.8)')   'Constitutive work: ',stt%work(of)
       write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',dst%mismatch(1,of), &
                                                             dst%mismatch(2,of), &
@@ -435,7 +442,7 @@ module procedure mech_RGC_updateState
     mech_RGC_updateState = [.true.,.false.]                                                         ! with direct cut-back
 
 #ifdef DEBUG
-    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 .and. prm%of_debug == of) &
+    if (debug_homogenization%contains('extensive') .and. prm%of_debug == of) &
       write(6,'(1x,a,/)') '... broken'; flush(6)
 #endif
 
@@ -443,7 +450,7 @@ module procedure mech_RGC_updateState
 
  else                                                                                               ! proceed with computing the Jacobian and state update
 #ifdef DEBUG
-   if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 .and. prm%of_debug == of) &
+   if (debug_homogenization%contains('extensive') .and. prm%of_debug == of) &
      write(6,'(1x,a,/)') '... not yet done'; flush(6)
 #endif
 
@@ -500,7 +507,7 @@ module procedure mech_RGC_updateState
   enddo
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0) then
+  if (debug_homogenization%contains('extensive')) then
     write(6,'(1x,a30)')'Jacobian matrix of stress'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
@@ -522,8 +529,8 @@ module procedure mech_RGC_updateState
     p_relax(ipert) = relax(ipert) + num%pPert                                                       ! perturb the relaxation vector
     stt%relaxationVector(:,of) = p_relax
     call grainDeformation(pF,avgF,instance,of)                                                      ! rain deformation from perturbed state
-    call stressPenalty(pR,DevNull,      avgF,pF,ip,el,instance,of)                                  ! stress penalty due to interface mismatch from perturbed state
-    call volumePenalty(pD,devNull(1,1), avgF,pF,nGrain,instance,of)                                 ! stress penalty due to volume discrepancy from perturbed state
+    call stressPenalty(pR,DevNull,      avgF,pF,ip,el,instance,of,debug_homogenization)             ! stress penalty due to interface mismatch from perturbed state
+    call volumePenalty(pD,devNull(1,1), avgF,pF,nGrain,instance,of,debug_homogenization)            ! stress penalty due to volume discrepancy from perturbed state
 
 !--------------------------------------------------------------------------------------------------
 ! computing the global stress residual array from the perturbed state
@@ -560,7 +567,7 @@ module procedure mech_RGC_updateState
   enddo
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0) then
+  if (debug_homogenization%contains('extensive')) then
     write(6,'(1x,a30)')'Jacobian matrix of penalty'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
@@ -579,7 +586,7 @@ module procedure mech_RGC_updateState
   enddo
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0) then
+  if (debug_homogenization%contains('extensive')) then
     write(6,'(1x,a30)')'Jacobian matrix of penalty'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(rmatrix(i,j), j = 1,3*nIntFaceTot)
@@ -594,7 +601,7 @@ module procedure mech_RGC_updateState
   allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix + rmatrix
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0) then
+  if (debug_homogenization%contains('extensive')) then
     write(6,'(1x,a30)')'Jacobian matrix (total)'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
@@ -610,7 +617,7 @@ module procedure mech_RGC_updateState
   call math_invert(jnverse,error,jmatrix)
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0) then
+  if (debug_homogenization%contains('extensive')) then
     write(6,'(1x,a30)')'Jacobian inverse'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(jnverse(i,j), j = 1,3*nIntFaceTot)
@@ -637,7 +644,7 @@ module procedure mech_RGC_updateState
   endif
 
 #ifdef DEBUG
-  if (iand(debug_homogenization, debug_levelExtensive) > 0) then
+  if (debug_homogenization%contains('extensive')) then
     write(6,'(1x,a30)')'Returned state: '
     do i = 1,size(stt%relaxationVector(:,of))
       write(6,'(1x,2(e15.8,1x))') stt%relaxationVector(i,of)
@@ -653,7 +660,7 @@ module procedure mech_RGC_updateState
   !------------------------------------------------------------------------------------------------
   !> @brief calculate stress-like penalty due to deformation mismatch
   !------------------------------------------------------------------------------------------------
-  subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance,of)
+  subroutine stressPenalty(rPen,nMis,avgF,fDef,ip,el,instance,of,debug_homogenization)
 
     real(pReal),   dimension (:,:,:), intent(out) :: rPen                                           !< stress-like penalty
     real(pReal),   dimension (:,:),   intent(out) :: nMis                                           !< total amount of mismatch
@@ -661,6 +668,7 @@ module procedure mech_RGC_updateState
     real(pReal),   dimension (:,:,:), intent(in)  :: fDef                                           !< deformation gradients
     real(pReal),   dimension (3,3),   intent(in)  :: avgF                                           !< initial effective stretch tensor
     integer,                          intent(in)  :: ip,el,instance,of
+    class(tNode), pointer,            intent(in)  :: debug_homogenization
 
     integer, dimension (4)   :: intFace
     integer, dimension (3)   :: iGrain3,iGNghb3,nGDim
@@ -687,7 +695,7 @@ module procedure mech_RGC_updateState
     associate(prm => param(instance))
 
 #ifdef DEBUG
-    debugActive = iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 .and. prm%of_debug == of
+    debugActive = debug_homogenization%contains('extensive') .and. prm%of_debug == of
 
     if (debugActive) then
       write(6,'(1x,a20,2(1x,i3))')'Correction factor: ',ip,el
@@ -764,7 +772,7 @@ module procedure mech_RGC_updateState
   !------------------------------------------------------------------------------------------------
   !> @brief calculate stress-like penalty due to volume discrepancy
   !------------------------------------------------------------------------------------------------
-  subroutine volumePenalty(vPen,vDiscrep,fAvg,fDef,nGrain,instance,of)
+  subroutine volumePenalty(vPen,vDiscrep,fAvg,fDef,nGrain,instance,of,debug_homogenization)
 
     real(pReal), dimension (:,:,:), intent(out) :: vPen                                             ! stress-like penalty due to volume
     real(pReal),                    intent(out) :: vDiscrep                                         ! total volume discrepancy
@@ -775,6 +783,7 @@ module procedure mech_RGC_updateState
       Ngrain, &
       instance, &
       of
+    class(tNode), pointer,          intent(in) :: debug_homogenization
 
     real(pReal), dimension(size(vPen,3)) :: gVol
     integer :: i
@@ -797,7 +806,7 @@ module procedure mech_RGC_updateState
                          gVol(i)*transpose(math_inv33(fDef(:,:,i)))
 
 #ifdef DEBUG
-      if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0 &
+      if (debug_homogenization%contains('extensive') &
                   .and. param(instance)%of_debug == of) then
         write(6,'(1x,a30,i2)')'Volume penalty of grain: ',i
         write(6,*) transpose(vPen(:,:,i))
