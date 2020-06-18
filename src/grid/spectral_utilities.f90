@@ -190,7 +190,8 @@ subroutine spectral_utilities_init
     vecSize    = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
   character(len=pStringLen) :: &
-    petsc_options
+    petsc_options, &
+    PETSCDEBUG = ' -snes_view -snes_monitor '
   class (tNode) , pointer :: &
     num_grid, &
     num_generic, &

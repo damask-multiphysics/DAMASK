@@ -7,6 +7,7 @@
 module source_thermal_dissipation
   use prec
   use debug
+  use YAML_types
   use discretization
   use material
   use config

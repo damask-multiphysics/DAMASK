@@ -17,10 +17,6 @@ module debug
   class(tNode), pointer, public :: &
     debug_root 
   
-#ifdef PETSc
-  character(len=1024), parameter, public :: &
-    PETSCDEBUG = ' -snes_view -snes_monitor '
-#endif
   public :: debug_init
 
 contains

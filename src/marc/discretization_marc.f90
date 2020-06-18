@@ -58,7 +58,8 @@ subroutine discretization_marc_init
     homogenizationAt
   integer:: &
     Nnodes, &                                                                                       !< total number of nodes in the mesh
-    Nelems                                                                                          !< total number of elements in the mesh
+    Nelems, &                                                                                       !< total number of elements in the mesh
+    debug_e, debug_i
 
   real(pReal), dimension(:,:), allocatable :: &
     IP_reshaped
@@ -73,10 +74,18 @@ subroutine discretization_marc_init
     num_commercialFEM
   
   write(6,'(/,a)') ' <<<+-  discretization_marc init  -+>>>'; flush(6)
- 
+
+!---------------------------------------------------------------------------------
+! read debug parameters
+  debug_e = debug_root%get_asInt('element',defaultVal=1) 
+  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1) 
+
+!--------------------------------------------------------------------------------
+! read numerics parameter and do sanity check
   num_commercialFEM => numerics_root%get('commercialFEM',defaultVal = emptyDict)
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
+
 
   call inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
   nElems = size(connectivity_elem,2)

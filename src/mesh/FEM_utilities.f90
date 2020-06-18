@@ -108,7 +108,8 @@ subroutine FEM_utilities_init
     debug_mesh
   integer :: structOrder                                                                            !< order of displacement shape functions
   character(len=pStringLen) :: &
-    petsc_options
+    petsc_options, &
+    PETSCDEBUG = ' -snes_view -snes_monitor '
   PetscErrorCode            :: ierr
 
   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'

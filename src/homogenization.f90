@@ -491,7 +491,11 @@ subroutine partitionDeformation(subF,ip,el)
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
+  class(tNode), pointer :: &
+    debug_homogenization
 
+  debug_homogenization => debug_root%get('homogenization',defaultVal=emptyList)
+ 
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
@@ -507,7 +511,7 @@ subroutine partitionDeformation(subF,ip,el)
                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                           subF,&
                           ip, &
-                          el)
+                          el,debug_homogenization)
   end select chosenHomogenization
 
 end subroutine partitionDeformation
@@ -527,7 +531,11 @@ function updateState(subdt,subF,ip,el)
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
   logical, dimension(2) :: updateState
-
+  class(tNode), pointer :: &
+    debug_homogenization
+  
+  debug_homogenization => debug_root%get('homogenization',defaultVal=emptyList)
+  
   updateState = .true.
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
@@ -540,7 +548,7 @@ function updateState(subdt,subF,ip,el)
                                subdt, &
                                crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                                ip, &
-                               el)
+                               el,debug_homogenization)
   end select chosenHomogenization
 
   chosenThermal: select case (thermal_type(material_homogenizationAt(el)))

@@ -4,7 +4,6 @@
 !> @details Reads the material configuration file, where solverJobName.materialConfig takes
 !! precedence over material.config. Stores the raw strings and the positions of delimiters for the
 !! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
-!! Reads numerics.config and debug.config
 !--------------------------------------------------------------------------------------------------
 module config
   use prec
@@ -50,11 +49,14 @@ subroutine config_init
     line, &
     part
   character(len=pStringLen), dimension(:), allocatable :: fileContent
-  logical :: fileExists
+  class(tNode), pointer :: &
+    debug_material
+ logical :: fileExists
 
   write(6,'(/,a)') ' <<<+-  config init  -+>>>'; flush(6)
 
-  verbose = iand(debug_level(debug_material),debug_levelBasic) /= 0
+  debug_material => debug_root%get('material',defaultVal=emptyList)
+  verbose = debug_material%contains('basic')
 
   inquire(file=trim(getSolverJobName())//'.materialConfig',exist=fileExists)
   if(fileExists) then
