@@ -70,7 +70,7 @@ class Rotation:
     def __repr__(self):
         """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
         if self.quaternion.shape != (4,):
-            raise NotImplementedError('Support for multiple rotations missing')
+            return str(self.quaternion) # ToDo: could be nicer ...
         return '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
                'Matrix:\n{}'.format(self.as_matrix()),
@@ -159,13 +159,12 @@ class Rotation:
 
     def broadcast_to(self,shape):
         if isinstance(shape,int): shape = (shape,)
-        if self.shape == ():
-            q = np.broadcast_to(self.quaternion,shape+(4,))
-        else:
-            q = np.block([np.broadcast_to(self.quaternion[...,0:1],shape).reshape(shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,1:2],shape).reshape(shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,2:3],shape).reshape(shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,3:4],shape).reshape(shape+(1,))])
+        N = np.prod(shape)//np.prod(self.shape,dtype=int)
+
+        q = np.block([np.repeat(self.quaternion[...,0:1],N).reshape(shape+(1,)),
+                      np.repeat(self.quaternion[...,1:2],N).reshape(shape+(1,)),
+                      np.repeat(self.quaternion[...,2:3],N).reshape(shape+(1,)),
+                      np.repeat(self.quaternion[...,3:4],N).reshape(shape+(1,))])
         return self.__class__(q)
 
 
@@ -248,7 +247,7 @@ class Rotation:
 
         """
         ro = Rotation._qu2ro(self.quaternion)
-        return ro[...,:3]*ro[...,3] if vector else ro
+        return ro[...,:3]*ro[...,3:] if vector else ro
 
     def as_homochoric(self):
         """Homochoric vector: (h_1, h_2, h_3)."""
