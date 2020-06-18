@@ -176,6 +176,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   use prec
   use DAMASK_interface
   use numerics
+  use YAML_types
   use FEsolving
   use debug
   use discretization_marc
@@ -253,8 +254,19 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     lastIncConverged  = .false., &                                                                  !< needs description
     outdatedByNewInc  = .false., &                                                                  !< needs description
     CPFEM_init_done   = .false.                                                                     !< remember whether init has been done already
+  class(tNode), pointer :: &
+    debug_Marc
 
-  if(debug_marc_basic) then
+  defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
+  call omp_set_num_threads(1)                                                                       ! no openMP
+
+  if (.not. CPFEM_init_done) then
+    CPFEM_init_done = .true.
+    call CPFEM_initAll
+  endif
+
+  debug_Marc => debug_root%get('marc',defaultVal=emptyList)
+  if(debug_Marc%contains('basic')) then
     write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
     write(6,'(a,2(i1))')      ' Jacobian:                      ', ngens,ngens
     write(6,'(a,i1)')         ' Direct stress:                 ', ndi
@@ -269,13 +281,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                                   transpose(ffn1)
   endif
 
-  defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
-  call omp_set_num_threads(1)                                                                       ! no openMP
-
-  if (.not. CPFEM_init_done) then
-    CPFEM_init_done = .true.
-    call CPFEM_initAll
-  endif
 
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
   if (lovl == 4 ) then                                                                              ! jacobian requested by marc

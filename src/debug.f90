@@ -17,9 +17,6 @@ module debug
   class(tNode), pointer, public :: &
     debug_root
 
-  logical, public :: &
-    debug_marc_basic  = .false. 
-
   public :: debug_init
 
 contains
@@ -33,8 +30,6 @@ subroutine debug_init
   character(len=:), allocatable :: &
     debug_input, &
     debug_inFlow
-  class(tNode), pointer :: &
-    debug_Marc
   logical :: fexist 
 
   write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
@@ -48,8 +43,6 @@ subroutine debug_init
     debug_input  = IO_read('debug.yaml') 
     debug_inFlow = to_flow(debug_input)
     debug_root   => parse_flow(debug_inFlow,defaultVal=emptyDict)
-    debug_Marc   => debug_root%get('marc',defaultVal=emptyList)
-    debug_marc_basic = debug_Marc%contains('basic')
   endif fileExists
 
 end subroutine debug_init
