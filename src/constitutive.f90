@@ -35,29 +35,44 @@ module constitutive
 
   interface
 
-    module subroutine plastic_none_init
+    module subroutine plastic_none_init(debug_constitutive)
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_none_init
 
-    module subroutine plastic_isotropic_init
+    module subroutine plastic_isotropic_init(debug_constitutive)
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_isotropic_init
-
-    module subroutine plastic_phenopowerlaw_init
+    
+    module subroutine plastic_phenopowerlaw_init(debug_constitutive)
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive   
     end subroutine plastic_phenopowerlaw_init
 
-    module subroutine plastic_kinehardening_init
+    module subroutine plastic_kinehardening_init(debug_constitutive)
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_kinehardening_init
 
-    module subroutine plastic_dislotwin_init
+    module subroutine plastic_dislotwin_init(debug_constitutive)
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_dislotwin_init
 
-    module subroutine plastic_disloUCLA_init
+    module subroutine plastic_disloUCLA_init(debug_constitutive)
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_disloUCLA_init
 
-    module subroutine plastic_nonlocal_init
+    module subroutine plastic_nonlocal_init(debug_constitutive)
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_nonlocal_init
 
 
-    module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+    module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of, &
+                                                                   debug_constitutive)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -68,6 +83,8 @@ module constitutive
       integer,                         intent(in) :: &
         instance, &
         of
+      class(tNode), pointer ,          intent(in) :: &
+        debug_constitutive
     end subroutine plastic_isotropic_LpAndItsTangent
 
     pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
@@ -145,7 +162,8 @@ module constitutive
     end subroutine plastic_nonlocal_LpAndItsTangent
 
 
-    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
+    module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of, &
+                                                                   debug_constitutive)
       real(pReal), dimension(3,3),     intent(out) :: &
         Li                                                                                          !< inleastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out)  :: &
@@ -156,6 +174,8 @@ module constitutive
       integer,                         intent(in) :: &
         instance, &
         of
+      class(tNode), pointer ,          intent(in) :: &
+        debug_constitutive
     end subroutine plastic_isotropic_LiAndItsTangent
 
 
@@ -204,7 +224,7 @@ module constitutive
     end subroutine plastic_disloUCLA_dotState
 
     module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
-                                                instance,of,ip,el)
+                                                instance,of,ip,el,debug_constitutive)
       real(pReal), dimension(3,3), intent(in) ::&
         Mp                                                                                          !< MandelStress
       real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
@@ -218,6 +238,8 @@ module constitutive
         of, &
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_nonlocal_dotState
 
 
@@ -235,7 +257,8 @@ module constitutive
         of
     end subroutine plastic_disloUCLA_dependentState
 
-    module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
+    module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el, &
+                                                               debug_constitutive)
       real(pReal), dimension(3,3), intent(in) :: &
         F, &
         Fp
@@ -244,18 +267,22 @@ module constitutive
         of, &
         ip, &
         el
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_nonlocal_dependentState
 
 
-    module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
+    module subroutine plastic_kinehardening_deltaState(Mp,instance,of,debug_constitutive)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
         instance, &
         of
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_kinehardening_deltaState
 
-    module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
+    module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el,debug_constitutive)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp
       integer, intent(in) :: &
@@ -263,6 +290,8 @@ module constitutive
         of, &
         ip, &
         el
+      class(tNode), pointer , intent(in) :: &
+        debug_constitutive
     end subroutine plastic_nonlocal_deltaState
 
 
@@ -341,34 +370,37 @@ subroutine constitutive_init
   integer :: &
     ph, &                                                                                           !< counter in phase loop
     s                                                                                               !< counter in source loop
+  class(tNode), pointer :: &
+   debug_constitutive
 
+  debug_constitutive => debug_root%get('constitutuve',defaultVal=emptyList)
 !--------------------------------------------------------------------------------------------------
 ! initialized plasticity
-  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
-  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init
-  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
-  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init
-  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init
-  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
+  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init(debug_constitutive)
   if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
-    call plastic_nonlocal_init
+    call plastic_nonlocal_init(debug_constitutive)
   else
     call geometry_plastic_nonlocal_disable
   endif
 !--------------------------------------------------------------------------------------------------
 ! initialize source mechanisms
-  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
-  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init
-  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init
-  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init
-  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init
-  if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init
+  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(debug_constitutive)
+  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(debug_constitutive)
+  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init(debug_constitutive)
+  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init(debug_constitutive)
+  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init(debug_constitutive)
+  if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init(debug_constitutive)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize kinematic mechanisms
-  if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init
-  if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
-  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
+  if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init(debug_constitutive)
+  if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init(debug_constitutive)
+  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init(debug_constitutive)
 
   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'; flush(6)
 
@@ -430,7 +462,10 @@ subroutine constitutive_dependentState(F, Fp, ipc, ip, el)
     ho, &                                                                                           !< homogenization
     tme, &                                                                                          !< thermal member position
     instance, of
+  class(tNode), pointer :: &
+    debug_constitutive
 
+  debug_constitutive => debug_root%get('constitutive',defaultVal=emptyList)
   ho  = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
   of  = material_phasememberAt(ipc,ip,el)
@@ -442,7 +477,7 @@ subroutine constitutive_dependentState(F, Fp, ipc, ip, el)
     case (PLASTICITY_DISLOUCLA_ID) plasticityType
       call plastic_disloUCLA_dependentState(instance,of)
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
+      call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el,debug_constitutive)
   end select plasticityType
 
 end subroutine constitutive_dependentState
@@ -476,7 +511,11 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     tme                                                                                             !< thermal member position
   integer :: &
     i, j, instance, of
-
+  class(tNode), pointer :: &
+    debug_constitutive
+  
+  debug_constitutive => debug_root%get('constitutive',defaultVal=emptyList)
+ 
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
 
@@ -491,7 +530,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       dLp_dMp = 0.0_pReal
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call plastic_isotropic_LpAndItsTangent   (Lp,dLp_dMp,Mp,instance,of)
+      call plastic_isotropic_LpAndItsTangent   (Lp,dLp_dMp,Mp,instance,of,debug_constitutive)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
       call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
@@ -551,6 +590,10 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   integer :: &
     k, i, j, &
     instance, of
+  class(tNode), pointer :: &
+    debug_constitutive
+  
+  debug_constitutive => debug_root%get('constitutive',defaultVal=emptyList)
 
   Li = 0.0_pReal
   dLi_dS  = 0.0_pReal
@@ -560,7 +603,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
     case (PLASTICITY_isotropic_ID) plasticityType
       of = material_phasememberAt(ipc,ip,el)
       instance = phase_plasticityInstance(material_phaseAt(ipc,el))
-      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of,debug_constitutive)
     case default plasticityType
       my_Li = 0.0_pReal
       my_dLi_dS = 0.0_pReal
@@ -733,7 +776,11 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
     tme, &                                                                                          !< thermal member position
     i, &                                                                                            !< counter in source loop
     instance
+  class(tNode), pointer :: &
+    debug_constitutive
   logical :: broken
+
+  debug_constitutive => debug_root%get('constitutive',defaultVal=emptyList)
 
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
@@ -760,7 +807,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
       call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
-                                          instance,of,ip,el)
+                                          instance,of,ip,el,debug_constitutive)
   end select plasticityType
   broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
 
@@ -812,8 +859,12 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
     instance, &
     myOffset, &
     mySize
+  class(tNode), pointer :: &
+    debug_constitutive
   logical :: &
     broken
+
+  debug_constitutive => debug_root%get('constitutive',defaultVal=emptyList)
 
   Mp  = matmul(matmul(transpose(Fi),Fi),S)
   instance = phase_plasticityInstance(phase)
@@ -821,11 +872,11 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
   plasticityType: select case (phase_plasticity(phase))
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_deltaState(Mp,instance,of)
+      call plastic_kinehardening_deltaState(Mp,instance,of,debug_constitutive)
       broken = any(IEEE_is_NaN(plasticState(phase)%deltaState(:,of)))
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
+      call plastic_nonlocal_deltaState(Mp,instance,of,ip,el,debug_constitutive)
       broken = any(IEEE_is_NaN(plasticState(phase)%deltaState(:,of)))
 
     case default

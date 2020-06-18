@@ -58,14 +58,18 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_kinehardening_init
+module subroutine plastic_kinehardening_init(debug_constitutive)
+
+  class(tNode), pointer, intent(in) :: &
+   debug_constitutive
 
   integer :: &
     Ninstance, &
     p, o, &
     NipcMyPhase, &
     sizeState, sizeDeltaState, sizeDotState, &
-    startIndex, endIndex
+    startIndex, endIndex, &
+    debug_e, debug_i, debug_g
   integer,     dimension(:), allocatable :: &
     N_sl
   real(pReal), dimension(:), allocatable :: &
@@ -77,7 +81,7 @@ module subroutine plastic_kinehardening_init
   write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_plasticity == PLASTICITY_KINEHARDENING_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
+  if (debug_constitutive%contains('basic')) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   allocate(param(Ninstance))
@@ -96,6 +100,10 @@ module subroutine plastic_kinehardening_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 #ifdef DEBUG
+    debug_g = debug_root%get_asInt('grain',defaultVal=1)
+    debug_e = debug_root%get_asInt('element',defaultVal=1)
+    debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
+
     if  (p==material_phaseAt(debug_g,debug_e)) then
       prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
     endif
@@ -308,13 +316,15 @@ end subroutine plastic_kinehardening_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate (instantaneous) incremental change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
+module subroutine plastic_kinehardening_deltaState(Mp,instance,of,debug_constitutive)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
   integer,                      intent(in) :: &
     instance, &
     of
+  class(tNode), pointer ,       intent(in) :: &
+    debug_constitutive
 
   real(pReal), dimension(param(instance)%sum_N_sl) :: &
     gdot_pos,gdot_neg, &
@@ -328,9 +338,9 @@ module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
                 dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                ! current sense of shear direction
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
+  if (debug_constitutive%contains('extensive') &
              .and. (of == prm%of_debug &
-                    .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
+                    .or. .not. debug_constitutive%contains('selective'))) then
     write(6,'(a)') '======= kinehardening delta state ======='
     write(6,*) sense,state(instance)%sense(:,of)
   endif

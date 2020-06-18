@@ -12,7 +12,10 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_none_init
+module subroutine plastic_none_init(debug_constitutive)
+
+  class(tNode), pointer, intent(in) :: &
+    debug_constitutive
 
   integer :: &
     Ninstance, &
@@ -22,7 +25,7 @@ module subroutine plastic_none_init
   write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_NONE_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_plasticity == PLASTICITY_NONE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
+  if (debug_constitutive%contains('basic')) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   do p = 1, size(phase_plasticity)

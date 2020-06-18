@@ -41,14 +41,17 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_externalheat_init
+subroutine source_thermal_externalheat_init(debug_constitutive)
+
+  class(tNode), pointer, intent(in) :: &
+    debug_constitutive
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
 
   write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_source == SOURCE_thermal_externalheat_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
+  if (debug_constitutive%contains('basic')) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   allocate(source_thermal_externalheat_offset  (size(config_phase)), source=0)

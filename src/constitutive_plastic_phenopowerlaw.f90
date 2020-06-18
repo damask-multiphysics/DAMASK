@@ -66,7 +66,10 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_phenopowerlaw_init
+module subroutine plastic_phenopowerlaw_init(debug_constitutive)
+
+  class(tNode), pointer, intent(in) :: &
+    debug_constitutive
 
   integer :: &
     Ninstance, &
@@ -86,7 +89,7 @@ module subroutine plastic_phenopowerlaw_init
   write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_LABEL//' init  -+>>>'; flush(6)
 
   Ninstance = count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
+  if (debug_constitutive%contains('basic')) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   allocate(param(Ninstance))

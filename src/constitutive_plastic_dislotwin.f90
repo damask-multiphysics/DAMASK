@@ -122,7 +122,10 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_init
+module subroutine plastic_dislotwin_init(debug_constitutive)
+
+  class(tNode), pointer, intent(in) :: &
+    debug_constitutive
 
   integer :: &
     Ninstance, &
@@ -151,7 +154,7 @@ module subroutine plastic_dislotwin_init
 
   Ninstance = count(phase_plasticity == PLASTICITY_DISLOTWIN_ID)
 
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
+  if (debug_constitutive%contains('basic')) &
     write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
 
   allocate(param(Ninstance))
