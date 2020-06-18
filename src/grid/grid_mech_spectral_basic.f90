@@ -474,7 +474,12 @@ subroutine formResidual(in, F, &
     itmin, &
     itmax
   class(tNode), pointer :: &
-    num_generic
+    num_generic, &
+    debug_grid
+
+!---------------------------------------------------------------------
+! debug pointer to grid
+  debug_grid => debug_root%get('grid', defaultVal=emptyList)
 
 !----------------------------------------------------------------------
 ! read numerical paramteter and do sanity checks
@@ -493,7 +498,7 @@ subroutine formResidual(in, F, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
-    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
+    if (debug_grid%contains('rotation')) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &

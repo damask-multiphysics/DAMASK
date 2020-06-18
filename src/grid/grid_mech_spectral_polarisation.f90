@@ -534,13 +534,18 @@ subroutine formResidual(in, FandF_tau, &
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
     num_grid, &
-    num_generic
+    num_generic, &
+    debug_grid
   real(pReal) :: &
     polarAlpha, &                                                                                   !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
     polarBeta                                                                                       !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
   integer :: &
     i, j, k, e, &
     itmin, itmax
+
+!--------------------------------------------------------------------------------------------------
+! debug pointer for grid
+  debug_grid => debug_root%get('grid',defaultVal=emptyList)
 
 !--------------------------------------------------------------------------------------------------
 ! read numerical paramteters and do sanity checks
@@ -579,7 +584,7 @@ subroutine formResidual(in, FandF_tau, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
-    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
+    if(debug_grid%contains('rotation')) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &

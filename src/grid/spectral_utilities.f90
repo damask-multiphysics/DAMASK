@@ -193,7 +193,8 @@ subroutine spectral_utilities_init
     petsc_options
   class (tNode) , pointer :: &
     num_grid, &
-    num_generic
+    num_generic, &
+    debug_grid
 
   write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
 
@@ -211,9 +212,11 @@ subroutine spectral_utilities_init
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
-  debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
-  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
-  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
+  debug_grid      => debug_root%get('grid',defaultVal=emptyList)
+  debugGeneral    =  debug_grid%contains('basic')
+  debugRotation   =  debug_grid%contains('rotation')
+  debugPETSc      =  debug_grid%contains('petsc')
+
 
   if(debugPETSc) write(6,'(3(/,a),/)') &
                  ' Initializing PETSc with debug options: ', &
