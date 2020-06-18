@@ -104,7 +104,8 @@ subroutine FEM_utilities_init
   character(len=pStringLen) :: petsc_optionsOrder
   class(tNode), pointer :: &
     num_mesh, &
-    num_generic
+    num_generic, &
+    debug_mesh
   integer :: structOrder                                                                            !< order of displacement shape functions
   character(len=pStringLen) :: &
     petsc_options
@@ -120,7 +121,9 @@ subroutine FEM_utilities_init
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
-  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
+  debug_mesh      => debug_root%get('mesh',defaultVal=emptyList)
+  debugPETSc      =  debug_mesh%contains('petsc')
+ 
   if(debugPETSc) write(6,'(3(/,a),/)') &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &

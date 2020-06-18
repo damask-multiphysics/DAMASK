@@ -74,7 +74,8 @@ subroutine discretization_mesh_init(restart)
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, l
+    j, l, &
+    debug_e, debug_i
   integer, parameter :: &
     mesh_ElemType=1                                                                                 !< Element type of the mesh (only support homogeneous meshes)
   PetscSF :: sf
@@ -89,12 +90,20 @@ subroutine discretization_mesh_init(restart)
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
 
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
-
   
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
 
+!--------------------------------------------------------------------------------
+! read numerics parameter
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+
+!---------------------------------------------------------------------------------
+! read debug parameters
+  debug_e = debug_root%get_asInt('element',defaultVal=1)
+  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
+
+ 
   ! read in file
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
