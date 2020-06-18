@@ -249,7 +249,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   NiterationHomog = 0
 
   cutBackLooping: do while (.not. terminallyIll .and. &
-       any(subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
+       any(subStep(FEsolving_execIP(1):FEsolving_execIP(2),&
+                   FEsolving_execElem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
     !$OMP PARALLEL DO PRIVATE(myNgrains)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
