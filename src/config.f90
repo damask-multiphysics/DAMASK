@@ -24,9 +24,6 @@ module config
     config_homogenization, &
     config_texture, &
     config_crystallite
-   
-  type(tPartitionedStringList), public, protected :: &
-    config_debug
   
   character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
     config_name_phase, &                                                                            !< name of each phase
@@ -109,13 +106,6 @@ subroutine config_init
   if (.not. allocated(config_texture)        .or. size(config_texture)        < 1) &
     call IO_error(160,ext_msg='<texture>')
  
- 
-  inquire(file='debug.config', exist=fileExists)
-  if (fileExists) then
-    write(6,'(/,a)') ' reading debug.config'; flush(6)
-    fileContent = IO_read_ASCII('debug.config')
-    call parse_debugAndNumericsConfig(config_debug,fileContent)
-  endif
 
 contains
 
@@ -238,23 +228,6 @@ subroutine parse_materialConfig(sectionNames,part,line, &
 
 end subroutine parse_materialConfig
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief parses the material.config file
-!--------------------------------------------------------------------------------------------------
-subroutine parse_debugAndNumericsConfig(config_list, &
-                                        fileContent)
-
-  type(tPartitionedStringList),              intent(out) :: config_list
-  character(len=pStringLen),   dimension(:), intent(in)  :: fileContent
-  integer :: i
-
-  do i = 1, size(fileContent)
-    call config_list%add(trim(adjustl(fileContent(i))))
-  enddo
-
-end subroutine parse_debugAndNumericsConfig
-
 end subroutine config_init
 
 
@@ -278,9 +251,6 @@ subroutine config_deallocate(what)
 
     case('material.config/texture')
       deallocate(config_texture)
-     
-    case('debug.config')
-      call config_debug%free
      
     case default
       call IO_error(0,ext_msg='config_deallocate')

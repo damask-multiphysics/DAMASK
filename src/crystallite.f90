@@ -130,7 +130,9 @@ subroutine crystallite_init
     myNcomponents                                                                                   !< number of components at current IP
   
   class(tNode) , pointer :: &
-    num_crystallite
+    num_crystallite, &
+    debug_crystallite
+
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
 
   cMax = homogenization_maxNgrains
@@ -269,7 +271,8 @@ subroutine crystallite_init
   call crystallite_stressTangent
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0) then
+  debug_crystallite => debug_root%get('crystallite',defaultVal=emptyList)
+  if (debug_crystallite%contains('basic')) then
     write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
     write(6,'(a42,1x,i10)') '    # of integration points/element:     ', iMax
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
@@ -297,12 +300,22 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
     startIP, endIP, &
-    s
+    s, &
+    debug_e, &
+    debug_g, &
+    debug_i
   logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
-
+  class(tNode), pointer  :: &
+    debug_crystallite
+ 
     todo = .false.
 #ifdef DEBUG
-  if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0 &
+  debug_e = debug_root%get_asInt('element',defaultVal=1)
+  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
+  debug_g = debug_root%get_asInt('grain',defaultVal=1)
+
+  debug_crystallite => debug_root%get('crystallite',defaultVal=emptyList)
+  if (debug_crystallite%contains('selective') &
       .and. FEsolving_execElem(1) <= debug_e &
       .and.                          debug_e <= FEsolving_execElem(2)) then
       write(6,'(/,a,i8,1x,i2,1x,i3)')    '<< CRYST stress >> boundary and initial values at el ip ipc ', &
@@ -364,7 +377,7 @@ function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
     NiterationCrystallite = NiterationCrystallite + 1
 
 #ifdef DEBUG
-    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0) &
+    if (debug_crystallite%contains('extensive')) &
       write(6,'(a,i6)') '<< CRYST stress >> crystallite iteration ',NiterationCrystallite
 #endif
     !$OMP PARALLEL DO PRIVATE(formerSubStep)
