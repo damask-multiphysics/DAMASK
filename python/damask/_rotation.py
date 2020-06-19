@@ -530,7 +530,7 @@ class Rotation:
                           np.zeros(qu.shape[:-1]+(2,))]),
                       np.where(np.abs(q03_s) < 1.0e-8,
                           np.block([np.arctan2(   2.0*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
-                                    np.broadcast_to(np.pi,qu.shape[:-1]+(1,)),
+                                    np.broadcast_to(np.pi,qu[...,0:1].shape),
                                     np.zeros(qu.shape[:-1]+(1,))]),
                           np.block([np.arctan2((-_P*q02+q13)*chi, (-_P*q01-q23)*chi),
                                     np.arctan2( 2.0*chi,          q03_s-q12_s    ),
@@ -553,7 +553,7 @@ class Rotation:
             s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
             omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
             ax = np.where(np.broadcast_to(qu[...,0:1] < 1.0e-8,qu.shape),
-                          np.block([qu[...,1:4],np.broadcast_to(np.pi,qu.shape[:-1]+(1,))]),
+                          np.block([qu[...,1:4],np.broadcast_to(np.pi,qu[...,0:1].shape)]),
                           np.block([qu[...,1:4]*s,omega]))
         ax[np.isclose(qu[...,0],1.,rtol=0.0)] = [0.0, 0.0, 1.0, 0.0]
         return ax
@@ -564,7 +564,7 @@ class Rotation:
         with np.errstate(invalid='ignore',divide='ignore'):
             s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
             ro = np.where(np.broadcast_to(np.abs(qu[...,0:1]) < 1.0e-12,qu.shape),
-                          np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.broadcast_to(np.inf,qu.shape[:-1]+(1,))]),
+                          np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.broadcast_to(np.inf,qu[...,0:1].shape)]),
                           np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
                                     np.tan(np.arccos(np.clip(qu[...,0:1],-1.0,1.0)))
                                    ])
