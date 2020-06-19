@@ -176,6 +176,16 @@ class Orientation: # make subclass or Rotation?
         return color
 
 
+    def IPF_color(self,axis):
+        """TSL color of inverse pole figure for given axis."""
+        color = np.zeros(self.rotation.shape)
+        eq = self.equivalent
+        pole = eq.rotation @ np.broadcast_to(axis,eq.rotation.shape+(3,))
+        in_SST, color = self.lattice.symmetry.in_SST(pole,color=True)
+
+        return color[in_SST]
+
+
     @staticmethod
     def fromAverage(orientations,
                     weights = []):

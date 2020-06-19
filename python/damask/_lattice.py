@@ -374,8 +374,93 @@ class Symmetry:
         else:
             return inSST
 
-# code derived from https://github.com/ezag/pyeuclid
-# suggested reading: http://web.mit.edu/2.998/www/QuaternionReport1.pdf
+
+    def in_SST(self,
+               vector,
+               proper = False,
+               color = False):
+        """
+        Check whether given vector falls into standard stereographic triangle of own symmetry.
+
+        proper considers only vectors with z >= 0, hence uses two neighboring SSTs.
+        Return inverse pole figure color if requested.
+        Bases are computed from
+
+        >>> basis = {'cubic' :       np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,1.]/np.sqrt(2.),                # direction of green
+        ...                                                  [1.,1.,1.]/np.sqrt(3.)]).T),           # direction of blue
+        ...          'hexagonal' :   np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,0.],                            # direction of green
+        ...                                                  [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).T),  # direction of blue
+        ...          'tetragonal' :  np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,0.],                            # direction of green
+        ...                                                  [1.,1.,0.]/np.sqrt(2.)]).T),           # direction of blue
+        ...          'orthorhombic': np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
+        ...                                                  [1.,0.,0.],                            # direction of green
+        ...                                                  [0.,1.,0.]]).T),                       # direction of blue
+        ...         }
+
+        """
+        if self.lattice == 'cubic':
+            basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
+                                           [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
+                                           [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
+                       'proper':np.array([ [ 0.            , -1.            ,  1. ],
+                                           [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
+                                           [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
+                    }
+        elif self.lattice == 'hexagonal':
+            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                           [ 1.            , -np.sqrt(3.)   ,  0. ],
+                                           [ 0.            ,  2.            ,  0. ] ]),
+                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
+                                           [-1.            ,  np.sqrt(3.)   ,  0. ],
+                                           [ np.sqrt(3.)   , -1.            ,  0. ] ]),
+                    }
+        elif self.lattice == 'tetragonal':
+            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
+                                           [ 1.            , -1.            ,  0. ],
+                                           [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
+                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
+                                           [-1.            ,  1.            ,  0. ],
+                                           [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
+                    }
+        elif self.lattice == 'orthorhombic':
+            basis = {'improper':np.array([ [ 0., 0., 1.],
+                                           [ 1., 0., 0.],
+                                           [ 0., 1., 0.] ]),
+                       'proper':np.array([ [ 0., 0., 1.],
+                                           [-1., 0., 0.],
+                                           [ 0., 1., 0.] ]),
+                    }
+        else:                                                                                       # direct exit for unspecified symmetry
+            if color:
+                return (np.ones_like(vector[...,0],bool),np.zeros_like(vector))
+            else:
+                return  np.ones_like(vector[...,0],bool)
+
+        b_p = np.broadcast_to(basis['proper'],  vector.shape+(3,))
+        if proper:
+            b_i = np.broadcast_to(basis['improper'],vector.shape+(3,))
+            improper = np.all(np.around(np.einsum('...ji,...i',b_i,vector),12)>=0.0,axis=-1,keepdims=True)
+            theComponents = np.where(np.broadcast_to(improper,vector.shape),
+                                     np.around(np.einsum('...ji,...i',b_i,vector),12),
+                                     np.around(np.einsum('...ji,...i',b_p,vector),12))
+        else:
+            vector_ = np.block([vector[...,0:2],np.abs(vector[...,2:3])])                           # z component projects identical
+            theComponents = np.around(np.einsum('...ji,...i',b_p,vector_),12)
+
+        in_SST = np.all(theComponents >= 0.0,axis=-1)
+
+        if color:                                                                                   # have to return color array
+            with np.errstate(invalid='ignore',divide='ignore'):
+                rgb = (theComponents/np.linalg.norm(theComponents,axis=-1,keepdims=True))**0.5      # smoothen color ramps
+                rgb = np.minimum(1.,rgb)                                                            # limit to maximum intensity
+                rgb /= np.max(rgb,axis=-1,keepdims=True)                                            # normalize to (HS)V = 1
+            rgb[np.invert(np.broadcast_to(in_SST.reshape(vector[...,0].shape+(1,)),vector.shape))] = 0.0
+            return (in_SST,rgb)
+        else:
+            return in_SST
 
 
 # ******************************************************************************************
