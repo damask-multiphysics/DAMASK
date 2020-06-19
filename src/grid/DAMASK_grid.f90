@@ -92,8 +92,7 @@ program DAMASK_grid
   external :: &
     quit
   class (tNode), pointer :: &
-    num_grid, &
-    num_generic
+    num_grid
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -114,9 +113,9 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
-  num_generic => numerics_root%get('generic', defaultVal=emptyDict)
-  stagItMax  = num_generic%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_generic%get_asInt('maxCutBack',defaultVal=3)
+  num_grid => numerics_root%get('grid', defaultVal=emptyDict)
+  stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
+  maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
   if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
   if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
@@ -124,8 +123,6 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
  
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  
   select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic'))) 
     case ('Basic')
       mech_init         => grid_mech_spectral_basic_init

@@ -96,8 +96,7 @@ subroutine grid_mech_spectral_polarisation_init
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   class (tNode), pointer :: &
-    num_grid, &
-    num_generic
+    num_grid
 
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -118,10 +117,8 @@ subroutine grid_mech_spectral_polarisation_init
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
-
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
   num%update_gamma = num_grid%get_asBool('update_gamma',defaultVal=.false.)
 
 !--------------------------------------------------------------------------------------------------
@@ -453,8 +450,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
     eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
   class(tNode), pointer :: &
-    num_grid, &
-    num_generic
+    num_grid
 
 !-----------------------------------------------------------------------------------
 ! reading numerical parameters and do sanity check 
@@ -466,9 +462,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
   eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
 
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmin = num_generic%get_asInt('itmin',defaultVal=1)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  itmin = num_grid%get_asInt('itmin',defaultVal=1)
+  itmax = num_grid%get_asInt('itmax',defaultVal=250)
 
   if (eps_div_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_div_atol')
   if (eps_div_rtol < 0.0_pReal)      call IO_error(301,ext_msg='eps_div_rtol')
@@ -533,8 +528,7 @@ subroutine formResidual(in, FandF_tau, &
   PetscObject :: dummy
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
-    num_grid, &
-    num_generic
+    num_grid
   real(pReal) :: &
     polarAlpha, &                                                                                   !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
     polarBeta                                                                                       !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
@@ -547,10 +541,8 @@ subroutine formResidual(in, FandF_tau, &
   num_grid       => numerics_root%get('grid',defaultVal = emptyDict)
   polarAlpha     =  num_grid%get_asFloat('polaralpha',defaultVal=1.0_pReal)
   polarBeta      =  num_grid%get_asFloat('polarbeta', defaultVal=1.0_pReal)
-
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmin = num_generic%get_asInt('itmin',defaultVal=1)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  itmin          =  num_grid%get_asInt('itmin',defaultVal=1)
+  itmax          =  num_grid%get_asInt('itmax',defaultVal=250)
 
   if (itmax <= 1)                                           call IO_error(301,ext_msg='itmax')
   if (itmin > itmax .or. itmin < 1)                         call IO_error(301,ext_msg='itmin')

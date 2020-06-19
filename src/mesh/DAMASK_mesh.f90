@@ -60,7 +60,7 @@ program DAMASK_mesh
     stagItMax, &                                                                                    !< max number of field level staggered iterations
     component  
   class(tNode), pointer :: &
-    num_generic
+    num_mesh
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
     incInfo, &
@@ -80,9 +80,9 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------- 
 ! reading field information from numerics file and do sanity checks
-  num_generic => numerics_root%get('generic', defaultVal=emptyDict)
-  stagItMax  = num_generic%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_generic%get_asInt('maxCutBack',defaultVal=3)
+  num_mesh => numerics_root%get('mesh', defaultVal=emptyDict)
+  stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
+  maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
   if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
   if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')

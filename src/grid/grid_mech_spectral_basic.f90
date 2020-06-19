@@ -89,8 +89,7 @@ subroutine grid_mech_spectral_basic_init
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   class (tNode), pointer :: &
-    num_grid, &
-    num_generic
+    num_grid
  
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -112,10 +111,8 @@ subroutine grid_mech_spectral_basic_init
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
-
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
   num%update_gamma = num_grid%get_asBool('update_gamma',defaultVal=.false.)
     
 !--------------------------------------------------------------------------------------------------
@@ -403,8 +400,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
     eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
     eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
   class(tNode), pointer :: &
-    num_grid, &
-    num_generic
+    num_grid
+
 !-----------------------------------------------------------------------------------
 ! reading numerical parameters and do sanity check 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
@@ -413,9 +410,8 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
   eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
 
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmin = num_generic%get_asInt('itmin',defaultVal=1)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  itmin = num_grid%get_asInt('itmin',defaultVal=1)
+  itmax = num_grid%get_asInt('itmax',defaultVal=250)
 
   if (eps_div_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_div_atol')
   if (eps_div_rtol < 0.0_pReal)      call IO_error(301,ext_msg='eps_div_rtol')
@@ -474,13 +470,13 @@ subroutine formResidual(in, F, &
     itmin, &
     itmax
   class(tNode), pointer :: &
-    num_generic
+    num_grid
 
 !----------------------------------------------------------------------
 ! read numerical paramteter and do sanity checks
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmin = num_generic%get_asInt('itmin',defaultVal=1)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  itmin = num_grid%get_asInt('itmin',defaultVal=1)
+  itmax = num_grid%get_asInt('itmax',defaultVal=250)
   if (itmax <= 1)   call IO_error(301,ext_msg='itmax')
   if (itmin > itmax .or. itmin < 1)  call IO_error(301,ext_msg='itmin')
 

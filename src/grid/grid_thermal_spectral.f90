@@ -63,7 +63,7 @@ subroutine grid_thermal_spectral_init
   PetscScalar,  dimension(:,:,:), pointer :: x_scal
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
-    num_generic
+    num_grid
   character(len=pStringLen) :: &
     petsc_options
 
@@ -74,8 +74,8 @@ subroutine grid_thermal_spectral_init
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameter
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -147,7 +147,7 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
     itmax                                                                                           !< maximum number of iterations
   type(tSolutionState) :: solution
   class(tNode), pointer :: &
-    num_generic
+    num_grid
   PetscInt  :: devNull
   PetscReal :: T_min, T_max, stagNorm, solnNorm
 
@@ -156,8 +156,8 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
 
 !-------------------------------------------------------------------
 ! reading numerical parameter and do sanity check
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  itmax = num_grid%get_asInt('itmax',defaultVal=250)
   if (itmax <= 1)   call IO_error(301,ext_msg='itmax')
 
   solution%converged =.false.

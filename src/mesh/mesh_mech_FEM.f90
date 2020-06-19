@@ -96,8 +96,7 @@ subroutine FEM_mech_init(fieldBC)
   PetscErrorCode                         :: ierr
 
   class(tNode), pointer :: &
-    num_mesh, &
-    num_generic
+    num_mesh
   integer :: &
     integrationOrder, &                                                                     !< order of quadrature rule required
     itmax
@@ -109,8 +108,8 @@ subroutine FEM_mech_init(fieldBC)
   num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
   integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
   
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  itmax = num_mesh%get_asInt('itmax',defaultVal=250)
   if (itmax <= 1) call IO_error(301,ext_msg='itmax')
 
 !--------------------------------------------------------------------------------------------------
@@ -286,15 +285,15 @@ type(tSolutionState) function FEM_mech_solution( &
   integer :: &
     itmax
   class(tNode), pointer :: &
-    num_generic
+    num_mesh
 
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
 
 !--------------------------------------------------------------------------------------------------
 ! read numerical parameter and do sanity check  
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
+  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  itmax = num_mesh%get_asInt('itmax',defaultVal=250)
   if (itmax <= 1) call IO_error(301,ext_msg='itmax')
 !-------------------------------------------------------------------------------------------------
 

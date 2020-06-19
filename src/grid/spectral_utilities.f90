@@ -192,8 +192,7 @@ subroutine spectral_utilities_init
   character(len=pStringLen) :: &
     petsc_options
   class (tNode) , pointer :: &
-    num_grid, &
-    num_generic
+    num_grid
 
   write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
 
@@ -220,8 +219,8 @@ subroutine spectral_utilities_init
                  trim(PETScDebug), &
                  ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
 
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
 
   call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
@@ -235,8 +234,6 @@ subroutine spectral_utilities_init
 
   write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
   write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
-  
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
   
   num%memory_efficient      = num_grid%get_asInt   ('memory_efficient',       defaultVal=1) > 0
   num%FFTW_timelimit        = num_grid%get_asFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
