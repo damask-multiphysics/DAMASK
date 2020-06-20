@@ -156,18 +156,18 @@ class Rotation:
             Rotation to which the misorientation is computed.
 
         """
-        return other@self.inversed()
+        return other*self.inversed()
 
 
     def broadcast_to(self,shape):
-        if isinstance(shape,int):
-            shape = (shape,)
-        N = np.prod(shape)//np.prod(self.shape,dtype=int)
-
-        q = np.block([np.repeat(self.quaternion[...,0:1],N).reshape(shape+(1,)),
-                      np.repeat(self.quaternion[...,1:2],N).reshape(shape+(1,)),
-                      np.repeat(self.quaternion[...,2:3],N).reshape(shape+(1,)),
-                      np.repeat(self.quaternion[...,3:4],N).reshape(shape+(1,))])
+        if isinstance(shape,int): shape = (shape,)
+        if self.shape == ():
+            q = np.broadcast_to(self.quaternion,shape+(4,))
+        else:
+            q = np.block([np.broadcast_to(self.quaternion[...,0:1],shape).reshape(shape+(1,)),
+                          np.broadcast_to(self.quaternion[...,1:2],shape).reshape(shape+(1,)),
+                          np.broadcast_to(self.quaternion[...,2:3],shape).reshape(shape+(1,)),
+                          np.broadcast_to(self.quaternion[...,3:4],shape).reshape(shape+(1,))])
         return self.__class__(q)
 
 
