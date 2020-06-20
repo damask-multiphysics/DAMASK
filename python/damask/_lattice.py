@@ -224,7 +224,7 @@ class Symmetry:
             symQuats =  [
                           [ 1.0,0.0,0.0,0.0 ],
                         ]
-        return Rotation(np.array(symQuats))
+        return np.array(symQuats)
 
 
     def inFZ(self,rodrigues):
@@ -439,7 +439,7 @@ class Symmetry:
             else:
                 return  np.ones_like(vector[...,0],bool)
 
-        b_p = np.broadcast_to(basis['proper'],  vector.shape+(3,))
+        b_p = np.broadcast_to(basis['proper'], vector.shape+(3,))
         if proper:
             b_i = np.broadcast_to(basis['improper'],vector.shape+(3,))
             improper = np.all(np.around(np.einsum('...ji,...i',b_i,vector),12)>=0.0,axis=-1,keepdims=True)
@@ -457,14 +457,14 @@ class Symmetry:
                 rgb = (theComponents/np.linalg.norm(theComponents,axis=-1,keepdims=True))**0.5      # smoothen color ramps
                 rgb = np.minimum(1.,rgb)                                                            # limit to maximum intensity
                 rgb /= np.max(rgb,axis=-1,keepdims=True)                                            # normalize to (HS)V = 1
-            rgb[np.invert(np.broadcast_to(in_SST.reshape(vector[...,0].shape+(1,)),vector.shape))] = 0.0
+            rgb[~np.broadcast_to(in_SST.reshape(vector[...,0].shape+(1,)),vector.shape)] = 0.0
             return (in_SST,rgb)
         else:
             return in_SST
 
 
 # ******************************************************************************************
-class Lattice:
+class Lattice: # ToDo: Make a subclass of Symmetry!
     """
     Lattice system.
 
