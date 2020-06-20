@@ -854,11 +854,6 @@ class TestRotation:
             rot = Rotation.from_basis(om,False,reciprocal=reciprocal)
             assert np.isclose(np.linalg.det(rot.as_matrix()),1.0)
 
-    def test_directions(self):
-        hkl = np.array([0.,0.,1.])
-        uvw = np.array([1.,0.,0.])
-        assert np.allclose(Rotation.from_directions(hkl,uvw).as_matrix(),np.eye(3))
-
     @pytest.mark.parametrize('shape',[None,1,(4,4)])
     def test_random(self,shape):
         Rotation.from_random(shape)

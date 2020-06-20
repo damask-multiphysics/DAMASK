@@ -325,13 +325,13 @@ class Rotation:
 
         Parameters
         ----------
-        q: numpy.ndarray of shape (...,4)
+        q : numpy.ndarray of shape (...,4)
             Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3),
             |q|=1, q_0 ≥ 0.
-        accept_homomorph: boolean, optional
+        accept_homomorph : boolean, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
-        P: integer ∈ {-1,1}, optional
+        P : integer ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -362,10 +362,10 @@ class Rotation:
 
         Parameters
         ----------
-        phi: numpy.ndarray of shape (...,3)
+        phi : numpy.ndarray of shape (...,3)
             Bunge-Euler angles: (φ_1, ϕ, φ_2), φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]
             unless degrees == True: φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360].
-        degrees: boolean, optional
+        degrees : boolean, optional
             Bunge-Euler angles are given in degrees. Defaults to False.
 
         """
@@ -389,14 +389,14 @@ class Rotation:
 
         Parameters
         ----------
-        axis_angle: numpy.ndarray of shape (...,4)
+        axis_angle : numpy.ndarray of shape (...,4)
             Axis angle pair: [n_1, n_2, n_3, ω], |n| = 1 and ω ∈ [0,π]
             unless degrees = True: ω ∈ [0,180].
-        degrees: boolean, optional
+        degrees : boolean, optional
             Angle ω is given in degrees. Defaults to False.
         normalize: boolean, optional
             Allow |n| ≠ 1. Defaults to False.
-        P: integer ∈ {-1,1}, optional
+        P : integer ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -421,16 +421,16 @@ class Rotation:
                    orthonormal = True,
                    reciprocal = False):
         """
-        Initialize from tbd.
+        Initialize from lattice basis vectors.
 
         Parameters
         ----------
-        basis: numpy.ndarray of shape (...,3,3)
-            tbd
-        orthonormal: boolean, optional
-            tbd. Defaults to True.
-        reciprocal: boolean, optional
-            tbd. Defaults to False.
+        basis : numpy.ndarray of shape (...,3,3)
+            Three lattice basis vectors in three dimensions.
+        orthonormal : boolean, optional
+            Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
+        reciprocal : boolean, optional
+            Basis vectors are given in reciprocal (instead of real) space. Defaults to False.
 
         """
         om = np.array(basis,dtype=float)
@@ -453,34 +453,13 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_directions(hkl,uvw):
-        """
-        Initialize from pair of directions/planes.
-
-        Parameters
-        ----------
-        hkl: numpy.ndarray of shape (...,3)
-            Direction parallel to z direction, i.e. (h k l) || (0,0,1).
-        uvw: numpy.ndarray of shape (...,3)
-            Direction parallel to x direction, i.e. <u v w> || (1,0,0).
-
-        """
-        hkl_ = hkl/np.linalg.norm(hkl,axis=-1,keepdims=True)
-        uvw_ = uvw/np.linalg.norm(uvw,axis=-1,keepdims=True)
-        v_1 = np.block([uvw_,np.cross(hkl_,uvw_),hkl_]).reshape(hkl_.shape+(3,))
-        v_2 = np.block([uvw_,np.cross(uvw_,hkl_),hkl_]).reshape(hkl_.shape+(3,))
-        R = np.where(np.broadcast_to(np.expand_dims(np.expand_dims(np.linalg.det(v_1)>0,-1),-1),v_1.shape),
-                                     v_1,v_2)
-        return Rotation.from_basis(np.swapaxes(R,axis2=-2,axis1=-1))
-
-    @staticmethod
     def from_matrix(R):
         """
         Initialize from rotation matrix.
 
         Parameters
         ----------
-        R: numpy.ndarray of shape (...,3,3)
+        R : numpy.ndarray of shape (...,3,3)
             Rotation matrix: det(R) = 1, R.T∙R=I.
 
         """
@@ -495,12 +474,12 @@ class Rotation:
 
         Parameters
         ----------
-        rho: numpy.ndarray of shape (...,4)
+        rho : numpy.ndarray of shape (...,4)
             Rodrigues-Frank vector (angle separated from axis).
             (n_1, n_2, n_3, tan(ω/2)), |n| = 1  and ω ∈ [0,π].
-        normalize: boolean, optional
+        normalize : boolean, optional
             Allow |n| ≠ 1. Defaults to False.
-        P: integer ∈ {-1,1}, optional
+        P : integer ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -527,9 +506,9 @@ class Rotation:
 
         Parameters
         ----------
-        h: numpy.ndarray of shape (...,3)
+        h : numpy.ndarray of shape (...,3)
             Homochoric vector: (h_1, h_2, h_3), |h| < (3/4*π)^(1/3).
-        P: integer ∈ {-1,1}, optional
+        P : integer ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -554,9 +533,9 @@ class Rotation:
 
         Parameters
         ----------
-        c: numpy.ndarray of shape (...,3)
+        c : numpy.ndarray of shape (...,3)
             Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
-        P: integer ∈ {-1,1}, optional
+        P : integer ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
