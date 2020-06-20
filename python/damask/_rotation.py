@@ -289,7 +289,7 @@ class Rotation:
 
     def as_cubochoric(self):
         """
-        Represent as cubocoric vector.
+        Represent as cubochoric vector.
 
         Returns
         -------
