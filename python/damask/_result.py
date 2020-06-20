@@ -10,6 +10,7 @@ from functools import partial
 
 import h5py
 import numpy as np
+from numpy.lib import recfunctions as rfn
 
 from . import VTK
 from . import Table
@@ -267,7 +268,7 @@ class Result:
     def rename(self,name_old,name_new):
         """
         Rename datasets.
-        
+
         Parameters
         ----------
         name_old : str
@@ -733,23 +734,17 @@ class Result:
 
     @staticmethod
     def _add_IPFcolor(q,l):
-        d      = np.array(l)
-        d_unit = d/np.linalg.norm(d)
-        m      = util.scale_to_coprime(d)
-        colors = np.empty((len(q['data']),3),np.uint8)
+        m = util.scale_to_coprime(np.array(l))
 
-        lattice   = q['meta']['Lattice']
-
-        for i,qu in enumerate(q['data']):
-            o = Orientation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]),lattice).reduced()
-            colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
+        o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
+                        lattice = q['meta']['Lattice'])
 
         return {
-                'data': colors,
+                'data': np.uint8(o.IPF_color(l)*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
-                          'Unit':        'RGB (8bit)',
-                          'Lattice':     lattice,
+                          'Unit':        '8-bit RGB',
+                          'Lattice':     q['meta']['Lattice'],
                           'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
                           'Creator':     inspect.stack()[0][3][1:]
                          }

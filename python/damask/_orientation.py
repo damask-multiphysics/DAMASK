@@ -3,7 +3,7 @@ import numpy as np
 from . import Lattice
 from . import Rotation
 
-class Orientation: # make subclass or Rotation?
+class Orientation: # ToDo: make subclass of lattice and Rotation
     """
     Crystallographic orientation.
 
@@ -105,12 +105,14 @@ class Orientation: # make subclass or Rotation?
         is added to the left of the rotation array.
 
         """
-        symmetry_operations = self.lattice.symmetry.symmetry_operations
+        s = self.lattice.symmetry.symmetry_operations
+        s = s.reshape(s.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
+        s = Rotation(np.broadcast_to(s,s.shape[:1]+self.rotation.quaternion.shape))
 
-        q = np.block([self.rotation.quaternion]*symmetry_operations.shape[0])
-        r = Rotation(q.reshape(symmetry_operations.shape+self.rotation.quaternion.shape))
+        r = np.broadcast_to(self.rotation.quaternion,s.shape[:1]+self.rotation.quaternion.shape)
+        r = Rotation(r)
 
-        return self.__class__(symmetry_operations.broadcast_to(r.shape)@r,self.lattice)
+        return self.__class__(s@r,self.lattice)
 
 
     def equivalentOrientations(self,members=[]):
@@ -156,10 +158,10 @@ class Orientation: # make subclass or Rotation?
         """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)."""
         if SST:                                                                                     # pole requested to be within SST
             for i,o in enumerate(self.equivalentOrientations()):                                    # test all symmetric equivalent quaternions
-                pole = o.rotation*axis                                                              # align crystal direction to axis
+                pole = o.rotation@axis                                                              # align crystal direction to axis
                 if self.lattice.symmetry.inSST(pole,proper): break                                  # found SST version
         else:
-            pole = self.rotation*axis                                                               # align crystal direction to axis
+            pole = self.rotation@axis                                                               # align crystal direction to axis
 
         return (pole,i if SST else 0)
 
@@ -169,7 +171,7 @@ class Orientation: # make subclass or Rotation?
         color = np.zeros(3,'d')
 
         for o in self.equivalentOrientations():
-            pole = o.rotation*axis                                                                  # align crystal direction to axis
+            pole = o.rotation@axis                                                                  # align crystal direction to axis
             inSST,color = self.lattice.symmetry.inSST(pole,color=True)
             if inSST: break
 
@@ -178,12 +180,18 @@ class Orientation: # make subclass or Rotation?
 
     def IPF_color(self,axis):
         """TSL color of inverse pole figure for given axis."""
-        color = np.zeros(self.rotation.shape)
         eq = self.equivalent
-        pole = eq.rotation @ np.broadcast_to(axis,eq.rotation.shape+(3,))
+        pole = eq.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),eq.rotation.shape+(3,))
         in_SST, color = self.lattice.symmetry.in_SST(pole,color=True)
 
-        return color[in_SST]
+        # ignore duplicates (occur for highly symmetric orientations)
+        found = np.zeros_like(in_SST[1],dtype=bool)
+        c     = np.empty(color.shape[1:])
+        for s in range(in_SST.shape[0]):
+            c = np.where(np.expand_dims(np.logical_and(in_SST[s],~found),-1),color[s],c)
+            found = np.logical_or(in_SST[s],found)
+
+        return c
 
 
     @staticmethod
