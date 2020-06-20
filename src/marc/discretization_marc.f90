@@ -45,10 +45,8 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_marc_init(ip,el)
+subroutine discretization_marc_init
 
-  integer, intent(in) :: el, ip
-   
   real(pReal), dimension(:,:), allocatable :: &
    node0_elem, &                                                                                    !< node x,y,z coordinates (initially!)
    node0_cell
@@ -70,7 +68,7 @@ subroutine discretization_marc_init(ip,el)
   real(pReal), dimension(:,:,:,:),allocatable :: &
     unscaledNormals
 
-  write(6,'(/,a)') ' <<<+-  mesh init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  discretization_marc init  -+>>>'; flush(6)
  
   mesh_unitlength = numerics_unitlength                                                             ! set physical extent of a length unit in mesh
 
@@ -83,10 +81,6 @@ subroutine discretization_marc_init(ip,el)
   FEsolving_execElem = [1,nElems]
   FEsolving_execIP   = [1,elem%nIPs]
  
-  allocate(calcMode(elem%nIPs,nElems),source=.false.)                                               ! pretend to have collected what first call is asking (F = I)
-  calcMode(ip,mesh_FEM2DAMASK_elem(el)) = .true.                                                    ! first ip,el needs to be already pingponged to "calc"
- 
-
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&

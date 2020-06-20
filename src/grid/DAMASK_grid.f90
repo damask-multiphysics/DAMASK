@@ -140,7 +140,8 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
- fileContent = IO_read_ASCII(trim(loadCaseFile))
+ fileContent = IO_readlines(trim(loadCaseFile))
+ if(size(fileContent) == 0) call IO_error(307,ext_msg='No load case specified')
 
  allocate (loadCases(0))                                                                            ! array of load cases
  do currentLoadCase = 1, size(fileContent)

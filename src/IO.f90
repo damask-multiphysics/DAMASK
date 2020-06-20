@@ -11,7 +11,6 @@ module IO
   implicit none
   private
   character(len=*), parameter, public :: &
-    IO_EOF = '#EOF#', &                                                                             !< end of file string
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
@@ -106,7 +105,7 @@ function IO_readlines(fileName) result(fileContent)
     endif
     startPos = endPos + 2                                                                           ! jump to next line start
 
-    fileContent(l) = line
+    fileContent(l) = trim(line)//''
     l = l + 1
   enddo
 
@@ -114,7 +113,8 @@ end function IO_readlines
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads an entire ASCII file into a string
+!> @brief read ASCII file into a string
+!> @details ensures that the string ends with a new line (expected UNIX behavior)
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileName) result(fileContent)
 
@@ -130,9 +130,13 @@ function IO_read(fileName) result(fileContent)
        status='old', position='rewind', action='read',iostat=myStat)
   if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
   allocate(character(len=fileLength)::fileContent)
+  if(fileLength==0) return
+
   read(fileUnit,iostat=myStat) fileContent
-  if(myStat > 0)  call IO_error(102,ext_msg=trim(fileName))                                         ! <0 for ifort (https://software.intel.com/en-us/comment/1960081)
+  if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
   close(fileUnit)
+
+  if(fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL                ! ensure EOL@EOF
 
 end function IO_read
 

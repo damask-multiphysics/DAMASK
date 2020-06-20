@@ -245,7 +245,7 @@ subroutine crystallite_init
   enddo
   !$OMP END PARALLEL DO
 
-  if(any(plasticState%nonlocal) .and. .not. usePingPong) call IO_error(601)                         ! exit if nonlocal but no ping-pong ToDo: Why not check earlier? or in nonlocal?
+  !if(any(plasticState%nonlocal) .and. .not. usePingPong) call IO_error(601)
 
   crystallite_partionedFp0 = crystallite_Fp0
   crystallite_partionedFi0 = crystallite_Fi0
@@ -276,9 +276,6 @@ subroutine crystallite_init
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
     flush(6)
   endif
-
-  call debug_info
-  call debug_reset
 #endif
 
 end subroutine crystallite_init

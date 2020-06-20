@@ -49,26 +49,11 @@ module debug
     debug_i                       = 1, &
     debug_g                       = 1
 
-  integer, dimension(2), public :: &
-    debug_stressMaxLocation       = 0, &
-    debug_stressMinLocation       = 0, &
-    debug_jacobianMaxLocation     = 0, &
-    debug_jacobianMinLocation     = 0
-
-
-  real(pReal), public :: &
-    debug_stressMax               = -huge(1.0_pReal), &
-    debug_stressMin               =  huge(1.0_pReal), &
-    debug_jacobianMax             = -huge(1.0_pReal), &
-    debug_jacobianMin             =  huge(1.0_pReal)
-
 #ifdef PETSc
   character(len=1024), parameter, public :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
 #endif
-  public :: debug_init, &
-            debug_reset, &
-            debug_info
+  public :: debug_init
 
 contains
 
@@ -229,43 +214,5 @@ subroutine debug_init
    endif
 
 end subroutine debug_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief resets all debug values
-!--------------------------------------------------------------------------------------------------
-subroutine debug_reset
-
-  debug_stressMaxLocation   = 0
-  debug_stressMinLocation   = 0
-  debug_jacobianMaxLocation = 0
-  debug_jacobianMinLocation = 0
-  debug_stressMax           = -huge(1.0_pReal)
-  debug_stressMin           =  huge(1.0_pReal)
-  debug_jacobianMax         = -huge(1.0_pReal)
-  debug_jacobianMin         =  huge(1.0_pReal)
-
-end subroutine debug_reset
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes debug statements to standard out
-!--------------------------------------------------------------------------------------------------
-subroutine debug_info
-
-  !$OMP CRITICAL (write2out)
-    debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0 &
-                       .and. any(debug_stressMinLocation /= 0) &
-                       .and. any(debug_stressMaxLocation /= 0) ) then
-      write(6,'(2/,a,/)') ' Extreme values of returned stress and Jacobian'
-      write(6,'(a39)')                      '                      value     el   ip'
-      write(6,'(a14,1x,e12.3,1x,i8,1x,i4)')   ' stress   min :', debug_stressMin, debug_stressMinLocation
-      write(6,'(a14,1x,e12.3,1x,i8,1x,i4)')   '          max :', debug_stressMax, debug_stressMaxLocation
-      write(6,'(a14,1x,e12.3,1x,i8,1x,i4)')   ' Jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
-      write(6,'(a14,1x,e12.3,1x,i8,1x,i4,/)') '          max :', debug_jacobianMax, debug_jacobianMaxLocation
-    endif debugOutputCPFEM
-  !$OMP END CRITICAL (write2out)
-
-end subroutine debug_info
 
 end module debug

@@ -110,7 +110,7 @@ subroutine discretization_mesh_init(restart)
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
   if (worldrank == 0) then
-    fileContent = IO_read_ASCII(geometryFile)
+    fileContent = IO_readlines(geometryFile)
     l = 0
     do
       l = l + 1
