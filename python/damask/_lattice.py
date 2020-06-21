@@ -457,7 +457,7 @@ class Symmetry:
                 rgb = (theComponents/np.linalg.norm(theComponents,axis=-1,keepdims=True))**0.5      # smoothen color ramps
                 rgb = np.minimum(1.,rgb)                                                            # limit to maximum intensity
                 rgb /= np.max(rgb,axis=-1,keepdims=True)                                            # normalize to (HS)V = 1
-            rgb[~np.broadcast_to(in_SST.reshape(vector[...,0].shape+(1,)),vector.shape)] = 0.0
+            rgb[np.broadcast_to(~in_SST.reshape(vector[...,0].shape+(1,)),vector.shape)] = 0.0
             return (in_SST,rgb)
         else:
             return in_SST
