@@ -615,7 +615,7 @@ class Rotation:
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
 ####################################################################################################
-# Copyright (c) 2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
+# Copyright (c) 2017-2020, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 # Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
 # All rights reserved.
 #
