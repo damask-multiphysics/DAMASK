@@ -101,6 +101,8 @@ module quaternions
     assignment(=), &
     conjg, aimag, &
     log, exp, &
+    abs, dot_product, &
+    inverse, &
     real
 
 contains

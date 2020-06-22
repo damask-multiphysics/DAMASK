@@ -284,11 +284,9 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
+function crystallite_stress()
 
   logical, dimension(discretization_nIP,discretization_nElem) :: crystallite_stress
-  real(pReal), intent(in), optional :: &
-    dummyArgumentToPreventInternalCompilerErrorWithGCC
   real(pReal) :: &
     formerSubStep
   integer :: &

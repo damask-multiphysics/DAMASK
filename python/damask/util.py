@@ -93,7 +93,7 @@ def strikeout(what):
 
 
 def execute(cmd,
-            streamIn = None,
+            stream_in = None,
             wd = './',
             env = None):
     """
@@ -103,7 +103,7 @@ def execute(cmd,
     ----------
     cmd : str
         Command to be executed.
-    streanIn :, optional
+    stream_in : file object, optional
         Input (via pipe) for executed process.
     wd : str, optional
         Working directory of process. Defaults to ./ .
@@ -119,14 +119,14 @@ def execute(cmd,
                                stderr = subprocess.PIPE,
                                stdin  = subprocess.PIPE,
                                env = myEnv)
-    out,error = [i for i in (process.communicate() if streamIn is None
-                                                   else process.communicate(streamIn.read().encode('utf-8')))]
+    stdout, stderr = [i for i in (process.communicate() if stream_in is None
+                             else process.communicate(stream_in.read().encode('utf-8')))]
     os.chdir(initialPath)
-    out   = out.decode('utf-8').replace('\x08','')
-    error = error.decode('utf-8').replace('\x08','')
+    stdout = stdout.decode('utf-8').replace('\x08','')
+    stderr = stderr.decode('utf-8').replace('\x08','')
     if process.returncode != 0:
         raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
-    return out,error
+    return stdout, stderr
 
 
 def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
