@@ -198,6 +198,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
     def fromAverage(orientations,
                     weights = []):
         """Create orientation from average of list of orientations."""
+        # further read: Orientation distribution analysis in deformed grains, https://doi.org/10.1107/S0021889801003077
         if not all(isinstance(item, Orientation) for item in orientations):
             raise TypeError("Only instances of Orientation can be averaged.")
 
