@@ -51,7 +51,7 @@ recursive function parse_flow(flow_string,defaultVal) result(node)
   if (len_trim(flow_string) == 0 .and. present(defaultVal)) then
     node => defaultVal
     return
-  elseif (flow_string(1:1) == '{') then                                                                 ! start of a dictionary
+  elseif (flow_string(1:1) == '{') then                                                             ! start of a dictionary
     e = 1
     allocate(tDict::node)
     do while (e < len_trim(flow_string))

@@ -129,7 +129,7 @@ subroutine crystallite_init
     eMax, &                                                                                         !< maximum number of elements
     myNcomponents                                                                                   !< number of components at current IP
   
-  class(tNode) , pointer :: &
+  class(tNode), pointer :: &
     num_crystallite
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
 

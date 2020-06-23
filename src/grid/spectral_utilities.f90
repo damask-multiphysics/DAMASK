@@ -191,7 +191,7 @@ subroutine spectral_utilities_init
     tensorSize = 9_C_INTPTR_T
   character(len=pStringLen) :: &
     petsc_options
-  class (tNode) , pointer :: &
+  class(tNode), pointer :: &
     num_grid
 
   write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'

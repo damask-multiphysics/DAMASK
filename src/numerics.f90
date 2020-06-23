@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Sharan Roongta, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Managing of parameters related to numerics
 !--------------------------------------------------------------------------------------------------
 module numerics
@@ -64,16 +65,13 @@ subroutine numerics_init
   numerics_root => emptyDict
   inquire(file='numerics.yaml', exist=fexist)
   
-  fileExists: if (fexist) then
+  if (fexist) then
     write(6,'(a,/)') ' using values from config file'
     flush(6)
     numerics_input =  IO_read('numerics.yaml')
     numerics_inFlow = to_flow(numerics_input)
     numerics_root =>  parse_flow(numerics_inFlow,defaultVal=emptyDict)
-  else fileExists
-    write(6,'(a,/)') ' using standard values'
-    flush(6)
-  endif fileExists
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter
