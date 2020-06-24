@@ -81,12 +81,15 @@ subroutine grid_thermal_spectral_init
   write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !-------------------------------------------------------------------------------------------------
-! read numerical parameter
+! read numerical parameter and do sanity checks
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
   num%petsc_options    = num_grid%get_asString('petsc_options',defaultVal='')
   num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
   num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
- 
+
+  if (num%eps_thermal_atol <= 0.0_pReal)      call IO_error(301,ext_msg='eps_thermal_atol')
+  if (num%eps_thermal_rtol <= 0.0_pReal)      call IO_error(301,ext_msg='eps_thermal_rtol')
+
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type ngmres',ierr)

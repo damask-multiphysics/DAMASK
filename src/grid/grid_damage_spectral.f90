@@ -96,6 +96,8 @@ subroutine grid_damage_spectral_init
  
   if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
   if (num%itmax <= 1)                      call IO_error(301,ext_msg='itmax')
+  if (num%eps_damage_atol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_atol')
+  if (num%eps_damage_rtol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_rtol')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
