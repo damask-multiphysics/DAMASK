@@ -30,6 +30,23 @@ module grid_mech_FEM
 ! derived types
   type(tSolutionParams), private :: params
 
+  type, private :: tNumerics
+    integer :: &
+      itmin, &                                                                                        !< minimum number of iterations
+      itmax                                                                                           !< maximum number of iterations
+    real(pReal) :: &
+      err_div, &
+      divTol, &
+      BCTol, &
+      eps_div_atol, &                                                                                 !< absolute tolerance for equilibrium
+      eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
+      eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
+      eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
+    character(len=:), allocatable :: &
+      petsc_options
+  end type tNumerics
+
+  type(tNumerics), private :: num 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM,   private :: mech_grid
@@ -97,8 +114,7 @@ subroutine grid_mech_FEM_init
   PetscErrorCode :: ierr
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: &
-    fileName, &
-    petsc_options
+    fileName
   class(tNode), pointer :: &
     num_grid
   real(pReal), dimension(3,3,3,3) :: devNull
@@ -108,16 +124,30 @@ subroutine grid_mech_FEM_init
   write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'; flush(6)
 
 !-------------------------------------------------------------------------------------------------
-! read numerical parameter
+! read numerical parameter and do sanity checks
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
+  num%petsc_options   = num_grid%get_asString('petsc_options',   defaultVal='')
+  num%eps_div_atol    = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid%get_asFloat ('eps_stress_atol', defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol = num_grid%get_asFloat ('eps_stress_rtol', defaultVal=0.01_pReal)
+
+  num%itmin           = num_grid%get_asInt   ('itmin',defaultVal=1)
+  num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
+
+  if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
+  if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
+  if (num%eps_stress_atol <= 0.0_pReal)          call IO_error(301,ext_msg='eps_stress_atol')
+  if (num%eps_stress_rtol < 0.0_pReal)           call IO_error(301,ext_msg='eps_stress_rtol')
+  if (num%itmax <= 1)                            call IO_error(301,ext_msg='itmax')
+  if (num%itmin > num%itmax .or. num%itmin < 1)  call IO_error(301,ext_msg='itmin')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type newtonls -mech_ksp_type fgmres &
                                 &-mech_ksp_max_it 25 -mech_pc_type ml -mech_mg_levels_ksp_type chebyshev',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -419,49 +449,23 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: ierr
-  integer :: &
-    itmin, &                                                                                        !< minimum number of iterations
-    itmax                                                                                           !< maximum number of iterations
   real(pReal) :: &
     err_div, &
     divTol, &
-    BCTol, &
-    eps_div_atol, &                                                                                 !< absolute tolerance for equilibrium
-    eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
-    eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
-    eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
-  class(tNode), pointer :: &
-    num_grid
+    BCTol
 
-!-----------------------------------------------------------------------------------
-! reading numerical parameters and do sanity check 
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  eps_div_atol = num_grid%get_asFloat('eps_div_atol',defaultVal=1.0e-4_pReal)
-  eps_div_rtol = num_grid%get_asFloat('eps_div_rtol',defaultVal=5.0e-4_pReal)
-  eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
-  eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
-
-  itmin = num_grid%get_asInt('itmin',defaultVal=1)
-  itmax = num_grid%get_asInt('itmax',defaultVal=250)
-
-  if (eps_div_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_div_atol')
-  if (eps_div_rtol < 0.0_pReal)      call IO_error(301,ext_msg='eps_div_rtol')
-  if (eps_stress_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_stress_atol')
-  if (eps_stress_rtol < 0.0_pReal)   call IO_error(301,ext_msg='eps_stress_rtol')
-  if (itmax <= 1)                    call IO_error(301,ext_msg='itmax')
-  if (itmin > itmax .or. itmin < 1)  call IO_error(301,ext_msg='itmin')
 !------------------------------------------------------------------------------------
 
   err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
-  divTol = max(maxval(abs(P_av))*eps_div_rtol   ,eps_div_atol)
-  BCTol  = max(maxval(abs(P_av))*eps_stress_rtol,eps_stress_atol)
+  divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)
+  BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol,num%eps_stress_atol)
 
-  if ((totalIter >= itmin .and. &
+  if ((totalIter >= num%itmin .and. &
                             all([ err_div/divTol, &
                                   err_BC /BCTol       ] < 1.0_pReal)) &
               .or.    terminallyIll) then
     reason = 1
-  elseif (totalIter >= itmax) then
+  elseif (totalIter >= num%itmax) then
     reason = -1
   else
     reason = 0
@@ -499,19 +503,6 @@ subroutine formResidual(da_local,x_local, &
   PetscObject :: dummy
   PetscErrorCode :: ierr
   real(pReal), dimension(3,3,3,3) :: devNull
-  integer :: &
-    itmin, &
-    itmax
-  class(tNode), pointer :: &
-    num_grid
-
-!----------------------------------------------------------------------
-! read numerical paramteters and do sanity checks
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  itmin = num_grid%get_asInt('itmin',defaultVal=1)
-  itmax = num_grid%get_asInt('itmax',defaultVal=250)
-  if (itmax <= 1)   call IO_error(301,ext_msg='itmax')
-  if (itmin > itmax .or. itmin < 1)  call IO_error(301,ext_msg='itmin')
 
   call SNESGetNumberFunctionEvals(mech_snes,nfuncs,ierr); CHKERRQ(ierr)
   call SNESGetIterationNumber(mech_snes,PETScIter,ierr); CHKERRQ(ierr)
@@ -522,7 +513,7 @@ subroutine formResidual(da_local,x_local, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
+    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))

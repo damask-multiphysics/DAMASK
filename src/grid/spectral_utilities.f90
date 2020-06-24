@@ -121,10 +121,10 @@ module spectral_utilities
     character(len=:), allocatable :: &
       spectral_derivative, &                                                                        !< approximation used for derivatives in Fourier space
       FFTW_plan_mode, &                                                                             !< FFTW plan mode, see www.fftw.org
-      PETSc_options
+      petsc_options
   end type tNumerics
 
-  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
+  type(tNumerics), private :: num                                                                   ! numerics parameters. Better name?
 
   enum, bind(c); enumerator :: &
     DERIVATIVE_CONTINUOUS_ID, &
@@ -189,8 +189,6 @@ subroutine spectral_utilities_init
     scalarSize = 1_C_INTPTR_T, &
     vecSize    = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
-  character(len=pStringLen) :: &
-    petsc_options
   class(tNode), pointer :: &
     num_grid
 
@@ -220,13 +218,13 @@ subroutine spectral_utilities_init
                  ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
+  num%petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
 
   call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
   if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
   CHKERRQ(ierr)
 
   grid1Red = grid(1)/2 + 1

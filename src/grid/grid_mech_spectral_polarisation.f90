@@ -33,9 +33,24 @@ module grid_mech_spectral_polarisation
 
   type, private :: tNumerics
     logical :: update_gamma                                                                         !< update gamma operator with current stiffness
+    character(len=:), allocatable :: &
+      petsc_options
+    integer :: &
+      itmin, &                                                                                      !< minimum number of iterations
+      itmax                                                                                         !< maximum number of iterations
+    real(pReal) :: &
+      eps_div_atol, &                                                                               !< absolute tolerance for equilibrium
+      eps_div_rtol, &                                                                               !< relative tolerance for equilibrium
+      eps_curl_atol, &                                                                              !< absolute tolerance for compatibility
+      eps_curl_rtol, &                                                                              !< relative tolerance for compatibility
+      eps_stress_atol, &                                                                            !< absolute tolerance for fullfillment of stress BC
+      eps_stress_rtol                                                                               !< relative tolerance for fullfillment of stress BC
+    real(pReal) :: &
+      polarAlpha, &                                                                                 !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
+      polarBeta                                                                                     !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
   end type tNumerics
 
-  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
+  type(tNumerics), private :: num                                                                   ! numerics parameters. Better name?
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -107,8 +122,7 @@ subroutine grid_mech_spectral_polarisation_init
   integer(HID_T) :: fileHandle, groupHandle
   integer        :: fileUnit
   character(len=pStringLen) :: &
-    fileName, &
-    petsc_options
+    fileName
 
   write(6,'(/,a)') ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'; flush(6)
 
@@ -118,14 +132,36 @@ subroutine grid_mech_spectral_polarisation_init
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
-  num%update_gamma = num_grid%get_asBool('update_gamma',defaultVal=.false.)
+
+  num%petsc_options      = num_grid%get_asString('petsc_options',   defaultVal='')
+  num%update_gamma       = num_grid%get_asBool  ('update_gamma',    defaultVal=.false.)
+  num%eps_div_atol       = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol       = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
+  num%eps_curl_atol      = num_grid%get_asFloat ('eps_curl_atol',   defaultVal=1.0e-10_pReal)
+  num%eps_curl_rtol      = num_grid%get_asFloat ('eps_curl_rtol',   defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol    = num_grid%get_asFloat ('eps_stress_atol', defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol    = num_grid%get_asFloat ('eps_stress_rtol', defaultVal=0.01_pReal)
+  num%itmin              = num_grid%get_asInt   ('itmin',           defaultVal=1)
+  num%itmax              = num_grid%get_asInt   ('itmax',           defaultVal=250)
+  num%polarAlpha         = num_grid%get_asFloat ('polaralpha',      defaultVal=1.0_pReal)
+  num%polarBeta          = num_grid%get_asFloat ('polarbeta',       defaultVal=1.0_pReal)
+
+  if (num%eps_div_atol <= 0.0_pReal)                                call IO_error(301,ext_msg='eps_div_atol')
+  if (num%eps_div_rtol < 0.0_pReal)                                 call IO_error(301,ext_msg='eps_div_rtol')
+  if (num%eps_curl_atol <= 0.0_pReal)                               call IO_error(301,ext_msg='eps_curl_atol')
+  if (num%eps_curl_rtol < 0.0_pReal)                                call IO_error(301,ext_msg='eps_curl_rtol')
+  if (num%eps_stress_atol <= 0.0_pReal)                             call IO_error(301,ext_msg='eps_stress_atol')
+  if (num%eps_stress_rtol < 0.0_pReal)                              call IO_error(301,ext_msg='eps_stress_rtol')
+  if (num%itmax <= 1)                                               call IO_error(301,ext_msg='itmax')
+  if (num%itmin > num%itmax .or. num%itmin < 1)                     call IO_error(301,ext_msg='itmin')
+  if (num%polarAlpha <= 0.0_pReal .or. num%polarAlpha >  2.0_pReal) call IO_error(301,ext_msg='polarAlpha')
+  if (num%polarBeta < 0.0_pReal .or. num%polarBeta > 2.0_pReal)     call IO_error(301,ext_msg='polarBeta')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -436,56 +472,22 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   SNESConvergedReason :: reason
   PetscObject :: dummy
   PetscErrorCode :: ierr
-  integer :: &
-    itmin, &                                                                                        !< minimum number of iterations
-    itmax                                                                                           !< maximum number of iterations
   real(pReal) :: &
     curlTol, &
     divTol, &
-    BCTol, &
-    eps_div_atol, &                                                                                 !< absolute tolerance for equilibrium
-    eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
-    eps_curl_atol, &                                                                                !< absolute tolerance for compatibility
-    eps_curl_rtol, &                                                                                !< relative tolerance for compatibility
-    eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
-    eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
-  class(tNode), pointer :: &
-    num_grid
+    BCTol
 
-!-----------------------------------------------------------------------------------
-! reading numerical parameters and do sanity check 
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  eps_div_atol = num_grid%get_asFloat('eps_div_atol',defaultVal=1.0e-4_pReal)
-  eps_div_rtol = num_grid%get_asFloat('eps_div_rtol',defaultVal=5.0e-4_pReal)
-  eps_curl_atol = num_grid%get_asFloat('eps_curl_atol',defaultVal=1.0e-10_pReal)
-  eps_curl_rtol = num_grid%get_asFloat('eps_curl_rtol',defaultVal=5.0e-4_pReal)
-  eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
-  eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=0.01_pReal)
+  curlTol    = max(maxval(abs(F_aim-math_I3))*num%eps_curl_rtol  ,num%eps_curl_atol)
+  divTol     = max(maxval(abs(P_av))         *num%eps_div_rtol   ,num%eps_div_atol)
+  BCTol      = max(maxval(abs(P_av))         *num%eps_stress_rtol,num%eps_stress_atol)
 
-  itmin = num_grid%get_asInt('itmin',defaultVal=1)
-  itmax = num_grid%get_asInt('itmax',defaultVal=250)
-
-  if (eps_div_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_div_atol')
-  if (eps_div_rtol < 0.0_pReal)      call IO_error(301,ext_msg='eps_div_rtol')
-  if (eps_curl_atol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_curl_atol')
-  if (eps_curl_rtol < 0.0_pReal)     call IO_error(301,ext_msg='eps_curl_rtol')
-  if (eps_stress_atol <= 0.0_pReal)  call IO_error(301,ext_msg='eps_stress_atol')
-  if (eps_stress_rtol < 0.0_pReal)   call IO_error(301,ext_msg='eps_stress_rtol')
-  if (itmax <= 1)                    call IO_error(301,ext_msg='itmax')
-  if (itmin > itmax .or. itmin < 1)  call IO_error(301,ext_msg='itmin')
-!------------------------------------------------------------------------------------
-
-  curlTol    = max(maxval(abs(F_aim-math_I3))*eps_curl_rtol  ,eps_curl_atol)
-  divTol     = max(maxval(abs(P_av))         *eps_div_rtol   ,eps_div_atol)
-  BCTol      = max(maxval(abs(P_av))         *eps_stress_rtol,eps_stress_atol)
-
-  if ((totalIter >= itmin .and. &
+  if ((totalIter >= num%itmin .and. &
                             all([ err_div /divTol, &
                                   err_curl/curlTol, &
                                   err_BC  /BCTol       ] < 1.0_pReal)) &
               .or.    terminallyIll) then
     reason = 1
-  elseif (totalIter >= itmax) then
+  elseif (totalIter >= num%itmax) then
     reason = -1
   else
     reason = 0
@@ -527,27 +529,9 @@ subroutine formResidual(in, FandF_tau, &
     nfuncs
   PetscObject :: dummy
   PetscErrorCode :: ierr
-  class(tNode), pointer :: &
-    num_grid
-  real(pReal) :: &
-    polarAlpha, &                                                                                   !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
-    polarBeta                                                                                       !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
-  integer :: &
-    i, j, k, e, &
-    itmin, itmax
+ integer :: &
+    i, j, k, e
 
-!--------------------------------------------------------------------------------------------------
-! read numerical paramteters and do sanity checks
-  num_grid       => numerics_root%get('grid',defaultVal = emptyDict)
-  polarAlpha     =  num_grid%get_asFloat('polaralpha',defaultVal=1.0_pReal)
-  polarBeta      =  num_grid%get_asFloat('polarbeta', defaultVal=1.0_pReal)
-  itmin          =  num_grid%get_asInt('itmin',defaultVal=1)
-  itmax          =  num_grid%get_asInt('itmax',defaultVal=250)
-
-  if (itmax <= 1)                                           call IO_error(301,ext_msg='itmax')
-  if (itmin > itmax .or. itmin < 1)                         call IO_error(301,ext_msg='itmin')
-  if (polarAlpha <= 0.0_pReal .or. polarAlpha >  2.0_pReal) call IO_error(301,ext_msg='polarAlpha')
-  if (polarBeta < 0.0_pReal .or. polarBeta > 2.0_pReal)     call IO_error(301,ext_msg='polarBeta')
 !---------------------------------------------------------------------------------------------------
 
   F              => FandF_tau(1:3,1:3,1,&
@@ -570,7 +554,7 @@ subroutine formResidual(in, FandF_tau, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
+    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
@@ -584,26 +568,26 @@ subroutine formResidual(in, FandF_tau, &
   tensorField_real = 0.0_pReal
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
     tensorField_real(1:3,1:3,i,j,k) = &
-      polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
-      polarAlpha*matmul(F(1:3,1:3,i,j,k), &
+      num%polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
+      num%polarAlpha*matmul(F(1:3,1:3,i,j,k), &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
   enddo; enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space
   call utilities_FFTtensorForward
-  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(polarBeta*F_aim,active=.true.))
+  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(num%polarBeta*F_aim,active=.true.))
   call utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  residual_F_tau = polarBeta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
+  residual_F_tau = num%polarBeta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
   call utilities_constitutiveResponse(residual_F, &                                                 ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
-                                      F - residual_F_tau/polarBeta,params%timeinc,params%rotation_BC)
+                                      F - residual_F_tau/num%polarBeta,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------

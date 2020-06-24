@@ -34,8 +34,8 @@ module discretization_marc
     mesh_unitlength                                                                                 !< physical length of one unit in mesh
  
   integer, dimension(:),   allocatable, public :: &
-    mesh_FEM2DAMASK_elem, &                                                                          !< DAMASK element ID for Marc element ID
-    mesh_FEM2DAMASK_node                                                                             !< DAMASK node ID for Marc node ID
+    mesh_FEM2DAMASK_elem, &                                                                         !< DAMASK element ID for Marc element ID
+    mesh_FEM2DAMASK_node                                                                            !< DAMASK node ID for Marc node ID
 
   public :: &
     discretization_marc_init

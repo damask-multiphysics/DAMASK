@@ -37,6 +37,18 @@ module mesh_mech_FEM
 
   type(tSolutionParams)  :: params
 
+  type, private :: tNumerics
+    integer :: &
+      integrationOrder, &                                                                           !< order of quadrature rule required
+      itmax
+    logical :: &
+      BBarStabilisation
+    real(pReal) :: &
+      eps_struct_atol, &                                                                            !< absolute tolerance for mechanical equilibrium
+      eps_struct_rtol                                                                               !< relative tolerance for mechanical equilibrium
+  end type tNumerics   
+
+  type(tNumerics), private :: num 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES                           :: mech_snes
@@ -97,20 +109,21 @@ subroutine FEM_mech_init(fieldBC)
 
   class(tNode), pointer :: &
     num_mesh
-  integer :: &
-    integrationOrder, &                                                                     !< order of quadrature rule required
-    itmax
    
   write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'; flush(6)
 
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
   num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+  num%integrationOrder  = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+  num%itmax             = num_mesh%get_asInt('itmax',defaultVal=250)
+  num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
+  num%eps_struct_atol   = num_mesh%get_asFloat('eps_struct_atol', defaultVal = 1.0e-10_pReal)
+  num%eps_struct_rtol   = num_mesh%get_asFloat('eps_struct_rtol', defaultVal = 1.0e-4_pReal)
   
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  itmax = num_mesh%get_asInt('itmax',defaultVal=250)
-  if (itmax <= 1) call IO_error(301,ext_msg='itmax')
+  if (num%itmax <= 1)                       call IO_error(301,ext_msg='itmax')
+  if (num%eps_struct_rtol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_struct_rtol')
+  if (num%eps_struct_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_struct_atol')
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -119,9 +132,9 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
-  qPoints  = FEM_quadrature_points( dimPlex,integrationOrder)%p
-  qWeights = FEM_quadrature_weights(dimPlex,integrationOrder)%p
-  nQuadrature = FEM_nQuadrature(    dimPlex,integrationOrder)
+  qPoints  = FEM_quadrature_points( dimPlex,num%integrationOrder)%p
+  qWeights = FEM_quadrature_weights(dimPlex,num%integrationOrder)%p
+  nQuadrature = FEM_nQuadrature(    dimPlex,num%integrationOrder)
   qPointsP  => qPoints
   qWeightsP => qWeights
   call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
@@ -130,7 +143,7 @@ subroutine FEM_mech_init(fieldBC)
   call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
   CHKERRQ(ierr)
   call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
-                            integrationOrder,mechFE,ierr); CHKERRQ(ierr)
+                            num%integrationOrder,mechFE,ierr); CHKERRQ(ierr)
   call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
   call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
   nBasis = nBasis/nc
@@ -221,7 +234,7 @@ subroutine FEM_mech_init(fieldBC)
   call SNESSetMaxLinearSolveFailures(mech_snes, huge(1), ierr); CHKERRQ(ierr)                       !< ignore linear solve failures
   call SNESSetConvergenceTest(mech_snes,FEM_mech_converged,PETSC_NULL_VEC,PETSC_NULL_FUNCTION,ierr)
   CHKERRQ(ierr)
-  call SNESSetTolerances(mech_snes,1.0,0.0,0.0,itmax,itmax,ierr)
+  call SNESSetTolerances(mech_snes,1.0,0.0,0.0,num%itmax,num%itmax,ierr)
   CHKERRQ(ierr)
   call SNESSetFromOptions(mech_snes,ierr); CHKERRQ(ierr)
 
@@ -281,21 +294,9 @@ type(tSolutionState) function FEM_mech_solution( &
   character(len=*), intent(in) :: &
     incInfoIn
 
-!--------------------------------------------------------------------------------------------------
-  integer :: &
-    itmax
-  class(tNode), pointer :: &
-    num_mesh
 
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
-
-!--------------------------------------------------------------------------------------------------
-! read numerical parameter and do sanity check  
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  itmax = num_mesh%get_asInt('itmax',defaultVal=250)
-  if (itmax <= 1) call IO_error(301,ext_msg='itmax')
-!-------------------------------------------------------------------------------------------------
 
   incInfo = incInfoIn
   FEM_mech_solution%converged =.false.
@@ -311,7 +312,7 @@ type(tSolutionState) function FEM_mech_solution( &
 
   if (reason < 1) then                                                                              ! 0: still iterating (will not occur), negative -> convergence error
     FEM_mech_solution%converged = .false.
-    FEM_mech_solution%iterationsNeeded = itmax
+    FEM_mech_solution%iterationsNeeded = num%itmax
   else                                                                                              ! >= 1 proper convergence (or terminally ill)
     FEM_mech_solution%converged = .true.
     call SNESGetIterationNumber(mech_snes,FEM_mech_solution%iterationsNeeded,ierr)
@@ -349,12 +350,6 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   PetscInt                           :: bcSize
   IS                                 :: bcPoints
 
-  class(tNode), pointer :: &
-    num_mesh
-  logical :: BBarStabilisation
-
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
 
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
@@ -409,7 +404,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
       materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
         reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     enddo
-    if (BBarStabilisation) then
+    if (num%BBarStabilisation) then
       detFAvg = math_det33(sum(materialpoint_F(1:3,1:3,1:nQuadrature,cell+1),dim=3)/real(nQuadrature))
       do qPt = 1, nQuadrature
         materialpoint_F(1:dimPlex,1:dimPlex,qPt,cell+1) = &
@@ -498,12 +493,6 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
 
   IS                                   :: bcPoints
 
-  class(tNode), pointer :: &
-    num_mesh
-  logical :: BBarStabilisation
-
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
 
   allocate(pV0(dimPlex))
   allocate(pcellJ(dimPlex**2))
@@ -560,7 +549,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
       MatA = matmul(reshape(reshape(materialpoint_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1)
-      if (BBarStabilisation) then
+      if (num%BBarStabilisation) then
         F(1:dimPlex,1:dimPlex) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex])
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0/real(dimPlex))
@@ -577,7 +566,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
         K_eA = K_eA + matmul(transpose(BMat),MatA)
       endif
     enddo
-    if (BBarStabilisation) then
+    if (num%BBarStabilisation) then
       FInv = math_inv33(FAvg)
       K_e = K_eA*math_det33(FAvg/real(nQuadrature))**(1.0/real(dimPlex)) + &
             (matmul(matmul(transpose(BMatAvg), &
@@ -687,7 +676,7 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
 
 !--------------------------------------------------------------------------------------------------
 ! report
-  divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*1.0e-4_pReal,1.0e-10_pReal)
+  divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*num%eps_struct_rtol,num%eps_struct_atol)
   call SNESConvergedDefault(snes_local,PETScIter,xnorm,snorm,fnorm/divTol,reason,dummy,ierr)
   CHKERRQ(ierr)
   if (terminallyIll) reason = SNES_DIVERGED_FUNCTION_DOMAIN

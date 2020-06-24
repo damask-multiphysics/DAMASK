@@ -105,14 +105,14 @@ subroutine FEM_utilities_init
   class(tNode), pointer :: &
     num_mesh
   integer :: structOrder                                                                            !< order of displacement shape functions
-  character(len=pStringLen) :: &
+  character(len=:), allocatable :: &
     petsc_options
   PetscErrorCode            :: ierr
 
   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
  
   num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  structOrder = num_mesh%get_asInt('structOrder',defaultVal = 2)
+  structOrder   = num_mesh%get_asInt   ('structOrder',   defaultVal = 2)
   petsc_options = num_mesh%get_asString('petsc_options', defaultVal='')
 
 !--------------------------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ subroutine FEM_utilities_init
                                &-mech_pc_type ml -mech_mg_levels_ksp_type chebyshev &
                                &-mech_mg_levels_pc_type sor -mech_pc_ml_nullspace user',ierr)
   CHKERRQ(ierr)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,ierr)
   CHKERRQ(ierr)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),ierr)
