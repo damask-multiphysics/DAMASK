@@ -25,7 +25,7 @@ class Table:
         """
         self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
-        self.shapes = { k:(v,) if isinstance(v,(np.integer,int)) else v for k,v in shapes.items() }
+        self.shapes = { k:(v,) if isinstance(v,(np.int,int)) else v for k,v in shapes.items() }
         self._label_condensed()
 
 
@@ -126,8 +126,6 @@ class Table:
             Filename or file for reading.
 
         """
-        shapes = {'eu':(3,), 'pos':(2,),
-                  'IQ':(1,), 'CI':(1,), 'ID':(1,), 'intensity':(1,), 'fit':(1,)}
         try:
             f = open(fname)
         except TypeError:
@@ -144,8 +142,11 @@ class Table:
                 break
 
         data = np.loadtxt(content)
-        for c in range(data.shape[1]-10):
-            shapes[f'n/a_{c+1}'] = (1,)
+
+        shapes = {'eu':3, 'pos':2, 'IQ':1, 'CI':1, 'ID':1, 'intensity':1, 'fit':1}
+        remainder = data.shape[1]-sum(shapes.values())
+        if remainder > 0:                                                       # 3.8 can do: if (remainder := data.shape[1]-sum(shapes.values())) > 0
+            shapes['unknown'] = remainder
 
         return Table(data,shapes,comments)
 
@@ -234,7 +235,6 @@ class Table:
 
         """
         self.data.drop(columns=label,inplace=True)
-
         del self.shapes[label]
 
 
