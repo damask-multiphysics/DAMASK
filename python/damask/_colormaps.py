@@ -1,4 +1,5 @@
 import numpy as np
+from . import util
 
 class Color:
     """Color representation in and conversion between different color-spaces."""
@@ -525,8 +526,8 @@ class Colormap:
             colormap = [ f'1 1 {name}'
                        + f' 9 {name}'
                        +  ' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
-                       +  '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
-                       +  ' '.join([' 0 {} 255 1'.format(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
+                       + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(colors)}'
+                       +  ' '.join([f' 0 {util.srepr((255*np.array(c)).astype(int)," ")} 255 1' for c in reversed(colors)])]
 
         elif format == 'raw':
             colormap = ['\t'.join(map(str,color)) for color in colors]

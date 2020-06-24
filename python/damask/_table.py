@@ -136,7 +136,7 @@ class Table:
 
         content = f.readlines()
 
-        comments = [f'table.py:from_ang v {version}']
+        comments = [f'table.py:from_ang v{version}']
         for line in content:
             if line.startswith('#'):
                 comments.append(line.strip())

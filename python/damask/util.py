@@ -236,7 +236,7 @@ class _ProgressBar:
             delta_time = datetime.datetime.now() - self.start_time
             remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
             remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)           # remove μs
-            sys.stderr.write('\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
+            sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
             sys.stderr.flush()
 
         self.last_fraction = fraction

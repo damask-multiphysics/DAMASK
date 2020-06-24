@@ -257,11 +257,11 @@ class Geom:
 
     def get_header(self):
         """Return the full header (grid, size, origin, homogenization, comments)."""
-        header =  ['{} header'.format(len(self.comments)+4)] + self.comments
+        header =  [f'{len(self.comments)+4} header'] + self.comments
         header.append('grid   a {} b {} c {}'.format(*self.get_grid()))
         header.append('size   x {} y {} z {}'.format(*self.get_size()))
         header.append('origin x {} y {} z {}'.format(*self.get_origin()))
-        header.append('homogenization {}'.format(self.get_homogenization()))
+        header.append(f'homogenization {self.get_homogenization()}')
         return header
 
 
@@ -374,7 +374,6 @@ class Geom:
         else:
             microstructure = microstructure.reshape(grid)
 
-        #comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
         return Geom(microstructure+1,size,homogenization=1)
 
 
@@ -399,7 +398,6 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
-        #comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
         return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
 
 
@@ -524,7 +522,6 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
-        #self.add_comments('geom.py:mirror v{}'.format(version)
         return self.update(ms,rescale=True)
 
 
@@ -538,7 +535,6 @@ class Geom:
             number of grid points in x,y,z direction.
 
         """
-        #self.add_comments('geom.py:scale v{}'.format(version)
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
@@ -565,7 +561,6 @@ class Geom:
             unique, inverse = np.unique(arr, return_inverse=True)
             return unique[np.argmax(np.bincount(inverse))]
 
-        #self.add_comments('geom.py:clean v{}'.format(version)
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
@@ -580,7 +575,6 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
-        #self.add_comments('geom.py:renumber v{}'.format(version)
         return self.update(renumbered)
 
 
@@ -615,7 +609,6 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        #self.add_comments('geom.py:rotate v{}'.format(version)
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -647,7 +640,6 @@ class Geom:
 
         canvas[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = self.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
 
-        #self.add_comments('geom.py:canvas v{}'.format(version)
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -667,5 +659,4 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
-        #self.add_comments('geom.py:substitute v{}'.format(version)
         return self.update(substituted)

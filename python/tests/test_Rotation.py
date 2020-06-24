@@ -556,7 +556,7 @@ def mul(me, other):
         else:
             raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
     else:
-        raise TypeError('Cannot rotate {}'.format(type(other)))
+        raise TypeError(f'Cannot rotate {type(other)}')
 
 
 class TestRotation:
@@ -878,7 +878,7 @@ class TestRotation:
     def test_invalid_P(self,fr,to):
         R = Rotation.from_random(np.random.randint(8,32,(3)))                                       # noqa
         with pytest.raises(ValueError):
-            fr(eval('R.{}()'.format(to)),P=-30)
+            fr(eval(f'R.{to}()'),P=-30)
 
     @pytest.mark.parametrize('shape',[None,(3,),(4,2)])
     def test_broadcast(self,shape):
