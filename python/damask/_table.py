@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 
 from . import version
+from . import util
 
 class Table:
     """Store spreadsheet-like data."""
@@ -24,7 +25,7 @@ class Table:
         """
         self.comments = [] if comments is None else [c for c in comments]
         self.data = pd.DataFrame(data=data)
-        self.shapes = shapes
+        self.shapes = { k:(v,) if isinstance(v,(np.integer,int)) else v for k,v in shapes.items() }
         self._label_condensed()
 
 
@@ -33,7 +34,7 @@ class Table:
         labels = []
         for label,shape in self.shapes.items():
             size = int(np.prod(shape))
-            labels += ['{}{}'.format('' if size == 1 else '{}_'.format(i+1),label) for i in range(size)]
+            labels += [('' if size == 1 else f'{i+1}_')+label for i in range(size)]
         self.data.columns = labels
 
 
@@ -47,8 +48,7 @@ class Table:
 
     def _add_comment(self,label,shape,info):
         if info is not None:
-            c = '{}{}: {}'.format(label,' '+str(shape) if np.prod(shape,dtype=int) > 1 else '',info)
-            self.comments.append(c)
+            self.comments.append(f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}')
 
 
     @staticmethod
@@ -136,7 +136,7 @@ class Table:
 
         content = f.readlines()
 
-        comments = ['table.py:from_ang v {}'.format(version)]
+        comments = [f'table.py:from_ang v {version}']
         for line in content:
             if line.startswith('#'):
                 comments.append(line.strip())
@@ -145,7 +145,7 @@ class Table:
 
         data = np.loadtxt(content)
         for c in range(data.shape[1]-10):
-            shapes['n/a_{}'.format(c+1)] = (1,)
+            shapes[f'n/a_{c+1}'] = (1,)
 
         return Table(data,shapes,comments)
 
@@ -251,8 +251,7 @@ class Table:
 
         """
         self.data.rename(columns={label_old:label_new},inplace=True)
-        c = '{} => {}{}'.format(label_old,label_new,'' if info is None else ': {}'.format(info))
-        self.comments.append(c)
+        self.comments.append(f'{label_old} => {label_new}'+('' if info is None else f': {info}'))
         self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
 
 
@@ -271,7 +270,7 @@ class Table:
         self._label_flat()
         self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
         self._label_condensed()
-        self.comments.append('sorted by [{}]'.format(', '.join(labels)))
+        self.comments.append(f'sorted by [{", ".join(labels)}]')
 
 
     def append(self,other):
@@ -328,18 +327,18 @@ class Table:
         labels = []
         for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
             if self.shapes[l] == (1,):
-                labels.append('{}'.format(l))
+                labels.append(f'{l}')
             elif len(self.shapes[l]) == 1:
-                labels += ['{}_{}'.format(i+1,l) \
+                labels += [f'{i+1}_{l}' \
                           for i in range(self.shapes[l][0])]
             else:
-                labels += ['{}:{}_{}'.format('x'.join([str(d) for d in self.shapes[l]]),i+1,l) \
+                labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
                           for i in range(np.prod(self.shapes[l]))]
 
         if new_style:
-            header = ['# {}'.format(comment) for comment in self.comments]
+            header = [f'# {comment}' for comment in self.comments]
         else:
-            header = ['{} header'.format(len(self.comments)+1)] \
+            header = [f'{len(self.comments)+1} header'] \
                    + self.comments \
 
         try:
