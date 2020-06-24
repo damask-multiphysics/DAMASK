@@ -166,10 +166,13 @@ def scale_to_coprime(v):
         """Least common multiple."""
         return a * b // np.gcd(a, b)
 
-    denominators = [int(get_square_denominator(i)) for i in v]
-    s = reduce(lcm, denominators) ** 0.5
-    m = (np.array(v)*s).astype(np.int)
-    return m//reduce(np.gcd,m)
+    m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
+    m = m//reduce(np.gcd,m)
+
+    if not np.allclose(v/m,v[0]/m[0]):
+        raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
+
+    return m
 
 
 ####################################################################################################
