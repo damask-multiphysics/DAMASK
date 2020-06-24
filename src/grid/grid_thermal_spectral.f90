@@ -26,6 +26,16 @@ module grid_thermal_spectral
 ! derived types
   type(tSolutionParams), private :: params
 
+  type, private :: tNumerics
+    real(pReal) :: &
+      eps_thermal_atol, &                                                                            !< absolute tolerance for thermal equilibrium
+      eps_thermal_rtol                                                                               !< relative tolerance for thermal equilibrium
+    character(len=:), allocatable :: &
+      petsc_options
+  end type tNumerics
+
+  type(tNumerics), private :: num
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES,     private :: thermal_snes
@@ -64,8 +74,6 @@ subroutine grid_thermal_spectral_init
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
     num_grid
-  character(len=pStringLen) :: &
-    petsc_options
 
   write(6,'(/,a)') ' <<<+-  grid_thermal_spectral init  -+>>>'
 
@@ -75,13 +83,15 @@ subroutine grid_thermal_spectral_init
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameter
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
-
+  num%petsc_options    = num_grid%get_asString('petsc_options',defaultVal='')
+  num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
+  num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
+ 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type ngmres',ierr)
  CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
  CHKERRQ(ierr)
  
 !--------------------------------------------------------------------------------------------------
@@ -182,7 +192,7 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   T_stagInc = T_current
-  solution%stagConverged = stagNorm < max(1.0e-2_pReal, 1.0e-6_pReal*solnNorm)
+  solution%stagConverged = stagNorm < max(num%eps_thermal_atol, num%eps_thermal_rtol*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating thermal state 
