@@ -43,12 +43,12 @@ class Geom:
     def __repr__(self):
         """Basic information on geometry definition."""
         return util.srepr([
-               'grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid  ()))),
-               'size     x y z:      {}'.format(' x '.join(map(str,self.get_size  ()))),
-               'origin   x y z:      {}'.format('   '.join(map(str,self.get_origin()))),
-               'homogenization:      {}'.format(self.get_homogenization()),
-               '# microstructures:   {}'.format(len(np.unique(self.microstructure))),
-               'max microstructure:  {}'.format(np.nanmax(self.microstructure)),
+               f'grid     a b c:      {util.srepr(self.get_grid  ()," x ")}',
+               f'size     x y z:      {util.srepr(self.get_size  ()," x ")}',
+               f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}',
+               f'homogenization:      {self.get_homogenization()}',
+               f'# microstructures:   {self.N_microstructure}',
+               f'max microstructure:  {np.nanmax(self.microstructure)}',
               ])
 
 
@@ -71,7 +71,7 @@ class Geom:
         grid_old    = self.get_grid()
         size_old    = self.get_size()
         origin_old  = self.get_origin()
-        unique_old  = len(np.unique(self.microstructure))
+        unique_old  = self.N_microstructure
         max_old     = np.nanmax(self.microstructure)
 
         if size is not None and rescale:
@@ -85,32 +85,32 @@ class Geom:
         elif rescale:
             self.set_size(self.get_grid()/grid_old*self.size)
 
-        message = ['grid     a b c:      {}'.format(' x '.join(map(str,grid_old)))]
+        message = [f'grid     a b c:      {util.srepr(grid_old," x ")}']
         if np.any(grid_old != self.get_grid()):
             message[-1] = util.delete(message[-1])
-            message.append(util.emph('grid     a b c:      {}'.format(' x '.join(map(str,self.get_grid())))))
+            message.append(util.emph(f'grid     a b c:      {util.srepr(self.get_grid()," x ")}'))
 
-        message.append('size     x y z:      {}'.format(' x '.join(map(str,size_old))))
+        message.append(f'size     x y z:      {util.srepr(size_old," x ")}')
         if np.any(size_old != self.get_size()):
             message[-1] = util.delete(message[-1])
-            message.append(util.emph('size     x y z:      {}'.format(' x '.join(map(str,self.get_size())))))
+            message.append(util.emph(f'size     x y z:      {util.srepr(self.get_size()," x ")}'))
 
-        message.append('origin   x y z:      {}'.format('   '.join(map(str,origin_old))))
+        message.append(f'origin   x y z:      {util.srepr(origin_old,"   ")}')
         if np.any(origin_old != self.get_origin()):
             message[-1] = util.delete(message[-1])
-            message.append(util.emph('origin   x y z:      {}'.format('   '.join(map(str,self.get_origin())))))
+            message.append(util.emph(f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}'))
 
-        message.append('homogenization:      {}'.format(self.get_homogenization()))
+        message.append(f'homogenization:      {self.get_homogenization()}')
 
-        message.append('# microstructures:   {}'.format(unique_old))
-        if unique_old != len(np.unique(self.microstructure)):
+        message.append(f'# microstructures:   {unique_old}')
+        if unique_old != self.N_microstructure:
             message[-1] = util.delete(message[-1])
-            message.append(util.emph('# microstructures:   {}'.format(len(np.unique(self.microstructure)))))
+            message.append(util.emph(f'# microstructures:   {self.N_microstructure}'))
 
-        message.append('max microstructure:  {}'.format(max_old))
+        message.append(f'max microstructure:  {max_old}')
         if max_old != np.nanmax(self.microstructure):
             message[-1] = util.delete(message[-1])
-            message.append(util.emph('max microstructure:  {}'.format(np.nanmax(self.microstructure))))
+            message.append(util.emph(f'max microstructure:  {np.nanmax(self.microstructure)}'))
 
         return util.return_message(message)
 
@@ -154,9 +154,9 @@ class Geom:
         """
         if microstructure is not None:
             if len(microstructure.shape) != 3:
-                raise ValueError('Invalid microstructure shape {}'.format(microstructure.shape))
+                raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
             elif microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
-                raise TypeError('Invalid data type {} for microstructure'.format(microstructure.dtype))
+                raise TypeError(f'Invalid microstructue data type {microstructure.dtype}')
             else:
                 self.microstructure = np.copy(microstructure)
 
@@ -175,8 +175,8 @@ class Geom:
             grid = np.asarray(self.microstructure.shape)
             self.size = grid/np.max(grid)
         else:
-            if len(size) != 3 or any(np.array(size)<=0):
-                raise ValueError('Invalid size {}'.format(size))
+            if len(size) != 3 or any(np.array(size) <= 0):
+                raise ValueError(f'Invalid size {size}')
             else:
                 self.size = np.array(size)
 
@@ -193,7 +193,7 @@ class Geom:
         """
         if origin is not None:
             if len(origin) != 3:
-                raise ValueError('Invalid origin {}'.format(origin))
+                raise ValueError(f'Invalid origin {origin}')
             else:
                 self.origin = np.array(origin)
 
@@ -210,7 +210,7 @@ class Geom:
         """
         if homogenization is not None:
             if not isinstance(homogenization,int) or homogenization < 1:
-                raise TypeError('Invalid homogenization {}'.format(homogenization))
+                raise TypeError(f'Invalid homogenization {homogenization}')
             else:
                 self.homogenization = homogenization
 
@@ -222,7 +222,7 @@ class Geom:
 
     @property
     def N_microstructure(self):
-        return len(np.unique(self.microstructure))
+        return np.unique(self.microstructure).size
 
 
     def get_microstructure(self):
@@ -230,7 +230,7 @@ class Geom:
         return np.copy(self.microstructure)
 
 
-    def get_size(self):
+    def get_size(self,):
         """Return the physical size in meter."""
         return np.copy(self.size)
 
@@ -320,7 +320,7 @@ class Geom:
             i += len(items)
 
         if i != grid.prod():
-            raise TypeError('Invalid file: expected {} entries, found {}'.format(grid.prod(),i))
+            raise TypeError(f'Invalid file: expected {grid.prod()} entries, found {i}')
 
         if not np.any(np.mod(microstructure,1) != 0.0):                                             # no float present
             microstructure = microstructure.astype('int')
@@ -331,6 +331,7 @@ class Geom:
     @staticmethod
     def _find_closest_seed(seeds, weights, point):
         return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
+
     @staticmethod
     def from_Laguerre_tessellation(grid,size,seeds,weights,periodic=True):
         """
@@ -418,7 +419,7 @@ class Geom:
         grid   = self.get_grid()
 
         if pack is None:
-            plain = grid.prod()/np.unique(self.microstructure).size < 250
+            plain = grid.prod()/self.N_microstructure < 250
         else:
             plain = not pack
 
@@ -448,11 +449,11 @@ class Geom:
                     if   compressType is None:
                         f.write('\n'.join(self.get_header())+'\n')
                     elif compressType == '.':
-                        f.write('{}\n'.format(former))
+                        f.write(f'{former}\n')
                     elif compressType == 'to':
-                        f.write('{} to {}\n'.format(start,former))
+                        f.write(f'{start} to {former}\n')
                     elif compressType == 'of':
-                        f.write('{} of {}\n'.format(reps,former))
+                        f.write(f'{reps} of {former}\n')
 
                     compressType = '.'
                     start = current
@@ -461,11 +462,11 @@ class Geom:
                 former = current
 
             if compressType == '.':
-                f.write('{}\n'.format(former))
+                f.write(f'{former}\n')
             elif compressType == 'to':
-                f.write('{} to {}\n'.format(start,former))
+                f.write(f'{start} to {former}\n')
             elif compressType == 'of':
-                f.write('{} of {}\n'.format(reps,former))
+                f.write(f'{reps} of {former}\n')
 
 
     def to_vtk(self,fname=None):
@@ -511,7 +512,7 @@ class Geom:
         if not all(isinstance(d, str) for d in directions):
             raise TypeError('Directions are not of type str.')
         elif not set(directions).issubset(valid):
-            raise ValueError('Invalid direction specified {}'.format(set(directions).difference(valid)))
+            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
         limits = [None,None] if reflect else [-2,0]
         ms = self.get_microstructure()
