@@ -5,7 +5,6 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM
   use prec
-  use numerics
   use debug
   use FEsolving
   use math
@@ -45,6 +44,13 @@ module CPFEM
     CPFEM_BACKUPJACOBIAN  = 2_pInt**2_pInt, &
     CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt
 
+  type, private :: tNumerics
+    integer :: &
+      iJacoStiffness                                                                                  !< frequency of stiffness update
+  end type tNumerics
+
+  type(tNumerics), private ::  num
+  
   public :: &
     CPFEM_general, &
     CPFEM_initAll, &
@@ -86,12 +92,22 @@ end subroutine CPFEM_initAll
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
 
+  class(tNode), pointer :: &
+    num_commercialFEM
+
   write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
   flush(6)
 
   allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+
+!------------------------------------------------------------------------------
+! read numerical parameters and do sanity check 
+  num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
+  num%iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
+  if (num%iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
+!------------------------------------------------------------------------------
 
   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
     write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
@@ -125,21 +141,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
                                                       H
 
   integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
-                                                      i, j, k, l, m, n, ph, homog, mySource, &
-                                                      iJacoStiffness                                !< frequency of stiffness update
+                                                      i, j, k, l, m, n, ph, homog, mySource
   logical                                             updateJaco                                    ! flag indicating if Jacobian has to be updated
 
   real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress if terminallyIll
                                                      ODD_JACOBIAN  = 1e50_pReal                     !< return value for jacobian if terminallyIll
 
-  class(tNode), pointer :: &
-    num_commercialFEM
-
-!------------------------------------------------------------------------------
-! read numerical parameters and do sanity check 
-  num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
-  iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
-  if (iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
 
   elCP = mesh_FEM2DAMASK_elem(elFE)
 
@@ -179,7 +186,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
 
     else validCalculation
-      updateJaco = mod(cycleCounter,iJacoStiffness) == 0
+      updateJaco = mod(cycleCounter,num%iJacoStiffness) == 0
       FEsolving_execElem = elCP
       FEsolving_execIP   = ip
       if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &

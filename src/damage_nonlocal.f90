@@ -24,8 +24,15 @@ module damage_nonlocal
       output
   end type tParameters
 
+  type, private :: tNumerics
+    real(pReal) :: &
+    charLength                                                                                      !< characteristic length scale for gradient problems
+  end type tNumerics
+    
   type(tparameters),             dimension(:), allocatable :: &
     param
+  type(tNumerics), private :: &
+    num
 
   public :: &
     damage_nonlocal_init, &
@@ -44,8 +51,16 @@ contains
 subroutine damage_nonlocal_init
 
   integer :: Ninstance,NofMyHomog,h
-
+  class(tNode), pointer :: &
+    num_generic
+  
   write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
+
+!------------------------------------------------------------------------------------
+! read numerics parameter
+  num_generic => numerics_root%get('generic',defaultVal= emptyDict)
+  num%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
+!------------------------------------------------------------------------------------
 
   Ninstance = count(damage_type == DAMAGE_nonlocal_ID)
   allocate(param(Ninstance))
@@ -139,13 +154,6 @@ function damage_nonlocal_getDiffusion(ip,el)
   integer :: &
     homog, &
     grain
-  real(pReal) :: &
-    charLength                                                                                      !< characteristic length scale for gradient problems
-  class(tNode), pointer :: &
-    num_generic
-  
-  num_generic => numerics_root%get('generic',defaultVal= emptyDict)
-  charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
   homog  = material_homogenizationAt(el)
   damage_nonlocal_getDiffusion = 0.0_pReal
@@ -155,7 +163,7 @@ function damage_nonlocal_getDiffusion(ip,el)
   enddo
 
   damage_nonlocal_getDiffusion = &
-    charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Ngrains(homog),pReal)
+    num%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Ngrains(homog),pReal)
 
 end function damage_nonlocal_getDiffusion
 

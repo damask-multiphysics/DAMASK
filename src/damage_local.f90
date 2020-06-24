@@ -23,8 +23,15 @@ module damage_local
       output
   end type tParameters
 
+  type, private :: tNumerics
+    real(pReal) :: &
+      residualStiffness                                                                             !< non-zero residual damage
+  end type tNumerics
+
   type(tparameters),             dimension(:),   allocatable :: &
     param
+
+  type(tNumerics), private :: num  
 
   public :: &
     damage_local_init, &
@@ -40,8 +47,16 @@ contains
 subroutine damage_local_init
 
   integer :: Ninstance,NofMyHomog,h
+  class(tNode), pointer :: num_generic
 
   write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'; flush(6)
+
+!----------------------------------------------------------------------------------------------
+! read numerics parameter and do sanity check
+  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
+  if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
+!----------------------------------------------------------------------------------------------
 
   Ninstance = count(damage_type == DAMAGE_local_ID)
   allocate(param(Ninstance))
@@ -85,20 +100,14 @@ function damage_local_updateState(subdt, ip, el)
     homog, &
     offset
   real(pReal) :: &
-    phi, phiDot, dPhiDot_dPhi, &
-    residualStiffness                                                                               !< non-zero residual damage
-  class(tNode), pointer :: &
-    num_generic
+    phi, phiDot, dPhiDot_dPhi
 
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
-  if (residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
-  
+ 
   homog  = material_homogenizationAt(el)
   offset = material_homogenizationMemberAt(ip,el)
   phi = damageState(homog)%subState0(1,offset)
   call damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
-  phi = max(residualStiffness,min(1.0_pReal,phi + subdt*phiDot))
+  phi = max(num%residualStiffness,min(1.0_pReal,phi + subdt*phiDot))
 
   damage_local_updateState = [     abs(phi - damageState(homog)%state(1,offset)) &
                                 <= 1.0e-2_pReal &
