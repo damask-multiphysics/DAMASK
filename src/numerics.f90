@@ -19,7 +19,7 @@ module numerics
   implicit none
   private
   
-  class(tNode), pointer, public :: &
+  class(tNode), pointer, protected, public :: &
     numerics_root
   integer, protected, public    :: &
     worldrank                  =  0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)

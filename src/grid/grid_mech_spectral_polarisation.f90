@@ -46,8 +46,8 @@ module grid_mech_spectral_polarisation
       eps_stress_atol, &                                                                            !< absolute tolerance for fullfillment of stress BC
       eps_stress_rtol                                                                               !< relative tolerance for fullfillment of stress BC
     real(pReal) :: &
-      polarAlpha, &                                                                                 !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
-      polarBeta                                                                                     !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
+      alpha, &                                                                                 !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
+      beta                                                                                     !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
   end type tNumerics
 
   type(tNumerics), private :: num                                                                   ! numerics parameters. Better name?
@@ -143,8 +143,8 @@ subroutine grid_mech_spectral_polarisation_init
   num%eps_stress_rtol    = num_grid%get_asFloat ('eps_stress_rtol', defaultVal=0.01_pReal)
   num%itmin              = num_grid%get_asInt   ('itmin',           defaultVal=1)
   num%itmax              = num_grid%get_asInt   ('itmax',           defaultVal=250)
-  num%polarAlpha         = num_grid%get_asFloat ('polaralpha',      defaultVal=1.0_pReal)
-  num%polarBeta          = num_grid%get_asFloat ('polarbeta',       defaultVal=1.0_pReal)
+  num%alpha              = num_grid%get_asFloat ('alpha',           defaultVal=1.0_pReal)
+  num%beta               = num_grid%get_asFloat ('beta',            defaultVal=1.0_pReal)
 
   if (num%eps_div_atol <= 0.0_pReal)                                call IO_error(301,ext_msg='eps_div_atol')
   if (num%eps_div_rtol < 0.0_pReal)                                 call IO_error(301,ext_msg='eps_div_rtol')
@@ -154,8 +154,8 @@ subroutine grid_mech_spectral_polarisation_init
   if (num%eps_stress_rtol < 0.0_pReal)                              call IO_error(301,ext_msg='eps_stress_rtol')
   if (num%itmax <= 1)                                               call IO_error(301,ext_msg='itmax')
   if (num%itmin > num%itmax .or. num%itmin < 1)                     call IO_error(301,ext_msg='itmin')
-  if (num%polarAlpha <= 0.0_pReal .or. num%polarAlpha >  2.0_pReal) call IO_error(301,ext_msg='polarAlpha')
-  if (num%polarBeta < 0.0_pReal .or. num%polarBeta > 2.0_pReal)     call IO_error(301,ext_msg='polarBeta')
+  if (num%alpha <= 0.0_pReal .or. num%alpha >  2.0_pReal)           call IO_error(301,ext_msg='alpha')
+  if (num%beta < 0.0_pReal .or. num%beta > 2.0_pReal)               call IO_error(301,ext_msg='beta')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
@@ -568,26 +568,26 @@ subroutine formResidual(in, FandF_tau, &
   tensorField_real = 0.0_pReal
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
     tensorField_real(1:3,1:3,i,j,k) = &
-      num%polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
-      num%polarAlpha*matmul(F(1:3,1:3,i,j,k), &
+      num%beta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
+      num%alpha*matmul(F(1:3,1:3,i,j,k), &
                          math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
   enddo; enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space
   call utilities_FFTtensorForward
-  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(num%polarBeta*F_aim,active=.true.))
+  call utilities_fourierGammaConvolution(params%rotation_BC%rotate(num%beta*F_aim,active=.true.))
   call utilities_FFTtensorBackward
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  residual_F_tau = num%polarBeta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
+  residual_F_tau = num%beta*F - tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
   call utilities_constitutiveResponse(residual_F, &                                                 ! "residuum" gets field of first PK stress (to save memory)
                                       P_av,C_volAvg,C_minMaxAvg, &
-                                      F - residual_F_tau/num%polarBeta,params%timeinc,params%rotation_BC)
+                                      F - residual_F_tau/num%beta,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
