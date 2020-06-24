@@ -34,10 +34,9 @@ end subroutine YAML_init
 !> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
 !> @details  A node type pointer can either point to a dictionary, list or scalar type entities.
 !--------------------------------------------------------------------------------------------------
-recursive function parse_flow(flow_string,defaultVal) result(node)
+recursive function parse_flow(flow_string) result(node)
 
   character(len=*), intent(inout)             :: flow_string
-  class(tDict), intent(in), optional, target  :: defaultVal
   class (tNode), pointer                      :: node
  
   class (tNode),    pointer       :: myVal
@@ -48,8 +47,8 @@ recursive function parse_flow(flow_string,defaultVal) result(node)
                                      d                                                              !> position of key: value separator (':')
   
   flow_string = trim(adjustl(flow_string(:)))
-  if (len_trim(flow_string) == 0 .and. present(defaultVal)) then
-    node => defaultVal
+  if (len_trim(flow_string) == 0) then
+    node => emptyDict
     return
   elseif (flow_string(1:1) == '{') then                                                             ! start of a dictionary
     e = 1

@@ -70,7 +70,7 @@ subroutine numerics_init
     flush(6)
     numerics_input =  IO_read('numerics.yaml')
     numerics_inFlow = to_flow(numerics_input)
-    numerics_root =>  parse_flow(numerics_inFlow,defaultVal=emptyDict)
+    numerics_root =>  parse_flow(numerics_inFlow)
   endif
 
 !--------------------------------------------------------------------------------------------------
