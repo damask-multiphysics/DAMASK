@@ -1,11 +1,11 @@
 import os
+from pathlib import Path
 import tkinter
 
 class Environment:
 
     def __init__(self):
         """Read and provide values of DAMASK configuration."""
-        self.options = self._get_options()
         try:
             tk = tkinter.Tk()
             self.screen_width  = tk.winfo_screenwidth()
@@ -15,17 +15,8 @@ class Environment:
             self.screen_width  = 1024
             self.screen_height =  768
 
-    def relPath(self,relative = '.'):
-        """Return absolute path from path relative to DAMASK root."""
-        return os.path.join(self.rootDir(),relative)
-
-
-    def rootDir(self):
-        """Return DAMASK root path."""
-        return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
-
-
-    def _get_options(self):
+    @property
+    def options(self):
         options = {}
         for item in ['DAMASK_NUM_THREADS',
                      'MSC_ROOT',
@@ -34,3 +25,13 @@ class Environment:
             options[item] = os.environ[item] if item in os.environ else None
 
         return options
+
+    @property
+    def root_dir(self):
+        """Return DAMASK root path."""
+        return Path(__file__).parents[2]
+
+
+    # for compatibility
+    def rootDir(self):
+        return str(self.root_dir)
