@@ -18,6 +18,7 @@ class TestUtil:
 
     @pytest.mark.parametrize('input,output',
                             [
+                            ([2,0],[1,0]),
                             ([0.5,0.5],[1,1]),
                             ([1./2.,1./3.],[3,2]),
                             ([2./3.,1./2.,1./3.],[4,3,2]),
@@ -29,4 +30,4 @@ class TestUtil:
 
     def test_lackofprecision(self):
         with pytest.raises(ValueError):
-            util.scale_to_coprime(np.array([0.66,0.5,0.33]))
+            util.scale_to_coprime(np.array([1/3333,1,1]))
