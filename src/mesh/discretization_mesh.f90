@@ -19,6 +19,7 @@ module discretization_mesh
   use numerics
   use FEsolving
   use FEM_quadrature
+  use YAML_types
   use prec
 
   implicit none
