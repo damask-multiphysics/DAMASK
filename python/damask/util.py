@@ -156,7 +156,7 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
 
 def scale_to_coprime(v):
     """Scale vector to co-prime (relatively prime) integers."""
-    MAX_DENOMINATOR = 1000
+    MAX_DENOMINATOR = 1000000
 
     def get_square_denominator(x):
         """Denominator of the square of a number."""
