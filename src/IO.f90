@@ -130,7 +130,10 @@ function IO_read(fileName) result(fileContent)
        status='old', position='rewind', action='read',iostat=myStat)
   if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
   allocate(character(len=fileLength)::fileContent)
-  if(fileLength==0) return
+  if(fileLength==0) then
+    close(fileUnit)
+    return
+  endif
 
   read(fileUnit,iostat=myStat) fileContent
   if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
