@@ -125,7 +125,7 @@ def execute(cmd,
     stdout = stdout.decode('utf-8').replace('\x08','')
     stderr = stderr.decode('utf-8').replace('\x08','')
     if process.returncode != 0:
-        raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
+        raise RuntimeError(f'{cmd} failed with returncode {process.returncode}')
     return stdout, stderr
 
 
@@ -156,7 +156,7 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
 
 def scale_to_coprime(v):
     """Scale vector to co-prime (relatively prime) integers."""
-    MAX_DENOMINATOR = 1000
+    MAX_DENOMINATOR = 1000000
 
     def get_square_denominator(x):
         """Denominator of the square of a number."""
@@ -166,10 +166,13 @@ def scale_to_coprime(v):
         """Least common multiple."""
         return a * b // np.gcd(a, b)
 
-    denominators = [int(get_square_denominator(i)) for i in v]
-    s = reduce(lcm, denominators) ** 0.5
-    m = (np.array(v)*s).astype(np.int)
-    return m//reduce(np.gcd,m)
+    m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
+    m = m//reduce(np.gcd,m)
+
+    if not np.allclose(v[v.nonzero()]/m[v.nonzero()],v[v.nonzero()][0]/m[m.nonzero()][0]):
+        raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
+
+    return m
 
 
 ####################################################################################################
@@ -223,21 +226,20 @@ class _ProgressBar:
         self.start_time = datetime.datetime.now()
         self.last_fraction = 0.0
 
-        sys.stderr.write('{} {}   0% ETA n/a'.format(self.prefix, '░'*self.bar_length))
+        sys.stderr.write(f"{self.prefix} {'░'*self.bar_length}   0% ETA n/a")
         sys.stderr.flush()
 
     def update(self,iteration):
 
         fraction = (iteration+1) / self.total
+        filled_length = int(self.bar_length * fraction)
 
-        if int(self.bar_length * fraction) > int(self.bar_length *  self.last_fraction):
+        if filled_length > int(self.bar_length * self.last_fraction):
+            bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
             delta_time = datetime.datetime.now() - self.start_time
             remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
             remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)           # remove μs
-
-            filled_length = int(self.bar_length * fraction)
-            bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
-            sys.stderr.write('\r{} {} {:>4.0%} ETA {}'.format(self.prefix, bar, fraction, remaining_time))
+            sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
             sys.stderr.flush()
 
         self.last_fraction = fraction
@@ -249,7 +251,7 @@ class _ProgressBar:
 
 class bcolors:
     """
-    ASCII Colors.
+    ASCII colors.
 
     https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
     https://stackoverflow.com/questions/287871

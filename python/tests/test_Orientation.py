@@ -49,7 +49,7 @@ class TestOrientation:
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['fcc','bcc'])
     def test_relationship_reference(self,update,reference_dir,model,lattice):
-        reference = os.path.join(reference_dir,'{}_{}.txt'.format(lattice,model))
+        reference = os.path.join(reference_dir,f'{lattice}_{model}.txt')
         ori = Orientation(Rotation(),lattice)
         eu = np.array([o.rotation.as_Eulers(degrees=True) for o in ori.relatedOrientations(model)])
         if update:
