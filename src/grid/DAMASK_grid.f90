@@ -321,7 +321,6 @@ program DAMASK_grid
     loadCases = [loadCases,newLoadCase]                                                             ! load case is ok, append it
   enddo
 
-
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call spectral_Utilities_init

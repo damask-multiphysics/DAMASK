@@ -49,7 +49,7 @@ subroutine discretization_init(homogenizationAt,microstructureAt,&
     IPcoords0, &
     NodeCoords0
   integer, optional,           intent(in) :: &
-    sharedNodesBegin
+    sharedNodesBegin                                                                                !< index of first node shared among different processes (MPI)
 
   write(6,'(/,a)') ' <<<+-  discretization init  -+>>>'; flush(6)
 
