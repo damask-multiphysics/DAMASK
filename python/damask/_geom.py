@@ -230,7 +230,7 @@ class Geom:
         return np.copy(self.microstructure)
 
 
-    def get_size(self,):
+    def get_size(self):
         """Return the physical size in meter."""
         return np.copy(self.size)
 
@@ -374,6 +374,7 @@ class Geom:
         else:
             microstructure = microstructure.reshape(grid)
 
+        #ToDo: comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
         return Geom(microstructure+1,size,homogenization=1)
 
 
@@ -398,6 +399,7 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
+        #ToDo: comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
         return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
 
 
@@ -522,6 +524,7 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
+        #ToDo: self.add_comments('geom.py:mirror v{}'.format(version)
         return self.update(ms,rescale=True)
 
 
@@ -535,6 +538,7 @@ class Geom:
             number of grid points in x,y,z direction.
 
         """
+        #ToDo: self.add_comments('geom.py:scale v{}'.format(version)
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
@@ -561,6 +565,7 @@ class Geom:
             unique, inverse = np.unique(arr, return_inverse=True)
             return unique[np.argmax(np.bincount(inverse))]
 
+        #ToDo: self.add_comments('geom.py:clean v{}'.format(version)
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
@@ -575,6 +580,7 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
+        #ToDo: self.add_comments('geom.py:renumber v{}'.format(version)
         return self.update(renumbered)
 
 
@@ -609,6 +615,7 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
+        #ToDo: self.add_comments('geom.py:rotate v{}'.format(version)
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -640,6 +647,7 @@ class Geom:
 
         canvas[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = self.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
 
+        #ToDo: self.add_comments('geom.py:canvas v{}'.format(version)
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -659,4 +667,5 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
+        #ToDo: self.add_comments('geom.py:substitute v{}'.format(version)
         return self.update(substituted)

@@ -178,7 +178,7 @@ class VTK:
         default_ext = writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
         if ext and ext != '.'+default_ext:
-            raise ValueError(f'Given extension {ext} does not match default {default_ext}')
+            raise ValueError(f'Given extension {ext} does not match default .{default_ext}')
         writer.SetFileName(str(Path(fname).with_suffix('.'+default_ext)))
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
