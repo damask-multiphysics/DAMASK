@@ -27,7 +27,7 @@ __all__=[
 ####################################################################################################
 def srepr(arg,glue = '\n'):
     r"""
-    Join arguments as individual lines.
+    Join arguments with glue string.
 
     Parameters
     ----------
