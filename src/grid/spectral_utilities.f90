@@ -195,7 +195,7 @@ subroutine spectral_utilities_init
   class (tNode) , pointer :: &
     num_grid, &
     num_generic, &
-    debug_grid
+    debug_grid                                                                                      ! pointer to grid  debug options
 
   write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
 

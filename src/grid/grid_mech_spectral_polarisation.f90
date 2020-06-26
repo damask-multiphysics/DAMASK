@@ -535,7 +535,7 @@ subroutine formResidual(in, FandF_tau, &
   class(tNode), pointer :: &
     num_grid, &
     num_generic, &
-    debug_grid
+    debug_grid                                                                                      !  pointer to grid  debug options
   real(pReal) :: &
     polarAlpha, &                                                                                   !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
     polarBeta                                                                                       !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme

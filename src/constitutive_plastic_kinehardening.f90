@@ -61,7 +61,7 @@ contains
 module subroutine plastic_kinehardening_init(debug_constitutive)
 
   class(tNode), pointer, intent(in) :: &
-   debug_constitutive
+   debug_constitutive                                                                               !< pointer to constitutive debug options
 
   integer :: &
     Ninstance, &
@@ -324,7 +324,7 @@ module subroutine plastic_kinehardening_deltaState(Mp,instance,of,debug_constitu
     instance, &
     of
   class(tNode), pointer ,       intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   real(pReal), dimension(param(instance)%sum_N_sl) :: &
     gdot_pos,gdot_neg, &

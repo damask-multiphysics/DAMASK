@@ -217,7 +217,7 @@ subroutine material_init(restart)
    CounterPhase, &
    CounterHomogenization
   class(tNode), pointer :: &
-    debug_material
+    debug_material                                                                                  ! pointer to material debug options
 
   write(6,'(/,a)') ' <<<+-  material init  -+>>>'; flush(6)
 

@@ -48,7 +48,7 @@ contains
 subroutine kinematics_slipplane_opening_init(debug_constitutive)
   
   class(tNode), pointer , intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: Ninstance,p,i
   character(len=pStringLen) :: extmsg = ''

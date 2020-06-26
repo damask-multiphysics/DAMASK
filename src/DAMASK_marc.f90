@@ -255,7 +255,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     outdatedByNewInc  = .false., &                                                                  !< needs description
     CPFEM_init_done   = .false.                                                                     !< remember whether init has been done already
   class(tNode), pointer :: &
-    debug_Marc
+    debug_Marc                                                                                      ! pointer to Marc debug options
 
   defaultNumThreadsInt = omp_get_num_threads()                                                      ! remember number of threads set by Marc
   call omp_set_num_threads(1)                                                                       ! no openMP

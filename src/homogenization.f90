@@ -56,18 +56,18 @@ module homogenization
 
     module subroutine mech_none_init(debug_homogenization)
       class(tNode), pointer, intent(in) :: &
-        debug_homogenization
+        debug_homogenization                                                                        !< pointer to debug options for homogenization
     end subroutine mech_none_init
 
     module subroutine mech_isostrain_init(debug_homogenization)
       class(tNode), pointer, intent(in) :: &
-        debug_homogenization
+        debug_homogenization                                                                        !< pointer to debug options for homogenization
     end subroutine mech_isostrain_init
 
     module subroutine mech_RGC_init(num_homogMech, debug_homogenization)
       class(tNode), pointer, intent(in) :: &
         num_homogMech, &
-        debug_homogenization
+        debug_homogenization                                                                        !< pointer to debug options for homogenization
     end subroutine mech_RGC_init
 
 
@@ -84,7 +84,7 @@ module homogenization
         instance, &
         of
       class(tNode), pointer, intent(in) :: &
-        debug_homogenization     
+        debug_homogenization                                                                        !< pointer to debug options for homogenization 
     end subroutine mech_RGC_partitionDeformation
 
 
@@ -112,14 +112,14 @@ module homogenization
         P,&                                                                                         !< partitioned stresses
         F,&                                                                                         !< partitioned deformation gradients
         F0                                                                                          !< partitioned initial deformation gradients
-      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                          !< partitioned stiffnesses
-      real(pReal), dimension(3,3),       intent(in) :: avgF                                          !< average F
-      real(pReal),                       intent(in) :: dt                                            !< time increment
+      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
+      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
+      real(pReal),                       intent(in) :: dt                                           !< time increment
       integer,                           intent(in) :: &
-        ip, &                                                                                         !< integration point number
-        el                                                                                            !< element number
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
       class(tNode), pointer, intent(in) :: &
-        debug_homogenization
+        debug_homogenization                                                                        !< pointer to debug options for homogenization
     end function mech_RGC_updateState
 
 
@@ -152,8 +152,8 @@ subroutine homogenization_init
     debug_g, &
     debug_e
  
-  num_homog => numerics_root%get('homogenization',defaultVal=emptyDict)
-  num_homogMech => num_homog%get('mech',defaultVal=emptyDict)
+  num_homog        => numerics_root%get('homogenization',defaultVal=emptyDict)
+  num_homogMech    => num_homog%get('mech',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 
   debug_homogenization => debug_root%get('homogenization',defaultVal=emptyList)

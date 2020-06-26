@@ -79,8 +79,7 @@ module subroutine mech_RGC_init(num_homogMech,debug_homogenization)
 
   class(tNode), pointer, intent(in) :: &
     num_homogMech, &
-    debug_homogenization
-
+    debug_homogenization                                                                            !< pointer to debug options for homogenization
   integer :: &
     Ninstance, &
     h, &
@@ -214,8 +213,7 @@ module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of,debug_homogen
     instance, &
     of
   class(tNode), pointer, intent(in) :: &
-    debug_homogenization
-
+    debug_homogenization                                                                            !< pointer to debug options for homogenization
   real(pReal), dimension(3) :: aVect,nVect
   integer,     dimension(4) :: intFace
   integer,     dimension(3) :: iGrain3
@@ -668,7 +666,7 @@ module procedure mech_RGC_updateState
     real(pReal),   dimension (:,:,:), intent(in)  :: fDef                                           !< deformation gradients
     real(pReal),   dimension (3,3),   intent(in)  :: avgF                                           !< initial effective stretch tensor
     integer,                          intent(in)  :: ip,el,instance,of
-    class(tNode), pointer,            intent(in)  :: debug_homogenization
+    class(tNode), pointer,            intent(in)  :: debug_homogenization                           !< pointer to debug options for homogenization
 
     integer, dimension (4)   :: intFace
     integer, dimension (3)   :: iGrain3,iGNghb3,nGDim
@@ -783,7 +781,7 @@ module procedure mech_RGC_updateState
       Ngrain, &
       instance, &
       of
-    class(tNode), pointer,          intent(in) :: debug_homogenization
+    class(tNode), pointer,          intent(in) :: debug_homogenization                              !< pointer to debug options for homogenization
 
     real(pReal), dimension(size(vPen,3)) :: gVol
     integer :: i

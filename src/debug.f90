@@ -14,8 +14,8 @@ module debug
   implicit none
   private
 
-  class(tNode), pointer, public :: &
-    debug_root
+  class(tNode), pointer, protected, public :: &
+    debug_root                                                                                      !< root pointer storing the debug YAML structure
 
   public :: debug_init
 

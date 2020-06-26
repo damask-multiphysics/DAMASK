@@ -52,7 +52,7 @@ contains
 module subroutine plastic_isotropic_init(debug_constitutive)
 
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: &
     Ninstance, &
@@ -173,7 +173,7 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of,de
     instance, &
     of
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
  
   real(pReal), dimension(3,3) :: &
     Mp_dev                                                                                          !< deviatoric part of the Mandel stress
@@ -236,7 +236,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of,de
     instance, &
     of
   class(tNode), pointer,       intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
  
   real(pReal) :: &
     tr                                                                                              !< trace of spherical part of Mandel stress (= 3 x pressure)

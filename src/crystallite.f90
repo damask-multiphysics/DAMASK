@@ -131,7 +131,7 @@ subroutine crystallite_init
   
   class(tNode) , pointer :: &
     num_crystallite, &
-    debug_crystallite
+    debug_crystallite                                                                               ! pointer to debug options for crystallite
 
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
 

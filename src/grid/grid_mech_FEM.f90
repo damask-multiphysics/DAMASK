@@ -506,7 +506,7 @@ subroutine formResidual(da_local,x_local, &
     itmax
   class(tNode), pointer :: &
     num_generic, &
-    debug_grid
+    debug_grid                                                                                      ! pointer to grid  debug options
 
 !---------------------------------------------------------------------
 ! debug pointer to grid

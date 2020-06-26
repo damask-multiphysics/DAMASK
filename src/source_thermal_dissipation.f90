@@ -41,7 +41,7 @@ contains
 subroutine source_thermal_dissipation_init(debug_constitutive)
 
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
 

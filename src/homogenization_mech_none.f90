@@ -14,7 +14,7 @@ contains
 module subroutine mech_none_init(debug_homogenization)
   
   class(tNode), pointer, intent(in) :: &
-    debug_homogenization
+    debug_homogenization                                                                            !< pointer to debug options for homogenization
 
   integer :: &
     Ninstance, &

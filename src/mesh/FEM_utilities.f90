@@ -105,7 +105,7 @@ subroutine FEM_utilities_init
   class(tNode), pointer :: &
     num_mesh, &
     num_generic, &
-    debug_mesh
+    debug_mesh                                                                                      ! pointer to mesh debug options
   integer :: structOrder                                                                            !< order of displacement shape functions
   character(len=pStringLen) :: &
     petsc_options, &

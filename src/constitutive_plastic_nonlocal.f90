@@ -166,7 +166,7 @@ contains
 module subroutine plastic_nonlocal_init(debug_constitutive)
 
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: &
     Ninstance, &
@@ -536,7 +536,7 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el,de
     ip, &
     el
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: &
     no, &                                                                                           !< neighbor offset
@@ -854,7 +854,7 @@ module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el,debug_constit
     ip, &
     el
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: &
     ph, &                                                                                           !< phase
@@ -973,7 +973,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer ::  &
     ph, &
@@ -1177,7 +1177,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el,debug_constitutive)
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
  
   integer ::  &
     ph, &

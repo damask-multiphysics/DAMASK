@@ -37,37 +37,37 @@ module constitutive
 
     module subroutine plastic_none_init(debug_constitutive)
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_none_init
 
     module subroutine plastic_isotropic_init(debug_constitutive)
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_isotropic_init
     
     module subroutine plastic_phenopowerlaw_init(debug_constitutive)
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive   
+        debug_constitutive                                                                          !< pointer to constitutive debug options 
     end subroutine plastic_phenopowerlaw_init
 
     module subroutine plastic_kinehardening_init(debug_constitutive)
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_kinehardening_init
 
     module subroutine plastic_dislotwin_init(debug_constitutive)
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_dislotwin_init
 
     module subroutine plastic_disloUCLA_init(debug_constitutive)
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_disloUCLA_init
 
     module subroutine plastic_nonlocal_init(debug_constitutive)
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_nonlocal_init
 
 
@@ -84,7 +84,7 @@ module constitutive
         instance, &
         of
       class(tNode), pointer ,          intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_isotropic_LpAndItsTangent
 
     pure module subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
@@ -175,7 +175,7 @@ module constitutive
         instance, &
         of
       class(tNode), pointer ,          intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_isotropic_LiAndItsTangent
 
 
@@ -239,7 +239,7 @@ module constitutive
         ip, &                                                                                       !< current integration point
         el                                                                                          !< current element number
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_nonlocal_dotState
 
 
@@ -268,7 +268,7 @@ module constitutive
         ip, &
         el
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_nonlocal_dependentState
 
 
@@ -279,7 +279,7 @@ module constitutive
         instance, &
         of
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_kinehardening_deltaState
 
     module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el,debug_constitutive)
@@ -291,7 +291,7 @@ module constitutive
         ip, &
         el
       class(tNode), pointer , intent(in) :: &
-        debug_constitutive
+        debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_nonlocal_deltaState
 
 

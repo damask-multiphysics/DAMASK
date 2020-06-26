@@ -48,7 +48,7 @@ contains
 subroutine source_damage_isoBrittle_init(debug_constitutive)
 
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''

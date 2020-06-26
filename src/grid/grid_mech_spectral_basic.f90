@@ -475,7 +475,7 @@ subroutine formResidual(in, F, &
     itmax
   class(tNode), pointer :: &
     num_generic, &
-    debug_grid
+    debug_grid                                                                                      ! pointer to constitutive debug options
 
 !---------------------------------------------------------------------
 ! debug pointer to grid

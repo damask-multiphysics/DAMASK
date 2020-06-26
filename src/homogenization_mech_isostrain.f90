@@ -29,7 +29,7 @@ contains
 module subroutine mech_isostrain_init(debug_homogenization)
 
   class(tNode), pointer, intent(in) :: &
-    debug_homogenization
+    debug_homogenization                                                                            !< pointer to debug options for homogenization
 
   integer :: &
     Ninstance, &

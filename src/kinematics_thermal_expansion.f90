@@ -41,7 +41,7 @@ contains
 subroutine kinematics_thermal_expansion_init(debug_constitutive)
 
   class(tNode), pointer, intent(in) :: & 
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: Ninstance,p,i
   real(pReal), dimension(:), allocatable :: temp

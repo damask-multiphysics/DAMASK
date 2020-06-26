@@ -46,7 +46,7 @@ contains
 subroutine kinematics_cleavage_opening_init(debug_constitutive)
 
   class(tNode), pointer, intent(in) :: &
-    debug_constitutive
+    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: Ninstance,p
   integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
