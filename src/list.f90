@@ -1,18 +1,18 @@
 !-------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief linked list
+!> @brief Linked list
 !--------------------------------------------------------------------------------------------------
 module list
   use prec
   use IO
- 
+
   implicit none
-  private 
+  private
    type, private :: tPartitionedString
     character(len=:),      allocatable :: val
     integer, dimension(:), allocatable :: pos
   end type tPartitionedString
-  
+
   type, public :: tPartitionedStringList
     type(tPartitionedString)               :: string
     type(tPartitionedStringList),  pointer :: next => null()
@@ -20,31 +20,31 @@ module list
       procedure :: add            => add
       procedure :: show           => show
       procedure :: free           => free
- 
+
  ! currently, a finalize is needed for all shapes of tPartitionedStringList.
  ! with Fortran 2015, we can define one recursive elemental function
  ! https://software.intel.com/en-us/forums/intel-visual-fortran-compiler-for-windows/topic/543326
       final     :: finalize, &
-                   finalizeArray 
- 
+                   finalizeArray
+
       procedure :: keyExists      => keyExists
       procedure :: countKeys      => countKeys
- 
+
       procedure :: getFloat       => getFloat
       procedure :: getInt         => getInt
       procedure :: getString      => getString
- 
+
       procedure :: getFloats      => getFloats
       procedure :: getInts        => getInts
       procedure :: getStrings     => getStrings
- 
+
   end type tPartitionedStringList
 
 contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief add element
-!> @details Adds a string together with the start/end position of chunks in this string. The new 
+!> @details Adds a string together with the start/end position of chunks in this string. The new
 !! element is added at the end of the list. Empty strings are not added. All strings are converted
 !! to lower case. The data is not stored in the new element but in the current.
 !--------------------------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ end function countKeys
 
 !--------------------------------------------------------------------------------------------------
 !> @brief gets float value of for a given key from a linked list
-!> @details gets the last value if the key occurs more than once. If key is not found exits with 
+!> @details gets the last value if the key occurs more than once. If key is not found exits with
 !! error unless default is given
 !--------------------------------------------------------------------------------------------------
 real(pReal) function getFloat(this,key,defaultVal)
@@ -187,11 +187,11 @@ real(pReal) function getFloat(this,key,defaultVal)
   real(pReal),                           intent(in), optional :: defaultVal
   type(tPartitionedStringList), pointer                       :: item
   logical                                                     :: found
-  
+
   getFloat = huge(1.0)                                                                              ! suppress warning about unitialized value
   found = present(defaultVal)
   if (found) getFloat = defaultVal
-  
+
   item => this
   do while (associated(item%next))
     if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
@@ -209,7 +209,7 @@ end function getFloat
 
 !--------------------------------------------------------------------------------------------------
 !> @brief gets integer value of for a given key from a linked list
-!> @details gets the last value if the key occurs more than once. If key is not found exits with 
+!> @details gets the last value if the key occurs more than once. If key is not found exits with
 !! error unless default is given
 !--------------------------------------------------------------------------------------------------
 integer function getInt(this,key,defaultVal)
@@ -223,7 +223,7 @@ integer function getInt(this,key,defaultVal)
   getInt = huge(1)                                                                                  ! suppress warning about unitialized value
   found = present(defaultVal)
   if (found) getInt = defaultVal
-  
+
   item => this
   do while (associated(item%next))
     if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
@@ -241,12 +241,12 @@ end function getInt
 
 !--------------------------------------------------------------------------------------------------
 !> @brief gets string value of for a given key from a linked list
-!> @details gets the last value if the key occurs more than once. If key is not found exits with 
-!! error unless default is given. If raw is true, the the complete string is returned, otherwise 
+!> @details gets the last value if the key occurs more than once. If key is not found exits with
+!! error unless default is given. If raw is true, the the complete string is returned, otherwise
 !! the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
 character(len=pStringLen) function getString(this,key,defaultVal,raw)
- 
+
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
   character(len=*),                      intent(in), optional :: defaultVal
@@ -259,19 +259,19 @@ character(len=pStringLen) function getString(this,key,defaultVal,raw)
   else
     whole = .false.
   endif
- 
+
   found = present(defaultVal)
   if (found) then
     if (len_trim(defaultVal) > len(getString)) call IO_error(0,ext_msg='getString')
     getString = trim(defaultVal)
   endif
- 
+
   item => this
   do while (associated(item%next))
     if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
       found = .true.
       if (item%string%pos(1) < 2) call IO_error(143,ext_msg=key)
- 
+
       if (whole) then
         getString = trim(item%string%val(item%string%pos(4):))                                      ! raw string starting a second chunk
       else
@@ -280,7 +280,7 @@ character(len=pStringLen) function getString(this,key,defaultVal,raw)
     endif
     item => item%next
   enddo
- 
+
   if (.not. found) call IO_error(140,ext_msg=key)
 
 end function getString
@@ -292,7 +292,7 @@ end function getString
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
 function getFloats(this,key,defaultVal,requiredSize)
- 
+
   real(pReal),     dimension(:), allocatable          :: getFloats
   class(tPartitionedStringList), target, intent(in)   :: this
   character(len=*),              intent(in)           :: key
@@ -302,12 +302,12 @@ function getFloats(this,key,defaultVal,requiredSize)
   integer                                       :: i
   logical                                             :: found, &
                                                          cumulative
- 
+
   cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
   found = .false.
- 
+
   allocate(getFloats(0))
- 
+
   item => this
   do while (associated(item%next))
     if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
@@ -320,7 +320,7 @@ function getFloats(this,key,defaultVal,requiredSize)
     endif
     item => item%next
   enddo
- 
+
   if (.not. found) then
     if (present(defaultVal)) then; getFloats = defaultVal; else; call IO_error(140,ext_msg=key); endif
   endif
@@ -337,7 +337,7 @@ end function getFloats
 !! values from the last occurrence. If key is not found exits with error unless default is given.
 !--------------------------------------------------------------------------------------------------
 function getInts(this,key,defaultVal,requiredSize)
- 
+
   integer, dimension(:), allocatable                          :: getInts
   class(tPartitionedStringList), target, intent(in)           :: this
   character(len=*),                      intent(in)           :: key
@@ -347,12 +347,12 @@ function getInts(this,key,defaultVal,requiredSize)
   integer                                                     :: i
   logical                                                     :: found, &
                                                                  cumulative
- 
+
   cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
   found = .false.
- 
+
   allocate(getInts(0))
- 
+
   item => this
   do while (associated(item%next))
     if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
@@ -365,7 +365,7 @@ function getInts(this,key,defaultVal,requiredSize)
     endif
     item => item%next
   enddo
- 
+
   if (.not. found) then
     if (present(defaultVal)) then; getInts = defaultVal; else; call IO_error(140,ext_msg=key); endif
   endif
@@ -383,7 +383,7 @@ end function getInts
 !! If raw is true, the the complete string is returned, otherwise the individual chunks are returned
 !--------------------------------------------------------------------------------------------------
 function getStrings(this,key,defaultVal,raw)
- 
+
   character(len=pStringLen),dimension(:), allocatable        :: getStrings
   class(tPartitionedStringList),target, intent(in)           :: this
   character(len=*),                     intent(in)           :: key
@@ -395,7 +395,7 @@ function getStrings(this,key,defaultVal,raw)
   logical                                                    :: found, &
                                                                 whole, &
                                                                 cumulative
- 
+
   cumulative = (key(1:1) == '(' .and. key(len_trim(key):len_trim(key)) == ')')
   if (present(raw)) then
     whole = raw
@@ -403,14 +403,14 @@ function getStrings(this,key,defaultVal,raw)
     whole = .false.
   endif
   found = .false.
- 
+
   item => this
   do while (associated(item%next))
     if (trim(IO_stringValue(item%string%val,item%string%pos,1)) == trim(key)) then
       found = .true.
       if (allocated(getStrings) .and. .not. cumulative) deallocate(getStrings)
       if (item%string%pos(1) < 2) call IO_error(143,ext_msg=key)
-      
+
       notAllocated: if (.not. allocated(getStrings)) then
         if (whole) then
           str = item%string%val(item%string%pos(4):)
@@ -437,7 +437,7 @@ function getStrings(this,key,defaultVal,raw)
     endif
     item => item%next
   enddo
- 
+
   if (.not. found) then
     if (present(defaultVal)) then
       if (len(defaultVal) > len(getStrings)) call IO_error(0,ext_msg='getStrings')

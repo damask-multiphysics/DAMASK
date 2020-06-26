@@ -73,7 +73,7 @@ end subroutine thermal_conduction_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns heat generation rate
+!> @brief return heat generation rate
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
 
@@ -132,7 +132,7 @@ end subroutine thermal_conduction_getSourceAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns homogenized thermal conductivity in reference configuration
+!> @brief return homogenized thermal conductivity in reference configuration
 !--------------------------------------------------------------------------------------------------
 function thermal_conduction_getConductivity(ip,el)
 

@@ -37,7 +37,7 @@ submodule(constitutive) plastic_nonlocal
   ! BEGIN DEPRECATED
   integer, dimension(:,:,:), allocatable :: &
     iRhoU, &                                                                                        !< state indices for unblocked density
-    iV, &                                                                                           !< state indices for dislcation velocities
+    iV, &                                                                                           !< state indices for dislocation velocities
     iD                                                                                              !< state indices for stable dipole height
   !END DEPRECATED
 
