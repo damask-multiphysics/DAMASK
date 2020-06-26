@@ -45,19 +45,19 @@ submodule(homogenization) homogenization_mech_RGC
 
   type :: tNumerics_RGC
     real(pReal) :: &
-     atol, &                                                                                        !< absolute tolerance of RGC residuum
-     rtol, &                                                                                        !< relative tolerance of RGC residuum
-     absMax, &                                                                                      !< absolute maximum of RGC residuum
-     relMax, &                                                                                      !< relative maximum of RGC residuum
-     pPert, &                                                                                       !< perturbation for computing RGC penalty tangent
-     xSmoo, &                                                                                       !< RGC penalty smoothing parameter (hyperbolic tangent)
-     viscPower, &                                                                                   !< power (sensitivity rate) of numerical viscosity in RGC scheme, Default 1.0e0: Newton viscosity (linear model)
-     viscModus, &                                                                                   !< stress modulus of RGC numerical viscosity, Default 0.0e0: No viscosity is applied
-     refRelaxRate, &                                                                                !< reference relaxation rate in RGC viscosity
-     maxdRelax, &                                                                                   !< threshold of maximum relaxation vector increment (if exceed this then cutback)
-     maxVolDiscr, &                                                                                 !< threshold of maximum volume discrepancy allowed
-     volDiscrMod, &                                                                                 !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
-     volDiscrPow                                                                                    !< powerlaw penalty for volume discrepancy
+      atol, &                                                                                       !< absolute tolerance of RGC residuum
+      rtol, &                                                                                       !< relative tolerance of RGC residuum
+      absMax, &                                                                                     !< absolute maximum of RGC residuum
+      relMax, &                                                                                     !< relative maximum of RGC residuum
+      pPert, &                                                                                      !< perturbation for computing RGC penalty tangent
+      xSmoo, &                                                                                      !< RGC penalty smoothing parameter (hyperbolic tangent)
+      viscPower, &                                                                                  !< power (sensitivity rate) of numerical viscosity in RGC scheme, Default 1.0e0: Newton viscosity (linear model)
+      viscModus, &                                                                                  !< stress modulus of RGC numerical viscosity, Default 0.0e0: No viscosity is applied
+      refRelaxRate, &                                                                               !< reference relaxation rate in RGC viscosity
+      maxdRelax, &                                                                                  !< threshold of maximum relaxation vector increment (if exceed this then cutback)
+      maxVolDiscr, &                                                                                !< threshold of maximum volume discrepancy allowed
+      volDiscrMod, &                                                                                !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
+      volDiscrPow                                                                                   !< powerlaw penalty for volume discrepancy
   end type tNumerics_RGC
 
   type(tparameters),          dimension(:), allocatable :: &
@@ -78,7 +78,7 @@ contains
 module subroutine mech_RGC_init(num_homogMech)
 
   class(tNode), pointer, intent(in) :: &
-    num_homogMech
+    num_homogMech                                                                                   !< pointer to mechanical homogenization numerics data
 
   integer :: &
     Ninstance, &
@@ -87,7 +87,7 @@ module subroutine mech_RGC_init(num_homogMech)
     sizeState, nIntFaceTot
   
   class (tNode), pointer :: &
-    num_RGC
+    num_RGC                                                                                         ! pointer to RGC numerics data
 
   write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'; flush(6)
 
@@ -108,19 +108,19 @@ module subroutine mech_RGC_init(num_homogMech)
  
   num_RGC => num_homogMech%get('RGC',defaultVal=emptyDict)
   
-  num%atol         =  num_RGC%get_asFloat('atol',             defaultVal=1.0e+4_pReal)
-  num%rtol         =  num_RGC%get_asFloat('rtol',             defaultVal=1.0e-3_pReal)
-  num%absMax       =  num_RGC%get_asFloat('amax',             defaultVal=1.0e+10_pReal)
-  num%relMax       =  num_RGC%get_asFloat('rmax',             defaultVal=1.0e+2_pReal)
-  num%pPert        =  num_RGC%get_asFloat('perturbpenalty',   defaultVal=1.0e-7_pReal)
-  num%xSmoo        =  num_RGC%get_asFloat('relvantmismatch',  defaultVal=1.0e-5_pReal)
-  num%viscPower    =  num_RGC%get_asFloat('viscositypower',   defaultVal=1.0e+0_pReal)
-  num%viscModus    =  num_RGC%get_asFloat('viscositymodulus', defaultVal=0.0e+0_pReal)
-  num%refRelaxRate =  num_RGC%get_asFloat('refrelaxationrate',defaultVal=1.0e-3_pReal)
-  num%maxdRelax    =  num_RGC%get_asFloat('maxrelaxationrate',defaultVal=1.0e+0_pReal)
-  num%maxVolDiscr  =  num_RGC%get_asFloat('maxvoldiscrepancy',defaultVal=1.0e-5_pReal)
-  num%volDiscrMod  =  num_RGC%get_asFloat('voldiscrepancymod',defaultVal=1.0e+12_pReal)
-  num%volDiscrPow  =  num_RGC%get_asFloat('dicrepancypower',  defaultVal=5.0_pReal)
+  num%atol         =  num_RGC%get_asFloat('atol',              defaultVal=1.0e+4_pReal)
+  num%rtol         =  num_RGC%get_asFloat('rtol',              defaultVal=1.0e-3_pReal)
+  num%absMax       =  num_RGC%get_asFloat('amax',              defaultVal=1.0e+10_pReal)
+  num%relMax       =  num_RGC%get_asFloat('rmax',              defaultVal=1.0e+2_pReal)
+  num%pPert        =  num_RGC%get_asFloat('perturbpenalty',    defaultVal=1.0e-7_pReal)
+  num%xSmoo        =  num_RGC%get_asFloat('relvantmismatch',   defaultVal=1.0e-5_pReal)
+  num%viscPower    =  num_RGC%get_asFloat('viscositypower',    defaultVal=1.0e+0_pReal)
+  num%viscModus    =  num_RGC%get_asFloat('viscositymodulus',  defaultVal=0.0e+0_pReal)
+  num%refRelaxRate =  num_RGC%get_asFloat('refrelaxationrate', defaultVal=1.0e-3_pReal)
+  num%maxdRelax    =  num_RGC%get_asFloat('maxrelaxationrate', defaultVal=1.0e+0_pReal)
+  num%maxVolDiscr  =  num_RGC%get_asFloat('maxvoldiscrepancy', defaultVal=1.0e-5_pReal)
+  num%volDiscrMod  =  num_RGC%get_asFloat('voldiscrepancymod', defaultVal=1.0e+12_pReal)
+  num%volDiscrPow  =  num_RGC%get_asFloat('dicrepancypower',   defaultVal=5.0_pReal)
 
 
   if (num%atol <= 0.0_pReal)         call IO_error(301,ext_msg='absTol_RGC')

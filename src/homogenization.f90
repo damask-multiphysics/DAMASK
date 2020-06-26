@@ -62,7 +62,7 @@ module homogenization
 
     module subroutine mech_RGC_init(num_homogMech)
       class(tNode), pointer, intent(in) :: &
-        num_homogMech
+        num_homogMech                                                                               !< pointer to mechanical homogenization numerics data
     end subroutine mech_RGC_init
 
 
@@ -139,8 +139,8 @@ subroutine homogenization_init
     num_homogMech, &
     num_homogGeneric
 
-  num_homog => numerics_root%get('homogenization',defaultVal=emptyDict)
-  num_homogMech => num_homog%get('mech',defaultVal=emptyDict)
+  num_homog        => numerics_root%get('homogenization',defaultVal=emptyDict)
+  num_homogMech    => num_homog%get('mech',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 
   if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
@@ -169,7 +169,7 @@ subroutine homogenization_init
   if (debug_g < 1 .or. debug_g > homogenization_Ngrains(material_homogenizationAt(debug_e))) &
     call IO_error(602,ext_msg='constituent', el=debug_e, g=debug_g)
 
-  num%nMPstate          = num_homogGeneric%get_asInt(  'nMPstate',     defaultVal=10)
+  num%nMPstate          = num_homogGeneric%get_asInt  ('nMPstate',     defaultVal=10)
   num%subStepMinHomog   = num_homogGeneric%get_asFloat('subStepMin',   defaultVal=1.0e-3_pReal)
   num%subStepSizeHomog  = num_homogGeneric%get_asFloat('subStepSize',  defaultVal=0.25_pReal)
   num%stepIncreaseHomog = num_homogGeneric%get_asFloat('stepIncrease', defaultVal=1.5_pReal)
