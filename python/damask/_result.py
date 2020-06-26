@@ -704,7 +704,6 @@ class Result:
             label,p = 'intermediate',1
         elif eigenvalue == 'min':
             label,p = 'minimum',0
-        print('p',eigenvalue)
         return {
                 'data': mechanics.eigenvectors(T_sym['data'])[:,p],
                 'label': f"v_{eigenvalue}({T_sym['label']})",
