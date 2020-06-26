@@ -1,3 +1,4 @@
+import multiprocessing as mp
 from pathlib import Path
 
 import pandas as pd
@@ -157,8 +158,11 @@ class VTK:
 
         return VTK(geom)
 
-
-    def write(self,fname):
+    @staticmethod
+    def _write(writer):
+        """Wrapper for parallel writing."""
+        writer.Write()
+    def write(self,fname,parallel=True):
         """
         Write to file.
 
@@ -166,6 +170,8 @@ class VTK:
         ----------
         fname : str
             Filename for writing.
+        parallel : boolean, optional
+            Write data in parallel background process. Defaults to True.
 
         """
         if   isinstance(self.geom,vtk.vtkRectilinearGrid):
@@ -183,8 +189,11 @@ class VTK:
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
         writer.SetInputData(self.geom)
-
-        writer.Write()
+        if parallel:
+            mp_writer = mp.Process(target=self._write,args=(writer,))
+            mp_writer.start()
+        else:
+            writer.Write()
 
 
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
@@ -195,14 +204,21 @@ class VTK:
         N_cells  = self.geom.GetNumberOfCells()
 
         if   isinstance(data,np.ndarray):
-            d = np_to_vtk(num_array=data.reshape(data.shape[0],-1),deep=True)
             if label is None:
                 raise ValueError('No label defined for numpy.ndarray')
+
+            if data.dtype in [np.float64, np.float128]:                                             # avoid large files
+                d = np_to_vtk(num_array=data.astype(np.float32).reshape(data.shape[0],-1),deep=True)
+            else:
+                d = np_to_vtk(num_array=data.reshape(data.shape[0],-1),deep=True)
             d.SetName(label)
+
             if   data.shape[0] == N_cells:
                 self.geom.GetCellData().AddArray(d)
             elif data.shape[0] == N_points:
                 self.geom.GetPointData().AddArray(d)
+            else:
+                raise ValueError(f'Invalid shape {data.shape[0]}')
         elif isinstance(data,pd.DataFrame):
             raise NotImplementedError('pd.DataFrame')
         elif isinstance(data,Table):

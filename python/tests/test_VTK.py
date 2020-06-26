@@ -1,4 +1,6 @@
 import os
+import filecmp
+import time
 
 import pytest
 import numpy as np
@@ -18,7 +20,7 @@ class TestVTK:
         origin = np.random.random(3)
         v = VTK.from_rectilinearGrid(grid,size,origin)
         string = v.__repr__()
-        v.write(os.path.join(tmp_path,'rectilinearGrid'))
+        v.write(os.path.join(tmp_path,'rectilinearGrid'),False)
         vtr = VTK.from_file(os.path.join(tmp_path,'rectilinearGrid.vtr'))
         with open(os.path.join(tmp_path,'rectilinearGrid.vtk'),'w') as f:
             f.write(string)
@@ -26,10 +28,10 @@ class TestVTK:
         assert(string == vtr.__repr__() == vtk.__repr__())
 
     def test_polyData(self,tmp_path):
-        points = np.random.rand(3,100)
+        points = np.random.rand(100,3)
         v = VTK.from_polyData(points)
         string = v.__repr__()
-        v.write(os.path.join(tmp_path,'polyData'))
+        v.write(os.path.join(tmp_path,'polyData'),False)
         vtp = VTK.from_file(os.path.join(tmp_path,'polyData.vtp'))
         with open(os.path.join(tmp_path,'polyData.vtk'),'w') as f:
             f.write(string)
@@ -48,14 +50,30 @@ class TestVTK:
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructuredGrid(nodes,connectivity,cell_type)
         string = v.__repr__()
-        v.write(os.path.join(tmp_path,'unstructuredGrid'))
+        v.write(os.path.join(tmp_path,'unstructuredGrid'),False)
         vtu = VTK.from_file(os.path.join(tmp_path,'unstructuredGrid.vtu'))
         with open(os.path.join(tmp_path,'unstructuredGrid.vtk'),'w') as f:
             f.write(string)
         vtk = VTK.from_file(os.path.join(tmp_path,'unstructuredGrid.vtk'),'unstructuredgrid')
         assert(string == vtu.__repr__() == vtk.__repr__())
 
-    @pytest.mark.parametrize('name,dataset_type',[('this_file_does_not_exist.vtk',None),
+
+    def test_parallel_out(self,tmp_path):
+        points = np.random.rand(102,3)
+        v = VTK.from_polyData(points)
+        fname_s = os.path.join(tmp_path,'single.vtp')
+        fname_p = os.path.join(tmp_path,'parallel.vtp')
+        v.write(fname_s,False)
+        v.write(fname_p,True)
+        for i in range(10):
+            if os.path.isfile(fname_p) and filecmp.cmp(fname_s,fname_p):
+                assert(True)
+                return
+            time.sleep(.5)
+        assert(False)
+
+
+    @pytest.mark.parametrize('name,dataset_type',[('this_file_does_not_exist.vtk', None),
                                                   ('this_file_does_not_exist.vtk','vtk'),
                                                   ('this_file_does_not_exist.vtx', None)])
     def test_invalid_dataset_type(self,dataset_type,name):
