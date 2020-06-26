@@ -6,6 +6,7 @@ import os
 import datetime
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
+from pathlib import Path
 from functools import partial
 
 import h5py
@@ -49,8 +50,7 @@ class Result:
                 self.version_minor = f.attrs['DADF5-minor']
 
             if self.version_major != 0 or not 2 <= self.version_minor <= 6:
-                raise TypeError('Unsupported DADF5 version {}.{} '.format(self.version_major,
-                                                                          self.version_minor))
+                raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
 
@@ -88,7 +88,7 @@ class Result:
                           'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
                          }
 
-        self.fname = os.path.abspath(fname)
+        self.fname = Path(fname).absolute()
 
         self._allow_modification = False
 
@@ -106,7 +106,7 @@ class Result:
         self.pick('increments',all_selected_increments)
 
         in_between = '' if len(all_selected_increments) < 3 else \
-                     ''.join(['\n{}\n  ...\n'.format(inc) for inc in all_selected_increments[1:-2]])
+                     ''.join([f'\n{inc}\n  ...\n' for inc in all_selected_increments[1:-2]])
 
         return util.srepr(first + in_between + last)
 
@@ -136,7 +136,7 @@ class Result:
 
         if   what == 'increments':
             choice = [c if isinstance(c,str) and c.startswith('inc') else
-                      'inc{}'.format(c) for c in choice]
+                      f'inc{c}' for c in choice]
         elif what == 'times':
             what = 'increments'
             if choice == ['*']:
@@ -267,7 +267,7 @@ class Result:
     def rename(self,name_old,name_new):
         """
         Rename datasets.
-        
+
         Parameters
         ----------
         name_old : str
@@ -411,21 +411,19 @@ class Result:
         message = ''
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
-                message += '\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
+                message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
                     for oo in self.iterate(o):
-                        message += '  {}\n'.format(oo)
+                        message += f'  {oo}\n'
                         for pp in self.iterate(p):
-                            message += '    {}\n'.format(pp)
+                            message += f'    {pp}\n'
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
+                                    unit  = f" / {dataset.attrs['Unit'].decode()}" if 'Unit' in dataset.attrs else ''
                                     description = dataset.attrs['Description'].decode()
-                                    if 'Unit' in dataset.attrs:
-                                        message += '      {} / ({}): {}\n'.format(d,dataset.attrs['Unit'].decode(),description)
-                                    else:
-                                        message += '      {}: {}\n'.format(d,description)
+                                    message += f'      {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
         return message
@@ -527,10 +525,10 @@ class Result:
     def _add_absolute(x):
         return {
                 'data':  np.abs(x['data']),
-                'label': '|{}|'.format(x['label']),
+                'label': f'|{x["label"]}|',
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
-                          'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
+                          'Description': f"Absolute value of {x['label']} ({x['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -551,14 +549,14 @@ class Result:
     def _add_calculation(**kwargs):
         formula = kwargs['formula']
         for d in re.findall(r'#(.*?)#',formula):
-            formula = formula.replace('#{}#'.format(d),"kwargs['{}']['data']".format(d))
+            formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
 
         return {
                 'data':  eval(formula),
                 'label': kwargs['label'],
                 'meta':  {
                           'Unit':        kwargs['unit'],
-                          'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
+                          'Description': f"{kwargs['description']} (formula: {kwargs['formula']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -595,8 +593,9 @@ class Result:
                 'label': 'sigma',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
-                          'Description': 'Cauchy stress calculated from {} ({}) and {} ({})'\
-                                         .format(P['label'],P['meta']['Description'],F['label'],F['meta']['Description']),
+                          'Description': "Cauchy stress calculated "
+                                         f"from {P['label']} ({P['meta']['Description']})"
+                                         f" and {F['label']} ({F['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
@@ -619,10 +618,10 @@ class Result:
     def _add_determinant(T):
         return {
                 'data':  np.linalg.det(T['data']),
-                'label': 'det({})'.format(T['label']),
+                'label': f"det({T['label']})",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
-                          'Description': 'Determinant of tensor {} ({})'.format(T['label'],T['meta']['Description']),
+                          'Description': f"Determinant of tensor {T['label']} ({T['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
@@ -643,10 +642,10 @@ class Result:
     def _add_deviator(T):
         return {
                 'data':  mechanics.deviatoric_part(T['data']),
-                'label': 's_{}'.format(T['label']),
+                'label': f"s_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
-                          'Description': 'Deviator of tensor {} ({})'.format(T['label'],T['meta']['Description']),
+                          'Description': f"Deviator of tensor {T['label']} ({T['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -674,10 +673,10 @@ class Result:
 
         return {
                 'data': mechanics.eigenvalues(T_sym['data'])[:,p],
-                'label': 'lambda_{}({})'.format(eigenvalue,T_sym['label']),
+                'label': f"lambda_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
-                          'Description': '{} eigenvalue of {} ({})'.format(label,T_sym['label'],T_sym['meta']['Description']),
+                          'Description': f"{label} eigenvalue of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                          }
                 }
@@ -707,14 +706,14 @@ class Result:
         print('p',eigenvalue)
         return {
                 'data': mechanics.eigenvectors(T_sym['data'])[:,p],
-                'label': 'v_{}({})'.format(eigenvalue,T_sym['label']),
+                'label': f"v_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':        '1',
-                          'Description': 'Eigenvector corresponding to {} eigenvalue of {} ({})'\
-                                         .format(label,T_sym['label'],T_sym['meta']['Description']),
+                          'Description': f"Eigenvector corresponding to {label} eigenvalue"
+                                         f" of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                          }
-                }
+               }
     def add_eigenvector(self,T_sym,eigenvalue='max'):
         """
         Add eigenvector of symmetric tensor.
@@ -773,10 +772,10 @@ class Result:
     def _add_maximum_shear(T_sym):
         return {
                 'data':  mechanics.maximum_shear(T_sym['data']),
-                'label': 'max_shear({})'.format(T_sym['label']),
+                'label': f"max_shear({T_sym['label']})",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': 'Maximum shear component of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
+                          'Description': f"Maximum shear component of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -799,11 +798,11 @@ class Result:
             'stress'
 
         return {
-                'data':  mechanics.Mises_strain(T_sym['data']) if t=='strain' else mechanics.Mises_stress(T_sym['data']),
-                'label': '{}_vM'.format(T_sym['label']),
+                'data':  (mechanics.Mises_strain if t=='strain' else mechanics.Mises_stress)(T_sym['data']),
+                'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': 'Mises equivalent {} of {} ({})'.format(t,T_sym['label'],T_sym['meta']['Description']),
+                          'Description': f"Mises equivalent {t} of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
@@ -836,10 +835,10 @@ class Result:
 
         return {
                 'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
-                'label': '|{}|_{}'.format(x['label'],o),
+                'label': f"|{x['label']}|_{o}",
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
-                          'Description': '{}-norm of {} {} ({})'.format(o,t,x['label'],x['meta']['Description']),
+                          'Description': f"{o}-norm of {t} {x['label']} ({x['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -865,19 +864,20 @@ class Result:
                 'label': 'S',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
-                          'Description': '2. Piola-Kirchhoff stress calculated from {} ({}) and {} ({})'\
-                                         .format(P['label'],P['meta']['Description'],F['label'],F['meta']['Description']),
+                          'Description': "2. Piola-Kirchhoff stress calculated "
+                                         f"from {P['label']} ({P['meta']['Description']})"
+                                         f" and {F['label']} ({F['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                 }
     def add_PK2(self,P='P',F='F'):
         """
-        Add second Piola-Kirchhoff calculated from first Piola-Kirchhoff stress and deformation gradient.
+        Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
         Parameters
         ----------
         P : str, optional
-            Label first  Piola-Kirchhoff stress dataset. Defaults to ‘P’.
+            Label of first Piola-Kirchhoff stress dataset. Defaults to ‘P’.
         F : str, optional
             Label of deformation gradient dataset. Defaults to ‘F’.
 
@@ -927,10 +927,10 @@ class Result:
     def _add_rotational_part(F):
         return {
                 'data':  mechanics.rotational_part(F['data']),
-                'label': 'R({})'.format(F['label']),
+                'label': f"R({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
-                          'Description': 'Rotational part of {} ({})'.format(F['label'],F['meta']['Description']),
+                          'Description': f"Rotational part of {F['label']} ({F['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -951,10 +951,10 @@ class Result:
     def _add_spherical(T):
         return {
                 'data':  mechanics.spherical_part(T['data']),
-                'label': 'p_{}'.format(T['label']),
+                'label': f"p_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
-                          'Description': 'Spherical component of tensor {} ({})'.format(T['label'],T['meta']['Description']),
+                          'Description': f"Spherical component of tensor {T['label']} ({T['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -975,10 +975,10 @@ class Result:
     def _add_strain_tensor(F,t,m):
         return {
                 'data':  mechanics.strain_tensor(F['data'],t,m),
-                'label': 'epsilon_{}^{}({})'.format(t,m,F['label']),
+                'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
-                          'Description': 'Strain tensor of {} ({})'.format(F['label'],F['meta']['Description']),
+                          'Description': f"Strain tensor of {F['label']} ({F['meta']['Description']})",
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
@@ -1005,11 +1005,11 @@ class Result:
     @staticmethod
     def _add_stretch_tensor(F,t):
         return {
-                'data':  mechanics.left_stretch(F['data']) if t == 'V' else mechanics.right_stretch(F['data']),
-                'label': '{}({})'.format(t,F['label']),
+                'data':  (mechanics.left_stretch if t.upper() == 'V' else mechanics.right_stretch)(F['data']),
+                'label': f"{t}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
-                          'Description': '{} stretch tensor of {} ({})'.format('Left' if t == 'V' else 'Right',
+                          'Description': '{} stretch tensor of {} ({})'.format('Left' if t.upper() == 'V' else 'Right',
                                                                                F['label'],F['meta']['Description']),
                           'Creator':     inspect.stack()[0][3][1:]
                           }
@@ -1045,7 +1045,7 @@ class Result:
             r = func(**datasets_in,**args)
             return [group,r]
         except Exception as err:
-            print('Error during calculation: {}.'.format(err))
+            print(f'Error during calculation: {err}.')
             return None
 
 
@@ -1056,14 +1056,17 @@ class Result:
         Parameters
         ----------
         func : function
-            Callback function that calculates a new dataset from one or more datasets per HDF5 group.
+            Callback function that calculates a new dataset from one or
+            more datasets per HDF5 group.
         datasets : dictionary
-            Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+            Details of the datasets to be used: label (in HDF5 file) and
+            arg (argument to which the data is parsed in func).
         args : dictionary, optional
             Arguments parsed to func.
 
         """
-        pool = multiprocessing.Pool(int(Environment().options['DAMASK_NUM_THREADS']))
+        num_threads = Environment().options['DAMASK_NUM_THREADS']
+        pool = multiprocessing.Pool(int(num_threads) if num_threads is not None else None)
         lock = multiprocessing.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
@@ -1087,11 +1090,11 @@ class Result:
 
                     for l,v in result[1]['meta'].items():
                         dataset.attrs[l]=v.encode()
-                    creator = 'damask.Result.{} v{}'.format(dataset.attrs['Creator'].decode(),version)
+                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{version}"
                     dataset.attrs['Creator'] = creator.encode()
 
                 except (OSError,RuntimeError) as err:
-                    print('Could not add dataset: {}.'.format(err))
+                    print(f'Could not add dataset: {err}.')
             lock.release()
 
         pool.close()
@@ -1124,7 +1127,7 @@ class Result:
         time_data = ET.SubElement(time, 'DataItem')
         time_data.attrib={'Format':     'XML',
                           'NumberType': 'Float',
-                          'Dimensions': '{}'.format(len(self.times))}
+                          'Dimensions': f'{len(self.times)}'}
         time_data.text = ' '.join(map(str,self.times))
 
         attributes = []
@@ -1165,7 +1168,7 @@ class Result:
                 data_items[-1].attrib={'Format':     'HDF',
                                        'Precision':  '8',
                                        'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
-                data_items[-1].text='{}:/{}/geometry/u_n'.format(os.path.split(self.fname)[1],inc)
+                data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
                     for oo in getattr(self,o):
@@ -1180,17 +1183,17 @@ class Result:
                                 if (shape not in [(1,), (3,), (3,3)]) or dtype != np.float64: continue
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                                attributes[-1].attrib={'Name':          '{}'.format(name.split('/',2)[2]),
+                                attributes[-1].attrib={'Name':          name.split('/',2)[2],
                                                        'Center':        'Cell',
                                                        'AttributeType': 'Tensor'}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                                 data_items[-1].attrib={'Format':     'HDF',
                                                        'NumberType': 'Float',
-                                                       'Precision':  '{}'.format(prec),
+                                                       'Precision':  f'{prec}',
                                                        'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
-                                data_items[-1].text='{}:{}'.format(os.path.split(self.fname)[1],name)
+                                data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
 
-        with open(os.path.splitext(self.fname)[0]+'.xdmf','w') as f:
+        with open(self.fname.with_suffix('.xdmf').name,'w') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
@@ -1266,7 +1269,4 @@ class Result:
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
-                                            inc[3:].zfill(N_digits))
-
-            v.write(file_out)
+            v.write(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')

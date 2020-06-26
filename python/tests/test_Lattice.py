@@ -38,4 +38,4 @@ class TestSymmetry:
     def test_invalid_argument(self,function):
         s = Symmetry()                                                                              # noqa
         with pytest.raises(ValueError):
-            eval('s.{}(np.ones(4))'.format(function))
+            eval(f's.{function}(np.ones(4))')

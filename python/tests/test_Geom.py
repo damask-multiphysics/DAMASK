@@ -6,6 +6,7 @@ import numpy as np
 
 from damask import Geom
 from damask import Rotation
+from damask import util
 
 
 def geom_equal(a,b):
@@ -85,8 +86,8 @@ class TestGeom:
     def test_mirror(self,default,update,reference_dir,directions,reflect):
         modified = copy.deepcopy(default)
         modified.mirror(directions,reflect)
-        tag = 'directions={}_reflect={}'.format('-'.join(directions),reflect)
-        reference = os.path.join(reference_dir,'mirror_{}.geom'.format(tag))
+        tag = f'directions={"-".join(directions)}_reflect={reflect}'
+        reference = os.path.join(reference_dir,f'mirror_{tag}.geom')
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
@@ -94,8 +95,8 @@ class TestGeom:
     def test_clean(self,default,update,reference_dir,stencil):
         modified = copy.deepcopy(default)
         modified.clean(stencil)
-        tag = 'stencil={}'.format(stencil)
-        reference = os.path.join(reference_dir,'clean_{}.geom'.format(tag))
+        tag = f'stencil={stencil}'
+        reference = os.path.join(reference_dir,f'clean_{tag}.geom')
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
@@ -111,8 +112,8 @@ class TestGeom:
     def test_scale(self,default,update,reference_dir,grid):
         modified = copy.deepcopy(default)
         modified.scale(grid)
-        tag = 'grid={}'.format('-'.join([str(x) for x in grid]))
-        reference = os.path.join(reference_dir,'scale_{}.geom'.format(tag))
+        tag = f'grid={util.srepr(grid,"-")}'
+        reference = os.path.join(reference_dir,f'scale_{tag}.geom')
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
@@ -150,8 +151,8 @@ class TestGeom:
     def test_rotate(self,default,update,reference_dir,Eulers):
         modified = copy.deepcopy(default)
         modified.rotate(Rotation.from_Eulers(Eulers,degrees=True))
-        tag = 'Eulers={}-{}-{}'.format(*Eulers)
-        reference = os.path.join(reference_dir,'rotate_{}.geom'.format(tag))
+        tag = f'Eulers={util.srepr(Eulers,"-")}'
+        reference = os.path.join(reference_dir,f'rotate_{tag}.geom')
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
