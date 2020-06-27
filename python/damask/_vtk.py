@@ -51,9 +51,11 @@ class VTK:
         """
         geom = vtk.vtkRectilinearGrid()
         geom.SetDimensions(*(grid+1))
-        geom.SetXCoordinates(np_to_vtk(np.linspace(origin[0],origin[0]+size[0],grid[0]+1),deep=True))
-        geom.SetYCoordinates(np_to_vtk(np.linspace(origin[1],origin[1]+size[1],grid[1]+1),deep=True))
-        geom.SetZCoordinates(np_to_vtk(np.linspace(origin[2],origin[2]+size[2],grid[2]+1),deep=True))
+        coord = [np_to_vtk(np.linspace(origin[i],origin[i]+size[i],grid[i]+1),deep=True) for i in [0,1,2]]
+        [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
+        geom.SetXCoordinates(coord[0])
+        geom.SetYCoordinates(coord[1])
+        geom.SetZCoordinates(coord[2])
 
         return VTK(geom)
 
