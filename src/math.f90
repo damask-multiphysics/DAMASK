@@ -72,6 +72,14 @@ module math
       3,2, &
       3,3  &
       ],shape(MAPPLAIN))                                                                            !< arrangement in Plain notation
+  
+  type, private :: tNumerics
+    integer :: &
+      randomSeed                                                                                    !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+
+  end type
+  
+  type(tNumerics), private :: num
 
   interface math_eye
     module procedure math_identity2nd
@@ -91,8 +99,7 @@ subroutine math_init
 
   real(pReal), dimension(4) :: randTest
   integer :: &
-    randSize, &
-    randomSeed                                                                                      !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+    randSize
   integer, dimension(:), allocatable :: randInit
   class(tNode), pointer :: &
     num_generic
@@ -100,12 +107,12 @@ subroutine math_init
   write(6,'(/,a)') ' <<<+-  math init  -+>>>'; flush(6)
 
   num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  randomSeed = num_generic%get_asInt('random_seed', defaultVal = 0)
+  num%randomSeed = num_generic%get_asInt('random_seed', defaultVal = 0)
  
   call random_seed(size=randSize)
   allocate(randInit(randSize))
-  if (randomSeed > 0) then
-    randInit = randomSeed
+  if (num%randomSeed > 0) then
+    randInit = num%randomSeed
   else
     call random_seed()
     call random_seed(get = randInit)

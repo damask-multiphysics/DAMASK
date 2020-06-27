@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
@@ -126,8 +126,8 @@ class VTK:
             vtkUnstructuredGrid, and vtkPolyData.
 
         """
-        ext = os.path.splitext(fname)[1]
-        if ext == '.vtk':
+        ext = Path(fname).suffix
+        if ext == '.vtk' or dataset_type:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(fname)
             reader.Update()
@@ -176,10 +176,10 @@ class VTK:
             writer = vtk.vtkXMLPolyDataWriter()
 
         default_ext = writer.GetDefaultFileExtension()
-        name, ext = os.path.splitext(fname)
+        ext = Path(fname).suffix
         if ext and ext != '.'+default_ext:
-            raise ValueError('Given extension {} is not .{}'.format(ext,default_ext))
-        writer.SetFileName('{}.{}'.format(name,default_ext))
+            raise ValueError('Given extension {} does not match default .{}'.format(ext,default_ext))
+        writer.SetFileName(str(Path(fname).with_suffix('.'+default_ext)))
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
         writer.SetInputData(self.geom)

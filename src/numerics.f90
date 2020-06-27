@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Sharan Roongta, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Managing of parameters related to numerics
 !--------------------------------------------------------------------------------------------------
 module numerics
@@ -18,13 +19,13 @@ module numerics
   implicit none
   private
   
-  class(tNode), pointer, public :: &
-    numerics_root
+  class(tNode), pointer, protected, public :: &
+    numerics_root                                                                                   !< root pointer storing the numerics YAML structure 
   integer, protected, public    :: &
-    worldrank                  =  0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
-    worldsize                  =  1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
+    worldrank                  =  0, &                                                              !< MPI worldrank (/=0 for MPI simulations only)
+    worldsize                  =  1                                                                 !< MPI worldsize (/=1 for MPI simulations only)
   integer(4), protected, public :: &
-    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
+    DAMASK_NumThreadsInt       =  0                                                                 !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
   public :: numerics_init
 
@@ -64,16 +65,13 @@ subroutine numerics_init
   numerics_root => emptyDict
   inquire(file='numerics.yaml', exist=fexist)
   
-  fileExists: if (fexist) then
+  if (fexist) then
     write(6,'(a,/)') ' using values from config file'
     flush(6)
     numerics_input =  IO_read('numerics.yaml')
     numerics_inFlow = to_flow(numerics_input)
-    numerics_root =>  parse_flow(numerics_inFlow,defaultVal=emptyDict)
-  else fileExists
-    write(6,'(a,/)') ' using standard values'
-    flush(6)
-  endif fileExists
+    numerics_root =>  parse_flow(numerics_inFlow)
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter

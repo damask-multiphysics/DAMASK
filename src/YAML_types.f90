@@ -155,9 +155,9 @@ module YAML_types
     final :: tItem_finalize
   end type tItem
 
-  type(tDict), target,public :: &
+  type(tDict), target, public :: &
     emptyDict
-  type(tList), target,public :: &
+  type(tList), target, public :: &
     emptyList
   
   abstract interface

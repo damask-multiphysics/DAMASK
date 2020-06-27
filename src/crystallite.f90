@@ -83,7 +83,7 @@ module crystallite
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       nState, &                                                                                     !< state loop limit
       nStress                                                                                       !< stress loop limit
-    character(len=pStringLen) :: & 
+    character(len=:), allocatable :: & 
       integrator                                                                                    !< integrator scheme
     real(pReal) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
@@ -198,7 +198,7 @@ subroutine crystallite_init
   if(num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
 
 
-  select case(trim(num%integrator))
+  select case(num%integrator)
     case('FPI')
       integrateState => integrateStateFPI
     case('Euler')
@@ -287,11 +287,9 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress(dummyArgumentToPreventInternalCompilerErrorWithGCC)
+function crystallite_stress()
 
   logical, dimension(discretization_nIP,discretization_nElem) :: crystallite_stress
-  real(pReal), intent(in), optional :: &
-    dummyArgumentToPreventInternalCompilerErrorWithGCC
   real(pReal) :: &
     formerSubStep
   integer :: &

@@ -302,8 +302,8 @@ class TestResult:
 
     @pytest.mark.parametrize('allowed',['off','on'])
     def test_rename(self,default,allowed):
-        F = default.read_dataset(default.get_dataset_location('F'))
         if allowed == 'on':
+            F = default.read_dataset(default.get_dataset_location('F'))
             default.allow_modification()
             default.rename('F','new_name')
             assert np.all(F == default.read_dataset(default.get_dataset_location('new_name')))

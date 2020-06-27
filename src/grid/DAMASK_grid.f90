@@ -61,7 +61,6 @@ program DAMASK_grid
     i, j, k, l, field, &
     errorID = 0, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
-    maxCutBack, &                                                                                   !< max number of cut backs
     stepFraction = 0                                                                                !< fraction of current time interval
   integer :: &
     currentLoadcase = 0, &                                                                          !< current load case
@@ -69,12 +68,18 @@ program DAMASK_grid
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
-    stagItMax, &                                                                                    !< max number of field level staggered iterations
     nActiveFields = 0
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
+  type :: tNumerics
+    integer :: &
+      maxCutBack, &                                                                                 !< max number of cut backs
+      stagItMax                                                                                     !< max number of field level staggered iterations
+  end type tNumerics
+
+  type(tNumerics) :: num
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tLoadCase) :: newLoadCase
   type(tSolutionState), allocatable, dimension(:) :: solres
@@ -93,7 +98,6 @@ program DAMASK_grid
     quit
   class (tNode), pointer :: &
     num_grid, &
-    num_generic, &
     debug_grid                                                                                      ! pointer to grid debug options
 
 !--------------------------------------------------------------------------------------------------
@@ -115,19 +119,17 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
-  num_generic => numerics_root%get('generic', defaultVal=emptyDict)
-  stagItMax  = num_generic%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_generic%get_asInt('maxCutBack',defaultVal=3)
+  num_grid => numerics_root%get('grid', defaultVal=emptyDict)
+  num%stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
+  num%maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
-  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  if (num%stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
+  if (num%maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
  
   debug_grid => debug_root%get('grid',defaultVal=emptyList)
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-   
   select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic'))) 
     case ('Basic')
       mech_init         => grid_mech_spectral_basic_init
@@ -321,7 +323,6 @@ program DAMASK_grid
     loadCases = [loadCases,newLoadCase]                                                             ! load case is ok, append it
   enddo
 
-
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on active solvers
   call spectral_Utilities_init
@@ -454,7 +455,7 @@ program DAMASK_grid
   
             enddo
             stagIter = stagIter + 1
-            stagIterate =            stagIter < stagItMax &
+            stagIterate =            stagIter < num%stagItMax &
                          .and.       all(solres(:)%converged) &
                          .and. .not. all(solres(:)%stagConverged)                                   ! stationary with respect to staggered iteration
           enddo
@@ -473,7 +474,7 @@ program DAMASK_grid
                                 solres%converged, solres%iterationsNeeded
               flush(statUnit)
             endif
-          elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?
+          elseif (cutBackLevel < num%maxCutBack) then                                                   ! further cutbacking tolerated?
             cutBack = .true.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1

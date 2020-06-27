@@ -104,21 +104,20 @@ subroutine FEM_utilities_init
   character(len=pStringLen) :: petsc_optionsOrder
   class(tNode), pointer :: &
     num_mesh, &
-    num_generic, &
     debug_mesh                                                                                      ! pointer to mesh debug options
   integer :: structOrder                                                                            !< order of displacement shape functions
+  character(len=:), allocatable :: &
+    petsc_options
   character(len=pStringLen) :: &
-    petsc_options, &
     PETSCDEBUG = ' -snes_view -snes_monitor '
+
   PetscErrorCode            :: ierr
 
   write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
  
   num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  structOrder = num_mesh%get_asInt('structOrder',defaultVal = 2)
- 
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  petsc_options = num_generic%get_asString('petsc_options', defaultVal='')
+  structOrder   = num_mesh%get_asInt   ('structOrder',   defaultVal = 2)
+  petsc_options = num_mesh%get_asString('petsc_options', defaultVal='')
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -141,7 +140,7 @@ subroutine FEM_utilities_init
                                &-mech_pc_type ml -mech_mg_levels_ksp_type chebyshev &
                                &-mech_mg_levels_pc_type sor -mech_pc_ml_nullspace user',ierr)
   CHKERRQ(ierr)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,petsc_options,ierr)
   CHKERRQ(ierr)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),ierr)

@@ -49,7 +49,6 @@ program DAMASK_mesh
     i, &
     errorID, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
-    maxCutBack, &                                                                                   !< max number of cutbacks
     stepFraction = 0, &                                                                             !< fraction of current time interval
     currentLoadcase = 0, &                                                                          !< current load case
     currentFace = 0, &
@@ -57,14 +56,21 @@ program DAMASK_mesh
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
-    stagItMax, &                                                                                    !< max number of field level staggered iterations
     component  
   class(tNode), pointer :: &
-    num_generic
+    num_mesh
   character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
+  type :: tNumerics
+    integer :: &
+      stagItMax, &                                                                                  !< max number of field level staggered iterations
+      maxCutBack                                                                                    !< max number of cutbacks
+  end type tNumerics
+
+  type(tNumerics) :: num
+
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
   PetscInt :: faceSet, currentFaceSet, field, dimPlex
@@ -80,12 +86,12 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------- 
 ! reading field information from numerics file and do sanity checks
-  num_generic => numerics_root%get('generic', defaultVal=emptyDict)
-  stagItMax  = num_generic%get_asInt('maxStaggeredIter',defaultVal=10)
-  maxCutBack = num_generic%get_asInt('maxCutBack',defaultVal=3)
+  num_mesh => numerics_root%get('mesh', defaultVal=emptyDict)
+  num%stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
+  num%maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
-  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  if (num%stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
+  if (num%maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
   
 ! reading basic information from load case file and allocate data structure containing load cases
   call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                         !< dimension of mesh (2D or 3D)
@@ -327,7 +333,7 @@ program DAMASK_mesh
 
           enddo
           stagIter = stagIter + 1
-          stagIterate =            stagIter < stagItMax &
+          stagIterate =            stagIter < num%stagItMax &
                        .and.       all(solres(:)%converged) &
                        .and. .not. all(solres(:)%stagConverged)                                     ! stationary with respect to staggered iteration
         enddo     
@@ -335,7 +341,7 @@ program DAMASK_mesh
 ! check solution 
         cutBack = .False.                                                                   
         if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
-          if (cutBackLevel < maxCutBack) then                                                       ! do cut back
+          if (cutBackLevel < num%maxCutBack) then                                                       ! do cut back
             write(6,'(/,a)') ' cut back detected'
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator

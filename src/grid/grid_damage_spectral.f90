@@ -21,6 +21,18 @@ module grid_damage_spectral
   implicit none
   private
 
+  type, private :: tNumerics
+    integer :: &
+      itmax                                                                                         !< max number of iterations
+    real(pReal) :: &
+      residualStiffness, &                                                                          !< non-zero residual damage
+      eps_damage_atol, &                                                                            !< absolute tolerance for damage evolution
+      eps_damage_rtol                                                                               !< relative tolerance for damage evolution
+    character(len=:), allocatable :: &
+      petsc_options
+  end type tNumerics
+
+  type(tNumerics), private :: num
 !--------------------------------------------------------------------------------------------------
 ! derived types
   type(tSolutionParams), private :: params
@@ -61,10 +73,10 @@ subroutine grid_damage_spectral_init
   Vec :: uBound, lBound
   PetscErrorCode :: ierr
   class(tNode), pointer :: &
+    num_grid, &
     num_generic
   character(len=pStringLen) :: &
-    snes_type, &
-    petsc_options
+    snes_type
  
   write(6,'(/,a)') ' <<<+-  grid_spectral_damage init  -+>>>'
 
@@ -72,16 +84,27 @@ subroutine grid_damage_spectral_init
   write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
  
 !-------------------------------------------------------------------------------------------------
-! read numerical parameter
+! read numerical parameters and do sanity checks
+  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  num%petsc_options   = num_grid%get_asString('petsc_options',defaultVal='')
+  num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
+  num%eps_damage_atol = num_grid%get_asFloat ('eps_damage_atol',defaultVal=1.0e-2_pReal)
+  num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
+ 
   num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  petsc_options = num_generic%get_asString('petsc_options',defaultVal='')
+  num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
+ 
+  if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
+  if (num%itmax <= 1)                      call IO_error(301,ext_msg='itmax')
+  if (num%eps_damage_atol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_atol')
+  if (num%eps_damage_rtol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_rtol')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
                                &-damage_snes_ksp_ew -damage_ksp_type fgmres',ierr)
  CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
  CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -146,22 +169,13 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
     timeinc_old                                                                                     !< increment in time of last increment
-  integer :: i, j, k, cell, &
-    itmax                                                                                           !< maximum number of iterations
+  integer :: i, j, k, cell
   type(tSolutionState) :: solution
-  class(tNode), pointer :: &
-    num_generic
   PetscInt  :: devNull
   PetscReal :: phi_min, phi_max, stagNorm, solnNorm
   
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
-
-!-------------------------------------------------------------------
-! reading numerical parameter and do sanity check
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  itmax = num_generic%get_asInt('itmax',defaultVal=250)
-  if (itmax <= 1)   call IO_error(301,ext_msg='itmax')
 
   solution%converged =.false.
  
@@ -175,7 +189,7 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
  
   if (reason < 1) then
     solution%converged = .false.
-    solution%iterationsNeeded = itmax
+    solution%iterationsNeeded = num%itmax
   else
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
@@ -185,7 +199,7 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   phi_stagInc = phi_current
-  solution%stagConverged = stagNorm < max(1.0e-2_pReal, 1.0e-6_pReal*solnNorm)
+  solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating damage state 
@@ -256,14 +270,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscObject :: dummy
   PetscErrorCode :: ierr
   integer :: i, j, k, cell
-  real(pReal)   :: phiDot, dPhiDot_dPhi, mobility, &
-                   residualStiffness                                                                !< non-zero residual damage
-  class(tNode), pointer :: &
-    num_generic
-
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
-  residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
-  if (residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
+  real(pReal)   :: phiDot, dPhiDot_dPhi, mobility
 
   phi_current = x_scal 
 !--------------------------------------------------------------------------------------------------
@@ -299,8 +306,8 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   call utilities_FFTscalarBackward
   where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > phi_lastInc) &
         scalarField_real(1:grid(1),1:grid(2),1:grid3) = phi_lastInc
-  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < residualStiffness) &
-        scalarField_real(1:grid(1),1:grid(2),1:grid3) = residualStiffness
+  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < num%residualStiffness) &
+        scalarField_real(1:grid(1),1:grid(2),1:grid3) = num%residualStiffness
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual

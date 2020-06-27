@@ -42,7 +42,7 @@ subroutine debug_init
   fileExists: if (fexist) then
     debug_input  = IO_read('debug.yaml') 
     debug_inFlow = to_flow(debug_input)
-    debug_root   => parse_flow(debug_inFlow,defaultVal=emptyDict)
+    debug_root   => parse_flow(debug_inFlow)
   endif fileExists
 
 end subroutine debug_init

@@ -6,6 +6,7 @@ import os
 import datetime
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
+from pathlib import Path
 from functools import partial
 
 import h5py
@@ -88,7 +89,7 @@ class Result:
                           'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
                          }
 
-        self.fname = os.path.abspath(fname)
+        self.fname = Path(fname).absolute()
 
         self._allow_modification = False
 
@@ -1056,14 +1057,17 @@ class Result:
         Parameters
         ----------
         func : function
-            Callback function that calculates a new dataset from one or more datasets per HDF5 group.
+            Callback function that calculates a new dataset from one or
+            more datasets per HDF5 group.
         datasets : dictionary
-            Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+            Details of the datasets to be used: label (in HDF5 file) and
+            arg (argument to which the data is parsed in func).
         args : dictionary, optional
             Arguments parsed to func.
 
         """
-        pool = multiprocessing.Pool(int(Environment().options['DAMASK_NUM_THREADS']))
+        num_threads = Environment().options['DAMASK_NUM_THREADS']
+        pool = multiprocessing.Pool(int(num_threads) if num_threads is not None else None)
         lock = multiprocessing.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
@@ -1190,7 +1194,7 @@ class Result:
                                                        'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
                                 data_items[-1].text='{}:{}'.format(os.path.split(self.fname)[1],name)
 
-        with open(os.path.splitext(self.fname)[0]+'.xdmf','w') as f:
+        with open(self.fname.with_suffix('.xdmf').name,'w') as f:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
@@ -1266,7 +1270,4 @@ class Result:
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
-                                            inc[3:].zfill(N_digits))
-
-            v.write(file_out)
+            v.write('{}_inc{}'.format(self.fname.stem,inc[3:].zfill(N_digits)))
