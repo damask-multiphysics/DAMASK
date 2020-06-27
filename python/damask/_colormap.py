@@ -234,23 +234,30 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _export_GOM(colormap,fhandle=None):
-        pass
-        s =(f'1 1 {colormap.name.replace(" ","_")} 9 {colormap.name.replace(" ","_")} '
-            f' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
-            f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {str(len(colormap.colors))}'
-            ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colormap.colors)]))
-        print(s)
+        # ToDo: test in GOM
+        GOM_str = f'1 1 {colormap.name.replace(" ","_")} 9 {colormap.name.replace(" ","_")} ' \
+                +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
+                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(colormap.colors)}' \
+                + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((colormap.colors*255).astype(int))]) \
+                + '\n'
+        if fhandle is None:
+            with open(colormap.name.replace(' ','_')+'.legend', 'w') as f:
+                f.write(GOM_str)
+        else:
+            fhandle.write(GOM_str)
+
 
     @staticmethod
     def _export_gmsh(colormap,fhandle=None):
-        colormap = 'View.ColorTable = {\n'\
-                 +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in reversed(colormap.colors)])\
-                 +'}'
+        # ToDo: test in gmsh
+        gmsh_str = 'View.ColorTable = {\n' \
+                 +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in colormap.colors[:,:3]*255]) \
+                 +'\n}\n'
         if fhandle is None:
-            with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:
-                t.to_ASCII(f)
+            with open(colormap.name.replace(' ','_')+'.msh', 'w') as f:
+                f.write(gmsh_str)
         else:
-            t.to_ASCII(fhandle)
+            fhandle.write(gmsh_str)
 
 
     @staticmethod

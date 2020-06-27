@@ -86,10 +86,15 @@ class TestColormap:
                                            ])
     def test_write_filehandle(self,format,name,tmpdir):
         c = Colormap.from_predefined('Dark2')
-        with open(tmpdir/name,'w') as f:
+        fname = tmpdir/name
+        with open(fname,'w') as f:
             c.to_file(f,format=format)
+        for i in range(10):
+            if fname.exists(): return
+            time.sleep(.5)
+        assert False
 
-    def test_invalid_format(self):
+    def test_write_invalid_format(self):
         c = Colormap.from_predefined('Dark2')
         with pytest.raises(ValueError):
             c.to_file(format='invalid')
