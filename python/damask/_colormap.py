@@ -121,7 +121,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         # DAMASK presets
         definition = Colormap._predefined_DAMASK[name]
-        return Colormap.from_bounds(definition['left'],definition['right'],name,N)
+        return Colormap.from_bounds(definition['low'],definition['high'],name,N)
 
 
     @staticmethod
@@ -316,12 +316,12 @@ class Colormap(mpl.colors.ListedColormap):
                          'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
                          'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar'])]
 
-    _predefined_DAMASK = {'orientation':   {'low':   [0.933334,0.878432,0.878431],
-                                            'right': [0.250980,0.007843,0.000000]},
-                          'strain':        {'left':  [0.941177,0.941177,0.870588],
-                                            'right': [0.266667,0.266667,0.000000]},
-                          'stress':        {'left':  [0.878432,0.874511,0.949019],
-                                            'right': [0.000002,0.000000,0.286275]}}
+    _predefined_DAMASK = {'orientation':   {'low':  [0.933334,0.878432,0.878431],
+                                            'high': [0.250980,0.007843,0.000000]},
+                          'strain':        {'low':  [0.941177,0.941177,0.870588],
+                                            'high': [0.266667,0.266667,0.000000]},
+                          'stress':        {'low':  [0.878432,0.874511,0.949019],
+                                            'high': [0.000002,0.000000,0.286275]}}
 
     @staticmethod
     def _hsv2rgb(hsv):
