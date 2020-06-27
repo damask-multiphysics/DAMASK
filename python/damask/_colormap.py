@@ -17,7 +17,7 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     @staticmethod
-    def from_bounds(low,high,N=256,name='DAMASK colormap',model='rgb'):
+    def from_bounds(low,high,name='DAMASK colormap',N=256,model='rgb'):
         """
         Create a perceptually uniform colormap.
 
@@ -26,30 +26,46 @@ class Colormap(mpl.colors.ListedColormap):
         low : numpy.ndarray of shape (3)
         high : numpy.ndarray of shape (3)
         N : integer, optional
-            Number of discrete color values. Defaults to 256.
+            The number of color quantization levels.
+        name : str, optional
+            The name of the colormap. Defaults to `DAMASK colormap`.
         model : str
             Colormodel used for low and high.
 
         """
         low_,high_ = map(np.array,[low,high])
+        low_high = np.vstack((low_,high))
         if   model.lower() == 'rgb':
-            # ToDo: Sanity check
+            if np.any(low_high<0) or np.any(low_high>1):
+                raise ValueError(f'RGB color out of range {low} {high}.')
+
             low_,high_ = map(Colormap._rgb2msh,[low_,high_])
+
         elif model.lower() == 'hsv':
-            # ToDo: Sanity check
+            if np.any(low_high<0) or np.any(low_high[:,1:3]>1) or np.any(low_high[:,0]>360):
+                raise ValueError(f'HSV color out of range {low} {high}.')
+
             low_,high_ = map(Colormap._hsv2msh,[low_,high_])
+
         elif model.lower() == 'hsl':
-            # ToDo: Sanity check
+            if np.any(low_high<0) or np.any(low_high[:,1:3]>1) or np.any(low_high[:,0]>360):
+                raise ValueError(f'HSL color out of range {low} {high}.')
+
             low_,high_ = map(Colormap._hsl2msh,[low_,high_])
+
         elif model.lower() == 'xyz':
-            # ToDo: Sanity check
+
             low_,high_ = map(Colormap._xyz2msh,[low_,high_])
+
         elif model.lower() == 'lab':
-            # ToDo: Sanity check
+            if np.any(low_high[:,0]<0):
+                raise ValueError(f'CIE Lab color out of range {low} {high}.')
+
             low_,high_ = map(Colormap._lab2msh,[low_,high_])
+
         elif model.lower() == 'msh':
-            # ToDo: Sanity check
             pass
+
         else:
             raise ValueError(f'Invalid color model: {model}.')
 
@@ -64,14 +80,15 @@ class Colormap(mpl.colors.ListedColormap):
         """
         Select from set of predefined colormaps.
 
-        Predefined colormaps include matplotlib-native colormaps
+        Predefined colormaps include native matplotlib colormaps
         and common DAMASK colormaps.
 
         Parameters
         ----------
         name : str
+            The name of the colormap.
         N : int, optional
-           Number of discrete color values. Defaults to 256.
+           The number of color quantization levels. Defaults to 256.
            This parameter is not used for matplotlib colormaps
            that are of type `ListedColormap`.
 
@@ -84,11 +101,11 @@ class Colormap(mpl.colors.ListedColormap):
                     if isinstance(colormap,mpl.colors.LinearSegmentedColormap):
                         return Colormap(np.array(list(map(colormap,np.linspace(0,1,N)))),name=name)
                     else:
-                        return Colormap(colormap.colors,name=name)
+                        return Colormap(np.array(colormap.colors),name=name)
 
         # DAMASK presets
         definition = Colormap._predefined_DAMASK[name]
-        return Colormap.from_bounds(definition['left'],definition['right'],N,name)
+        return Colormap.from_bounds(definition['left'],definition['right'],name,N)
 
 
     @staticmethod
@@ -102,11 +119,32 @@ class Colormap(mpl.colors.ListedColormap):
 
 
     def show(self):
+        """Show colormap in window."""
         fig, ax = plt.subplots(figsize=(10,1))
         ax.set_axis_off()
         im = ax.imshow(np.broadcast_to(np.linspace(0,1,640).reshape(1,-1),(64,640)),cmap=self)      # noqa
         fig.canvas.set_window_title(self.name)
         plt.show()
+
+
+    def reversed(self,name=None):
+        """
+        Make a reversed instance of the Colormap.
+
+        Parameters
+        ----------
+        name : str, optional
+            The name for the reversed colormap. If it's None
+            the name will be the name of the parent colormap + "_r".
+
+        Returns
+        -------
+        damask.Colormap
+            The reversed colormap.
+
+        """
+        rev = super(Colormap,self).reversed(name)
+        return Colormap(rev.colors,rev.name)
 
 
     def to_file(self,fname=None,format='paraview'):
@@ -122,15 +160,16 @@ class Colormap(mpl.colors.ListedColormap):
             Colormap._export_paraview(self,f)
         elif format.lower() == 'ascii':
             Colormap._export_ASCII(self,f)
-
-    def reversed(self):
-        rev = super(Colormap,self).reversed()
-        return Colormap(rev.colors,rev.name)
-
-
+        elif format.lower() == 'gom':
+            Colormap._export_GOM(self,f)
+        elif format.lower() == 'gmsh':
+            Colormap._export_gmsh(self,f)
+        else:
+            raise ValueError('Unknown output format: {format}.')
 
     @staticmethod
     def _export_paraview(colormap,fhandle=None):
+        """Write colormap to JSON file for Paraview."""
         colors = []
         for i,c in enumerate(np.round(colormap.colors,6).tolist()):
             colors+=[i]+c
@@ -149,10 +188,11 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _export_ASCII(colormap,fhandle=None):
+        """Write colormap to ASCII table."""
         labels = {'R':(1,),'G':(1,),'B':(1,)}
         if colormap.colors.shape[1] == 4: labels['alpha']=(1,)
-
         t = Table(colormap.colors,labels)
+
         if fhandle is None:
             with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:
                 t.to_ASCII(f)
@@ -162,17 +202,18 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _export_GOM(colormap,fhandle=None):
         pass
-        # a = f'1 1 {name.replace(" ","_"} 9 {name.replace(" ","_"} '
-            # f' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
-            # f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
-            # f' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
+        s =(f'1 1 {colormap.name.replace(" ","_")} 9 {colormap.name.replace(" ","_")} '
+            f' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
+            f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {str(len(colormap.colors))}'
+            ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colormap.colors)]))
+        print(s)
 
     @staticmethod
     def _export_gmsh(colormap,fname=None):
         colors = colormap.colors
-        colormap = ['View.ColorTable = {'] \
-                 + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
-                 + ['}']
+        colormap =('View.ColorTable = {'
+                   ',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])+\
+                   '}')
 
     @staticmethod
     def _interpolate_msh(frac,low, high):
