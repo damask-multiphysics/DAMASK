@@ -123,6 +123,11 @@ class Colormap(mpl.colors.ListedColormap):
         elif format.lower() == 'ascii':
             Colormap._export_ASCII(self,f)
 
+    def reversed(self):
+        rev = super(Colormap,self).reversed()
+        return Colormap(rev.colors,rev.name)
+
+
 
     @staticmethod
     def _export_paraview(colormap,fhandle=None):
