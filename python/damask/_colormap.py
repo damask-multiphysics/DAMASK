@@ -242,11 +242,16 @@ class Colormap(mpl.colors.ListedColormap):
         print(s)
 
     @staticmethod
-    def _export_gmsh(colormap,fname=None):
-        colors = colormap.colors
-        colormap =('View.ColorTable = {'
-                   ',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])+\
-                   '}')
+    def _export_gmsh(colormap,fhandle=None):
+        colormap = 'View.ColorTable = {\n'\
+                 +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in reversed(colormap.colors)])\
+                 +'}'
+        if fhandle is None:
+            with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:
+                t.to_ASCII(f)
+        else:
+            t.to_ASCII(fhandle)
+
 
     @staticmethod
     def _interpolate_msh(frac,low,high):
