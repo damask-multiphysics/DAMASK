@@ -19,11 +19,12 @@ class Table:
             Data. Column labels from a pandas.DataFrame will be replaced.
         shapes : dict with str:tuple pairs
             Shapes of the columns. Example 'F':(3,3) for a deformation gradient.
-        comments : iterable of str, optional
+        comments : str or iterable of str, optional
             Additional, human-readable information.
 
         """
-        self.comments = [] if comments is None else [c for c in comments]
+        comments_ = [comments] if isinstance(comments,str) else comments
+        self.comments = [] if comments_ is None else [c for c in comments_]
         self.data = pd.DataFrame(data=data)
         self.shapes = { k:(v,) if isinstance(v,(np.int,int)) else v for k,v in shapes.items() }
         self._label_condensed()
