@@ -12,6 +12,7 @@ from functools import partial
 import h5py
 import numpy as np
 
+import damask
 from . import VTK
 from . import Table
 from . import Rotation
@@ -20,7 +21,6 @@ from . import Environment
 from . import grid_filters
 from . import mechanics
 from . import util
-from . import version
 
 
 class Result:
@@ -1090,7 +1090,7 @@ class Result:
 
                     for l,v in result[1]['meta'].items():
                         dataset.attrs[l]=v.encode()
-                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{version}"
+                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{damask.version}"
                     dataset.attrs['Creator'] = creator.encode()
 
                 except (OSError,RuntimeError) as err:
