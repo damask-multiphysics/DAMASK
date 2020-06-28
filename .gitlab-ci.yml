@@ -192,21 +192,6 @@ Post_addGradient:
     - master
     - release
 
-Post_ParaviewRelated:
-  stage: postprocessing
-  script: ParaviewRelated/test.py
-  except:
-    - master
-    - release
-
-Post_OrientationConversion:
-  stage: postprocessing
-  script:
-    - OrientationConversion/test.py
-  except:
-    - master
-    - release
-
 Post_OrientationAverageMisorientation:
   stage: postprocessing
   script:
