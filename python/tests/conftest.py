@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pytest
 
@@ -15,4 +15,4 @@ def update(request):
 @pytest.fixture
 def reference_dir_base():
     """Directory containing reference results."""
-    return os.path.join(os.path.dirname(__file__),'reference')
+    return Path(__file__).parent/'reference'
