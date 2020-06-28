@@ -145,8 +145,9 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
         quat=np.empty( [r , 4])
         for rot in range(r):
             for sym in range(equi.shape[0]):
-                if self.lattice.symmetry.inFZ(equi.as_Rodrigues(vector=True)[sym,rot]) == True:
+                if self.lattice.symmetry.inFZ(equi.as_Rodrigues(vector=True)[sym,rot]): 
                     quat[rot]=equi.as_quaternion()[sym,rot]
+                    break
         return self.__class__(quat,self.lattice)
 
 
