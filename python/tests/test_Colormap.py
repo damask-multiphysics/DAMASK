@@ -82,7 +82,7 @@ class TestColormap:
     @pytest.mark.parametrize('format,name',[('ASCII','test.txt'),
                                             ('paraview','test.json'),
                                             ('GOM','test.legend'),
-                                            ('gmsh','test.xxx')
+                                            ('gmsh','test.msh')
                                            ])
     def test_write_filehandle(self,format,name,tmpdir):
         c = Colormap.from_predefined('Dark2')
@@ -111,7 +111,6 @@ class TestColormap:
                 np.allclose(c_1.colors,c_2.reversed().colors)
 
     def test_list(self):
-        c = Colormap.from_predefined('afmhot').reversed()
-        c.list_predefined()
+        Colormap.list_predefined()
 
 

@@ -234,6 +234,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _export_GOM(colormap,fhandle=None):
+        """Write colormap to GOM Aramis compatible format."""
         # ToDo: test in GOM
         GOM_str = f'1 1 {colormap.name.replace(" ","_")} 9 {colormap.name.replace(" ","_")} ' \
                 +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
@@ -249,6 +250,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def _export_gmsh(colormap,fhandle=None):
+        """Write colormap to Gmsh compatible format."""
         # ToDo: test in gmsh
         gmsh_str = 'View.ColorTable = {\n' \
                  +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in colormap.colors[:,:3]*255]) \
