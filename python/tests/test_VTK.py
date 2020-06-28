@@ -1,6 +1,3 @@
-import filecmp
-import time
-
 import pytest
 import numpy as np
 
@@ -72,9 +69,8 @@ class TestVTK:
         if update:
              polyData.write(reference_dir/'polyData')
         else:
-             polyData.write(tmp_path/'polyData')
-             time.sleep(.5)
-             assert filecmp.cmp(tmp_path/'polyData.vtp',reference_dir/'polyData.vtp')
+             reference = VTK.from_file(reference_dir/'polyData.vtp')
+             assert polyData.__repr__() == reference.__repr__()
 
     def test_compare_reference_rectilinearGrid(self,update,reference_dir,tmp_path):
         grid = np.array([5,6,7],int)
@@ -87,7 +83,6 @@ class TestVTK:
         if update:
              rectilinearGrid.write(reference_dir/'rectilinearGrid')
         else:
-             rectilinearGrid.write(tmp_path/'rectilinearGrid')
-             time.sleep(.5)
-             assert filecmp.cmp(tmp_path/'rectilinearGrid.vtr',reference_dir/'rectilinearGrid.vtr')
+             reference = VTK.from_file(reference_dir/'rectilinearGrid.vtr')
+             assert rectilinearGrid.__repr__() == reference.__repr__()
 
