@@ -1,4 +1,4 @@
-# Creator: damask.Colormap 99.99.99-9999-pytest
+# Creator: damask.Colormap v99.99.99-9999-pytest
 R G B alpha
 1.0 1.0 1.0 1.0
 0.996078431372549 0.996078431372549 0.996078431372549 1.0

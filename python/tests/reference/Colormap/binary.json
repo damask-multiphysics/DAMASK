@@ -1,6 +1,6 @@
 [
     {
-        "Creator": "damask.Colormap 99.99.99-9999-pytest",
+        "Creator": "damask.Colormap v99.99.99-9999-pytest",
         "ColorSpace": "RGB",
         "Name": "binary",
         "DefaultMap": true,
