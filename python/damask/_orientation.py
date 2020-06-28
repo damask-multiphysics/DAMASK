@@ -145,7 +145,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
         quat=np.empty( [r , 4])
         for rot in range(r):
             for sym in range(equi.shape[0]):
-                if self.lattice.symmetry.inFZ(equi.as_Rodrigues(vector=True)[sym,rot]) == True:
+                if self.lattice.symmetry.inFZ(equi.as_Rodrigues(vector=True)[sym,rot]) is True:
                     quat[rot]=equi.as_quaternion()[sym,rot]
         return self.__class__(quat,self.lattice)
 
@@ -187,7 +187,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
 
 
     def IPFcolor_vec(self,axis):
-        """TSL color of inverse pole figure for given axis. Not for hex or triclinic lattices"""
+        """TSL color of inverse pole figure for given axis. Not for hex or triclinic lattices."""
         eq = self.equivalent_vec
         pole = eq.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),eq.rotation.shape+(3,))
         in_SST, color = self.lattice.symmetry.in_SST(pole,color=True)
