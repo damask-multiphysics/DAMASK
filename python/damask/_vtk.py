@@ -121,7 +121,7 @@ class VTK:
 
         Parameters
         ----------
-        fname : str
+        fname : str or pathlib.Path
             Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
         dataset_type : str, optional
             Name of the vtk.vtkDataSet subclass when opening an .vtk file. Valid types are vtkRectilinearGrid,
@@ -131,7 +131,7 @@ class VTK:
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type:
             reader = vtk.vtkGenericDataObjectReader()
-            reader.SetFileName(fname)
+            reader.SetFileName(str(fname))
             reader.Update()
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
@@ -153,7 +153,7 @@ class VTK:
             else:
                 raise TypeError(f'Unknown file extension {ext}')
 
-            reader.SetFileName(fname)
+            reader.SetFileName(str(fname))
             reader.Update()
             geom = reader.GetOutput()
 
@@ -166,7 +166,7 @@ class VTK:
 
         Parameters
         ----------
-        fname : str
+        fname : str or pathlib.Path
             Filename for writing.
 
         """
