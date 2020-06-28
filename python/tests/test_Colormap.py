@@ -127,7 +127,7 @@ class TestColormap:
                                            ('Gmsh','.msh')
                                           ])
     def test_compare_reference(self,format,ext,tmpdir,reference_dir,update,monkeypatch):
-        monkeypatch.setattr(damask, 'version', '99.99.99-9999-pytest')
+        monkeypatch.setattr(damask, 'version', pytest.dummy_version)
         name = 'binary'
         c = Colormap.from_predefined(name)
         if update:
