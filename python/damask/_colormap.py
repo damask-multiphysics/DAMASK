@@ -6,6 +6,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
+import damask
 from damask import Table
 
 _eps   = 216./24389.
@@ -208,6 +209,7 @@ class Colormap(mpl.colors.ListedColormap):
             colors+=[i]+c
 
         out = [{
+                'Creator':f'damask.Colormap {damask.version}',
                 'ColorSpace':'RGB',
                 'Name':colormap.name,
                 'DefaultMap':True,
@@ -224,13 +226,13 @@ class Colormap(mpl.colors.ListedColormap):
         """Write colormap to ASCII table."""
         labels = {'R':(1,),'G':(1,),'B':(1,)}
         if colormap.colors.shape[1] == 4: labels['alpha']=(1,)
-        t = Table(colormap.colors,labels)
+        t = Table(colormap.colors,labels,f'Creator: damask.Colormap {damask.version}')
 
         if fhandle is None:
             with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:
-                t.to_ASCII(f)
+                t.to_ASCII(f,True)
         else:
-            t.to_ASCII(fhandle)
+            t.to_ASCII(fhandle,True)
 
     @staticmethod
     def _export_GOM(colormap,fhandle=None):
