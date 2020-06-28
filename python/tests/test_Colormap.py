@@ -1,9 +1,17 @@
 import os
+import filecmp
+import time
 
 import numpy as np
 import pytest
 
+import damask
 from damask import Colormap
+
+@pytest.fixture
+def reference_dir(reference_dir_base):
+    """Directory containing reference results."""
+    return reference_dir_base/'Colormap'
 
 class TestColormap:
 
@@ -64,14 +72,14 @@ class TestColormap:
             assert np.allclose(Colormap._xyz2msh(xyz),msh,atol=1.e-6,rtol=0)
 
 
-    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
+    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','Gmsh'])
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','xyz','lab','msh'])
     def test_from_bounds(self,model,format,tmpdir):
         N = np.random.randint(2,256)
         c = Colormap.from_bounds(np.random.rand(3),np.random.rand(3),model=model,N=N)
         c.to_file(tmpdir/'color_out',format=format)
 
-    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
+    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','Gmsh'])
     @pytest.mark.parametrize('name',['strain','gnuplot','Greys','PRGn','viridis'])
     def test_from_predefined(self,name,format,tmpdir):
         N = np.random.randint(2,256)
@@ -82,7 +90,7 @@ class TestColormap:
     @pytest.mark.parametrize('format,name',[('ASCII','test.txt'),
                                             ('paraview','test.json'),
                                             ('GOM','test.legend'),
-                                            ('gmsh','test.msh')
+                                            ('Gmsh','test.msh')
                                            ])
     def test_write_filehandle(self,format,name,tmpdir):
         c = Colormap.from_predefined('Dark2')
@@ -113,4 +121,21 @@ class TestColormap:
     def test_list(self):
         Colormap.list_predefined()
 
+    @pytest.mark.parametrize('format,ext',[('ASCII','.txt'),
+                                           ('paraview','.json'),
+                                           ('GOM','.legend'),
+                                           ('Gmsh','.msh')
+                                          ])
+    def test_compare_reference(self,format,ext,tmpdir,reference_dir,update,monkeypatch):
+        monkeypatch.setattr(damask, 'version', '99.99.99-9999-pytest')
+        name = 'binary'
+        c = Colormap.from_predefined(name)
+        if update:
+            os.chdir(reference_dir)
+            c.to_file(format=format)
+        else:
+            os.chdir(tmpdir)
+            c.to_file(format=format)
+            time.sleep(.5)
+            assert filecmp.cmp(tmpdir/(name+ext),reference_dir/(name+ext))
 
