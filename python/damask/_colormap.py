@@ -12,6 +12,9 @@ _eps   = 216./24389.
 _kappa = 24389./27.
 _ref_white = np.array([.95047, 1.00000, 1.08883])                                                   # Observer = 2, Illuminant = D65
 
+# ToDo (if needed)
+# - support alpha channel (paraview/ASCII/input)
+# - support NaN color (paraview)
 
 class Colormap(mpl.colors.ListedColormap):
 
@@ -19,18 +22,31 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def from_bounds(low,high,name='DAMASK colormap',N=256,model='rgb'):
         """
-        Create a perceptually uniform colormap.
+        Create a perceptually uniform colormap from given bounds.
+
+        Colors are internally stored as R(ed) G(green) B(lue) values.
+        The colormap can be used in matplotlib/seaborn or exported to
+        file for external use.
 
         Parameters
         ----------
         low : numpy.ndarray of shape (3)
+            Color definition for minimum value.
         high : numpy.ndarray of shape (3)
+            Color definition for maximum value.
         N : integer, optional
-            The number of color quantization levels.
+            The number of color quantization levels. Defaults to 256.
         name : str, optional
             The name of the colormap. Defaults to `DAMASK colormap`.
-        model : str
-            Colormodel used for low and high.
+        model : {'rgb', 'hsv', 'hsl', 'xyz', 'lab', 'msh'}
+            Colormodel used for input color definitions. Defaults to `rgb`.
+            The available color models are:
+            - 'rgb': R(ed) G(green) B(lue).
+            - 'hsv': H(ue) S(aturation) V(alue).
+            - 'hsl': H(ue) S(aturation) L(uminance).
+            - 'xyz': CIE Xyz.
+            - 'lab': CIE Lab.
+            - 'msh': Msh (for perceptual uniform interpolation).
 
         """
         low_,high_ = map(np.array,[low,high])
@@ -78,7 +94,7 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def from_predefined(name,N=256):
         """
-        Select from set of predefined colormaps.
+        Select from a set of predefined colormaps.
 
         Predefined colormaps include native matplotlib colormaps
         and common DAMASK colormaps.
@@ -147,7 +163,24 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(rev.colors,rev.name)
 
 
-    def to_file(self,fname=None,format='paraview'):
+    def to_file(self,fname=None,format='ParaView'):
+        """
+        Export colormap to file for use in external programs.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path, optional.
+            Filename to store results. If not given, the filename will
+            consist of the name of the colormap and an extension that
+            depends on the file format.
+        format : {'ParaView', 'ASCII', 'GOM', 'gmsh'}, optional
+            File format, defaults to 'ParaView'. Available formats are:
+            - ParaView: JSON file, extension '.json'.
+            - ASCII: Plain text file, extension '.txt'.
+            - GOM: Aramis GOM (DIC), extension '.legend'.
+            - Gmsh: Gmsh FEM mesh-generator, extension '.msh'.
+
+        """
         if fname is not None:
             try:
                 f = open(fname,'w')
@@ -216,8 +249,18 @@ class Colormap(mpl.colors.ListedColormap):
                    '}')
 
     @staticmethod
-    def _interpolate_msh(frac,low, high):
+    def _interpolate_msh(frac,low,high):
+        """
+        Interpolate in Msh color space.
 
+        This interpolation gives a perceptually uniform colormap.
+
+        References
+        ----------
+        https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
+        https://www.kennethmoreland.com/color-maps/diverging_map.py
+
+        """
         def rad_diff(a,b):
             return abs(a[2]-b[2])
 
