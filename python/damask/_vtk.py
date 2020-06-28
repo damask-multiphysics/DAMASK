@@ -52,9 +52,11 @@ class VTK:
         """
         geom = vtk.vtkRectilinearGrid()
         geom.SetDimensions(*(grid+1))
-        geom.SetXCoordinates(np_to_vtk(np.linspace(origin[0],origin[0]+size[0],grid[0]+1),deep=True))
-        geom.SetYCoordinates(np_to_vtk(np.linspace(origin[1],origin[1]+size[1],grid[1]+1),deep=True))
-        geom.SetZCoordinates(np_to_vtk(np.linspace(origin[2],origin[2]+size[2],grid[2]+1),deep=True))
+        coord = [np_to_vtk(np.linspace(origin[i],origin[i]+size[i],grid[i]+1),deep=True) for i in [0,1,2]]
+        [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
+        geom.SetXCoordinates(coord[0])
+        geom.SetYCoordinates(coord[1])
+        geom.SetZCoordinates(coord[2])
 
         return VTK(geom)
 
@@ -120,7 +122,7 @@ class VTK:
 
         Parameters
         ----------
-        fname : str
+        fname : str or pathlib.Path
             Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
         dataset_type : str, optional
             Name of the vtk.vtkDataSet subclass when opening an .vtk file. Valid types are vtkRectilinearGrid,
@@ -130,7 +132,7 @@ class VTK:
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type:
             reader = vtk.vtkGenericDataObjectReader()
-            reader.SetFileName(fname)
+            reader.SetFileName(str(fname))
             reader.Update()
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
@@ -152,7 +154,7 @@ class VTK:
             else:
                 raise TypeError(f'Unknown file extension {ext}')
 
-            reader.SetFileName(fname)
+            reader.SetFileName(str(fname))
             reader.Update()
             geom = reader.GetOutput()
 
@@ -168,7 +170,7 @@ class VTK:
 
         Parameters
         ----------
-        fname : str
+        fname : str or pathlib.Path
             Filename for writing.
         parallel : boolean, optional
             Write data in parallel background process. Defaults to True.
