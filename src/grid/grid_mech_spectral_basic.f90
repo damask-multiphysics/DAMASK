@@ -40,8 +40,6 @@ module grid_mech_spectral_basic
       eps_div_rtol, &                                                                               !< relative tolerance for equilibrium
       eps_stress_atol, &                                                                            !< absolute tolerance for fullfillment of stress BC
       eps_stress_rtol                                                                               !< relative tolerance for fullfillment of stress BC
-    character(len=:), allocatable :: &
-      petsc_options     
   end type tNumerics
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
@@ -122,7 +120,6 @@ subroutine grid_mech_spectral_basic_init
 ! read numerical parameters and do sanity checks
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
 
-  num%petsc_options   = num_grid%get_asString ('petsc_options',  defaultVal='')
   num%update_gamma    = num_grid%get_asBool   ('update_gamma',   defaultVal=.false.)
   num%eps_div_atol    = num_grid%get_asFloat  ('eps_div_atol',   defaultVal=1.0e-4_pReal)
   num%eps_div_rtol    = num_grid%get_asFloat  ('eps_div_rtol',   defaultVal=5.0e-4_pReal)
@@ -143,7 +140,7 @@ subroutine grid_mech_spectral_basic_init
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------

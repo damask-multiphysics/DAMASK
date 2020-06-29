@@ -27,11 +27,11 @@ module grid_thermal_spectral
   type(tSolutionParams) :: params
 
   type :: tNumerics
+    integer :: &
+      itmax                                                                                          !< maximum number of iterations
     real(pReal) :: &
       eps_thermal_atol, &                                                                            !< absolute tolerance for thermal equilibrium
       eps_thermal_rtol                                                                               !< relative tolerance for thermal equilibrium
-    character(len=:), allocatable :: &
-      petsc_options
   end type tNumerics
 
   type(tNumerics) :: num
@@ -81,10 +81,11 @@ subroutine grid_thermal_spectral_init
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameter and do sanity checks
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  num%petsc_options    = num_grid%get_asString('petsc_options',defaultVal='')
+  num%itmax            = num_grid%get_asInt   ('itmax',           defaultVal=250)
   num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
   num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)
 
+  if (num%itmax <= 1)                         call IO_error(301,ext_msg='itmax')
   if (num%eps_thermal_atol <= 0.0_pReal)      call IO_error(301,ext_msg='eps_thermal_atol')
   if (num%eps_thermal_rtol <= 0.0_pReal)      call IO_error(301,ext_msg='eps_thermal_rtol')
 
@@ -155,8 +156,7 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
   real(pReal), intent(in) :: &
     timeinc, &                                                                                      !< increment in time for current solution
     timeinc_old                                                                                     !< increment in time of last increment
-  integer :: i, j, k, cell, &
-    itmax                                                                                           !< maximum number of iterations
+  integer :: i, j, k, cell
   type(tSolutionState) :: solution
   class(tNode), pointer :: &
     num_grid
@@ -165,12 +165,6 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
 
   PetscErrorCode :: ierr   
   SNESConvergedReason :: reason
-
-!-------------------------------------------------------------------
-! reading numerical parameter and do sanity check  !TODO: MD: Not Here
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  itmax = num_grid%get_asInt('itmax',defaultVal=250)
-  if (itmax <= 1)   call IO_error(301,ext_msg='itmax')
 
   solution%converged =.false.
  
@@ -184,7 +178,7 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
 
   if (reason < 1) then
     solution%converged = .false.
-    solution%iterationsNeeded = itmax
+    solution%iterationsNeeded = num%itmax
   else
     solution%converged = .true.
     solution%iterationsNeeded = totalIter

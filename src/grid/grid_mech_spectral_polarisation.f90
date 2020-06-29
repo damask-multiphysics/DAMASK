@@ -33,8 +33,6 @@ module grid_mech_spectral_polarisation
 
   type :: tNumerics
     logical :: update_gamma                                                                         !< update gamma operator with current stiffness
-    character(len=:), allocatable :: &
-      petsc_options
     integer :: &
       itmin, &                                                                                      !< minimum number of iterations
       itmax                                                                                         !< maximum number of iterations
@@ -133,7 +131,6 @@ subroutine grid_mech_spectral_polarisation_init
 ! read numerical parameters
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
 
-  num%petsc_options      = num_grid%get_asString('petsc_options',   defaultVal='')
   num%update_gamma       = num_grid%get_asBool  ('update_gamma',    defaultVal=.false.)
   num%eps_div_atol       = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
   num%eps_div_rtol       = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
@@ -161,7 +158,7 @@ subroutine grid_mech_spectral_polarisation_init
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------

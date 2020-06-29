@@ -120,8 +120,7 @@ module spectral_utilities
       memory_efficient                                                                              !< calculate gamma operator on the fly
     character(len=:), allocatable :: &
       spectral_derivative, &                                                                        !< approximation used for derivatives in Fourier space
-      FFTW_plan_mode, &                                                                             !< FFTW plan mode, see www.fftw.org
-      petsc_options
+      FFTW_plan_mode                                                                                !< FFTW plan mode, see www.fftw.org
   end type tNumerics
 
   type(tNumerics), private :: num                                                                   ! numerics parameters. Better name?
@@ -215,7 +214,7 @@ subroutine spectral_utilities_init
   if(debugPETSc) write(6,'(3(/,a),/)') &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
+                 ' add more using the PETSc_Options keyword in numerics.yaml '; flush(6)
 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
 
