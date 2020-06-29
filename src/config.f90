@@ -27,7 +27,7 @@ module config
    
   type(tPartitionedStringList), public, protected :: &
     config_debug
-  
+ 
   character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
     config_name_phase, &                                                                            !< name of each phase
     config_name_homogenization, &                                                                   !< name of each homogenization

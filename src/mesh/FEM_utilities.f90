@@ -96,6 +96,7 @@ module FEM_utilities
 
 contains 
 
+!ToDo: use functions in variable call
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags
 !--------------------------------------------------------------------------------------------------

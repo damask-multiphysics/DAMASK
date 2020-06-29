@@ -24,9 +24,9 @@ module grid_thermal_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
-  type(tSolutionParams), private :: params
+  type(tSolutionParams) :: params
 
-  type, private :: tNumerics
+  type :: tNumerics
     real(pReal) :: &
       eps_thermal_atol, &                                                                            !< absolute tolerance for thermal equilibrium
       eps_thermal_rtol                                                                               !< relative tolerance for thermal equilibrium
@@ -34,30 +34,28 @@ module grid_thermal_spectral
       petsc_options
   end type tNumerics
 
-  type(tNumerics), private :: num
+  type(tNumerics) :: num
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  SNES,     private :: thermal_snes
-  Vec,      private :: solution_vec
-  PetscInt, private :: xstart, xend, ystart, yend, zstart, zend
-  real(pReal), private, dimension(:,:,:), allocatable :: &
+  SNES     :: thermal_snes
+  Vec      :: solution_vec
+  PetscInt :: xstart, xend, ystart, yend, zstart, zend
+  real(pReal), dimension(:,:,:), allocatable :: &
     T_current, &                                                                                    !< field of current temperature
     T_lastInc, &                                                                                    !< field of previous temperature
     T_stagInc                                                                                       !< field of staggered temperature
 
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc. 
-  integer,                     private :: totalIter = 0                                             !< total iteration in current increment
-  real(pReal), dimension(3,3), private :: K_ref
-  real(pReal), private                 :: mu_ref
+  integer                     :: totalIter = 0                                             !< total iteration in current increment
+  real(pReal), dimension(3,3) :: K_ref
+  real(pReal)                 :: mu_ref
   
   public :: &
     grid_thermal_spectral_init, &
     grid_thermal_spectral_solution, &
     grid_thermal_spectral_forward
-  private :: &
-    formResidual
 
 contains
 
@@ -94,7 +92,8 @@ subroutine grid_thermal_spectral_init
 ! set default and user defined options for PETSc
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type ngmres',ierr)
  CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,&
+                               num_grid%get_asString('petsc_options',defaultVal=''),ierr)
  CHKERRQ(ierr)
  
 !--------------------------------------------------------------------------------------------------
@@ -168,7 +167,7 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
   SNESConvergedReason :: reason
 
 !-------------------------------------------------------------------
-! reading numerical parameter and do sanity check
+! reading numerical parameter and do sanity check  !TODO: MD: Not Here
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
   itmax = num_grid%get_asInt('itmax',defaultVal=250)
   if (itmax <= 1)   call IO_error(301,ext_msg='itmax')

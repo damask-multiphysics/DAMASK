@@ -83,7 +83,6 @@ subroutine discretization_mesh_init(restart)
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
 
-  
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
 
   num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)

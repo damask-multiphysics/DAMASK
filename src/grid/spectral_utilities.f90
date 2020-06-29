@@ -218,13 +218,13 @@ subroutine spectral_utilities_init
                  ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
 
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  num%petsc_options = num_grid%get_asString('petsc_options',defaultVal='')
 
   call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
   if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,&
+                                num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
   grid1Red = grid(1)/2 + 1
@@ -232,7 +232,7 @@ subroutine spectral_utilities_init
 
   write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
   write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
-  
+
   num%memory_efficient      = num_grid%get_asInt   ('memory_efficient',       defaultVal=1) > 0
   num%FFTW_timelimit        = num_grid%get_asFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
   num%divergence_correction = num_grid%get_asInt   ('divergence_correction',  defaultVal=2)

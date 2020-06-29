@@ -85,7 +85,7 @@ module math
     module procedure math_identity2nd
   end interface math_eye
 
-
+! ToDo: Since random seed is needed only once, I would simplify here
 !---------------------------------------------------------------------------------------------------
  private :: &
    selfTest

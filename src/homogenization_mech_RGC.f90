@@ -107,7 +107,7 @@ module subroutine mech_RGC_init(num_homogMech)
   allocate(dependentState(Ninstance))
  
   num_RGC => num_homogMech%get('RGC',defaultVal=emptyDict)
-  
+
   num%atol         =  num_RGC%get_asFloat('atol',              defaultVal=1.0e+4_pReal)
   num%rtol         =  num_RGC%get_asFloat('rtol',              defaultVal=1.0e-3_pReal)
   num%absMax       =  num_RGC%get_asFloat('amax',              defaultVal=1.0e+10_pReal)
@@ -121,7 +121,6 @@ module subroutine mech_RGC_init(num_homogMech)
   num%maxVolDiscr  =  num_RGC%get_asFloat('maxvoldiscrepancy', defaultVal=1.0e-5_pReal)
   num%volDiscrMod  =  num_RGC%get_asFloat('voldiscrepancymod', defaultVal=1.0e+12_pReal)
   num%volDiscrPow  =  num_RGC%get_asFloat('dicrepancypower',   defaultVal=5.0_pReal)
-
 
   if (num%atol <= 0.0_pReal)         call IO_error(301,ext_msg='absTol_RGC')
   if (num%rtol <= 0.0_pReal)         call IO_error(301,ext_msg='relTol_RGC')

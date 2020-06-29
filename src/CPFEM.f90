@@ -49,7 +49,7 @@ module CPFEM
       iJacoStiffness                                                                                !< frequency of stiffness update
   end type tNumerics
 
-  type(tNumerics), private ::  num
+  type(tNumerics), private :: num
   
   public :: &
     CPFEM_general, &

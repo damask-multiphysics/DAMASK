@@ -29,9 +29,9 @@ module grid_mech_spectral_polarisation
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
-  type(tSolutionParams), private :: params
+  type(tSolutionParams) :: params
 
-  type, private :: tNumerics
+  type :: tNumerics
     logical :: update_gamma                                                                         !< update gamma operator with current stiffness
     character(len=:), allocatable :: &
       petsc_options
@@ -46,21 +46,21 @@ module grid_mech_spectral_polarisation
       eps_stress_atol, &                                                                            !< absolute tolerance for fullfillment of stress BC
       eps_stress_rtol                                                                               !< relative tolerance for fullfillment of stress BC
     real(pReal) :: &
-      alpha, &                                                                                 !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
-      beta                                                                                     !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
+      alpha, &                                                                                      !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme
+      beta                                                                                          !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme
   end type tNumerics
 
-  type(tNumerics), private :: num                                                                   ! numerics parameters. Better name?
+  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  DM,   private :: da
-  SNES, private :: snes
-  Vec,  private :: solution_vec
+  DM   :: da
+  SNES :: snes
+  Vec  :: solution_vec
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
+  real(pReal), dimension(:,:,:,:,:), allocatable :: &
     F_lastInc, &                                                                                    !< field of previous compatible deformation gradients
     F_tau_lastInc, &                                                                                !< field of previous incompatible deformation gradient
     Fdot, &                                                                                         !< field of assumed rate of compatible deformation gradient
@@ -68,15 +68,15 @@ module grid_mech_spectral_polarisation
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
-  real(pReal), private, dimension(3,3) :: &
+  real(pReal), dimension(3,3) :: &
     F_aimDot = 0.0_pReal, &                                                                         !< assumed rate of average deformation gradient
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
     F_av = 0.0_pReal, &                                                                             !< average incompatible def grad field
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
 
-  character(len=pStringLen), private :: incInfo                                                     !< time and increment information
-  real(pReal), private, dimension(3,3,3,3) :: &
+  character(len=pStringLen) :: incInfo                                                              !< time and increment information
+  real(pReal), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
     C_minMaxAvg = 0.0_pReal, &                                                                      !< current (min+max)/2 stiffness
@@ -85,12 +85,12 @@ module grid_mech_spectral_polarisation
     C_scale = 0.0_pReal, &
     S_scale = 0.0_pReal
 
-  real(pReal), private :: &
+  real(pReal) :: &
     err_BC, &                                                                                       !< deviation from stress BC
     err_curl, &                                                                                     !< RMS of curl of F
     err_div                                                                                         !< RMS of div of P
 
-  integer, private :: &
+  integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
 
   public :: &

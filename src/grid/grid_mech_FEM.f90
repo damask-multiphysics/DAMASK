@@ -46,7 +46,8 @@ module grid_mech_FEM
       petsc_options
   end type tNumerics
 
-  type(tNumerics), private :: num 
+  type(tNumerics), private :: num
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM,   private :: mech_grid
@@ -453,8 +454,6 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
     err_div, &
     divTol, &
     BCTol
-
-!------------------------------------------------------------------------------------
 
   err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)
