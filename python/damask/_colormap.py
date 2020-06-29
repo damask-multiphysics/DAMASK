@@ -127,7 +127,19 @@ class Colormap(mpl.colors.ListedColormap):
 
     @staticmethod
     def list_predefined():
-        """List predefined colormaps by category."""
+        """
+        List predefined colormaps by category.
+
+        References
+        ----------
+        .. [1] DAMASK colormap theory
+           https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
+        .. [2] DAMASK colormaps first use
+           https://doi.org/10.1016/j.ijplas.2012.09.012
+        .. [3] Matplotlib colormaps overview
+           https://matplotlib.org/tutorials/colors/colormaps.html
+
+        """
         print('DAMASK colormaps')
         print('  '+', '.join(Colormap._predefined_DAMASK.keys()))
         for cat in Colormap._predefined_mpl:
