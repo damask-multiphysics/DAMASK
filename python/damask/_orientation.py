@@ -140,15 +140,23 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
     @property
     def reduced_vec(self):
         """Transform orientation to fall into fundamental zone according to symmetry."""
-        equi=self.equivalent_vec.rotation #24 x rot x 3(rodrigues vector)
-        r= 1 if not self.rotation.shape else equi.shape[1] #number of rotations
-        quat=np.empty( [r , 4])
-        for rot in range(r):
-            for sym in range(equi.shape[0]):
-                if self.lattice.symmetry.inFZ(equi.as_Rodrigues(vector=True)[sym,rot]): 
-                    quat[rot]=equi.as_quaternion()[sym,rot]
-                    break
-        return self.__class__(quat,self.lattice)
+        equi= self.equivalent_vec.rotation                                              #equivalent orientations
+        r= 1 if not self.rotation.shape else equi.shape[1]                              #number of rotations
+        num_equi=equi.shape[0]                                                          #number of equivalente orientations  
+        quat= np.reshape( equi.as_quaternion(), (r*num_equi,4) ,order='F')              #equivalents are listed in intiuitive order
+        boolean=Orientation(quat,  self.lattice).inFZ_vec()                             #check which ones are in FZ
+        if sum(boolean) == r:
+            return self.__class__(quat[boolean],self.lattice)
+
+        else:
+            print('More than 1 equivalent orientation has been found for an orientation')
+            index=np.empty(r, dtype=int)                                                
+            for l,h in enumerate(range(0,r*num_equi, num_equi)):
+                index[l]=np.where(boolean[h:h+num_equi])[0][0] + (l*num_equi)           #get first index that is true then go check to next orientation
+                
+            return self.__class__(quat[index],self.lattice)
+                
+
 
 
 
@@ -187,7 +195,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
         return color
 
 
-    def IPFcolor_vec(self,axis):
+    def IPF_color(self,axis):
         """TSL color of inverse pole figure for given axis. Not for hex or triclinic lattices."""
         eq = self.equivalent_vec
         pole = eq.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),eq.rotation.shape+(3,))

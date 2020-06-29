@@ -110,7 +110,7 @@ class TestOrientation_vec:
                         rot2.as_quaternion(),rot3.as_quaternion()])
         ori_vec=Orientation(quat,lattice)
 
-        assert np.allclose( ori_vec.IPFcolor_vec(np.array([0,0,1]))[0],ori0.IPFcolor(np.array([0,0,1])))
-        assert np.allclose( ori_vec.IPFcolor_vec(np.array([0,2,1]))[1],ori1.IPFcolor(np.array([0,2,1])))
-        assert np.allclose( ori_vec.IPFcolor_vec(np.array([0,3,1]))[2],ori2.IPFcolor(np.array([0,3,1])))
-        assert np.allclose( ori_vec.IPFcolor_vec(np.array([4,0,1]))[3],ori3.IPFcolor(np.array([4,0,1])))
+        assert np.allclose( ori_vec.IPF_color(np.array([0,0,1]))[0],ori0.IPFcolor(np.array([0,0,1])))
+        assert np.allclose( ori_vec.IPF_color(np.array([0,2,1]))[1],ori1.IPFcolor(np.array([0,2,1])))
+        assert np.allclose( ori_vec.IPF_color(np.array([0,3,1]))[2],ori2.IPFcolor(np.array([0,3,1])))
+        assert np.allclose( ori_vec.IPF_color(np.array([4,0,1]))[3],ori3.IPFcolor(np.array([4,0,1])))
