@@ -28,13 +28,13 @@ class TestOrientation_vec:
         ori_vec=Orientation(quat,lattice)
 
         for s in range(len(ori_vec.lattice.symmetry.symmetryOperations())):
-            assert all(ori_vec.equivalent_vec.rotation.as_Eulers()[s,0] == \
+            assert all(ori_vec.equivalent.rotation.as_Eulers()[s,0] == \
                         ori0.equivalentOrientations()[s].rotation.as_Eulers())
-            assert all(ori_vec.equivalent_vec.rotation.as_quaternion()[s,1] == \
+            assert all(ori_vec.equivalent.rotation.as_quaternion()[s,1] == \
                         ori1.equivalentOrientations()[s].rotation.as_quaternion())
-            assert all(ori_vec.equivalent_vec.rotation.as_Rodrigues()[s,2] == \
+            assert all(ori_vec.equivalent.rotation.as_Rodrigues()[s,2] == \
                         ori2.equivalentOrientations()[s].rotation.as_Rodrigues())
-            assert all(ori_vec.equivalent_vec.rotation.as_cubochoric()[s,3] == \
+            assert all(ori_vec.equivalent.rotation.as_cubochoric()[s,3] == \
                         ori3.equivalentOrientations()[s].rotation.as_cubochoric())
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)

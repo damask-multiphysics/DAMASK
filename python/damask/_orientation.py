@@ -39,6 +39,11 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
         else:
             self.rotation = Rotation.from_quaternion(rotation)                                      # assume quaternion
 
+    def __getitem__(self,item):
+        if isinstance(item,tuple) and len(item) >= len(self):
+            raise IndexError('Too many indices')
+        return self.__class__(self.rotation[item],self.lattice)
+
 
     def disorientation(self,
                        other,
@@ -66,7 +71,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
                 r = b*aInv
                 for k in range(2):
                     r.inverse()
-                    breaker = self.lattice.symmetry.inFZ(r.as_Rodrigues(vector=True)) \
+                    breaker = self.lattice.inFZ(r.as_Rodrigues(vector=True)) \
                               and (not SST or other.lattice.symmetry.inDisorientationSST(r.as_Rodrigues(vector=True)))
                     if breaker: break
                 if breaker: break
@@ -79,17 +84,17 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
     def inFZ_vec(self):
         """Check if orientations fall into Fundamental Zone."""
         if not self.rotation.shape:
-            return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
+            return self.lattice.inFZ(self.rotation.as_Rodrigues(vector=True))
         else:
-            return [self.lattice.symmetry.inFZ(\
+            return [self.lattice.inFZ(\
                 self.rotation.as_Rodrigues(vector=True)[l]) for l in range(self.rotation.shape[0])]
 
 
     def inFZ(self):
-        return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
+        return self.lattice.inFZ(self.rotation.as_Rodrigues(vector=True))
 
     @property
-    def equivalent_vec(self):
+    def equivalent(self):
         """
         Return orientations which are symmetrically equivalent.
 
@@ -97,12 +102,12 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
         is added to the left of the rotation array.
 
         """
-        s = self.lattice.symmetry.symmetry_operations #24 lines (sym) x 4 columns (quat)
-        s = s.reshape(s.shape[:1]+(1,)*len(self.rotation.shape)+(4,)) #reshape zo (24,1,4)
+        s = self.lattice.symmetry.symmetry_operations
+        s = s.reshape(s.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
         s = Rotation(np.broadcast_to(s,s.shape[:1]+self.rotation.quaternion.shape))
 
-        r = np.broadcast_to(self.rotation.quaternion,s.shape[:1]+self.rotation.quaternion.shape) #(24,NumRots,4)
-        r = Rotation(r) #(24, NumRot)
+        r = np.broadcast_to(self.rotation.quaternion,s.shape[:1]+self.rotation.quaternion.shape)
+        r = Rotation(r)
 
         return self.__class__(s@r,self.lattice)
 
@@ -140,7 +145,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
     @property
     def reduced_vec(self):
         """Transform orientation to fall into fundamental zone according to symmetry."""
-        equi= self.equivalent_vec.rotation                                              #equivalent orientations
+        equi= self.equivalent.rotation                                                  #equivalent orientations
         r= 1 if not self.rotation.shape else equi.shape[1]                              #number of rotations
         num_equi=equi.shape[0]                                                          #number of equivalente orientations
         quat= np.reshape( equi.as_quaternion(), (r*num_equi,4) ,order='F')              #equivalents are listed in intiuitive order
@@ -163,7 +168,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
     def reduced(self):
         """Transform orientation to fall into fundamental zone according to symmetry."""
         for me in self.equivalentOrientations():
-            if self.lattice.symmetry.inFZ(me.rotation.as_Rodrigues(vector=True)): break
+            if self.lattice.inFZ(me.rotation.as_Rodrigues(vector=True)): break
 
         return self.__class__(me.rotation,self.lattice)
 
@@ -197,9 +202,9 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
 
     def IPF_color(self,axis):
         """TSL color of inverse pole figure for given axis. Not for hex or triclinic lattices."""
-        eq = self.equivalent_vec
+        eq = self.equivalent
         pole = eq.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),eq.rotation.shape+(3,))
-        in_SST, color = self.lattice.symmetry.in_SST(pole,color=True)
+        in_SST, color = self.lattice.in_SST(pole,color=True)
 
         # ignore duplicates (occur for highly symmetric orientations)
         found = np.zeros_like(in_SST[1],dtype=bool)

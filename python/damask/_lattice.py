@@ -479,11 +479,11 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
     """
 
     lattices = {
-                'triclinic':{'symmetry':None},
-                'bct':{'symmetry':'tetragonal'},
-                'hex':{'symmetry':'hexagonal'},
-                'fcc':{'symmetry':'cubic','c/a':1.0},
-                'bcc':{'symmetry':'cubic','c/a':1.0},
+                'triclinic':{'system':None},
+                'bct':      {'system':'tetragonal'},
+                'hex':      {'system':'hexagonal'},
+                'fcc':      {'system':'cubic','c/a':1.0},
+                'bcc':      {'system':'cubic','c/a':1.0},
                }
 
 
@@ -498,7 +498,12 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
 
         """
         self.lattice  = lattice
-        self.symmetry = Symmetry(self.lattices[lattice]['symmetry'])
+        self.symmetry = Symmetry(self.lattices[lattice]['system'])
+
+        # transition to subclass
+        self.system = self.symmetry.system
+        self.in_SST = self.symmetry.in_SST
+        self.inFZ   = self.symmetry.inFZ
 
 
     def __repr__(self):
