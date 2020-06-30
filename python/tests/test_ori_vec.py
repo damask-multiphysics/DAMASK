@@ -97,20 +97,3 @@ class TestOrientation_vec:
         assert all(ori_vec.reduced_vec.rotation.as_Rodrigues()[2] ==  ori2.reduced().rotation.as_Rodrigues()  )
         assert all(ori_vec.reduced_vec.rotation.as_cubochoric()[3] == ori3.reduced().rotation.as_cubochoric() )
         assert all(ori_vec.reduced_vec.rotation.as_axis_angle()[4] == ori4.reduced().rotation.as_axis_angle() )
-
-
-    @pytest.mark.parametrize('lattice',['bcc','fcc','bct'])
-    def test_IPFcolor_vec(self,lattice):
-        ori0=Orientation(rot0,lattice)
-        ori1=Orientation(rot1,lattice)
-        ori2=Orientation(rot2,lattice)
-        ori3=Orientation(rot3,lattice)
-
-        quat=np.array([rot0.as_quaternion(),rot1.as_quaternion(),\
-                        rot2.as_quaternion(),rot3.as_quaternion()])
-        ori_vec=Orientation(quat,lattice)
-
-        assert np.allclose( ori_vec.IPF_color(np.array([0,0,1]))[0],ori0.IPFcolor(np.array([0,0,1])))
-        assert np.allclose( ori_vec.IPF_color(np.array([0,2,1]))[1],ori1.IPFcolor(np.array([0,2,1])))
-        assert np.allclose( ori_vec.IPF_color(np.array([0,3,1]))[2],ori2.IPFcolor(np.array([0,3,1])))
-        assert np.allclose( ori_vec.IPF_color(np.array([4,0,1]))[3],ori3.IPFcolor(np.array([4,0,1])))

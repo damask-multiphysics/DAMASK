@@ -103,6 +103,6 @@ def set_of_quaternions():
     specials_scatter /= np.linalg.norm(specials_scatter,axis=1).reshape(-1,1)
     specials_scatter[specials_scatter[:,0]<0]*=-1
 
-    return [s for s in specials] + \
-           [s for s in specials_scatter] + \
-           [s for s in random_quaternions(n-2*len(specials))]
+    return np.array([s for s in specials] + \
+                    [s for s in specials_scatter] + \
+                    [s for s in random_quaternions(n-2*len(specials))])

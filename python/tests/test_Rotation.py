@@ -6,7 +6,7 @@ import numpy as np
 from damask import Rotation
 from damask import _rotation
 
-n = 1000
+n = 1100
 atol=1.e-4
 
 @pytest.fixture
