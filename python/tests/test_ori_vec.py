@@ -39,23 +39,3 @@ class TestOrientation_vec:
                         ori2.relatedOrientations(model)[s].rotation.as_Rodrigues())
             assert all(ori_vec.relatedOrientations_vec(model).rotation.as_cubochoric()[s,3] == \
                         ori3.relatedOrientations(model)[s].rotation.as_cubochoric())
-
-    @pytest.mark.parametrize('lattice',Lattice.lattices)
-    def test_reduced_vec(self,lattice):
-        ori0=Orientation(rot0,lattice)
-        ori1=Orientation(rot1,lattice)
-        ori2=Orientation(rot2,lattice)
-        ori3=Orientation(rot3,lattice)
-        #ensure 1 of them is in FZ
-        ori4=ori0.reduced()
-        rot4=ori4.rotation
-
-        quat=np.array([rot0.as_quaternion(),rot1.as_quaternion(),\
-                        rot2.as_quaternion(),rot3.as_quaternion(), rot4.as_quaternion()])
-        ori_vec=Orientation(quat,lattice)
-
-        assert all(ori_vec.reduced_vec.rotation.as_Eulers()[0] ==     ori0.reduced().rotation.as_Eulers()     )
-        assert all(ori_vec.reduced_vec.rotation.as_quaternion()[1] == ori1.reduced().rotation.as_quaternion() )
-        assert all(ori_vec.reduced_vec.rotation.as_Rodrigues()[2] ==  ori2.reduced().rotation.as_Rodrigues()  )
-        assert all(ori_vec.reduced_vec.rotation.as_cubochoric()[3] == ori3.reduced().rotation.as_cubochoric() )
-        assert all(ori_vec.reduced_vec.rotation.as_axis_angle()[4] == ori4.reduced().rotation.as_axis_angle() )

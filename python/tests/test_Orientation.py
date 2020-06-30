@@ -54,6 +54,13 @@ class TestOrientation:
             assert np.allclose(color,IPF_color(oris[i],direction))
 
 
+    @pytest.mark.parametrize('lattice',Lattice.lattices)
+    def test_reduced(self,set_of_quaternions,lattice):
+        oris = Orientation(Rotation(set_of_quaternions),lattice)
+        reduced = oris.reduced
+        assert np.all(reduced.in_FZ) and oris.rotation.shape == reduced.rotation.shape
+
+
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['fcc','bcc'])
     def test_relationship_forward_backward(self,model,lattice):
