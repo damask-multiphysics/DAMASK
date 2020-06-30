@@ -34,7 +34,7 @@ class TestOrientation:
         for rot in [Rotation.from_random() for r in range(n//100)]:
             R = damask.Orientation(rot,lattice)
             color = R.IPFcolor(direction)
-            for equivalent in R.equivalentOrientations():
+            for equivalent in R.equivalent:
                 assert np.allclose(color,R.IPFcolor(direction))
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])

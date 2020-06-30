@@ -192,7 +192,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
         """TSL color of inverse pole figure for given axis."""
         color = np.zeros(3,'d')
 
-        for o in self.equivalentOrientations():
+        for o in self.equivalent:
             pole = o.rotation@axis                                                                  # align crystal direction to axis
             inSST,color = self.lattice.symmetry.inSST(pole,color=True)
             if inSST: break
