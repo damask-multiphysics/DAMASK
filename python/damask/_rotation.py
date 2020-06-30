@@ -52,6 +52,8 @@ class Rotation:
             Unit quaternion that follows the conventions. Use .from_quaternion to perform a sanity check.
 
         """
+        if quaternion.shape[-1] != 4:
+            raise ValueError('Not a quaternion')
         self.quaternion = quaternion.copy()
 
 
@@ -60,6 +62,7 @@ class Rotation:
         return self.quaternion.shape[:-1]
 
 
+    # ToDo: Check difference __copy__ vs __deepcopy__
     def __copy__(self):
         """Copy."""
         return self.__class__(self.quaternion)
@@ -70,12 +73,26 @@ class Rotation:
     def __repr__(self):
         """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
         if self.quaternion.shape != (4,):
-            return str(self.quaternion) # ToDo: could be nicer ...
+            return 'Quaternions:\n'+str(self.quaternion) # ToDo: could be nicer ...
         return '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
                'Matrix:\n{}'.format(self.as_matrix()),
                'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
                 ])
+
+
+    def __len__(self):
+        return 0 if self.shape == () else len(self.shape)
+
+
+    def __getitem__(self,item):
+        if isinstance(item,tuple) and len(item) >= len(self):
+            raise IndexError('Too many indices')
+        return self.__class__(self.quaternion[item])
+
+
+    def __len__(self):
+        return 0 if self.shape == () else self.shape[0]
 
 
     def __matmul__(self, other):
