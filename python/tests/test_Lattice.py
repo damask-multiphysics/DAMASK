@@ -13,26 +13,26 @@ class TestSymmetry:
             s = Symmetry(invalid_symmetry)                                                          # noqa
 
     def test_equal(self):
-        symmetry = random.choice(Symmetry.lattices)
+        symmetry = random.choice(Symmetry.crystal_systems)
         print(symmetry)
         assert Symmetry(symmetry) == Symmetry(symmetry)
 
     def test_not_equal(self):
-        symmetries = random.sample(Symmetry.lattices,k=2)
+        symmetries = random.sample(Symmetry.crystal_systems,k=2)
         assert Symmetry(symmetries[0]) != Symmetry(symmetries[1])
 
-    @pytest.mark.parametrize('lattice',Symmetry.lattices)
-    def test_inFZ(self,lattice):
-          assert Symmetry(lattice).inFZ(np.zeros(3))
+    @pytest.mark.parametrize('system',Symmetry.crystal_systems)
+    def test_inFZ(self,system):
+          assert Symmetry(system).inFZ(np.zeros(3))
 
-    @pytest.mark.parametrize('lattice',Symmetry.lattices)
-    def test_inDisorientationSST(self,lattice):
-          assert Symmetry(lattice).inDisorientationSST(np.zeros(3))
+    @pytest.mark.parametrize('system',Symmetry.crystal_systems)
+    def test_inDisorientationSST(self,system):
+          assert Symmetry(system).inDisorientationSST(np.zeros(3))
 
-    @pytest.mark.parametrize('lattice',Symmetry.lattices)
+    @pytest.mark.parametrize('system',Symmetry.crystal_systems)
     @pytest.mark.parametrize('proper',[True,False])
-    def test_inSST(self,lattice,proper):
-          assert Symmetry(lattice).inSST(np.zeros(3),proper)
+    def test_inSST(self,system,proper):
+          assert Symmetry(system).inSST(np.zeros(3),proper)
 
     @pytest.mark.parametrize('function',['inFZ','inDisorientationSST'])
     def test_invalid_argument(self,function):

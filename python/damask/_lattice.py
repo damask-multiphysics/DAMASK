@@ -5,7 +5,7 @@ from . import Rotation
 
 class Symmetry:
     """
-    Symmetry operations for lattice systems.
+    Symmetry-related operations for crystal systems.
 
     References
     ----------
@@ -13,34 +13,35 @@ class Symmetry:
 
     """
 
-    lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic']
+    crystal_systems = [None,'orthorhombic','tetragonal','hexagonal','cubic']
 
-    def __init__(self, symmetry = None):
+    def __init__(self, system = None):
         """
         Symmetry Definition.
 
         Parameters
         ----------
-        symmetry : str, optional
-            label of the crystal system
+        system : {None,'orthorhombic','tetragonal','hexagonal','cubic'}, optional
+            Name of the crystal system. Defaults to 'None'.
 
         """
-        if symmetry is not None and symmetry.lower() not in Symmetry.lattices:
-            raise KeyError('Symmetry/crystal system "{}" is unknown'.format(symmetry))
+        if system is not None and system.lower() not in self.crystal_systems:
+            raise KeyError(f'Crystal system "{system}" is unknown')
 
-        self.lattice = symmetry.lower() if isinstance(symmetry,str) else symmetry
+        self.system = system.lower() if isinstance(system,str) else system
+        self.lattice = self.system # for compatibility
 
 
     def __copy__(self):
         """Copy."""
-        return self.__class__(self.lattice)
+        return self.__class__(self.system)
 
     copy = __copy__
 
 
     def __repr__(self):
         """Readable string."""
-        return '{}'.format(self.lattice)
+        return '{}'.format(self.system)
 
 
     def __eq__(self, other):
@@ -53,7 +54,7 @@ class Symmetry:
             Symmetry to check for equality.
 
         """
-        return self.lattice == other.lattice
+        return self.system == other.system
 
     def __neq__(self, other):
         """
@@ -77,13 +78,13 @@ class Symmetry:
             Symmetry to check for for order.
 
         """
-        myOrder    = Symmetry.lattices.index(self.lattice)
-        otherOrder = Symmetry.lattices.index(other.lattice)
+        myOrder    = self.crystal_systems.index(self.system)
+        otherOrder = self.crystal_systems.index(other.system)
         return (myOrder > otherOrder) - (myOrder < otherOrder)
 
     def symmetryOperations(self,members=[]):
         """List (or single element) of symmetry operations as rotations."""
-        if self.lattice == 'cubic':
+        if self.system == 'cubic':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
@@ -110,7 +111,7 @@ class Symmetry:
                           [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
                           [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
                         ]
-        elif self.lattice == 'hexagonal':
+        elif self.system == 'hexagonal':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
@@ -125,7 +126,7 @@ class Symmetry:
                           [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
                           [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
                         ]
-        elif self.lattice == 'tetragonal':
+        elif self.system == 'tetragonal':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
@@ -136,7 +137,7 @@ class Symmetry:
                           [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                           [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                         ]
-        elif self.lattice == 'orthorhombic':
+        elif self.system == 'orthorhombic':
             symQuats =  [
                           [ 1.0,0.0,0.0,0.0 ],
                           [ 0.0,1.0,0.0,0.0 ],
@@ -160,7 +161,7 @@ class Symmetry:
     @property
     def symmetry_operations(self):
         """Symmetry operations as Rotations."""
-        if self.lattice == 'cubic':
+        if self.system == 'cubic':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
@@ -187,7 +188,7 @@ class Symmetry:
                           [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
                           [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
                         ]
-        elif self.lattice == 'hexagonal':
+        elif self.system == 'hexagonal':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
@@ -202,7 +203,7 @@ class Symmetry:
                           [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
                           [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
                         ]
-        elif self.lattice == 'tetragonal':
+        elif self.system == 'tetragonal':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
@@ -213,7 +214,7 @@ class Symmetry:
                           [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                           [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                         ]
-        elif self.lattice == 'orthorhombic':
+        elif self.system == 'orthorhombic':
             symQuats =  [
                           [ 1.0,0.0,0.0,0.0 ],
                           [ 0.0,1.0,0.0,0.0 ],
@@ -240,21 +241,21 @@ class Symmetry:
 
         Rabs = abs(rodrigues)
 
-        if self.lattice == 'cubic':
+        if self.system == 'cubic':
             return     np.sqrt(2.0)-1.0 >= Rabs[0] \
                    and np.sqrt(2.0)-1.0 >= Rabs[1] \
                    and np.sqrt(2.0)-1.0 >= Rabs[2] \
                    and 1.0 >= Rabs[0] + Rabs[1] + Rabs[2]
-        elif self.lattice == 'hexagonal':
+        elif self.system == 'hexagonal':
             return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2] \
                    and 2.0 >= np.sqrt(3)*Rabs[0] + Rabs[1] \
                    and 2.0 >= np.sqrt(3)*Rabs[1] + Rabs[0] \
                    and 2.0 >= np.sqrt(3) + Rabs[2]
-        elif self.lattice == 'tetragonal':
+        elif self.system == 'tetragonal':
             return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] \
                    and np.sqrt(2.0) >= Rabs[0] + Rabs[1] \
                    and np.sqrt(2.0) >= Rabs[2] + 1.0
-        elif self.lattice == 'orthorhombic':
+        elif self.system == 'orthorhombic':
             return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2]
         else:
             return True
@@ -275,13 +276,13 @@ class Symmetry:
         R = rodrigues
 
         epsilon = 0.0
-        if self.lattice == 'cubic':
+        if self.system == 'cubic':
             return R[0] >= R[1]+epsilon              and R[1] >= R[2]+epsilon and R[2] >= epsilon
-        elif self.lattice == 'hexagonal':
+        elif self.system == 'hexagonal':
             return R[0] >= np.sqrt(3)*(R[1]-epsilon) and R[1] >= epsilon      and R[2] >= epsilon
-        elif self.lattice == 'tetragonal':
+        elif self.system == 'tetragonal':
             return R[0] >= R[1]-epsilon              and R[1] >= epsilon      and R[2] >= epsilon
-        elif self.lattice == 'orthorhombic':
+        elif self.system == 'orthorhombic':
             return R[0] >= epsilon                   and R[1] >= epsilon      and R[2] >= epsilon
         else:
             return True
@@ -313,7 +314,7 @@ class Symmetry:
         ...         }
 
         """
-        if self.lattice == 'cubic':
+        if self.system == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                            [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
                                            [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
@@ -321,7 +322,7 @@ class Symmetry:
                                            [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
                                            [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
                     }
-        elif self.lattice == 'hexagonal':
+        elif self.system == 'hexagonal':
             basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
                                            [ 1.            , -np.sqrt(3.)   ,  0. ],
                                            [ 0.            ,  2.            ,  0. ] ]),
@@ -329,7 +330,7 @@ class Symmetry:
                                            [-1.            ,  np.sqrt(3.)   ,  0. ],
                                            [ np.sqrt(3.)   , -1.            ,  0. ] ]),
                     }
-        elif self.lattice == 'tetragonal':
+        elif self.system == 'tetragonal':
             basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
                                            [ 1.            , -1.            ,  0. ],
                                            [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
@@ -337,7 +338,7 @@ class Symmetry:
                                            [-1.            ,  1.            ,  0. ],
                                            [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
                     }
-        elif self.lattice == 'orthorhombic':
+        elif self.system == 'orthorhombic':
             basis = {'improper':np.array([ [ 0., 0., 1.],
                                            [ 1., 0., 0.],
                                            [ 0., 1., 0.] ]),
@@ -401,7 +402,7 @@ class Symmetry:
         ...         }
 
         """
-        if self.lattice == 'cubic':
+        if self.system == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                            [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
                                            [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
@@ -409,7 +410,7 @@ class Symmetry:
                                            [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
                                            [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
                     }
-        elif self.lattice == 'hexagonal':
+        elif self.system == 'hexagonal':
             basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
                                            [ 1.            , -np.sqrt(3.)   ,  0. ],
                                            [ 0.            ,  2.            ,  0. ] ]),
@@ -417,7 +418,7 @@ class Symmetry:
                                            [-1.            ,  np.sqrt(3.)   ,  0. ],
                                            [ np.sqrt(3.)   , -1.            ,  0. ] ]),
                     }
-        elif self.lattice == 'tetragonal':
+        elif self.system == 'tetragonal':
             basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
                                            [ 1.            , -1.            ,  0. ],
                                            [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
@@ -425,7 +426,7 @@ class Symmetry:
                                            [-1.            ,  1.            ,  0. ],
                                            [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
                     }
-        elif self.lattice == 'orthorhombic':
+        elif self.system == 'orthorhombic':
             basis = {'improper':np.array([ [ 0., 0., 1.],
                                            [ 1., 0., 0.],
                                            [ 0., 1., 0.] ]),
