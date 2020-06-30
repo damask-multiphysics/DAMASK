@@ -14,6 +14,10 @@ def reference_dir(reference_dir_base):
     """Directory containing reference results."""
     return os.path.join(reference_dir_base,'Rotation')
 
+@pytest.fixture
+def set_of_rotations(set_of_quaternions):
+    return [Rotation.from_quaternion(s) for s in set_of_quaternions]
+
 
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
@@ -607,9 +611,9 @@ class TestRotation:
                                                    (Rotation._qu2ax,qu2ax),
                                                    (Rotation._qu2ro,qu2ro),
                                                    (Rotation._qu2ho,qu2ho)])
-    def test_quaternion_vectorization(self,set_of_rotations,vectorized,single):
+    def test_quaternion_vectorization(self,set_of_quaternions,vectorized,single):
         """Check vectorized implementation for quaternion against single point calculation."""
-        qu = np.array([rot.as_quaternion() for rot in set_of_rotations])
+        qu = np.array(set_of_quaternions)
         vectorized(qu.reshape(qu.shape[0]//2,-1,4))
         co = vectorized(qu)
         for q,c in zip(qu,co):

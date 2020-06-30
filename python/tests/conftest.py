@@ -3,8 +3,6 @@ import numpy as np
 
 import pytest
 
-from damask import Rotation
-
 def pytest_addoption(parser):
     parser.addoption("--update",
                      action="store_true",
@@ -21,8 +19,21 @@ def reference_dir_base():
     return os.path.join(os.path.dirname(__file__),'reference')
 
 @pytest.fixture
-def set_of_rotations():
+def set_of_quaternions():
     """A set of n random rotations."""
+    def random_quaternions(N):
+        r = np.random.rand(N,3)
+
+        A = np.sqrt(r[:,2])
+        B = np.sqrt(1.0-r[:,2])
+        qu = np.column_stack([np.cos(2.0*np.pi*r[:,0])*A,
+                              np.sin(2.0*np.pi*r[:,1])*B,
+                              np.cos(2.0*np.pi*r[:,1])*B,
+                              np.sin(2.0*np.pi*r[:,0])*A])
+        qu[:,0]*=np.sign(qu[:,0])
+
+        return qu
+
     n = 1100
     scatter=1.e-2
     specials = np.array([
@@ -92,6 +103,6 @@ def set_of_rotations():
     specials_scatter /= np.linalg.norm(specials_scatter,axis=1).reshape(-1,1)
     specials_scatter[specials_scatter[:,0]<0]*=-1
 
-    return [Rotation.from_quaternion(s) for s in specials] + \
-           [Rotation.from_quaternion(s) for s in specials_scatter] + \
-           [Rotation.from_random() for _ in range(n-len(specials)-len(specials_scatter))]
+    return [s for s in specials] + \
+           [s for s in specials_scatter] + \
+           [s for s in random_quaternions(n-2*len(specials))]
