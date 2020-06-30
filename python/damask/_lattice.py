@@ -29,7 +29,7 @@ class Symmetry:
             raise KeyError(f'Crystal system "{system}" is unknown')
 
         self.system = system.lower() if isinstance(system,str) else system
-        self.lattice = self.system # for compatibility
+        self.lattice = self.system # ToDo: for compatibility
 
 
     def __copy__(self):
@@ -82,85 +82,10 @@ class Symmetry:
         otherOrder = self.crystal_systems.index(other.system)
         return (myOrder > otherOrder) - (myOrder < otherOrder)
 
-    def symmetryOperations(self,members=[]):
-        """List (or single element) of symmetry operations as rotations."""
-        if self.system == 'cubic':
-            symQuats =  [
-                          [ 1.0,            0.0,            0.0,            0.0            ],
-                          [ 0.0,            1.0,            0.0,            0.0            ],
-                          [ 0.0,            0.0,            1.0,            0.0            ],
-                          [ 0.0,            0.0,            0.0,            1.0            ],
-                          [ 0.0,            0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2) ],
-                          [ 0.0,            0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2) ],
-                          [ 0.0,            0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2) ],
-                          [ 0.0,            0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2) ],
-                          [ 0.0,            0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                          [ 0.0,           -0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0            ],
-                          [ 0.5,            0.5,            0.5,            0.5            ],
-                          [-0.5,            0.5,            0.5,            0.5            ],
-                          [-0.5,            0.5,            0.5,           -0.5            ],
-                          [-0.5,            0.5,           -0.5,            0.5            ],
-                          [-0.5,           -0.5,            0.5,            0.5            ],
-                          [-0.5,           -0.5,            0.5,           -0.5            ],
-                          [-0.5,           -0.5,           -0.5,            0.5            ],
-                          [-0.5,            0.5,           -0.5,           -0.5            ],
-                          [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                          [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                          [-0.5*np.sqrt(2), 0.0,            0.5*np.sqrt(2), 0.0            ],
-                          [-0.5*np.sqrt(2), 0.0,           -0.5*np.sqrt(2), 0.0            ],
-                          [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
-                          [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
-                        ]
-        elif self.system == 'hexagonal':
-            symQuats =  [
-                          [ 1.0,            0.0,            0.0,            0.0            ],
-                          [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
-                          [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                          [ 0.0,            0.0,            0.0,            1.0            ],
-                          [-0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
-                          [-0.5*np.sqrt(3), 0.0,            0.0,            0.5            ],
-                          [ 0.0,            1.0,            0.0,            0.0            ],
-                          [ 0.0,           -0.5*np.sqrt(3), 0.5,            0.0            ],
-                          [ 0.0,            0.5,           -0.5*np.sqrt(3), 0.0            ],
-                          [ 0.0,            0.0,            1.0,            0.0            ],
-                          [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
-                          [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
-                        ]
-        elif self.system == 'tetragonal':
-            symQuats =  [
-                          [ 1.0,            0.0,            0.0,            0.0            ],
-                          [ 0.0,            1.0,            0.0,            0.0            ],
-                          [ 0.0,            0.0,            1.0,            0.0            ],
-                          [ 0.0,            0.0,            0.0,            1.0            ],
-                          [ 0.0,            0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                          [ 0.0,           -0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0            ],
-                          [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                          [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
-                        ]
-        elif self.system == 'orthorhombic':
-            symQuats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                          [ 0.0,1.0,0.0,0.0 ],
-                          [ 0.0,0.0,1.0,0.0 ],
-                          [ 0.0,0.0,0.0,1.0 ],
-                        ]
-        else:
-            symQuats =  [
-                          [ 1.0,0.0,0.0,0.0 ],
-                        ]
-
-        symOps = list(map(Rotation,
-                      np.array(symQuats)[np.atleast_1d(members) if members != [] else range(len(symQuats))]))
-        try:
-            iter(members)                                                                           # asking for (even empty) list of members?
-        except TypeError:
-            return symOps[0]                                                                        # no, return rotation object
-        else:
-            return symOps                                                                           # yes, return list of rotations
 
     @property
     def symmetry_operations(self):
-        """Symmetry operations as Rotations."""
+        """Symmetry operations as Quaternions."""
         if self.system == 'cubic':
             symQuats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
@@ -228,42 +153,40 @@ class Symmetry:
         return np.array(symQuats)
 
 
-    def inFZ(self,rodrigues):
+    def in_FZ(self,rho):
         """
-        Check whether given Rodrigues-Frank vector falls into fundamental zone of own symmetry.
+        Check whether given Rodrigues-Frank vector falls into fundamental zone.
 
         Fundamental zone in Rodrigues space is point symmetric around origin.
         """
-        if (len(rodrigues) != 3):
-            raise ValueError('Input is not a Rodrigues-Frank vector.\n')
+        if(rho.shape[-1] != 3):
+            raise ValueError('Input is not a Rodrigues-Frank vector.')
 
-        if np.any(rodrigues == np.inf): return False # ToDo: MD: not sure if needed
+        rho_abs = np.abs(rho)
 
-        Rabs = abs(rodrigues)
-
-        if self.system == 'cubic':
-            return     np.sqrt(2.0)-1.0 >= Rabs[0] \
-                   and np.sqrt(2.0)-1.0 >= Rabs[1] \
-                   and np.sqrt(2.0)-1.0 >= Rabs[2] \
-                   and 1.0 >= Rabs[0] + Rabs[1] + Rabs[2]
-        elif self.system == 'hexagonal':
-            return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2] \
-                   and 2.0 >= np.sqrt(3)*Rabs[0] + Rabs[1] \
-                   and 2.0 >= np.sqrt(3)*Rabs[1] + Rabs[0] \
-                   and 2.0 >= np.sqrt(3) + Rabs[2]
-        elif self.system == 'tetragonal':
-            return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] \
-                   and np.sqrt(2.0) >= Rabs[0] + Rabs[1] \
-                   and np.sqrt(2.0) >= Rabs[2] + 1.0
-        elif self.system == 'orthorhombic':
-            return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2]
-        else:
-            return True
+        with np.errstate(invalid='ignore'):
+            # using '*'/prod for 'and'
+            if self.system == 'cubic':
+                return np.where(np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) * \
+                                (1. >= np.sum(rho_abs,axis=-1)),True,False)
+            elif self.system == 'hexagonal':
+                return np.where(np.prod(1.             >= rho_abs,axis=-1) * \
+                                (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) * \
+                                (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) * \
+                                (2. >= np.sqrt(3) + rho_abs[...,2]),True,False)
+            elif self.system == 'tetragonal':
+                return np.where(np.prod(1.             >= rho_abs[...,:2],axis=-1) * \
+                                (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) * \
+                                (np.sqrt(2) >= rho_abs[...,2] + 1.),True,False)
+            elif self.system == 'orthorhombic':
+                return np.where(np.prod(1.             >= rho_abs,axis=-1),True,False)
+            else:
+                return np.where(np.all(np.isfinite(rho_abs),axis=-1),True,False)
 
 
-    def inDisorientationSST(self,rodrigues):
+    def in_disorientation_SST(self,rho):
         """
-        Check whether given Rodrigues-Frank vector (of misorientation) falls into standard stereographic triangle of own symmetry.
+        Check whether given Rodrigues-Frank vector (of misorientation) falls into standard stereographic triangle.
 
         References
         ----------
@@ -271,115 +194,32 @@ class Symmetry:
         https://doi.org/10.1107/S0108767391006864
 
         """
-        if (len(rodrigues) != 3):
-            raise ValueError('Input is not a Rodrigues-Frank vector.\n')
-        R = rodrigues
+        if(rho.shape[-1] != 3):
+            raise ValueError('Input is not a Rodrigues-Frank vector.')
 
-        epsilon = 0.0
-        if self.system == 'cubic':
-            return R[0] >= R[1]+epsilon              and R[1] >= R[2]+epsilon and R[2] >= epsilon
-        elif self.system == 'hexagonal':
-            return R[0] >= np.sqrt(3)*(R[1]-epsilon) and R[1] >= epsilon      and R[2] >= epsilon
-        elif self.system == 'tetragonal':
-            return R[0] >= R[1]-epsilon              and R[1] >= epsilon      and R[2] >= epsilon
-        elif self.system == 'orthorhombic':
-            return R[0] >= epsilon                   and R[1] >= epsilon      and R[2] >= epsilon
-        else:
-            return True
-
-
-    def inSST(self,
-              vector,
-              proper = False,
-              color = False):
-        """
-        Check whether given vector falls into standard stereographic triangle of own symmetry.
-
-        proper considers only vectors with z >= 0, hence uses two neighboring SSTs.
-        Return inverse pole figure color if requested.
-        Bases are computed from
-
-        >>> basis = {'cubic' :       np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                                  [1.,0.,1.]/np.sqrt(2.),                # direction of green
-        ...                                                  [1.,1.,1.]/np.sqrt(3.)]).T),           # direction of blue
-        ...          'hexagonal' :   np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                                  [1.,0.,0.],                            # direction of green
-        ...                                                  [np.sqrt(3.),1.,0.]/np.sqrt(4.)]).T),  # direction of blue
-        ...          'tetragonal' :  np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                                  [1.,0.,0.],                            # direction of green
-        ...                                                  [1.,1.,0.]/np.sqrt(2.)]).T),           # direction of blue
-        ...          'orthorhombic': np.linalg.inv(np.array([[0.,0.,1.],                            # direction of red
-        ...                                                  [1.,0.,0.],                            # direction of green
-        ...                                                  [0.,1.,0.]]).T),                       # direction of blue
-        ...         }
-
-        """
-        if self.system == 'cubic':
-            basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
-                                           [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
-                                           [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
-                       'proper':np.array([ [ 0.            , -1.            ,  1. ],
-                                           [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
-                                           [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
-                    }
-        elif self.system == 'hexagonal':
-            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                           [ 1.            , -np.sqrt(3.)   ,  0. ],
-                                           [ 0.            ,  2.            ,  0. ] ]),
-                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
-                                           [-1.            ,  np.sqrt(3.)   ,  0. ],
-                                           [ np.sqrt(3.)   , -1.            ,  0. ] ]),
-                    }
-        elif self.system == 'tetragonal':
-            basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
-                                           [ 1.            , -1.            ,  0. ],
-                                           [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
-                     'proper':np.array([   [ 0.            ,  0.            ,  1. ],
-                                           [-1.            ,  1.            ,  0. ],
-                                           [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
-                    }
-        elif self.system == 'orthorhombic':
-            basis = {'improper':np.array([ [ 0., 0., 1.],
-                                           [ 1., 0., 0.],
-                                           [ 0., 1., 0.] ]),
-                       'proper':np.array([ [ 0., 0., 1.],
-                                           [-1., 0., 0.],
-                                           [ 0., 1., 0.] ]),
-                    }
-        else:                                                                                       # direct exit for unspecified symmetry
-            if color:
-                return (True,np.zeros(3,'d'))
+        with np.errstate(invalid='ignore'):
+            # using '*' for 'and'
+            if self.system == 'cubic':
+                return np.where((rho[...,0] >= rho[...,1]) * \
+                                (rho[...,1] >= rho[...,2]) * \
+                                (rho[...,2] >= 0),True,False)
+            elif self.system == 'hexagonal':
+                return np.where((rho[...,0] >= rho[...,1]*np.sqrt(3)) * \
+                                (rho[...,1] >= 0) * \
+                                (rho[...,2] >= 0),True,False)
+            elif self.system == 'tetragonal':
+                return np.where((rho[...,0] >= rho[...,1]) * \
+                                (rho[...,1] >= 0) * \
+                                (rho[...,2] >= 0),True,False)
+            elif self.system == 'orthorhombic':
+                return np.where((rho[...,0] >= 0) * \
+                                (rho[...,1] >= 0) * \
+                                (rho[...,2] >= 0),True,False)
             else:
-                return True
-
-        v = np.array(vector,dtype=float)
-        if proper:                                                                                  # check both improper ...
-            theComponents = np.around(np.dot(basis['improper'],v),12)
-            inSST = np.all(theComponents >= 0.0)
-            if not inSST:                                                                           # ... and proper SST
-                theComponents = np.around(np.dot(basis['proper'],v),12)
-                inSST = np.all(theComponents >= 0.0)
-        else:
-            v[2] = abs(v[2])                                                                        # z component projects identical
-            theComponents = np.around(np.dot(basis['improper'],v),12)                               # for positive and negative values
-            inSST = np.all(theComponents >= 0.0)
-
-        if color:                                                                                   # have to return color array
-            if inSST:
-                rgb = np.power(theComponents/np.linalg.norm(theComponents),0.5)                     # smoothen color ramps
-                rgb = np.minimum(np.ones(3,dtype=float),rgb)                                        # limit to maximum intensity
-                rgb /= max(rgb)                                                                     # normalize to (HS)V = 1
-            else:
-                rgb = np.zeros(3,dtype=float)
-            return (inSST,rgb)
-        else:
-            return inSST
+                return np.ones_like(rho[...,0],dtype=bool)
 
 
-    def in_SST(self,
-               vector,
-               proper = False,
-               color = False):
+    def in_SST(self,vector,proper=False,color=False):
         """
         Check whether given vector falls into standard stereographic triangle of own symmetry.
 
@@ -503,7 +343,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
         # transition to subclass
         self.system = self.symmetry.system
         self.in_SST = self.symmetry.in_SST
-        self.inFZ   = self.symmetry.inFZ
+        self.in_FZ   = self.symmetry.in_FZ
 
 
     def __repr__(self):

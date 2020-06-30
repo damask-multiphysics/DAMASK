@@ -733,7 +733,7 @@ class Result:
 
 
     @staticmethod
-    def _add_IPFcolor(q,l):
+    def _add_IPF_color(q,l):
         m = util.scale_to_coprime(np.array(l))
 
         o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
@@ -749,7 +749,7 @@ class Result:
                           'Creator':     inspect.stack()[0][3][1:]
                          }
                }
-    def add_IPFcolor(self,q,l):
+    def add_IPF_color(self,q,l):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
@@ -761,7 +761,7 @@ class Result:
             Lab frame direction for inverse pole figure.
 
         """
-        self._add_generic_pointwise(self._add_IPFcolor,{'q':q},{'l':l})
+        self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})
 
 
     @staticmethod

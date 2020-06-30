@@ -16,44 +16,6 @@ rot3= Rotation.from_random()
 #average
 
 class TestOrientation_vec:
-    #@pytest.mark.xfail
-    @pytest.mark.parametrize('lattice',Lattice.lattices)
-    def test_equivalent_vec(self,lattice):
-        ori0=Orientation(rot0,lattice)
-        ori1=Orientation(rot1,lattice)
-        ori2=Orientation(rot2,lattice)
-        ori3=Orientation(rot3,lattice)
-
-        quat=np.array([rot0.as_quaternion(),rot1.as_quaternion(),rot2.as_quaternion(),rot3.as_quaternion()])
-        ori_vec=Orientation(quat,lattice)
-
-        for s in range(len(ori_vec.lattice.symmetry.symmetryOperations())):
-            assert all(ori_vec.equivalent.rotation.as_Eulers()[s,0] == \
-                        ori0.equivalent[s].rotation.as_Eulers())
-            assert all(ori_vec.equivalent.rotation.as_quaternion()[s,1] == \
-                        ori1.equivalent[s].rotation.as_quaternion())
-            assert all(ori_vec.equivalent.rotation.as_Rodrigues()[s,2] == \
-                        ori2.equivalent[s].rotation.as_Rodrigues())
-            assert all(ori_vec.equivalent.rotation.as_cubochoric()[s,3] == \
-                        ori3.equivalent[s].rotation.as_cubochoric())
-
-    @pytest.mark.parametrize('lattice',Lattice.lattices)
-    def test_inFZ_vec(self,lattice):
-        ori0=Orientation(rot0,lattice)
-        ori1=Orientation(rot1,lattice)
-        ori2=Orientation(rot2,lattice)
-        ori3=Orientation(rot3,lattice)
-        ori4=ori0.reduced() ; rot4=ori4.rotation #ensure 1 of them is in FZ
-
-        quat=np.array([rot0.as_quaternion(),rot1.as_quaternion(),\
-                        rot2.as_quaternion(),rot3.as_quaternion(), rot4.as_quaternion()])
-        ori_vec=Orientation(quat,lattice)
-
-        assert ori_vec.inFZ_vec()[0] == ori0.inFZ()
-        assert ori_vec.inFZ_vec()[1] == ori1.inFZ()
-        assert ori_vec.inFZ_vec()[2] == ori2.inFZ()
-        assert ori_vec.inFZ_vec()[3] == ori3.inFZ()
-        assert ori_vec.inFZ_vec()[4] == ori4.inFZ()
 
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])

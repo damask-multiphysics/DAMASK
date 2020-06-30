@@ -40,7 +40,7 @@ class TestOrientation:
     @pytest.mark.parametrize('lattice',Lattice.lattices)
     def test_IPF_equivalent(self,set_of_quaternions,lattice):
         direction = np.random.random(3)*2.0-1
-        for ori in Orientation(Rotation(set_of_quaternions),lattice)[200]:
+        for ori in Orientation(Rotation(set_of_quaternions),lattice)[:200]:
             color = ori.IPF_color(direction)
             for equivalent in ori.equivalent:
                 assert np.allclose(color,equivalent.IPF_color(direction))
@@ -48,9 +48,10 @@ class TestOrientation:
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)
     def test_IPF_vectorize(self,set_of_quaternions,lattice):
-        for ori in Orientation(Rotation(set_of_quaternions),lattice)[200]:
-            direction = np.random.random(3)*2.0-1
-            assert np.allclose(ori.IPF_color(direction),IPF_color(ori,direction))
+        direction = np.random.random(3)*2.0-1
+        oris = Orientation(Rotation(set_of_quaternions),lattice)[:200]
+        for i,color in enumerate(oris.IPF_color(direction)):
+            assert np.allclose(color,IPF_color(oris[i],direction))
 
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])

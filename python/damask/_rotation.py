@@ -470,7 +470,7 @@ class Rotation:
         elif hasattr(shape, '__iter__'):
             r = np.random.random(tuple(shape)+(3,))
         else:
-            r = np.random.random((shape,3))
+            r = np.random.rand(shape,3)
 
         A = np.sqrt(r[...,2])
         B = np.sqrt(1.0-r[...,2])
