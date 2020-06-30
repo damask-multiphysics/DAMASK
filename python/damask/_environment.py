@@ -9,7 +9,7 @@ class Environment:
         self.screen_height =  768
         try:
             import wx
-            app = wx.App(False)
+            _ = wx.App(False)                                           # noqa
             self.screenwidth, self.screenheight = wx.GetDisplaySize()
         except ImportError:
             try:
@@ -18,7 +18,7 @@ class Environment:
                 self.screen_width  = tk.winfo_screenwidth()
                 self.screen_height = tk.winfo_screenheight()
                 tk.destroy()
-            except:
+            except Exception as e:
                 pass
 
     @property
