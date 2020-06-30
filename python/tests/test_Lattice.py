@@ -3,7 +3,6 @@ import random
 import pytest
 import numpy as np
 
-from damask import Orientation
 from damask import Rotation
 from damask import Symmetry
 

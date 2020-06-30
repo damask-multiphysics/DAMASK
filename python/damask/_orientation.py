@@ -40,6 +40,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
             self.rotation = Rotation.from_quaternion(rotation)                                      # assume quaternion
 
     def __getitem__(self,item):
+        """Iterate over leading/leftmost dimension of Orientation array."""
         return self.__class__(self.rotation[item],self.lattice)
 
 

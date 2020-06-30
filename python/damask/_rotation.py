@@ -81,17 +81,16 @@ class Rotation:
                 ])
 
 
-    def __len__(self):
-        return 0 if self.shape == () else len(self.shape)
-
-
     def __getitem__(self,item):
+        """Iterate over leading/leftmost dimension of Rotation array."""
+        if self.shape == (): return self.copy()
         if isinstance(item,tuple) and len(item) >= len(self):
             raise IndexError('Too many indices')
         return self.__class__(self.quaternion[item])
 
 
     def __len__(self):
+        """Length of leading/leftmost dimension of Rotation array."""
         return 0 if self.shape == () else self.shape[0]
 
 
@@ -104,9 +103,10 @@ class Rotation:
         other : numpy.ndarray or Rotation
             Vector, second or fourth order tensor, or rotation object that is rotated.
 
-        Todo
-        ----
-        Check rotation of 4th order tensor
+        Returns
+        -------
+        other_rot : numpy.ndarray or Rotation
+            Rotated vector, second or fourth order tensor, or rotation object.
 
         """
         if isinstance(other, Rotation):
