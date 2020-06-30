@@ -74,9 +74,9 @@ class TestColormap:
 
     @pytest.mark.parametrize('format',['ASCII','paraview','GOM','Gmsh'])
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','xyz','lab','msh'])
-    def test_from_bounds(self,model,format,tmpdir):
+    def test_from_range(self,model,format,tmpdir):
         N = np.random.randint(2,256)
-        c = Colormap.from_bounds(np.random.rand(3),np.random.rand(3),model=model,N=N)
+        c = Colormap.from_range(np.random.rand(3),np.random.rand(3),model=model,N=N)
         c.to_file(tmpdir/'color_out',format=format)
 
     @pytest.mark.parametrize('format',['ASCII','paraview','GOM','Gmsh'])
@@ -110,7 +110,7 @@ class TestColormap:
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','lab','invalid'])
     def test_invalid_color(self,model):
         with pytest.raises(ValueError):
-            c = Colormap.from_bounds(-2.+np.random.rand(3),np.random.rand(3),N=10,model=model)      # noqa
+            c = Colormap.from_range(-2.+np.random.rand(3),np.random.rand(3),N=10,model=model)      # noqa
 
     def test_reversed(self):
         c_1 = Colormap.from_predefined('stress')
