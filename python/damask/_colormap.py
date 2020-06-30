@@ -19,11 +19,15 @@ _ref_white = np.array([.95047, 1.00000, 1.08883])                               
 
 class Colormap(mpl.colors.ListedColormap):
 
+    def __add__(self,other):
+        """Concatenate colormaps."""
+        return Colormap(np.vstack((self.colors,other.colors)),
+                        f'{self.name}+{other.name}')
 
     @staticmethod
-    def from_bounds(low,high,name='DAMASK colormap',N=256,model='rgb'):
+    def from_range(low,high,name='DAMASK colormap',N=256,model='rgb'):
         """
-        Create a perceptually uniform colormap from given bounds.
+        Create a perceptually uniform colormap between given (inclusive) bounds.
 
         Colors are internally stored as R(ed) G(green) B(lue) values.
         The colormap can be used in matplotlib/seaborn or exported to
@@ -50,35 +54,34 @@ class Colormap(mpl.colors.ListedColormap):
             - 'msh': Msh (for perceptual uniform interpolation).
 
         """
-        low_,high_ = map(np.array,[low,high])
-        low_high = np.vstack((low_,high))
+        low_high = np.vstack((low,high))
         if   model.lower() == 'rgb':
             if np.any(low_high<0) or np.any(low_high>1):
-                raise ValueError(f'RGB color out of range {low} {high}.')
+                raise ValueError(f'RGB color {low} | {high} are out of range.')
 
-            low_,high_ = map(Colormap._rgb2msh,[low_,high_])
+            low_,high_ = map(Colormap._rgb2msh,low_high)
 
         elif model.lower() == 'hsv':
             if np.any(low_high<0) or np.any(low_high[:,1:3]>1) or np.any(low_high[:,0]>360):
-                raise ValueError(f'HSV color out of range {low} {high}.')
+                raise ValueError(f'HSV color {low} | {high} are out of range.')
 
-            low_,high_ = map(Colormap._hsv2msh,[low_,high_])
+            low_,high_ = map(Colormap._hsv2msh,low_high)
 
         elif model.lower() == 'hsl':
             if np.any(low_high<0) or np.any(low_high[:,1:3]>1) or np.any(low_high[:,0]>360):
-                raise ValueError(f'HSL color out of range {low} {high}.')
+                raise ValueError(f'HSL color {low} | {high} are out of range.')
 
-            low_,high_ = map(Colormap._hsl2msh,[low_,high_])
+            low_,high_ = map(Colormap._hsl2msh,low_high)
 
         elif model.lower() == 'xyz':
 
-            low_,high_ = map(Colormap._xyz2msh,[low_,high_])
+            low_,high_ = map(Colormap._xyz2msh,low_high)
 
         elif model.lower() == 'lab':
             if np.any(low_high[:,0]<0):
-                raise ValueError(f'CIE Lab color out of range {low} {high}.')
+                raise ValueError(f'CIE Lab color {low} | {high} are out of range.')
 
-            low_,high_ = map(Colormap._lab2msh,[low_,high_])
+            low_,high_ = map(Colormap._lab2msh,low_high)
 
         elif model.lower() == 'msh':
             pass
@@ -122,7 +125,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         # DAMASK presets
         definition = Colormap._predefined_DAMASK[name]
-        return Colormap.from_bounds(definition['low'],definition['high'],name,N)
+        return Colormap.from_range(definition['low'],definition['high'],name,N)
 
 
     @staticmethod
@@ -147,24 +150,27 @@ class Colormap(mpl.colors.ListedColormap):
             print('  '+', '.join(cat[1]))
 
 
-    def show(self):
-        """Show colormap in window."""
-        fig, ax = plt.subplots(figsize=(10,1))
-        ax.set_axis_off()
-        im = ax.imshow(np.broadcast_to(np.linspace(0,1,640).reshape(1,-1),(64,640)),cmap=self)      # noqa
-        fig.canvas.set_window_title(self.name)
+    def show(self,aspect=10,vertical=False):
+        """Show colormap as matplotlib figure."""
+        fig = plt.figure(figsize=(5/aspect,5) if vertical else (5,5/aspect))
+        ax1 = fig.add_axes([0, 0, 1, 1])
+        ax1.set_axis_off()
+        ax1.imshow(np.linspace(1 if vertical else 0,
+                               0 if vertical else 1,
+                               self.N).reshape((-1,1) if vertical else (1,-1)),
+                   aspect='auto', cmap=self, interpolation='nearest')
         plt.show()
 
 
     def reversed(self,name=None):
         """
-        Make a reversed instance of the Colormap.
+        Make a reversed instance of the colormap.
 
         Parameters
         ----------
         name : str, optional
-            The name for the reversed colormap. If it's None
-            the name will be the name of the parent colormap + "_r".
+            The name for the reversed colormap.
+            A name of None will be replaced by the name of the parent colormap + "_r".
 
         Returns
         -------
@@ -173,7 +179,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         """
         rev = super(Colormap,self).reversed(name)
-        return Colormap(rev.colors,rev.name)
+        return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
     def to_file(self,fname=None,format='ParaView'):
@@ -236,8 +242,7 @@ class Colormap(mpl.colors.ListedColormap):
     @staticmethod
     def _export_ASCII(colormap,fhandle=None):
         """Write colormap to ASCII table."""
-        labels = {'R':(1,),'G':(1,),'B':(1,)}
-        if colormap.colors.shape[1] == 4: labels['alpha']=(1,)
+        labels = {'RGBA':4} if colormap.colors.shape[1] == 4 else {'RGB': 3}
         t = Table(colormap.colors,labels,f'Creator: damask.Colormap v{damask.version}')
 
         if fhandle is None:
