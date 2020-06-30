@@ -125,10 +125,10 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
 
         s = op.reshape(op.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
         s = Rotation(np.broadcast_to(s,s.shape[:1]+self.rotation.quaternion.shape))
-        
+
         r = np.broadcast_to(self.rotation.quaternion,s.shape[:1]+self.rotation.quaternion.shape)
         r = Rotation(r)
-        
+
         return self.__class__(s@r,h['lattice'])
 
 
@@ -142,7 +142,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
         """Transform orientation to fall into fundamental zone according to symmetry."""
         equi= self.equivalent_vec.rotation                                              #equivalent orientations
         r= 1 if not self.rotation.shape else equi.shape[1]                              #number of rotations
-        num_equi=equi.shape[0]                                                          #number of equivalente orientations  
+        num_equi=equi.shape[0]                                                          #number of equivalente orientations
         quat= np.reshape( equi.as_quaternion(), (r*num_equi,4) ,order='F')              #equivalents are listed in intiuitive order
         boolean=Orientation(quat,  self.lattice).inFZ_vec()                             #check which ones are in FZ
         if sum(boolean) == r:
@@ -150,12 +150,12 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
 
         else:
             print('More than 1 equivalent orientation has been found for an orientation')
-            index=np.empty(r, dtype=int)                                                
+            index=np.empty(r, dtype=int)
             for l,h in enumerate(range(0,r*num_equi, num_equi)):
                 index[l]=np.where(boolean[h:h+num_equi])[0][0] + (l*num_equi)           #get first index that is true then go check to next orientation
-                
+
             return self.__class__(quat[index],self.lattice)
-                
+
 
 
 

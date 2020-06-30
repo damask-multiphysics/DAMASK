@@ -267,7 +267,8 @@ class Rotation:
 
         """
         ro = Rotation._qu2ro(self.quaternion)
-        return ro[...,:3]*ro[...,3:] if vector else ro
+        with np.errstate(invalid='ignore'):
+            return ro[...,:3]*ro[...,3:] if vector else ro
 
     def as_homochoric(self):
         """Homochoric vector: (h_1, h_2, h_3)."""

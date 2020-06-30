@@ -5,10 +5,10 @@ from damask import Rotation
 from damask import Orientation
 from damask import Lattice
 
-rot0= Rotation.from_random()  ; 
-rot1= Rotation.from_random()  ; 
-rot2= Rotation.from_random()  ; 
-rot3= Rotation.from_random()  ; 
+rot0= Rotation.from_random()
+rot1= Rotation.from_random()
+rot2= Rotation.from_random()
+rot3= Rotation.from_random()
 
 #disorientation
 
