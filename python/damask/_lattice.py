@@ -160,7 +160,7 @@ class Symmetry:
         Fundamental zone in Rodrigues space is point symmetric around origin.
         """
         if(rho.shape[-1] != 3):
-            raise ValueError('Input is not a Rodrigues-Frank vector.')
+            raise ValueError('Input is not a Rodrigues-Frank vector field.')
 
         rho_abs = np.abs(rho)
 
@@ -195,7 +195,7 @@ class Symmetry:
 
         """
         if(rho.shape[-1] != 3):
-            raise ValueError('Input is not a Rodrigues-Frank vector.')
+            raise ValueError('Input is not a Rodrigues-Frank vector field.')
 
         with np.errstate(invalid='ignore'):
             # using '*' for 'and'
@@ -242,6 +242,9 @@ class Symmetry:
         ...         }
 
         """
+        if(vector.shape[-1] != 3):
+            raise ValueError('Input is not a 3D vector field.')
+
         if self.system == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                            [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
@@ -280,16 +283,17 @@ class Symmetry:
             else:
                 return  np.ones_like(vector[...,0],bool)
 
-        b_p = np.broadcast_to(basis['proper'], vector.shape+(3,))
+
+        b_i = np.broadcast_to(basis['improper'],vector.shape+(3,))
         if proper:
-            b_i = np.broadcast_to(basis['improper'],vector.shape+(3,))
+            b_p = np.broadcast_to(basis['proper'], vector.shape+(3,))
             improper = np.all(np.around(np.einsum('...ji,...i',b_i,vector),12)>=0.0,axis=-1,keepdims=True)
             theComponents = np.where(np.broadcast_to(improper,vector.shape),
                                      np.around(np.einsum('...ji,...i',b_i,vector),12),
                                      np.around(np.einsum('...ji,...i',b_p,vector),12))
         else:
             vector_ = np.block([vector[...,0:2],np.abs(vector[...,2:3])])                           # z component projects identical
-            theComponents = np.around(np.einsum('...ji,...i',b_p,vector_),12)
+            theComponents = np.around(np.einsum('...ji,...i',b_i,vector_),12)
 
         in_SST = np.all(theComponents >= 0.0,axis=-1)
 

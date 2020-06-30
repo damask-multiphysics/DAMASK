@@ -79,7 +79,6 @@ class Orientation: # ToDo: make subclass of lattice and Rotation
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
 
-
     def in_FZ(self):
         """Check if orientations fall into Fundamental Zone."""
         return self.lattice.in_FZ(self.rotation.as_Rodrigues(vector=True))

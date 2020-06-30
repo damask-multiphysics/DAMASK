@@ -319,4 +319,4 @@ class TestResult:
 
     def test_XDMF(self,tmp_path,single_phase):
         os.chdir(tmp_path)
-        single_phase.write_XDMF
+        single_phase.write_XDMF()

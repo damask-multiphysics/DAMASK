@@ -106,14 +106,23 @@ class TestSymmetry:
 
     @pytest.mark.parametrize('system',Symmetry.crystal_systems)
     def test_in_FZ_vectorize(self,set_of_rodrigues,system):
-        for i,in_FZ_ in enumerate(Symmetry(system).in_FZ(set_of_rodrigues)):
-            assert in_FZ_ == in_FZ(system,set_of_rodrigues[i])
+        result = Symmetry(system).in_FZ(set_of_rodrigues.reshape(50,4,3)).reshape(200)
+        for i,r in enumerate(result):
+            assert r == in_FZ(system,set_of_rodrigues[i])
 
     @pytest.mark.parametrize('system',Symmetry.crystal_systems)
     def test_in_disorientation_SST_vectorize(self,set_of_rodrigues,system):
-        for i,in_disorientation_SST_ in enumerate(Symmetry(system).in_disorientation_SST(set_of_rodrigues)):
-            assert in_disorientation_SST_ == in_disorientation_SST(system,set_of_rodrigues[i])
+        result = Symmetry(system).in_disorientation_SST(set_of_rodrigues.reshape(50,4,3)).reshape(200)
+        for i,r in enumerate(result):
+            assert r == in_disorientation_SST(system,set_of_rodrigues[i])
 
+    @pytest.mark.parametrize('proper',[True,False])
+    @pytest.mark.parametrize('system',Symmetry.crystal_systems)
+    def test_in_SST_vectorize(self,system,proper):
+        vecs = np.random.rand(20,4,3)
+        result = Symmetry(system).in_SST(vecs,proper).reshape(20*4)
+        for i,r in enumerate(result):
+            assert r == in_SST(system,vecs.reshape(20*4,3)[i],proper)
 
     @pytest.mark.parametrize('invalid_symmetry',['fcc','bcc','hello'])
     def test_invalid_symmetry(self,invalid_symmetry):
@@ -142,7 +151,7 @@ class TestSymmetry:
     def test_in_SST(self,system,proper):
           assert Symmetry(system).in_SST(np.zeros(3),proper)
 
-    @pytest.mark.parametrize('function',['in_FZ','in_disorientation_SST'])
+    @pytest.mark.parametrize('function',['in_FZ','in_disorientation_SST','in_SST'])
     def test_invalid_argument(self,function):
         s = Symmetry()                                                                              # noqa
         with pytest.raises(ValueError):
