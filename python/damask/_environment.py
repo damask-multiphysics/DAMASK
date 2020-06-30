@@ -1,19 +1,25 @@
 import os
 from pathlib import Path
-import tkinter
 
 class Environment:
 
     def __init__(self):
         """Read and provide values of DAMASK configuration."""
+        self.screen_width  = 1024
+        self.screen_height =  768
         try:
-            tk = tkinter.Tk()
-            self.screen_width  = tk.winfo_screenwidth()
-            self.screen_height = tk.winfo_screenheight()
-            tk.destroy()
-        except tkinter.TclError:
-            self.screen_width  = 1024
-            self.screen_height =  768
+            import wx
+            app = wx.App(False)
+            self.screenwidth, self.screenheight = wx.GetDisplaySize()
+        except ImportError:
+            try:
+                import tkinter
+                tk = tkinter.Tk()
+                self.screen_width  = tk.winfo_screenwidth()
+                self.screen_height = tk.winfo_screenheight()
+                tk.destroy()
+            except:
+                pass
 
     @property
     def options(self):
