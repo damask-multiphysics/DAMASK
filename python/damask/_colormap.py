@@ -89,7 +89,7 @@ class Colormap(mpl.colors.ListedColormap):
         else:
             raise ValueError(f'Invalid color model: {model}.')
 
-        msh = map(functools.partial(Colormap._interpolate_msh,low=low_,high=high_),np.linspace(0,1,N))
+        msh = map(functools.partial(Colormap._interpolate_msh,low=low_high[0],high=low_high[1]),np.linspace(0,1,N))
         rgb = np.array(list(map(Colormap._msh2rgb,msh)))
 
         return Colormap(rgb,name=name)
