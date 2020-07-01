@@ -98,6 +98,22 @@ module crystallite
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
+#ifdef DEBUG
+  type :: tDebugOptions
+    logical :: &
+      basic, &
+      extensive, &
+      selective
+    integer :: &
+      element, &
+      ip, &
+      grain
+  end type tDebugOptions
+
+  type(tDebugOptions) :: debug
+
+#endif
+
   procedure(integrateStateFPI), pointer :: integrateState
 
   public :: &
@@ -134,6 +150,17 @@ subroutine crystallite_init
     debug_crystallite                                                                               ! pointer to debug options for crystallite
 
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
+
+#ifdef DEBUG
+  debug_crystallite => debug_root%get('crystallite', defaultVal=emptyList)
+  debug%basic     = debug_crystallite%contains('basic')
+  debug%extensive = debug_crystallite%contains('extensive')
+  debug%selective = debug_crystallite%contains('selective')
+  debug%element   = debug_root%get_asInt('element', defaultVal=1)
+  debug%ip        = debug_root%get_asInt('integrationpoint', defaultVal=1)
+  debug%grain     = debug_root%get_asInt('grain', defaultVal=1)
+ 
+#endif 
 
   cMax = homogenization_maxNgrains
   iMax = discretization_nIP
@@ -271,8 +298,7 @@ subroutine crystallite_init
   call crystallite_stressTangent
 
 #ifdef DEBUG
-  debug_crystallite => debug_root%get('crystallite',defaultVal=emptyList)
-  if (debug_crystallite%contains('basic')) then
+  if (debug%basic) then
     write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
     write(6,'(a42,1x,i10)') '    # of integration points/element:     ', iMax
     write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
@@ -298,38 +324,28 @@ function crystallite_stress()
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
     startIP, endIP, &
-    s, &
-    debug_e, &
-    debug_g, &
-    debug_i
+    s
   logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
-  class(tNode), pointer  :: &
-    debug_crystallite
- 
     todo = .false.
-#ifdef DEBUG
-  debug_e = debug_root%get_asInt('element',defaultVal=1)
-  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
-  debug_g = debug_root%get_asInt('grain',defaultVal=1)
 
-  debug_crystallite => debug_root%get('crystallite',defaultVal=emptyList)
-  if (debug_crystallite%contains('selective') &
-      .and. FEsolving_execElem(1) <= debug_e &
-      .and.                          debug_e <= FEsolving_execElem(2)) then
+#ifdef DEBUG
+  if (debug%selective &
+      .and. FEsolving_execElem(1) <= debug%element &
+      .and.                          debug%element <= FEsolving_execElem(2)) then
       write(6,'(/,a,i8,1x,i2,1x,i3)')    '<< CRYST stress >> boundary and initial values at el ip ipc ', &
-        debug_e,debug_i, debug_g
+        debug%element,debug%ip, debug%grain
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> F  ', &
-                                          transpose(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
+                                          transpose(crystallite_partionedF(1:3,1:3,debug%grain,debug%ip,debug%element))
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> F0 ', &
-                                          transpose(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          transpose(crystallite_partionedF0(1:3,1:3,debug%grain,debug%ip,debug%element))
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Fp0', &
-                                          transpose(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          transpose(crystallite_partionedFp0(1:3,1:3,debug%grain,debug%ip,debug%element))
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Fi0', &
-                                          transpose(crystallite_partionedFi0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          transpose(crystallite_partionedFi0(1:3,1:3,debug%grain,debug%ip,debug%element))
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Lp0', &
-                                          transpose(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          transpose(crystallite_partionedLp0(1:3,1:3,debug%grain,debug%ip,debug%element))
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Li0', &
-                                          transpose(crystallite_partionedLi0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          transpose(crystallite_partionedLi0(1:3,1:3,debug%grain,debug%ip,debug%element))
   endif
 #endif
 
@@ -375,7 +391,7 @@ function crystallite_stress()
     NiterationCrystallite = NiterationCrystallite + 1
 
 #ifdef DEBUG
-    if (debug_crystallite%contains('extensive')) &
+    if (debug%extensive) &
       write(6,'(a,i6)') '<< CRYST stress >> crystallite iteration ',NiterationCrystallite
 #endif
     !$OMP PARALLEL DO PRIVATE(formerSubStep)
