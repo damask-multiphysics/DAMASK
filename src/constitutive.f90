@@ -358,7 +358,7 @@ subroutine constitutive_init
   class (tNode), pointer :: &
     debug_constitutive
 
-  debug_constitutive => debug_root%get('constitutuve', defaultVal=emptyList)
+  debug_constitutive => debug_root%get('constitutive', defaultVal=emptyList)
   debugConstitutive%basic       =  debug_constitutive%contains('basic') 
   debugConstitutive%extensive   =  debug_constitutive%contains('extensive') 
   debugConstitutive%selective   =  debug_constitutive%contains('selective')
