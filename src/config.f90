@@ -23,7 +23,7 @@ module config
     config_homogenization, &
     config_texture, &
     config_crystallite
-  
+
   character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
     config_name_phase, &                                                                            !< name of each phase
     config_name_homogenization, &                                                                   !< name of each homogenization

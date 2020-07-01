@@ -137,7 +137,7 @@ class TestResult:
         default.add_Cauchy('P','F')
         default.add_eigenvalue('sigma',eigenvalue)
         loc = {'sigma' :default.get_dataset_location('sigma'),
-               'lambda':default.get_dataset_location('lambda_{}(sigma)'.format(eigenvalue))}
+               'lambda':default.get_dataset_location(f'lambda_{eigenvalue}(sigma)')}
         in_memory = function(mechanics.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
         in_file   = default.read_dataset(loc['lambda'],0)
         assert np.allclose(in_memory,in_file)
@@ -147,7 +147,7 @@ class TestResult:
         default.add_Cauchy('P','F')
         default.add_eigenvector('sigma',eigenvalue)
         loc = {'sigma'   :default.get_dataset_location('sigma'),
-               'v(sigma)':default.get_dataset_location('v_{}(sigma)'.format(eigenvalue))}
+               'v(sigma)':default.get_dataset_location(f'v_{eigenvalue}(sigma)')}
         in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
         in_file   = default.read_dataset(loc['v(sigma)'],0)
         assert np.allclose(in_memory,in_file)
@@ -179,7 +179,7 @@ class TestResult:
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
         default.add_strain_tensor('F',t,m)
-        label = 'epsilon_{}^{}(F)'.format(t,m)
+        label = f'epsilon_{t}^{m}(F)'
         default.add_Mises(label)
         loc = {label      :default.get_dataset_location(label),
                label+'_vM':default.get_dataset_location(label+'_vM')}
@@ -248,7 +248,7 @@ class TestResult:
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
         default.add_strain_tensor('F',t,m)
-        label = 'epsilon_{}^{}(F)'.format(t,m)
+        label = f'epsilon_{t}^{m}(F)'
         loc = {'F':   default.get_dataset_location('F'),
                label: default.get_dataset_location(label)}
         in_memory = mechanics.strain_tensor(default.read_dataset(loc['F'],0),t,m)

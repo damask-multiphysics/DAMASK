@@ -30,8 +30,8 @@ class TestGridFilters:
          grid   = np.random.randint(8,32,(3))
          size   = np.random.random(3)
          origin = np.random.random(3)
-         coord0 = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))                     # noqa
-         _grid,_size,_origin = eval('grid_filters.{}_coord0_gridSizeOrigin(coord0.reshape(-1,3,order="F"))'.format(mode))
+         coord0 = eval(f'grid_filters.{mode}_coord0(grid,size,origin)')                     # noqa
+         _grid,_size,_origin = eval(f'grid_filters.{mode}_coord0_gridSizeOrigin(coord0.reshape(-1,3,order="F"))')
          assert np.allclose(grid,_grid) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
     def test_displacement_fluct_equivalence(self):
@@ -67,8 +67,8 @@ class TestGridFilters:
          origin= np.random.random(3)
          size  = np.random.random(3)                                                                # noqa
          grid  = np.random.randint(8,32,(3))
-         shifted   = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))
-         unshifted = eval('grid_filters.{}_coord0(grid,size)'.format(mode))
+         shifted   = eval(f'grid_filters.{mode}_coord0(grid,size,origin)')
+         unshifted = eval(f'grid_filters.{mode}_coord0(grid,size)')
          if   mode == 'cell':
             assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(grid)  +(3,)))
          elif mode == 'node':

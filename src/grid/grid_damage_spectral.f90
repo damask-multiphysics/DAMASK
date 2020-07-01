@@ -28,8 +28,6 @@ module grid_damage_spectral
       residualStiffness, &                                                                          !< non-zero residual damage
       eps_damage_atol, &                                                                            !< absolute tolerance for damage evolution
       eps_damage_rtol                                                                               !< relative tolerance for damage evolution
-    character(len=:), allocatable :: &
-      petsc_options
   end type tNumerics
 
   type(tNumerics), private :: num
@@ -86,7 +84,6 @@ subroutine grid_damage_spectral_init
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  num%petsc_options   = num_grid%get_asString('petsc_options',defaultVal='')
   num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
   num%eps_damage_atol = num_grid%get_asFloat ('eps_damage_atol',defaultVal=1.0e-2_pReal)
   num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
@@ -104,7 +101,7 @@ subroutine grid_damage_spectral_init
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
                                &-damage_snes_ksp_ew -damage_ksp_type fgmres',ierr)
  CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
  CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------

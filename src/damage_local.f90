@@ -56,7 +56,6 @@ subroutine damage_local_init
   num_generic => numerics_root%get('generic',defaultVal=emptyDict)
   num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
   if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
-!----------------------------------------------------------------------------------------------
 
   Ninstance = count(damage_type == DAMAGE_local_ID)
   allocate(param(Ninstance))
@@ -102,7 +101,6 @@ function damage_local_updateState(subdt, ip, el)
   real(pReal) :: &
     phi, phiDot, dPhiDot_dPhi
 
- 
   homog  = material_homogenizationAt(el)
   offset = material_homogenizationMemberAt(ip,el)
   phi = damageState(homog)%subState0(1,offset)

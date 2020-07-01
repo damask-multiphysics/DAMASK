@@ -119,7 +119,7 @@ class Rotation:
             else:
                 raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
         else:
-            raise TypeError('Cannot rotate {}'.format(type(other)))
+            raise TypeError(f'Cannot rotate {type(other)}')
 
 
     def _standardize(self):

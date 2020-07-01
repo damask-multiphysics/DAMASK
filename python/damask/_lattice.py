@@ -26,7 +26,7 @@ class Symmetry:
 
         """
         if symmetry is not None and symmetry.lower() not in Symmetry.lattices:
-            raise KeyError('Symmetry/crystal system "{}" is unknown'.format(symmetry))
+            raise KeyError(f'Symmetry/crystal system "{symmetry}" is unknown')
 
         self.lattice = symmetry.lower() if isinstance(symmetry,str) else symmetry
 
@@ -40,7 +40,7 @@ class Symmetry:
 
     def __repr__(self):
         """Readable string."""
-        return '{}'.format(self.lattice)
+        return f'{self.lattice}'
 
 
     def __eq__(self, other):
@@ -348,7 +348,7 @@ class Lattice:
 
     def __repr__(self):
         """Report basic lattice information."""
-        return 'Bravais lattice {} ({} symmetry)'.format(self.lattice,self.symmetry)
+        return f'Bravais lattice {self.lattice} ({self.symmetry} symmetry)'
 
 
     # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
@@ -613,17 +613,17 @@ class Lattice:
         try:
             relationship = models[model]
         except KeyError :
-            raise KeyError('Orientation relationship "{}" is unknown'.format(model))
+            raise KeyError(f'Orientation relationship "{model}" is unknown')
 
         if self.lattice not in relationship['mapping']:
-            raise ValueError('Relationship "{}" not supported for lattice "{}"'.format(model,self.lattice))
+            raise ValueError(f'Relationship "{model}" not supported for lattice "{self.lattice}"')
 
         r = {'lattice':Lattice((set(relationship['mapping'])-{self.lattice}).pop()),                # target lattice
              'rotations':[] }
 
         myPlane_id    = relationship['mapping'][self.lattice]
         otherPlane_id = (myPlane_id+1)%2
-        myDir_id      = myPlane_id +2
+        myDir_id      = myPlane_id    +2
         otherDir_id   = otherPlane_id +2
 
         for miller in np.hstack((relationship['planes'],relationship['directions'])):

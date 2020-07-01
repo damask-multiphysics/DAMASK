@@ -42,11 +42,10 @@ module grid_mech_FEM
       eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
       eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
       eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
-    character(len=:), allocatable :: &
-      petsc_options
   end type tNumerics
 
-  type(tNumerics), private :: num 
+  type(tNumerics), private :: num
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   DM,   private :: mech_grid
@@ -126,7 +125,6 @@ subroutine grid_mech_FEM_init
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameter and do sanity checks
   num_grid => numerics_root%get('grid',defaultVal=emptyDict)
-  num%petsc_options   = num_grid%get_asString('petsc_options',   defaultVal='')
   num%eps_div_atol    = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
   num%eps_div_rtol    = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
   num%eps_stress_atol = num_grid%get_asFloat ('eps_stress_atol', defaultVal=1.0e3_pReal)
@@ -147,7 +145,7 @@ subroutine grid_mech_FEM_init
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type newtonls -mech_ksp_type fgmres &
                                 &-mech_ksp_max_it 25 -mech_pc_type ml -mech_mg_levels_ksp_type chebyshev',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num%petsc_options,ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -453,8 +451,6 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
     err_div, &
     divTol, &
     BCTol
-
-!------------------------------------------------------------------------------------
 
   err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
   divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)

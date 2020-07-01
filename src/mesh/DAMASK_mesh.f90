@@ -63,13 +63,9 @@ program DAMASK_mesh
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
-  type :: tNumerics
-    integer :: &
-      stagItMax, &                                                                                  !< max number of field level staggered iterations
-      maxCutBack                                                                                    !< max number of cutbacks
-  end type tNumerics
-
-  type(tNumerics) :: num
+  integer :: &
+    stagItMax, &                                                                                    !< max number of field level staggered iterations
+    maxCutBack                                                                                      !< max number of cutbacks
 
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
@@ -87,12 +83,12 @@ program DAMASK_mesh
 !--------------------------------------------------------------------- 
 ! reading field information from numerics file and do sanity checks
   num_mesh => numerics_root%get('mesh', defaultVal=emptyDict)
-  num%stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
-  num%maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
+  stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
+  maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
-  if (num%stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (num%maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
-  
+  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
+  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+
 ! reading basic information from load case file and allocate data structure containing load cases
   call DMGetDimension(geomMesh,dimPlex,ierr); CHKERRA(ierr)                                         !< dimension of mesh (2D or 3D)
   nActiveFields = 1
@@ -333,7 +329,7 @@ program DAMASK_mesh
 
           enddo
           stagIter = stagIter + 1
-          stagIterate =            stagIter < num%stagItMax &
+          stagIterate =            stagIter < stagItMax &
                        .and.       all(solres(:)%converged) &
                        .and. .not. all(solres(:)%stagConverged)                                     ! stationary with respect to staggered iteration
         enddo     
@@ -341,7 +337,7 @@ program DAMASK_mesh
 ! check solution 
         cutBack = .False.                                                                   
         if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
-          if (cutBackLevel < num%maxCutBack) then                                                       ! do cut back
+          if (cutBackLevel < maxCutBack) then                                                       ! do cut back
             write(6,'(/,a)') ' cut back detected'
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator

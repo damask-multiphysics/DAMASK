@@ -73,13 +73,9 @@ program DAMASK_grid
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
-  type :: tNumerics
-    integer :: &
-      maxCutBack, &                                                                                 !< max number of cut backs
-      stagItMax                                                                                     !< max number of field level staggered iterations
-  end type tNumerics
-
-  type(tNumerics) :: num
+  integer :: &
+    maxCutBack, &                                                                                   !< max number of cut backs
+    stagItMax                                                                                       !< max number of field level staggered iterations
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tLoadCase) :: newLoadCase
   type(tSolutionState), allocatable, dimension(:) :: solres
@@ -120,11 +116,11 @@ program DAMASK_grid
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
   num_grid => numerics_root%get('grid', defaultVal=emptyDict)
-  num%stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
-  num%maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
+  stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
+  maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
-  if (num%stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
-  if (num%maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
+  if (stagItMax < 0)    call IO_error(301,ext_msg='maxStaggeredIter')
+  if (maxCutBack < 0)   call IO_error(301,ext_msg='maxCutBack')
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
@@ -455,7 +451,7 @@ program DAMASK_grid
   
             enddo
             stagIter = stagIter + 1
-            stagIterate =            stagIter < num%stagItMax &
+            stagIterate =            stagIter < stagItMax &
                          .and.       all(solres(:)%converged) &
                          .and. .not. all(solres(:)%stagConverged)                                   ! stationary with respect to staggered iteration
           enddo
@@ -474,7 +470,7 @@ program DAMASK_grid
                                 solres%converged, solres%iterationsNeeded
               flush(statUnit)
             endif
-          elseif (cutBackLevel < num%maxCutBack) then                                                   ! further cutbacking tolerated?
+          elseif (cutBackLevel < maxCutBack) then                                                   ! further cutbacking tolerated?
             cutBack = .true.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1

@@ -294,7 +294,6 @@ type(tSolutionState) function FEM_mech_solution( &
   character(len=*), intent(in) :: &
     incInfoIn
 
-
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
 

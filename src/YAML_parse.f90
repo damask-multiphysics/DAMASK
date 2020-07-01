@@ -36,16 +36,16 @@ end subroutine YAML_init
 !--------------------------------------------------------------------------------------------------
 recursive function parse_flow(flow_string) result(node)
 
-  character(len=*), intent(inout)             :: flow_string                                        !< YAML file in flow style
-  class (tNode), pointer                      :: node
- 
+  character(len=*), intent(inout) :: flow_string                                                    !< YAML file in flow style
+  class (tNode), pointer          :: node
+
   class (tNode),    pointer       :: myVal
   character(len=pStringLen)       :: key
 
   integer                         :: e, &                                                           ! end position of dictionary or list
                                      s, &                                                           ! start position of dictionary or list
                                      d                                                              ! position of key: value separator (':')
-  
+
   flow_string = trim(adjustl(flow_string(:)))
   if (len_trim(flow_string) == 0) then
     node => emptyDict

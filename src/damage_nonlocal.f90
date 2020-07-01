@@ -53,14 +53,13 @@ subroutine damage_nonlocal_init
   integer :: Ninstance,NofMyHomog,h
   class(tNode), pointer :: &
     num_generic
-  
+
   write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
 
 !------------------------------------------------------------------------------------
 ! read numerics parameter
   num_generic => numerics_root%get('generic',defaultVal= emptyDict)
   num%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
-!------------------------------------------------------------------------------------
 
   Ninstance = count(damage_type == DAMAGE_nonlocal_ID)
   allocate(param(Ninstance))

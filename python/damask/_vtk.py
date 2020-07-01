@@ -51,9 +51,11 @@ class VTK:
         """
         geom = vtk.vtkRectilinearGrid()
         geom.SetDimensions(*(grid+1))
-        geom.SetXCoordinates(np_to_vtk(np.linspace(origin[0],origin[0]+size[0],grid[0]+1),deep=True))
-        geom.SetYCoordinates(np_to_vtk(np.linspace(origin[1],origin[1]+size[1],grid[1]+1),deep=True))
-        geom.SetZCoordinates(np_to_vtk(np.linspace(origin[2],origin[2]+size[2],grid[2]+1),deep=True))
+        coord = [np_to_vtk(np.linspace(origin[i],origin[i]+size[i],grid[i]+1),deep=True) for i in [0,1,2]]
+        [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
+        geom.SetXCoordinates(coord[0])
+        geom.SetYCoordinates(coord[1])
+        geom.SetZCoordinates(coord[2])
 
         return VTK(geom)
 
@@ -85,7 +87,7 @@ class VTK:
 
         geom = vtk.vtkUnstructuredGrid()
         geom.SetPoints(vtk_nodes)
-        geom.SetCells(eval('vtk.VTK_{}'.format(cell_type.split('_',1)[-1].upper())),cells)
+        geom.SetCells(eval(f'vtk.VTK_{cell_type.split("_",1)[-1].upper()}'),cells)
 
         return VTK(geom)
 
@@ -119,7 +121,7 @@ class VTK:
 
         Parameters
         ----------
-        fname : str
+        fname : str or pathlib.Path
             Filename for reading. Valid extensions are .vtr, .vtu, .vtp, and .vtk.
         dataset_type : str, optional
             Name of the vtk.vtkDataSet subclass when opening an .vtk file. Valid types are vtkRectilinearGrid,
@@ -129,7 +131,7 @@ class VTK:
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type:
             reader = vtk.vtkGenericDataObjectReader()
-            reader.SetFileName(fname)
+            reader.SetFileName(str(fname))
             reader.Update()
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
@@ -140,7 +142,7 @@ class VTK:
             elif dataset_type.lower().endswith('polydata'):
                 geom = reader.GetPolyDataOutput()
             else:
-                raise TypeError('Unknown dataset type for vtk file {}'.format(dataset_type))
+                raise TypeError(f'Unknown dataset type {dataset_type} for vtk file')
         else:
             if   ext == '.vtr':
                 reader = vtk.vtkXMLRectilinearGridReader()
@@ -149,9 +151,9 @@ class VTK:
             elif ext == '.vtp':
                 reader = vtk.vtkXMLPolyDataReader()
             else:
-                raise TypeError('Unknown file extension {}'.format(ext))
+                raise TypeError(f'Unknown file extension {ext}')
 
-            reader.SetFileName(fname)
+            reader.SetFileName(str(fname))
             reader.Update()
             geom = reader.GetOutput()
 
@@ -164,7 +166,7 @@ class VTK:
 
         Parameters
         ----------
-        fname : str
+        fname : str or pathlib.Path
             Filename for writing.
 
         """
@@ -178,7 +180,7 @@ class VTK:
         default_ext = writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
         if ext and ext != '.'+default_ext:
-            raise ValueError('Given extension {} does not match default .{}'.format(ext,default_ext))
+            raise ValueError(f'Given extension {ext} does not match default .{default_ext}')
         writer.SetFileName(str(Path(fname).with_suffix('.'+default_ext)))
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
@@ -214,7 +216,7 @@ class VTK:
     def __repr__(self):
         """ASCII representation of the VTK data."""
         writer = vtk.vtkDataSetWriter()
-        writer.SetHeader('# DAMASK.VTK v{}'.format(version))
+        writer.SetHeader(f'# DAMASK.VTK v{version}')
         writer.WriteToOutputStringOn()
         writer.SetInputData(self.geom)
         writer.Write()

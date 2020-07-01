@@ -84,7 +84,7 @@ module crystallite
       nState, &                                                                                     !< state loop limit
       nStress                                                                                       !< stress loop limit
     character(len=:), allocatable :: & 
-      integrator                                                                                    !< integrator scheme
+      integrator                                                                                    !< integration scheme
     real(pReal) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
       subStepSizeCryst, &                                                                           !< size of first substep when cutback
@@ -167,7 +167,7 @@ subroutine crystallite_init
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
   num_crystallite => numerics_root%get('crystallite',defaultVal=emptyDict)
-  
+
   num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
   num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
   num%stepIncreaseCryst      = num_crystallite%get_asFloat ('stepIncrease',     defaultVal=1.5_pReal)
