@@ -329,7 +329,7 @@ module constitutive
       grain
   end type tDebugOptions
 
-  type(tDebugOptions) :: debug
+  type(tDebugOptions) :: debugConstitutive
   
   public :: &
     plastic_nonlocal_updateCompatibility, &
@@ -359,12 +359,12 @@ subroutine constitutive_init
     debug_constitutive
 
   debug_constitutive => debug_root%get('constitutuve', defaultVal=emptyList)
-  debug%basic       =  debug_constitutive%contains('basic') 
-  debug%extensive   =  debug_constitutive%contains('extensive') 
-  debug%selective   =  debug_constitutive%contains('selective')
-  debug%element     =  debug_root%get_asInt('element',defaultVal = 1) 
-  debug%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debug%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
+  debugConstitutive%basic       =  debug_constitutive%contains('basic') 
+  debugConstitutive%extensive   =  debug_constitutive%contains('extensive') 
+  debugConstitutive%selective   =  debug_constitutive%contains('selective')
+  debugConstitutive%element     =  debug_root%get_asInt('element',defaultVal = 1) 
+  debugConstitutive%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
+  debugConstitutive%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
 
 
 !--------------------------------------------------------------------------------------------------

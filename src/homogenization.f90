@@ -63,7 +63,7 @@ module homogenization
       grain
   end type tDebugOptions
 
-  type(tDebugOptions) :: debug
+  type(tDebugOptions) :: debugHomog
 
   interface
 
@@ -153,15 +153,16 @@ subroutine homogenization_init
     debug_homogenization
 
   debug_homogenization => debug_root%get('homogenization', defaultVal=emptyList)
-  debug%basic       =  debug_homogenization%contains('basic') 
-  debug%extensive   =  debug_homogenization%contains('extensive') 
-  debug%selective   =  debug_homogenization%contains('selective')
-  debug%element     =  debug_root%get_asInt('element',defaultVal = 1) 
-  debug%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debug%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
+  debugHomog%basic       =  debug_homogenization%contains('basic') 
+  debugHomog%extensive   =  debug_homogenization%contains('extensive') 
+  debugHomog%selective   =  debug_homogenization%contains('selective')
+  debugHomog%element     =  debug_root%get_asInt('element',defaultVal = 1) 
+  debugHomog%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
+  debugHomog%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
 
-  if (debug%grain < 1 .or. debug%grain > homogenization_Ngrains(material_homogenizationAt(debug%element))) &
-    call IO_error(602,ext_msg='constituent', el=debug%element, g=debug%grain)
+  if (debugHomog%grain < 1 &
+    .or. debugHomog%grain > homogenization_Ngrains(material_homogenizationAt(debugHomog%element))) &
+    call IO_error(602,ext_msg='constituent', el=debugHomog%element, g=debugHomog%grain)
 
 
   num_homog        => numerics_root%get('homogenization',defaultVal=emptyDict)
@@ -230,13 +231,13 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  
 #ifdef DEBUG
 
-  if (debug%basic) then
-    write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug%element, debug%ip
+  if (debugHomog%basic) then
+    write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debugHomog%element, debugHomog%ip
 
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
-                                    transpose(materialpoint_F0(1:3,1:3,debug%ip,debug%element))
+                                    transpose(materialpoint_F0(1:3,1:3,debugHomog%ip,debugHomog%element))
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
-                                    transpose(materialpoint_F(1:3,1:3,debug%ip,debug%element))
+                                    transpose(materialpoint_F(1:3,1:3,debugHomog%ip,debugHomog%element))
   endif
 #endif
 
@@ -295,9 +296,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
         if (converged(i,e)) then
 #ifdef DEBUG
-          if (debug%extensive &
-             .and. ((e == debug%element .and. i == debug%ip) &
-                    .or. .not. debug%selective)) then
+          if (debugHomog%extensive &
+             .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
+                    .or. .not. debugHomog%selective)) then
             write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
               subFrac(i,e), 'to current subFrac', &
               subFrac(i,e)+subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
@@ -354,9 +355,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
 #ifdef DEBUG
-            if (debug%extensive &
-               .and. ((e == debug%element .and. i == debug%ip) &
-                     .or. .not. debug%selective)) then
+            if (debugHomog%extensive &
+               .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
+                     .or. .not. debugHomog%selective)) then
               write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &
                 '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new subStep:',&
                 subStep(i,e),' at el ip',e,i

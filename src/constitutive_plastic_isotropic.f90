@@ -83,8 +83,8 @@ module subroutine plastic_isotropic_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 #ifdef DEBUG
-    if  (p==material_phaseAt(debug%grain,debug%element)) &
-      prm%of_debug = material_phasememberAt(debug%grain,debug%ip,debug%element)
+    if  (p==material_phaseAt(debugConstitutive%grain,debugConstitutive%element)) &
+      prm%of_debug = material_phasememberAt(debugConstitutive%grain,debugConstitutive%ip,debugConstitutive%element)
 #endif
 
     xi_0            = config%getFloat('tau0')
@@ -182,8 +182,8 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
     Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
 #ifdef DEBUG
-    if (debug%extensive &
-        .and. (of == prm%of_debug .or. .not. debug%selective)) then
+    if (debugConstitutive%extensive &
+        .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
       write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
                                        transpose(Mp_dev)*1.0e-6_pReal
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
@@ -238,8 +238,8 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
        * tr * abs(tr)**(prm%n-1.0_pReal)
 
 #ifdef DEBUG
-    if (debug%extensive &
-        .and. (of == prm%of_debug .or. .not. debug%selective)) then
+    if (debugConstitutive%extensive &
+        .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> pressure / MPa', tr/3.0_pReal*1.0e-6_pReal
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
                                                            * tr * abs(tr)**(prm%n-1.0_pReal)

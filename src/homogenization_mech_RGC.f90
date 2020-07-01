@@ -143,8 +143,8 @@ module subroutine mech_RGC_init(num_homogMech)
               config => config_homogenization(h))
 
 #ifdef DEBUG
-    if  (h==material_homogenizationAt(debug%element)) then
-      prm%of_debug = material_homogenizationMemberAt(debug%ip,debug%element)
+    if  (h==material_homogenizationAt(debugHomog%element)) then
+      prm%of_debug = material_homogenizationMemberAt(debugHomog%ip,debugHomog%element)
     endif
 #endif
 
@@ -228,7 +228,7 @@ module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
     F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                    ! resulting relaxed deformation gradient
 
 #ifdef DEBUG
-    if (debug%extensive) then
+    if (debugHomog%extensive) then
       write(6,'(1x,a32,1x,i3)')'Deformation gradient of grain: ',iGrain
       do i = 1,3
         write(6,'(1x,3(e15.8,1x))')(F(i,j,iGrain), j = 1,3)
@@ -291,7 +291,7 @@ module procedure mech_RGC_updateState
   drelax = stt%relaxationVector(:,of) - st0%relaxationVector(:,of)
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     write(6,'(1x,a30)')'Obtained state: '
     do i = 1,size(stt%relaxationVector(:,of))
       write(6,'(1x,2(e15.8,1x))') stt%relaxationVector(i,of)
@@ -309,7 +309,7 @@ module procedure mech_RGC_updateState
   call volumePenalty(D,dst%volumeDiscrepancy(of),avgF,F,nGrain,instance,of)
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     do iGrain = 1,nGrain
       write(6,'(1x,a30,1x,i3,1x,a4,3(1x,e15.8))')'Mismatch magnitude of grain(',iGrain,') :',&
         NN(1,iGrain),NN(2,iGrain),NN(3,iGrain)
@@ -357,7 +357,7 @@ module procedure mech_RGC_updateState
     enddo
 
 #ifdef DEBUG
-    if (debug%extensive) then
+    if (debugHomog%extensive) then
       write(6,'(1x,a30,1x,i3)')'Traction at interface: ',iNum
       write(6,'(1x,3(e15.8,1x))')(tract(iNum,j), j = 1,3)
       write(6,*)' '
@@ -371,7 +371,7 @@ module procedure mech_RGC_updateState
   residMax = maxval(abs(tract))                                                                     ! get the maximum of the residual
 
 #ifdef DEBUG
-  if (debug%extensive .and. prm%of_debug == of) then
+  if (debugHomog%extensive .and. prm%of_debug == of) then
     stresLoc = maxloc(abs(P))
     residLoc = maxloc(abs(tract))
     write(6,'(1x,a)')' '
@@ -391,7 +391,7 @@ module procedure mech_RGC_updateState
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
     mech_RGC_updateState = .true.
 #ifdef DEBUG
-    if (debug%extensive .and. prm%of_debug == of) &
+    if (debugHomog%extensive .and. prm%of_debug == of) &
       write(6,'(1x,a55,/)')'... done and happy'; flush(6)
 #endif
 
@@ -411,7 +411,7 @@ module procedure mech_RGC_updateState
     dst%relaxationRate_max(of) = maxval(abs(drelax))/dt
 
 #ifdef DEBUG
-    if (debug%extensive .and. prm%of_debug == of) then
+    if (debugHomog%extensive .and. prm%of_debug == of) then
       write(6,'(1x,a30,1x,e15.8)')   'Constitutive work: ',stt%work(of)
       write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',dst%mismatch(1,of), &
                                                             dst%mismatch(2,of), &
@@ -432,7 +432,7 @@ module procedure mech_RGC_updateState
     mech_RGC_updateState = [.true.,.false.]                                                         ! with direct cut-back
 
 #ifdef DEBUG
-    if (debug%extensive .and. prm%of_debug == of) &
+    if (debugHomog%extensive .and. prm%of_debug == of) &
       write(6,'(1x,a,/)') '... broken'; flush(6)
 #endif
 
@@ -440,7 +440,7 @@ module procedure mech_RGC_updateState
 
  else                                                                                               ! proceed with computing the Jacobian and state update
 #ifdef DEBUG
-   if (debug%extensive .and. prm%of_debug == of) &
+   if (debugHomog%extensive .and. prm%of_debug == of) &
      write(6,'(1x,a,/)') '... not yet done'; flush(6)
 #endif
 
@@ -497,7 +497,7 @@ module procedure mech_RGC_updateState
   enddo
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     write(6,'(1x,a30)')'Jacobian matrix of stress'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
@@ -557,7 +557,7 @@ module procedure mech_RGC_updateState
   enddo
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     write(6,'(1x,a30)')'Jacobian matrix of penalty'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
@@ -576,7 +576,7 @@ module procedure mech_RGC_updateState
   enddo
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     write(6,'(1x,a30)')'Jacobian matrix of penalty'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(rmatrix(i,j), j = 1,3*nIntFaceTot)
@@ -591,7 +591,7 @@ module procedure mech_RGC_updateState
   allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix + rmatrix
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     write(6,'(1x,a30)')'Jacobian matrix (total)'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
@@ -607,7 +607,7 @@ module procedure mech_RGC_updateState
   call math_invert(jnverse,error,jmatrix)
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     write(6,'(1x,a30)')'Jacobian inverse'
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(jnverse(i,j), j = 1,3*nIntFaceTot)
@@ -634,7 +634,7 @@ module procedure mech_RGC_updateState
   endif
 
 #ifdef DEBUG
-  if (debug%extensive) then
+  if (debugHomog%extensive) then
     write(6,'(1x,a30)')'Returned state: '
     do i = 1,size(stt%relaxationVector(:,of))
       write(6,'(1x,2(e15.8,1x))') stt%relaxationVector(i,of)
@@ -684,7 +684,7 @@ module procedure mech_RGC_updateState
     associate(prm => param(instance))
 
 #ifdef DEBUG
-    debugActive = debug%extensive .and. prm%of_debug == of
+    debugActive = debugHomog%extensive .and. prm%of_debug == of
 
     if (debugActive) then
       write(6,'(1x,a20,2(1x,i3))')'Correction factor: ',ip,el
@@ -794,7 +794,7 @@ module procedure mech_RGC_updateState
                          gVol(i)*transpose(math_inv33(fDef(:,:,i)))
 
 #ifdef DEBUG
-      if (debug%extensive &
+      if (debugHomog%extensive &
                   .and. param(instance)%of_debug == of) then
         write(6,'(1x,a30,i2)')'Volume penalty of grain: ',i
         write(6,*) transpose(vPen(:,:,i))

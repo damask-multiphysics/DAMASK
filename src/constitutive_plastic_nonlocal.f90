@@ -709,9 +709,9 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
   endif
 
 #ifdef DEBUG
-  if (debug%extensive &
-      .and. ((debug%element == el .and. debug%ip == ip)&
-             .or. .not. debug%selective)) then
+  if (debugConstitutive%extensive &
+      .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip)&
+             .or. .not. debugConstitutive%selective)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', stt%rho_forest(:,of)
     write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_pass(:,of)*1e-6
@@ -926,9 +926,9 @@ module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
   del%rho(:,of) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*ns])
 
 #ifdef DEBUG
-  if (debug%extensive &
-      .and. ((debug%element == el .and. debug%ip == ip)&
-             .or. .not. debug%selective)) then
+  if (debugConstitutive%extensive &
+      .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip)&
+             .or. .not. debugConstitutive%selective)) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))')    '<< CONST >> dislocation remobilization', deltaRhoRemobilization(:,1:8)
     write(6,'(a,/,10(12x,12(e12.5,1x),/),/)') '<< CONST >> dipole dissociation by stress increase', deltaRhoDipole2SingleStress
   endif
@@ -1015,9 +1015,9 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   gdot = rhoSgl(:,1:4) * v * spread(prm%burgers,2,4)
 
 #ifdef DEBUG
-    if (debug%basic &
-        .and. ((debug%element == el .and. debug%ip == ip) &
-               .or. .not. debug%selective)) then
+    if (debugConstitutive%basic &
+        .and. ((debugConstitutive%element == el .and. debugConstitutive%ip == ip) &
+               .or. .not. debugConstitutive%selective)) then
       write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
       write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> gdot / 1/s',gdot
     endif
@@ -1126,7 +1126,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
      .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
 #ifdef DEBUG
-    if (debug%extensive) then
+    if (debugConstitutive%extensive) then
       write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
@@ -1238,7 +1238,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
             .and. prm%CFLfactor * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
-    if (debug%extensive) then
+    if (debugConstitutive%extensive) then
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
         maxval(abs(v0), abs(gdot) > 0.0_pReal &
