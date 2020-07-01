@@ -52,22 +52,33 @@ module homogenization
 
   type(tNumerics) :: num
 
+#ifdef DEBUG
+  type :: tDebugOptions
+    logical :: &
+      basic, &
+      extensive, &
+      selective
+    integer :: &
+      element, &
+      ip, &
+      grain
+  end type tDebugOptions
+
+  type(tDebugOptions) :: debug
+
+#endif
+
   interface
 
-    module subroutine mech_none_init(debug_homogenization)
-      class(tNode), pointer, intent(in) :: &
-        debug_homogenization                                                                        !< pointer to debug options for homogenization
+    module subroutine mech_none_init
     end subroutine mech_none_init
 
-    module subroutine mech_isostrain_init(debug_homogenization)
-      class(tNode), pointer, intent(in) :: &
-        debug_homogenization                                                                        !< pointer to debug options for homogenization
+    module subroutine mech_isostrain_init
     end subroutine mech_isostrain_init
 
-    module subroutine mech_RGC_init(num_homogMech, debug_homogenization)
+    module subroutine mech_RGC_init(num_homogMech)
       class(tNode), pointer, intent(in) :: &
-        num_homogMech, &                                                                            !< pointer to mechanical homogenization numerics data
-        debug_homogenization                                                                        !< pointer to debug options for homogenization
+        num_homogMech                                                                               !< pointer to mechanical homogenization numerics data
     end subroutine mech_RGC_init
 
 
@@ -76,15 +87,12 @@ module homogenization
       real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
     end subroutine mech_isostrain_partitionDeformation
 
-    module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of, &
-                                                       debug_homogenization)
+    module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
       real(pReal),   dimension (:,:,:), intent(out) :: F                                            !< partitioned deformation gradient
       real(pReal),   dimension (3,3),   intent(in)  :: avgF                                         !< average deformation gradient at material point
       integer,                          intent(in)  :: &
         instance, &
         of
-      class(tNode), pointer, intent(in) :: &
-        debug_homogenization                                                                        !< pointer to debug options for homogenization 
     end subroutine mech_RGC_partitionDeformation
 
 
@@ -106,7 +114,7 @@ module homogenization
       integer,                              intent(in)  :: instance
     end subroutine mech_RGC_averageStressAndItsTangent
 
-    module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el,debug_homogenization)
+    module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
       logical, dimension(2) :: mech_RGC_updateState
       real(pReal), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
@@ -118,8 +126,6 @@ module homogenization
       integer,                           intent(in) :: &
         ip, &                                                                                       !< integration point number
         el                                                                                          !< element number
-      class(tNode), pointer, intent(in) :: &
-        debug_homogenization                                                                        !< pointer to debug options for homogenization
     end function mech_RGC_updateState
 
 
@@ -148,19 +154,28 @@ subroutine homogenization_init
     num_homogMech, &
     num_homogGeneric, &
     debug_homogenization
-  integer :: &
-    debug_g, &
-    debug_e
- 
+
+#ifdef DEBUG
+  debug_homogenization => debug_root%get('homogenization', defaultVal=emptyList)
+  debug%basic       =  debug_homogenization%contains('basic') 
+  debug%extensive   =  debug_homogenization%contains('extensive') 
+  debug%selective   =  debug_homogenization%contains('selective')
+  debug%element     =  debug_root%get_asInt('element',defaultVal = 1) 
+  debug%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
+  debug%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
+
+  if (debug%grain < 1 .or. debug%grain > homogenization_Ngrains(material_homogenizationAt(debug%element))) &
+    call IO_error(602,ext_msg='constituent', el=debug%element, g=debug%grain)
+#endif
+
+
   num_homog        => numerics_root%get('homogenization',defaultVal=emptyDict)
   num_homogMech    => num_homog%get('mech',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 
-  debug_homogenization => debug_root%get('homogenization',defaultVal=emptyList)
-
-  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init(debug_homogenization)
-  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call mech_isostrain_init(debug_homogenization)
-  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call mech_RGC_init(num_homogMech,debug_homogenization)
+  if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
+  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) call mech_isostrain_init
+  if (any(homogenization_type == HOMOGENIZATION_RGC_ID))       call mech_RGC_init(num_homogMech)
 
   if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
   if (any(thermal_type == THERMAL_adiabatic_ID))  call thermal_adiabatic_init
@@ -180,11 +195,6 @@ subroutine homogenization_init
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
 
   write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'; flush(6)
-  
-  debug_g =  debug_root%get_asInt('grain', defaultVal=1)
-  debug_e =  debug_root%get_asInt('element', defaultVal=1)
-  if (debug_g < 1 .or. debug_g > homogenization_Ngrains(material_homogenizationAt(debug_e))) &
-    call IO_error(602,ext_msg='constituent', el=debug_e, g=debug_g)
 
   num%nMPstate          = num_homogGeneric%get_asInt  ('nMPstate',     defaultVal=10)
   num%subStepMinHomog   = num_homogGeneric%get_asFloat('subStepMin',   defaultVal=1.0e-3_pReal)
@@ -213,9 +223,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     i, &                                                                                            !< integration point number
     e, &                                                                                            !< element number
     mySource, &
-    myNgrains, &
-    debug_e, &
-    debug_i
+    myNgrains
   real(pReal), dimension(discretization_nIP,discretization_nElem) :: &
     subFrac, &
     subStep
@@ -224,21 +232,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     converged
   logical,     dimension(2,discretization_nIP,discretization_nElem) :: &
     doneAndHappy
-  class(tNode), pointer :: &
-    debug_homogenization
  
 #ifdef DEBUG
-  debug_e = debug_root%get_asInt('element', defaultVal=1)
-  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
 
-  debug_homogenization => debug_root%get('homogenization',defaultVal=emptyList)
-  if (debug_homogenization%contains('basic')) then
-    write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
+  if (debug%basic) then
+    write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug%element, debug%ip
 
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
-                                    transpose(materialpoint_F0(1:3,1:3,debug_i,debug_e))
+                                    transpose(materialpoint_F0(1:3,1:3,debug%ip,debug%element))
     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
-                                    transpose(materialpoint_F(1:3,1:3,debug_i,debug_e))
+                                    transpose(materialpoint_F(1:3,1:3,debug%ip,debug%element))
   endif
 #endif
 
@@ -297,9 +300,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
         if (converged(i,e)) then
 #ifdef DEBUG
-          if (debug_homogenization%contains('extensive') &
-             .and. ((e == debug_e .and. i == debug_i) &
-                    .or. .not. debug_homogenization%contains('selective'))) then
+          if (debug%extensive &
+             .and. ((e == debug%element .and. i == debug%ip) &
+                    .or. .not. debug%selective)) then
             write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
               subFrac(i,e), 'to current subFrac', &
               subFrac(i,e)+subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
@@ -356,9 +359,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
             subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
 #ifdef DEBUG
-            if (debug_homogenization%contains('extensive') &
-               .and. ((e == debug_e .and. i == debug_i) &
-                     .or. .not. debug_homogenization%contains('selective'))) then
+            if (debug%extensive &
+               .and. ((e == debug%element .and. i == debug%ip) &
+                     .or. .not. debug%selective)) then
               write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &
                 '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new subStep:',&
                 subStep(i,e),' at el ip',e,i
@@ -490,10 +493,6 @@ subroutine partitionDeformation(subF,ip,el)
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
-  class(tNode), pointer :: &
-    debug_homogenization
-
-  debug_homogenization => debug_root%get('homogenization',defaultVal=emptyList)
  
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
@@ -510,7 +509,7 @@ subroutine partitionDeformation(subF,ip,el)
                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                           subF,&
                           ip, &
-                          el,debug_homogenization)
+                          el)
   end select chosenHomogenization
 
 end subroutine partitionDeformation
@@ -530,10 +529,6 @@ function updateState(subdt,subF,ip,el)
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
   logical, dimension(2) :: updateState
-  class(tNode), pointer :: &
-    debug_homogenization
-  
-  debug_homogenization => debug_root%get('homogenization',defaultVal=emptyList)
   
   updateState = .true.
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
@@ -547,7 +542,7 @@ function updateState(subdt,subF,ip,el)
                                subdt, &
                                crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                                ip, &
-                               el,debug_homogenization)
+                               el)
   end select chosenHomogenization
 
   chosenThermal: select case (thermal_type(material_homogenizationAt(el)))

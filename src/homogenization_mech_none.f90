@@ -11,21 +11,17 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_none_init(debug_homogenization)
+module subroutine mech_none_init
   
-  class(tNode), pointer, intent(in) :: &
-    debug_homogenization                                                                            !< pointer to debug options for homogenization
-
   integer :: &
     Ninstance, &
     h, &
     NofMyHomog
  
-  write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
 
   Ninstance = count(homogenization_type == HOMOGENIZATION_NONE_ID)
-  if (debug_homogenization%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
  
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle

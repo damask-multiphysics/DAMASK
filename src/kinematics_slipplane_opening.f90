@@ -8,7 +8,6 @@ module kinematics_slipplane_opening
   use prec
   use config
   use IO
-  use debug
   use math
   use lattice
   use material

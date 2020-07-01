@@ -26,10 +26,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_isostrain_init(debug_homogenization)
-
-  class(tNode), pointer, intent(in) :: &
-    debug_homogenization                                                                            !< pointer to debug options for homogenization
+module subroutine mech_isostrain_init
 
   integer :: &
     Ninstance, &
@@ -41,8 +38,7 @@ module subroutine mech_isostrain_init(debug_homogenization)
   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_LABEL//' init  -+>>>'
  
   Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
-  if (debug_homogenization%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
  
   allocate(param(Ninstance))                                                                        ! one container of parameters per instance
  

@@ -6,7 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 module source_thermal_externalheat
   use prec
-  use debug
   use YAML_types
   use discretization
   use material

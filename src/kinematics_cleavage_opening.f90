@@ -8,7 +8,6 @@ module kinematics_cleavage_opening
   use prec
   use IO
   use config
-  use debug
   use math
   use lattice
   use material

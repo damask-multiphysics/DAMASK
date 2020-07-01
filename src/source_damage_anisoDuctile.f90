@@ -6,7 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 module source_damage_anisoDuctile
   use prec
-  use debug
   use IO
   use math
   use discretization

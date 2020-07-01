@@ -7,7 +7,6 @@ module kinematics_thermal_expansion
   use prec
   use IO
   use config
-  use debug
   use math
   use lattice
   use material

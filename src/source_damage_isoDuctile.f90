@@ -6,7 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 module source_damage_isoDuctile
   use prec
-  use debug
   use IO
   use YAML_types
   use discretization
