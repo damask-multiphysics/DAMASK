@@ -59,8 +59,8 @@ subroutine discretization_grid_init(restart)
 
   integer :: &
     j, &
-    debug_e, &
-    debug_i
+    debug_element, &
+    debug_ip
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
@@ -88,8 +88,8 @@ subroutine discretization_grid_init(restart)
 
 !-------------------------------------------------------------------------------------------------
 ! debug parameters
-  debug_e = debug_root%get_asInt('element',defaultVal=1)
-  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
+  debug_element = debug_root%get_asInt('element',defaultVal=1)
+  debug_ip      = debug_root%get_asInt('integrationpoint',defaultVal=1)
 
 !--------------------------------------------------------------------------------------------------
 ! general discretization
@@ -128,8 +128,8 @@ subroutine discretization_grid_init(restart)
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks for debugging
-  if (debug_e < 1 .or. debug_e > product(myGrid)) call IO_error(602,ext_msg='element')              ! selected element does not exist
-  if (debug_i /= 1)                               call IO_error(602,ext_msg='IP')                   ! selected IP does not exist
+  if (debug_element < 1 .or. debug_element > product(myGrid)) call IO_error(602,ext_msg='element')  ! selected element does not exist
+  if (debug_ip /= 1)                                          call IO_error(602,ext_msg='IP')       ! selected IP does not exist
 
 end subroutine discretization_grid_init
 
