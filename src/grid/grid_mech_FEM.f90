@@ -46,7 +46,7 @@ module grid_mech_FEM
 
   type(tNumerics), private :: num
   logical, private:: &
-    debug_rotation 
+    debugRotation 
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -128,7 +128,7 @@ subroutine grid_mech_FEM_init
 !-----------------------------------------------------------------------------------------------
 ! debugging options
   debug_grid => debug_root%get('grid', defaultVal=emptyList)
-  debug_rotation = debug_grid%contains('rotation')
+  debugRotation = debug_grid%contains('rotation')
  
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameter and do sanity checks
@@ -518,7 +518,7 @@ subroutine formResidual(da_local,x_local, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
-    if (debug_rotation) &
+    if (debugRotation) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
