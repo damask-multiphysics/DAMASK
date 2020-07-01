@@ -45,9 +45,7 @@ module constitutive
         debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_isotropic_init
     
-    module subroutine plastic_phenopowerlaw_init(debug_constitutive)
-      class(tNode), pointer , intent(in) :: &
-        debug_constitutive                                                                          !< pointer to constitutive debug options 
+    module subroutine plastic_phenopowerlaw_init
     end subroutine plastic_phenopowerlaw_init
 
     module subroutine plastic_kinehardening_init(debug_constitutive)
@@ -378,7 +376,7 @@ subroutine constitutive_init
 ! initialized plasticity
   if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init(debug_constitutive)
   if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init(debug_constitutive)
-  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
   if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init(debug_constitutive)
   if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(debug_constitutive)
   if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init(debug_constitutive)
