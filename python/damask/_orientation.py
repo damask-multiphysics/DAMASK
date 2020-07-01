@@ -61,7 +61,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
         if self.lattice.symmetry != other.lattice.symmetry:
             raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
 
-        mySymEqs    =  self.equivalent if SST else self.equivalent[0] #ToDo: This is just me!                              # take all or only first sym operation
+        mySymEqs    =  self.equivalent if SST else self.equivalent[0] #ToDo: This is just me!       # take all or only first sym operation
         otherSymEqs = other.equivalent
 
         for i,sA in enumerate(mySymEqs):
@@ -177,7 +177,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
 
     # ToDo: Discuss vectorization/calling signature
     @staticmethod
-    def fromAverage(orientations,
+    def from_average(orientations,
                     weights = []):
         """Create orientation from average of list of orientations."""
         # further read: Orientation distribution analysis in deformed grains
@@ -193,10 +193,10 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
                                               SST = False,                                          # select (o[ther]'s) sym orientation
                                               symmetries = True)[2]].rotation)                      # with lowest misorientation
 
-        return Orientation(Rotation.fromAverage(closest,weights),ref.lattice)
+        return Orientation(Rotation.from_average(closest,weights),ref.lattice)
 
 
     # ToDo: Discuss vectorization/calling signature
     def average(self,other):
         """Calculate the average rotation."""
-        return Orientation.fromAverage([self,other])
+        return Orientation.from_average([self,other])

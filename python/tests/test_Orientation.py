@@ -20,6 +20,16 @@ def IPF_color(orientation,direction):
 
     return color
 
+def inverse_pole(orientation,axis,proper=False,SST=True):
+    if SST:
+        for eq in orientation.equivalent:
+            pole = eq.rotation @ axis/np.linalg.norm(axis)
+            if orientation.lattice.in_SST(pole,proper=proper):
+                return pole
+    else:
+        return orientation.rotation @ axis/np.linalg.norm(axis)
+
+
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
@@ -43,6 +53,15 @@ class TestOrientation:
         oris = Orientation(Rotation(set_of_quaternions),lattice)[:200]
         for i,color in enumerate(oris.IPF_color(direction)):
             assert np.allclose(color,IPF_color(oris[i],direction))
+
+    @pytest.mark.parametrize('SST',[False,True])
+    @pytest.mark.parametrize('proper',[True,False])
+    @pytest.mark.parametrize('lattice',Lattice.lattices)
+    def test_inverse_pole_vectorize(self,set_of_quaternions,lattice,SST,proper):
+        axis = np.random.random(3)*2.0-1
+        oris = Orientation(Rotation(set_of_quaternions),lattice)[:200]
+        for i,pole in enumerate(oris.inverse_pole(axis,SST=SST)):
+            assert np.allclose(pole,inverse_pole(oris[i],axis,SST=SST))
 
     @pytest.mark.parametrize('color',[{'label':'red',  'RGB':[1,0,0],'direction':[0,0,1]},
                                       {'label':'green','RGB':[0,1,0],'direction':[0,1,1]},
@@ -95,3 +114,19 @@ class TestOrientation:
         R_1 = Orientation(Rotation(),lattice)
         R_2 = Orientation(damask.Rotation.from_Eulers([360,0,0],degrees=True),lattice)
         assert np.allclose(R_1.disorientation(R_2).as_matrix(),np.eye(3))
+
+    @pytest.mark.parametrize('lattice',Lattice.lattices)
+    @pytest.mark.parametrize('angle',[10,20,30,40])
+    def test_average(self,angle,lattice):
+        R_1 = Orientation(Rotation.from_axis_angle([0,0,1,10],degrees=True),lattice)
+        R_2 = Orientation(Rotation.from_axis_angle([0,0,1,angle],degrees=True),lattice)
+        avg_angle = R_1.average(R_2).rotation.as_axis_angle(degrees=True,pair=True)[1]
+        assert np.isclose(avg_angle,10+(angle-10)/2.)
+
+    @pytest.mark.parametrize('lattice',Lattice.lattices)
+    def test_from_average(self,lattice):
+        R_1 = Orientation(Rotation.from_random(),lattice)
+        eqs = [r for r in R_1.equivalent]
+        R_2 = damask.Orientation.from_average(eqs)
+        assert np.allclose(R_1.rotation.quaternion,R_2.rotation.quaternion)
+

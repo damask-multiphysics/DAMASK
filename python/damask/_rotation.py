@@ -199,7 +199,7 @@ class Rotation:
         """
         if self.quaternion.shape != (4,) or other.quaternion.shape != (4,):
             raise NotImplementedError('Support for multiple rotations missing')
-        return Rotation.fromAverage([self,other])
+        return Rotation.from_average([self,other])
 
 
     ################################################################################################
@@ -294,7 +294,11 @@ class Rotation:
 
         """
         ro = Rotation._qu2ro(self.quaternion)
-        return ro[...,:3]*ro[...,3:4] if vector else ro
+        if vector:
+            with np.errstate(invalid='ignore'):
+                return ro[...,:3]*ro[...,3:4]
+        else:
+            return ro
 
     def as_homochoric(self):
         """
@@ -577,7 +581,7 @@ class Rotation:
 
 
     @staticmethod
-    def fromAverage(rotations,weights = None):
+    def from_average(rotations,weights = None):
         """
         Average rotation.
 
