@@ -36,6 +36,20 @@ submodule(constitutive) plastic_isotropic
       gamma
   end type tIsotropicState
 
+#ifdef DEBUG
+  type :: tDebugOptions
+    logical :: &
+      extensive, &
+      selective
+    integer :: &
+      element, &
+      ip, &
+      grain
+  end type tDebugOptions
+
+  type(tDebugOptions) :: debug
+
+#endif
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
  type(tParameters),     allocatable, dimension(:) :: param
@@ -49,32 +63,36 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_init(debug_constitutive)
-
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
+module subroutine plastic_isotropic_init
 
   integer :: &
     Ninstance, &
     p, &
     NipcMyPhase, &
-    sizeState, sizeDotState, &
-    debug_g, &
-    debug_e, &
-    debug_i
+    sizeState, sizeDotState
   real(pReal) :: &
     xi_0                                                                                            !< initial critical stress
   character(len=pStringLen) :: &
     extmsg = ''
+  class(tNode), pointer :: &
+    debug_constitutive
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_LABEL//' init  -+>>>'
 
   write(6,'(/,a)') ' Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
   write(6,'(a)')   ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
   Ninstance = count(phase_plasticity == PLASTICITY_ISOTROPIC_ID)
-  if (debug_constitutive%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+
+#ifdef DEBUG
+  debug_constitutive => debug_root%get('constitutuve', defaultVal=emptyList)
+  debug%extensive   =  debug_constitutive%contains('extensive') 
+  debug%selective   =  debug_constitutive%contains('selective')
+  debug%element     =  debug_root%get_asInt('element',defaultVal = 1) 
+  debug%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
+  debug%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
+#endif
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -90,12 +108,8 @@ module subroutine plastic_isotropic_init(debug_constitutive)
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 #ifdef DEBUG
-    debug_g = debug_root%get_asInt('grain',defaultVal=1)
-    debug_e = debug_root%get_asInt('element',defaultVal=1)
-    debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
-   
-    if  (p==material_phaseAt(debug_g,debug_e)) &
-      prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
+    if  (p==material_phaseAt(debug%grain,debug%element)) &
+      prm%of_debug = material_phasememberAt(debug%grain,debug%ip,debug%element)
 #endif
 
     xi_0            = config%getFloat('tau0')
@@ -160,7 +174,7 @@ end subroutine plastic_isotropic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of,debug_constitutive)
+module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -172,8 +186,6 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of,de
   integer,                     intent(in) :: &
     instance, &
     of
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
  
   real(pReal), dimension(3,3) :: &
     Mp_dev                                                                                          !< deviatoric part of the Mandel stress
@@ -195,8 +207,8 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of,de
 
     Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
 #ifdef DEBUG
-    if (debug_constitutive%contains('extensive') &
-        .and. (of == prm%of_debug .or. .not. debug_constitutive%contains('selective'))) then
+    if (debug%extensive &
+        .and. (of == prm%of_debug .or. .not. debug%selective)) then
       write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
                                        transpose(Mp_dev)*1.0e-6_pReal
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
@@ -223,7 +235,7 @@ end subroutine plastic_isotropic_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate inelastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of,debug_constitutive)
+module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 
   real(pReal), dimension(3,3),     intent(out) :: &
     Li                                                                                              !< inleastic velocity gradient
@@ -235,8 +247,6 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of,de
   integer,                     intent(in) :: &
     instance, &
     of
-  class(tNode), pointer,       intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
  
   real(pReal) :: &
     tr                                                                                              !< trace of spherical part of Mandel stress (= 3 x pressure)
@@ -253,8 +263,8 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of,de
        * tr * abs(tr)**(prm%n-1.0_pReal)
 
 #ifdef DEBUG
-    if (debug_constitutive%contains('extensive') &
-        .and. (of == prm%of_debug .or. .not. debug_constitutive%contains('selective'))) then
+    if (debug%extensive &
+        .and. (of == prm%of_debug .or. .not. debug%selective)) then
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> pressure / MPa', tr/3.0_pReal*1.0e-6_pReal
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
                                                            * tr * abs(tr)**(prm%n-1.0_pReal)

@@ -147,6 +147,22 @@ submodule(constitutive) plastic_nonlocal
           v_scr_neg
   end type tNonlocalState
 
+#ifdef DEBUG
+  type :: tDebugOptions
+    logical :: &
+      basic, &
+      extensive, &
+      selective
+    integer :: &
+      element, &
+      ip, &
+      grain
+  end type tDebugOptions
+
+  type(tDebugOptions) :: debug
+
+#endif
+
   type(tNonlocalState), allocatable, dimension(:) :: &
     deltaState, &
     dotState, &
@@ -163,10 +179,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_init(debug_constitutive)
-
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
+module subroutine plastic_nonlocal_init
 
   integer :: &
     Ninstance, &
@@ -181,8 +194,10 @@ module subroutine plastic_nonlocal_init(debug_constitutive)
     extmsg  = ''
   type(tInitialParameters) :: &
     ini
+  class(tNode), pointer :: &
+    debug_constitutive
 
-  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_LABEL//' init  -+>>>'
 
   write(6,'(/,a)') ' Reuber et al., Acta Materialia 71:333–348, 2014'
   write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2014.03.012'
@@ -191,8 +206,17 @@ module subroutine plastic_nonlocal_init(debug_constitutive)
   write(6,'(a)')   ' http://publications.rwth-aachen.de/record/229993'
 
   Ninstance = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
-  if (debug_constitutive%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+
+#ifdef DEBUG
+  debug_constitutive => debug_root%get('constitutuve', defaultVal=emptyList)
+  debug%basic       =  debug_constitutive%contains('basic') 
+  debug%extensive   =  debug_constitutive%contains('extensive') 
+  debug%selective   =  debug_constitutive%contains('selective')
+  debug%element     =  debug_root%get_asInt('element',defaultVal = 1) 
+  debug%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
+  debug%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
+#endif
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -525,7 +549,7 @@ end subroutine plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el,debug_constitutive)
+module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
 
   real(pReal), dimension(3,3), intent(in) :: &
     F, &
@@ -535,8 +559,6 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el,de
     of, &
     ip, &
     el
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: &
     no, &                                                                                           !< neighbor offset
@@ -546,8 +568,7 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el,de
     c, &                                                                                            ! index of dilsocation character (edge, screw)
     s, &                                                                                            ! slip system index
     dir, &
-    n, &
-    debug_e, debug_i
+    n
   real(pReal) :: &
     FVsize, &
     nRealNeighbors                                                                                  ! number of really existing neighbors
@@ -716,11 +737,9 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el,de
   endif
 
 #ifdef DEBUG
-  debug_e = debug_root%get_asInt('element',defaultVal=1)
-  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
-  if (debug_constitutive%contains('extensive') &
-      .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. debug_constitutive%contains('selective'))) then
+  if (debug%extensive &
+      .and. ((debug%element == el .and. debug%ip == ip)&
+             .or. .not. debug%selective)) then
     write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_microstructure at el ip ',el,ip
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', stt%rho_forest(:,of)
     write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', dst%tau_pass(:,of)*1e-6
@@ -844,7 +863,7 @@ end subroutine plastic_nonlocal_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief (instantaneous) incremental change of microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el,debug_constitutive)
+module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
@@ -853,16 +872,13 @@ module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el,debug_constit
     of, &                                                                                           !< offset
     ip, &
     el
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer :: &
     ph, &                                                                                           !< phase
     ns, &                                                                                           ! short notation for the total number of active slip systems
     c, &                                                                                            ! character of dislocation
     t, &                                                                                            ! type of dislocation
-    s, &                                                                                            ! index of my current slip system
-    debug_e, debug_i
+    s                                                                                               ! index of my current slip system
   real(pReal), dimension(param(instance)%sum_N_sl,10) :: &
     deltaRhoRemobilization, &                                                                       ! density increment by remobilization
     deltaRhoDipole2SingleStress                                                                     ! density increment by dipole dissociation (by stress change)
@@ -938,11 +954,9 @@ module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el,debug_constit
   del%rho(:,of) = reshape(deltaRhoRemobilization + deltaRhoDipole2SingleStress, [10*ns])
 
 #ifdef DEBUG
-  debug_e = debug_root%get_asInt('element',defaultVal=1)
-  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
-  if (debug_constitutive%contains('extensive') &
-      .and. ((debug_e == el .and. debug_i == ip)&
-             .or. .not. debug_constitutive%contains('selective'))) then
+  if (debug%extensive &
+      .and. ((debug%element == el .and. debug%ip == ip)&
+             .or. .not. debug%selective)) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))')    '<< CONST >> dislocation remobilization', deltaRhoRemobilization(:,1:8)
     write(6,'(a,/,10(12x,12(e12.5,1x),/),/)') '<< CONST >> dipole dissociation by stress increase', deltaRhoDipole2SingleStress
   endif
@@ -957,7 +971,7 @@ end subroutine plastic_nonlocal_deltaState
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
-                                            instance,of,ip,el,debug_constitutive)
+                                            instance,of,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
@@ -972,16 +986,13 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
     of, &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
 
   integer ::  &
     ph, &
     ns, &                                                                                           !< short notation for the total number of active slip systems
     c, &                                                                                            !< character of dislocation
     t, &                                                                                            !< type of dislocation
-    s, &                                                                                            !< index of my current slip system
-    debug_e, debug_i
+    s                                                                                               !< index of my current slip system
   real(pReal), dimension(param(instance)%sum_N_sl,10) :: &
     rho, &
     rho0, &                                                                                         !< dislocation density at beginning of time step
@@ -1032,11 +1043,9 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   gdot = rhoSgl(:,1:4) * v * spread(prm%burgers,2,4)
 
 #ifdef DEBUG
-    debug_e = debug_root%get_asInt('element',defaultVal=1)
-    debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
-    if (debug_constitutive%contains('basic') &
-        .and. ((debug_e == el .and. debug_i == ip) &
-               .or. .not. debug_constitutive%contains('selective') )) then
+    if (debug%basic &
+        .and. ((debug%element == el .and. debug%ip == ip) &
+               .or. .not. debug%selective)) then
       write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
       write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> gdot / 1/s',gdot
     endif
@@ -1135,7 +1144,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))    ! make sure that we do not annihilate more dipoles than we have
 
-  rhoDot = rhoDotFlux(F,Fp,timestep,  instance,of,ip,el,debug_constitutive) &
+  rhoDot = rhoDotFlux(F,Fp,timestep,  instance,of,ip,el) &
          + rhoDotMultiplication &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
@@ -1145,7 +1154,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   if (    any(rho(:,mob) + rhoDot(:,1:4)  * timestep < -prm%atol_rho) &
      .or. any(rho(:,dip) + rhoDot(:,9:10) * timestep < -prm%atol_rho)) then
 #ifdef DEBUG
-    if (debug_constitutive%contains('extensive')) then
+    if (debug%extensive) then
       write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
@@ -1164,7 +1173,7 @@ end subroutine plastic_nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el,debug_constitutive)
+function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
 
   real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
@@ -1176,8 +1185,6 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el,debug_constitutive)
     of, &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
  
   integer ::  &
     ph, &
@@ -1259,7 +1266,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el,debug_constitutive)
             .and. prm%CFLfactor * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
-    if (debug_constitutive%contains('extensive')) then
+    if (debug%extensive) then
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
         maxval(abs(v0), abs(gdot) > 0.0_pReal &
