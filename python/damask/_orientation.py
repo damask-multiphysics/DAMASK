@@ -71,8 +71,8 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
                 r = b*aInv
                 for k in range(2):
                     r.inverse()
-                    breaker = self.in_FZ \
-                              and (not SST or other.lattice.symmetry.inDisorientationSST(r.as_Rodrigues(vector=True)))
+                    breaker = self.lattice.in_FZ(r.as_Rodrigues(vector=True)) \
+                              and (not SST or other.lattice.in_disorientation_SST(r.as_Rodrigues(vector=True)))
                     if breaker: break
                 if breaker: break
             if breaker: break
@@ -90,40 +90,36 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
     @property
     def equivalent(self):
         """
-        Return orientations which are symmetrically equivalent.
+        Orientations which are symmetrically equivalent.
 
-        One dimension (length according to symmetrically equivalent orientations)
+        One dimension (length according to number of symmetrically equivalent orientations)
         is added to the left of the Rotation array.
 
         """
-        s = self.lattice.symmetry.symmetry_operations
-        s = s.reshape(s.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
-        s = Rotation(np.broadcast_to(s,s.shape[:1]+self.rotation.quaternion.shape))
+        o = self.lattice.symmetry.symmetry_operations
+        o = o.reshape(o.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
+        o = Rotation(np.broadcast_to(o,o.shape[:1]+self.rotation.quaternion.shape))
 
-        r = np.broadcast_to(self.rotation.quaternion,s.shape[:1]+self.rotation.quaternion.shape)
+        s = np.broadcast_to(self.rotation.quaternion,o.shape[:1]+self.rotation.quaternion.shape)
 
-        return self.__class__(s@Rotation(r),self.lattice)
-
-
-    def relatedOrientations_vec(self,model):
-        """List of orientations related by the given orientation relationship."""
-        h = self.lattice.relationOperations(model)
-        rot= h['rotations']
-        op=np.array([o.as_quaternion() for o in rot])
-
-        s = op.reshape(op.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
-        s = Rotation(np.broadcast_to(s,s.shape[:1]+self.rotation.quaternion.shape))
-
-        r = np.broadcast_to(self.rotation.quaternion,s.shape[:1]+self.rotation.quaternion.shape)
-        r = Rotation(r)
-
-        return self.__class__(s@r,h['lattice'])
+        return self.__class__(o@Rotation(s),self.lattice)
 
 
-    def relatedOrientations(self,model):
-        """List of orientations related by the given orientation relationship."""
-        r = self.lattice.relationOperations(model)
-        return [self.__class__(o*self.rotation,r['lattice']) for o in r['rotations']]
+    def related(self,model):
+        """
+        Orientations related by the given orientation relationship.
+
+        One dimension (length according to number of related orientations)
+        is added to the left of the Rotation array.
+
+        """
+        o = Rotation.from_matrix(self.lattice.relation_operations(model)['rotations']).as_quaternion()
+        o = o.reshape(o.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
+        o = Rotation(np.broadcast_to(o,o.shape[:1]+self.rotation.quaternion.shape))
+
+        s = np.broadcast_to(self.rotation.quaternion,o.shape[:1]+self.rotation.quaternion.shape)
+
+        return self.__class__(o@Rotation(s),self.lattice.relation_operations(model)['lattice'])
 
 
     @property
@@ -136,26 +132,31 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
         found = np.zeros_like(in_FZ[0],dtype=bool)
         q     = self.rotation.quaternion[0]
         for s in range(in_FZ.shape[0]):
+            #something fishy... why does q needs to be initialized?
             q = np.where(np.expand_dims(np.logical_and(in_FZ[s],~found),-1),eq.rotation.quaternion[s],q)
             found = np.logical_or(in_FZ[s],found)
 
         return self.__class__(q,self.lattice)
 
 
-    # ToDo: vectorize
-    def inversePole(self,
-                    axis,
-                    proper = False,
-                    SST = True):
+    def inverse_pole(self,axis,proper=False,SST=True):
         """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)."""
-        if SST:                                                                                     # pole requested to be within SST
-            for i,o in enumerate(self.equivalent):                                                  # test all symmetric equivalent quaternions
-                pole = o.rotation@axis                                                              # align crystal direction to axis
-                if self.lattice.in_SST(pole,proper): break                                          # found SST version
-        else:
-            pole = self.rotation@axis                                                               # align crystal direction to axis
+        if SST:
+            eq = self.equivalent
+            pole = eq.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),eq.rotation.shape+(3,))
+            in_SST = self.lattice.in_SST(pole,proper=proper)
 
-        return (pole,i if SST else 0)
+            # remove duplicates (occur for highly symmetric orientations)
+            found = np.zeros_like(in_SST[0],dtype=bool)
+            p     = pole[0]
+            for s in range(in_SST.shape[0]):
+                p = np.where(np.expand_dims(np.logical_and(in_SST[s],~found),-1),pole[s],p)
+                found = np.logical_or(in_SST[s],found)
+
+            return p
+        else:
+            return self.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),self.rotation.shape+(3,))
+
 
 
     def IPF_color(self,axis): #ToDo axis or direction?
@@ -166,7 +167,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
 
         # remove duplicates (occur for highly symmetric orientations)
         found = np.zeros_like(in_SST[0],dtype=bool)
-        c     = np.empty(color.shape[1:])
+        c     = color[0]
         for s in range(in_SST.shape[0]):
             c = np.where(np.expand_dims(np.logical_and(in_SST[s],~found),-1),color[s],c)
             found = np.logical_or(in_SST[s],found)

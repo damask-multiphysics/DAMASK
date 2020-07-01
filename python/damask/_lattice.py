@@ -1,7 +1,5 @@
 import numpy as np
 
-from . import Rotation
-
 
 class Symmetry:
     """
@@ -29,7 +27,6 @@ class Symmetry:
             raise KeyError(f'Crystal system "{system}" is unknown')
 
         self.system = system.lower() if isinstance(system,str) else system
-        self.lattice = self.system # ToDo: for compatibility
 
 
     def __copy__(self):
@@ -219,6 +216,7 @@ class Symmetry:
                 return np.ones_like(rho[...,0],dtype=bool)
 
 
+    #ToDo: IPF color in separate function
     def in_SST(self,vector,proper=False,color=False):
         """
         Check whether given vector falls into standard stereographic triangle of own symmetry.
@@ -311,9 +309,9 @@ class Symmetry:
 # ******************************************************************************************
 class Lattice: # ToDo: Make a subclass of Symmetry!
     """
-    Lattice system.
+    Bravais lattice.
 
-    Currently, this contains only a mapping from Bravais lattice to symmetry
+    This contains only a mapping from Bravais lattice to symmetry
     and orientation relationships. It could include twin and slip systems.
 
     References
@@ -331,7 +329,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
                }
 
 
-    def __init__(self, lattice):
+    def __init__(self,lattice,c_over_a=None):
         """
         New lattice of given type.
 
@@ -345,20 +343,20 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
         self.symmetry = Symmetry(self.lattices[lattice]['system'])
 
         # transition to subclass
-        self.system = self.symmetry.system
-        self.in_SST = self.symmetry.in_SST
-        self.in_FZ   = self.symmetry.in_FZ
-
+        self.system                 = self.symmetry.system
+        self.in_SST                 = self.symmetry.in_SST
+        self.in_FZ                  = self.symmetry.in_FZ
+        self.in_disorientation_SST  = self.symmetry.in_disorientation_SST
 
     def __repr__(self):
         """Report basic lattice information."""
-        return 'Bravais lattice {} ({} symmetry)'.format(self.lattice,self.symmetry)
+        return 'Bravais lattice {} ({} crystal system)'.format(self.lattice,self.symmetry)
 
 
     # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
     # from S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
     # also see K. Kitahara et al., Acta Materialia 54:1279-1288, 2006
-    KS = {'mapping':{'fcc':0,'bcc':1},
+    _KS = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  1,  1],[  0,  1,  1]],
         [[  1,  1,  1],[  0,  1,  1]],
@@ -412,7 +410,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
 
     # Greninger--Troiano orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-    GT = {'mapping':{'fcc':0,'bcc':1},
+    _GT = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  1,  1],[  1,  0,  1]],
         [[  1,  1,  1],[  1,  1,  0]],
@@ -466,7 +464,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
 
     # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-    GTprime = {'mapping':{'fcc':0,'bcc':1},
+    _GTprime = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  7, 17, 17],[ 12,  5, 17]],
         [[ 17,  7, 17],[ 17, 12,  5]],
@@ -520,7 +518,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
 
     # Nishiyama--Wassermann orientation relationship for fcc <-> bcc transformation
     # from H. Kitahara et al., Materials Characterization 54:378-386, 2005
-    NW = {'mapping':{'fcc':0,'bcc':1},
+    _NW = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  1,  1],[  0,  1,  1]],
         [[  1,  1,  1],[  0,  1,  1]],
@@ -550,7 +548,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
 
     # Pitsch orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Acta Materialia 53:1179-1190, 2005
-    Pitsch = {'mapping':{'fcc':0,'bcc':1},
+    _Pitsch = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  0,  1,  0],[ -1,  0,  1]],
         [[  0,  0,  1],[  1, -1,  0]],
@@ -580,7 +578,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
 
     # Bain orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-    Bain = {'mapping':{'fcc':0,'bcc':1},
+    _Bain = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  0,  0],[  1,  0,  0]],
         [[  0,  1,  0],[  0,  1,  0]],
@@ -590,7 +588,8 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
         [[  0,  0,  1],[  1,  0,  1]],
         [[  1,  0,  0],[  1,  1,  0]]],dtype='float')}
 
-    def relationOperations(self,model):
+
+    def relation_operations(self,model):
         """
         Crystallographic orientation relationships for phase transformations.
 
@@ -612,8 +611,8 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
-        models={'KS':self.KS, 'GT':self.GT, 'GT_prime':self.GTprime,
-                'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
+        models={'KS':self._KS, 'GT':self._GT,          'GT_prime':self._GTprime,
+                'NW':self._NW, 'Pitsch': self._Pitsch, 'Bain':self._Bain}
         try:
             relationship = models[model]
         except KeyError :
@@ -639,6 +638,8 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
             otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
             otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
 
-            r['rotations'].append(Rotation.from_matrix(np.dot(otherMatrix.T,myMatrix)))
+            r['rotations'].append(np.dot(otherMatrix.T,myMatrix))
+
+        r['rotations'] = np.array(r['rotations'])
 
         return r
