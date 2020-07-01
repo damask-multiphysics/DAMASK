@@ -97,7 +97,7 @@ def qu2ax(qu):
 
     Modified version of the original formulation, should be numerically more stable
     """
-    if np.isclose(qu[0],1.,rtol=0.0):                                                              # set axis to [001] if the angle is 0/360
+    if np.isclose(qu[0],1.,rtol=0.0):                                                               # set axis to [001] if the angle is 0/360
         ax = np.array([ 0.0, 0.0, 1.0, 0.0 ])
     elif qu[0] > 1.e-8:
         s = np.sign(qu[0])/np.sqrt(qu[1]**2+qu[2]**2+qu[3]**2)
@@ -461,7 +461,7 @@ def mul(me, other):
         other_p = other.quaternion[1:]
         R = me.__class__(np.append(me_q*other_q - np.dot(me_p,other_p),
                                    me_q*other_p + other_q*me_p + _P * np.cross(me_p,other_p)))
-        return R.standardize()
+        return R._standardize()
     elif isinstance(other, np.ndarray):
         if other.shape == (3,):
             A = me.quaternion[0]**2.0 - np.dot(me.quaternion[1:],me.quaternion[1:])
@@ -481,9 +481,9 @@ def mul(me, other):
             axes = ((0, 2, 4, 6), (0, 1, 2, 3))
             return np.tensordot(RRRR, other, axes)
         else:
-            raise ValueError('Can only rotate vectors, 2nd order ternsors, and 4th order tensors')
+            raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
     else:
-        raise TypeError('Cannot rotate {}'.format(type(other)))
+        raise TypeError(f'Cannot rotate {type(other)}')
 
 
 class TestRotation:
@@ -781,6 +781,10 @@ class TestRotation:
             rot = Rotation.from_basis(om,False,reciprocal=reciprocal)
             assert np.isclose(np.linalg.det(rot.as_matrix()),1.0)
 
+    @pytest.mark.parametrize('shape',[None,1,(4,4)])
+    def test_random(self,shape):
+        Rotation.from_random(shape)
+
     @pytest.mark.parametrize('function',[Rotation.from_quaternion,
                                          Rotation.from_Eulers,
                                          Rotation.from_axis_angle,
@@ -792,6 +796,16 @@ class TestRotation:
         invalid_shape = np.random.random(np.random.randint(8,32,(3)))
         with pytest.raises(ValueError):
             function(invalid_shape)
+
+    @pytest.mark.parametrize('fr,to',[(Rotation.from_quaternion,'as_quaternion'),
+                                      (Rotation.from_axis_angle,'as_axis_angle'),
+                                      (Rotation.from_Rodrigues, 'as_Rodrigues'),
+                                      (Rotation.from_homochoric,'as_homochoric'),
+                                      (Rotation.from_cubochoric,'as_cubochoric')])
+    def test_invalid_P(self,fr,to):
+        R = Rotation.from_random(np.random.randint(8,32,(3)))                                       # noqa
+        with pytest.raises(ValueError):
+            fr(eval(f'R.{to}()'),P=-30)
 
     @pytest.mark.parametrize('shape',[None,(3,),(4,2)])
     def test_broadcast(self,shape):
@@ -859,14 +873,18 @@ class TestRotation:
         phi_2 = 2*np.pi - phi_1
         R_1 = Rotation.from_Eulers(np.array([phi_1,0.,0.]))
         R_2 = Rotation.from_Eulers(np.array([0.,0.,phi_2]))
-        assert np.allclose(data,R_2*(R_1*data))
+        assert np.allclose(data,R_2@(R_1@data))
+
+    def test_rotate_inverse(self):
+        R = Rotation.from_random()
+        assert np.allclose(np.eye(3),(~R@R).as_matrix())
 
     @pytest.mark.parametrize('data',[np.random.rand(3),
                                      np.random.rand(3,3),
                                      np.random.rand(3,3,3,3)])
-    def test_rotate_inverse(self,data):
+    def test_rotate_inverse_array(self,data):
         R = Rotation.from_random()
-        assert np.allclose(data,R.inversed()*(R*data))
+        assert np.allclose(data,~R@(R@data))
 
     @pytest.mark.parametrize('data',[np.random.rand(4),
                                      np.random.rand(3,2),
@@ -883,3 +901,7 @@ class TestRotation:
         R = Rotation.from_random()
         with pytest.raises(TypeError):
             R*data
+
+    def test_misorientation(self):
+        R = Rotation.from_random()
+        assert np.allclose(R.misorientation(R).as_matrix(),np.eye(3))

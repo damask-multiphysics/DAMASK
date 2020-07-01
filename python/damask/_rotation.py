@@ -20,8 +20,8 @@ class Rotation:
       when viewing from the end point of the rotation axis towards the origin.
     - rotations will be interpreted in the passive sense.
     - Euler angle triplets are implemented using the Bunge convention,
-      with the angular ranges as [0, 2π],[0, π],[0, 2π].
-    - the rotation angle ω is limited to the interval [0, π].
+      with the angular ranges as [0,2π], [0,π], [0,2π].
+    - the rotation angle ω is limited to the interval [0,π].
     - the real part of a quaternion is positive, Re(q) > 0
     - P = -1 (as default).
 
@@ -49,7 +49,8 @@ class Rotation:
         Parameters
         ----------
         quaternion : numpy.ndarray, optional
-            Unit quaternion that follows the conventions. Use .from_quaternion to perform a sanity check.
+            Unit quaternion in positive real hemisphere.
+            Use .from_quaternion to perform a sanity check.
 
         """
         if quaternion.shape[-1] != 4:
@@ -76,7 +77,7 @@ class Rotation:
             return 'Quaternions:\n'+str(self.quaternion) # ToDo: could be nicer ...
         return '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
-               'Matrix:\n{}'.format(self.as_matrix()),
+               'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
                'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
                 ])
 
@@ -116,7 +117,7 @@ class Rotation:
             p_o = other.quaternion[...,1:]
             q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
-            return self.__class__(np.block([q,p])).standardize()
+            return self.__class__(np.block([q,p]))._standardize()
 
         elif isinstance(other,np.ndarray):
             if self.shape + (3,) == other.shape:
@@ -139,28 +140,26 @@ class Rotation:
             else:
                 raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
         else:
-            raise TypeError('Cannot rotate {}'.format(type(other)))
-
-    def inverse(self):
-        """In-place inverse rotation/backward rotation."""
-        self.quaternion[...,1:] *= -1
-        return self
-
-    #@property
-    def inversed(self):
-        """Inverse rotation/backward rotation."""
-        return self.copy().inverse()
+            raise TypeError(f'Cannot rotate {type(other)}')
 
 
-    def standardize(self):
-        """In-place quaternion representation with positive real part."""
+    def _standardize(self):
+        """Standardize (ensure positive real hemisphere)."""
         self.quaternion[self.quaternion[...,0] < 0.0] *= -1
         return self
 
-    #@property
-    def standardized(self):
-        """Quaternion representation with positive real part."""
-        return self.copy().standardize()
+    def inverse(self):
+        """In-place inverse rotation (backward rotation)."""
+        self.quaternion[...,1:] *= -1
+        return self
+
+    def __invert__(self):
+        """Inverse rotation (backward rotation)."""
+        return self.copy().inverse()
+
+    def inversed(self):
+        """Inverse rotation (backward rotation)."""
+        return ~ self
 
 
     def misorientation(self,other):
@@ -173,7 +172,7 @@ class Rotation:
             Rotation to which the misorientation is computed.
 
         """
-        return other*self.inversed()
+        return other@~self
 
 
     def broadcast_to(self,shape):
@@ -188,7 +187,7 @@ class Rotation:
         return self.__class__(q)
 
 
-    def average(self,other):
+    def average(self,other): #ToDo: discuss calling for vectors
         """
         Calculate the average rotation.
 
@@ -208,25 +207,31 @@ class Rotation:
 
     def as_quaternion(self):
         """
-        Unit quaternion [q, p_1, p_2, p_3].
+        Represent as unit quaternion.
 
-        Parameters
-        ----------
-        quaternion : bool, optional
-            return quaternion as DAMASK object.
+        Returns
+        -------
+        q : numpy.ndarray of shape (...,4)
+            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3), |q|=1, q_0 ≥ 0.
 
         """
-        return self.quaternion
+        return self.quaternion.copy()
 
     def as_Eulers(self,
                   degrees = False):
         """
-        Bunge-Euler angles: (φ_1, ϕ, φ_2).
+        Represent as Bunge-Euler angles.
 
         Parameters
         ----------
         degrees : bool, optional
-            return angles in degrees.
+            Return angles in degrees.
+
+        Returns
+        -------
+        phi : numpy.ndarray of shape (...,3)
+            Bunge-Euler angles: (φ_1, ϕ, φ_2), φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]
+            unless degrees == True: φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360]
 
         """
         eu = Rotation._qu2eu(self.quaternion)
@@ -237,14 +242,21 @@ class Rotation:
                       degrees = False,
                       pair = False):
         """
-        Axis angle representation [n_1, n_2, n_3, ω] unless pair == True: ([n_1, n_2, n_3], ω).
+        Represent as axis angle pair.
 
         Parameters
         ----------
         degrees : bool, optional
-            return rotation angle in degrees.
+            Return rotation angle in degrees. Defaults to False.
         pair : bool, optional
-            return tuple of axis and angle.
+            Return tuple of axis and angle. Defaults to False.
+
+        Returns
+        -------
+        axis_angle : numpy.ndarray of shape (...,4) unless pair == True:
+            tuple containing numpy.ndarray of shapes (...,3) and (...)
+            Axis angle pair: (n_1, n_2, n_3, ω), |n| = 1 and ω ∈ [0,π]
+            unless degrees = True: ω ∈ [0,180].
 
         """
         ax = Rotation._qu2ax(self.quaternion)
@@ -252,30 +264,60 @@ class Rotation:
         return (ax[...,:3],ax[...,3]) if pair else ax
 
     def as_matrix(self):
-        """Rotation matrix."""
+        """
+        Represent as rotation matrix.
+
+        Returns
+        -------
+        R : numpy.ndarray of shape (...,3,3)
+            Rotation matrix R, det(R) = 1, R.T∙R=I.
+
+        """
         return Rotation._qu2om(self.quaternion)
 
     def as_Rodrigues(self,
                      vector = False):
         """
-        Rodrigues-Frank vector representation [n_1, n_2, n_3, tan(ω/2)] unless vector == True: [n_1, n_2, n_3] * tan(ω/2).
+        Represent as Rodrigues-Frank vector with separated axis and angle argument.
 
         Parameters
         ----------
         vector : bool, optional
-            return as actual Rodrigues--Frank vector, i.e. rotation axis scaled by tan(ω/2).
+            Return as actual Rodrigues-Frank vector, i.e. axis
+            and angle argument are not separated.
+
+        Returns
+        -------
+        rho : numpy.ndarray of shape (...,4) unless vector == True:
+            numpy.ndarray of shape (...,3)
+            Rodrigues-Frank vector: [n_1, n_2, n_3, tan(ω/2)], |n| = 1 and ω ∈ [0,π].
 
         """
         ro = Rotation._qu2ro(self.quaternion)
-        with np.errstate(invalid='ignore'):
-            return ro[...,:3]*ro[...,3:] if vector else ro
+        return ro[...,:3]*ro[...,3:4] if vector else ro
 
     def as_homochoric(self):
-        """Homochoric vector: (h_1, h_2, h_3)."""
+        """
+        Represent as homochoric vector.
+
+        Returns
+        -------
+        h : numpy.ndarray of shape (...,3)
+            Homochoric vector: (h_1, h_2, h_3), |h| < 1/2*π^(2/3).
+
+        """
         return Rotation._qu2ho(self.quaternion)
 
     def as_cubochoric(self):
-        """Cubochoric vector: (c_1, c_2, c_3)."""
+        """
+        Represent as cubochoric vector.
+
+        Returns
+        -------
+        c : numpy.ndarray of shape (...,3)
+              Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
+
+        """
         return Rotation._qu2cu(self.quaternion)
 
     @property
@@ -296,18 +338,34 @@ class Rotation:
     # Static constructors. The input data needs to follow the conventions, options allow to
     # relax the conventions.
     @staticmethod
-    def from_quaternion(quaternion,
+    def from_quaternion(q,
                         accept_homomorph = False,
                         P = -1,
-                        acceptHomomorph = None):
+                        acceptHomomorph = None): # old name (for compatibility)
+        """
+        Initialize from quaternion.
 
+        Parameters
+        ----------
+        q : numpy.ndarray of shape (...,4)
+            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3),
+            |q|=1, q_0 ≥ 0.
+        accept_homomorph : boolean, optional
+            Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
+            Defaults to False.
+        P : integer ∈ {-1,1}, optional
+            Convention used. Defaults to -1.
+
+        """
         if acceptHomomorph is not None:
-            accept_homomorph = acceptHomomorph
-        qu = np.array(quaternion,dtype=float)
+            accept_homomorph = acceptHomomorph # for compatibility
+        qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,):
             raise ValueError('Invalid shape.')
+        if abs(P) != 1:
+            raise ValueError('P ∉ {-1,1}')
 
-        if P > 0: qu[...,1:4] *= -1                                                                 # convert from P=1 to P=-1
+        if P == 1: qu[...,1:4] *= -1
         if accept_homomorph:
             qu[qu[...,0] < 0.0] *= -1
         else:
@@ -319,10 +377,21 @@ class Rotation:
         return Rotation(qu)
 
     @staticmethod
-    def from_Eulers(eulers,
+    def from_Eulers(phi,
                     degrees = False):
+        """
+        Initialize from Bunge-Euler angles.
 
-        eu = np.array(eulers,dtype=float)
+        Parameters
+        ----------
+        phi : numpy.ndarray of shape (...,3)
+            Bunge-Euler angles: (φ_1, ϕ, φ_2), φ_1 ∈ [0,2π], ϕ ∈ [0,π], φ_2 ∈ [0,2π]
+            unless degrees == True: φ_1 ∈ [0,360], ϕ ∈ [0,180], φ_2 ∈ [0,360].
+        degrees : boolean, optional
+            Bunge-Euler angles are given in degrees. Defaults to False.
+
+        """
+        eu = np.array(phi,dtype=float)
         if eu.shape[:-2:-1] != (3,):
             raise ValueError('Invalid shape.')
 
@@ -337,12 +406,29 @@ class Rotation:
                         degrees = False,
                         normalise = False,
                         P = -1):
+        """
+        Initialize from Axis angle pair.
 
+        Parameters
+        ----------
+        axis_angle : numpy.ndarray of shape (...,4)
+            Axis angle pair: [n_1, n_2, n_3, ω], |n| = 1 and ω ∈ [0,π]
+            unless degrees = True: ω ∈ [0,180].
+        degrees : boolean, optional
+            Angle ω is given in degrees. Defaults to False.
+        normalize: boolean, optional
+            Allow |n| ≠ 1. Defaults to False.
+        P : integer ∈ {-1,1}, optional
+            Convention used. Defaults to -1.
+
+        """
         ax = np.array(axis_angle,dtype=float)
         if ax.shape[:-2:-1] != (4,):
             raise ValueError('Invalid shape.')
+        if abs(P) != 1:
+            raise ValueError('P ∉ {-1,1}')
 
-        if P > 0:     ax[...,0:3] *= -1                                                             # convert from P=1 to P=-1
+        if P == 1:    ax[...,0:3] *= -1
         if degrees:   ax[...,  3]  = np.radians(ax[...,3])
         if normalise: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1)
         if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
@@ -356,7 +442,19 @@ class Rotation:
     def from_basis(basis,
                    orthonormal = True,
                    reciprocal = False):
+        """
+        Initialize from lattice basis vectors.
 
+        Parameters
+        ----------
+        basis : numpy.ndarray of shape (...,3,3)
+            Three lattice basis vectors in three dimensions.
+        orthonormal : boolean, optional
+            Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
+        reciprocal : boolean, optional
+            Basis vectors are given in reciprocal (instead of real) space. Defaults to False.
+
+        """
         om = np.array(basis,dtype=float)
         if om.shape[:-3:-1] != (3,3):
             raise ValueError('Invalid shape.')
@@ -377,20 +475,43 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_matrix(om):
+    def from_matrix(R):
+        """
+        Initialize from rotation matrix.
 
-        return Rotation.from_basis(om)
+        Parameters
+        ----------
+        R : numpy.ndarray of shape (...,3,3)
+            Rotation matrix: det(R) = 1, R.T∙R=I.
+
+        """
+        return Rotation.from_basis(R)
 
     @staticmethod
-    def from_Rodrigues(rodrigues,
+    def from_Rodrigues(rho,
                        normalise = False,
                        P = -1):
+        """
+        Initialize from Rodrigues-Frank vector.
 
-        ro = np.array(rodrigues,dtype=float)
+        Parameters
+        ----------
+        rho : numpy.ndarray of shape (...,4)
+            Rodrigues-Frank vector (angle separated from axis).
+            (n_1, n_2, n_3, tan(ω/2)), |n| = 1  and ω ∈ [0,π].
+        normalize : boolean, optional
+            Allow |n| ≠ 1. Defaults to False.
+        P : integer ∈ {-1,1}, optional
+            Convention used. Defaults to -1.
+
+        """
+        ro = np.array(rho,dtype=float)
         if ro.shape[:-2:-1] != (4,):
             raise ValueError('Invalid shape.')
+        if abs(P) != 1:
+            raise ValueError('P ∉ {-1,1}')
 
-        if P > 0:     ro[...,0:3] *= -1                                                             # convert from P=1 to P=-1
+        if P == 1:    ro[...,0:3] *= -1
         if normalise: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1)
         if np.any(ro[...,3] < 0.0):
             raise ValueError('Rodrigues vector rotation angle not positive.')
@@ -400,14 +521,26 @@ class Rotation:
         return Rotation(Rotation._ro2qu(ro))
 
     @staticmethod
-    def from_homochoric(homochoric,
+    def from_homochoric(h,
                         P = -1):
+        """
+        Initialize from homochoric vector.
 
-        ho = np.array(homochoric,dtype=float)
+        Parameters
+        ----------
+        h : numpy.ndarray of shape (...,3)
+            Homochoric vector: (h_1, h_2, h_3), |h| < (3/4*π)^(1/3).
+        P : integer ∈ {-1,1}, optional
+            Convention used. Defaults to -1.
+
+        """
+        ho = np.array(h,dtype=float)
         if ho.shape[:-2:-1] != (3,):
             raise ValueError('Invalid shape.')
+        if abs(P) != 1:
+            raise ValueError('P ∉ {-1,1}')
 
-        if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
+        if P == 1: ho *= -1
 
         if np.any(np.linalg.norm(ho,axis=-1) >_R1+1e-9):
             raise ValueError('Homochoric coordinate outside of the sphere.')
@@ -415,18 +548,30 @@ class Rotation:
         return Rotation(Rotation._ho2qu(ho))
 
     @staticmethod
-    def from_cubochoric(cubochoric,
-                       P = -1):
+    def from_cubochoric(c,
+                        P = -1):
+        """
+        Initialize from cubochoric vector.
 
-        cu = np.array(cubochoric,dtype=float)
+        Parameters
+        ----------
+        c : numpy.ndarray of shape (...,3)
+            Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
+        P : integer ∈ {-1,1}, optional
+            Convention used. Defaults to -1.
+
+        """
+        cu = np.array(c,dtype=float)
         if cu.shape[:-2:-1] != (3,):
             raise ValueError('Invalid shape.')
+        if abs(P) != 1:
+            raise ValueError('P ∉ {-1,1}')
 
-        if np.abs(np.max(cu))>np.pi**(2./3.) * 0.5+1e-9:
-            raise ValueError('Cubochoric coordinate outside of the cube: {} {} {}.'.format(*cu))
+        if np.abs(np.max(cu)) > np.pi**(2./3.) * 0.5+1e-9:
+            raise ValueError('Cubochoric coordinate outside of the cube.')
 
         ho = Rotation._cu2ho(cu)
-        if P > 0: ho *= -1                                                                          # convert from P=1 to P=-1
+        if P == 1: ho *= -1
 
         return Rotation(Rotation._ho2qu(ho))
 
@@ -479,7 +624,7 @@ class Rotation:
                       np.cos(2.0*np.pi*r[...,1])*B,
                       np.sin(2.0*np.pi*r[...,0])*A],axis=-1)
 
-        return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q).standardize()
+        return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q)._standardize()
 
 
     # for compatibility (old names do not follow convention)
@@ -493,7 +638,7 @@ class Rotation:
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
 ####################################################################################################
-# Copyright (c) 2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
+# Copyright (c) 2017-2020, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 # Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
 # All rights reserved.
 #
@@ -552,7 +697,7 @@ class Rotation:
                           np.zeros(qu.shape[:-1]+(2,))]),
                       np.where(np.abs(q03_s) < 1.0e-8,
                           np.block([np.arctan2(   2.0*qu[...,1:2]*qu[...,2:3],qu[...,1:2]**2-qu[...,2:3]**2),
-                                    np.broadcast_to(np.pi,qu.shape[:-1]+(1,)),
+                                    np.broadcast_to(np.pi,qu[...,0:1].shape),
                                     np.zeros(qu.shape[:-1]+(1,))]),
                           np.block([np.arctan2((-_P*q02+q13)*chi, (-_P*q01-q23)*chi),
                                     np.arctan2( 2.0*chi,          q03_s-q12_s    ),
@@ -575,7 +720,7 @@ class Rotation:
             s = np.sign(qu[...,0:1])/np.sqrt(qu[...,1:2]**2+qu[...,2:3]**2+qu[...,3:4]**2)
             omega = 2.0 * np.arccos(np.clip(qu[...,0:1],-1.0,1.0))
             ax = np.where(np.broadcast_to(qu[...,0:1] < 1.0e-8,qu.shape),
-                          np.block([qu[...,1:4],np.broadcast_to(np.pi,qu.shape[:-1]+(1,))]),
+                          np.block([qu[...,1:4],np.broadcast_to(np.pi,qu[...,0:1].shape)]),
                           np.block([qu[...,1:4]*s,omega]))
         ax[np.isclose(qu[...,0],1.,rtol=0.0)] = [0.0, 0.0, 1.0, 0.0]
         return ax
@@ -586,7 +731,7 @@ class Rotation:
         with np.errstate(invalid='ignore',divide='ignore'):
             s  = np.linalg.norm(qu[...,1:4],axis=-1,keepdims=True)
             ro = np.where(np.broadcast_to(np.abs(qu[...,0:1]) < 1.0e-12,qu.shape),
-                          np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.broadcast_to(np.inf,qu.shape[:-1]+(1,))]),
+                          np.block([qu[...,1:2], qu[...,2:3], qu[...,3:4], np.broadcast_to(np.inf,qu[...,0:1].shape)]),
                           np.block([qu[...,1:2]/s,qu[...,2:3]/s,qu[...,3:4]/s,
                                     np.tan(np.arccos(np.clip(qu[...,0:1],-1.0,1.0)))
                                    ])

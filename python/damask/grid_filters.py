@@ -233,7 +233,7 @@ def cell_coord0_gridSizeOrigin(coord0,ordered=True):
     origin[_np.where(grid==1)] = 0.0
 
     if grid.prod() != len(coord0):
-        raise ValueError('Data count {} does not match grid {}.'.format(len(coord0),grid))
+        raise ValueError('Data count {len(coord0)} does not match grid {grid}.')
 
     start = origin + delta*.5
     end   = origin - delta*.5 + size
@@ -384,7 +384,7 @@ def node_coord0_gridSizeOrigin(coord0,ordered=True):
     origin    = mincorner
 
     if (grid+1).prod() != len(coord0):
-        raise ValueError('Data count {} does not match grid {}.'.format(len(coord0),grid))
+        raise ValueError('Data count {len(coord0)} does not match grid {grid}.')
 
     atol = _np.max(size)*5e-2
     if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],grid[0]+1),atol=atol) and \

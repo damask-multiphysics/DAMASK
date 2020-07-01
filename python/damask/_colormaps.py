@@ -1,4 +1,5 @@
 import numpy as np
+from . import util
 
 class Color:
     """Color representation in and conversion between different color-spaces."""
@@ -450,7 +451,7 @@ class Colormap:
 
             def rad_diff(a,b):
               return abs(a[2]-b[2])
-            
+
             def adjust_hue(Msh_sat, Msh_unsat):
               """If saturation of one of the two colors is too less than the other, hue of the less."""
               if Msh_sat[0] >= Msh_unsat[0]:
@@ -502,7 +503,7 @@ class Colormap:
         [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
 
         Arguments: name, format, steps, crop.
-        Format is one of (paraview, gmsh, raw, list).
+        Format is one of (paraview, gmsh, gom, raw, list).
         Crop selects a (sub)range in [-1.0,1.0].
         Generates sequential map if one limiting color is either white or black,
         diverging map otherwise.
@@ -511,23 +512,22 @@ class Colormap:
         frac = 0.5*(np.array(crop) + 1.0)                                                               # rescale crop range to fractions
         colors = [self.color(float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]).express_as(model).color for i in range(steps)]
         if   format == 'paraview':
-            colormap = ['[\n {{\n  "ColorSpace": "RGB", "Name": "{}", "DefaultMap": true,\n  "RGBPoints" : ['.format(name)] \
-                     + ['    {:4d},{:8.6f},{:8.6f},{:8.6f},'.format(i,color[0],color[1],color[2],) \
-                                                                              for i,color in enumerate(colors[:-1])] \
-                     + ['    {:4d},{:8.6f},{:8.6f},{:8.6f} '.format(len(colors),colors[-1][0],colors[-1][1],colors[-1][2],)] \
+            colormap = [f'[\n {{\n  "ColorSpace": "RGB", "Name": "{name}", "DefaultMap": true,\n  "RGBPoints" : ['] \
+                     + [f'    {i:4d},{color[0]:8.6f},{color[1]:8.6f},{color[2]:8.6f}{"," if i+1<len(colors) else ""}' \
+                        for i,color in enumerate(colors)] \
                      + ['   ]\n }\n]']
 
         elif format == 'gmsh':
             colormap = ['View.ColorTable = {'] \
-                     + [',\n'.join(['{%s}'%(','.join([str(x*255.0) for x in color])) for color in colors])] \
+                     + [',\n'.join([','.join([str(x*255.0) for x in color]) for color in colors])] \
                      + ['}']
 
         elif format == 'gom':
-            colormap = ['1 1 ' + str(name)
-                       + ' 9 ' + str(name)
-                       + ' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
-                       + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(colors))
-                       + ' '.join([' 0 %s 255 1'%(' '.join([str(int(x*255.0)) for x in color])) for color in reversed(colors)])]
+            colormap = [ f'1 1 {name}'
+                       + f' 9 {name}'
+                       +  ' 0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 '
+                       + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(colors)}'
+                       +  ' '.join([f' 0 {util.srepr((255*np.array(c)).astype(int)," ")} 255 1' for c in reversed(colors)])]
 
         elif format == 'raw':
             colormap = ['\t'.join(map(str,color)) for color in colors]

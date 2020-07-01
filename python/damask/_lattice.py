@@ -38,7 +38,7 @@ class Symmetry:
 
     def __repr__(self):
         """Readable string."""
-        return '{}'.format(self.system)
+        return f'{self.system}'
 
 
     def __eq__(self, other):
@@ -82,9 +82,9 @@ class Symmetry:
 
     @property
     def symmetry_operations(self):
-        """Symmetry operations as Quaternions."""
+        """Symmetry operations as quaternions."""
         if self.system == 'cubic':
-            symQuats =  [
+            sym_quats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
                           [ 0.0,            0.0,            1.0,            0.0            ],
@@ -111,7 +111,7 @@ class Symmetry:
                           [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
                         ]
         elif self.system == 'hexagonal':
-            symQuats =  [
+            sym_quats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
                           [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
@@ -126,7 +126,7 @@ class Symmetry:
                           [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
                         ]
         elif self.system == 'tetragonal':
-            symQuats =  [
+            sym_quats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
                           [ 0.0,            0.0,            1.0,            0.0            ],
@@ -137,17 +137,17 @@ class Symmetry:
                           [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                         ]
         elif self.system == 'orthorhombic':
-            symQuats =  [
+            sym_quats =  [
                           [ 1.0,0.0,0.0,0.0 ],
                           [ 0.0,1.0,0.0,0.0 ],
                           [ 0.0,0.0,1.0,0.0 ],
                           [ 0.0,0.0,0.0,1.0 ],
                         ]
         else:
-            symQuats =  [
+            sym_quats =  [
                           [ 1.0,0.0,0.0,0.0 ],
                         ]
-        return np.array(symQuats)
+        return np.array(sym_quats)
 
 
     def in_FZ(self,rho):
@@ -350,7 +350,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
 
     def __repr__(self):
         """Report basic lattice information."""
-        return 'Bravais lattice {} ({} crystal system)'.format(self.lattice,self.symmetry)
+        return f'Bravais lattice {self.lattice} ({self.symmetry} crystal system)'
 
 
     # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
@@ -616,17 +616,17 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
         try:
             relationship = models[model]
         except KeyError :
-            raise KeyError('Orientation relationship "{}" is unknown'.format(model))
+            raise KeyError(f'Orientation relationship "{model}" is unknown')
 
         if self.lattice not in relationship['mapping']:
-            raise ValueError('Relationship "{}" not supported for lattice "{}"'.format(model,self.lattice))
+            raise ValueError(f'Relationship "{model}" not supported for lattice "{self.lattice}"')
 
         r = {'lattice':Lattice((set(relationship['mapping'])-{self.lattice}).pop()),                # target lattice
              'rotations':[] }
 
         myPlane_id    = relationship['mapping'][self.lattice]
         otherPlane_id = (myPlane_id+1)%2
-        myDir_id      = myPlane_id +2
+        myDir_id      = myPlane_id    +2
         otherDir_id   = otherPlane_id +2
 
         for miller in np.hstack((relationship['planes'],relationship['directions'])):

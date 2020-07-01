@@ -61,7 +61,7 @@ class Orientation: # ToDo: make subclass of lattice and Rotation?
         if self.lattice.symmetry != other.lattice.symmetry:
             raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
 
-        mySymEqs    =  self.equivalent if SST else self.equivalent[0]                               # take all or only first sym operation
+        mySymEqs    =  self.equivalent if SST else self.equivalent[0] #ToDo: This is just me!                              # take all or only first sym operation
         otherSymEqs = other.equivalent
 
         for i,sA in enumerate(mySymEqs):

@@ -1,7 +1,7 @@
-import os
 import subprocess
 import shlex
 import string
+from pathlib import Path
 
 from .._environment import Environment
 
@@ -19,28 +19,24 @@ class Marc:
 
         """
         self.solver  = 'Marc'
-        try:
-            self.version = int(version)
-        except TypeError:
-            self.version = -1
+        self.version = version
 
-
-#--------------------------
-    def libraryPath(self):
+    @property
+    def library_path(self):
 
         path_MSC = Environment().options['MSC_ROOT']
-        path_lib = '{}/mentat{}/shlib/linux64'.format(path_MSC,self.version)
+        path_lib = Path(f'{path_MSC}/mentat{self.version}/shlib/linux64')
 
-        return path_lib if os.path.exists(path_lib) else ''
+        return path_lib if path_lib.is_dir() else None
 
 
-#--------------------------
-    def toolsPath(self):
+    @property
+    def tools_path(self):
 
         path_MSC   = Environment().options['MSC_ROOT']
-        path_tools = '{}/marc{}/tools'.format(path_MSC,self.version)
+        path_tools = Path(f'{path_MSC}/marc{self.version}/tools')
 
-        return path_tools if os.path.exists(path_tools) else ''
+        return path_tools if path_tools.is_dir() else None
 
 
 #--------------------------
@@ -53,23 +49,23 @@ class Marc:
                   ):
 
 
-        damaskEnv = Environment()
+        env = Environment()
 
-        user = os.path.join(damaskEnv.relPath('src'),'DAMASK_marc{}.{}'.format(self.version,'f90' if compile else 'marc'))
-        if not os.path.isfile(user):
-            raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),user))
+        usersub = env.root_dir/Path(f'src/DAMASK_marc{self.version}').with_suffix('.f90' if compile else '.marc')
+        if not usersub.is_file():
+            raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),usersub))
 
         # Define options [see Marc Installation and Operation Guide, pp 23]
-        script = 'run_damask_{}mp'.format(optimization)
+        script = f'run_damask_{optimization}mp'
 
-        cmd = os.path.join(self.toolsPath(),script) + \
+        cmd = str(self.tools_path/Path(script)) + \
               ' -jid ' + model + '_' + job + \
               ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
 
-        if compile: cmd += ' -u ' + user + ' -save y'
-        else:       cmd += ' -prog ' + os.path.splitext(user)[0]
+        if compile: cmd += ' -u ' + str(usersub) + ' -save y'
+        else:       cmd += ' -prog ' + str(usersub.with_suffix(''))
 
-        print('job submission {} compilation: {}'.format('with' if compile else 'without',user))
+        print('job submission {} compilation: {}'.format(('with' if compile else 'without'),usersub))
         if logfile: log = open(logfile, 'w')
         print(cmd)
         process = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
