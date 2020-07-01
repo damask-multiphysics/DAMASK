@@ -627,12 +627,7 @@ class Rotation:
         return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q)._standardize()
 
 
-    # for compatibility (old names do not follow convention)
-    def asM(self):
-        return self.M
-    fromQuaternion = from_quaternion
     fromEulers     = from_Eulers
-    asAxisAngle    = as_axis_angle
     __mul__        = __matmul__
 
 ####################################################################################################

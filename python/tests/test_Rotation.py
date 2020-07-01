@@ -905,3 +905,15 @@ class TestRotation:
     def test_misorientation(self):
         R = Rotation.from_random()
         assert np.allclose(R.misorientation(R).as_matrix(),np.eye(3))
+
+    def test_misorientation360(self):
+        R_1 = Rotation()
+        R_2 = Rotation.from_Eulers([360,0,0],degrees=True)
+        assert np.allclose(R_1.misorientation(R_2).as_matrix(),np.eye(3))
+
+    @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
+    def test_average(self,angle):
+        R_1 = Rotation.from_axis_angle([0,0,1,10],degrees=True)
+        R_2 = Rotation.from_axis_angle([0,0,1,angle],degrees=True)
+        avg_angle = R_1.average(R_2).as_axis_angle(degrees=True,pair=True)[1]
+        assert np.isclose(avg_angle,10+(angle-10)/2.)

@@ -75,7 +75,7 @@ class TestOrientation:
         for i,r in enumerate(ori.related(model)):
             ori2 = r.related(model)[i]
             misorientation = ori.rotation.misorientation(ori2.rotation)
-            assert misorientation.asAxisAngle(degrees=True)[3]<1.0e-5
+            assert misorientation.as_axis_angle(degrees=True)[3]<1.0e-5
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['fcc','bcc'])
@@ -89,3 +89,9 @@ class TestOrientation:
             table.add('pos',coords)
             table.to_ASCII(reference)
         assert np.allclose(eu,damask.Table.from_ASCII(reference).get('Eulers'))
+
+    @pytest.mark.parametrize('lattice',Lattice.lattices)
+    def test_disorientation360(self,lattice):
+        R_1 = Orientation(Rotation(),lattice)
+        R_2 = Orientation(damask.Rotation.from_Eulers([360,0,0],degrees=True),lattice)
+        assert np.allclose(R_1.disorientation(R_2).as_matrix(),np.eye(3))
