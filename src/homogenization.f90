@@ -52,7 +52,6 @@ module homogenization
 
   type(tNumerics) :: num
 
-#ifdef DEBUG
   type :: tDebugOptions
     logical :: &
       basic, &
@@ -65,8 +64,6 @@ module homogenization
   end type tDebugOptions
 
   type(tDebugOptions) :: debug
-
-#endif
 
   interface
 
@@ -155,7 +152,6 @@ subroutine homogenization_init
     num_homogGeneric, &
     debug_homogenization
 
-#ifdef DEBUG
   debug_homogenization => debug_root%get('homogenization', defaultVal=emptyList)
   debug%basic       =  debug_homogenization%contains('basic') 
   debug%extensive   =  debug_homogenization%contains('extensive') 
@@ -166,7 +162,6 @@ subroutine homogenization_init
 
   if (debug%grain < 1 .or. debug%grain > homogenization_Ngrains(material_homogenizationAt(debug%element))) &
     call IO_error(602,ext_msg='constituent', el=debug%element, g=debug%grain)
-#endif
 
 
   num_homog        => numerics_root%get('homogenization',defaultVal=emptyDict)

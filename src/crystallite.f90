@@ -98,7 +98,6 @@ module crystallite
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-#ifdef DEBUG
   type :: tDebugOptions
     logical :: &
       basic, &
@@ -112,7 +111,6 @@ module crystallite
 
   type(tDebugOptions) :: debug
 
-#endif
 
   procedure(integrateStateFPI), pointer :: integrateState
 
@@ -151,7 +149,6 @@ subroutine crystallite_init
 
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
 
-#ifdef DEBUG
   debug_crystallite => debug_root%get('crystallite', defaultVal=emptyList)
   debug%basic     = debug_crystallite%contains('basic')
   debug%extensive = debug_crystallite%contains('extensive')
@@ -159,8 +156,6 @@ subroutine crystallite_init
   debug%element   = debug_root%get_asInt('element', defaultVal=1)
   debug%ip        = debug_root%get_asInt('integrationpoint', defaultVal=1)
   debug%grain     = debug_root%get_asInt('grain', defaultVal=1)
- 
-#endif 
 
   cMax = homogenization_maxNgrains
   iMax = discretization_nIP

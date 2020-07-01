@@ -478,7 +478,7 @@ subroutine formResidual(in, F, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
-    if (debug%rotation) &
+    if (debug_rotation) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &

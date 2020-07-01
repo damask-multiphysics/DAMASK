@@ -146,24 +146,8 @@ submodule(constitutive) plastic_nonlocal
           v_scr_pos, &
           v_scr_neg
   end type tNonlocalState
-
-#ifdef DEBUG
-  type :: tDebugOptions
-    logical :: &
-      basic, &
-      extensive, &
-      selective
-    integer :: &
-      element, &
-      ip, &
-      grain
-  end type tDebugOptions
-
-  type(tDebugOptions) :: debug
-
-#endif
-
-  type(tNonlocalState), allocatable, dimension(:) :: &
+ 
+ type(tNonlocalState), allocatable, dimension(:) :: &
     deltaState, &
     dotState, &
     state, &
@@ -194,8 +178,6 @@ module subroutine plastic_nonlocal_init
     extmsg  = ''
   type(tInitialParameters) :: &
     ini
-  class(tNode), pointer :: &
-    debug_constitutive
 
   write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_LABEL//' init  -+>>>'
 
@@ -207,16 +189,6 @@ module subroutine plastic_nonlocal_init
 
   Ninstance = count(phase_plasticity == PLASTICITY_NONLOCAL_ID)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
-
-#ifdef DEBUG
-  debug_constitutive => debug_root%get('constitutuve', defaultVal=emptyList)
-  debug%basic       =  debug_constitutive%contains('basic') 
-  debug%extensive   =  debug_constitutive%contains('extensive') 
-  debug%selective   =  debug_constitutive%contains('selective')
-  debug%element     =  debug_root%get_asInt('element',defaultVal = 1) 
-  debug%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debug%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
-#endif
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))

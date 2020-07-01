@@ -43,21 +43,6 @@ submodule(constitutive) plastic_kinehardening
       accshear                                                                                      !< accumulated (absolute) shear
   end type tKinehardeningState
 
-#ifdef DEBUG
-  type :: tDebugOptions
-    logical :: &
-      extensive, &
-      selective
-    integer :: &
-      element, &
-      ip, &
-      grain
-  end type tDebugOptions
-
-  type(tDebugOptions) :: debug
-
-#endif
-
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
   type(tParameters),         allocatable, dimension(:) :: param
@@ -88,22 +73,11 @@ module subroutine plastic_kinehardening_init
     a                                                                                               !< non-Schmid coefficients
   character(len=pStringLen) :: &
     extmsg = ''
-  class(tNode), pointer :: &
-    debug_constitutive
 
   write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_plasticity == PLASTICITY_KINEHARDENING_ID)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
-
-#ifdef DEBUG
-  debug_constitutive => debug_root%get('constitutuve', defaultVal=emptyList)
-  debug%extensive   =  debug_constitutive%contains('extensive') 
-  debug%selective   =  debug_constitutive%contains('selective')
-  debug%element     =  debug_root%get_asInt('element',defaultVal = 1) 
-  debug%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debug%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
-#endif
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
