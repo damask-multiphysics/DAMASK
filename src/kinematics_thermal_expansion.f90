@@ -38,19 +38,15 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_thermal_expansion_init(debug_constitutive)
-
-  class(tNode), pointer, intent(in) :: & 
-    debug_constitutive                                                                              !< pointer to constitutive debug options
+subroutine kinematics_thermal_expansion_init
 
   integer :: Ninstance,p,i
   real(pReal), dimension(:), allocatable :: temp
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_kinematics == KINEMATICS_thermal_expansion_ID)
-  if (debug_constitutive%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(kinematics_thermal_expansion_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))

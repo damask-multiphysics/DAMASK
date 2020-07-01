@@ -122,10 +122,7 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dislotwin_init(debug_constitutive)
-
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
+module subroutine plastic_dislotwin_init
 
   integer :: &
     Ninstance, &
@@ -141,7 +138,7 @@ module subroutine plastic_dislotwin_init(debug_constitutive)
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_LABEL//' init  -+>>>'
 
   write(6,'(/,a)') ' Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
   write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2004.04.012'
@@ -153,9 +150,7 @@ module subroutine plastic_dislotwin_init(debug_constitutive)
   write(6,'(a,/)') ' https://doi.org/10.1016/j.actamat.2016.07.032'
 
   Ninstance = count(phase_plasticity == PLASTICITY_DISLOTWIN_ID)
-
-  if (debug_constitutive%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))

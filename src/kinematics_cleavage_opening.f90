@@ -43,20 +43,16 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_cleavage_opening_init(debug_constitutive)
-
-  class(tNode), pointer, intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
+subroutine kinematics_cleavage_opening_init
 
   integer :: Ninstance,p
   integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_CLEAVAGE_OPENING_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_CLEAVAGE_OPENING_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_kinematics == KINEMATICS_CLEAVAGE_OPENING_ID)
-  if (debug_constitutive%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(kinematics_cleavage_opening_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))

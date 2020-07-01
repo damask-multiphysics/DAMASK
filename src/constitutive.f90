@@ -35,9 +35,7 @@ module constitutive
 
   interface
 
-    module subroutine plastic_none_init(debug_constitutive)
-      class(tNode), pointer , intent(in) :: &
-        debug_constitutive                                                                          !< pointer to constitutive debug options
+    module subroutine plastic_none_init
     end subroutine plastic_none_init
 
     module subroutine plastic_isotropic_init(debug_constitutive)
@@ -53,14 +51,10 @@ module constitutive
         debug_constitutive                                                                          !< pointer to constitutive debug options
     end subroutine plastic_kinehardening_init
 
-    module subroutine plastic_dislotwin_init(debug_constitutive)
-      class(tNode), pointer , intent(in) :: &
-        debug_constitutive                                                                          !< pointer to constitutive debug options
+    module subroutine plastic_dislotwin_init
     end subroutine plastic_dislotwin_init
 
-    module subroutine plastic_disloUCLA_init(debug_constitutive)
-      class(tNode), pointer , intent(in) :: &
-        debug_constitutive                                                                          !< pointer to constitutive debug options
+    module subroutine plastic_disloUCLA_init
     end subroutine plastic_disloUCLA_init
 
     module subroutine plastic_nonlocal_init(debug_constitutive)
@@ -374,12 +368,12 @@ subroutine constitutive_init
   debug_constitutive => debug_root%get('constitutuve',defaultVal=emptyList)
 !--------------------------------------------------------------------------------------------------
 ! initialized plasticity
-  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
   if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init(debug_constitutive)
   if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
   if (any(phase_plasticity == PLASTICITY_KINEHARDENING_ID)) call plastic_kinehardening_init(debug_constitutive)
-  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(debug_constitutive)
-  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init(debug_constitutive)
+  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init
+  if (any(phase_plasticity == PLASTICITY_DISLOUCLA_ID))     call plastic_disloucla_init
   if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
     call plastic_nonlocal_init(debug_constitutive)
   else
@@ -387,18 +381,18 @@ subroutine constitutive_init
   endif
 !--------------------------------------------------------------------------------------------------
 ! initialize source mechanisms
-  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init(debug_constitutive)
-  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init(debug_constitutive)
-  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init(debug_constitutive)
-  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init(debug_constitutive)
-  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init(debug_constitutive)
-  if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init(debug_constitutive)
+  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
+  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init
+  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init
+  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init
+  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init
+  if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize kinematic mechanisms
-  if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init(debug_constitutive)
-  if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init(debug_constitutive)
-  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init(debug_constitutive)
+  if (any(phase_kinematics == KINEMATICS_cleavage_opening_ID))  call kinematics_cleavage_opening_init
+  if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
+  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
 
   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'; flush(6)
 

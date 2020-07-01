@@ -45,21 +45,17 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_init(debug_constitutive)
-  
-  class(tNode), pointer , intent(in) :: &
-    debug_constitutive                                                                              !< pointer to constitutive debug options
+subroutine kinematics_slipplane_opening_init
 
   integer :: Ninstance,p,i
   character(len=pStringLen) :: extmsg = ''
   integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_kinematics == KINEMATICS_SLIPPLANE_OPENING_ID)
-  if (debug_constitutive%contains('basic')) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(kinematics_slipplane_opening_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))
