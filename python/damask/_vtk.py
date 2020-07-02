@@ -242,7 +242,7 @@ class VTK:
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
 
-        window.SetSize(Environment().screen_width,Environment().screen_height)
+        window.SetSize(Environment().screen_size[0],Environment().screen_size[1])
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
