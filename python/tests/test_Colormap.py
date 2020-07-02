@@ -118,6 +118,17 @@ class TestColormap:
         assert (not np.allclose(c_1.colors,c_2.colors)) and \
                 np.allclose(c_1.colors,c_2.reversed().colors)
 
+    def test_invert(self):
+        c_1 = Colormap.from_predefined('strain')
+        c_2 = ~c_1
+        assert (not np.allclose(c_1.colors,c_2.colors)) and \
+                np.allclose(c_1.colors,(~c_2).colors)
+
+    def test_add(self):
+        c = Colormap.from_predefined('jet')
+        c += c
+        assert (np.allclose(c.colors[:len(c.colors)],c.colors[len(c.colors):]))
+
     def test_list(self):
         Colormap.list_predefined()
 
@@ -138,4 +149,3 @@ class TestColormap:
             c.to_file(format=format)
             time.sleep(.5)
             assert filecmp.cmp(tmpdir/(name+ext),reference_dir/(name+ext))
-
