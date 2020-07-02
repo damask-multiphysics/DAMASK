@@ -632,6 +632,7 @@ class Rotation:
 
     # for compatibility (old names do not follow convention)
     fromEulers     = from_Eulers
+    fromQuaternion = from_quaternion
     asAxisAngle    = as_axis_angle
     __mul__        = __matmul__
 
