@@ -127,7 +127,7 @@ class TestColormap:
     def test_add(self):
         c = Colormap.from_predefined('jet')
         c += c
-        assert (np.allclose(c.colors[:len(c.colors)],c.colors[len(c.colors):]))
+        assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
 
     def test_list(self):
         Colormap.list_predefined()
