@@ -10,7 +10,7 @@ with open(_Path(__file__).parent/_Path('VERSION')) as _f:
 from ._environment import Environment      # noqa
 from ._table       import Table            # noqa
 from ._vtk         import VTK              # noqa
-from ._colormaps   import Colormap, Color  # noqa
+from ._colormap    import Colormap         # noqa
 from ._rotation    import Rotation         # noqa
 from ._lattice     import Symmetry, Lattice# noqa
 from ._orientation import Orientation      # noqa

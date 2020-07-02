@@ -6,9 +6,9 @@ import vtk
 from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
 from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 
+import damask
 from . import Table
 from . import Environment
-from . import version
 
 
 class VTK:
@@ -216,7 +216,7 @@ class VTK:
     def __repr__(self):
         """ASCII representation of the VTK data."""
         writer = vtk.vtkDataSetWriter()
-        writer.SetHeader(f'# DAMASK.VTK v{version}')
+        writer.SetHeader(f'# damask.VTK v{damask.version}')
         writer.WriteToOutputStringOn()
         writer.SetInputData(self.geom)
         writer.Write()
@@ -242,7 +242,7 @@ class VTK:
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
 
-        window.SetSize(Environment().screen_width,Environment().screen_height)
+        window.SetSize(Environment().screen_size[0],Environment().screen_size[1])
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
