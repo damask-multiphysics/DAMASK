@@ -8,14 +8,14 @@ module thermal_isothermal
 
   implicit none
   public
-  
+
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, reads information from material configuration file
+!> @brief allocates fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_isothermal_init
- 
+
   integer :: h,NofMyHomog
 
   write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'; flush(6)
@@ -28,7 +28,7 @@ subroutine thermal_isothermal_init
     allocate(thermalState(h)%state0   (0,NofMyHomog))
     allocate(thermalState(h)%subState0(0,NofMyHomog))
     allocate(thermalState(h)%state    (0,NofMyHomog))
-      
+
     deallocate(temperature    (h)%p)
     allocate  (temperature    (h)%p(1), source=thermal_initialT(h))
     deallocate(temperatureRate(h)%p)

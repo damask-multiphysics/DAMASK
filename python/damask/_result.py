@@ -1,4 +1,4 @@
-import multiprocessing
+import multiprocessing as mp
 import re
 import inspect
 import glob
@@ -413,17 +413,18 @@ class Result:
             for i in self.iterate('increments'):
                 message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                    message += f'  {o[:-1]}\n'
                     for oo in self.iterate(o):
-                        message += f'  {oo}\n'
+                        message += f'    {oo}\n'
                         for pp in self.iterate(p):
-                            message += f'    {pp}\n'
+                            message += f'      {pp}\n'
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
                                     unit  = f" / {dataset.attrs['Unit'].decode()}" if 'Unit' in dataset.attrs else ''
                                     description = dataset.attrs['Description'].decode()
-                                    message += f'      {d}{unit}: {description}\n'
+                                    message += f'        {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
         return message
@@ -703,7 +704,6 @@ class Result:
             label,p = 'intermediate',1
         elif eigenvalue == 'min':
             label,p = 'minimum',0
-        print('p',eigenvalue)
         return {
                 'data': mechanics.eigenvectors(T_sym['data'])[:,p],
                 'label': f"v_{eigenvalue}({T_sym['label']})",
@@ -1066,8 +1066,8 @@ class Result:
 
         """
         num_threads = Environment().options['DAMASK_NUM_THREADS']
-        pool = multiprocessing.Pool(int(num_threads) if num_threads is not None else None)
-        lock = multiprocessing.Manager().Lock()
+        pool = mp.Pool(int(num_threads) if num_threads is not None else None)
+        lock = mp.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
         default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
@@ -1222,7 +1222,7 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_polyData(self.cell_coordinates())
 
-        N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
+        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 
         for inc in util.show_progress(self.iterate('increments'),len(self.selection['increments'])):
 
