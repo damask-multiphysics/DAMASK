@@ -26,8 +26,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def __iadd__(self,other):
         """Concatenate colormaps."""
-        return Colormap(np.vstack((self.colors,other.colors)),
-                        f'{self.name}+{other.name}')
+        return self.__add__(other)
 
     def __invert__(self):
         """Return inverted colormap."""
