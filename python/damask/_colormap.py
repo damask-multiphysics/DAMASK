@@ -24,6 +24,10 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.vstack((self.colors,other.colors)),
                         f'{self.name}+{other.name}')
 
+    def __invert__(self):
+        """Return inverted colormap."""
+        return self.reversed()
+
     @staticmethod
     def from_range(low,high,name='DAMASK colormap',N=256,model='rgb'):
         """
