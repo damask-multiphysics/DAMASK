@@ -228,7 +228,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     converged
   logical,     dimension(2,discretization_nIP,discretization_nElem) :: &
     doneAndHappy
- 
+
 #ifdef DEBUG
 
   if (debugHomog%basic) then
@@ -489,7 +489,7 @@ subroutine partitionDeformation(subF,ip,el)
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
- 
+
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
@@ -525,7 +525,7 @@ function updateState(subdt,subF,ip,el)
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
   logical, dimension(2) :: updateState
-  
+
   updateState = .true.
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization

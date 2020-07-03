@@ -146,7 +146,7 @@ submodule(constitutive) plastic_nonlocal
           v_scr_pos, &
           v_scr_neg
   end type tNonlocalState
- 
+
  type(tNonlocalState), allocatable, dimension(:) :: &
     deltaState, &
     dotState, &
@@ -1157,7 +1157,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
     of, &
     ip, &                                                                                           !< current integration point
     el                                                                                              !< current element number
- 
+
   integer ::  &
     ph, &
     neighbor_instance, &                                                                            !< instance of my neighbor's plasticity

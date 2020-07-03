@@ -40,7 +40,7 @@ module constitutive
 
     module subroutine plastic_isotropic_init
     end subroutine plastic_isotropic_init
-    
+
     module subroutine plastic_phenopowerlaw_init
     end subroutine plastic_phenopowerlaw_init
 
@@ -359,13 +359,12 @@ subroutine constitutive_init
     debug_constitutive
 
   debug_constitutive => debug_root%get('constitutive', defaultVal=emptyList)
-  debugConstitutive%basic       =  debug_constitutive%contains('basic') 
-  debugConstitutive%extensive   =  debug_constitutive%contains('extensive') 
-  debugConstitutive%selective   =  debug_constitutive%contains('selective')
-  debugConstitutive%element     =  debug_root%get_asInt('element',defaultVal = 1) 
-  debugConstitutive%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debugConstitutive%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
-
+  debugConstitutive%basic      =  debug_constitutive%contains('basic') 
+  debugConstitutive%extensive  =  debug_constitutive%contains('extensive') 
+  debugConstitutive%selective  =  debug_constitutive%contains('selective')
+  debugConstitutive%element    =  debug_root%get_asInt('element',defaultVal = 1) 
+  debugConstitutive%ip         =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
+  debugConstitutive%grain      =  debug_root%get_asInt('grain',defaultVal = 1)
 
 !--------------------------------------------------------------------------------------------------
 ! initialized plasticity
@@ -501,8 +500,7 @@ subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     tme                                                                                             !< thermal member position
   integer :: &
     i, j, instance, of
-  
- 
+
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
 
@@ -577,7 +575,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   integer :: &
     k, i, j, &
     instance, of
-  
+
   Li = 0.0_pReal
   dLi_dS  = 0.0_pReal
   dLi_dFi = 0.0_pReal

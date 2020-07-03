@@ -86,7 +86,6 @@ subroutine discretization_marc_init
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
 
-
   call inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
   nElems = size(connectivity_elem,2)
 

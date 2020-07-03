@@ -111,7 +111,6 @@ module crystallite
 
   type(tDebugOptions) :: debugCrystallite
 
-
   procedure(integrateStateFPI), pointer :: integrateState
 
   public :: &
@@ -143,7 +142,7 @@ subroutine crystallite_init
     eMax, &                                                                                         !< maximum number of elements
     myNcomponents                                                                                   !< number of components at current IP
   
-  class(tNode) , pointer :: &
+  class(tNode), pointer :: &
     num_crystallite, &
     debug_crystallite                                                                               ! pointer to debug options for crystallite
 

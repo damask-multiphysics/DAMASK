@@ -79,6 +79,7 @@ module subroutine mech_RGC_init(num_homogMech)
 
   class(tNode), pointer, intent(in) :: &
     num_homogMech                                                                                   !< pointer to mechanical homogenization numerics data
+
   integer :: &
     Ninstance, &
     h, &

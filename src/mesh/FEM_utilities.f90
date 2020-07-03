@@ -107,7 +107,7 @@ subroutine FEM_utilities_init
     num_mesh, &
     debug_mesh                                                                                      ! pointer to mesh debug options
   integer :: structOrder                                                                            !< order of displacement shape functions
-  character(len=pStringLen) :: &
+  character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
 
   PetscErrorCode            :: ierr
@@ -121,7 +121,7 @@ subroutine FEM_utilities_init
 ! set debugging parameters
   debug_mesh      => debug_root%get('mesh',defaultVal=emptyList)
   debugPETSc      =  debug_mesh%contains('petsc')
- 
+
   if(debugPETSc) write(6,'(3(/,a),/)') &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &

@@ -188,9 +188,9 @@ subroutine spectral_utilities_init
     scalarSize = 1_C_INTPTR_T, &
     vecSize    = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
-  character(len=pStringLen) :: &
+  character(len=*), parameter :: &
     PETSCDEBUG = ' -snes_view -snes_monitor '
-  class (tNode) , pointer :: &
+  class(tNode) , pointer :: &
     num_grid, &
     debug_grid                                                                                      ! pointer to grid  debug options
 

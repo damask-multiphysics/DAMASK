@@ -328,8 +328,7 @@ module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
 
 #ifdef DEBUG
   if (debugConstitutive%extensive &
-             .and. (of == prm%of_debug &
-                    .or. .not. debugConstitutive%selective)) then
+             .and. (of == prm%of_debug  .or. .not. debugConstitutive%selective)) then
     write(6,'(a)') '======= kinehardening delta state ======='
     write(6,*) sense,state(instance)%sense(:,of)
   endif

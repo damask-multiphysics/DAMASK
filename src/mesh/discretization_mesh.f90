@@ -96,7 +96,7 @@ subroutine discretization_mesh_init(restart)
   debug_element = debug_root%get_asInt('element',defaultVal=1)
   debug_ip      = debug_root%get_asInt('integrationpoint',defaultVal=1)
 
- 
+
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
   call DMGetDimension(globalMesh,dimPlex,ierr)
