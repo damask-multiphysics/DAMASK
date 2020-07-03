@@ -1,4 +1,4 @@
-import multiprocessing
+import multiprocessing as mp
 import re
 import inspect
 import glob
@@ -11,7 +11,9 @@ from functools import partial
 
 import h5py
 import numpy as np
+from numpy.lib import recfunctions as rfn
 
+import damask
 from . import VTK
 from . import Table
 from . import Rotation
@@ -20,7 +22,6 @@ from . import Environment
 from . import grid_filters
 from . import mechanics
 from . import util
-from . import version
 
 
 class Result:
@@ -413,17 +414,18 @@ class Result:
             for i in self.iterate('increments'):
                 message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                    message += f'  {o[:-1]}\n'
                     for oo in self.iterate(o):
-                        message += f'  {oo}\n'
+                        message += f'    {oo}\n'
                         for pp in self.iterate(p):
-                            message += f'    {pp}\n'
+                            message += f'      {pp}\n'
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
                                     unit  = f" / {dataset.attrs['Unit'].decode()}" if 'Unit' in dataset.attrs else ''
                                     description = dataset.attrs['Description'].decode()
-                                    message += f'      {d}{unit}: {description}\n'
+                                    message += f'        {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
         return message
@@ -703,7 +705,6 @@ class Result:
             label,p = 'intermediate',1
         elif eigenvalue == 'min':
             label,p = 'minimum',0
-        print('p',eigenvalue)
         return {
                 'data': mechanics.eigenvectors(T_sym['data'])[:,p],
                 'label': f"v_{eigenvalue}({T_sym['label']})",
@@ -731,29 +732,23 @@ class Result:
 
 
     @staticmethod
-    def _add_IPFcolor(q,l):
-        d      = np.array(l)
-        d_unit = d/np.linalg.norm(d)
-        m      = util.scale_to_coprime(d)
-        colors = np.empty((len(q['data']),3),np.uint8)
+    def _add_IPF_color(q,l):
+        m = util.scale_to_coprime(np.array(l))
 
-        lattice   = q['meta']['Lattice']
-
-        for i,qu in enumerate(q['data']):
-            o = Orientation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]),lattice).reduced()
-            colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
+        o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
+                        lattice = q['meta']['Lattice'])
 
         return {
-                'data': colors,
+                'data': np.uint8(o.IPF_color(l)*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
-                          'Unit':        'RGB (8bit)',
-                          'Lattice':     lattice,
+                          'Unit':        '8-bit RGB',
+                          'Lattice':     q['meta']['Lattice'],
                           'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
                           'Creator':     inspect.stack()[0][3][1:]
                          }
                }
-    def add_IPFcolor(self,q,l):
+    def add_IPF_color(self,q,l):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
@@ -765,7 +760,7 @@ class Result:
             Lab frame direction for inverse pole figure.
 
         """
-        self._add_generic_pointwise(self._add_IPFcolor,{'q':q},{'l':l})
+        self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})
 
 
     @staticmethod
@@ -1066,8 +1061,8 @@ class Result:
 
         """
         num_threads = Environment().options['DAMASK_NUM_THREADS']
-        pool = multiprocessing.Pool(int(num_threads) if num_threads is not None else None)
-        lock = multiprocessing.Manager().Lock()
+        pool = mp.Pool(int(num_threads) if num_threads is not None else None)
+        lock = mp.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
         default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
@@ -1090,7 +1085,7 @@ class Result:
 
                     for l,v in result[1]['meta'].items():
                         dataset.attrs[l]=v.encode()
-                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{version}"
+                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{damask.version}"
                     dataset.attrs['Creator'] = creator.encode()
 
                 except (OSError,RuntimeError) as err:
@@ -1222,7 +1217,7 @@ class Result:
         elif mode.lower()=='point':
             v = VTK.from_polyData(self.cell_coordinates())
 
-        N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
+        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 
         for inc in util.show_progress(self.iterate('increments'),len(self.selection['increments'])):
 

@@ -1,7 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief material subroutine incoprorating isotropic ductile damage source mechanism
+!> @brief material subroutine incorporating isotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module source_damage_isoDuctile

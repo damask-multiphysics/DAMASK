@@ -1,14 +1,14 @@
 !--------------------------------------------------------------------------------------------------
-!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief    provides wrappers to C routines
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief  Wrappers to C routines for system operations
 !--------------------------------------------------------------------------------------------------
 module system_routines
   use, intrinsic :: ISO_C_Binding
-  
-  use prec 
-  
+
+  use prec
+
   implicit none
-  
+
   public :: &
     signalterm_C, &
     signalusr1_C, &
@@ -17,74 +17,74 @@ module system_routines
     getCWD, &
     getHostName, &
     setCWD
- 
+
   interface
- 
+
   function isDirectory_C(path) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
 
     use prec
-    
+
     integer(C_INT) :: isDirectory_C
     character(kind=C_CHAR), dimension(pPathLen), intent(in) :: path                                 ! C string is an array
    end function isDirectory_C
- 
+
   subroutine getCurrentWorkDir_C(path, stat) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
 
     use prec
-    
+
     character(kind=C_CHAR), dimension(pPathLen), intent(out) :: path                                ! C string is an array
     integer(C_INT),                              intent(out) :: stat
    end subroutine getCurrentWorkDir_C
- 
+
   subroutine getHostName_C(str, stat) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
 
     use prec
-    
+
     character(kind=C_CHAR), dimension(pStringLen), intent(out) :: str                               ! C string is an array
     integer(C_INT),                                intent(out) :: stat
    end subroutine getHostName_C
- 
+
   function chdir_C(path) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_INT, &
       C_CHAR
 
     use prec
-    
+
     integer(C_INT) :: chdir_C
     character(kind=C_CHAR), dimension(pPathLen), intent(in) :: path                                 ! C string is an array
   end function chdir_C
-  
+
   subroutine signalterm_C(handler) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_FUNPTR
-    
+
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalterm_C
- 
+
   subroutine signalusr1_C(handler) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_FUNPTR
-   
+
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalusr1_C
-  
+
   subroutine signalusr2_C(handler) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
       C_FUNPTR
-    
+
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalusr2_C
- 
+
   end interface
 
 contains
@@ -96,8 +96,8 @@ logical function isDirectory(path)
 
   character(len=*), intent(in) :: path
   character(kind=C_CHAR), dimension(pPathLen) :: strFixedLength                                     ! C string as array
-  integer :: i 
- 
+  integer :: i
+
   strFixedLength = repeat(C_NULL_CHAR,len(strFixedLength))
   do i=1,len(path)                                                                                  ! copy array components
     strFixedLength(i)=path(i:i)
@@ -116,9 +116,9 @@ function getCWD()
   character(len=:),       allocatable         :: getCWD
   integer(C_INT) :: stat
   integer :: i
- 
+
   call getCurrentWorkDir_C(charArray,stat)
-  
+
   if (stat /= 0_C_INT) then
     getCWD = 'Error occured when getting currend working directory'
   else
@@ -145,7 +145,7 @@ function getHostName()
   character(len=:),       allocatable         :: getHostName
   integer(C_INT) :: stat
   integer :: i
- 
+
   call getHostName_C(charArray,stat)
 
   if (stat /= 0_C_INT) then
@@ -173,7 +173,7 @@ logical function setCWD(path)
   character(len=*), intent(in) :: path
   character(kind=C_CHAR), dimension(pPathLen) :: strFixedLength                                     ! C string is an array
   integer :: i
- 
+
   strFixedLength = repeat(C_NULL_CHAR,len(strFixedLength))
   do i=1,len(path)                                                                                  ! copy array components
     strFixedLength(i)=path(i:i)

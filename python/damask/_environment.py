@@ -1,19 +1,32 @@
 import os
 from pathlib import Path
-import tkinter
 
 class Environment:
 
+    # ToDo: Probably, we don't need a class (just a module with a few functions)
     def __init__(self):
-        """Read and provide values of DAMASK configuration."""
+        """Do Nothing."""
+        pass
+
+    @property
+    def screen_size(self):
+        width  = 1024
+        height =  768
         try:
-            tk = tkinter.Tk()
-            self.screen_width  = tk.winfo_screenwidth()
-            self.screen_height = tk.winfo_screenheight()
-            tk.destroy()
-        except tkinter.TclError:
-            self.screen_width  = 1024
-            self.screen_height =  768
+            import wx
+            _ = wx.App(False)                                                                       # noqa
+            width, height = wx.GetDisplaySize()
+        except ImportError:
+            try:
+                import tkinter
+                tk = tkinter.Tk()
+                width  = tk.winfo_screenwidth()
+                height = tk.winfo_screenheight()
+                tk.destroy()
+            except Exception as e:
+                pass
+        return (width,height)
+
 
     @property
     def options(self):
@@ -25,6 +38,7 @@ class Environment:
             options[item] = os.environ[item] if item in os.environ else None
 
         return options
+
 
     @property
     def root_dir(self):

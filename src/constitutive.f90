@@ -400,7 +400,7 @@ subroutine constitutive_init
   constitutive_source_maxSizeDotState = 0
   PhaseLoop2:do ph = 1,material_Nphase
 !--------------------------------------------------------------------------------------------------
-! partition and inititalize state
+! partition and initialize state
     plasticState(ph)%partionedState0 = plasticState(ph)%state0
     plasticState(ph)%state           = plasticState(ph)%partionedState0
     forall(s = 1:phase_Nsources(ph))
@@ -475,7 +475,7 @@ end subroutine constitutive_dependentState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
-! ToDo: Discuss wheter it makes sense if crystallite handles the configuration conversion, i.e.
+! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
@@ -686,7 +686,7 @@ end subroutine constitutive_SandItsTangents
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
-!> the elastic and intermeidate deformation gradients using Hookes law
+!> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, ipc, ip, el)

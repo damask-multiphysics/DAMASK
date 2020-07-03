@@ -53,6 +53,8 @@ class Rotation:
             Use .from_quaternion to perform a sanity check.
 
         """
+        if quaternion.shape[-1] != 4:
+            raise ValueError('Not a quaternion')
         self.quaternion = quaternion.copy()
 
 
@@ -61,6 +63,7 @@ class Rotation:
         return self.quaternion.shape[:-1]
 
 
+    # ToDo: Check difference __copy__ vs __deepcopy__
     def __copy__(self):
         """Copy."""
         return self.__class__(self.quaternion)
@@ -71,12 +74,25 @@ class Rotation:
     def __repr__(self):
         """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
         if self.quaternion.shape != (4,):
-            raise NotImplementedError('Support for multiple rotations missing')
+            return 'Quaternions:\n'+str(self.quaternion) # ToDo: could be nicer ...
         return '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
                'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
                'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
                 ])
+
+
+    def __getitem__(self,item):
+        """Iterate over leading/leftmost dimension of Rotation array."""
+        if self.shape == (): return self.copy()
+        if isinstance(item,tuple) and len(item) >= len(self):
+            raise IndexError('Too many indices')
+        return self.__class__(self.quaternion[item])
+
+
+    def __len__(self):
+        """Length of leading/leftmost dimension of Rotation array."""
+        return 0 if self.shape == () else self.shape[0]
 
 
     def __matmul__(self, other):
@@ -87,6 +103,11 @@ class Rotation:
         ----------
         other : numpy.ndarray or Rotation
             Vector, second or fourth order tensor, or rotation object that is rotated.
+
+        Returns
+        -------
+        other_rot : numpy.ndarray or Rotation
+            Rotated vector, second or fourth order tensor, or rotation object.
 
         """
         if isinstance(other, Rotation):
@@ -155,7 +176,7 @@ class Rotation:
 
 
     def broadcast_to(self,shape):
-        if isinstance(shape,int): shape = (shape,)
+        if isinstance(shape,(int,np.integer)): shape = (shape,)
         if self.shape == ():
             q = np.broadcast_to(self.quaternion,shape+(4,))
         else:
@@ -178,7 +199,7 @@ class Rotation:
         """
         if self.quaternion.shape != (4,) or other.quaternion.shape != (4,):
             raise NotImplementedError('Support for multiple rotations missing')
-        return Rotation.fromAverage([self,other])
+        return Rotation.from_average([self,other])
 
 
     ################################################################################################
@@ -273,7 +294,11 @@ class Rotation:
 
         """
         ro = Rotation._qu2ro(self.quaternion)
-        return ro[...,:3]*ro[...,3] if vector else ro
+        if vector:
+            with np.errstate(invalid='ignore'):
+                return ro[...,:3]*ro[...,3:4]
+        else:
+            return ro
 
     def as_homochoric(self):
         """
@@ -299,6 +324,7 @@ class Rotation:
         """
         return Rotation._qu2cu(self.quaternion)
 
+    @property
     def M(self): # ToDo not sure about the name: as_M or M? we do not have a from_M
         """
         Intermediate representation supporting quaternion averaging.
@@ -555,7 +581,7 @@ class Rotation:
 
 
     @staticmethod
-    def fromAverage(rotations,weights = None):
+    def from_average(rotations,weights = None):
         """
         Average rotation.
 
@@ -580,8 +606,8 @@ class Rotation:
             weights = np.ones(N,dtype='i')
 
         for i,(r,n) in enumerate(zip(rotations,weights)):
-            M =          r.M() * n if i == 0 \
-                else M + r.M() * n                                                                  # noqa add (multiples) of this rotation to average noqa
+            M =          r.M * n if i == 0 \
+                else M + r.M * n                                                                    # noqa add (multiples) of this rotation to average noqa
         eig, vec = np.linalg.eig(M/N)
 
         return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),accept_homomorph = True)
@@ -593,7 +619,7 @@ class Rotation:
         elif hasattr(shape, '__iter__'):
             r = np.random.random(tuple(shape)+(3,))
         else:
-            r = np.random.random((shape,3))
+            r = np.random.rand(shape,3)
 
         A = np.sqrt(r[...,2])
         B = np.sqrt(1.0-r[...,2])
@@ -604,11 +630,9 @@ class Rotation:
 
         return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q)._standardize()
 
-
     # for compatibility (old names do not follow convention)
-    asM            = M
-    fromQuaternion = from_quaternion
     fromEulers     = from_Eulers
+    fromQuaternion = from_quaternion
     asAxisAngle    = as_axis_angle
     __mul__        = __matmul__
 

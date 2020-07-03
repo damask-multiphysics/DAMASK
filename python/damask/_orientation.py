@@ -3,7 +3,7 @@ import numpy as np
 from . import Lattice
 from . import Rotation
 
-class Orientation:
+class Orientation: # ToDo: make subclass of lattice and Rotation?
     """
     Crystallographic orientation.
 
@@ -39,9 +39,12 @@ class Orientation:
         else:
             self.rotation = Rotation.from_quaternion(rotation)                                      # assume quaternion
 
-        if self.rotation.quaternion.shape != (4,):
-            raise NotImplementedError('Support for multiple rotations missing')
+    def __getitem__(self,item):
+        """Iterate over leading/leftmost dimension of Orientation array."""
+        return self.__class__(self.rotation[item],self.lattice)
 
+
+    # ToDo: Discuss vectorization/calling signature
     def disorientation(self,
                        other,
                        SST = True,
@@ -58,8 +61,8 @@ class Orientation:
         if self.lattice.symmetry != other.lattice.symmetry:
             raise NotImplementedError('disorientation between different symmetry classes not supported yet.')
 
-        mySymEqs    =  self.equivalentOrientations() if SST else self.equivalentOrientations([0])   # take all or only first sym operation
-        otherSymEqs = other.equivalentOrientations()
+        mySymEqs    =  self.equivalent if SST else self.equivalent[0] #ToDo: This is just me!       # take all or only first sym operation
+        otherSymEqs = other.equivalent
 
         for i,sA in enumerate(mySymEqs):
             aInv = sA.rotation.inversed()
@@ -68,8 +71,8 @@ class Orientation:
                 r = b*aInv
                 for k in range(2):
                     r.inverse()
-                    breaker = self.lattice.symmetry.inFZ(r.as_Rodrigues(vector=True)) \
-                              and (not SST or other.lattice.symmetry.inDisorientationSST(r.as_Rodrigues(vector=True)))
+                    breaker = self.lattice.in_FZ(r.as_Rodrigues(vector=True)) \
+                              and (not SST or other.lattice.in_disorientation_SST(r.as_Rodrigues(vector=True)))
                     if breaker: break
                 if breaker: break
             if breaker: break
@@ -77,79 +80,123 @@ class Orientation:
         return (Orientation(r,self.lattice), i,j, k == 1) if symmetries else r                      # disorientation ...
                                                                                                     # ... own sym, other sym,
                                                                                                     # self-->other: True, self<--other: False
-    def inFZ(self):
-        return self.lattice.symmetry.inFZ(self.rotation.as_Rodrigues(vector=True))
+
+    @property
+    def in_FZ(self):
+        """Check if orientations fall into Fundamental Zone."""
+        return self.lattice.in_FZ(self.rotation.as_Rodrigues(vector=True))
 
 
-    def equivalentOrientations(self,members=[]):
-        """List of orientations which are symmetrically equivalent."""
-        try:
-            iter(members)                                                                           # asking for (even empty) list of members?
-        except TypeError:
-            return self.__class__(self.lattice.symmetry.symmetryOperations(members)*self.rotation,self.lattice) # no, return rotation object
-        else:
-            return [self.__class__(q*self.rotation,self.lattice) \
-                                      for q in self.lattice.symmetry.symmetryOperations(members)]   # yes, return list of rotations
+    @property
+    def equivalent(self):
+        """
+        Orientations which are symmetrically equivalent.
 
-    def relatedOrientations(self,model):
-        """List of orientations related by the given orientation relationship."""
-        r = self.lattice.relationOperations(model)
-        return [self.__class__(o*self.rotation,r['lattice']) for o in r['rotations']]
+        One dimension (length according to number of symmetrically equivalent orientations)
+        is added to the left of the Rotation array.
+
+        """
+        o = self.lattice.symmetry.symmetry_operations
+        o = o.reshape(o.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
+        o = Rotation(np.broadcast_to(o,o.shape[:1]+self.rotation.quaternion.shape))
+
+        s = np.broadcast_to(self.rotation.quaternion,o.shape[:1]+self.rotation.quaternion.shape)
+
+        return self.__class__(o@Rotation(s),self.lattice)
 
 
+    def related(self,model):
+        """
+        Orientations related by the given orientation relationship.
+
+        One dimension (length according to number of related orientations)
+        is added to the left of the Rotation array.
+
+        """
+        o = Rotation.from_matrix(self.lattice.relation_operations(model)['rotations']).as_quaternion()
+        o = o.reshape(o.shape[:1]+(1,)*len(self.rotation.shape)+(4,))
+        o = Rotation(np.broadcast_to(o,o.shape[:1]+self.rotation.quaternion.shape))
+
+        s = np.broadcast_to(self.rotation.quaternion,o.shape[:1]+self.rotation.quaternion.shape)
+
+        return self.__class__(o@Rotation(s),self.lattice.relation_operations(model)['lattice'])
+
+
+    @property
     def reduced(self):
         """Transform orientation to fall into fundamental zone according to symmetry."""
-        for me in self.equivalentOrientations():
-            if self.lattice.symmetry.inFZ(me.rotation.as_Rodrigues(vector=True)): break
+        eq = self.equivalent
+        in_FZ = eq.in_FZ
 
-        return self.__class__(me.rotation,self.lattice)
+        # remove duplicates (occur for highly symmetric orientations)
+        found = np.zeros_like(in_FZ[0],dtype=bool)
+        q     = self.rotation.quaternion[0]
+        for s in range(in_FZ.shape[0]):
+            #something fishy... why does q needs to be initialized?
+            q = np.where(np.expand_dims(np.logical_and(in_FZ[s],~found),-1),eq.rotation.quaternion[s],q)
+            found = np.logical_or(in_FZ[s],found)
+
+        return self.__class__(q,self.lattice)
 
 
-    def inversePole(self,
-                    axis,
-                    proper = False,
-                    SST = True):
+    def inverse_pole(self,axis,proper=False,SST=True):
         """Axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)."""
-        if SST:                                                                                     # pole requested to be within SST
-            for i,o in enumerate(self.equivalentOrientations()):                                    # test all symmetric equivalent quaternions
-                pole = o.rotation*axis                                                              # align crystal direction to axis
-                if self.lattice.symmetry.inSST(pole,proper): break                                  # found SST version
+        if SST:
+            eq = self.equivalent
+            pole = eq.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),eq.rotation.shape+(3,))
+            in_SST = self.lattice.in_SST(pole,proper=proper)
+
+            # remove duplicates (occur for highly symmetric orientations)
+            found = np.zeros_like(in_SST[0],dtype=bool)
+            p     = pole[0]
+            for s in range(in_SST.shape[0]):
+                p = np.where(np.expand_dims(np.logical_and(in_SST[s],~found),-1),pole[s],p)
+                found = np.logical_or(in_SST[s],found)
+
+            return p
         else:
-            pole = self.rotation*axis                                                               # align crystal direction to axis
-
-        return (pole,i if SST else 0)
+            return self.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),self.rotation.shape+(3,))
 
 
-    def IPFcolor(self,axis):
+
+    def IPF_color(self,axis): #ToDo axis or direction?
         """TSL color of inverse pole figure for given axis."""
-        color = np.zeros(3,'d')
+        eq = self.equivalent
+        pole = eq.rotation @ np.broadcast_to(axis/np.linalg.norm(axis),eq.rotation.shape+(3,))
+        in_SST, color = self.lattice.in_SST(pole,color=True)
 
-        for o in self.equivalentOrientations():
-            pole = o.rotation*axis                                                                  # align crystal direction to axis
-            inSST,color = self.lattice.symmetry.inSST(pole,color=True)
-            if inSST: break
+        # remove duplicates (occur for highly symmetric orientations)
+        found = np.zeros_like(in_SST[0],dtype=bool)
+        c     = color[0]
+        for s in range(in_SST.shape[0]):
+            c = np.where(np.expand_dims(np.logical_and(in_SST[s],~found),-1),color[s],c)
+            found = np.logical_or(in_SST[s],found)
 
-        return color
+        return c
 
 
+    # ToDo: Discuss vectorization/calling signature
     @staticmethod
-    def fromAverage(orientations,
+    def from_average(orientations,
                     weights = []):
         """Create orientation from average of list of orientations."""
+        # further read: Orientation distribution analysis in deformed grains
+        # https://doi.org/10.1107/S0021889801003077
         if not all(isinstance(item, Orientation) for item in orientations):
             raise TypeError("Only instances of Orientation can be averaged.")
 
         closest = []
         ref = orientations[0]
         for o in orientations:
-            closest.append(o.equivalentOrientations(
+            closest.append(o.equivalent[
                            ref.disorientation(o,
                                               SST = False,                                          # select (o[ther]'s) sym orientation
-                                              symmetries = True)[2]).rotation)                      # with lowest misorientation
+                                              symmetries = True)[2]].rotation)                      # with lowest misorientation
 
-        return Orientation(Rotation.fromAverage(closest,weights),ref.lattice)
+        return Orientation(Rotation.from_average(closest,weights),ref.lattice)
 
 
+    # ToDo: Discuss vectorization/calling signature
     def average(self,other):
         """Calculate the average rotation."""
-        return Orientation.fromAverage([self,other])
+        return Orientation.from_average([self,other])

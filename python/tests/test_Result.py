@@ -153,16 +153,16 @@ class TestResult:
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
-    def test_add_IPFcolor(self,default,d):
-        default.add_IPFcolor('orientation',d)
+    def test_add_IPF_color(self,default,d):
+        default.add_IPF_color('orientation',d)
         loc = {'orientation': default.get_dataset_location('orientation'),
                'color':       default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
         qu = default.read_dataset(loc['orientation']).view(np.double).reshape(-1,4)
         crystal_structure = default.get_crystal_structure()
         in_memory = np.empty((qu.shape[0],3),np.uint8)
         for i,q in enumerate(qu):
-            o = damask.Orientation(q,crystal_structure).reduced()
-            in_memory[i] = np.uint8(o.IPFcolor(np.array(d))*255)
+            o = damask.Orientation(q,crystal_structure).reduced
+            in_memory[i] = np.uint8(o.IPF_color(np.array(d))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 
@@ -319,4 +319,4 @@ class TestResult:
 
     def test_XDMF(self,tmp_path,single_phase):
         os.chdir(tmp_path)
-        single_phase.write_XDMF
+        single_phase.write_XDMF()
