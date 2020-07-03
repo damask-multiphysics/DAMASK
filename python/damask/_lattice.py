@@ -1,11 +1,9 @@
 import numpy as np
 
-from . import Rotation
-
 
 class Symmetry:
     """
-    Symmetry operations for lattice systems.
+    Symmetry-related operations for crystal systems.
 
     References
     ----------
@@ -13,34 +11,34 @@ class Symmetry:
 
     """
 
-    lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic',]
+    crystal_systems = [None,'orthorhombic','tetragonal','hexagonal','cubic']
 
-    def __init__(self, symmetry = None):
+    def __init__(self, system = None):
         """
         Symmetry Definition.
 
         Parameters
         ----------
-        symmetry : str, optional
-            label of the crystal system
+        system : {None,'orthorhombic','tetragonal','hexagonal','cubic'}, optional
+            Name of the crystal system. Defaults to 'None'.
 
         """
-        if symmetry is not None and symmetry.lower() not in Symmetry.lattices:
-            raise KeyError(f'Symmetry/crystal system "{symmetry}" is unknown')
+        if system is not None and system.lower() not in self.crystal_systems:
+            raise KeyError(f'Crystal system "{system}" is unknown')
 
-        self.lattice = symmetry.lower() if isinstance(symmetry,str) else symmetry
+        self.system = system.lower() if isinstance(system,str) else system
 
 
     def __copy__(self):
         """Copy."""
-        return self.__class__(self.lattice)
+        return self.__class__(self.system)
 
     copy = __copy__
 
 
     def __repr__(self):
         """Readable string."""
-        return f'{self.lattice}'
+        return f'{self.system}'
 
 
     def __eq__(self, other):
@@ -53,7 +51,7 @@ class Symmetry:
             Symmetry to check for equality.
 
         """
-        return self.lattice == other.lattice
+        return self.system == other.system
 
     def __neq__(self, other):
         """
@@ -77,14 +75,16 @@ class Symmetry:
             Symmetry to check for for order.
 
         """
-        myOrder    = Symmetry.lattices.index(self.lattice)
-        otherOrder = Symmetry.lattices.index(other.lattice)
+        myOrder    = self.crystal_systems.index(self.system)
+        otherOrder = self.crystal_systems.index(other.system)
         return (myOrder > otherOrder) - (myOrder < otherOrder)
 
-    def symmetryOperations(self,members=[]):
-        """List (or single element) of symmetry operations as rotations."""
-        if self.lattice == 'cubic':
-            symQuats =  [
+
+    @property
+    def symmetry_operations(self):
+        """Symmetry operations as quaternions."""
+        if self.system == 'cubic':
+            sym_quats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
                           [ 0.0,            0.0,            1.0,            0.0            ],
@@ -110,8 +110,8 @@ class Symmetry:
                           [-0.5*np.sqrt(2), 0.5*np.sqrt(2), 0.0,            0.0            ],
                           [-0.5*np.sqrt(2),-0.5*np.sqrt(2), 0.0,            0.0            ],
                         ]
-        elif self.lattice == 'hexagonal':
-            symQuats =  [
+        elif self.system == 'hexagonal':
+            sym_quats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [-0.5*np.sqrt(3), 0.0,            0.0,           -0.5            ],
                           [ 0.5,            0.0,            0.0,            0.5*np.sqrt(3) ],
@@ -125,8 +125,8 @@ class Symmetry:
                           [ 0.0,           -0.5,           -0.5*np.sqrt(3), 0.0            ],
                           [ 0.0,            0.5*np.sqrt(3), 0.5,            0.0            ],
                         ]
-        elif self.lattice == 'tetragonal':
-            symQuats =  [
+        elif self.system == 'tetragonal':
+            sym_quats =  [
                           [ 1.0,            0.0,            0.0,            0.0            ],
                           [ 0.0,            1.0,            0.0,            0.0            ],
                           [ 0.0,            0.0,            1.0,            0.0            ],
@@ -136,64 +136,54 @@ class Symmetry:
                           [ 0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                           [-0.5*np.sqrt(2), 0.0,            0.0,            0.5*np.sqrt(2) ],
                         ]
-        elif self.lattice == 'orthorhombic':
-            symQuats =  [
+        elif self.system == 'orthorhombic':
+            sym_quats =  [
                           [ 1.0,0.0,0.0,0.0 ],
                           [ 0.0,1.0,0.0,0.0 ],
                           [ 0.0,0.0,1.0,0.0 ],
                           [ 0.0,0.0,0.0,1.0 ],
                         ]
         else:
-            symQuats =  [
+            sym_quats =  [
                           [ 1.0,0.0,0.0,0.0 ],
                         ]
-
-        symOps = list(map(Rotation,
-                      np.array(symQuats)[np.atleast_1d(members) if members != [] else range(len(symQuats))]))
-        try:
-            iter(members)                                                                           # asking for (even empty) list of members?
-        except TypeError:
-            return symOps[0]                                                                        # no, return rotation object
-        else:
-            return symOps                                                                           # yes, return list of rotations
+        return np.array(sym_quats)
 
 
-    def inFZ(self,rodrigues):
+    def in_FZ(self,rho):
         """
-        Check whether given Rodrigues-Frank vector falls into fundamental zone of own symmetry.
+        Check whether given Rodrigues-Frank vector falls into fundamental zone.
 
         Fundamental zone in Rodrigues space is point symmetric around origin.
         """
-        if (len(rodrigues) != 3):
-            raise ValueError('Input is not a Rodrigues-Frank vector.\n')
+        if(rho.shape[-1] != 3):
+            raise ValueError('Input is not a Rodrigues-Frank vector field.')
 
-        if np.any(rodrigues == np.inf): return False
+        rho_abs = np.abs(rho)
 
-        Rabs = abs(rodrigues)
-
-        if self.lattice == 'cubic':
-            return     np.sqrt(2.0)-1.0 >= Rabs[0] \
-                   and np.sqrt(2.0)-1.0 >= Rabs[1] \
-                   and np.sqrt(2.0)-1.0 >= Rabs[2] \
-                   and 1.0 >= Rabs[0] + Rabs[1] + Rabs[2]
-        elif self.lattice == 'hexagonal':
-            return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2] \
-                   and 2.0 >= np.sqrt(3)*Rabs[0] + Rabs[1] \
-                   and 2.0 >= np.sqrt(3)*Rabs[1] + Rabs[0] \
-                   and 2.0 >= np.sqrt(3) + Rabs[2]
-        elif self.lattice == 'tetragonal':
-            return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] \
-                   and np.sqrt(2.0) >= Rabs[0] + Rabs[1] \
-                   and np.sqrt(2.0) >= Rabs[2] + 1.0
-        elif self.lattice == 'orthorhombic':
-            return     1.0 >= Rabs[0] and 1.0 >= Rabs[1] and 1.0 >= Rabs[2]
-        else:
-            return True
+        with np.errstate(invalid='ignore'):
+            # using '*'/prod for 'and'
+            if self.system == 'cubic':
+                return np.where(np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) * \
+                                (1. >= np.sum(rho_abs,axis=-1)),True,False)
+            elif self.system == 'hexagonal':
+                return np.where(np.prod(1.             >= rho_abs,axis=-1) * \
+                                (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) * \
+                                (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) * \
+                                (2. >= np.sqrt(3) + rho_abs[...,2]),True,False)
+            elif self.system == 'tetragonal':
+                return np.where(np.prod(1.             >= rho_abs[...,:2],axis=-1) * \
+                                (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) * \
+                                (np.sqrt(2) >= rho_abs[...,2] + 1.),True,False)
+            elif self.system == 'orthorhombic':
+                return np.where(np.prod(1.             >= rho_abs,axis=-1),True,False)
+            else:
+                return np.where(np.all(np.isfinite(rho_abs),axis=-1),True,False)
 
 
-    def inDisorientationSST(self,rodrigues):
+    def in_disorientation_SST(self,rho):
         """
-        Check whether given Rodrigues-Frank vector (of misorientation) falls into standard stereographic triangle of own symmetry.
+        Check whether given Rodrigues-Frank vector (of misorientation) falls into standard stereographic triangle.
 
         References
         ----------
@@ -201,27 +191,33 @@ class Symmetry:
         https://doi.org/10.1107/S0108767391006864
 
         """
-        if (len(rodrigues) != 3):
-            raise ValueError('Input is not a Rodrigues-Frank vector.\n')
-        R = rodrigues
+        if(rho.shape[-1] != 3):
+            raise ValueError('Input is not a Rodrigues-Frank vector field.')
 
-        epsilon = 0.0
-        if self.lattice == 'cubic':
-            return R[0] >= R[1]+epsilon              and R[1] >= R[2]+epsilon and R[2] >= epsilon
-        elif self.lattice == 'hexagonal':
-            return R[0] >= np.sqrt(3)*(R[1]-epsilon) and R[1] >= epsilon      and R[2] >= epsilon
-        elif self.lattice == 'tetragonal':
-            return R[0] >= R[1]-epsilon              and R[1] >= epsilon      and R[2] >= epsilon
-        elif self.lattice == 'orthorhombic':
-            return R[0] >= epsilon                   and R[1] >= epsilon      and R[2] >= epsilon
-        else:
-            return True
+        with np.errstate(invalid='ignore'):
+            # using '*' for 'and'
+            if self.system == 'cubic':
+                return np.where((rho[...,0] >= rho[...,1]) * \
+                                (rho[...,1] >= rho[...,2]) * \
+                                (rho[...,2] >= 0),True,False)
+            elif self.system == 'hexagonal':
+                return np.where((rho[...,0] >= rho[...,1]*np.sqrt(3)) * \
+                                (rho[...,1] >= 0) * \
+                                (rho[...,2] >= 0),True,False)
+            elif self.system == 'tetragonal':
+                return np.where((rho[...,0] >= rho[...,1]) * \
+                                (rho[...,1] >= 0) * \
+                                (rho[...,2] >= 0),True,False)
+            elif self.system == 'orthorhombic':
+                return np.where((rho[...,0] >= 0) * \
+                                (rho[...,1] >= 0) * \
+                                (rho[...,2] >= 0),True,False)
+            else:
+                return np.ones_like(rho[...,0],dtype=bool)
 
 
-    def inSST(self,
-              vector,
-              proper = False,
-              color = False):
+    #ToDo: IPF color in separate function
+    def in_SST(self,vector,proper=False,color=False):
         """
         Check whether given vector falls into standard stereographic triangle of own symmetry.
 
@@ -244,7 +240,10 @@ class Symmetry:
         ...         }
 
         """
-        if self.lattice == 'cubic':
+        if(vector.shape[-1] != 3):
+            raise ValueError('Input is not a 3D vector field.')
+
+        if self.system == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                            [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
                                            [ 0.            ,  np.sqrt(3.)   ,  0. ] ]),
@@ -252,7 +251,7 @@ class Symmetry:
                                            [-np.sqrt(2.)   , np.sqrt(2.)    ,  0. ],
                                            [ np.sqrt(3.)   ,  0.            ,  0. ] ]),
                     }
-        elif self.lattice == 'hexagonal':
+        elif self.system == 'hexagonal':
             basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
                                            [ 1.            , -np.sqrt(3.)   ,  0. ],
                                            [ 0.            ,  2.            ,  0. ] ]),
@@ -260,7 +259,7 @@ class Symmetry:
                                            [-1.            ,  np.sqrt(3.)   ,  0. ],
                                            [ np.sqrt(3.)   , -1.            ,  0. ] ]),
                     }
-        elif self.lattice == 'tetragonal':
+        elif self.system == 'tetragonal':
             basis = {'improper':np.array([ [ 0.            ,  0.            ,  1. ],
                                            [ 1.            , -1.            ,  0. ],
                                            [ 0.            ,  np.sqrt(2.)   ,  0. ] ]),
@@ -268,7 +267,7 @@ class Symmetry:
                                            [-1.            ,  1.            ,  0. ],
                                            [ np.sqrt(2.)   ,  0.            ,  0. ] ]),
                     }
-        elif self.lattice == 'orthorhombic':
+        elif self.system == 'orthorhombic':
             basis = {'improper':np.array([ [ 0., 0., 1.],
                                            [ 1., 0., 0.],
                                            [ 0., 1., 0.] ]),
@@ -278,43 +277,41 @@ class Symmetry:
                     }
         else:                                                                                       # direct exit for unspecified symmetry
             if color:
-                return (True,np.zeros(3,'d'))
+                return (np.ones_like(vector[...,0],bool),np.zeros_like(vector))
             else:
-                return True
+                return  np.ones_like(vector[...,0],bool)
 
-        v = np.array(vector,dtype=float)
-        if proper:                                                                                  # check both improper ...
-            theComponents = np.around(np.dot(basis['improper'],v),12)
-            inSST = np.all(theComponents >= 0.0)
-            if not inSST:                                                                           # ... and proper SST
-                theComponents = np.around(np.dot(basis['proper'],v),12)
-                inSST = np.all(theComponents >= 0.0)
+
+        b_i = np.broadcast_to(basis['improper'],vector.shape+(3,))
+        if proper:
+            b_p = np.broadcast_to(basis['proper'], vector.shape+(3,))
+            improper = np.all(np.around(np.einsum('...ji,...i',b_i,vector),12)>=0.0,axis=-1,keepdims=True)
+            theComponents = np.where(np.broadcast_to(improper,vector.shape),
+                                     np.around(np.einsum('...ji,...i',b_i,vector),12),
+                                     np.around(np.einsum('...ji,...i',b_p,vector),12))
         else:
-            v[2] = abs(v[2])                                                                        # z component projects identical
-            theComponents = np.around(np.dot(basis['improper'],v),12)                               # for positive and negative values
-            inSST = np.all(theComponents >= 0.0)
+            vector_ = np.block([vector[...,0:2],np.abs(vector[...,2:3])])                           # z component projects identical
+            theComponents = np.around(np.einsum('...ji,...i',b_i,vector_),12)
+
+        in_SST = np.all(theComponents >= 0.0,axis=-1)
 
         if color:                                                                                   # have to return color array
-            if inSST:
-                rgb = np.power(theComponents/np.linalg.norm(theComponents),0.5)                     # smoothen color ramps
-                rgb = np.minimum(np.ones(3,dtype=float),rgb)                                        # limit to maximum intensity
-                rgb /= max(rgb)                                                                     # normalize to (HS)V = 1
-            else:
-                rgb = np.zeros(3,dtype=float)
-            return (inSST,rgb)
+            with np.errstate(invalid='ignore',divide='ignore'):
+                rgb = (theComponents/np.linalg.norm(theComponents,axis=-1,keepdims=True))**0.5      # smoothen color ramps
+                rgb = np.minimum(1.,rgb)                                                            # limit to maximum intensity
+                rgb /= np.max(rgb,axis=-1,keepdims=True)                                            # normalize to (HS)V = 1
+            rgb[np.broadcast_to(~in_SST.reshape(vector[...,0].shape+(1,)),vector.shape)] = 0.0
+            return (in_SST,rgb)
         else:
-            return inSST
-
-# code derived from https://github.com/ezag/pyeuclid
-# suggested reading: http://web.mit.edu/2.998/www/QuaternionReport1.pdf
+            return in_SST
 
 
 # ******************************************************************************************
-class Lattice:
+class Lattice: # ToDo: Make a subclass of Symmetry!
     """
-    Lattice system.
+    Bravais lattice.
 
-    Currently, this contains only a mapping from Bravais lattice to symmetry
+    This contains only a mapping from Bravais lattice to symmetry
     and orientation relationships. It could include twin and slip systems.
 
     References
@@ -324,15 +321,15 @@ class Lattice:
     """
 
     lattices = {
-                'triclinic':{'symmetry':None},
-                'bct':{'symmetry':'tetragonal'},
-                'hex':{'symmetry':'hexagonal'},
-                'fcc':{'symmetry':'cubic','c/a':1.0},
-                'bcc':{'symmetry':'cubic','c/a':1.0},
+                'triclinic':{'system':None},
+                'bct':      {'system':'tetragonal'},
+                'hex':      {'system':'hexagonal'},
+                'fcc':      {'system':'cubic','c/a':1.0},
+                'bcc':      {'system':'cubic','c/a':1.0},
                }
 
 
-    def __init__(self, lattice):
+    def __init__(self,lattice,c_over_a=None):
         """
         New lattice of given type.
 
@@ -343,18 +340,23 @@ class Lattice:
 
         """
         self.lattice  = lattice
-        self.symmetry = Symmetry(self.lattices[lattice]['symmetry'])
+        self.symmetry = Symmetry(self.lattices[lattice]['system'])
 
+        # transition to subclass
+        self.system                 = self.symmetry.system
+        self.in_SST                 = self.symmetry.in_SST
+        self.in_FZ                  = self.symmetry.in_FZ
+        self.in_disorientation_SST  = self.symmetry.in_disorientation_SST
 
     def __repr__(self):
         """Report basic lattice information."""
-        return f'Bravais lattice {self.lattice} ({self.symmetry} symmetry)'
+        return f'Bravais lattice {self.lattice} ({self.symmetry} crystal system)'
 
 
     # Kurdjomov--Sachs orientation relationship for fcc <-> bcc transformation
     # from S. Morito et al., Journal of Alloys and Compounds 577:s587-s592, 2013
     # also see K. Kitahara et al., Acta Materialia 54:1279-1288, 2006
-    KS = {'mapping':{'fcc':0,'bcc':1},
+    _KS = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  1,  1],[  0,  1,  1]],
         [[  1,  1,  1],[  0,  1,  1]],
@@ -408,7 +410,7 @@ class Lattice:
 
     # Greninger--Troiano orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-    GT = {'mapping':{'fcc':0,'bcc':1},
+    _GT = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  1,  1],[  1,  0,  1]],
         [[  1,  1,  1],[  1,  1,  0]],
@@ -462,7 +464,7 @@ class Lattice:
 
     # Greninger--Troiano' orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-    GTprime = {'mapping':{'fcc':0,'bcc':1},
+    _GTprime = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  7, 17, 17],[ 12,  5, 17]],
         [[ 17,  7, 17],[ 17, 12,  5]],
@@ -516,7 +518,7 @@ class Lattice:
 
     # Nishiyama--Wassermann orientation relationship for fcc <-> bcc transformation
     # from H. Kitahara et al., Materials Characterization 54:378-386, 2005
-    NW = {'mapping':{'fcc':0,'bcc':1},
+    _NW = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  1,  1],[  0,  1,  1]],
         [[  1,  1,  1],[  0,  1,  1]],
@@ -546,7 +548,7 @@ class Lattice:
 
     # Pitsch orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Acta Materialia 53:1179-1190, 2005
-    Pitsch = {'mapping':{'fcc':0,'bcc':1},
+    _Pitsch = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  0,  1,  0],[ -1,  0,  1]],
         [[  0,  0,  1],[  1, -1,  0]],
@@ -576,7 +578,7 @@ class Lattice:
 
     # Bain orientation relationship for fcc <-> bcc transformation
     # from Y. He et al., Journal of Applied Crystallography 39:72-81, 2006
-    Bain = {'mapping':{'fcc':0,'bcc':1},
+    _Bain = {'mapping':{'fcc':0,'bcc':1},
         'planes': np.array([
         [[  1,  0,  0],[  1,  0,  0]],
         [[  0,  1,  0],[  0,  1,  0]],
@@ -586,7 +588,8 @@ class Lattice:
         [[  0,  0,  1],[  1,  0,  1]],
         [[  1,  0,  0],[  1,  1,  0]]],dtype='float')}
 
-    def relationOperations(self,model):
+
+    def relation_operations(self,model):
         """
         Crystallographic orientation relationships for phase transformations.
 
@@ -608,8 +611,8 @@ class Lattice:
         https://doi.org/10.1016/j.actamat.2004.11.021
 
         """
-        models={'KS':self.KS, 'GT':self.GT, 'GT_prime':self.GTprime,
-                'NW':self.NW, 'Pitsch': self.Pitsch, 'Bain':self.Bain}
+        models={'KS':self._KS, 'GT':self._GT,          'GT_prime':self._GTprime,
+                'NW':self._NW, 'Pitsch': self._Pitsch, 'Bain':self._Bain}
         try:
             relationship = models[model]
         except KeyError :
@@ -635,6 +638,8 @@ class Lattice:
             otherDir    = miller[otherDir_id]/   np.linalg.norm(miller[otherDir_id])
             otherMatrix = np.array([otherDir,np.cross(otherPlane,otherDir),otherPlane])
 
-            r['rotations'].append(Rotation.from_matrix(np.dot(otherMatrix.T,myMatrix)))
+            r['rotations'].append(np.dot(otherMatrix.T,myMatrix))
+
+        r['rotations'] = np.array(r['rotations'])
 
         return r
