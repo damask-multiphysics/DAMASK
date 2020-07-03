@@ -102,7 +102,7 @@ end function kinematics_thermal_expansion_initialStrain
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the velocity gradient
+!> @brief constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
 subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
 

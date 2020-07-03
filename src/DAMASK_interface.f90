@@ -6,7 +6,7 @@
 !> @brief    Interfacing between the PETSc-based solvers and the material subroutines provided
 !!           by DAMASK
 !> @details  Interfacing between the PETSc-based solvers and the material subroutines provided
-!>           by DAMASK. Interpretating the command line arguments to get load case, geometry file,
+!>           by DAMASK. Interpreting the command line arguments to get load case, geometry file,
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
@@ -20,11 +20,11 @@ module DAMASK_interface
 
   use prec
   use system_routines
-  
+
   implicit none
   private
   logical,          volatile,    public, protected :: &
-    SIGTERM, &                                                                                      !< termination signal 
+    SIGTERM, &                                                                                      !< termination signal
     SIGUSR1, &                                                                                      !< 1. user-defined signal
     SIGUSR2                                                                                         !< 2. user-defined signal
   integer,                       public, protected :: &
@@ -159,14 +159,14 @@ subroutine DAMASK_interface_init
   call MPI_Type_size(MPI_INTEGER,typeSize,err)
   if (err /= 0) call quit(1)
   if (typeSize*8 /= bit_size(0)) then
-    write(6,'(a)') ' Mismatch between MPI and DAMASK integer' 
+    write(6,'(a)') ' Mismatch between MPI and DAMASK integer'
     call quit(1)
   endif
 
   call MPI_Type_size(MPI_DOUBLE,typeSize,err)
   if (err /= 0) call quit(1)
   if (typeSize*8 /= storage_size(0.0_pReal)) then
-    write(6,'(a)') ' Mismatch between MPI and DAMASK real' 
+    write(6,'(a)') ' Mismatch between MPI and DAMASK real'
     call quit(1)
   endif
 
@@ -340,7 +340,7 @@ end function getGeometryFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief relative path of loadcase from command line arguments
+!> @brief relative path of load case from command line arguments
 !--------------------------------------------------------------------------------------------------
 function getLoadCaseFile(loadCaseParameter)
 
