@@ -22,7 +22,6 @@ module grid_mech_spectral_polarisation
   use homogenization
   use discretization_grid
   use debug
-  use YAML_types
 
   implicit none
   private

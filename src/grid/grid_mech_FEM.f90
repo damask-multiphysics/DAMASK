@@ -16,7 +16,6 @@ module grid_mech_FEM
   use math
   use spectral_utilities
   use FEsolving
-  use YAML_types
   use numerics
   use homogenization
   use discretization

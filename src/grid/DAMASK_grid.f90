@@ -24,7 +24,6 @@ program DAMASK_grid
   use grid_damage_spectral
   use grid_thermal_spectral
   use results
-  use YAML_types
   
   implicit none
 

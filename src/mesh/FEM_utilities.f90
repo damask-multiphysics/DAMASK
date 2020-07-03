@@ -15,7 +15,6 @@ module FEM_utilities
   use FEsolving
   use homogenization
   use numerics
-  use YAML_types
   use debug
   use math
   use discretization_mesh

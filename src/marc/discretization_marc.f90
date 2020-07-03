@@ -13,7 +13,6 @@ module discretization_marc
   use IO
   use debug
   use numerics
-  use YAML_types
   use FEsolving
   use element
   use discretization

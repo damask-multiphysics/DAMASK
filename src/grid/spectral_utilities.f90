@@ -19,7 +19,6 @@ module spectral_utilities
   use config
   use discretization
   use homogenization
-  use YAML_types
 
   implicit none
   private

@@ -21,7 +21,6 @@ module grid_mech_spectral_basic
   use homogenization
   use discretization_grid
   use debug
-  use YAML_types
 
   implicit none
   private

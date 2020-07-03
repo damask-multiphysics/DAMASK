@@ -23,7 +23,6 @@ module homogenization
   use damage_local
   use damage_nonlocal
   use results
-  use YAML_types
 
   implicit none
   private

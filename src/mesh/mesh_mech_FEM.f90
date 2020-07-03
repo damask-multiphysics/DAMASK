@@ -19,7 +19,6 @@ module mesh_mech_FEM
   use discretization_mesh
   use DAMASK_interface
   use numerics
-  use YAML_types
   use FEM_quadrature
   use homogenization
   use math

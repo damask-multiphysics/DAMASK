@@ -8,7 +8,6 @@ module material
   use prec
   use math
   use config
-  use YAML_types
   use results
   use IO
   use debug

@@ -23,7 +23,6 @@ module crystallite
   use discretization
   use lattice
   use results
-  use YAML_types
 
   implicit none
   private
