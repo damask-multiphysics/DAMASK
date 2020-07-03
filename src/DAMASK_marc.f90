@@ -277,10 +277,10 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   call omp_set_num_threads(1)                                                                       ! no openMP
 
   if (.not. CPFEM_init_done) then
-    debug_Marc => debug_root%get('marc',defaultVal=emptyList)
-    debug_basic = debug_Marc%contains('basic')
     CPFEM_init_done = .true.
     call CPFEM_initAll
+    debug_Marc => debug_root%get('marc',defaultVal=emptyList)
+    debug_basic = debug_Marc%contains('basic')
   endif
 
   computationMode = 0                                                                               ! save initialization value, since it does not result in any calculation
