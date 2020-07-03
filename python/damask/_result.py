@@ -466,6 +466,11 @@ class Result:
             return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
 
 
+    def enable_user_function(self,func):
+        globals()[func.__name__]=func
+        print(f'Function {func.__name__} enabled in add_calculation.')
+
+
     def read_dataset(self,path,c=0,plain=False):
         """
         Dataset for all points/cells.
