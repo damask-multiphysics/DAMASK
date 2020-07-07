@@ -7,7 +7,6 @@ module kinematics_thermal_expansion
   use prec
   use IO
   use config
-  use debug
   use math
   use lattice
   use material
@@ -43,11 +42,10 @@ subroutine kinematics_thermal_expansion_init
   integer :: Ninstance,p,i
   real(pReal), dimension(:), allocatable :: temp
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_kinematics == KINEMATICS_thermal_expansion_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(kinematics_thermal_expansion_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))

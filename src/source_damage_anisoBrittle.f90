@@ -6,7 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 module source_damage_anisoBrittle
   use prec
-  use debug
   use IO
   use math
   use discretization
@@ -59,11 +58,10 @@ subroutine source_damage_anisoBrittle_init
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_source == SOURCE_DAMAGE_ANISOBRITTLE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(source_damage_anisoBrittle_offset  (size(config_phase)), source=0)
   allocate(source_damage_anisoBrittle_instance(size(config_phase)), source=0)

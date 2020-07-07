@@ -6,7 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 module source_thermal_dissipation
   use prec
-  use debug
   use discretization
   use material
   use config
@@ -41,11 +40,10 @@ subroutine source_thermal_dissipation_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'
 
   Ninstance = count(phase_source == SOURCE_THERMAL_DISSIPATION_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(source_thermal_dissipation_offset  (size(config_phase)), source=0)
   allocate(source_thermal_dissipation_instance(size(config_phase)), source=0)

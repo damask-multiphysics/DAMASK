@@ -18,11 +18,10 @@ module subroutine mech_none_init
     h, &
     NofMyHomog
 
-  write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
 
   Ninstance = count(homogenization_type == HOMOGENIZATION_NONE_ID)
-  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle

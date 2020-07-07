@@ -8,7 +8,6 @@ module kinematics_slipplane_opening
   use prec
   use config
   use IO
-  use debug
   use math
   use lattice
   use material
@@ -52,11 +51,10 @@ subroutine kinematics_slipplane_opening_init
   integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_kinematics == KINEMATICS_SLIPPLANE_OPENING_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(kinematics_slipplane_opening_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))

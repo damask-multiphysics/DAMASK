@@ -215,22 +215,23 @@ subroutine material_init(restart)
   integer, dimension(:), allocatable :: &
    CounterPhase, &
    CounterHomogenization
-
-  myDebug = debug_level(debug_material)
+  class(tNode), pointer :: &
+    debug_material                                                                                  ! pointer to material debug options
 
   write(6,'(/,a)') ' <<<+-  material init  -+>>>'; flush(6)
 
+  debug_material => debug_root%get('material',defaultVal=emptyList)
   call material_parsePhase()
-  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Phase          parsed'; flush(6)
+  if (debug_material%contains('basic')) write(6,'(a)') ' Phase          parsed'; flush(6)
 
   call material_parseMicrostructure()
-  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Microstructure parsed'; flush(6)
+  if (debug_material%contains('basic')) write(6,'(a)') ' Microstructure parsed'; flush(6)
 
   call material_parseHomogenization()
-  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Homogenization parsed'; flush(6)
+  if (debug_material%contains('basic')) write(6,'(a)') ' Homogenization parsed'; flush(6)
 
   call material_parseTexture()
-  if (iand(myDebug,debug_levelBasic) /= 0) write(6,'(a)') ' Texture        parsed'; flush(6)
+  if (debug_material%contains('basic')) write(6,'(a)') ' Texture        parsed'; flush(6)
 
   material_Nphase          = size(config_phase)
   material_Nhomogenization = size(config_homogenization)
@@ -266,7 +267,7 @@ subroutine material_init(restart)
   enddo
   if(homogenization_maxNgrains > size(microstructure_phase,1)) call IO_error(148)
 
-  debugOut: if (iand(myDebug,debug_levelExtensive) /= 0) then
+  debugOut: if (debug_material%contains('extensive')) then
     write(6,'(/,a,/)') ' MATERIAL configuration'
     write(6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
     do h = 1,size(config_homogenization)
