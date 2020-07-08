@@ -66,24 +66,24 @@ end subroutine kinematics_thermal_expansion_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  report initial thermal strain based on current temperature deviation from reference
 !--------------------------------------------------------------------------------------------------
-!pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
-!
-! integer, intent(in) :: &
-!   phase, &
-!   homog, &
-!   offset
-!
-! real(pReal), dimension(3,3) :: &
-!   kinematics_thermal_expansion_initialStrain                                                      !< initial thermal strain (should be small strain, though)
-!
-! associate(prm => param(kinematics_thermal_expansion_instance(phase)))
-! kinematics_thermal_expansion_initialStrain = &
-!   (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%expansion(1:3,1:3,1) + &               ! constant  coefficient
-!   (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%expansion(1:3,1:3,2) + &               ! linear    coefficient
-!   (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%expansion(1:3,1:3,3)                   ! quadratic coefficient
-! end associate
-!
-!end function kinematics_thermal_expansion_initialStrain
+pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
+
+ integer, intent(in) :: &
+   phase, &
+   homog, &
+   offset
+
+ real(pReal), dimension(3,3) :: &
+   initialStrain                                                                                   !< initial thermal strain (should be small strain, though)
+
+ associate(prm => param(kinematics_thermal_expansion_instance(phase)))
+ initialStrain = &
+   (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%expansion(1:3,1:3,1) + &               ! constant  coefficient
+   (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%expansion(1:3,1:3,2) + &               ! linear    coefficient
+   (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%expansion(1:3,1:3,3)                   ! quadratic coefficient
+ end associate
+
+end function kinematics_thermal_expansion_initialStrain
 
 
 !--------------------------------------------------------------------------------------------------

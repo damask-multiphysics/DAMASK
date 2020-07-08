@@ -35,13 +35,16 @@ module constitutive
     module subroutine thermal_init
     end subroutine thermal_init
 
-!   module pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
-!
-!     integer, intent(in) :: &
-!       phase, &
-!       homog, &
-!       offset
-!   end function kinematics_thermal_expansion_initialStrain
+    pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
+
+     integer, intent(in) :: &
+       phase, &
+       homog, &
+       offset
+     real(pReal), dimension(3,3) :: &
+       initialStrain
+
+    end function kinematics_thermal_expansion_initialStrain
 
     module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
       real(pReal), dimension(6,6) :: &
@@ -591,7 +594,7 @@ pure function constitutive_initialFi(ipc, ip, el)
         homog = material_homogenizationAt(el)
         offset = thermalMapping(homog)%p(ip,el)
         constitutive_initialFi = &
-          constitutive_initialFi !+ kinematics_thermal_expansion_initialStrain(homog,phase,offset)
+          constitutive_initialFi + kinematics_thermal_expansion_initialStrain(homog,phase,offset)
     end select kinematicsType
   enddo KinematicsLoop
 
