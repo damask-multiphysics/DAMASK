@@ -63,7 +63,7 @@
 #                           =1,  element storage out-of-core                 #
 #  -dll              run marc using shared library libmarc.so and exe_marc   #
 #                           =1, used                                         #
-#                           =2, do not free streaming input memory           # 
+#                           =2, do not free streaming input memory           #
 #                           =3, run with marc input deck                     #
 #  -trk              run marc for post-tracking                              #
 #  -gpuid            run marc using GPGPU capability                         #
@@ -177,16 +177,16 @@ fi
 #         MARC_MODE i8
 #    it can also be set by the environmental variable MARC_INTEGER_SIZE
 #    and by the command line option "-mo"
-#    
+#
 mode=
 modeerror=
 modeoption=
 if test -f $DIRSCRIPT/run_marc_defaults; then
  line=`$AWK '{if ($1 == "MARC_MODE") {print $1}}' $DIRSCRIPT/run_marc_defaults`
  if test "$line" = "MARC_MODE"; then
-  echo 
+  echo
   echo warning: the option MARC_MODE is deprecated, as of Marc 2015, only the integer*8 version is available
-  echo 
+  echo
   line=
  fi
  line=`$AWK '{if ($1 == "MARC_MODE") {print $2}}' $DIRSCRIPT/run_marc_defaults`
@@ -203,7 +203,7 @@ fi
 if test -f $HOME/run_marc_defaults; then
  line=`$AWK '{if ($1 == "MARC_MODE") {print $1}}' $HOME/run_marc_defaults`
  if test "$line" = "MARC_MODE"; then
-  echo 
+  echo
   echo warning: the option MARC_MODE is deprecated, as of Marc 2015, only the integer*8 version is available
   echo
   line=
@@ -226,7 +226,7 @@ if test -z "$mode" ; then
  mode=i8
 fi
 case $mode in
-    i4) 
+    i4)
     modeerror="bad value for MARC_INTEGER_SIZE variable; only i8 is supported."
     modeoption=error
     echo $modeerror
@@ -246,7 +246,7 @@ for arg in $* ; do
  if $setmode ; then
      mode=$arg
      case $mode in
-	 i4) 
+	 i4)
      modeerror="bad value for mode option; only i8 is supported."
      modeoption=error
      echo
@@ -269,7 +269,7 @@ for arg in $* ; do
      setmode=false
  fi
  if [ ${arg}X = -moX -o ${arg}X = -MOX ] ; then
-  echo  
+  echo
   echo warning: the option -mo is deprecated, as of Marc 2015, only the integer*8 version is available
   echo
   setmode=true
@@ -333,7 +333,7 @@ case "`echo '\c'`" in
       ;;
 esac
 
-#  
+#
 #  Variables for the MARC environment
 #
 
@@ -388,7 +388,7 @@ LD_LIBRARYN32_PATH=$MARC_LIB:$LD_LIBRARYN32_PATH
 export LD_LIBRARY_PATH
 export LD_LIBRARY64_PATH
 export LD_LIBRARYN32_PATH
- 
+
 atexit() {
 kill -15 $$
 #
@@ -498,7 +498,7 @@ MDSRCLIB=$MARC_LIB/mdsrc.a
 #    or in the user's home directory
 #      format:
 #         MARC_MPI <mpiversion>
-#    
+#
 value=
 file=
 if test -f $DIRSCRIPT/run_marc_defaults; then
@@ -523,7 +523,7 @@ if test -n "$value"; then
      notok=false
    fi
   done
-  if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then 
+  if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then
    notok=false
   fi
   if $notok; then
@@ -543,7 +543,7 @@ if test -n "$value"; then
     fi
   fi
 fi
-# 
+#
 #
 # allow scratch directory to be specified with environmental variable
 # MARCSCRATCH
@@ -613,7 +613,7 @@ do
                            *)
                             DIRJID=`pwd`/$DIRJID
                              ;;
-                        esac        
+                        esac
 		;;
 		-r* | -R*)
 			rid=`$BASENAME $value .t08`
@@ -624,7 +624,7 @@ do
                            *)
                             DIRRID=`pwd`/$DIRRID
                              ;;
-                        esac        
+                        esac
 		;;
 		-si* | -SI*)
 			sid=$value
@@ -635,7 +635,7 @@ do
                            *)
                             DIRSID=`pwd`/$DIRSID
                              ;;
-                        esac        
+                        esac
 		;;
 		-pi* | -PI*)
                         if test -f $value.t19
@@ -651,7 +651,7 @@ do
                            *)
                             DIRPID=`pwd`/$DIRPID
                              ;;
-                        esac        
+                        esac
 		;;
                 -bdf | -BDF)
                         makebdf=1
@@ -665,7 +665,7 @@ do
                            *)
                             DIRDID=`pwd`/$DIRDID
                              ;;
-                        esac        
+                        esac
                 ;;
                 -vf  | -VF)
                         vid=`$BASENAME $value .vfs`
@@ -676,7 +676,7 @@ do
                            *)
                             DIRVID=`pwd`/$DIRVID
                              ;;
-                        esac        
+                        esac
                 ;;
 		-u* | -U*)
                         user=$value
@@ -847,7 +847,7 @@ do
                            *)
                             DIRSCR=`pwd`/$DIRSCR
                              ;;
-                        esac        
+                        esac
                 ;;
 		-ho*  | -HO*)
 			host=$value
@@ -898,7 +898,7 @@ fi
 
 if test $nsolver -gt 0
 then
-  if test $nsolver -gt $nprocd 
+  if test $nsolver -gt $nprocd
   then
   nprocd=$nsolver
   fi
@@ -934,7 +934,7 @@ fi
 ntprint=$nt
 nteprint=$nte
 # copy from -nprocd[s]
-if test $nprocdddm -gt 1 
+if test $nprocdddm -gt 1
 then
   nteprint=$nprocdddm
 fi
@@ -943,7 +943,7 @@ if test $nte -ne 0
 then
 nteprint=$nte
 fi
-# check for minimum 1 threads per processes for DDM 
+# check for minimum 1 threads per processes for DDM
 if test $nprocdddm -gt 1
 then
   if test $nteprint -lt $nprocdddm
@@ -998,24 +998,24 @@ export OMP_STACKSIZE=7M
 # deprecate  -nthread option at arugment of marc
 nt=0
 # Reset nprocdddmm, nsolver and threads if not given.
-if test $nprocdddm -eq 0 
-then 
+if test $nprocdddm -eq 0
+then
   nprocdarg=
-fi  
-if test $nprocdddm -eq 0 
-then 
+fi
+if test $nprocdddm -eq 0
+then
   nprocdddmprint=
-fi  
-if test $nprocdddm -eq 0 
-then 
+fi
+if test $nprocdddm -eq 0
+then
   nprocdddm=
-fi  
+fi
 
 nsolverprint=$nsolver
-if test $nsolver -eq 0 
-then 
+if test $nsolver -eq 0
+then
   nsolverprint=
-fi  
+fi
 # end of threads setting.
 gpuoption=
 if test "$gpuids" = "" ; then
@@ -1030,7 +1030,7 @@ else
  MARCCUDALIBS=$MARCCUDALIBS2
  export LD_LIBRARY_PATH=$CUDALIB2:$LD_LIBRARY_PATH
 fi
-# Linux 64 + HPMPI, Below code is taken from include_linux64 
+# Linux 64 + HPMPI, Below code is taken from include_linux64
 if test $MPITYPE = hpmpi -a "$ARCHITECTURE" = "linux_amd64"
 then
  export MPIHPSPECIAL="$MPIHPSPECIAL -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -1059,7 +1059,7 @@ if test "$dllrun" -gt 0; then
   fi
 
   if test "$progdll"; then
-    /bin/cp ${progdll}_$marcdll $DIRJOB/$marcdll 
+    /bin/cp ${progdll}_$marcdll $DIRJOB/$marcdll
     rmdll=yes
     pathdll=yes
     progdll=${progdll}_$marcdll
@@ -1093,14 +1093,14 @@ while test forever; do
 if test $nprocdddm -gt 1 -a $icreated -eq 0; then
  if test ! -f $DIRJID/1$jid$dotdat; then
   if test "$jid" != "" ; then
-    error="$error 
+    error="$error
 input file $DIRJID/1$jid$dotdat not accessible"
   fi
  fi
 else
  if test ! -f $DIRJID/$jid$dotdat; then
   if test "$jid" != "" ; then
-    error="$error 
+    error="$error
 input file $DIRJID/$jid$dotdat not accessible"
   fi
  fi
@@ -1108,7 +1108,7 @@ fi
           if test $nprocd -gt 1; then
             if test "$host" ; then
               if test ! -f $host; then
-                error="$error 
+                error="$error
 host name file $host not accessible"
               fi
             fi
@@ -1222,11 +1222,11 @@ view factor file $DIRVID/$vid.vfs not accessible"
                         notok=false
                       fi
                     done
-                    if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then 
+                    if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then
                       notok=false
                     fi
                     if $notok; then
-                        error="$error 
+                        error="$error
 incorrect option for -mpi option: $MARC_MPITYPE  (valid: $MPI_OTHER)"
                     fi
                 fi
@@ -1291,7 +1291,7 @@ defaults file $DIRDID/$did$dotdat not accessible"
                 then
                     if test $nauto -gt 2
                     then
-                        error="$error 
+                        error="$error
 incorrect option for auto restart "
                     fi
                 fi
@@ -1299,7 +1299,7 @@ incorrect option for auto restart "
                 then
                     if test $ndcoup -gt 3
                     then
-                        error="$error 
+                        error="$error
 incorrect option for contact decoupling "
                     fi
                 fi
@@ -1307,7 +1307,7 @@ incorrect option for contact decoupling "
                 then
                     if test $ndytran -gt 1
                     then
-                        error="$error 
+                        error="$error
 incorrect option for Marc-Dytran Switch  "
                     fi
                 fi
@@ -1315,7 +1315,7 @@ incorrect option for Marc-Dytran Switch  "
                 then
                     if test ! -x $MARC_BIN/$exefile
                     then
-                        error="$error 
+                        error="$error
 incorrect option for -mpi option: $MARC_MPITYPE  "
                     fi
                 fi
@@ -1642,7 +1642,7 @@ Program name ($prog)? $ECHOTXT"
                     *)
                       DIRJID=`pwd`/$DIRJID
                     ;;
-                  esac        
+                  esac
                 fi
 		$ECHO "User subroutine name ($user)? $ECHOTXT"
 		read value
@@ -1660,7 +1660,7 @@ Program name ($prog)? $ECHOTXT"
                         *)
                           user=`pwd`/$user
                         ;;
-                      esac        
+                      esac
 					  usernoext=$user
 					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
 					  usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
@@ -1783,7 +1783,7 @@ Program name ($prog)? $ECHOTXT"
                         *)
                           DIRVID=`pwd`/$DIRVID
                         ;;
-                      esac        
+                      esac
                     ;;
                   esac
                 fi
@@ -1825,7 +1825,7 @@ Program name ($prog)? $ECHOTXT"
 		fi
 		if test $nsolver -gt 0
 		then
-		  if test $nsolver -gt $nprocd 
+		  if test $nsolver -gt $nprocd
 		  then
 		  nprocd=$nsolver
 		  fi
@@ -1975,7 +1975,7 @@ Program name ($prog)? $ECHOTXT"
 		then
 			qid=$value
 		fi
-		case $qid in 
+		case $qid in
 			s* | S* | l* | L* | v* | V* )
 			$ECHO "Queue priority ($priority)? $ECHOTXT"
 			read value
@@ -2039,42 +2039,42 @@ esac
 
 done
 #
-if test $nt -eq 0 
-then 
+if test $nt -eq 0
+then
   ntarg=
-fi  
-if test $nt -eq 0 
-then 
+fi
+if test $nt -eq 0
+then
   ntprint=
-fi  
-if test $nt -eq 0 
-then 
+fi
+if test $nt -eq 0
+then
   nt=
 fi
 
-if test $nte -eq 0 
-then 
+if test $nte -eq 0
+then
   ntearg=
-fi  
-if test $nte -eq 0 
-then 
+fi
+if test $nte -eq 0
+then
   nteprint=
-fi  
-if test $nte -eq 0 
-then 
+fi
+if test $nte -eq 0
+then
   nte=
 fi
 
-if test $nts -eq 0 
-then 
+if test $nts -eq 0
+then
   ntsarg=
-fi  
-if test $nts -eq 0 
-then 
+fi
+if test $nts -eq 0
+then
   ntsprint=
-fi  
-if test $nts -eq 0 
-then 
+fi
+if test $nts -eq 0
+then
   nts=
 fi
 #
@@ -2327,7 +2327,7 @@ fi
      execpath=$usernoext.marc
      usersub=1
     fi
-    export execpath      
+    export execpath
     execname=`$BASENAME $execpath`
 
     if test "$host"
@@ -2360,7 +2360,7 @@ fi
         exit 1
       fi
 
-# check for Myrinet that the number of processes per host is 
+# check for Myrinet that the number of processes per host is
 # less than number of available user ports, 5
 # .gmpi directory must exist in user's home directory
 # and must have write permission from remote hosts
@@ -2474,9 +2474,9 @@ fi
       then
 #   Intel MPI
         if test -f $jid.mfile
-        then 
+        then
           /bin/rm $jid.mfile 2> /dev/null
-        fi 
+        fi
 	/bin/cp $host $jid.host
         grep -v '^#' $host | $AWK '{host=$1;num=$2;for (i=1;i<=num;i++) print host}' > $jid.mfile
 #   end Intel MPI for DMP
@@ -2560,7 +2560,7 @@ fi
       else
         host=$jid.host
         host_filt=$host
-        if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi" 
+        if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi"
         then
           host_filt=$jid.mfile
         fi
@@ -2569,7 +2569,7 @@ fi
 # or distributed and set the variable "dirstatus" accordingly.
 # only perform the check if user subroutine is used
 # or a user subroutine executable is used
- 
+
       numfield=1
       if test $MPITYPE = hpmpi -o $MACHINENAME = HP -a $MPITYPE = hardware
       then
@@ -2729,7 +2729,7 @@ fi
       fi
 # modify new host file if NFS mounted heterogeneous machine
       doit=
-      if test $program = $prog.marc 
+      if test $program = $prog.marc
       then
         doit=yes
       fi
@@ -2753,23 +2753,23 @@ if ($1 ~ hst) {if ( fnr == 1 ) printf("%s\n",$0); else \
 printf("%s %s %s_%s\n",$1,$2,$3,$1) } else print}' $jid.host > $jid.host{$$}
         /bin/mv $jid.host{$$} $jid.host
               host=$jid.host
-            fi            
+            fi
           fi
-        done        
+        done
       fi
       fi  #   if test $program = $prog.marc -o $user -o $obj
- 
+
     else   # if test $host
       # assume shared memory machine if no hostfile given and
       # MPITYPE is set to mpich or Myrinet
-      # check for Myrinet that the total number of processes is 
+      # check for Myrinet that the total number of processes is
       # less than number of available user ports, 5
       if test $MPITYPE = "mpich" -o $MPITYPE = "scali"
       then
         numproc=`echo $nprocd | $AWK '{sum=$1-1}; {print sum}'`
         echo `hostname` $numproc $execpath > $jid.host
         host=$jid.host
-      elif test $MPITYPE = "myrinet" 
+      elif test $MPITYPE = "myrinet"
       then
         if test $nprocd -gt 5
         then
@@ -2809,7 +2809,7 @@ printf("%s %s %s_%s\n",$1,$2,$3,$1) } else print}' $jid.host > $jid.host{$$}
     fi     # if test $host
 
   fi  # if test $nprocd -gt 1
- 
+
 fi    # if test $program = $exefile -o $program = $prog.marc
 
 ##############################################################################
@@ -2859,7 +2859,7 @@ else
  nsolverarg="$nsolverarg $nsolver"
 fi
 if test $nprocdddm -lt 2 -a $nsolver -eq 0
-then 
+then
 nprocd=0
 fi
 if test $nprocd -gt 0
@@ -2870,7 +2870,7 @@ then
    then
     echo " "
     echo "error: parallel job attempted on non-parallel version,"
-    echo "       or, if parallel version is installed, the include " 
+    echo "       or, if parallel version is installed, the include "
     echo "       file is probably corrupted"
     echo " "
     if test "$deletelog" = no
@@ -2975,7 +2975,7 @@ $ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
    then
     echo " "
     echo "error: parallel job attempted on non-parallel version,"
-    echo "       or, if parallel version is installed, the include " 
+    echo "       or, if parallel version is installed, the include "
     echo "       file is probably corrupted"
     echo " "
     if test "$deletelog" = no
@@ -3267,6 +3267,7 @@ else
 fi
 /bin/rm $userobj 2>/dev/null
 /bin/rm $DIRJOB/*.mod 2>/dev/null
+/bin/rm $DIRJOB/*.smod 2>/dev/null
 
 #
 # run marc
@@ -3309,7 +3310,7 @@ fi
 if test $dllrun -eq 0; then
   if test $prgsav = no
   then
-      /bin/rm -f $bd$program 2>/dev/null	
+      /bin/rm -f $bd$program 2>/dev/null
   fi
 else
   if test $cpdll = yes; then
@@ -3318,10 +3319,10 @@ else
   fi
   if test $rmdll = yes
   then
-     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
+     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null
   fi
 fi
- 
+
 if test $nprocdddm -gt 1
 then
   numdom=$nprocdddm
@@ -3389,15 +3390,15 @@ else
 #
 QUENAME=qsub
 SUBMCMD="-q $qid -o /dev/null -e $jid.batch_err_log -x -r $jid"
-if test "$priority" 
+if test "$priority"
 then
 	SUBMCMD=$SUBMCMD" -p $priority"
 fi
-if test "$att" 
+if test "$att"
 then
 	SUBMCMD=$SUBMCMD" -a $att"
 fi
-if test "$cpu" 
+if test "$cpu"
 then
 	SUBMCMD=$SUBMCMD" -lt $cpu"
 fi
@@ -3579,7 +3580,7 @@ then
           then
             counter=$((counter+1))
             if test ${dirstatus[$counter]} = "local" -a ${compstatus[$counter]} = "yes"
-            then            
+            then
               DIR1=$DIRJOB
               line=`grep -v '^#' $userhost | grep "^$ibase "`
               workdir=`echo $line | $AWK '{print $3}'`
@@ -3599,6 +3600,7 @@ else # if test $link
 fi   # if test $link
 /bin/rm $userobj 2>/dev/null
 /bin/rm $DIRJOB/*.mod 2>/dev/null
+/bin/rm $DIRJOB/*.smod 2>/dev/null
 
 #
 # run marc
@@ -3647,7 +3649,7 @@ fi
 if test $dllrun -eq 0; then
 if test $prgsav = no
 then
-  /bin/rm -f $bd$program 2>/dev/null	
+  /bin/rm -f $bd$program 2>/dev/null
   # for network run, remove executable on remote machines
   # and executables with modified name
   if test $nprocd -gt 1
@@ -3696,7 +3698,7 @@ else
      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
   fi
   if test $rmdll = yes;then
-     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
+     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null
   fi
 fi
 if test $nprocdddm -gt 1
@@ -3913,7 +3915,7 @@ then
           then
             counter=$((counter+1))
             if test ${dirstatus[$counter]} = "local" -a ${compstatus[$counter]} = "yes"
-            then            
+            then
               DIR1=$DIRJOB
               line=`grep -v '^#' $userhost | grep "^$ibase "`
               workdir=`echo $line | $AWK '{print $3}'`
@@ -3933,6 +3935,7 @@ else # if test $link
 fi   # if test $link
 /bin/rm $userobj 2>/dev/null
 /bin/rm $DIRJOB/*.mod 2>/dev/null
+/bin/rm $DIRJOB/*.smod 2>/dev/null
 # done if no job id given
 if test -z "$jid"
 then
@@ -3972,7 +3975,7 @@ if test $ddm_arc -gt 0; then
   RUN_JOB="$MESHERDIR/sf_exeddm $RUN_JOB -ddm $ddm_arc "
 fi
 
-    $RUN_JOB 
+    $RUN_JOB
 
 if test $nprocd -gt 1
 then
@@ -4055,7 +4058,7 @@ else
      /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
   fi
   if test $rmdll = yes;then
-     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
+     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null
   fi
 fi
 
