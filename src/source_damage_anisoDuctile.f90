@@ -4,23 +4,13 @@
 !> @brief material subroutine incorporating anisotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_damage_anisoDuctile
-  use prec
-  use IO
-  use math
-  use discretization
-  use material
-  use config
-  use results
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage)  source_damage_anisoDuctile
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_anisoDuctile_offset, &                                                            !< which source is my current damage mechanism?
     source_damage_anisoDuctile_instance                                                             !< instance of damage source mechanism
 
-  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+  type :: tParameters                                                                       !< container type for internal constitutive parameters
     real(pReal) :: &
       n
     real(pReal), dimension(:), allocatable :: &
@@ -29,14 +19,7 @@ module source_damage_anisoDuctile
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
-
-
-  public :: &
-    source_damage_anisoDuctile_init, &
-    source_damage_anisoDuctile_dotState, &
-    source_damage_anisoDuctile_getRateAndItsTangent, &
-    source_damage_anisoDuctile_results
+  type(tParameters), dimension(:), allocatable :: param                                     !< containers of constitutive parameters (len Ninstance)
 
 contains
 
@@ -45,7 +28,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_init
+module subroutine source_damage_anisoDuctile_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
   integer, dimension(:), allocatable :: N_sl
@@ -105,7 +88,7 @@ end subroutine source_damage_anisoDuctile_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
+module subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -136,7 +119,7 @@ end subroutine source_damage_anisoDuctile_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
   integer, intent(in) :: &
     phase, &
@@ -163,7 +146,7 @@ end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_results(phase,group)
+module subroutine source_damage_anisoDuctile_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -182,4 +165,4 @@ subroutine source_damage_anisoDuctile_results(phase,group)
 
 end subroutine source_damage_anisoDuctile_results
 
-end module source_damage_anisoDuctile
+end submodule source_damage_anisoDuctile

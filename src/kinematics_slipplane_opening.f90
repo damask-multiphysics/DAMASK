@@ -4,16 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module kinematics_slipplane_opening
-  use prec
-  use config
-  use IO
-  use math
-  use lattice
-  use material
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage) kinematics_slipplane_opening
 
   integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
 
@@ -33,9 +24,6 @@ module kinematics_slipplane_opening
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
 
-  public :: &
-    kinematics_slipplane_opening_init, &
-    kinematics_slipplane_opening_LiAndItsTangent
 
 contains
 
@@ -44,7 +32,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_init
+module subroutine kinematics_slipplane_opening_init
 
   integer :: Ninstance,p,i
   character(len=pStringLen) :: extmsg = ''
@@ -107,7 +95,7 @@ end subroutine kinematics_slipplane_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< grain number
@@ -183,4 +171,4 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
 
 end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
-end module kinematics_slipplane_opening
+end submodule kinematics_slipplane_opening

@@ -4,14 +4,7 @@
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_thermal_dissipation
-  use prec
-  use discretization
-  use material
-  use config
-
-  implicit none
-  private
+submodule(constitutive:constitutive_thermal) source_thermal_dissipation
 
   integer,           dimension(:),   allocatable :: &
     source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
@@ -25,10 +18,6 @@ module source_thermal_dissipation
   type(tParameters), dimension(:),   allocatable :: param                                           !< containers of constitutive parameters (len Ninstance)
 
 
-  public :: &
-    source_thermal_dissipation_init, &
-    source_thermal_dissipation_getRateAndItsTangent
-
 contains
 
 
@@ -36,7 +25,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_dissipation_init
+module subroutine source_thermal_dissipation_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
 
@@ -76,7 +65,7 @@ end subroutine source_thermal_dissipation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstances dissipation rate
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
+module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
 
   integer, intent(in) :: &
     phase
@@ -96,4 +85,4 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar
 
 end subroutine source_thermal_dissipation_getRateAndItsTangent
 
-end module source_thermal_dissipation
+end submodule source_thermal_dissipation

@@ -3,16 +3,7 @@
 !> @brief material subroutine incorporating kinematics resulting from thermal expansion
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module kinematics_thermal_expansion
-  use prec
-  use IO
-  use config
-  use math
-  use lattice
-  use material
-
-  implicit none
-  private
+submodule(constitutive:constitutive_thermal) kinematics_thermal_expansion
 
   integer, dimension(:), allocatable :: kinematics_thermal_expansion_instance
 
@@ -25,10 +16,6 @@ module kinematics_thermal_expansion
 
   type(tParameters), dimension(:), allocatable :: param
 
-  public :: &
-    kinematics_thermal_expansion_init, &
-    kinematics_thermal_expansion_initialStrain, &
-    kinematics_thermal_expansion_LiAndItsTangent
 
 contains
 
@@ -37,7 +24,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_thermal_expansion_init
+module subroutine kinematics_thermal_expansion_init
 
   integer :: Ninstance,p,i
   real(pReal), dimension(:), allocatable :: temp
@@ -79,30 +66,30 @@ end subroutine kinematics_thermal_expansion_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  report initial thermal strain based on current temperature deviation from reference
 !--------------------------------------------------------------------------------------------------
-pure function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
-
-  integer, intent(in) :: &
-    phase, &
-    homog, &
-    offset
-
-  real(pReal), dimension(3,3) :: &
-    kinematics_thermal_expansion_initialStrain                                                      !< initial thermal strain (should be small strain, though)
-
-  associate(prm => param(kinematics_thermal_expansion_instance(phase)))
-  kinematics_thermal_expansion_initialStrain = &
-    (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%expansion(1:3,1:3,1) + &               ! constant  coefficient
-    (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%expansion(1:3,1:3,2) + &               ! linear    coefficient
-    (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%expansion(1:3,1:3,3)                   ! quadratic coefficient
-  end associate
-
-end function kinematics_thermal_expansion_initialStrain
+!pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset)
+!
+! integer, intent(in) :: &
+!   phase, &
+!   homog, &
+!   offset
+!
+! real(pReal), dimension(3,3) :: &
+!   kinematics_thermal_expansion_initialStrain                                                      !< initial thermal strain (should be small strain, though)
+!
+! associate(prm => param(kinematics_thermal_expansion_instance(phase)))
+! kinematics_thermal_expansion_initialStrain = &
+!   (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%expansion(1:3,1:3,1) + &               ! constant  coefficient
+!   (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%expansion(1:3,1:3,2) + &               ! linear    coefficient
+!   (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%expansion(1:3,1:3,3)                   ! quadratic coefficient
+! end associate
+!
+!end function kinematics_thermal_expansion_initialStrain
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
+module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< grain number
@@ -140,4 +127,4 @@ subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip,
 
 end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
-end module kinematics_thermal_expansion
+end submodule kinematics_thermal_expansion
