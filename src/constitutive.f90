@@ -131,16 +131,15 @@ module constitutive
         of
     end subroutine source_thermal_externalheat_dotState
 
-
-    module function constitutive_homogenizedC(ipc,ip,el) result(homogenizedC)
+    module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
       real(pReal), dimension(6,6) :: &
         homogenizedC
       integer,     intent(in) :: &
         ipc, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
-    end function constitutive_homogenizedC
- 
+    end function plastic_dislotwin_homogenizedC
+
     module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
 
       integer, intent(in) :: &
@@ -429,6 +428,28 @@ subroutine constitutive_init
   constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine constitutive_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the homogenize elasticity matrix
+!> ToDo: homogenizedC66 would be more consistent
+!--------------------------------------------------------------------------------------------------
+function constitutive_homogenizedC(ipc,ip,el)
+
+  real(pReal) , dimension(6,6) :: &
+    constitutive_homogenizedC
+  integer,      intent(in)     :: &
+    ipc, & 
+    ip, &
+    el
+
+  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+     constitutive_homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
+    case default plasticityType
+     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(ipc,el))
+  end select plasticityType
+
+end function constitutive_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------

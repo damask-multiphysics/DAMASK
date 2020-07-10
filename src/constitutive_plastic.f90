@@ -113,15 +113,6 @@ submodule(constitutive) constitutive_plastic
         el                                                                                          !< current element number
     end subroutine plastic_nonlocal_LpAndItsTangent
 
-    module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
-      real(pReal), dimension(6,6) :: &
-        homogenizedC
-      integer,     intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-    end function plastic_dislotwin_homogenizedC
-
 
     module subroutine plastic_dislotwin_dependentState(T,instance,of)
       integer,       intent(in) :: &
@@ -175,21 +166,6 @@ module subroutine plastic_init
 
 end subroutine plastic_init
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns the homogenize elasticity matrix
-!> ToDo: homogenizedC66 would be more consistent
-!--------------------------------------------------------------------------------------------------
-module procedure constitutive_homogenizedC
-
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
-    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
-    case default plasticityType
-      homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(ipc,el))
-  end select plasticityType
-
-end procedure constitutive_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
