@@ -239,32 +239,14 @@ end subroutine plastic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-module function plastic_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken_plastic)
+module procedure plastic_dotState
 
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                              !< element
-    phase, &
-    of
-  real(pReal),  intent(in) :: &
-    subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    FArray, &                                                                                       !< elastic deformation gradient
-    FpArray                                                                                         !< plastic deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
   real(pReal),              dimension(3,3) :: &
     Mp
   integer :: &
     ho, &                                                                                           !< homogenization
     tme, &                                                                                          !< thermal member position
-    i, &                                                                                            !< counter in source loop
     instance
-  logical :: broken_plastic
-
 
   ho = material_homogenizationAt(el)
   tme = thermalMapping(ho)%p(ip,el)
@@ -295,20 +277,14 @@ module function plastic_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phas
   end select plasticityType
   broken_plastic = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
 
-end function plastic_dotState
+end procedure plastic_dotState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenize elasticity matrix
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
-module function plastic_homogenizedC(ipc,ip,el) result(homogenizedC)
-
-  real(pReal), dimension(6,6) :: homogenizedC
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+module procedure plastic_homogenizedC
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
@@ -317,21 +293,14 @@ module function plastic_homogenizedC(ipc,ip,el) result(homogenizedC)
       homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(ipc,el))
   end select plasticityType
 
-end function plastic_homogenizedC
+end procedure plastic_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_dependentState(F, Fp, ipc, ip, el)
+module procedure plastic_dependentState
 
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-  real(pReal),   intent(in), dimension(3,3) :: &
-    F, &                                                                                           !< elastic deformation gradient
-    Fp                                                                                              !< plastic deformation gradient
   integer :: &
     ho, &                                                                                           !< homogenization
     tme, &                                                                                          !< thermal member position
@@ -351,27 +320,15 @@ module subroutine plastic_dependentState(F, Fp, ipc, ip, el)
       call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
   end select plasticityType
 
-end subroutine plastic_dependentState
+end procedure plastic_dependentState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
-                                         S, Fi, ipc, ip, el)
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-  real(pReal),   intent(in),  dimension(3,3) :: &
-    S, &                                                                                            !< 2nd Piola-Kirchhoff stress
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),   intent(out), dimension(3,3) :: &
-    Lp                                                                                              !< plastic velocity gradient
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-    dLp_dS, &
-    dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
+module procedure plastic_LpAndItsTangents
+
   real(pReal), dimension(3,3,3,3) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to Mandel stress
   real(pReal), dimension(3,3) :: &
@@ -421,7 +378,7 @@ module subroutine plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
   enddo; enddo
 
-end subroutine plastic_LpAndItsTangents
+end procedure plastic_LpAndItsTangents
 
 end submodule constitutive_plastic
 

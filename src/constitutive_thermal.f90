@@ -64,24 +64,8 @@ end subroutine thermal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-module function thermal_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken_thermal)
+module procedure thermal_dotState
 
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                              !< element
-    phase, &
-    of
-  real(pReal),  intent(in) :: &
-    subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    FArray, &                                                                                       !< elastic deformation gradient
-    FpArray                                                                                         !< plastic deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
-  logical :: broken_thermal
   integer :: i
 
   SourceLoop: do i = 1, phase_Nsources(phase)
@@ -93,26 +77,14 @@ module function thermal_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phas
 
     end select sourceType
 
-    broken_thermal = any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
-
   enddo sourceLoop
 
-end function thermal_dotState
+  broken_thermal = any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
+
+end procedure thermal_dotState
 
 
-module subroutine thermal_source_getRateAndItsTangents(Tdot, dTdot_dT, T, Tstar, Lp, ip, el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal), intent(in) :: &
-    T
-  real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
-    Tstar, &
-    Lp
-  real(pReal), intent(inout) :: &
-    Tdot, &
-    dTdot_dT
+module procedure thermal_source_getRateAndItsTangents
 
   real(pReal) :: &
     my_Tdot, &
@@ -152,6 +124,6 @@ module subroutine thermal_source_getRateAndItsTangents(Tdot, dTdot_dT, T, Tstar,
      enddo  
    enddo
  
-end subroutine thermal_source_getRateAndItsTangents
+end procedure thermal_source_getRateAndItsTangents
 
 end submodule

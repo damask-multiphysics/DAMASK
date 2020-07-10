@@ -137,24 +137,8 @@ end subroutine damage_init
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-module function damage_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken_damage)
+module procedure damage_dotState
 
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                              !< element
-    phase, &
-    of
-  real(pReal),  intent(in) :: &
-    subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
-    FArray, &                                                                                       !< elastic deformation gradient
-    FpArray                                                                                         !< plastic deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
-  logical :: broken_damage
   integer :: i
 
   SourceLoop: do i = 1, phase_Nsources(phase)
@@ -176,19 +160,10 @@ module function damage_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase
 
   broken_damage = any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
 
-end function damage_dotState
+end procedure damage_dotState
 
 
-module subroutine damage_source_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal), intent(in) :: &
-    phi
-  real(pReal), intent(inout) :: &
-    phiDot, &
-    dPhiDot_dPhi
+module procedure damage_source_getRateAndItsTangents
 
   real(pReal) :: &
     localphiDot, &
@@ -229,6 +204,6 @@ module subroutine damage_source_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi,
     enddo
   enddo
 
-end subroutine damage_source_getRateAndItsTangents
+end procedure damage_source_getRateAndItsTangents
 
 end submodule
