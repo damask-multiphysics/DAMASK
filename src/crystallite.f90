@@ -279,7 +279,7 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        call constitutive_dependentState(crystallite_partionedF0(1:3,1:3,c,i,e), &
+        call constitutive_plastic_dependentState(crystallite_partionedF0(1:3,1:3,c,i,e), &
                                          crystallite_partionedFp0(1:3,1:3,c,i,e), &
                                          c,i,e)                                                     ! update dependent state variables to be consistent with basic states
      enddo
@@ -874,7 +874,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
     F  = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
-  call constitutive_dependentState(crystallite_partionedF(1:3,1:3,ipc,ip,el), &
+  call constitutive_plastic_dependentState(crystallite_partionedF(1:3,1:3,ipc,ip,el), &
                                    crystallite_Fp(1:3,1:3,ipc,ip,el),ipc,ip,el)
 
   Lpguess = crystallite_Lp(1:3,1:3,ipc,ip,el)                                                       ! take as first guess

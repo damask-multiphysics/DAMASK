@@ -195,7 +195,7 @@ end procedure constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-module procedure plastic_dependentState
+module procedure constitutive_plastic_dependentState
 
   integer :: &
     ho, &                                                                                           !< homogenization
@@ -216,7 +216,7 @@ module procedure plastic_dependentState
       call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
   end select plasticityType
 
-end procedure plastic_dependentState
+end procedure constitutive_plastic_dependentState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
