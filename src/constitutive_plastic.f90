@@ -25,67 +25,6 @@ submodule(constitutive) constitutive_plastic
     module subroutine plastic_nonlocal_init
     end subroutine plastic_nonlocal_init
 
-    module subroutine plastic_isotropic_dotState(Mp,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_isotropic_dotState
-
-    module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_phenopowerlaw_dotState
-
-    module subroutine plastic_kinehardening_dotState(Mp,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_kinehardening_dotState
-
-    module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      real(pReal),                  intent(in) :: &
-        T
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_dislotwin_dotState
-
-    module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      real(pReal),                  intent(in) :: &
-        T
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_disloUCLA_dotState
-
-    module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
-                                                instance,of,ip,el)
-      real(pReal), dimension(3,3), intent(in) ::&
-        Mp                                                                                          !< MandelStress
-      real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
-        F, &                                                                                        !< deformation gradient
-        Fp                                                                                          !< plastic deformation gradient
-      real(pReal), intent(in) :: &
-        Temperature, &                                                                              !< temperature
-        timestep                                                                                    !< substepped crystallite time increment
-      integer, intent(in) :: &
-        instance, &
-        of, &
-        ip, &                                                                                       !< current integration point
-        el                                                                                          !< current element number
-    end subroutine plastic_nonlocal_dotState
-
 
     module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
@@ -236,55 +175,12 @@ module subroutine plastic_init
 
 end subroutine plastic_init
 
-!--------------------------------------------------------------------------------------------------
-!> @brief contains the constitutive equation for calculating the rate of change of microstructure
-!--------------------------------------------------------------------------------------------------
-module procedure plastic_dotState
-
-  real(pReal),              dimension(3,3) :: &
-    Mp
-  integer :: &
-    ho, &                                                                                           !< homogenization
-    tme, &                                                                                          !< thermal member position
-    instance
-
-  ho = material_homogenizationAt(el)
-  tme = thermalMapping(ho)%p(ip,el)
-  instance = phase_plasticityInstance(phase)
-
-  Mp = matmul(matmul(transpose(Fi),Fi),S)
-
-  plasticityType: select case (phase_plasticity(phase))
-
-    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call plastic_isotropic_dotState    (Mp,instance,of)
-
-    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      call plastic_phenopowerlaw_dotState(Mp,instance,of)
-
-    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_dotState(Mp,instance,of)
-
-    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_dotState    (Mp,temperature(ho)%p(tme),instance,of)
-
-    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-      call plastic_disloucla_dotState    (Mp,temperature(ho)%p(tme),instance,of)
-
-    case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
-                                          instance,of,ip,el)
-  end select plasticityType
-  broken_plastic = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
-
-end procedure plastic_dotState
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenize elasticity matrix
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
-module procedure plastic_homogenizedC
+module procedure constitutive_homogenizedC
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
@@ -293,7 +189,7 @@ module procedure plastic_homogenizedC
       homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(ipc,el))
   end select plasticityType
 
-end procedure plastic_homogenizedC
+end procedure constitutive_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
@@ -327,7 +223,7 @@ end procedure plastic_dependentState
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
-module procedure plastic_LpAndItsTangents
+module procedure constitutive_plastic_LpAndItsTangents
 
   real(pReal), dimension(3,3,3,3) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to Mandel stress
@@ -378,7 +274,7 @@ module procedure plastic_LpAndItsTangents
     dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
   enddo; enddo
 
-end procedure plastic_LpAndItsTangents
+end procedure constitutive_plastic_LpAndItsTangents
 
 end submodule constitutive_plastic
 

@@ -13,12 +13,6 @@ submodule(constitutive) constitutive_thermal
   module subroutine kinematics_thermal_expansion_init
   end subroutine kinematics_thermal_expansion_init
 
-  module subroutine source_thermal_externalheat_dotState(phase, of)
-    integer, intent(in) :: &
-      phase, &
-      of
-  end subroutine source_thermal_externalheat_dotState
-
 
   module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
 
@@ -60,28 +54,6 @@ module subroutine thermal_init
   if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
 
 end subroutine thermal_init
-
-!--------------------------------------------------------------------------------------------------
-!> @brief contains the constitutive equation for calculating the rate of change of microstructure
-!--------------------------------------------------------------------------------------------------
-module procedure thermal_dotState
-
-  integer :: i
-
-  SourceLoop: do i = 1, phase_Nsources(phase)
-
-    sourceType: select case (phase_source(i,phase))
-
-      case (SOURCE_thermal_externalheat_ID) sourceType
-        call source_thermal_externalheat_dotState(phase,of)
-
-    end select sourceType
-
-  enddo sourceLoop
-
-  broken_thermal = any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
-
-end procedure thermal_dotState
 
 
 module procedure thermal_source_getRateAndItsTangents
