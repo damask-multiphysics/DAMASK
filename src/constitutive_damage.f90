@@ -109,7 +109,7 @@ module subroutine damage_init
 end subroutine damage_init
 
 
-module procedure damage_source_getRateAndItsTangents
+module procedure constitutive_damage_getRateAndItsTangents
 
   real(pReal) :: &
     localphiDot, &
@@ -150,6 +150,6 @@ module procedure damage_source_getRateAndItsTangents
     enddo
   enddo
 
-end procedure damage_source_getRateAndItsTangents
+end procedure constitutive_damage_getRateAndItsTangents
 
 end submodule

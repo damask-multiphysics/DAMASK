@@ -56,7 +56,7 @@ module subroutine thermal_init
 end subroutine thermal_init
 
 
-module procedure thermal_source_getRateAndItsTangents
+module procedure constitutive_thermal_getRateAndItsTangents
 
   real(pReal) :: &
     my_Tdot, &
@@ -96,6 +96,6 @@ module procedure thermal_source_getRateAndItsTangents
      enddo  
    enddo
  
-end procedure thermal_source_getRateAndItsTangents
+end procedure constitutive_thermal_getRateAndItsTangents
 
 end submodule

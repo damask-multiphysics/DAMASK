@@ -141,6 +141,80 @@ module constitutive
         el                                                                                          !< element
     end function constitutive_homogenizedC
  
+    module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
+
+      integer, intent(in) :: &
+        ipc, &                                                                                          !< component-ID of integration point
+        ip, &                                                                                           !< integration point
+        el                                                                                              !< element
+      real(pReal),   intent(in), dimension(3,3) :: &
+        F, &                                                                                           !< elastic deformation gradient
+        Fp                                                                                              !< plastic deformation gradient
+    end subroutine constitutive_plastic_dependentState 
+
+    module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
+                                         S, Fi, ipc, ip, el)
+      integer, intent(in) :: &
+        ipc, &                                                                                          !< component-ID of integration point
+        ip, &                                                                                           !< integration point
+        el                                                                                              !< element
+      real(pReal),   intent(in),  dimension(3,3) :: &
+        S, &                                                                                            !< 2nd Piola-Kirchhoff stress
+        Fi                                                                                              !< intermediate deformation gradient
+      real(pReal),   intent(out), dimension(3,3) :: &
+        Lp                                                                                              !< plastic velocity gradient
+      real(pReal),   intent(out), dimension(3,3,3,3) :: &
+        dLp_dS, &
+        dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
+
+    end subroutine constitutive_plastic_LpAndItsTangents
+
+    pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
+
+     integer, intent(in) :: &
+       phase, &
+       homog, &
+       offset
+     real(pReal), dimension(3,3) :: &
+       initialStrain
+
+    end function kinematics_thermal_expansion_initialStrain
+ 
+    module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
+      integer, intent(in) :: &
+        instance, &
+        i, &
+        e
+      type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
+        orientation                                                                                 !< crystal orientation
+    end subroutine plastic_nonlocal_updateCompatibility
+
+    module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal), intent(in) :: &
+        phi
+      real(pReal), intent(inout) :: &
+        phiDot, &
+        dPhiDot_dPhi
+
+    end subroutine constitutive_damage_getRateAndItsTangents
+
+    module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, Tstar, Lp, ip, el)
+      integer, intent(in) :: &
+        ip, &                                                                                           !< integration point number
+        el                                                                                              !< element number
+      real(pReal), intent(in) :: &
+        T
+      real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
+        Tstar, &
+        Lp
+      real(pReal), intent(inout) :: &
+        TDot, &
+        dTDot_dT
+    end subroutine constitutive_thermal_getRateAndItsTangents
+
 
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
@@ -226,7 +300,6 @@ module constitutive
     end subroutine source_damage_isoBrittle_deltaState
 
 
-
     module subroutine plastic_isotropic_results(instance,group)
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
@@ -276,79 +349,6 @@ module constitutive
       integer,          intent(in) :: phase
       character(len=*), intent(in) :: group
     end subroutine source_damage_isoDuctile_results
-
-    module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
-
-      integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
-      real(pReal),   intent(in), dimension(3,3) :: &
-        F, &                                                                                           !< elastic deformation gradient
-        Fp                                                                                              !< plastic deformation gradient
-    end subroutine constitutive_plastic_dependentState 
-
-    module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
-                                         S, Fi, ipc, ip, el)
-      integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S, &                                                                                            !< 2nd Piola-Kirchhoff stress
-        Fi                                                                                              !< intermediate deformation gradient
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Lp                                                                                              !< plastic velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLp_dS, &
-        dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
-
-    end subroutine constitutive_plastic_LpAndItsTangents
-
-    pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
-
-     integer, intent(in) :: &
-       phase, &
-       homog, &
-       offset
-     real(pReal), dimension(3,3) :: &
-       initialStrain
-
-    end function kinematics_thermal_expansion_initialStrain
- 
-    module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
-      integer, intent(in) :: &
-        instance, &
-        i, &
-        e
-      type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
-        orientation                                                                                 !< crystal orientation
-    end subroutine plastic_nonlocal_updateCompatibility
-
-    module subroutine damage_source_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-      integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
-     real(pReal), intent(in) :: &
-        phi
-     real(pReal), intent(inout) :: &
-        phiDot, &
-        dPhiDot_dPhi
-    end subroutine damage_source_getRateAndItsTangents
-
-    module subroutine thermal_source_getRateAndItsTangents(TDot, dTDot_dT, T, Tstar, Lp, ip, el)
-      integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
-      real(pReal), intent(in) :: &
-        T
-      real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
-        Tstar, &
-        Lp
-      real(pReal), intent(inout) :: &
-        TDot, &
-        dTDot_dT
-    end subroutine thermal_source_getRateAndItsTangents
 
   end interface
 
@@ -778,39 +778,6 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
   enddo SourceLoop
 
 end function constitutive_deltaState
-
-subroutine constitutive_thermal_getRateAndItsTangents(Tdot, dTDot_dT, T, Tstar, Lp, ip, el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal), intent(in) :: &
-    T
-  real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
-    Tstar, &
-    Lp
-  real(pReal), intent(inout) :: &
-    Tdot, &
-    dTdot_dT
-  
-  call thermal_source_getRateAndItsTangents(Tdot, dTdot_dT, T, Tstar, Lp, ip, el)
-
-end subroutine constitutive_thermal_getRateAndItsTangents
-
-subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-
-  integer, intent(in) :: &
-    ip, &                                                                                           !< integration point number
-    el                                                                                              !< element number
-  real(pReal), intent(in) :: &
-    phi
-  real(pReal), intent(inout) :: &
-    phiDot, &
-    dPhiDot_dPhi
-  
-  call damage_source_getRateAndItsTangents(phiDot,dPhiDot_dPhi,phi,ip,el)
-
-end subroutine constitutive_damage_getRateAndItsTangents
 
 
 !--------------------------------------------------------------------------------------------------
