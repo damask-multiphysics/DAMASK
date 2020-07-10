@@ -13,6 +13,13 @@ submodule(constitutive) constitutive_thermal
   module subroutine kinematics_thermal_expansion_init
   end subroutine kinematics_thermal_expansion_init
 
+  module subroutine source_thermal_externalheat_dotState(phase, of)
+    integer, intent(in) :: &
+      phase, &
+      of
+  end subroutine source_thermal_externalheat_dotState
+
+
   module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
 
     integer, intent(in) :: &
@@ -53,6 +60,44 @@ module subroutine thermal_init
   if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
 
 end subroutine thermal_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+module function thermal_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken_thermal)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                              !< element
+    phase, &
+    of
+  real(pReal),  intent(in) :: &
+    subdt                                                                                           !< timestep
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
+    FArray, &                                                                                       !< elastic deformation gradient
+    FpArray                                                                                         !< plastic deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+  logical :: broken_thermal
+  integer :: i
+
+  SourceLoop: do i = 1, phase_Nsources(phase)
+
+    sourceType: select case (phase_source(i,phase))
+
+      case (SOURCE_thermal_externalheat_ID) sourceType
+        call source_thermal_externalheat_dotState(phase,of)
+
+    end select sourceType
+
+    broken_thermal = any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
+
+  enddo sourceLoop
+
+end function thermal_dotState
 
 
 module subroutine thermal_source_getRateAndItsTangents(Tdot, dTdot_dT, T, Tstar, Lp, ip, el)

@@ -22,6 +22,33 @@ submodule(constitutive) constitutive_damage
   module subroutine kinematics_slipplane_opening_init
   end subroutine kinematics_slipplane_opening_init
 
+  module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
+
+    integer, intent(in) :: &
+      ipc, &                                                                                          !< component-ID of integration point
+      ip, &                                                                                           !< integration point
+      el                                                                                              !< element
+    real(pReal),  intent(in), dimension(3,3) :: &
+      S
+  end subroutine source_damage_anisoBrittle_dotState
+
+  module subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
+
+    integer, intent(in) :: &
+      ipc, &                                                                                          !< component-ID of integration point
+      ip, &                                                                                           !< integration point
+      el                                                                                              !< element
+  end subroutine source_damage_anisoDuctile_dotState
+
+  module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
+
+    integer, intent(in) :: &
+      ipc, &                                                                                          !< component-ID of integration point
+      ip, &                                                                                           !< integration point
+      el                                                                                              !< element
+  end subroutine source_damage_isoDuctile_dotState
+
+
   module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
     integer, intent(in) :: &
@@ -106,6 +133,50 @@ module subroutine damage_init
   if (any(phase_kinematics == KINEMATICS_slipplane_opening_ID)) call kinematics_slipplane_opening_init
 
 end subroutine damage_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+module function damage_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken_damage)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                              !< element
+    phase, &
+    of
+  real(pReal),  intent(in) :: &
+    subdt                                                                                           !< timestep
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
+    FArray, &                                                                                       !< elastic deformation gradient
+    FpArray                                                                                         !< plastic deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+  logical :: broken_damage
+  integer :: i
+
+  SourceLoop: do i = 1, phase_Nsources(phase)
+
+    sourceType: select case (phase_source(i,phase))
+
+      case (SOURCE_damage_anisoBrittle_ID) sourceType
+        call source_damage_anisoBrittle_dotState (S, ipc, ip, el) !< correct stress?
+
+      case (SOURCE_damage_isoDuctile_ID) sourceType
+        call source_damage_isoDuctile_dotState   (   ipc, ip, el)
+
+      case (SOURCE_damage_anisoDuctile_ID) sourceType
+        call source_damage_anisoDuctile_dotState (   ipc, ip, el)
+
+    end select sourceType
+
+  enddo sourceLoop
+
+  broken_damage = any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
+
+end function damage_dotState
 
 
 module subroutine damage_source_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)

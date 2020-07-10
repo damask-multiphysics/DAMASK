@@ -25,6 +25,67 @@ submodule(constitutive) constitutive_plastic
     module subroutine plastic_nonlocal_init
     end subroutine plastic_nonlocal_init
 
+    module subroutine plastic_isotropic_dotState(Mp,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_isotropic_dotState
+
+    module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_phenopowerlaw_dotState
+
+    module subroutine plastic_kinehardening_dotState(Mp,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_kinehardening_dotState
+
+    module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                  intent(in) :: &
+        T
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_dislotwin_dotState
+
+    module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
+      real(pReal), dimension(3,3),  intent(in) :: &
+        Mp                                                                                          !< Mandel stress
+      real(pReal),                  intent(in) :: &
+        T
+      integer,                      intent(in) :: &
+        instance, &
+        of
+    end subroutine plastic_disloUCLA_dotState
+
+    module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
+                                                instance,of,ip,el)
+      real(pReal), dimension(3,3), intent(in) ::&
+        Mp                                                                                          !< MandelStress
+      real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+        F, &                                                                                        !< deformation gradient
+        Fp                                                                                          !< plastic deformation gradient
+      real(pReal), intent(in) :: &
+        Temperature, &                                                                              !< temperature
+        timestep                                                                                    !< substepped crystallite time increment
+      integer, intent(in) :: &
+        instance, &
+        of, &
+        ip, &                                                                                       !< current integration point
+        el                                                                                          !< current element number
+    end subroutine plastic_nonlocal_dotState
+
 
     module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
@@ -113,6 +174,15 @@ submodule(constitutive) constitutive_plastic
         el                                                                                          !< current element number
     end subroutine plastic_nonlocal_LpAndItsTangent
 
+    module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
+      real(pReal), dimension(6,6) :: &
+        homogenizedC
+      integer,     intent(in) :: &
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+    end function plastic_dislotwin_homogenizedC
+
 
     module subroutine plastic_dislotwin_dependentState(T,instance,of)
       integer,       intent(in) :: &
@@ -165,6 +235,89 @@ module subroutine plastic_init
   endif
 
 end subroutine plastic_init
+
+!--------------------------------------------------------------------------------------------------
+!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+module function plastic_dotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken_plastic)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                              !< element
+    phase, &
+    of
+  real(pReal),  intent(in) :: &
+    subdt                                                                                           !< timestep
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
+    FArray, &                                                                                       !< elastic deformation gradient
+    FpArray                                                                                         !< plastic deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+  real(pReal),              dimension(3,3) :: &
+    Mp
+  integer :: &
+    ho, &                                                                                           !< homogenization
+    tme, &                                                                                          !< thermal member position
+    i, &                                                                                            !< counter in source loop
+    instance
+  logical :: broken_plastic
+
+
+  ho = material_homogenizationAt(el)
+  tme = thermalMapping(ho)%p(ip,el)
+  instance = phase_plasticityInstance(phase)
+
+  Mp = matmul(matmul(transpose(Fi),Fi),S)
+
+  plasticityType: select case (phase_plasticity(phase))
+
+    case (PLASTICITY_ISOTROPIC_ID) plasticityType
+      call plastic_isotropic_dotState    (Mp,instance,of)
+
+    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
+      call plastic_phenopowerlaw_dotState(Mp,instance,of)
+
+    case (PLASTICITY_KINEHARDENING_ID) plasticityType
+      call plastic_kinehardening_dotState(Mp,instance,of)
+
+    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+      call plastic_dislotwin_dotState    (Mp,temperature(ho)%p(tme),instance,of)
+
+    case (PLASTICITY_DISLOUCLA_ID) plasticityType
+      call plastic_disloucla_dotState    (Mp,temperature(ho)%p(tme),instance,of)
+
+    case (PLASTICITY_NONLOCAL_ID) plasticityType
+      call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
+                                          instance,of,ip,el)
+  end select plasticityType
+  broken_plastic = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
+
+end function plastic_dotState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the homogenize elasticity matrix
+!> ToDo: homogenizedC66 would be more consistent
+!--------------------------------------------------------------------------------------------------
+module function plastic_homogenizedC(ipc,ip,el) result(homogenizedC)
+
+  real(pReal), dimension(6,6) :: homogenizedC
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+
+  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+      homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
+    case default plasticityType
+      homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(ipc,el))
+  end select plasticityType
+
+end function plastic_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
