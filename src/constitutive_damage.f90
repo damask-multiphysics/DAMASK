@@ -189,24 +189,17 @@ module subroutine damage_results
     sourceLoop: do i = 1, phase_Nsources(p)
     group = trim('current/constituent')//'/'//trim(config_name_phase(p))
     group = trim(group)//'/sources'
+    call results_closeGroup(results_addGroup(group))
 
       sourceType: select case (phase_source(i,p))
 
         case (SOURCE_damage_anisoBrittle_ID) sourceType
-          group = trim(group)//'/damage_anisoBrittle'
-          call results_closeGroup(results_addGroup(group))
           call source_damage_anisoBrittle_results(p,group)
         case (SOURCE_damage_anisoDuctile_ID) sourceType
-          group = trim(group)//'/damage_anisoDuctile'
-          call results_closeGroup(results_addGroup(group))
           call source_damage_anisoDuctile_results(p,group)
         case (SOURCE_damage_isoBrittle_ID) sourceType
-          group = trim(group)//'/damage_isoBrittle'
-          call results_closeGroup(results_addGroup(group))
           call source_damage_isoBrittle_results(p,group)
         case (SOURCE_damage_isoDuctile_ID) sourceType
-          group = trim(group)//'/damage_isoDuctile'
-          call results_closeGroup(results_addGroup(group))
           call source_damage_isoDuctile_results(p,group)
       end select sourceType
 
