@@ -1,7 +1,5 @@
 submodule(constitutive) constitutive_thermal
 
-  implicit none
-
   interface
 
   module subroutine source_thermal_dissipation_init

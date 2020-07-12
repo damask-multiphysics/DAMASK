@@ -1,7 +1,5 @@
 submodule(constitutive) constitutive_damage
 
-  implicit none
-
   interface
 
   module subroutine source_damage_anisoBrittle_init
@@ -24,7 +22,6 @@ submodule(constitutive) constitutive_damage
 
 
   module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
     integer, intent(in) :: &
       phase, &
       constituent
@@ -33,11 +30,9 @@ submodule(constitutive) constitutive_damage
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
-
   end subroutine source_damage_anisoBrittle_getRateAndItsTangent
  
   module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
     integer, intent(in) :: &
       phase, &
       constituent
@@ -46,11 +41,9 @@ submodule(constitutive) constitutive_damage
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
-
   end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 
   module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
     integer, intent(in) :: &
       phase, &
       constituent
@@ -59,11 +52,9 @@ submodule(constitutive) constitutive_damage
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
-
   end subroutine source_damage_isoBrittle_getRateAndItsTangent
 
   module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
     integer, intent(in) :: &
       phase, &
       constituent
@@ -72,11 +63,9 @@ submodule(constitutive) constitutive_damage
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
-
   end subroutine source_damage_isoDuctile_getRateAndItsTangent
 
   module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
-
     integer, intent(in) :: &
       phase
     real(pReal),  intent(in), dimension(3,3) :: &
@@ -87,8 +76,28 @@ submodule(constitutive) constitutive_damage
     real(pReal),  intent(out) :: &
       TDot, &
       dTDot_dT
-  
   end subroutine source_thermal_dissipation_getRateAndItsTangent
+
+  module subroutine source_damage_anisoBrittle_results(phase,group)
+    integer,          intent(in) :: phase
+    character(len=*), intent(in) :: group
+  end subroutine source_damage_anisoBrittle_results
+
+  module subroutine source_damage_anisoDuctile_results(phase,group)
+    integer,          intent(in) :: phase
+    character(len=*), intent(in) :: group
+  end subroutine source_damage_anisoDuctile_results
+
+  module subroutine source_damage_isoBrittle_results(phase,group)
+    integer,          intent(in) :: phase
+    character(len=*), intent(in) :: group
+  end subroutine source_damage_isoBrittle_results
+
+  module subroutine source_damage_isoDuctile_results(phase,group)
+    integer,          intent(in) :: phase
+    character(len=*), intent(in) :: group
+  end subroutine source_damage_isoDuctile_results
+
  end interface
 
 contains
@@ -151,5 +160,42 @@ module procedure constitutive_damage_getRateAndItsTangents
   enddo
 
 end procedure constitutive_damage_getRateAndItsTangents
+
+
+module subroutine damage_results
+
+  integer :: p,i
+  character(len=pStringLen) :: group
+
+  do p = 1, size(config_name_phase)
+    sourceLoop: do i = 1, phase_Nsources(p)
+    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
+    group = trim(group)//'/sources'
+
+      sourceType: select case (phase_source(i,p))
+
+        case (SOURCE_damage_anisoBrittle_ID) sourceType
+          group = trim(group)//'/damage_anisoBrittle'
+          call results_closeGroup(results_addGroup(group))
+          call source_damage_anisoBrittle_results(p,group)
+        case (SOURCE_damage_anisoDuctile_ID) sourceType
+          group = trim(group)//'/damage_anisoDuctile'
+          call results_closeGroup(results_addGroup(group))
+          call source_damage_anisoDuctile_results(p,group)
+        case (SOURCE_damage_isoBrittle_ID) sourceType
+          group = trim(group)//'/damage_isoBrittle'
+          call results_closeGroup(results_addGroup(group))
+          call source_damage_isoBrittle_results(p,group)
+        case (SOURCE_damage_isoDuctile_ID) sourceType
+          group = trim(group)//'/damage_isoDuctile'
+          call results_closeGroup(results_addGroup(group))
+          call source_damage_isoDuctile_results(p,group)
+      end select sourceType
+
+    enddo SourceLoop
+  enddo
+
+end subroutine damage_results
+
 
 end submodule

@@ -298,56 +298,11 @@ module constitutive
         C
     end subroutine source_damage_isoBrittle_deltaState
 
-
-    module subroutine plastic_isotropic_results(instance,group)
-      integer,          intent(in) :: instance
-      character(len=*), intent(in) :: group
-    end subroutine plastic_isotropic_results
-
-    module subroutine plastic_phenopowerlaw_results(instance,group)
-      integer,          intent(in) :: instance
-      character(len=*), intent(in) :: group
-    end subroutine plastic_phenopowerlaw_results
-
-    module subroutine plastic_kinehardening_results(instance,group)
-      integer,          intent(in) :: instance
-      character(len=*), intent(in) :: group
-    end subroutine plastic_kinehardening_results
-
-    module subroutine plastic_dislotwin_results(instance,group)
-      integer,          intent(in) :: instance
-      character(len=*), intent(in) :: group
-    end subroutine plastic_dislotwin_results
-
-    module subroutine plastic_disloUCLA_results(instance,group)
-      integer,          intent(in) :: instance
-      character(len=*), intent(in) :: group
-    end subroutine plastic_disloUCLA_results
-
-    module subroutine plastic_nonlocal_results(instance,group)
-      integer,          intent(in) :: instance
-      character(len=*), intent(in) :: group
-    end subroutine plastic_nonlocal_results
-
-    module subroutine source_damage_anisoBrittle_results(phase,group)
-      integer,          intent(in) :: phase
-      character(len=*), intent(in) :: group
-    end subroutine source_damage_anisoBrittle_results
-
-    module subroutine source_damage_anisoDuctile_results(phase,group)
-      integer,          intent(in) :: phase
-      character(len=*), intent(in) :: group
-    end subroutine source_damage_anisoDuctile_results
-
-    module subroutine source_damage_isoBrittle_results(phase,group)
-      integer,          intent(in) :: phase
-      character(len=*), intent(in) :: group
-    end subroutine source_damage_isoBrittle_results
-
-    module subroutine source_damage_isoDuctile_results(phase,group)
-      integer,          intent(in) :: phase
-      character(len=*), intent(in) :: group
-    end subroutine source_damage_isoDuctile_results
+    module subroutine plastic_results
+    end subroutine plastic_results
+ 
+    module subroutine damage_results
+    end subroutine damage_results
 
   end interface
 
@@ -817,58 +772,8 @@ end function constitutive_deltaState
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results
 
-  integer :: p,i
-  character(len=pStringLen) :: group,group_plastic,group_sources
-
-  plasticityLoop:  do p=1,size(config_name_phase)
-    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
-    call results_closeGroup(results_addGroup(group))
-
-    group_plastic = trim(group)//'/plastic'
-
-    call results_closeGroup(results_addGroup(group_plastic))
-    select case(phase_plasticity(p))
-
-      case(PLASTICITY_ISOTROPIC_ID)
-        call plastic_isotropic_results(phase_plasticityInstance(p),group_plastic)
-
-      case(PLASTICITY_PHENOPOWERLAW_ID)
-        call plastic_phenopowerlaw_results(phase_plasticityInstance(p),group_plastic)
-
-      case(PLASTICITY_KINEHARDENING_ID)
-        call plastic_kinehardening_results(phase_plasticityInstance(p),group_plastic)
-
-      case(PLASTICITY_DISLOTWIN_ID)
-        call plastic_dislotwin_results(phase_plasticityInstance(p),group_plastic)
-
-      case(PLASTICITY_DISLOUCLA_ID)
-        call plastic_disloUCLA_results(phase_plasticityInstance(p),group_plastic)
-
-      case(PLASTICITY_NONLOCAL_ID)
-        call plastic_nonlocal_results(phase_plasticityInstance(p),group_plastic)
-    end select
-
-    sourceLoop: do i = 1, phase_Nsources(p)
-    group_sources = trim(group)//'/sources'
-
-    call results_closeGroup(results_addGroup(group_sources))
- 
-      sourceType: select case (phase_source(i,p))
-
-        case (SOURCE_damage_anisoBrittle_ID) sourceType
-          call source_damage_anisoBrittle_results(p,group_sources)
-        case (SOURCE_damage_anisoDuctile_ID) sourceType
-          call source_damage_anisoDuctile_results(p,group_sources)
-        case (SOURCE_damage_isoBrittle_ID) sourceType
-          call source_damage_isoBrittle_results(p,group_sources)
-        case (SOURCE_damage_isoDuctile_ID) sourceType
-          call source_damage_isoDuctile_results(p,group_sources)
-      end select sourceType
-
-    enddo SourceLoop
-
-  enddo plasticityLoop
-
+  call plastic_results
+  call damage_results
 
 end subroutine constitutive_results
 

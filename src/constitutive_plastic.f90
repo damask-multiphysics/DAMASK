@@ -1,7 +1,5 @@
 submodule(constitutive) constitutive_plastic
 
-  implicit none
- 
   interface
 
     module subroutine plastic_none_init
@@ -139,6 +137,38 @@ submodule(constitutive) constitutive_plastic
         el
     end subroutine plastic_nonlocal_dependentState
 
+    module subroutine plastic_isotropic_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_isotropic_results
+
+    module subroutine plastic_phenopowerlaw_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_phenopowerlaw_results
+
+    module subroutine plastic_kinehardening_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_kinehardening_results
+
+    module subroutine plastic_dislotwin_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_dislotwin_results
+
+    module subroutine plastic_disloUCLA_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_disloUCLA_results
+
+    module subroutine plastic_nonlocal_results(instance,group)
+      integer,          intent(in) :: instance
+      character(len=*), intent(in) :: group
+    end subroutine plastic_nonlocal_results
+
+
+
   end interface
 
 
@@ -251,6 +281,44 @@ module procedure constitutive_plastic_LpAndItsTangents
   enddo; enddo
 
 end procedure constitutive_plastic_LpAndItsTangents
+
+module subroutine plastic_results
+
+  integer :: p
+  character(len=pStringLen) :: group
+
+  plasticityLoop:  do p=1,size(config_name_phase)
+    group = trim('current/constituent')//'/'//trim(config_name_phase(p))
+    call results_closeGroup(results_addGroup(group))
+
+    group = trim(group)//'/plastic'
+
+    call results_closeGroup(results_addGroup(group))
+    select case(phase_plasticity(p))
+
+      case(PLASTICITY_ISOTROPIC_ID)
+        call plastic_isotropic_results(phase_plasticityInstance(p),group)
+
+      case(PLASTICITY_PHENOPOWERLAW_ID)
+        call plastic_phenopowerlaw_results(phase_plasticityInstance(p),group)
+
+      case(PLASTICITY_KINEHARDENING_ID)
+        call plastic_kinehardening_results(phase_plasticityInstance(p),group)
+
+      case(PLASTICITY_DISLOTWIN_ID)
+        call plastic_dislotwin_results(phase_plasticityInstance(p),group)
+
+      case(PLASTICITY_DISLOUCLA_ID)
+        call plastic_disloUCLA_results(phase_plasticityInstance(p),group)
+
+      case(PLASTICITY_NONLOCAL_ID)
+        call plastic_nonlocal_results(phase_plasticityInstance(p),group)
+    end select
+
+  enddo plasticityLoop
+
+end subroutine plastic_results
+
 
 end submodule constitutive_plastic
 
