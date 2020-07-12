@@ -171,7 +171,7 @@ end subroutine plastic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-module procedure constitutive_plastic_dependentState
+module procedure constitutive_dependentState
 
   integer :: &
     ho, &                                                                                           !< homogenization
@@ -192,14 +192,14 @@ module procedure constitutive_plastic_dependentState
       call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
   end select plasticityType
 
-end procedure constitutive_plastic_dependentState
+end procedure constitutive_dependentState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
-module procedure constitutive_plastic_LpAndItsTangents
+module procedure constitutive_LpAndItsTangents
 
   real(pReal), dimension(3,3,3,3) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to Mandel stress
@@ -250,7 +250,7 @@ module procedure constitutive_plastic_LpAndItsTangents
     dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
   enddo; enddo
 
-end procedure constitutive_plastic_LpAndItsTangents
+end procedure constitutive_LpAndItsTangents
 
 end submodule constitutive_plastic
 
