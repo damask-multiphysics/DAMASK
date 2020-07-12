@@ -23,10 +23,10 @@ submodule(constitutive) constitutive_damage
 
   module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
-      phase, &
-      constituent
+      phase, &                                                                                      !< phase ID of element
+      constituent                                                                                   !< position of element within its phase instance 
     real(pReal),  intent(in) :: &
-      phi
+      phi                                                                                           !< damage value 
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
@@ -102,6 +102,9 @@ submodule(constitutive) constitutive_damage
 
 contains
 
+!----------------------------------------------------------------------------------------------
+!< @brief initialize damage sources and kinematics mechanism
+!----------------------------------------------------------------------------------------------
 module subroutine damage_init
 
 ! initialize source mechanisms
@@ -118,7 +121,19 @@ module subroutine damage_init
 end subroutine damage_init
 
 
-module procedure constitutive_damage_getRateAndItsTangents
+!----------------------------------------------------------------------------------------------
+!< @brief returns local part of nonlocal damage driving force
+!----------------------------------------------------------------------------------------------
+module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
+
+  integer, intent(in) :: &
+    ip, &                                                                                       !< integration point number
+    el                                                                                          !< element number
+  real(pReal), intent(in) :: &
+    phi
+  real(pReal), intent(inout) :: &
+    phiDot, &
+    dPhiDot_dPhi
 
   real(pReal) :: &
     localphiDot, &
@@ -159,9 +174,12 @@ module procedure constitutive_damage_getRateAndItsTangents
     enddo
   enddo
 
-end procedure constitutive_damage_getRateAndItsTangents
+end subroutine constitutive_damage_getRateAndItsTangents
 
 
+!----------------------------------------------------------------------------------------------
+!< @brief writes damage sources resultsvto HDF5 output file
+!----------------------------------------------------------------------------------------------
 module subroutine damage_results
 
   integer :: p,i

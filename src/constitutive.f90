@@ -101,9 +101,9 @@ module constitutive
     module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
 
       integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
       real(pReal),  intent(in), dimension(3,3) :: &
         S
     end subroutine source_damage_anisoBrittle_dotState
@@ -111,17 +111,17 @@ module constitutive
     module subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
 
       integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
     end subroutine source_damage_anisoDuctile_dotState
 
     module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
 
       integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
     end subroutine source_damage_isoDuctile_dotState
 
     module subroutine source_thermal_externalheat_dotState(phase, of)
@@ -143,28 +143,28 @@ module constitutive
     module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
 
       integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
       real(pReal),   intent(in), dimension(3,3) :: &
-        F, &                                                                                           !< elastic deformation gradient
-        Fp                                                                                              !< plastic deformation gradient
+        F, &                                                                                        !< elastic deformation gradient
+        Fp                                                                                          !< plastic deformation gradient
     end subroutine constitutive_plastic_dependentState 
 
     module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, ipc, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
       real(pReal),   intent(in),  dimension(3,3) :: &
-        S, &                                                                                            !< 2nd Piola-Kirchhoff stress
-        Fi                                                                                              !< intermediate deformation gradient
+        S, &                                                                                        !< 2nd Piola-Kirchhoff stress
+        Fi                                                                                          !< intermediate deformation gradient
       real(pReal),   intent(out), dimension(3,3) :: &
-        Lp                                                                                              !< plastic velocity gradient
+        Lp                                                                                          !< plastic velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
         dLp_dS, &
-        dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
+        dLp_dFi                                                                                     !< derivative of Lp with respect to Fi
 
     end subroutine constitutive_plastic_LpAndItsTangents
 
@@ -190,8 +190,8 @@ module constitutive
 
     module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
       integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
       real(pReal), intent(in) :: &
         phi
       real(pReal), intent(inout) :: &
@@ -202,8 +202,8 @@ module constitutive
 
     module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, Tstar, Lp, ip, el)
       integer, intent(in) :: &
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
       real(pReal), intent(in) :: &
         T
       real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
@@ -231,41 +231,41 @@ module constitutive
     module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
 
       integer, intent(in) :: &
-        ipc, &                                                                                          !< grain number
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+        ipc, &                                                                                      !< grain number
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
       real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                              !< damage velocity gradient
+        Ld                                                                                          !< damage velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
     module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
 
       integer, intent(in) :: &
-        ipc, &                                                                                          !< grain number
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+        ipc, &                                                                                      !< grain number
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
       real(pReal),   intent(in),  dimension(3,3) :: &
         S
       real(pReal),   intent(out), dimension(3,3) :: &
-        Ld                                                                                              !< damage velocity gradient
+        Ld                                                                                          !< damage velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLd_dTstar                                                                                      !< derivative of Ld with respect to Tstar (4th-order tensor)
+        dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
     module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
 
       integer, intent(in) :: &
-        ipc, &                                                                                          !< grain number
-        ip, &                                                                                           !< integration point number
-        el                                                                                              !< element number
+        ipc, &                                                                                      !< grain number
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
       real(pReal),   intent(out), dimension(3,3) :: &
-        Li                                                                                              !< thermal velocity gradient
+        Li                                                                                          !< thermal velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLi_dTstar                                                                                      !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
+        dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
     end subroutine kinematics_thermal_expansion_LiAndItsTangent 
 
 
@@ -289,9 +289,9 @@ module constitutive
 
     module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                          !< component-ID of integration point
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element
+        ipc, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
       real(pReal),  intent(in), dimension(3,3) :: &
         Fe
       real(pReal),  intent(in), dimension(6,6) :: &
@@ -613,7 +613,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
-    el, &                                                                                              !< element
+    el, &                                                                                           !< element
     phase, &
     of
   real(pReal),  intent(in) :: &
@@ -668,7 +668,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
     sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
-        call source_damage_anisoBrittle_dotState (S, ipc, ip, el) !< correct stress?
+        call source_damage_anisoBrittle_dotState (S, ipc, ip, el) ! correct stress?
 
       case (SOURCE_damage_isoDuctile_ID) sourceType
         call source_damage_isoDuctile_dotState   (   ipc, ip, el)

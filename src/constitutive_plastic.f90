@@ -168,7 +168,6 @@ submodule(constitutive) constitutive_plastic
     end subroutine plastic_nonlocal_results
 
 
-
   end interface
 
 
@@ -197,11 +196,18 @@ module subroutine plastic_init
 end subroutine plastic_init
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief calls microstructure function of the different plasticity constitutive models
+!--------------------------------------------------------------------------------------------------
+module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
 
-!--------------------------------------------------------------------------------------------------
-!> @brief calls microstructure function of the different constitutive models
-!--------------------------------------------------------------------------------------------------
-module procedure constitutive_plastic_dependentState
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+  real(pReal),   intent(in), dimension(3,3) :: &
+    F, &                                                                                            !< elastic deformation gradient
+    Fp                                                                                              !< plastic deformation gradient
 
   integer :: &
     ho, &                                                                                           !< homogenization
@@ -222,14 +228,28 @@ module procedure constitutive_plastic_dependentState
       call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
   end select plasticityType
 
-end procedure constitutive_plastic_dependentState
+end subroutine constitutive_plastic_dependentState
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
-module procedure constitutive_plastic_LpAndItsTangents
+module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
+                                     S, Fi, ipc, ip, el)
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+  real(pReal),   intent(in),  dimension(3,3) :: &
+    S, &                                                                                            !< 2nd Piola-Kirchhoff stress
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),   intent(out), dimension(3,3) :: &
+    Lp                                                                                              !< plastic velocity gradient
+  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+    dLp_dS, &
+    dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
 
   real(pReal), dimension(3,3,3,3) :: &
     dLp_dMp                                                                                         !< derivative of Lp with respect to Mandel stress
@@ -280,8 +300,12 @@ module procedure constitutive_plastic_LpAndItsTangents
     dLp_dS(i,j,1:3,1:3)  = matmul(matmul(transpose(Fi),Fi),dLp_dMp(i,j,1:3,1:3))                     ! ToDo: @PS: why not:   dLp_dMp:(FiT Fi)
   enddo; enddo
 
-end procedure constitutive_plastic_LpAndItsTangents
+end subroutine constitutive_plastic_LpAndItsTangents
 
+
+!--------------------------------------------------------------------------------------------
+!> @brief writes plasticity constitutive results to HDF5 output file
+!-------------------------------------------------------------------------------------------- 
 module subroutine plastic_results
 
   integer :: p

@@ -39,8 +39,12 @@ submodule(constitutive) constitutive_thermal
   end subroutine source_thermal_externalheat_getRateAndItsTangent
 
  end interface
+
 contains
 
+!----------------------------------------------------------------------------------------------
+!< @brief initializes thermal sources and kinematics mechanism
+!----------------------------------------------------------------------------------------------
 module subroutine thermal_init
 
 ! initialize source mechanisms
@@ -54,7 +58,21 @@ module subroutine thermal_init
 end subroutine thermal_init
 
 
-module procedure constitutive_thermal_getRateAndItsTangents
+!----------------------------------------------------------------------------------------------
+!< @brief calculates thermal dissipation rate
+!----------------------------------------------------------------------------------------------
+module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, Tstar, Lp, ip, el)
+  integer, intent(in) :: &
+    ip, &                                                                                       !< integration point number
+    el                                                                                          !< element number
+  real(pReal), intent(in) :: &
+    T
+  real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
+    Tstar, &
+    Lp
+  real(pReal), intent(inout) :: &
+    TDot, &
+    dTDot_dT
 
   real(pReal) :: &
     my_Tdot, &
@@ -94,6 +112,6 @@ module procedure constitutive_thermal_getRateAndItsTangents
      enddo  
    enddo
  
-end procedure constitutive_thermal_getRateAndItsTangents
+end subroutine constitutive_thermal_getRateAndItsTangents
 
 end submodule
