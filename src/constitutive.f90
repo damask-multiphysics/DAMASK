@@ -140,7 +140,7 @@ module constitutive
         el                                                                                          !< element
     end function plastic_dislotwin_homogenizedC
 
-    module subroutine constitutive_dependentState(F, Fp, ipc, ip, el)
+    module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
 
       integer, intent(in) :: &
         ipc, &                                                                                          !< component-ID of integration point
@@ -149,9 +149,9 @@ module constitutive
       real(pReal),   intent(in), dimension(3,3) :: &
         F, &                                                                                           !< elastic deformation gradient
         Fp                                                                                              !< plastic deformation gradient
-    end subroutine constitutive_dependentState 
+    end subroutine constitutive_plastic_dependentState 
 
-    module subroutine constitutive_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
+    module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, ipc, ip, el)
       integer, intent(in) :: &
         ipc, &                                                                                          !< component-ID of integration point
@@ -166,7 +166,7 @@ module constitutive
         dLp_dS, &
         dLp_dFi                                                                                         !< derivative of Lp with respect to Fi
 
-    end subroutine constitutive_LpAndItsTangents
+    end subroutine constitutive_plastic_LpAndItsTangents
 
     pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
 
@@ -351,6 +351,18 @@ module constitutive
 
   end interface
 
+  interface constitutive_LpAndItsTangents
+    module procedure :: constitutive_plastic_LpAndItsTangents
+  end interface constitutive_LpAndItsTangents
+ 
+  interface constitutive_dependentState
+    module procedure :: constitutive_plastic_dependentState
+  end interface constitutive_dependentState
+
+  interface constitutive_getRateAndItsTangents
+    module procedure :: constitutive_damage_getRateAndItsTangents , &
+                        constitutive_thermal_getRateAndItsTangents
+  end interface constitutive_getRateAndItsTangents
 
   type :: tDebugOptions
     logical :: &
@@ -376,8 +388,7 @@ module constitutive
     constitutive_collectDotState, &
     constitutive_deltaState, &
     plastic_nonlocal_updateCompatibility, &
-    constitutive_damage_getRateAndItsTangents, &
-    constitutive_thermal_getRateAndItsTangents, &
+    constitutive_getRateAndItsTangents, &
     constitutive_results
 
 contains

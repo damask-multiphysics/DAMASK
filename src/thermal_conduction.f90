@@ -90,7 +90,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   dTdot_dT = 0.0_pReal
 
   homog  = material_homogenizationAt(el)
-  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, crystallite_S,crystallite_Lp ,ip, el) 
+  call constitutive_getRateAndItsTangents(TDot, dTDot_dT, T, crystallite_S,crystallite_Lp ,ip, el) 
 
   Tdot = Tdot/real(homogenization_Ngrains(homog),pReal)
   dTdot_dT = dTdot_dT/real(homogenization_Ngrains(homog),pReal)
