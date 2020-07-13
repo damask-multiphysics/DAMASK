@@ -119,6 +119,7 @@ subroutine discretization_marc_init
   unscaledNormals = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
+  !call geometry_plastic_nonlocal_setIPneighborhood                                                 ToDo: Support nonlocal
   call geometry_plastic_nonlocal_results
   
 end subroutine discretization_marc_init

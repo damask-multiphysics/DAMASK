@@ -529,6 +529,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'unknown material parameter:'
     case (211)
       msg = 'material parameter out of bounds:'
+    case (212)
+      msg = 'nonlocal model not supported'
 
 !--------------------------------------------------------------------------------------------------
 ! numerics error messages
