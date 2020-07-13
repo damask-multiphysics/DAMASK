@@ -368,8 +368,7 @@ subroutine constitutive_init
   debugConstitutive%ip         =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
   debugConstitutive%grain      =  debug_root%get_asInt('grain',defaultVal = 1)
 
-!--------------------------------------------------------------------------------------------------
-! initialized plasticity
+
   call plastic_init
   call damage_init
   call thermal_init
@@ -386,8 +385,7 @@ subroutine constitutive_init
       sourceState(ph)%p(s)%partionedState0 = sourceState(ph)%p(s)%state0
       sourceState(ph)%p(s)%state           = sourceState(ph)%p(s)%partionedState0
     end forall
-!--------------------------------------------------------------------------------------------------
-! determine max size of source state
+
     constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
                                                 maxval(sourceState(ph)%p%sizeDotState))
   enddo PhaseLoop2
@@ -401,12 +399,12 @@ end subroutine constitutive_init
 !--------------------------------------------------------------------------------------------------
 function constitutive_homogenizedC(ipc,ip,el)
 
-  real(pReal) , dimension(6,6) :: &
+  real(pReal), dimension(6,6) :: &
     constitutive_homogenizedC
   integer,      intent(in)     :: &
-    ipc, & 
-    ip, &
-    el
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
 
   plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
@@ -628,9 +626,9 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
   real(pReal),              dimension(3,3) :: &
     Mp
   integer :: &
-    ho, &
-    tme, &
-    i, &
+    ho, &                                                                                           !< homogenization
+    tme, &                                                                                          !< thermal member position
+    i, &                                                                                            !< counter in source loop
     instance
   logical :: broken
 
@@ -684,7 +682,6 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
     broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
 
   enddo SourceLoop
-
 
 end function constitutive_collectDotState
 

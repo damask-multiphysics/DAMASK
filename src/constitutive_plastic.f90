@@ -175,12 +175,10 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates arrays pointing to array of the various constitutive modules
+!> @brief Initialize constitutive models for plasticity
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_init
 
-!--------------------------------------------------------------------------------------------------
-! initialized plasticity
   if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
   if (any(phase_plasticity == PLASTICITY_ISOTROPIC_ID))     call plastic_isotropic_init
   if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init
