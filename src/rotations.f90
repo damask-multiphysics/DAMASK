@@ -574,6 +574,7 @@ end function om2qu
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @brief orientation matrix to Euler angles
+!> @details Two step check for special cases to avoid invalid operations (not needed for python)
 !---------------------------------------------------------------------------------------------------
 pure function om2eu(om) result(eu)
 
@@ -581,11 +582,13 @@ pure function om2eu(om) result(eu)
   real(pReal),             dimension(3)   :: eu
   real(pReal)                             :: zeta
 
-  if(dNeq(abs(om(3,3)),1.0_pReal,1.e-9_pReal)) then
+  if    (dNeq(abs(om(3,3)),1.0_pReal,1.e-5_pReal)) then
     zeta = 1.0_pReal/sqrt(1.0_pReal-om(3,3)**2.0_pReal)
     eu = [atan2(om(3,1)*zeta,-om(3,2)*zeta), &
           acos(om(3,3)), &
           atan2(om(1,3)*zeta, om(2,3)*zeta)]
+  elseif(dNeq(abs(om(3,3)),1.0_pReal,1.e-8_pReal)) then
+    eu = [PI*.75_pReal,acos(math_clip(om(3,3),-1.0_pReal,1.0_pReal)),PI*.25_pReal]
   else
     eu = [atan2(om(1,2),om(1,1)), 0.5_pReal*PI*(1.0_pReal-om(3,3)),0.0_pReal ]
   end if
