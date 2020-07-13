@@ -91,14 +91,13 @@ module subroutine plastic_disloUCLA_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_LABEL//' init  -+>>>'
 
   write(6,'(/,a)') ' Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   write(6,'(a)')   ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
   Ninstance = count(phase_plasticity == PLASTICITY_DISLOUCLA_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))

@@ -16,7 +16,6 @@ program DAMASK_mesh
   use CPFEM2
   use FEsolving
   use numerics
-  use YAML_types
   use discretization_mesh
   use FEM_Utilities
   use mesh_mech_FEM

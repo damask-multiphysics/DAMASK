@@ -6,7 +6,6 @@
 !--------------------------------------------------------------------------------------------------
 module source_damage_isoBrittle
   use prec
-  use debug
   use IO
   use math
   use discretization
@@ -50,11 +49,10 @@ subroutine source_damage_isoBrittle_init
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_source == SOURCE_DAMAGE_ISOBRITTLE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(source_damage_isoBrittle_offset  (size(config_phase)), source=0)
   allocate(source_damage_isoBrittle_instance(size(config_phase)), source=0)

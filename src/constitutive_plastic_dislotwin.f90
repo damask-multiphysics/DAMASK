@@ -138,7 +138,7 @@ module subroutine plastic_dislotwin_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_LABEL//' init  -+>>>'
 
   write(6,'(/,a)') ' Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
   write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2004.04.012'
@@ -150,9 +150,7 @@ module subroutine plastic_dislotwin_init
   write(6,'(a,/)') ' https://doi.org/10.1016/j.actamat.2016.07.032'
 
   Ninstance = count(phase_plasticity == PLASTICITY_DISLOTWIN_ID)
-
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))

@@ -22,7 +22,6 @@ module grid_mech_spectral_polarisation
   use homogenization
   use discretization_grid
   use debug
-  use YAML_types
 
   implicit none
   private
@@ -49,6 +48,8 @@ module grid_mech_spectral_polarisation
   end type tNumerics
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
+
+  logical, private :: debugRotation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -109,7 +110,8 @@ subroutine grid_mech_spectral_polarisation_init
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   class (tNode), pointer :: &
-    num_grid
+    num_grid, &
+    debug_grid
 
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
@@ -126,6 +128,11 @@ subroutine grid_mech_spectral_polarisation_init
 
   write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+
+!------------------------------------------------------------------------------------------------
+! debugging options
+  debug_grid => debug_root%get('grid',defaultVal=emptyList)
+  debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters
@@ -547,12 +554,13 @@ subroutine formResidual(in, FandF_tau, &
   call SNESGetIterationNumber(snes,PETScIter,ierr);  CHKERRQ(ierr)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
+
 !--------------------------------------------------------------------------------------------------
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
-    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
+    if(debugRotation) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &

@@ -74,11 +74,10 @@ module subroutine plastic_kinehardening_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_KINEHARDENING_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_plasticity == PLASTICITY_KINEHARDENING_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -96,8 +95,8 @@ module subroutine plastic_kinehardening_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 #ifdef DEBUG
-    if  (p==material_phaseAt(debug_g,debug_e)) then
-      prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
+    if  (p==material_phaseAt(debugConstitutive%grain,debugConstitutive%element)) then
+      prm%of_debug = material_phasememberAt(debugConstitutive%grain,debugConstitutive%ip,debugConstitutive%element)
     endif
 #endif
 
@@ -328,9 +327,8 @@ module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
                 dEq0(gdot_pos+gdot_neg,1e-10_pReal))                                                ! current sense of shear direction
 
 #ifdef DEBUG
-  if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
-             .and. (of == prm%of_debug &
-                    .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
+  if (debugConstitutive%extensive &
+             .and. (of == prm%of_debug  .or. .not. debugConstitutive%selective)) then
     write(6,'(a)') '======= kinehardening delta state ======='
     write(6,*) sense,state(instance)%sense(:,of)
   endif

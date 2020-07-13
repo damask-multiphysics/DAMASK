@@ -1,0 +1,20 @@
+### debugging parameters ###
+## case sensitive keys
+# example:
+# --------
+# mesh:   [basic, extensive]             # switches on the "basic" and "extensive" debugging in mesh-related functions/subroutines
+#
+
+mesh:           [basic,extensive]                   # mesh.f90,            possible value:  basic, extensive
+material:       [basic, extensive]                  # material.f90,        possible values: basic, extensive
+constitutive:   [basic, extensive, selective]       # constitutive_*.f90   possible values: basic, extensive, selective
+crystallite:    [basic, extensive, selective]       # crystallite.f90      possible values: basic, extensive, selective
+homogenization: [basic, extensive, selective]       # homogenization_*.f90 possible values: basic, extensive, selective
+cpfem:          [basic, extensive, selective]       # CPFEM.f90            possible values: basic, extensive, selective
+grid:           [basic, fft, restart, divergence, rotation, petsc]                              # DAMASK_spectral.f90  possible values: basic, fft, restart, divergence, rotation, petsc
+marc:           [basic]                                  # MSC.MARC FEM solver  possible values: basic 
+#
+# Parameters for selective
+element:          1                    # selected element for debugging 
+integrationpoint: 1                    # selected integration point for debugging 
+grain:            1                    # selected grain at ip for debugging

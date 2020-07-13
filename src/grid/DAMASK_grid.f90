@@ -24,7 +24,6 @@ program DAMASK_grid
   use grid_damage_spectral
   use grid_thermal_spectral
   use results
-  use YAML_types
   
   implicit none
 
@@ -93,7 +92,8 @@ program DAMASK_grid
   external :: &
     quit
   class (tNode), pointer :: &
-    num_grid
+    num_grid, &
+    debug_grid                                                                                      ! pointer to grid debug options
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -124,6 +124,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
  
+  debug_grid => debug_root%get('grid',defaultVal=emptyList)
   select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic'))) 
     case ('Basic')
       mech_init         => grid_mech_spectral_basic_init
@@ -133,7 +134,7 @@ program DAMASK_grid
       mech_restartWrite => grid_mech_spectral_basic_restartWrite
   
     case ('Polarisation')
-      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+     if(debug_grid%contains('basic')) &
         call IO_warning(42, ext_msg='debug Divergence')
       mech_init         => grid_mech_spectral_polarisation_init
       mech_forward      => grid_mech_spectral_polarisation_forward
@@ -142,7 +143,7 @@ program DAMASK_grid
       mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
   
     case ('FEM')
-      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+     if(debug_grid%contains('basic')) &
         call IO_warning(42, ext_msg='debug Divergence')
       mech_init         => grid_mech_FEM_init
       mech_forward      => grid_mech_FEM_forward
@@ -340,7 +341,7 @@ program DAMASK_grid
     writeHeader: if (interface_restartInc < 1) then
       open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
       write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
-      if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
+      if (debug_grid%contains('basic')) &
         write(6,'(/,a)') ' header of statistics file written out'
       flush(6)
     else writeHeader
