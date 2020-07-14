@@ -387,7 +387,7 @@ module subroutine plastic_nonlocal_init
     call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
 
     plasticState(p)%nonlocal = config%KeyExists('/nonlocal/')
-    if(plasticState(p)%nonlocal .and. .not. allocated(geometry_plastic_nonlocal_IPneighborhood)) &
+    if(plasticState(p)%nonlocal .and. .not. allocated(IPneighborhood)) &
       call IO_error(212,ext_msg='IPneighborhood does not exist')
 
 
