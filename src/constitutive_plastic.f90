@@ -1,3 +1,6 @@
+!----------------------------------------------------------------------------------------------------
+!> @brief internal microstructure state for all plasticity constitutive models  
+!----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_plastic
 
   interface
@@ -42,7 +45,6 @@ submodule(constitutive) constitutive_plastic
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
         dLp_dMp                                                                                     !< derivative of Lp with respect to the Mandel stress
-
       real(pReal), dimension(3,3),     intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                         intent(in) :: &
@@ -128,13 +130,13 @@ submodule(constitutive) constitutive_plastic
 
     module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
       real(pReal), dimension(3,3), intent(in) :: &
-        F, &
-        Fp
+        F, &                                                                                        !< deformation gradient
+        Fp                                                                                          !< plastic deformation gradient
       integer, intent(in) :: &
         instance, &
         of, &
-        ip, &
-        el
+        ip, &                                                                                       !< current integration point
+        el                                                                                          !< current element number
     end subroutine plastic_nonlocal_dependentState
 
     module subroutine plastic_isotropic_results(instance,group)

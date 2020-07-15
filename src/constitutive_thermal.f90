@@ -1,3 +1,6 @@
+!----------------------------------------------------------------------------------------------------
+!> @brief internal microstructure state for all thermal sources and kinematics constitutive models  
+!----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_thermal
 
   interface
@@ -13,29 +16,24 @@ submodule(constitutive) constitutive_thermal
 
 
   module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
-
     integer, intent(in) :: &
-      phase
+      phase                                                                                         !< phase ID of element
     real(pReal),  intent(in), dimension(3,3) :: &
-      Tstar
+      Tstar                                                                                         !< 2nd Piola Kirchoff stress tensor for a given element
     real(pReal),  intent(in), dimension(3,3) :: &
-      Lp
-
+      Lp                                                                                            !< plastic velocuty gradient for a given element
     real(pReal),  intent(out) :: &
       TDot, &
       dTDot_dT
-  
   end subroutine source_thermal_dissipation_getRateAndItsTangent
 
   module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phase, of)
-
     integer, intent(in) :: &
       phase, &
       of
     real(pReal),  intent(out) :: &
       TDot, &
       dTDot_dT
-
   end subroutine source_thermal_externalheat_getRateAndItsTangent
 
  end interface
@@ -61,15 +59,15 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, Tstar, Lp, ip, el)
+module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, S, Lp, ip, el)
   integer, intent(in) :: &
-    ip, &                                                                                       !< integration point number
-    el                                                                                          !< element number
+    ip, &                                                                                           !< integration point number
+    el                                                                                              !< element number
   real(pReal), intent(in) :: &
     T
   real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
-    Tstar, &
-    Lp
+    S, &                                                                                            !< current 2nd Piola Kirchoff stress
+    Lp                                                                                              !< plastic velocity gradient
   real(pReal), intent(inout) :: &
     TDot, &
     dTDot_dT
@@ -95,7 +93,7 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
        select case(phase_source(source,phase))                                                   
          case (SOURCE_thermal_dissipation_ID)
           call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                               Tstar(1:3,1:3,grain,ip,el), &
+                                                               S(1:3,1:3,grain,ip,el), &
                                                                 Lp(1:3,1:3,grain,ip,el), & 
                                                                     phase)
    
@@ -114,4 +112,5 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
  
 end subroutine constitutive_thermal_getRateAndItsTangents
 
-end submodule
+
+end submodule constitutive_thermal

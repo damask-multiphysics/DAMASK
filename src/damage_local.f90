@@ -131,7 +131,7 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
   phiDot = 0.0_pReal
   dPhiDot_dPhi = 0.0_pReal
  
-  call constitutive_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
+  call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
 
   phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
   dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)

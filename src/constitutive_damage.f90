@@ -1,3 +1,6 @@
+!----------------------------------------------------------------------------------------------------
+!> @brief internal microstructure state for all damage sources and kinematics constitutive models  
+!----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_damage
 
   interface
@@ -26,7 +29,7 @@ submodule(constitutive) constitutive_damage
       phase, &                                                                                      !< phase ID of element
       constituent                                                                                   !< position of element within its phase instance 
     real(pReal),  intent(in) :: &
-      phi                                                                                           !< damage value 
+      phi                                                                                           !< damage parameter 
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
@@ -34,10 +37,10 @@ submodule(constitutive) constitutive_damage
  
   module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
-      phase, &
-      constituent
+      phase, &                                                                                      !< phase ID of element
+      constituent                                                                                   !< position of element within its phase instance
     real(pReal),  intent(in) :: &
-      phi
+      phi                                                                                           !< damage parameter
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
@@ -45,10 +48,10 @@ submodule(constitutive) constitutive_damage
 
   module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
-      phase, &
-      constituent
+      phase, &                                                                                      !< phase ID of element
+      constituent                                                                                   !< position of element within its phase instance
     real(pReal),  intent(in) :: &
-      phi
+      phi                                                                                           !< damage parameter
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
@@ -56,27 +59,14 @@ submodule(constitutive) constitutive_damage
 
   module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
-      phase, &
-      constituent
+      phase, &                                                                                      !< phase ID of element
+      constituent                                                                                   !< position of element within its phase instance
     real(pReal),  intent(in) :: &
-      phi
+      phi                                                                                           !< damage parameter
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
   end subroutine source_damage_isoDuctile_getRateAndItsTangent
-
-  module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
-    integer, intent(in) :: &
-      phase
-    real(pReal),  intent(in), dimension(3,3) :: &
-      Tstar
-    real(pReal),  intent(in), dimension(3,3) :: &
-      Lp
-
-    real(pReal),  intent(out) :: &
-      TDot, &
-      dTDot_dT
-  end subroutine source_thermal_dissipation_getRateAndItsTangent
 
   module subroutine source_damage_anisoBrittle_results(phase,group)
     integer,          intent(in) :: phase
@@ -108,10 +98,10 @@ contains
 module subroutine damage_init
 
 ! initialize source mechanisms
-  if (any(phase_source == SOURCE_damage_isoBrittle_ID))       call source_damage_isoBrittle_init
-  if (any(phase_source == SOURCE_damage_isoDuctile_ID))       call source_damage_isoDuctile_init
-  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))     call source_damage_anisoBrittle_init
-  if (any(phase_source == SOURCE_damage_anisoDuctile_ID))     call source_damage_anisoDuctile_init
+  if (any(phase_source == SOURCE_damage_isoBrittle_ID))         call source_damage_isoBrittle_init
+  if (any(phase_source == SOURCE_damage_isoDuctile_ID))         call source_damage_isoDuctile_init
+  if (any(phase_source == SOURCE_damage_anisoBrittle_ID))       call source_damage_anisoBrittle_init
+  if (any(phase_source == SOURCE_damage_anisoDuctile_ID))       call source_damage_anisoDuctile_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize kinematic mechanisms
@@ -127,10 +117,10 @@ end subroutine damage_init
 module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
 
   integer, intent(in) :: &
-    ip, &                                                                                       !< integration point number
-    el                                                                                          !< element number
+    ip, &                                                                                           !< integration point number
+    el                                                                                              !< element number
   real(pReal), intent(in) :: &
-    phi
+    phi                                                                                             !< damage parameter      
   real(pReal), intent(inout) :: &
     phiDot, &
     dPhiDot_dPhi
@@ -209,4 +199,4 @@ module subroutine damage_results
 end subroutine damage_results
 
 
-end submodule
+end submodule constitutive_damage
