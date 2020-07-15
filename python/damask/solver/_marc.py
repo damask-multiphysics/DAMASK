@@ -33,7 +33,7 @@ class Marc:
     @property
     def tools_path(self):
 
-        path_MSC   = damsk.environment.options['MSC_ROOT']
+        path_MSC   = damask.environment.options['MSC_ROOT']
         path_tools = Path(f'{path_MSC}/marc{self.version}/tools')
 
         return path_tools if path_tools.is_dir() else None
