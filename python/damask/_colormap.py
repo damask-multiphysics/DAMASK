@@ -3,6 +3,8 @@ import functools
 
 import numpy as np
 import matplotlib as mpl
+if os.name == 'posix' and 'DISPLAY' not in os.environ:
+    mpl.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
