@@ -50,7 +50,6 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016"
   IntelCompiler17_8:               "Compiler/Intel/17.8 Libraries/IMKL/2017"
   IntelCompiler18_4:               "Compiler/Intel/18.4 Libraries/IMKL/2018"
   GNUCompiler8_2:                  "Compiler/GNU/8.2"
@@ -70,10 +69,9 @@ variables:
   PETSc_MPICH_Intel:               "$PETSc3_10_3IMPI2018Intel18_4"
   PETSc_MPICH_GNU:                 "$PETSc3_10_3MPICH3_3GNU8_2"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2018_1:                       "FEM/MSC/2018.1"
-  MSC2019:                         "FEM/MSC/2019"
+  MSC2019_1:                       "FEM/MSC/2019.1"
   # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2019"
+  MSC:                             "$MSC2019_1"
   IntelMarc:                       "$IntelCompiler17_8"
   HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
   # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
