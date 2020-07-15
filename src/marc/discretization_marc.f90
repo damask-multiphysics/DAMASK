@@ -119,6 +119,7 @@ subroutine discretization_marc_init
   unscaledNormals = IPareaNormal(elem,nElems,connectivity_cell,node0_cell)
   call geometry_plastic_nonlocal_setIParea(norm2(unscaledNormals,1))
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
+  !call geometry_plastic_nonlocal_setIPneighborhood                                                 ToDo: Support nonlocal
   call geometry_plastic_nonlocal_results
   
 end subroutine discretization_marc_init
@@ -492,8 +493,8 @@ subroutine inputRead_mapNodes(FEM2DAMASK, &
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
     if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+      chunkPos = [1,1,10]
       do i = 1,nNodes
-        chunkPos = IO_stringPos(fileContent(l+1+i))
         map_unsorted(:,i) = [IO_intValue(fileContent(l+1+i),chunkPos,1),i]
       enddo
       exit
@@ -528,8 +529,8 @@ subroutine inputRead_elemNodes(nodes, &
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
     if(IO_lc(IO_stringValue(fileContent(l),chunkPos,1)) == 'coordinates') then
+      chunkPos = [4,1,10,11,30,31,50,51,70]
       do i=1,nNode
-        chunkPos = IO_stringPos(fileContent(l+1+i))
         m = mesh_FEM2DAMASK_node(IO_intValue(fileContent(l+1+i),chunkPos,1))
         do j = 1,3
           nodes(j,m) = mesh_unitlength * IO_floatValue(fileContent(l+1+i),chunkPos,j+1)

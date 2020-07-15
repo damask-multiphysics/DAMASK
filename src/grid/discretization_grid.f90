@@ -118,6 +118,7 @@ subroutine discretization_grid_init(restart)
     call results_addAttribute('origin',origin,  'geometry')
     call results_closeJobFile
   endif
+
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
   call geometry_plastic_nonlocal_setIPvolume(reshape([(product(mySize/real(myGrid,pReal)),j=1,product(myGrid))], &
