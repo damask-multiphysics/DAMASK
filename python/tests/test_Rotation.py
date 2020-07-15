@@ -150,7 +150,7 @@ def om2qu(a):
 
 def om2eu(om):
     """Rotation matrix to Bunge-Euler angles."""
-    if not np.isclose(np.abs(om[2,2]),1.0,1.e-9):
+    if not np.isclose(np.abs(om[2,2]),1.0,0.0):
         zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
         eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
                        np.arccos(om[2,2]),
