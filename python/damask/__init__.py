@@ -7,7 +7,8 @@ with open(_Path(__file__).parent/_Path('VERSION')) as _f:
     version = _re.sub(r'^v','',_f.readline().strip())
 
 # make classes directly accessible as damask.Class
-from ._environment import Environment      # noqa
+from ._environment import Environment as _ # noqa
+environment = _()
 from ._table       import Table            # noqa
 from ._vtk         import VTK              # noqa
 from ._colormap    import Colormap         # noqa
@@ -19,6 +20,7 @@ from ._geom        import Geom             # noqa
 from .             import solver           # noqa
 
 # deprecated
+Environment = _
 from ._asciitable  import ASCIItable       # noqa
 from ._test        import Test             # noqa
 from .config       import Material         # noqa

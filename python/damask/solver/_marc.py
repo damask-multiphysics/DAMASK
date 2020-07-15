@@ -3,12 +3,12 @@ import shlex
 import string
 from pathlib import Path
 
-from .._environment import Environment
+import damask
 
 class Marc:
     """Wrapper to run DAMASK with MSCMarc."""
 
-    def __init__(self,version=Environment().options['MARC_VERSION']):
+    def __init__(self,version=damask.environment.options['MARC_VERSION']):
         """
         Create a Marc solver object.
 
@@ -24,7 +24,7 @@ class Marc:
     @property
     def library_path(self):
 
-        path_MSC = Environment().options['MSC_ROOT']
+        path_MSC = damask.environment.options['MSC_ROOT']
         path_lib = Path(f'{path_MSC}/mentat{self.version}/shlib/linux64')
 
         return path_lib if path_lib.is_dir() else None
@@ -33,7 +33,7 @@ class Marc:
     @property
     def tools_path(self):
 
-        path_MSC   = Environment().options['MSC_ROOT']
+        path_MSC   = damsk.environment.options['MSC_ROOT']
         path_tools = Path(f'{path_MSC}/marc{self.version}/tools')
 
         return path_tools if path_tools.is_dir() else None
@@ -49,9 +49,7 @@ class Marc:
                   ):
 
 
-        env = Environment()
-
-        usersub = env.root_dir/Path(f'src/DAMASK_marc{self.version}').with_suffix('.f90' if compile else '.marc')
+        usersub = damask.environment.root_dir/Path(f'src/DAMASK_marc{self.version}').with_suffix('.f90' if compile else '.marc')
         if not usersub.is_file():
             raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),usersub))
 
