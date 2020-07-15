@@ -15,7 +15,8 @@ module constitutive
   use results
   use lattice
   use discretization
-  use geometry_plastic_nonlocal
+  use geometry_plastic_nonlocal, only: &
+    geometry_plastic_nonlocal_disable
 
   implicit none
   private
