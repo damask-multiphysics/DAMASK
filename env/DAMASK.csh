@@ -9,8 +9,8 @@ source $ENV_ROOT/CONFIG
 
 set path = ($DAMASK_ROOT/bin $path)
 
-set SOLVER=`which DAMASK_spectral`                                                          
-if ( "x$DAMASK_NUM_THREADS" == "x" ) then                                                                  
+set SOLVER=`which DAMASK_grid`
+if ( "x$DAMASK_NUM_THREADS" == "x" ) then
   set DAMASK_NUM_THREADS=1
 endif
 
@@ -30,7 +30,7 @@ if ( $?prompt ) then
   echo
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT"
-  echo "Grid Solver        $SOLVER" 
+  echo "Grid Solver        $SOLVER"
   if ( $?PETSC_DIR) then
     echo "PETSc location     $PETSC_DIR"
   endif

@@ -805,7 +805,7 @@ class Rotation:
         """Rotation matrix to Bunge-Euler angles."""
         with np.errstate(invalid='ignore',divide='ignore'):
             zeta = 1.0/np.sqrt(1.0-om[...,2,2:3]**2)
-            eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,1e-9),
+            eu = np.where(np.isclose(np.abs(om[...,2,2:3]),1.0,0.0),
                           np.block([np.arctan2(om[...,0,1:2],om[...,0,0:1]),
                                     np.pi*0.5*(1-om[...,2,2:3]),
                                     np.zeros(om.shape[:-2]+(1,)),

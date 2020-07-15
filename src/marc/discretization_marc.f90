@@ -21,24 +21,24 @@ module discretization_marc
 
   implicit none
   private
-  
+
   type tCellNodeDefinition
     integer, dimension(:,:), allocatable :: parents
     integer, dimension(:,:), allocatable :: weights
   end type tCellNodeDefinition
-  
+
   type(tCellNodeDefinition), dimension(:), allocatable :: cellNodeDefinition
-  
+
   real(pReal), public, protected :: &
     mesh_unitlength                                                                                 !< physical length of one unit in mesh
- 
+
   integer, dimension(:),   allocatable, public :: &
     mesh_FEM2DAMASK_elem, &                                                                         !< DAMASK element ID for Marc element ID
     mesh_FEM2DAMASK_node                                                                            !< DAMASK node ID for Marc node ID
 
   public :: &
     discretization_marc_init
- 
+
 contains
 
 !--------------------------------------------------------------------------------------------------
@@ -68,16 +68,16 @@ subroutine discretization_marc_init
     connectivity_elem
   real(pReal), dimension(:,:,:,:),allocatable :: &
     unscaledNormals
- 
+
   class(tNode), pointer :: &
     num_commercialFEM
-  
+
   write(6,'(/,a)') ' <<<+-  discretization_marc init  -+>>>'; flush(6)
 
 !---------------------------------------------------------------------------------
 ! read debug parameters
-  debug_e = debug_root%get_asInt('element',defaultVal=1) 
-  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1) 
+  debug_e = debug_root%get_asInt('element',defaultVal=1)
+  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
 
 !--------------------------------------------------------------------------------
 ! read numerics parameter and do sanity check
@@ -90,10 +90,10 @@ subroutine discretization_marc_init
 
   if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
   if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
- 
+
   FEsolving_execElem = [1,nElems]
   FEsolving_execIP   = [1,elem%nIPs]
- 
+
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
   call buildCells(connectivity_cell,cellNodeDefinition,&
@@ -108,7 +108,7 @@ subroutine discretization_marc_init
   call discretization_init(microstructureAt,homogenizationAt,&
                            IP_reshaped,&
                            node0_cell)
-                           
+
   call writeGeometry(elem,connectivity_elem,&
                      reshape(connectivity_cell,[elem%NcellNodesPerCell,elem%nIPs*nElems]),&
                      node0_cell,IP_reshaped)
@@ -121,7 +121,7 @@ subroutine discretization_marc_init
   call geometry_plastic_nonlocal_setIPareaNormal(unscaledNormals/spread(norm2(unscaledNormals,1),1,3))
   !call geometry_plastic_nonlocal_setIPneighborhood                                                 ToDo: Support nonlocal
   call geometry_plastic_nonlocal_results
-  
+
 end subroutine discretization_marc_init
 
 
@@ -140,7 +140,7 @@ subroutine writeGeometry(elem, &
   real(pReal), dimension(:,:), intent(in) :: &
     coordinates_nodes, &
     coordinates_points
-  
+
   integer,     dimension(:,:), allocatable :: &
     connectivity_temp
   real(pReal), dimension(:,:), allocatable :: &
@@ -148,24 +148,24 @@ subroutine writeGeometry(elem, &
 
   call results_openJobFile
   call results_closeGroup(results_addGroup('geometry'))
-  
+
   connectivity_temp = connectivity_elem
   call results_writeDataset('geometry',connectivity_temp,'T_e',&
                             'connectivity of the elements','-')
-                            
+
   connectivity_temp = connectivity_cell
   call results_writeDataset('geometry',connectivity_temp,'T_c', &
                             'connectivity of the cells','-')
   call results_addAttribute('VTK_TYPE',elem%vtkType,'geometry/T_c')
-                            
+
   coordinates_temp = coordinates_nodes
   call results_writeDataset('geometry',coordinates_temp,'x_n', &
                             'initial coordinates of the nodes','m')
-                            
+
   coordinates_temp = coordinates_points
   call results_writeDataset('geometry',coordinates_temp,'x_p', &
                             'initial coordinates of the materialpoints','m')
-                      
+
   call results_closeJobFile
 
 end subroutine writeGeometry
@@ -184,7 +184,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   integer,     dimension(:),   allocatable, intent(out) :: &
     microstructureAt, &
     homogenizationAt
-   
+
   integer :: &
     fileFormatVersion, &
     hypoelasticTableStyle, &
@@ -194,7 +194,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   integer, dimension(:), allocatable :: &
     matNumber                                                                                       !< material numbers for hypoelastic material
   character(len=pStringLen), dimension(:), allocatable :: inputFile                                 !< file content, separated per lines
-  
+
   character(len=pStringLen), dimension(:), allocatable :: &
     nameElemSet
   integer, dimension(:,:), allocatable :: &
@@ -210,8 +210,8 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
                              hypoelasticTableStyle,inputFile)
   call inputRead_NnodesAndElements(nNodes,nElems,&
                                    inputFile)
-  
-  
+
+
   call inputRead_mapElemSets(nameElemSet,mapElemSet,&
                              inputFile)
 
@@ -240,13 +240,13 @@ end subroutine inputRead
 !> @brief Figures out version of Marc input file format
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_fileFormat(fileFormat,fileContent)
- 
+
   integer,                        intent(out) :: fileFormat
   character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
-  
+
   integer, allocatable, dimension(:) :: chunkPos
   integer :: l
-  
+
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 2) cycle
@@ -263,13 +263,13 @@ end subroutine inputRead_fileFormat
 !> @brief Figures out table styles for initial cond and hypoelastic
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_tableStyles(initialcond,hypoelastic,fileContent)
- 
+
   integer,                        intent(out) :: initialcond, hypoelastic
   character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
   integer :: l
-  
+
   initialcond = 0
   hypoelastic = 0
 
@@ -291,7 +291,7 @@ end subroutine inputRead_tableStyles
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_matNumber(matNumber, &
                                tableStyle,fileContent)
- 
+
   integer, allocatable, dimension(:), intent(out) :: matNumber
   integer,                            intent(in)  :: tableStyle
   character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
@@ -327,7 +327,7 @@ end subroutine inputRead_matNumber
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_NnodesAndElements(nNodes,nElems,&
                                        fileContent)
-  
+
   integer,                        intent(out) :: nNodes, nElems
   character(len=*), dimension(:), intent(in)  :: fileContent                                        !< file content, separated per lines
 
@@ -356,7 +356,7 @@ end subroutine inputRead_NnodesAndElements
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_NelemSets(nElemSets,maxNelemInSet,&
                                fileContent)
- 
+
   integer,                            intent(out) :: nElemSets, maxNelemInSet
   character(len=*),     dimension(:), intent(in)  :: fileContent                                    !< file content, separated per lines
 
@@ -402,7 +402,7 @@ end subroutine inputRead_NelemSets
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_mapElemSets(nameElemSet,mapElemSet,&
                                  fileContent)
- 
+
   character(len=pStringLen), dimension(:),   allocatable, intent(out) :: nameElemSet
   integer,                   dimension(:,:), allocatable, intent(out) :: mapElemSet
   character(len=*),          dimension(:),                intent(in)  :: fileContent                !< file content, separated per lines
@@ -435,7 +435,7 @@ end subroutine inputRead_mapElemSets
 !--------------------------------------------------------------------------------------------------
 subroutine inputRead_mapElems(FEM2DAMASK, &
                               nElems,nNodesPerElem,fileContent)
- 
+
   integer, allocatable, dimension(:), intent(out) :: FEM2DAMASK
 
   integer,                            intent(in)  :: nElems, &                                      !< number of elements
@@ -516,10 +516,10 @@ end subroutine inputRead_mapNodes
 subroutine inputRead_elemNodes(nodes, &
                                nNode,fileContent)
 
-  real(pReal), allocatable,  dimension(:,:), intent(out) :: nodes 
+  real(pReal), allocatable,  dimension(:,:), intent(out) :: nodes
   integer,                                   intent(in)  :: nNode
   character(len=*),            dimension(:), intent(in)  :: fileContent                             !< file content, separated per lines
-  
+
   integer, allocatable, dimension(:) :: chunkPos
   integer :: i,j,m,l
 
@@ -581,15 +581,15 @@ subroutine inputRead_elemType(elem, &
     endif
   enddo
 
-  contains 
+  contains
 
   !--------------------------------------------------------------------------------------------------
   !> @brief mapping of Marc element types to internal representation
   !--------------------------------------------------------------------------------------------------
   integer function mapElemtype(what)
-  
+
    character(len=*), intent(in) :: what
-  
+
    select case (IO_lc(what))
       case (   '6')
         mapElemtype = 1            ! Two-dimensional Plane Strain Triangle
@@ -631,20 +631,20 @@ end subroutine inputRead_elemType
 !> @brief Stores node IDs
 !--------------------------------------------------------------------------------------------------
 function inputRead_connectivityElem(nElem,nNodes,fileContent)
- 
+
   integer, intent(in) :: &
     nElem, &
     nNodes                                                                                          !< number of nodes per element
   character(len=*), dimension(:), intent(in) :: fileContent                                         !< file content, separated per lines
-    
+
   integer, dimension(nNodes,nElem) :: &
     inputRead_connectivityElem
- 
+
   integer, allocatable, dimension(:) :: chunkPos
- 
+
   integer, dimension(1+nElem) :: contInts
   integer :: i,k,j,t,e,l,nNodesAlreadyRead
- 
+
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
     if(chunkPos(1) < 1) cycle
@@ -695,7 +695,7 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
   character(len=*), dimension(:), intent(in) :: fileContent                                        !< file content, separated per lines
 
   integer, allocatable, dimension(:) :: chunkPos
- 
+
   integer, dimension(1+nElem) :: contInts
   integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead,l,k,m
 
@@ -728,42 +728,41 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
       endif
     endif
   enddo
- 
+
 end subroutine inputRead_microstructureAndHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates cell node coordinates from element node coordinates
+!> @brief Determine cell connectivity and definition of cell nodes
 !--------------------------------------------------------------------------------------------------
 subroutine buildCells(connectivity_cell,cellNodeDefinition, &
                       elem,connectivity_elem)
 
   type(tCellNodeDefinition), dimension(:),    intent(out) :: cellNodeDefinition                     ! definition of cell nodes for increasing number of parents
   integer,                   dimension(:,:,:),intent(out) :: connectivity_cell
-  
+
   type(tElement),                             intent(in)  :: elem                                   ! element definition
   integer,                   dimension(:,:),  intent(in)  :: connectivity_elem                      ! connectivity of the elements
-  
+
   integer,dimension(:),     allocatable :: candidates_local
   integer,dimension(:,:),   allocatable :: parentsAndWeights,candidates_global
-  
-  integer :: e, n, c, p, s,i,m,j,nParentNodes,nCellNode,Nelem,candidateID
-  
+
+  integer :: e,n,c,p,s,i,m,j,&
+             nParentNodes,nCellNode,Nelem,candidateID
+
   Nelem = size(connectivity_elem,2)
 
 !---------------------------------------------------------------------------------------------------
 ! initialize global connectivity to negative local connectivity
   connectivity_cell = -spread(elem%cell,3,Nelem)                                                    ! local cell node ID
-  
+
 !---------------------------------------------------------------------------------------------------
 ! set connectivity of cell nodes that coincide with FE nodes (defined by 1 parent node)
 ! and renumber local (negative) to global (positive) node ID
   do e = 1, Nelem
     do c = 1, elem%NcellNodes
       realNode: if (count(elem%cellNodeParentNodeWeights(:,c) /= 0) == 1) then
-        where(connectivity_cell(:,:,e) == -c)
-          connectivity_cell(:,:,e) = connectivity_elem(c,e)
-        end where
+        where(connectivity_cell(:,:,e) == -c) connectivity_cell(:,:,e) = connectivity_elem(c,e)
       endif realNode
     enddo
   enddo
@@ -773,7 +772,7 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
 !---------------------------------------------------------------------------------------------------
 ! set connectivity of cell nodes that are defined by 2,...,nNodes real nodes
   do nParentNodes = 2, elem%nNodes
-  
+
     ! get IDs of local cell nodes that are defined by the current number of parent nodes
     candidates_local = [integer::]
     do c = 1, elem%NcellNodes
@@ -781,11 +780,11 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
         candidates_local = [candidates_local,c]
     enddo
     s = size(candidates_local)
-    
+
     if (allocated(candidates_global)) deallocate(candidates_global)
     allocate(candidates_global(nParentNodes*2+2,s*Nelem))                                           ! stores parent node ID + weight together with element ID and cellnode id (local)
     parentsAndWeights = reshape([(0, i = 1,2*nParentNodes)],[nParentNodes,2])                       ! (re)allocate
-    
+
     do e = 1, Nelem
       do i = 1, size(candidates_local)
         candidateID = (e-1)*size(candidates_local)+i                                                ! including duplicates, runs to (Nelem*size(candidates_local))
@@ -793,18 +792,18 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
         p = 0
         do j = 1, size(elem%cellNodeParentNodeWeights(:,c))
           if (elem%cellNodeParentNodeWeights(j,c) /= 0) then                                        ! real node 'j' partly defines cell node 'c'
-            p = p + 1                                                               
+            p = p + 1
             parentsAndWeights(p,1:2) = [connectivity_elem(j,e),elem%cellNodeParentNodeWeights(j,c)]
           endif
         enddo
         ! store (and order) real node IDs and their weights together with the element number and local ID
         do p = 1, nParentNodes
           m = maxloc(parentsAndWeights(:,1),1)
-          
+
           candidates_global(p,                                candidateID) = parentsAndWeights(m,1)
           candidates_global(p+nParentNodes,                   candidateID) = parentsAndWeights(m,2)
           candidates_global(nParentNodes*2+1:nParentNodes*2+2,candidateID) = [e,c]
-          
+
           parentsAndWeights(m,1) = -huge(parentsAndWeights(m,1))                                    ! out of the competition
         enddo
       enddo
@@ -812,7 +811,7 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
 
     ! sort according to real node IDs + weight (from left to right)
     call math_sort(candidates_global,sortDim=1)                                                     ! sort according to first column
-    
+
     do p = 2, nParentNodes*2
       n = 1
       do while(n <= size(candidates_local)*Nelem)
@@ -827,11 +826,11 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
         n = e+1
       enddo
     enddo
-    
+
     i = uniqueRows(candidates_global(1:2*nParentNodes,:))
     allocate(cellNodeDefinition(nParentNodes-1)%parents(i,nParentNodes))
     allocate(cellNodeDefinition(nParentNodes-1)%weights(i,nParentNodes))
-    
+
     i = 1
     n = 1
     do while(n <= size(candidates_local)*Nelem)
@@ -847,7 +846,7 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
         where (connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) == -candidates_global(nParentNodes*2+2,n+j)) ! still locally defined
           connectivity_cell(:,:,candidates_global(nParentNodes*2+1,n+j)) = nCellNode + 1                                   ! gets current new cell node id
         end where
-       
+
         j = j+1
       enddo
       nCellNode = nCellNode + 1
@@ -864,7 +863,7 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
   !> @brief count unique rows (same rows need to be stored consecutively)
   !------------------------------------------------------------------------------------------------
   pure function uniqueRows(A) result(u)
-    
+
     integer, dimension(:,:), intent(in) :: A                                                        !< array, rows need to be sorted
 
     integer :: &
@@ -883,14 +882,14 @@ subroutine buildCells(connectivity_cell,cellNodeDefinition, &
       u = u+1
       r = r+d
     enddo
-      
+
   end function uniqueRows
 
 end subroutine buildCells
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates cell node coordinates from element node coordinates
+!> @brief Calculate cell node coordinates from element node coordinates
 !--------------------------------------------------------------------------------------------------
 subroutine buildCellNodes(node_cell, &
                           definition,node_elem)
@@ -898,9 +897,9 @@ subroutine buildCellNodes(node_cell, &
   real(pReal),               dimension(:,:), intent(out) :: node_cell                               !< cell node coordinates
   type(tCellNodeDefinition), dimension(:),   intent(in)  :: definition                              !< cell node definition (weights and parents)
   real(pReal),               dimension(:,:), intent(in)  :: node_elem                               !< element nodes
-  
+
   integer :: i, j, k, n
-  
+
   n = size(node_elem,2)
   node_cell(:,1:n) = node_elem                                                                      !< initial nodes coincide with element nodes
 
@@ -915,12 +914,12 @@ subroutine buildCellNodes(node_cell, &
       node_cell(:,n) = node_cell(:,n)/real(sum(definition(i)%weights(j,:)),pReal)
     enddo
   enddo
-  
+
 end subroutine buildCellNodes
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP coordinates as center of cell
+!> @brief Calculate IP coordinates as center of cell
 !--------------------------------------------------------------------------------------------------
 subroutine buildIPcoordinates(IPcoordinates, &
                               connectivity_cell,node_cell)
@@ -928,7 +927,7 @@ subroutine buildIPcoordinates(IPcoordinates, &
   real(pReal), dimension(:,:), intent(out):: IPcoordinates                                          !< cell-center/IP coordinates
   integer,     dimension(:,:), intent(in) :: connectivity_cell                                      !< connectivity for each cell
   real(pReal), dimension(:,:), intent(in) :: node_cell                                              !< cell node coordinates
-  
+
   integer :: i, n
 
   do i = 1, size(connectivity_cell,2)
@@ -939,7 +938,7 @@ subroutine buildIPcoordinates(IPcoordinates, &
     enddo
     IPcoordinates(:,i) = IPcoordinates(:,i)/real(size(connectivity_cell,1),pReal)
   enddo
-  
+
 end subroutine buildIPcoordinates
 
 
@@ -949,11 +948,11 @@ end subroutine buildIPcoordinates
 !> 2D cells assume an element depth of 1.0
 !---------------------------------------------------------------------------------------------------
 function IPvolume(elem,node,connectivity)
- 
+
   type(tElement),                intent(in) :: elem
   real(pReal), dimension(:,:),   intent(in) :: node
   integer,     dimension(:,:,:), intent(in) :: connectivity
-  
+
   real(pReal), dimension(elem%nIPs,size(connectivity,3)) :: IPvolume
   real(pReal), dimension(3) :: x0,x1,x2,x3,x4,x5,x6,x7
 
@@ -1012,19 +1011,19 @@ function IPareaNormal(elem,nElem,connectivity,node)
   integer,                       intent(in) :: nElem
   integer,     dimension(:,:,:), intent(in) :: connectivity
   real(pReal), dimension(:,:),   intent(in) :: node
-  
+
   real(pReal), dimension(3,elem%nIPneighbors,elem%nIPs,nElem) :: ipAreaNormal
 
   real(pReal), dimension (3,size(elem%cellFace,1)) :: nodePos
   integer :: e,i,f,n,m
- 
+
   m = size(elem%cellFace,1)
 
   do e = 1,nElem
     do i = 1,elem%nIPs
       do f = 1,elem%nIPneighbors
         nodePos = node(1:3,connectivity(elem%cellface(1:m,f),i,e))
-        
+
         select case (elem%cellType)
           case (1,2)                                                                                ! 2D 3 or 4 node
             IPareaNormal(1,f,i,e) =   nodePos(2,2) - nodePos(2,1)                                   ! x_normal =  y_connectingVector
@@ -1039,7 +1038,7 @@ function IPareaNormal(elem,nElem,connectivity,node)
             ! the sum has to be divided by two; this whole prcedure tries to compensate for
             ! probable non-planar cell surfaces
             IPareaNormal(1:3,f,i,e) = 0.0_pReal
-            do n = 1, m 
+            do n = 1, m
               IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &
                                       + math_cross(nodePos(1:3,mod(n+0,m)+1) - nodePos(1:3,n), &
                                                    nodePos(1:3,mod(n+1,m)+1) - nodePos(1:3,n)) * 0.5_pReal
