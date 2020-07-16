@@ -3244,6 +3244,7 @@ else
 fi
 /bin/rm $userobj 2>/dev/null
 /bin/rm $DIRJOB/*.mod 2>/dev/null
+/bin/rm $DIRJOB/*.smod 2>/dev/null
 
 #
 # run marc
@@ -3576,6 +3577,7 @@ else # if test $link
 fi   # if test $link
 /bin/rm $userobj 2>/dev/null
 /bin/rm $DIRJOB/*.mod 2>/dev/null
+/bin/rm $DIRJOB/*.smod 2>/dev/null
 
 #
 # run marc
@@ -3910,6 +3912,7 @@ else # if test $link
 fi   # if test $link
 /bin/rm $userobj 2>/dev/null
 /bin/rm $DIRJOB/*.mod 2>/dev/null
+/bin/rm $DIRJOB/*.smod 2>/dev/null
 # done if no job id given
 if test -z "$jid"
 then

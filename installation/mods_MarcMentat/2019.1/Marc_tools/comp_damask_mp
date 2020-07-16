@@ -50,3 +50,4 @@ echo "program: $program"
     }
     /bin/rm $userobj
 	/bin/rm $DIRJOB/*.mod
+	/bin/rm $DIRJOB/*.smod
