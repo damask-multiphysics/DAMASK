@@ -18,7 +18,6 @@ from . import VTK
 from . import Table
 from . import Rotation
 from . import Orientation
-from . import Environment
 from . import grid_filters
 from . import mechanics
 from . import util
@@ -1060,7 +1059,7 @@ class Result:
             Arguments parsed to func.
 
         """
-        num_threads = Environment().options['DAMASK_NUM_THREADS']
+        num_threads = damask.environment.options['DAMASK_NUM_THREADS']
         pool = mp.Pool(int(num_threads) if num_threads is not None else None)
         lock = mp.Manager().Lock()
 

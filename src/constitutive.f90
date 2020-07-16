@@ -15,7 +15,8 @@ module constitutive
   use results
   use lattice
   use discretization
-  use geometry_plastic_nonlocal
+  use geometry_plastic_nonlocal, only: &
+    geometry_plastic_nonlocal_disable
   use source_thermal_dissipation
   use source_thermal_externalheat
   use source_damage_isoBrittle

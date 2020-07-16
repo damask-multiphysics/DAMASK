@@ -248,7 +248,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
     endif validCalculation
 
     if (debugCPFEM%extensive &
-         .and. (debugCPFEM%element == elCP .and. debugCPFEM%ip == ip) .or. .not. debugCPFEM%selective) then
+         .and. ((debugCPFEM%element == elCP .and. debugCPFEM%ip == ip) .or. .not. debugCPFEM%selective)) then
         write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') &
           '<< CPFEM >> stress/MPa at elFE ip ',   elFE, ip, CPFEM_cs(1:6,ip,elCP)*1.0e-6_pReal
         write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') &

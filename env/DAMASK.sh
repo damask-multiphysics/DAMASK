@@ -35,7 +35,7 @@ cd $DAMASK_ROOT >/dev/null; BRANCH=$(git branch 2>/dev/null| grep -E '^\* '); cd
 
 PATH=${DAMASK_ROOT}/bin:$PATH
 
-SOLVER=$(type -p DAMASK_spectral || true 2>/dev/null)
+SOLVER=$(type -p DAMASK_grid || true 2>/dev/null)
 [ "x$SOLVER" == "x" ] && SOLVER=$(blink 'Not found!')
 
 [ "x$DAMASK_NUM_THREADS" == "x" ] && DAMASK_NUM_THREADS=1
@@ -56,7 +56,7 @@ if [ ! -z "$PS1" ]; then
   echo
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT $BRANCH"
-  echo "Grid Solver        $SOLVER" 
+  echo "Grid Solver        $SOLVER"
   if [ "x$PETSC_DIR"   != "x" ]; then
     echo -n "PETSc location     "
     [ -d $PETSC_DIR ] && echo $PETSC_DIR || blink $PETSC_DIR
