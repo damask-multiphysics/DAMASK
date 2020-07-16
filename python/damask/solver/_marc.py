@@ -49,7 +49,8 @@ class Marc:
                   ):
 
 
-        usersub = damask.environment.root_dir/Path(f'src/DAMASK_marc{self.version}').with_suffix('.f90' if compile else '.marc')
+        usersub = damask.environment.root_dir/Path(f'src/DAMASK_marc{self.version}')
+        usersub = usersub.parent/(usersub.name + ('.f90' if compile else '.marc'))
         if not usersub.is_file():
             raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),usersub))
 
