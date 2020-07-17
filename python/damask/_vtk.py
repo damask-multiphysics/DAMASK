@@ -9,7 +9,6 @@ from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArr
 
 import damask
 from . import Table
-from . import Environment
 
 
 class VTK:
@@ -258,7 +257,7 @@ class VTK:
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
 
-        window.SetSize(Environment().screen_size[0],Environment().screen_size[1])
+        window.SetSize(damask.environment.screen_size[0],damask.environment.screen_size[1])
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)
