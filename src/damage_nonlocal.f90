@@ -10,10 +10,7 @@ module damage_nonlocal
   use YAML_types
   use crystallite
   use lattice
-  use source_damage_isoBrittle
-  use source_damage_isoDuctile
-  use source_damage_anisoBrittle
-  use source_damage_anisoDuctile
+  use constitutive
   use results
 
   implicit none
@@ -97,43 +94,13 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
     el                                                                                              !< element number
   real(pReal),   intent(in) :: &
     phi
-  integer :: &
-    phase, &
-    grain, &
-    source, &
-    constituent
   real(pReal) :: &
-    phiDot, dPhiDot_dPhi, localphiDot, dLocalphiDot_dPhi
+    phiDot, dPhiDot_dPhi
 
   phiDot = 0.0_pReal
   dPhiDot_dPhi = 0.0_pReal
-  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
-    phase = material_phaseAt(grain,el)
-    constituent = material_phasememberAt(grain,ip,el)
-    do source = 1, phase_Nsources(phase)
-      select case(phase_source(source,phase))
-        case (SOURCE_damage_isoBrittle_ID)
-         call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
-        case (SOURCE_damage_isoDuctile_ID)
-         call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
-        case (SOURCE_damage_anisoBrittle_ID)
-         call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
-        case (SOURCE_damage_anisoDuctile_ID)
-         call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
-        case default
-         localphiDot = 0.0_pReal
-         dLocalphiDot_dPhi = 0.0_pReal
-
-      end select
-      phiDot = phiDot + localphiDot
-      dPhiDot_dPhi = dPhiDot_dPhi + dLocalphiDot_dPhi
-    enddo
-  enddo
-
+ 
+  call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
   phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
   dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
 
