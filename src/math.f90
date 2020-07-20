@@ -126,11 +126,12 @@ end subroutine math_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Quicksort algorithm for two-dimensional integer arrays
-! Sorting is done with respect to array(sort,:) and keeps array(/=sort,:) linked to it.
-! default: sort=1
+!> @brief Sorting of two-dimensional integer arrays
+!> @details Based on quicksort.
+!  Sorting is done with respect to array(sortDim,:) and keeps array(/=sortDim,:) linked to it.
+!  Default: sortDim=1
 !--------------------------------------------------------------------------------------------------
-recursive subroutine math_sort(a, istart, iend, sortDim)
+pure recursive subroutine math_sort(a, istart, iend, sortDim)
 
   integer, dimension(:,:), intent(inout) :: a
   integer, intent(in),optional :: istart,iend, sortDim
@@ -155,7 +156,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   endif
 
   if (s < e) then
-    ipivot = qsort_partition(a,s, e, d)
+    call qsort_partition(a,ipivot, s,e, d)
     call math_sort(a, s, ipivot-1, d)
     call math_sort(a, ipivot+1, e, d)
   endif
@@ -166,9 +167,10 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   !-------------------------------------------------------------------------------------------------
   !> @brief Partitioning required for quicksort
   !-------------------------------------------------------------------------------------------------
-  integer function qsort_partition(a, istart, iend, sort)
+  pure subroutine qsort_partition(a,p, istart, iend, sort)
 
     integer, dimension(:,:), intent(inout) :: a
+    integer,                 intent(out)   :: p                                                     ! Pivot element
     integer,                 intent(in)    :: istart,iend,sort
     integer, dimension(size(a,1))          :: tmp
     integer :: i,j
@@ -186,7 +188,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
         tmp         = a(:,istart)
         a(:,istart) = a(:,j)
         a(:,j)      = tmp
-        qsort_partition = j
+        p           = j
         return
       else cross              ! exchange values
         tmp    = a(:,i)
@@ -195,7 +197,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
       endif cross
     enddo
 
-  end function qsort_partition
+  end subroutine qsort_partition
 
 end subroutine math_sort
 
