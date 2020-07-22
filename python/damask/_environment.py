@@ -3,7 +3,6 @@ from pathlib import Path
 
 class Environment:
 
-    # ToDo: Probably, we don't need a class (just a module with a few functions)
     def __init__(self):
         """Do Nothing."""
         pass
