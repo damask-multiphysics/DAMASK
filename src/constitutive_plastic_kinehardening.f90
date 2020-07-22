@@ -5,7 +5,7 @@
 !> @brief  Phenomenological crystal plasticity using a power law formulation for the shear rates
 !! and a Voce-type kinematic hardening rule
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive) plastic_kinehardening
+submodule(constitutive:constitutive_plastic) plastic_kinehardening
 
   type :: tParameters
     real(pReal) :: &

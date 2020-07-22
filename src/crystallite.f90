@@ -641,7 +641,7 @@ subroutine crystallite_orientations
       if (plasticState(material_phaseAt(1,e))%nonlocal) then
         do i = FEsolving_execIP(1),FEsolving_execIP(2)
           call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
-                                                    phase_plasticityInstance(material_phaseAt(i,e)),i,e)
+                                                    phase_plasticityInstance(material_phaseAt(1,e)),i,e)
         enddo
       endif
     enddo

@@ -4,23 +4,13 @@
 !> @brief material subroutine incoprorating isotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_damage_isoBrittle
-  use prec
-  use IO
-  use math
-  use discretization
-  use material
-  use config
-  use results
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage) source_damage_isoBrittle
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoBrittle_offset, &
     source_damage_isoBrittle_instance
 
-  type, private :: tParameters                                                                      !< container type for internal constitutive parameters
+  type :: tParameters                                                                      !< container type for internal constitutive parameters
     real(pReal) :: &
       critStrainEnergy, &
       N
@@ -30,13 +20,6 @@ module source_damage_isoBrittle
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
 
-
-  public :: &
-    source_damage_isoBrittle_init, &
-    source_damage_isoBrittle_deltaState, &
-    source_damage_isoBrittle_getRateAndItsTangent, &
-    source_damage_isoBrittle_results
-
 contains
 
 
@@ -44,7 +27,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_init
+module subroutine source_damage_isoBrittle_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''
@@ -99,7 +82,7 @@ end subroutine source_damage_isoBrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
+module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -145,7 +128,7 @@ end subroutine source_damage_isoBrittle_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
   integer, intent(in) :: &
     phase, &
@@ -174,7 +157,7 @@ end subroutine source_damage_isoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_results(phase,group)
+module subroutine source_damage_isoBrittle_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -193,4 +176,4 @@ subroutine source_damage_isoBrittle_results(phase,group)
 
 end subroutine source_damage_isoBrittle_results
 
-end module source_damage_isoBrittle
+end submodule source_damage_isoBrittle

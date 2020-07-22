@@ -4,16 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of cleavage planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module kinematics_cleavage_opening
-  use prec
-  use IO
-  use config
-  use math
-  use lattice
-  use material
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage) kinematics_cleavage_opening
 
   integer, dimension(:), allocatable :: kinematics_cleavage_opening_instance
 
@@ -31,9 +22,6 @@ module kinematics_cleavage_opening
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
 
-  public :: &
-    kinematics_cleavage_opening_init, &
-    kinematics_cleavage_opening_LiAndItsTangent
 
 contains
 
@@ -42,7 +30,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_cleavage_opening_init
+module subroutine kinematics_cleavage_opening_init
 
   integer :: Ninstance,p
   integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
@@ -95,7 +83,7 @@ end subroutine kinematics_cleavage_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< grain number
@@ -158,4 +146,4 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
 
 end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
-end module kinematics_cleavage_opening
+end submodule kinematics_cleavage_opening
