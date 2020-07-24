@@ -29,7 +29,7 @@ module system_routines
 
     integer(C_INT) :: isDirectory_C
     character(kind=C_CHAR), dimension(pPathLen), intent(in) :: path                                 ! C string is an array
-   end function isDirectory_C
+  end function isDirectory_C
 
   subroutine getCurrentWorkDir_C(path, stat) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
@@ -40,7 +40,7 @@ module system_routines
 
     character(kind=C_CHAR), dimension(pPathLen), intent(out) :: path                                ! C string is an array
     integer(C_INT),                              intent(out) :: stat
-   end subroutine getCurrentWorkDir_C
+  end subroutine getCurrentWorkDir_C
 
   subroutine getHostName_C(str, stat) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
@@ -51,7 +51,7 @@ module system_routines
 
     character(kind=C_CHAR), dimension(pStringLen), intent(out) :: str                               ! C string is an array
     integer(C_INT),                                intent(out) :: stat
-   end subroutine getHostName_C
+  end subroutine getHostName_C
 
   function chdir_C(path) bind(C)
     use, intrinsic :: ISO_C_Binding, only: &
