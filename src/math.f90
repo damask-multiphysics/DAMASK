@@ -877,15 +877,14 @@ end function math_sampleGaussVar
 
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix
-! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh(m,w,v,error)
+subroutine math_eigh(w,v,error,m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
   real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
   real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v                                    !< eigenvectors
-
-  logical, intent(out) :: error
+  logical,                                      intent(out) :: error
+  
   integer :: ierr
   real(pReal), dimension(size(m,1)**2) :: work
 
@@ -902,9 +901,8 @@ end subroutine math_eigh
 !> @author Joachim Kopp, Max-Planck-Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
-! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh33(m,w,v)
+subroutine math_eigh33(w,v,m)
 
   real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
   real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
@@ -928,7 +926,7 @@ subroutine math_eigh33(m,w,v)
               (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
   norm = norm2(v(1:3, 1))
   fallback1: if(norm < threshold) then
-    call math_eigh(m,w,v,error)
+    call math_eigh(w,v,error,m)
   else fallback1
     v(1:3,1) = v(1:3, 1) / norm
     v(1:3,2) = [ v(1,2) + m(1, 3) * w(2), &
@@ -936,7 +934,7 @@ subroutine math_eigh33(m,w,v)
                 (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
     norm = norm2(v(1:3, 2))
     fallback2: if(norm < threshold) then
-      call math_eigh(m,w,v,error)
+      call math_eigh(w,v,error,m)
     else fallback2
       v(1:3,2) = v(1:3, 2) / norm
       v(1:3,3) = math_cross(v(1:3,1),v(1:3,2))
@@ -966,7 +964,6 @@ pure function math_rotationalPart(F) result(R)
   real(pReal), dimension(2) :: &
     I_F                                                                                             ! first two invariants of F
   real(pReal) :: x,Phi
-  integer :: i
 
   C = matmul(transpose(F),F)
   I_C = math_invariantsSym33(C)
@@ -1041,7 +1038,7 @@ function math_eigvalsh33(m)
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                                                            [cos(phi/3.0_pReal), &
+                                                            [cos( phi              /3.0_pReal), &
                                                              cos((phi+2.0_pReal*PI)/3.0_pReal), &
                                                              cos((phi+4.0_pReal*PI)/3.0_pReal) &
                                                             ] &
