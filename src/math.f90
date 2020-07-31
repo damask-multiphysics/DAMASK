@@ -877,15 +877,14 @@ end function math_sampleGaussVar
 
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix
-! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh(m,w,v,error)
+subroutine math_eigh(w,v,error,m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
   real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
   real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v                                    !< eigenvectors
-
-  logical, intent(out) :: error
+  logical,                                      intent(out) :: error
+  
   integer :: ierr
   real(pReal), dimension(size(m,1)**2) :: work
 
@@ -902,9 +901,8 @@ end subroutine math_eigh
 !> @author Joachim Kopp, Max-Planck-Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
-! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh33(m,w,v)
+subroutine math_eigh33(w,v,m)
 
   real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
   real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
@@ -928,7 +926,7 @@ subroutine math_eigh33(m,w,v)
               (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
   norm = norm2(v(1:3, 1))
   fallback1: if(norm < threshold) then
-    call math_eigh(m,w,v,error)
+    call math_eigh(w,v,error,m)
   else fallback1
     v(1:3,1) = v(1:3, 1) / norm
     v(1:3,2) = [ v(1,2) + m(1, 3) * w(2), &
@@ -936,7 +934,7 @@ subroutine math_eigh33(m,w,v)
                 (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
     norm = norm2(v(1:3, 2))
     fallback2: if(norm < threshold) then
-      call math_eigh(m,w,v,error)
+      call math_eigh(w,v,error,m)
     else fallback2
       v(1:3,2) = v(1:3, 2) / norm
       v(1:3,3) = math_cross(v(1:3,1),v(1:3,2))
@@ -946,87 +944,49 @@ subroutine math_eigh33(m,w,v)
 end subroutine math_eigh33
 
 
-
-
 !--------------------------------------------------------------------------------------------------
-!> @brief rotational part from polar decomposition of 3x3 tensor
+!> @brief Calculate rotational part of a deformation gradient
+!> @details https://www.jstor.org/stable/43637254
+!!          https://www.jstor.org/stable/43637372
+!!          https://doi.org/10.1023/A:1007407802076
 !--------------------------------------------------------------------------------------------------
-function math_rotationalPart(m)
+pure function math_rotationalPart(F) result(R)
 
-  real(pReal), intent(in), dimension(3,3) :: m
-  real(pReal), dimension(3,3) :: math_rotationalPart
-  real(pReal), dimension(3,3) :: U , Uinv
+  real(pReal), dimension(3,3), intent(in) :: &
+    F                                                                                               ! deformation gradient
+  real(pReal), dimension(3,3) :: &
+    C, &                                                                                            ! right Cauchy-Green tensor
+    R                                                                                               ! rotational part
+  real(pReal), dimension(3) :: &
+    lambda, &                                                                                       ! principal stretches
+    I_C, &                                                                                          ! invariants of C
+    I_U                                                                                             ! invariants of U
+  real(pReal), dimension(2) :: &
+    I_F                                                                                             ! first two invariants of F
+  real(pReal) :: x,Phi
 
-  U = eigenvectorBasis(matmul(transpose(m),m))
-  Uinv = math_inv33(U)
+  C = matmul(transpose(F),F)
+  I_C = math_invariantsSym33(C)
+  I_F = [math_trace33(F), 0.5*(math_trace33(F)**2 - math_trace33(matmul(F,F)))]
 
-  inversionFailed: if (all(dEq0(Uinv))) then
-    math_rotationalPart = math_I3
-    call IO_warning(650)
-  else inversionFailed
-    math_rotationalPart = matmul(m,Uinv)
-  endif inversionFailed
+  x = math_clip(I_C(1)**2 -3.0_pReal*I_C(2),0.0_pReal)**(3.0_pReal/2.0_pReal)
+  if(dNeq0(x)) then
+    Phi = acos(math_clip((I_C(1)**3 -4.5_pReal*I_C(1)*I_C(2) +13.5_pReal*I_C(3))/x,-1.0_pReal,1.0_pReal))
+    lambda = I_C(1) +(2.0_pReal * sqrt(math_clip(I_C(1)**2-3.0_pReal*I_C(2),0.0_pReal))) &
+                    *cos((Phi-2.0_pReal * PI*[1.0_pReal,2.0_pReal,3.0_pReal])/3.0_pReal)
+    lambda = sqrt(math_clip(lambda,0.0_pReal)/3.0_pReal)
+  else
+    lambda = sqrt(I_C(1)/3.0_pReal)
+  endif
 
-contains
-  !--------------------------------------------------------------------------------------------------
-  !> @brief eigenvector basis of positive-definite 3x3 matrix
-  !--------------------------------------------------------------------------------------------------
-  pure function eigenvectorBasis(m)
+  I_U = [sum(lambda), lambda(1)*lambda(2)+lambda(2)*lambda(3)+lambda(3)*lambda(1), product(lambda)]
 
-    real(pReal), dimension(3,3)             :: eigenvectorBasis
-    real(pReal), dimension(3,3), intent(in) :: m                                                      !< positive-definite matrix of which the basis is computed
-
-    real(pReal), dimension(3)               :: I, v
-    real(pReal) :: P, Q, rho, phi
-    real(pReal), parameter :: TOL=1.e-14_pReal
-    real(pReal), dimension(3,3,3) :: N, EB
-
-    I = math_invariantsSym33(m)
-
-    P = I(2)-I(1)**2.0_pReal/3.0_pReal
-    Q = -2.0_pReal/27.0_pReal*I(1)**3.0_pReal+product(I(1:2))/3.0_pReal-I(3)
-
-    threeSimilarEigVals: if(all(abs([P,Q]) < TOL)) then
-      v = I(1)/3.0_pReal
-      ! this is not really correct, but at least the basis is correct
-      EB = 0.0_pReal
-      EB(1,1,1)=1.0_pReal
-      EB(2,2,2)=1.0_pReal
-      EB(3,3,3)=1.0_pReal
-    else threeSimilarEigVals
-      rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-      phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-      v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos((phi             )/3.0_pReal), &
-                                                 cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                                                 cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                                                ] + I(1)/3.0_pReal
-      N(1:3,1:3,1) = m-v(1)*math_I3
-      N(1:3,1:3,2) = m-v(2)*math_I3
-      N(1:3,1:3,3) = m-v(3)*math_I3
-      twoSimilarEigVals: if(abs(v(1)-v(2)) < TOL) then
-        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
-        EB(1:3,1:3,1) = math_I3-EB(1:3,1:3,3)
-        EB(1:3,1:3,2) = 0.0_pReal
-      elseif               (abs(v(2)-v(3)) < TOL) then twoSimilarEigVals
-        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
-        EB(1:3,1:3,2) = math_I3-EB(1:3,1:3,1)
-        EB(1:3,1:3,3) = 0.0_pReal
-      elseif               (abs(v(3)-v(1)) < TOL) then twoSimilarEigVals
-        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
-        EB(1:3,1:3,3) = math_I3-EB(1:3,1:3,2)
-        EB(1:3,1:3,1) = 0.0_pReal
-      else twoSimilarEigVals
-        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
-        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
-        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
-      endif twoSimilarEigVals
-    endif threeSimilarEigVals
-
-   eigenvectorBasis = sqrt(v(1)) * EB(1:3,1:3,1) &
-                    + sqrt(v(2)) * EB(1:3,1:3,2) &
-                    + sqrt(v(3)) * EB(1:3,1:3,3)
-
-  end function eigenvectorBasis
+  R = I_U(1)*I_F(2) * math_I3 &
+    +(I_U(1)**2-I_U(2)) * F &
+    - I_U(1)*I_F(1) * transpose(F) &
+    + I_U(1) * transpose(matmul(F,F)) &
+    - matmul(F,C)
+  R = R /(I_U(1)*I_U(2)-I_U(3))
 
 end function math_rotationalPart
 
@@ -1078,7 +1038,7 @@ function math_eigvalsh33(m)
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                                                            [cos(phi/3.0_pReal), &
+                                                            [cos( phi              /3.0_pReal), &
                                                              cos((phi+2.0_pReal*PI)/3.0_pReal), &
                                                              cos((phi+4.0_pReal*PI)/3.0_pReal) &
                                                             ] &

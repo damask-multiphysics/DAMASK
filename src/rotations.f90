@@ -34,7 +34,7 @@
 !> @details: rotation is internally stored as quaternion. It can be inialized from different
 !> representations and also returns itself in different representations.
 !
-!  All methods and naming conventions based on Rowenhorst_etal2015
+!  All methods and naming conventions based on Rowenhorst et al. 2015
 !    Convention 1: coordinate frames are right-handed
 !    Convention 2: a rotation angle ω is taken to be positive for a counterclockwise rotation
 !                  when viewing from the end point of the rotation axis towards the origin
@@ -566,7 +566,26 @@ pure function om2qu(om) result(qu)
   real(pReal), intent(in), dimension(3,3) :: om
   real(pReal),             dimension(4)   :: qu
 
-  qu = eu2qu(om2eu(om))
+  real(pReal) :: trace,s
+  trace = math_trace33(om)
+
+  if(trace > 0.0_pReal) then
+    s = 0.5_pReal / sqrt(trace+1.0_pReal)
+    qu = [0.25_pReal/s, (om(3,2)-om(2,3))*s,(om(1,3)-om(3,1))*s,(om(2,1)-om(1,2))*s]
+  else
+      if( om(1,1) > om(2,2) .and. om(1,1) > om(3,3) ) then
+          s = 2.0_pReal * sqrt( 1.0_pReal + om(1,1) - om(2,2) - om(3,3))
+          qu = [ (om(3,2) - om(2,3)) /s,0.25_pReal * s,(om(1,2) + om(2,1)) / s,(om(1,3) + om(3,1)) / s]
+      elseif (om(2,2) > om(3,3)) then
+          s = 2.0_pReal * sqrt( 1.0_pReal + om(2,2) - om(1,1) - om(3,3))
+          qu = [ (om(1,3) - om(3,1)) /s,(om(1,2) + om(2,1)) / s,0.25_pReal * s,(om(2,3) + om(3,2)) / s]
+      else
+          s = 2.0_pReal * sqrt( 1.0_pReal + om(3,3) - om(1,1) - om(2,2) )
+          qu = [ (om(2,1) - om(1,2)) /s,(om(1,3) + om(3,1)) / s,(om(2,3) + om(3,2)) / s,0.25_pReal * s]
+      endif
+  endif
+  if(qu(1)<0._pReal) qu =-1.0_pReal * qu
+  qu = qu*[1.0_pReal,P,P,P]
 
 end function om2qu
 
@@ -727,7 +746,7 @@ pure function eu2om(eu) result(om)
   om(3,2) = -c(1)*s(2)
   om(3,3) =  c(2)
 
-  where(dEq0(om)) om = 0.0_pReal
+  where(abs(om)<1.0e-12_pReal) om = 0.0_pReal
 
 end function eu2om
 
@@ -1386,49 +1405,37 @@ subroutine selfTest
             sin(2.0_pReal*PI*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
-#ifndef __PGI
-    if(dNeq0(norm2(om2qu(qu2om(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'om2qu/qu2om,'
-    if(dNeq0(norm2(eu2qu(qu2eu(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'eu2qu/qu2eu,'
-    if(dNeq0(norm2(ax2qu(qu2ax(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2qu/qu2ax,'
-    if(dNeq0(norm2(ro2qu(qu2ro(qu))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2qu/qu2ro,'
-    if(dNeq0(norm2(ho2qu(qu2ho(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2qu/qu2ho,'
-    if(dNeq0(norm2(cu2qu(qu2cu(qu))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2qu/qu2cu,'
-#endif
+    if(.not. quaternion_equal(om2qu(qu2om(qu)),qu)) msg = trim(msg)//'om2qu/qu2om,'
+    if(.not. quaternion_equal(eu2qu(qu2eu(qu)),qu)) msg = trim(msg)//'eu2qu/qu2eu,'
+    if(.not. quaternion_equal(ax2qu(qu2ax(qu)),qu)) msg = trim(msg)//'ax2qu/qu2ax,'
+    if(.not. quaternion_equal(ro2qu(qu2ro(qu)),qu)) msg = trim(msg)//'ro2qu/qu2ro,'
+    if(.not. quaternion_equal(ho2qu(qu2ho(qu)),qu)) msg = trim(msg)//'ho2qu/qu2ho,'
+    if(.not. quaternion_equal(cu2qu(qu2cu(qu)),qu)) msg = trim(msg)//'cu2qu/qu2cu,'
 
     om = qu2om(qu)
-#ifndef __PGI
-    if(dNeq0(norm2(om2qu(eu2om(om2eu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'eu2om/om2eu,'
-    if(dNeq0(norm2(om2qu(ax2om(om2ax(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ax2om/om2ax,'
-    if(dNeq0(norm2(om2qu(ro2om(om2ro(om)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2om/om2ro,'
-    if(dNeq0(norm2(om2qu(ho2om(om2ho(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2om/om2ho,'
-    if(dNeq0(norm2(om2qu(cu2om(om2cu(om)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2om/om2cu,'
-#endif
+    if(.not. quaternion_equal(om2qu(eu2om(om2eu(om))),qu)) msg = trim(msg)//'eu2om/om2eu,'
+    if(.not. quaternion_equal(om2qu(ax2om(om2ax(om))),qu)) msg = trim(msg)//'ax2om/om2ax,'
+    if(.not. quaternion_equal(om2qu(ro2om(om2ro(om))),qu)) msg = trim(msg)//'ro2om/om2ro,'
+    if(.not. quaternion_equal(om2qu(ho2om(om2ho(om))),qu)) msg = trim(msg)//'ho2om/om2ho,'
+    if(.not. quaternion_equal(om2qu(cu2om(om2cu(om))),qu)) msg = trim(msg)//'cu2om/om2cu,'
 
     eu = qu2eu(qu)
-#ifndef __PGI
-    if(dNeq0(norm2(eu2qu(ax2eu(eu2ax(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ax2eu/eu2ax,'
-    if(dNeq0(norm2(eu2qu(ro2eu(eu2ro(eu)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2eu/eu2ro,'
-    if(dNeq0(norm2(eu2qu(ho2eu(eu2ho(eu)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2eu/eu2ho,'
-    if(dNeq0(norm2(eu2qu(cu2eu(eu2cu(eu)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2eu/eu2cu,'
-#endif
+    if(.not. quaternion_equal(eu2qu(ax2eu(eu2ax(eu))),qu)) msg = trim(msg)//'ax2eu/eu2ax,'
+    if(.not. quaternion_equal(eu2qu(ro2eu(eu2ro(eu))),qu)) msg = trim(msg)//'ro2eu/eu2ro,'
+    if(.not. quaternion_equal(eu2qu(ho2eu(eu2ho(eu))),qu)) msg = trim(msg)//'ho2eu/eu2ho,'
+    if(.not. quaternion_equal(eu2qu(cu2eu(eu2cu(eu))),qu)) msg = trim(msg)//'cu2eu/eu2cu,'
 
     ax = qu2ax(qu)
-#ifndef __PGI
-    if(dNeq0(norm2(ax2qu(ro2ax(ax2ro(ax)))-qu),1.0e-12_pReal)) msg = trim(msg)//'ro2ax/ax2ro,'
-    if(dNeq0(norm2(ax2qu(ho2ax(ax2ho(ax)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2ax/ax2ho,'
-    if(dNeq0(norm2(ax2qu(cu2ax(ax2cu(ax)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ax/ax2cu,'
-#endif
+    if(.not. quaternion_equal(ax2qu(ro2ax(ax2ro(ax))),qu)) msg = trim(msg)//'ro2ax/ax2ro,'
+    if(.not. quaternion_equal(ax2qu(ho2ax(ax2ho(ax))),qu)) msg = trim(msg)//'ho2ax/ax2ho,'
+    if(.not. quaternion_equal(ax2qu(cu2ax(ax2cu(ax))),qu)) msg = trim(msg)//'cu2ax/ax2cu,'
 
     ro = qu2ro(qu)
-#ifndef __PGI
-    if(dNeq0(norm2(ro2qu(ho2ro(ro2ho(ro)))-qu),1.0e-7_pReal))  msg = trim(msg)//'ho2ro/ro2ho,'
-    if(dNeq0(norm2(ro2qu(cu2ro(ro2cu(ro)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ro/ro2cu,'
-#endif
+    if(.not. quaternion_equal(ro2qu(ho2ro(ro2ho(ro))),qu)) msg = trim(msg)//'ho2ro/ro2ho,'
+    if(.not. quaternion_equal(ro2qu(cu2ro(ro2cu(ro))),qu)) msg = trim(msg)//'cu2ro/ro2cu,'
 
     ho = qu2ho(qu)
-#ifndef __PGI
-    if(dNeq0(norm2(ho2qu(cu2ho(ho2cu(ho)))-qu),1.0e-7_pReal))  msg = trim(msg)//'cu2ho/ho2cu,'
-#endif
+    if(.not. quaternion_equal(ho2qu(cu2ho(ho2cu(ho))),qu)) msg = trim(msg)//'cu2ho/ho2cu,'
 
     call R%fromMatrix(om)
 
@@ -1447,6 +1454,18 @@ subroutine selfTest
     if(len_trim(msg) /= 0) call IO_error(0,ext_msg=msg)
 
   enddo
+  contains
+
+  function quaternion_equal(qu1,qu2) result(ok)
+
+    real(pReal), intent(in), dimension(4) :: qu1,qu2
+    logical :: ok
+
+    ok = all(dEq(qu1,qu2,1.0e-7_pReal))
+    if(dEq0(qu1(1),1.0e-12_pReal)) &
+      ok = ok .or. all(dEq(-1.0_pReal*qu1,qu2,1.0e-7_pReal))
+
+  end function quaternion_equal
 
 end subroutine selfTest
 

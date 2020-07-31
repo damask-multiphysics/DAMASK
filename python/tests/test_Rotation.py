@@ -130,21 +130,21 @@ def qu2ho(qu):
 
 
 #---------- Rotation matrix ----------
-def om2qu(a):
-    trace = a[0,0] + a[1,1] + a[2,2]
+def om2qu(om):
+    trace = om.trace()
     if trace > 0:
         s = 0.5 / np.sqrt(trace+ 1.0)
-        qu = np.array([0.25 / s,( a[2,1] - a[1,2] ) * s,( a[0,2] - a[2,0] ) * s,( a[1,0] - a[0,1] ) * s])
+        qu = np.array([0.25 / s,( om[2,1] - om[1,2] ) * s,( om[0,2] - om[2,0] ) * s,( om[1,0] - om[0,1] ) * s])
     else:
-        if ( a[0,0] > a[1,1] and a[0,0] > a[2,2] ):
-            s = 2.0 * np.sqrt( 1.0 + a[0,0] - a[1,1] - a[2,2])
-            qu = np.array([ (a[2,1] - a[1,2]) / s,0.25 * s,(a[0,1] + a[1,0]) / s,(a[0,2] + a[2,0]) / s])
-        elif (a[1,1] > a[2,2]):
-            s = 2.0 * np.sqrt( 1.0 + a[1,1] - a[0,0] - a[2,2])
-            qu = np.array([ (a[0,2] - a[2,0]) / s,(a[0,1] + a[1,0]) / s,0.25 * s,(a[1,2] + a[2,1]) / s])
+        if ( om[0,0] > om[1,1] and om[0,0] > om[2,2] ):
+            s = 2.0 * np.sqrt( 1.0 + om[0,0] - om[1,1] - om[2,2])
+            qu = np.array([ (om[2,1] - om[1,2]) / s,0.25 * s,(om[0,1] + om[1,0]) / s,(om[0,2] + om[2,0]) / s])
+        elif (om[1,1] > om[2,2]):
+            s = 2.0 * np.sqrt( 1.0 + om[1,1] - om[0,0] - om[2,2])
+            qu = np.array([ (om[0,2] - om[2,0]) / s,(om[0,1] + om[1,0]) / s,0.25 * s,(om[1,2] + om[2,1]) / s])
         else:
-            s = 2.0 * np.sqrt( 1.0 + a[2,2] - a[0,0] - a[1,1] )
-            qu = np.array([ (a[1,0] - a[0,1]) / s,(a[0,2] + a[2,0]) / s,(a[1,2] + a[2,1]) / s,0.25 * s])
+            s = 2.0 * np.sqrt( 1.0 + om[2,2] - om[0,0] - om[1,1] )
+            qu = np.array([ (om[1,0] - om[0,1]) / s,(om[0,2] + om[2,0]) / s,(om[1,2] + om[2,1]) / s,0.25 * s])
     if qu[0]<0: qu*=-1
     return qu*np.array([1.,_P,_P,_P])
 
@@ -163,7 +163,6 @@ def om2eu(om):
 
 def om2ax(om):
     """Rotation matrix to axis angle pair."""
-    #return qu2ax(om2qu(om)) # HOTFIX
     ax=np.empty(4)
 
     # first get the rotation angle
@@ -445,11 +444,6 @@ def mul(me, other):
     ----------
     other : numpy.ndarray or Rotation
         Vector, second or fourth order tensor, or rotation object that is rotated.
-
-    Todo
-    ----
-    Document details active/passive)
-    consider rotation of (3,3,3,3)-matrix
 
     """
     if me.quaternion.shape != (4,):

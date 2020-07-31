@@ -104,7 +104,7 @@ def set_of_quaternions():
                          [1.0,-1.0,-1.0,-1.0],
                         ])
     specials /= np.linalg.norm(specials,axis=1).reshape(-1,1)
-    specials_scatter = specials + np.broadcast_to(np.random.rand(4)*scatter,specials.shape)
+    specials_scatter = specials + np.broadcast_to((np.random.rand(4)*2.-1.)*scatter,specials.shape)
     specials_scatter /= np.linalg.norm(specials_scatter,axis=1).reshape(-1,1)
     specials_scatter[specials_scatter[:,0]<0]*=-1
 
