@@ -509,7 +509,7 @@ class Result:
         else:
             return dataset
 
-
+    @property
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
@@ -518,6 +518,7 @@ class Result:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
+    @property
     def node_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
