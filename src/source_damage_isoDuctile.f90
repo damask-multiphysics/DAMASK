@@ -4,23 +4,13 @@
 !> @brief material subroutine incorporating isotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_damage_isoDuctile
-  use prec
-  use debug
-  use IO
-  use discretization
-  use material
-  use config
-  use results
-
-  implicit none
-  private
+submodule (constitutive:constitutive_damage) source_damage_isoDuctile
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoDuctile_offset, &                                                              !< which source is my current damage mechanism?
     source_damage_isoDuctile_instance                                                               !< instance of damage source mechanism
 
-  type, private :: tParameters                                                                      !< container type for internal constitutive parameters
+  type:: tParameters                                                                      !< container type for internal constitutive parameters
     real(pReal) :: &
       critPlasticStrain, &
       N
@@ -28,14 +18,8 @@ module source_damage_isoDuctile
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable, private :: param                                    !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                    !< containers of constitutive parameters (len Ninstance)
 
-
-  public :: &
-    source_damage_isoDuctile_init, &
-    source_damage_isoDuctile_dotState, &
-    source_damage_isoDuctile_getRateAndItsTangent, &
-    source_damage_isoDuctile_Results
 
 contains
 
@@ -44,16 +28,15 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoDuctile_init
+module subroutine source_damage_isoDuctile_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISODUCTILE_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_source == SOURCE_DAMAGE_ISODUCTILE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(source_damage_isoDuctile_offset  (size(config_phase)), source=0)
   allocate(source_damage_isoDuctile_instance(size(config_phase)), source=0)
@@ -100,7 +83,7 @@ end subroutine source_damage_isoDuctile_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
+module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -131,7 +114,7 @@ end subroutine source_damage_isoDuctile_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
   integer, intent(in) :: &
     phase, &
@@ -158,7 +141,7 @@ end subroutine source_damage_isoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoDuctile_results(phase,group)
+module subroutine source_damage_isoDuctile_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -177,4 +160,4 @@ subroutine source_damage_isoDuctile_results(phase,group)
 
 end subroutine source_damage_isoDuctile_results
 
-end module source_damage_isoDuctile
+end submodule source_damage_isoDuctile

@@ -11,7 +11,7 @@ The Intel Fortran compiler needs to be installed.
 
 1) Install Marc, Mentat and Documentation as usual
    Run the test example including subroutines to confirm that the installation of both Marc/Mentat and the Intel Fortran Compiler is ok!
-2) Run the apply_DAMASK_modifications.sh script from this directory.
+2) Run the apply_DAMASK_modifications.py script from this directory.
 
 
 APPENDIX:

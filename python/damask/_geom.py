@@ -6,9 +6,9 @@ from functools import partial
 import numpy as np
 from scipy import ndimage,spatial
 
+import damask
 from . import VTK
 from . import util
-from . import Environment
 from . import grid_filters
 
 
@@ -362,7 +362,7 @@ class Geom:
             seeds_p   = seeds
             coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
-        pool = multiprocessing.Pool(processes = int(Environment().options['DAMASK_NUM_THREADS']))
+        pool = multiprocessing.Pool(processes = int(damask.environment.options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()

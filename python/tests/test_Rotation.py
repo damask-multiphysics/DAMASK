@@ -6,94 +6,21 @@ import numpy as np
 from damask import Rotation
 from damask import _rotation
 
-
-
 n = 1100
 atol=1.e-4
-scatter=1.e-2
-
-@pytest.fixture
-def default():
-    """A set of n rotations (corner cases and random)."""
-    specials = np.array([
-                         [1.0, 0.0, 0.0, 0.0],
-                        #----------------------
-                         [0.0, 1.0, 0.0, 0.0],
-                         [0.0, 0.0, 1.0, 0.0],
-                         [0.0, 0.0, 0.0, 1.0],
-                         [0.0,-1.0, 0.0, 0.0],
-                         [0.0, 0.0,-1.0, 0.0],
-                         [0.0, 0.0, 0.0,-1.0],
-                        #----------------------
-                         [1.0, 1.0, 0.0, 0.0],
-                         [1.0, 0.0, 1.0, 0.0],
-                         [1.0, 0.0, 0.0, 1.0],
-                         [0.0, 1.0, 1.0, 0.0],
-                         [0.0, 1.0, 0.0, 1.0],
-                         [0.0, 0.0, 1.0, 1.0],
-                        #----------------------
-                         [1.0,-1.0, 0.0, 0.0],
-                         [1.0, 0.0,-1.0, 0.0],
-                         [1.0, 0.0, 0.0,-1.0],
-                         [0.0, 1.0,-1.0, 0.0],
-                         [0.0, 1.0, 0.0,-1.0],
-                         [0.0, 0.0, 1.0,-1.0],
-                        #----------------------
-                         [0.0, 1.0,-1.0, 0.0],
-                         [0.0, 1.0, 0.0,-1.0],
-                         [0.0, 0.0, 1.0,-1.0],
-                        #----------------------
-                         [0.0,-1.0,-1.0, 0.0],
-                         [0.0,-1.0, 0.0,-1.0],
-                         [0.0, 0.0,-1.0,-1.0],
-                        #----------------------
-                         [1.0, 1.0, 1.0, 0.0],
-                         [1.0, 1.0, 0.0, 1.0],
-                         [1.0, 0.0, 1.0, 1.0],
-                         [1.0,-1.0, 1.0, 0.0],
-                         [1.0,-1.0, 0.0, 1.0],
-                         [1.0, 0.0,-1.0, 1.0],
-                         [1.0, 1.0,-1.0, 0.0],
-                         [1.0, 1.0, 0.0,-1.0],
-                         [1.0, 0.0, 1.0,-1.0],
-                         [1.0,-1.0,-1.0, 0.0],
-                         [1.0,-1.0, 0.0,-1.0],
-                         [1.0, 0.0,-1.0,-1.0],
-                        #----------------------
-                         [0.0, 1.0, 1.0, 1.0],
-                         [0.0, 1.0,-1.0, 1.0],
-                         [0.0, 1.0, 1.0,-1.0],
-                         [0.0,-1.0, 1.0, 1.0],
-                         [0.0,-1.0,-1.0, 1.0],
-                         [0.0,-1.0, 1.0,-1.0],
-                         [0.0,-1.0,-1.0,-1.0],
-                        #----------------------
-                         [1.0, 1.0, 1.0, 1.0],
-                         [1.0,-1.0, 1.0, 1.0],
-                         [1.0, 1.0,-1.0, 1.0],
-                         [1.0, 1.0, 1.0,-1.0],
-                         [1.0,-1.0,-1.0, 1.0],
-                         [1.0,-1.0, 1.0,-1.0],
-                         [1.0, 1.0,-1.0,-1.0],
-                         [1.0,-1.0,-1.0,-1.0],
-                        ])
-    specials /= np.linalg.norm(specials,axis=1).reshape(-1,1)
-    specials_scatter = specials + np.broadcast_to(np.random.rand(4)*scatter,specials.shape)
-    specials_scatter /= np.linalg.norm(specials_scatter,axis=1).reshape(-1,1)
-    specials_scatter[specials_scatter[:,0]<0]*=-1
-
-    return [Rotation.from_quaternion(s) for s in specials] + \
-           [Rotation.from_quaternion(s) for s in specials_scatter] + \
-           [Rotation.from_random() for _ in range(n-len(specials)-len(specials_scatter))]
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
     return os.path.join(reference_dir_base,'Rotation')
 
+@pytest.fixture
+def set_of_rotations(set_of_quaternions):
+    return [Rotation.from_quaternion(s) for s in set_of_quaternions]
+
 
 ####################################################################################################
-# Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
+# Code below available according to the following conditions
 ####################################################################################################
 # Copyright (c) 2017-2019, Martin Diehl/Max-Planck-Institut für Eisenforschung GmbH
 # Copyright (c) 2013-2014, Marc De Graef/Carnegie Mellon University
@@ -203,27 +130,27 @@ def qu2ho(qu):
 
 
 #---------- Rotation matrix ----------
-def om2qu(a):
-    trace = a[0,0] + a[1,1] + a[2,2]
+def om2qu(om):
+    trace = om.trace()
     if trace > 0:
         s = 0.5 / np.sqrt(trace+ 1.0)
-        qu = np.array([0.25 / s,( a[2,1] - a[1,2] ) * s,( a[0,2] - a[2,0] ) * s,( a[1,0] - a[0,1] ) * s])
+        qu = np.array([0.25 / s,( om[2,1] - om[1,2] ) * s,( om[0,2] - om[2,0] ) * s,( om[1,0] - om[0,1] ) * s])
     else:
-        if ( a[0,0] > a[1,1] and a[0,0] > a[2,2] ):
-            s = 2.0 * np.sqrt( 1.0 + a[0,0] - a[1,1] - a[2,2])
-            qu = np.array([ (a[2,1] - a[1,2]) / s,0.25 * s,(a[0,1] + a[1,0]) / s,(a[0,2] + a[2,0]) / s])
-        elif (a[1,1] > a[2,2]):
-            s = 2.0 * np.sqrt( 1.0 + a[1,1] - a[0,0] - a[2,2])
-            qu = np.array([ (a[0,2] - a[2,0]) / s,(a[0,1] + a[1,0]) / s,0.25 * s,(a[1,2] + a[2,1]) / s])
+        if ( om[0,0] > om[1,1] and om[0,0] > om[2,2] ):
+            s = 2.0 * np.sqrt( 1.0 + om[0,0] - om[1,1] - om[2,2])
+            qu = np.array([ (om[2,1] - om[1,2]) / s,0.25 * s,(om[0,1] + om[1,0]) / s,(om[0,2] + om[2,0]) / s])
+        elif (om[1,1] > om[2,2]):
+            s = 2.0 * np.sqrt( 1.0 + om[1,1] - om[0,0] - om[2,2])
+            qu = np.array([ (om[0,2] - om[2,0]) / s,(om[0,1] + om[1,0]) / s,0.25 * s,(om[1,2] + om[2,1]) / s])
         else:
-            s = 2.0 * np.sqrt( 1.0 + a[2,2] - a[0,0] - a[1,1] )
-            qu = np.array([ (a[1,0] - a[0,1]) / s,(a[0,2] + a[2,0]) / s,(a[1,2] + a[2,1]) / s,0.25 * s])
+            s = 2.0 * np.sqrt( 1.0 + om[2,2] - om[0,0] - om[1,1] )
+            qu = np.array([ (om[1,0] - om[0,1]) / s,(om[0,2] + om[2,0]) / s,(om[1,2] + om[2,1]) / s,0.25 * s])
     if qu[0]<0: qu*=-1
     return qu*np.array([1.,_P,_P,_P])
 
 def om2eu(om):
     """Rotation matrix to Bunge-Euler angles."""
-    if not np.isclose(np.abs(om[2,2]),1.0,1.e-9):
+    if not np.isclose(np.abs(om[2,2]),1.0,0.0):
         zeta = 1.0/np.sqrt(1.0-om[2,2]**2)
         eu = np.array([np.arctan2(om[2,0]*zeta,-om[2,1]*zeta),
                        np.arccos(om[2,2]),
@@ -236,7 +163,6 @@ def om2eu(om):
 
 def om2ax(om):
     """Rotation matrix to axis angle pair."""
-    #return qu2ax(om2qu(om)) # HOTFIX
     ax=np.empty(4)
 
     # first get the rotation angle
@@ -519,11 +445,6 @@ def mul(me, other):
     other : numpy.ndarray or Rotation
         Vector, second or fourth order tensor, or rotation object that is rotated.
 
-    Todo
-    ----
-    Document details active/passive)
-    consider rotation of (3,3,3,3)-matrix
-
     """
     if me.quaternion.shape != (4,):
         raise NotImplementedError('Support for multiple rotations missing')
@@ -567,9 +488,9 @@ class TestRotation:
                                                  (Rotation._qu2ro,Rotation._ro2qu),
                                                  (Rotation._qu2ho,Rotation._ho2qu),
                                                  (Rotation._qu2cu,Rotation._cu2qu)])
-    def test_quaternion_internal(self,default,forward,backward):
+    def test_quaternion_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from quaternion and back."""
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_quaternion()
             o = backward(forward(m))
             ok = np.allclose(m,o,atol=atol)
@@ -584,9 +505,9 @@ class TestRotation:
                                                  (Rotation._om2ro,Rotation._ro2om),
                                                  (Rotation._om2ho,Rotation._ho2om),
                                                  (Rotation._om2cu,Rotation._cu2om)])
-    def test_matrix_internal(self,default,forward,backward):
+    def test_matrix_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from rotation matrix and back."""
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_matrix()
             o = backward(forward(m))
             ok = np.allclose(m,o,atol=atol)
@@ -599,9 +520,9 @@ class TestRotation:
                                                  (Rotation._eu2ro,Rotation._ro2eu),
                                                  (Rotation._eu2ho,Rotation._ho2eu),
                                                  (Rotation._eu2cu,Rotation._cu2eu)])
-    def test_Eulers_internal(self,default,forward,backward):
+    def test_Eulers_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from Euler angles and back."""
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_Eulers()
             o = backward(forward(m))
             u = np.array([np.pi*2,np.pi,np.pi*2])
@@ -619,9 +540,9 @@ class TestRotation:
                                                  (Rotation._ax2ro,Rotation._ro2ax),
                                                  (Rotation._ax2ho,Rotation._ho2ax),
                                                  (Rotation._ax2cu,Rotation._cu2ax)])
-    def test_axis_angle_internal(self,default,forward,backward):
+    def test_axis_angle_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from axis angle angles pair and back."""
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_axis_angle()
             o = backward(forward(m))
             ok = np.allclose(m,o,atol=atol)
@@ -636,10 +557,10 @@ class TestRotation:
                                                  (Rotation._ro2ax,Rotation._ax2ro),
                                                  (Rotation._ro2ho,Rotation._ho2ro),
                                                  (Rotation._ro2cu,Rotation._cu2ro)])
-    def test_Rodrigues_internal(self,default,forward,backward):
+    def test_Rodrigues_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from Rodrigues-Frank vector and back."""
         cutoff = np.tan(np.pi*.5*(1.-1e-4))
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_Rodrigues()
             o = backward(forward(m))
             ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
@@ -653,9 +574,9 @@ class TestRotation:
                                                  (Rotation._ho2ax,Rotation._ax2ho),
                                                  (Rotation._ho2ro,Rotation._ro2ho),
                                                  (Rotation._ho2cu,Rotation._cu2ho)])
-    def test_homochoric_internal(self,default,forward,backward):
+    def test_homochoric_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from homochoric vector and back."""
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_homochoric()
             o = backward(forward(m))
             ok = np.allclose(m,o,atol=atol)
@@ -668,9 +589,9 @@ class TestRotation:
                                                  (Rotation._cu2ax,Rotation._ax2cu),
                                                  (Rotation._cu2ro,Rotation._ro2cu),
                                                  (Rotation._cu2ho,Rotation._ho2cu)])
-    def test_cubochoric_internal(self,default,forward,backward):
+    def test_cubochoric_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from cubochoric vector and back."""
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_cubochoric()
             o = backward(forward(m))
             ok = np.allclose(m,o,atol=atol)
@@ -684,9 +605,9 @@ class TestRotation:
                                                    (Rotation._qu2ax,qu2ax),
                                                    (Rotation._qu2ro,qu2ro),
                                                    (Rotation._qu2ho,qu2ho)])
-    def test_quaternion_vectorization(self,default,vectorized,single):
+    def test_quaternion_vectorization(self,set_of_quaternions,vectorized,single):
         """Check vectorized implementation for quaternion against single point calculation."""
-        qu = np.array([rot.as_quaternion() for rot in default])
+        qu = np.array(set_of_quaternions)
         vectorized(qu.reshape(qu.shape[0]//2,-1,4))
         co = vectorized(qu)
         for q,c in zip(qu,co):
@@ -697,9 +618,9 @@ class TestRotation:
     @pytest.mark.parametrize('vectorized, single',[(Rotation._om2qu,om2qu),
                                                    (Rotation._om2eu,om2eu),
                                                    (Rotation._om2ax,om2ax)])
-    def test_matrix_vectorization(self,default,vectorized,single):
+    def test_matrix_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for rotation matrix against single point calculation."""
-        om = np.array([rot.as_matrix() for rot in default])
+        om = np.array([rot.as_matrix() for rot in set_of_rotations])
         vectorized(om.reshape(om.shape[0]//2,-1,3,3))
         co = vectorized(om)
         for o,c in zip(om,co):
@@ -710,9 +631,9 @@ class TestRotation:
                                                    (Rotation._eu2om,eu2om),
                                                    (Rotation._eu2ax,eu2ax),
                                                    (Rotation._eu2ro,eu2ro)])
-    def test_Eulers_vectorization(self,default,vectorized,single):
+    def test_Eulers_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for Euler angles against single point calculation."""
-        eu = np.array([rot.as_Eulers() for rot in default])
+        eu = np.array([rot.as_Eulers() for rot in set_of_rotations])
         vectorized(eu.reshape(eu.shape[0]//2,-1,3))
         co = vectorized(eu)
         for e,c in zip(eu,co):
@@ -723,9 +644,9 @@ class TestRotation:
                                                    (Rotation._ax2om,ax2om),
                                                    (Rotation._ax2ro,ax2ro),
                                                    (Rotation._ax2ho,ax2ho)])
-    def test_axis_angle_vectorization(self,default,vectorized,single):
+    def test_axis_angle_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for axis angle pair against single point calculation."""
-        ax = np.array([rot.as_axis_angle() for rot in default])
+        ax = np.array([rot.as_axis_angle() for rot in set_of_rotations])
         vectorized(ax.reshape(ax.shape[0]//2,-1,4))
         co = vectorized(ax)
         for a,c in zip(ax,co):
@@ -735,9 +656,9 @@ class TestRotation:
 
     @pytest.mark.parametrize('vectorized, single',[(Rotation._ro2ax,ro2ax),
                                                    (Rotation._ro2ho,ro2ho)])
-    def test_Rodrigues_vectorization(self,default,vectorized,single):
+    def test_Rodrigues_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for Rodrigues-Frank vector against single point calculation."""
-        ro = np.array([rot.as_Rodrigues() for rot in default])
+        ro = np.array([rot.as_Rodrigues() for rot in set_of_rotations])
         vectorized(ro.reshape(ro.shape[0]//2,-1,4))
         co = vectorized(ro)
         for r,c in zip(ro,co):
@@ -746,9 +667,9 @@ class TestRotation:
 
     @pytest.mark.parametrize('vectorized, single',[(Rotation._ho2ax,ho2ax),
                                                    (Rotation._ho2cu,ho2cu)])
-    def test_homochoric_vectorization(self,default,vectorized,single):
+    def test_homochoric_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for homochoric vector against single point calculation."""
-        ho = np.array([rot.as_homochoric() for rot in default])
+        ho = np.array([rot.as_homochoric() for rot in set_of_rotations])
         vectorized(ho.reshape(ho.shape[0]//2,-1,3))
         co = vectorized(ho)
         for h,c in zip(ho,co):
@@ -756,9 +677,9 @@ class TestRotation:
             assert np.allclose(single(h),c) and np.allclose(single(h),vectorized(h))
 
     @pytest.mark.parametrize('vectorized, single',[(Rotation._cu2ho,cu2ho)])
-    def test_cubochoric_vectorization(self,default,vectorized,single):
+    def test_cubochoric_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for cubochoric vector against single point calculation."""
-        cu = np.array([rot.as_cubochoric() for rot in default])
+        cu = np.array([rot.as_cubochoric() for rot in set_of_rotations])
         vectorized(cu.reshape(cu.shape[0]//2,-1,3))
         co = vectorized(cu)
         for u,c in zip(cu,co):
@@ -766,8 +687,8 @@ class TestRotation:
             assert np.allclose(single(u),c) and np.allclose(single(u),vectorized(u))
 
     @pytest.mark.parametrize('degrees',[True,False])
-    def test_Eulers(self,default,degrees):
-        for rot in default:
+    def test_Eulers(self,set_of_rotations,degrees):
+        for rot in set_of_rotations:
             m = rot.as_quaternion()
             o = Rotation.from_Eulers(rot.as_Eulers(degrees),degrees).as_quaternion()
             ok = np.allclose(m,o,atol=atol)
@@ -779,9 +700,9 @@ class TestRotation:
     @pytest.mark.parametrize('P',[1,-1])
     @pytest.mark.parametrize('normalise',[True,False])
     @pytest.mark.parametrize('degrees',[True,False])
-    def test_axis_angle(self,default,degrees,normalise,P):
+    def test_axis_angle(self,set_of_rotations,degrees,normalise,P):
         c = np.array([P*-1,P*-1,P*-1,1.])
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_Eulers()
             o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalise,P).as_Eulers()
             u = np.array([np.pi*2,np.pi,np.pi*2])
@@ -793,8 +714,8 @@ class TestRotation:
             print(m,o,rot.as_quaternion())
             assert ok and (np.zeros(3)-1.e-9 <= o).all() and (o <= np.array([np.pi*2.,np.pi,np.pi*2.])+1.e-9).all()
 
-    def test_matrix(self,default):
-        for rot in default:
+    def test_matrix(self,set_of_rotations):
+        for rot in set_of_rotations:
             m = rot.as_axis_angle()
             o = Rotation.from_axis_angle(rot.as_axis_angle()).as_axis_angle()
             ok = np.allclose(m,o,atol=atol)
@@ -805,9 +726,9 @@ class TestRotation:
 
     @pytest.mark.parametrize('P',[1,-1])
     @pytest.mark.parametrize('normalise',[True,False])
-    def test_Rodrigues(self,default,normalise,P):
+    def test_Rodrigues(self,set_of_rotations,normalise,P):
         c = np.array([P*-1,P*-1,P*-1,1.])
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_matrix()
             o = Rotation.from_Rodrigues(rot.as_Rodrigues()*c,normalise,P).as_matrix()
             ok = np.allclose(m,o,atol=atol)
@@ -815,9 +736,9 @@ class TestRotation:
             assert ok and np.isclose(np.linalg.det(o),1.0)
 
     @pytest.mark.parametrize('P',[1,-1])
-    def test_homochoric(self,default,P):
+    def test_homochoric(self,set_of_rotations,P):
         cutoff = np.tan(np.pi*.5*(1.-1e-4))
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_Rodrigues()
             o = Rotation.from_homochoric(rot.as_homochoric()*P*-1,P).as_Rodrigues()
             ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
@@ -826,8 +747,8 @@ class TestRotation:
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0)
 
     @pytest.mark.parametrize('P',[1,-1])
-    def test_cubochoric(self,default,P):
-        for rot in default:
+    def test_cubochoric(self,set_of_rotations,P):
+        for rot in set_of_rotations:
             m = rot.as_homochoric()
             o = Rotation.from_cubochoric(rot.as_cubochoric()*P*-1,P).as_homochoric()
             ok = np.allclose(m,o,atol=atol)
@@ -836,9 +757,9 @@ class TestRotation:
 
     @pytest.mark.parametrize('P',[1,-1])
     @pytest.mark.parametrize('accept_homomorph',[True,False])
-    def test_quaternion(self,default,P,accept_homomorph):
+    def test_quaternion(self,set_of_rotations,P,accept_homomorph):
         c = np.array([1,P*-1,P*-1,P*-1]) * (-1 if accept_homomorph else 1)
-        for rot in default:
+        for rot in set_of_rotations:
             m = rot.as_cubochoric()
             o = Rotation.from_quaternion(rot.as_quaternion()*c,accept_homomorph,P).as_cubochoric()
             ok = np.allclose(m,o,atol=atol)
@@ -848,8 +769,8 @@ class TestRotation:
             assert ok and o.max() < np.pi**(2./3.)*0.5+1.e-9
 
     @pytest.mark.parametrize('reciprocal',[True,False])
-    def test_basis(self,default,reciprocal):
-        for rot in default:
+    def test_basis(self,set_of_rotations,reciprocal):
+        for rot in set_of_rotations:
             om = rot.as_matrix() + 0.1*np.eye(3)
             rot = Rotation.from_basis(om,False,reciprocal=reciprocal)
             assert np.isclose(np.linalg.det(rot.as_matrix()),1.0)
@@ -923,8 +844,8 @@ class TestRotation:
     @pytest.mark.parametrize('data',[np.random.rand(5,3),
                                      np.random.rand(5,3,3),
                                      np.random.rand(5,3,3,3,3)])
-    def test_rotate_vectorization(self,default,data):
-        for rot in default:
+    def test_rotate_vectorization(self,set_of_rotations,data):
+        for rot in set_of_rotations:
             v = rot.broadcast_to((5,)) @ data
             for i in range(data.shape[0]):
                 print(i-data[i])
@@ -978,3 +899,15 @@ class TestRotation:
     def test_misorientation(self):
         R = Rotation.from_random()
         assert np.allclose(R.misorientation(R).as_matrix(),np.eye(3))
+
+    def test_misorientation360(self):
+        R_1 = Rotation()
+        R_2 = Rotation.from_Eulers([360,0,0],degrees=True)
+        assert np.allclose(R_1.misorientation(R_2).as_matrix(),np.eye(3))
+
+    @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
+    def test_average(self,angle):
+        R_1 = Rotation.from_axis_angle([0,0,1,10],degrees=True)
+        R_2 = Rotation.from_axis_angle([0,0,1,angle],degrees=True)
+        avg_angle = R_1.average(R_2).as_axis_angle(degrees=True,pair=True)[1]
+        assert np.isclose(avg_angle,10+(angle-10)/2.)

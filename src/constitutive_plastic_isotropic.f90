@@ -7,7 +7,7 @@
 !! resolving the stress on the slip systems. Will give the response of phenopowerlaw for an
 !! untextured polycrystal
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive) plastic_isotropic
+submodule(constitutive:constitutive_plastic) plastic_isotropic
 
   type :: tParameters
     real(pReal) :: &
@@ -61,14 +61,13 @@ module subroutine plastic_isotropic_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_ISOTROPIC_LABEL//' init  -+>>>'
 
   write(6,'(/,a)') ' Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
   write(6,'(a)')   ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
   Ninstance = count(phase_plasticity == PLASTICITY_ISOTROPIC_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -84,8 +83,8 @@ module subroutine plastic_isotropic_init
     prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
 
 #ifdef DEBUG
-    if  (p==material_phaseAt(debug_g,debug_e)) &
-      prm%of_debug = material_phasememberAt(debug_g,debug_i,debug_e)
+    if  (p==material_phaseAt(debugConstitutive%grain,debugConstitutive%element)) &
+      prm%of_debug = material_phasememberAt(debugConstitutive%grain,debugConstitutive%ip,debugConstitutive%element)
 #endif
 
     xi_0            = config%getFloat('tau0')
@@ -183,8 +182,7 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
 
     Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
 #ifdef DEBUG
-    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
-        .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
+    if (debugConstitutive%extensive .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
       write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
                                        transpose(Mp_dev)*1.0e-6_pReal
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
@@ -239,8 +237,7 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
        * tr * abs(tr)**(prm%n-1.0_pReal)
 
 #ifdef DEBUG
-    if (iand(debug_level(debug_constitutive), debug_levelExtensive) /= 0 &
-        .and. (of == prm%of_debug .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0)) then
+    if (debugConstitutive%extensive .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> pressure / MPa', tr/3.0_pReal*1.0e-6_pReal
       write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
                                                            * tr * abs(tr)**(prm%n-1.0_pReal)

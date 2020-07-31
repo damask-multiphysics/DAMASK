@@ -11,13 +11,13 @@ from functools import partial
 
 import h5py
 import numpy as np
+from numpy.lib import recfunctions as rfn
 
 import damask
 from . import VTK
 from . import Table
 from . import Rotation
 from . import Orientation
-from . import Environment
 from . import grid_filters
 from . import mechanics
 from . import util
@@ -736,29 +736,23 @@ class Result:
 
 
     @staticmethod
-    def _add_IPFcolor(q,l):
-        d      = np.array(l)
-        d_unit = d/np.linalg.norm(d)
-        m      = util.scale_to_coprime(d)
-        colors = np.empty((len(q['data']),3),np.uint8)
+    def _add_IPF_color(q,l):
+        m = util.scale_to_coprime(np.array(l))
 
-        lattice   = q['meta']['Lattice']
-
-        for i,qu in enumerate(q['data']):
-            o = Orientation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]),lattice).reduced()
-            colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
+        o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
+                        lattice = q['meta']['Lattice'])
 
         return {
-                'data': colors,
+                'data': np.uint8(o.IPF_color(l)*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
-                          'Unit':        'RGB (8bit)',
-                          'Lattice':     lattice,
+                          'Unit':        '8-bit RGB',
+                          'Lattice':     q['meta']['Lattice'],
                           'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
                           'Creator':     inspect.stack()[0][3][1:]
                          }
                }
-    def add_IPFcolor(self,q,l):
+    def add_IPF_color(self,q,l):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
@@ -770,7 +764,7 @@ class Result:
             Lab frame direction for inverse pole figure.
 
         """
-        self._add_generic_pointwise(self._add_IPFcolor,{'q':q},{'l':l})
+        self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})
 
 
     @staticmethod
@@ -1070,7 +1064,7 @@ class Result:
             Arguments parsed to func.
 
         """
-        num_threads = Environment().options['DAMASK_NUM_THREADS']
+        num_threads = damask.environment.options['DAMASK_NUM_THREADS']
         pool = mp.Pool(int(num_threads) if num_threads is not None else None)
         lock = mp.Manager().Lock()
 

@@ -4,15 +4,8 @@
 !> @author Philip Eisenlohr, Michigan State University
 !> @brief material subroutine for variable heat source
 !--------------------------------------------------------------------------------------------------
-module source_thermal_externalheat
-  use prec
-  use debug
-  use discretization
-  use material
-  use config
+submodule(constitutive:constitutive_thermal) source_thermal_externalheat
 
-  implicit none
-  private
 
   integer,           dimension(:),   allocatable :: &
     source_thermal_externalheat_offset, &                                                           !< which source is my current thermal dissipation mechanism?
@@ -29,11 +22,6 @@ module source_thermal_externalheat
   type(tParameters), dimension(:), allocatable  :: param                                            !< containers of constitutive parameters (len Ninstance)
 
 
-  public :: &
-    source_thermal_externalheat_init, &
-    source_thermal_externalheat_dotState, &
-    source_thermal_externalheat_getRateAndItsTangent
-
 contains
 
 
@@ -41,15 +29,14 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_externalheat_init
+module subroutine source_thermal_externalheat_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'
 
   Ninstance = count(phase_source == SOURCE_thermal_externalheat_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(source_thermal_externalheat_offset  (size(config_phase)), source=0)
   allocate(source_thermal_externalheat_instance(size(config_phase)), source=0)
@@ -86,7 +73,7 @@ end subroutine source_thermal_externalheat_init
 !> @brief rate of change of state
 !> @details state only contains current time to linearly interpolate given heat powers
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_externalheat_dotState(phase, of)
+module subroutine source_thermal_externalheat_dotState(phase, of)
 
   integer, intent(in) :: &
     phase, &
@@ -105,7 +92,7 @@ end subroutine source_thermal_externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phase, of)
+module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phase, of)
 
   integer, intent(in) :: &
     phase, &
@@ -137,4 +124,4 @@ subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phas
 
 end subroutine source_thermal_externalheat_getRateAndItsTangent
 
-end module source_thermal_externalheat
+end submodule source_thermal_externalheat

@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief  phenomenological crystal plasticity formulation using a powerlaw fitting
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive) plastic_phenopowerlaw
+submodule(constitutive:constitutive_plastic) plastic_phenopowerlaw
 
   type :: tParameters
     real(pReal) :: &
@@ -83,11 +83,10 @@ module subroutine plastic_phenopowerlaw_init
   character(len=pStringLen) :: &
     extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_PHENOPOWERLAW_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))

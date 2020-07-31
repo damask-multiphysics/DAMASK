@@ -8,8 +8,7 @@ module thermal_adiabatic
   use numerics
   use material
   use results
-  use source_thermal_dissipation
-  use source_thermal_externalheat
+  use constitutive
   use crystallite
   use lattice
 
@@ -125,46 +124,15 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
     T
   real(pReal), intent(out) :: &
     Tdot, dTdot_dT
- 
-  real(pReal) :: &
-    my_Tdot, my_dTdot_dT
   integer :: &
-    phase, &
-    homog, &
-    instance, &
-    grain, &
-    source, &
-    constituent
-    
-  homog  = material_homogenizationAt(el)
-  instance = thermal_typeInstance(homog)
-   
+    homog
+ 
   Tdot = 0.0_pReal
   dTdot_dT = 0.0_pReal
-  do grain = 1, homogenization_Ngrains(homog)
-    phase = material_phaseAt(grain,el)
-    constituent = material_phasememberAt(grain,ip,el)
-    do source = 1, phase_Nsources(phase)
-      select case(phase_source(source,phase))                                                   
-        case (SOURCE_thermal_dissipation_ID)
-         call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                              crystallite_S(1:3,1:3,grain,ip,el), &
-                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
-                                                              phase)
  
-        case (SOURCE_thermal_externalheat_ID)
-         call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                               phase, constituent)
- 
-        case default
-         my_Tdot = 0.0_pReal
-         my_dTdot_dT = 0.0_pReal
-      end select
-      Tdot = Tdot + my_Tdot
-      dTdot_dT = dTdot_dT + my_dTdot_dT
-    enddo  
-  enddo
-  
+  homog  = material_homogenizationAt(el)
+  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, crystallite_S, crystallite_Lp, ip, el)
+
   Tdot = Tdot/real(homogenization_Ngrains(homog),pReal)
   dTdot_dT = dTdot_dT/real(homogenization_Ngrains(homog),pReal)
  

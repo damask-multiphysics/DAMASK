@@ -464,6 +464,8 @@ subroutine selfTest
   real(pReal), dimension(4) :: qu
   type(quaternion)          :: q, q_2
 
+  if(dNeq(abs(P),1.0_pReal))                           call IO_error(0,ext_msg='P not in {-1,+1}')
+
   call random_number(qu)
   qu = (qu-0.5_pReal) * 2.0_pReal
   q  = quaternion(qu)

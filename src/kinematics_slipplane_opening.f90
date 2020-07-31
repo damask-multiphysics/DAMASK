@@ -4,17 +4,7 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of slip planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module kinematics_slipplane_opening
-  use prec
-  use config
-  use IO
-  use debug
-  use math
-  use lattice
-  use material
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage) kinematics_slipplane_opening
 
   integer, dimension(:), allocatable :: kinematics_slipplane_opening_instance
 
@@ -34,9 +24,6 @@ module kinematics_slipplane_opening
 
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
 
-  public :: &
-    kinematics_slipplane_opening_init, &
-    kinematics_slipplane_opening_LiAndItsTangent
 
 contains
 
@@ -45,18 +32,17 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_init
+module subroutine kinematics_slipplane_opening_init
 
   integer :: Ninstance,p,i
   character(len=pStringLen) :: extmsg = ''
   integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_kinematics == KINEMATICS_SLIPPLANE_OPENING_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(kinematics_slipplane_opening_instance(size(config_phase)), source=0)
   allocate(param(Ninstance))
@@ -109,7 +95,7 @@ end subroutine kinematics_slipplane_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< grain number
@@ -185,4 +171,4 @@ subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, 
 
 end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
-end module kinematics_slipplane_opening
+end submodule kinematics_slipplane_opening

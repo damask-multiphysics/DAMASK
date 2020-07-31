@@ -49,4 +49,5 @@ echo "program: $program"
     exit 1
     }
     /bin/rm $userobj
-	/bin/rm $DIRJOB/*.mod
+    /bin/rm $DIRJOB/*.mod
+    /bin/rm $DIRJOB/*.smod

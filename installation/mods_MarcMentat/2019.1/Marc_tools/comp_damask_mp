@@ -1,0 +1,53 @@
+#!/bin/ksh
+# 1st arg: $DIR
+# 2nd arg: $DIRJOB
+# 3rd arg: $user
+# 4th arg: $program
+DIR=$1
+user=$3
+program=$4
+usernoext=$user
+usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f`
+usernoext=`dirname $usernoext`/`$BASENAME $usernoext .F`
+usernoext=`dirname $usernoext`/`$BASENAME $usernoext .for`
+usernoext=`dirname $usernoext`/`$BASENAME $usernoext .f90`
+
+# add BLAS options for linking
+  BLAS="%BLAS%"
+
+. $DIR/tools/include
+DIRJOB=$2
+cd $DIRJOB
+echo "Compiling and linking user subroutine $user on host `hostname`"
+echo "program: $program"
+        $DFORTRANMP $user || \
+		{
+		echo "$0: compile failed for $user"
+		exit 1
+		}
+        /bin/rm $program 2>/dev/null
+        userobj=$usernoext.o
+
+
+    $LOAD ${program}  $DIR/lib/main.o\
+    $DIR/lib/blkdta.o $DIR/lib/comm?.o \
+    ${userobj-} \
+    $DIR/lib/srclib.a \
+    $MNFLIBS \
+    $MDUSER  \
+    ../lib/mdsrc.a \
+    ../lib/mcvfit.a \
+    $STUBS \
+    ${SOLVERLIBS} \
+    $TKLIBS \
+    $MRCLIBS \
+    $METISLIBS \
+    $BLAS   \
+    $SYSLIBS          || \
+    {
+    echo "$0: link failed for $usernoext.o on host `hostname`"
+    exit 1
+    }
+    /bin/rm $userobj
+	/bin/rm $DIRJOB/*.mod
+	/bin/rm $DIRJOB/*.smod

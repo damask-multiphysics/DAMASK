@@ -19,7 +19,6 @@ module spectral_utilities
   use config
   use discretization
   use homogenization
-  use YAML_types
 
   implicit none
   private
@@ -188,8 +187,11 @@ subroutine spectral_utilities_init
     scalarSize = 1_C_INTPTR_T, &
     vecSize    = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
-  class(tNode), pointer :: &
-    num_grid
+  character(len=*), parameter :: &
+    PETSCDEBUG = ' -snes_view -snes_monitor '
+  class(tNode) , pointer :: &
+    num_grid, &
+    debug_grid                                                                                      ! pointer to grid  debug options
 
   write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
 
@@ -207,9 +209,11 @@ subroutine spectral_utilities_init
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
-  debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
-  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
-  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
+  debug_grid      => debug_root%get('grid',defaultVal=emptyList)
+  debugGeneral    =  debug_grid%contains('basic')
+  debugRotation   =  debug_grid%contains('rotation')
+  debugPETSc      =  debug_grid%contains('petsc')
+
 
   if(debugPETSc) write(6,'(3(/,a),/)') &
                  ' Initializing PETSc with debug options: ', &

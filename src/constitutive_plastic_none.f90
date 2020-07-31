@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Dummy plasticity for purely elastic material
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive) plastic_none
+submodule(constitutive:constitutive_plastic) plastic_none
 
 contains
 
@@ -19,11 +19,10 @@ module subroutine plastic_none_init
     p, &
     NipcMyPhase
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_NONE_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_NONE_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_plasticity == PLASTICITY_NONE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   do p = 1, size(phase_plasticity)
     if (phase_plasticity(p) /= PLASTICITY_NONE_ID) cycle

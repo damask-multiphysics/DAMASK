@@ -68,7 +68,8 @@ subroutine discretization_mesh_init(restart)
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, l
+    j, l, &
+    debug_element, debug_ip
   PetscSF :: sf
   DM :: globalMesh
   PetscInt :: nFaceSets
@@ -85,8 +86,15 @@ subroutine discretization_mesh_init(restart)
 
   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
 
+!--------------------------------------------------------------------------------
+! read numerics parameter
   num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
   integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+
+!---------------------------------------------------------------------------------
+! read debug parameters
+  debug_element = debug_root%get_asInt('element',defaultVal=1)
+  debug_ip      = debug_root%get_asInt('integrationpoint',defaultVal=1)
 
 
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
@@ -164,8 +172,8 @@ subroutine discretization_mesh_init(restart)
     CHKERRQ(ierr)
   end do
 
-  if (debug_e < 1 .or. debug_e > mesh_NcpElems) call IO_error(602,ext_msg='element')
-  if (debug_i < 1 .or. debug_i > mesh_maxNips)  call IO_error(602,ext_msg='IP')
+  if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
+  if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
 
   FEsolving_execElem = [1,mesh_NcpElems]                                                            ! parallel loop bounds set to comprise all DAMASK elements
   FEsolving_execIP   = [1,mesh_maxNips]

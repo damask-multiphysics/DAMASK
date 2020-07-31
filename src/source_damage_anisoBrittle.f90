@@ -4,19 +4,7 @@
 !> @brief material subroutine incorporating anisotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_damage_anisoBrittle
-  use prec
-  use debug
-  use IO
-  use math
-  use discretization
-  use material
-  use config
-  use lattice
-  use results
-
-  implicit none
-  private
+submodule (constitutive:constitutive_damage) source_damage_anisoBrittle
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
@@ -40,12 +28,6 @@ module source_damage_anisoBrittle
   type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
 
 
-  public :: &
-    source_damage_anisoBrittle_init, &
-    source_damage_anisoBrittle_dotState, &
-    source_damage_anisobrittle_getRateAndItsTangent, &
-    source_damage_anisoBrittle_results
-
 contains
 
 
@@ -53,17 +35,16 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_init
+module subroutine source_damage_anisoBrittle_init
 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'
 
   Ninstance = count(phase_source == SOURCE_DAMAGE_ANISOBRITTLE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
   allocate(source_damage_anisoBrittle_offset  (size(config_phase)), source=0)
   allocate(source_damage_anisoBrittle_instance(size(config_phase)), source=0)
@@ -125,7 +106,7 @@ end subroutine source_damage_anisoBrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
+module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -174,7 +155,7 @@ end subroutine source_damage_anisoBrittle_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
   integer, intent(in) :: &
     phase, &
@@ -201,7 +182,7 @@ end subroutine source_damage_anisoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_results(phase,group)
+module subroutine source_damage_anisoBrittle_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -220,4 +201,4 @@ subroutine source_damage_anisoBrittle_results(phase,group)
 
 end subroutine source_damage_anisoBrittle_results
 
-end module source_damage_anisoBrittle
+end submodule source_damage_anisoBrittle
