@@ -26,7 +26,7 @@ def default():
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
-    return os.path.join(reference_dir_base,'Geom')
+    return reference_dir_base/'Geom'
 
 
 class TestGeom:
@@ -87,7 +87,7 @@ class TestGeom:
         modified = copy.deepcopy(default)
         modified.mirror(directions,reflect)
         tag = f'directions={"-".join(directions)}_reflect={reflect}'
-        reference = os.path.join(reference_dir,f'mirror_{tag}.geom')
+        reference = reference_dir/f'mirror_{tag}.geom'
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
@@ -96,7 +96,7 @@ class TestGeom:
         modified = copy.deepcopy(default)
         modified.clean(stencil)
         tag = f'stencil={stencil}'
-        reference = os.path.join(reference_dir,f'clean_{tag}.geom')
+        reference = reference_dir/f'clean_{tag}.geom'
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
@@ -113,7 +113,7 @@ class TestGeom:
         modified = copy.deepcopy(default)
         modified.scale(grid)
         tag = f'grid={util.srepr(grid,"-")}'
-        reference = os.path.join(reference_dir,f'scale_{tag}.geom')
+        reference = reference_dir/f'scale_{tag}.geom'
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
@@ -152,7 +152,7 @@ class TestGeom:
         modified = copy.deepcopy(default)
         modified.rotate(Rotation.from_Eulers(Eulers,degrees=True))
         tag = f'Eulers={util.srepr(Eulers,"-")}'
-        reference = os.path.join(reference_dir,f'rotate_{tag}.geom')
+        reference = reference_dir/f'rotate_{tag}.geom'
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 

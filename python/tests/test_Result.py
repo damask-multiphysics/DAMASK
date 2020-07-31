@@ -1,6 +1,7 @@
 import time
 import shutil
 import os
+import sys
 from datetime import datetime
 
 import pytest
@@ -100,14 +101,16 @@ class TestResult:
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('mode',['direct','function'])
-    def test_add_calculation(self,default,mode):
-        def my_func(field):
-            return 2.0*np.abs(field)-1.0
+    def test_add_calculation(self,default,tmp_path,mode):
 
         if mode == 'direct':
             default.add_calculation('x','2.0*np.abs(#F#)-1.0','-','my notes')
         else:
-            default.enable_user_function(my_func)
+            with open(tmp_path/'f.py','w') as f:
+                f.write("import numpy as np\ndef my_func(field):\n  return 2.0*np.abs(field)-1.0\n")
+            sys.path.insert(0,str(tmp_path))
+            import f
+            default.enable_user_function(f.my_func)
             default.add_calculation('x','my_func(#F#)','-','my notes')
 
         loc = {'F':    default.get_dataset_location('F'),
