@@ -567,7 +567,7 @@ class Result:
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
-    def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
+    def add_calculation(self,label,formula,unit='n/a',description=None):
         """
         Add result of a general formula.
 
@@ -581,13 +581,8 @@ class Result:
             Physical unit of the result.
         description : str, optional
             Human-readable description of the result.
-        vectorized : bool, optional
-            Indicate whether the formula can be used in vectorized form. Defaults to ‘True’.
 
         """
-        if not vectorized:
-            raise NotImplementedError
-
         dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
         args             = {'formula':formula,'label':label,'unit':unit,'description':description}
         self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
