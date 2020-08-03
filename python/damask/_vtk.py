@@ -190,9 +190,13 @@ class VTK:
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
         writer.SetInputData(self.geom)
+
         if parallel:
-            mp_writer = mp.Process(target=self._write,args=(writer,))
-            mp_writer.start()
+            try:
+                mp_writer = mp.Process(target=self._write,args=(writer,))
+                mp_writer.start()
+            except TypeError:
+                writer.Write()
         else:
             writer.Write()
 
