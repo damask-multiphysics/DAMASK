@@ -131,13 +131,14 @@ class TestColormap:
         c += c
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
 
-    def test_shade(self,reference_dir,update):
+    @pytest.mark.parametrize('bounds',[None,[2,10]])
+    def test_shade(self,reference_dir,update,bounds):
         data = np.add(*np.indices((10, 11)))
-        img_current = Colormap.from_predefined('orientation').shade(data)
+        img_current = Colormap.from_predefined('orientation').shade(data,bounds=bounds)
         if update:
-            img_current.save(reference_dir/'shade.png')
+            img_current.save(reference_dir/f'shade_{bounds}.png')
         else:
-            img_reference = Image.open(reference_dir/'shade.png')
+            img_reference = Image.open(reference_dir/f'shade_{bounds}.png')
             diff = ImageChops.difference(img_reference.convert('RGB'),img_current.convert('RGB'))
             assert not diff.getbbox()
 

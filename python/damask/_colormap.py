@@ -186,7 +186,7 @@ class Colormap(mpl.colors.ListedColormap):
                np.logical_or (np.isnan(field), field == gap))                                       # mask gap and NaN (if gap present)
 
         if bounds is None:
-            hi,lo = field[mask].min(),field[mask].max()
+            hi,lo = field[mask].max(),field[mask].min()
         else:
             hi,lo = bounds[::-1]
         
