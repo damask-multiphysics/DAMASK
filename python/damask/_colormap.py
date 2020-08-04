@@ -9,6 +9,8 @@ if os.name == 'posix' and 'DISPLAY' not in os.environ:
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
+from PIL import Image
+
 import damask
 from . import Table
 
@@ -159,6 +161,42 @@ class Colormap(mpl.colors.ListedColormap):
         for cat in Colormap._predefined_mpl:
             print(f'{cat[0]}')
             print('  '+', '.join(cat[1]))
+
+
+    def shade(self,field,bounds=None,gap=None):
+        """
+        Generate PIL image of 2D field using colormap.
+
+        Parameters
+        ----------
+        field : numpy 2D array
+            Data to be shaded.
+        bounds : array, optional
+            Lower and upper bound of value range.
+        gap : scalar, optional
+            Transparent value. NaN will always be rendered transparent.
+
+        Returns
+        -------
+        PIL.Image
+            RGBA image of shaded data.
+
+        """
+        N = len(self.colors)
+        mask = np.logical_not(np.isnan(field) if gap is None else \
+               np.logical_or (np.isnan(field), field == gap))                                      # mask gap and NaN (if gap present)
+
+        if bounds is None:
+            bounds = [field[mask].min(),
+                      field[mask].max()]
+        hi,lo = max(bounds),min(bounds)
+        delta,avg = hi-lo,0.5*(hi+lo)
+
+        if delta * 1e8 <= avg:                                                                     # delta around numerical noise
+            hi,lo = hi+0.5*avg,lo-0.5*avg                                                          # extend range to have actual data centered within
+
+        return Image.fromarray((np.dstack((self.colors[(np.clip((field-lo)/(hi-lo),0.0,1.0)*(N-1)).astype(np.uint8),:3],
+                                           mask.astype(float)))*255).astype(np.uint8), 'RGBA')
 
 
     def show(self,aspect=10,vertical=False):
