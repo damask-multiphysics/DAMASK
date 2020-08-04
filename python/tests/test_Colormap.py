@@ -4,6 +4,8 @@ import time
 
 import numpy as np
 import pytest
+from PIL import Image
+from PIL import ImageChops
 
 import damask
 from damask import Colormap
@@ -128,6 +130,16 @@ class TestColormap:
         c = Colormap.from_predefined('jet')
         c += c
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
+
+    def test_shade(self,reference_dir,update):
+        data = np.add(*np.indices((10, 11)))
+        img_current = Colormap.from_predefined('orientation').shade(data)
+        if update:
+            img_current.save(reference_dir/'shade.png')
+        else:
+            img_reference = Image.open(reference_dir/'shade.png')
+            diff = ImageChops.difference(img_reference.convert('RGB'),img_current.convert('RGB'))
+            assert not diff.getbbox()
 
     def test_list(self):
         Colormap.list_predefined()
