@@ -171,7 +171,7 @@ class Colormap(mpl.colors.ListedColormap):
         field : np.array of shape(:,:)
             Data to be shaded.
         bounds : iterable of len(2), optional
-            Lower and upper bound of value range.
+            Colormap value range (low,high).
         gap : field.dtype, optional
             Transparent value. NaN will always be rendered transparent.
 
@@ -183,16 +183,14 @@ class Colormap(mpl.colors.ListedColormap):
         """
         N = len(self.colors)
         mask = np.logical_not(np.isnan(field) if gap is None else \
-               np.logical_or (np.isnan(field), field == gap))                                       # mask gap and NaN (if gap present)
+               np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
 
-        if bounds is None:
-            hi,lo = field[mask].min(),field[mask].max()
-        else:
-            hi,lo = bounds[::-1]
-        
+        lo,hi = (field[mask].min(),field[mask].max()) if bounds is None else \
+                (min(bounds[:2]),max(bounds[:2]))
+
         delta,avg = hi-lo,0.5*(hi+lo)
 
-        if delta * 1e8 <= avg:                                                                      # delta around numerical noise
+        if delta * 1e8 <= avg:                                                                      # delta is similar to numerical noise
             hi,lo = hi+0.5*avg,lo-0.5*avg                                                           # extend range to have actual data centered within
 
         return Image.fromarray((np.dstack((self.colors[(np.clip((field-lo)/(hi-lo),0.0,1.0)*(N-1)).astype(np.uint8),:3],
