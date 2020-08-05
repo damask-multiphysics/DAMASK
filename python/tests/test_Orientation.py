@@ -33,7 +33,7 @@ def inverse_pole(orientation,axis,proper=False,SST=True):
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
-    return os.path.join(reference_dir_base,'Rotation')
+    return reference_dir_base/'Rotation'
 
 
 class TestOrientation:

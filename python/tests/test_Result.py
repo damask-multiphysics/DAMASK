@@ -1,6 +1,7 @@
 import time
 import shutil
 import os
+import sys
 from datetime import datetime
 
 import pytest
@@ -10,13 +11,14 @@ import h5py
 import damask
 from damask import Result
 from damask import mechanics
+from damask import grid_filters
 
 @pytest.fixture
 def default(tmp_path,reference_dir):
     """Small Result file in temp location for modification."""
     fname = '12grains6x7x8_tensionY.hdf5'
-    shutil.copy(os.path.join(reference_dir,fname),tmp_path)
-    f = Result(os.path.join(tmp_path,fname))
+    shutil.copy(reference_dir/fname,tmp_path)
+    f = Result(tmp_path/fname)
     f.pick('times',20.0)
     return f
 
@@ -24,13 +26,13 @@ def default(tmp_path,reference_dir):
 def single_phase(tmp_path,reference_dir):
     """Single phase Result file in temp location for modification."""
     fname = '6grains6x7x8_single_phase_tensionY.hdf5'
-    shutil.copy(os.path.join(reference_dir,fname),tmp_path)
-    return Result(os.path.join(tmp_path,fname))
+    shutil.copy(reference_dir/fname,tmp_path)
+    return Result(tmp_path/fname)
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
-    return os.path.join(reference_dir_base,'Result')
+    return reference_dir_base/'Result'
 
 
 class TestResult:
@@ -98,8 +100,19 @@ class TestResult:
         in_file   = default.read_dataset(loc['|Fe|'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_calculation(self,default):
-        default.add_calculation('x','2.0*np.abs(#F#)-1.0','-','my notes')
+    @pytest.mark.parametrize('mode',['direct','function'])
+    def test_add_calculation(self,default,tmp_path,mode):
+
+        if mode == 'direct':
+            default.add_calculation('x','2.0*np.abs(#F#)-1.0','-','my notes')
+        else:
+            with open(tmp_path/'f.py','w') as f:
+                f.write("import numpy as np\ndef my_func(field):\n  return 2.0*np.abs(field)-1.0\n")
+            sys.path.insert(0,str(tmp_path))
+            import f
+            default.enable_user_function(f.my_func)
+            default.add_calculation('x','my_func(#F#)','-','my notes')
+
         loc = {'F':    default.get_dataset_location('F'),
                'x':    default.get_dataset_location('x')}
         in_memory = 2.0*np.abs(default.read_dataset(loc['F'],0))-1.0
@@ -311,6 +324,16 @@ class TestResult:
 
         with pytest.raises(PermissionError):
             default.rename('P','another_new_name')
+
+    @pytest.mark.parametrize('mode',['cell','node'])
+    def test_coordinates(self,default,mode):
+         if   mode == 'cell':
+             a = grid_filters.cell_coord0(default.grid,default.size,default.origin)
+             b = default.cell_coordinates.reshape(tuple(default.grid)+(3,),order='F')
+         elif mode == 'node':
+             a = grid_filters.node_coord0(default.grid,default.size,default.origin)
+             b = default.node_coordinates.reshape(tuple(default.grid+1)+(3,),order='F')
+         assert np.allclose(a,b)
 
     @pytest.mark.parametrize('output',['F',[],['F','P']])
     def test_vtk(self,tmp_path,default,output):

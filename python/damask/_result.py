@@ -466,6 +466,11 @@ class Result:
             return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
 
 
+    def enable_user_function(self,func):
+        globals()[func.__name__]=func
+        print(f'Function {func.__name__} enabled in add_calculation.')
+
+
     def read_dataset(self,path,c=0,plain=False):
         """
         Dataset for all points/cells.
@@ -504,7 +509,7 @@ class Result:
         else:
             return dataset
 
-
+    @property
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
@@ -513,6 +518,7 @@ class Result:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
+    @property
     def node_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
@@ -561,7 +567,7 @@ class Result:
                           'Creator':     inspect.stack()[0][3][1:]
                           }
                  }
-    def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
+    def add_calculation(self,label,formula,unit='n/a',description=None):
         """
         Add result of a general formula.
 
@@ -575,13 +581,8 @@ class Result:
             Physical unit of the result.
         description : str, optional
             Human-readable description of the result.
-        vectorized : bool, optional
-            Indicate whether the formula can be used in vectorized form. Defaults to ‘True’.
 
         """
-        if not vectorized:
-            raise NotImplementedError
-
         dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
         args             = {'formula':formula,'label':label,'unit':unit,'description':description}
         self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
