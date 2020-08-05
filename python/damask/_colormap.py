@@ -195,7 +195,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         return Image.fromarray(
             (np.dstack((
-                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0))*(N-1)).astype(np.uint16),:3],
+                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0)*(N-1))).astype(np.uint16),:3],
                         mask.astype(float)
                        )
                       )*255
