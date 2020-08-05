@@ -20,6 +20,8 @@ setuptools.setup(
         "scipy",
         "h5py",
         "vtk",
+        "matplotlib",
+        "PIL",
     ],
     classifiers = [
         "Intended Audience :: Science/Research",
