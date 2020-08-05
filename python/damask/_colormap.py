@@ -168,7 +168,7 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        field : np.array of shape(:,:)
+        field : numpy.array of shape(:,:)
             Data to be shaded.
         bounds : iterable of len(2), optional
             Colormap value range (low,high).
@@ -193,8 +193,14 @@ class Colormap(mpl.colors.ListedColormap):
         if delta * 1e8 <= avg:                                                                      # delta is similar to numerical noise
             hi,lo = hi+0.5*avg,lo-0.5*avg                                                           # extend range to have actual data centered within
 
-        return Image.fromarray((np.dstack((self.colors[(np.clip((field-lo)/(hi-lo),0.0,1.0)*(N-1)).astype(np.uint8),:3],
-                                           mask.astype(float)))*255).astype(np.uint8), 'RGBA')
+        return Image.fromarray(
+            (np.dstack((
+                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0))*(N-1)).astype(np.uint16),:3],
+                        mask.astype(float)
+                       )
+                      )*255
+            ).astype(np.uint8),
+            mode='RGBA')
 
 
     def show(self,aspect=10,vertical=False):
