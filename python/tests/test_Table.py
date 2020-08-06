@@ -1,5 +1,3 @@
-import os
-
 import pytest
 import numpy as np
 
@@ -15,7 +13,7 @@ def default():
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
-    return os.path.join(reference_dir_base,'Table')
+    return reference_dir_base/'Table'
 
 class TestTable:
 
@@ -35,9 +33,13 @@ class TestTable:
         d = default.get('5_F')
         assert np.allclose(d,1.0) and d.shape[1:] == (1,)
 
-    def test_write_read_str(self,default,tmpdir):
-        default.to_ASCII(str(tmpdir.join('default.txt')))
-        new = Table.from_ASCII(str(tmpdir.join('default.txt')))
+    @pytest.mark.parametrize('mode',['str','path'])
+    def test_write_read(self,default,tmpdir,mode):
+        default.to_ASCII(tmpdir/'default.txt')
+        if   mode == 'path':
+            new = Table.from_ASCII(tmpdir/'default.txt')
+        elif mode == 'str':
+            new = Table.from_ASCII(str(tmpdir/'default.txt'))
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmpdir):
@@ -54,20 +56,25 @@ class TestTable:
             new = Table.from_ASCII(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
-    def test_read_ang_str(self,reference_dir):
-        new = Table.from_ang(os.path.join(reference_dir,'simple.ang'))
+
+    @pytest.mark.parametrize('mode',['str','path'])
+    def test_read_ang(self,reference_dir,mode):
+        if   mode == 'path':
+            new = Table.from_ang(reference_dir/'simple.ang')
+        elif mode == 'str':
+            new = Table.from_ang(str(reference_dir/'simple.ang'))
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
     def test_read_ang_file(self,reference_dir):
-        f = open(os.path.join(reference_dir,'simple.ang'))
+        f = open(reference_dir/'simple.ang')
         new = Table.from_ang(f)
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
     def test_read_strange(self,reference_dir,fname):
-        with open(os.path.join(reference_dir,fname)) as f:
+        with open(reference_dir/fname) as f:
             Table.from_ASCII(f)
 
     def test_set(self,default):
