@@ -6,7 +6,7 @@ from functools import partial
 import numpy as np
 from scipy import ndimage,spatial
 
-import damask
+from . import environment
 from . import VTK
 from . import util
 from . import grid_filters
@@ -143,19 +143,27 @@ class Geom:
         """
         Replace the existing microstructure representation.
 
+        The complete microstructure is replaced (indcluding grid definition),
+        unless a masked array is provided in which case the grid dimensions
+        need to match and masked entries are not replaced.
+
         Parameters
         ----------
-        microstructure : numpy.ndarray
-            microstructure array (3D).
+        microstructure : numpy.ndarray or numpy.ma.core.MaskedArray of shape (:,:,:)
+            Microstructure indices.
 
         """
         if microstructure is not None:
-            if len(microstructure.shape) != 3:
-                raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
-            elif microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
-                raise TypeError(f'Invalid microstructue data type {microstructure.dtype}')
+            if isinstance(microstructure,np.ma.core.MaskedArray):
+                self.microstructure = np.where(microstructure.mask,
+                                               self.microstructure,microstructure.data)
             else:
                 self.microstructure = np.copy(microstructure)
+
+        if len(self.microstructure.shape) != 3:
+            raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
+        elif self.microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
+            raise TypeError(f'Invalid microstructue data type {microstructure.dtype}')
 
 
     def set_size(self,size):
@@ -359,7 +367,7 @@ class Geom:
             seeds_p   = seeds
             coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
-        pool = multiprocessing.Pool(processes = int(damask.environment.options['DAMASK_NUM_THREADS']))
+        pool = multiprocessing.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()

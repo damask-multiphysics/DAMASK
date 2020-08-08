@@ -40,6 +40,16 @@ class TestGeom:
         print(modified)
         assert geom_equal(modified,default)
 
+    @pytest.mark.parametrize('masked',[True,False])
+    def test_set_microstructure(self,default,masked):
+        old = default.get_microstructure()
+        new = np.random.randint(200,size=default.grid)
+        default.set_microstructure(np.ma.MaskedArray(new,np.full_like(new,masked))) 
+        if masked:
+            assert np.all(default.microstructure==old)
+        else:
+            assert np.all(default.microstructure==new)
+            
 
     def test_write_read_str(self,default,tmpdir):
         default.to_file(str(tmpdir.join('default.geom')))
