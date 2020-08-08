@@ -77,9 +77,19 @@ class TestGeom:
         with pytest.raises(ValueError):
             default.update(default.microstructure[1:,1:,1:],size=np.ones(2))
 
-    def test_invalid_microstructure(self,default):
+    def test_invalid_origin(self,default):
         with pytest.raises(ValueError):
-            default.update(default.microstructure[1])
+            default.update(default.microstructure[1:,1:,1:],origin=np.ones(4))
+
+    def test_invalid_microstructure_size(self,default):
+        microstructure=np.ones((3,3))
+        with pytest.raises(ValueError):
+            default.update(microstructure)
+
+    def test_invalid_microstructure_type(self,default):
+        microstructure=np.random.randint(1,300,(3,4,5))==1
+        with pytest.raises(TypeError):
+            default.update(microstructure)
 
     def test_invalid_homogenization(self,default):
         with pytest.raises(TypeError):
@@ -171,7 +181,34 @@ class TestGeom:
         modified.canvas(modified.grid + grid_add)
         e = default.grid
         assert np.all(modified.microstructure[:e[0],:e[1],:e[2]] == default.microstructure)
+    
+    @pytest.mark.parametrize('trigger',[[1],[]])
+    def test_vicinity_offset(self,trigger):
+        offset = np.random.randint(2,4)
+        vicinity = np.random.randint(2,4)
+        
+        g=np.random.randint(28,40,(3))
+        m=np.ones(g,'i')
+        x=(g*np.random.permutation(np.array([.5,1,1]))).astype('i')
+        m[slice(0,x[0]),slice(0,x[1]),slice(0,x[2])]=2
+        m2=copy.deepcopy(m)
+        for i in [0,1,2]:
+            m2[(np.roll(m,+vicinity,i)-m)!=0] +=offset
+            m2[(np.roll(m,-vicinity,i)-m)!=0] +=offset
+        if len(trigger) > 0:
+            m2[m==1]=1
+        
+        geom = Geom(m,np.random.rand(3))
+        geom.vicinity_offset(vicinity,offset,trigger=trigger)
+        
+        assert np.all(m2==geom.microstructure)
 
+    @pytest.mark.parametrize('periodic',[True,False])
+    def test_vicinity_offset_invariant(self,default,periodic):
+        old = default.get_microstructure()
+        default.vicinity_offset(trigger=[old.max()+1,old.min()-1])  
+        assert np.all(old==default.microstructure)
+    
     @pytest.mark.parametrize('periodic',[True,False])
     def test_tessellation_approaches(self,periodic):
         grid   = np.random.randint(10,20,3)

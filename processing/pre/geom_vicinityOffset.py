@@ -5,7 +5,6 @@ import sys
 from io import StringIO
 from optparse import OptionParser
 
-from scipy import ndimage
 import numpy as np
 
 import damask
@@ -13,18 +12,6 @@ import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-
-
-def taintedNeighborhood(stencil,trigger=[],size=1):
-
-  me = stencil[stencil.shape[0]//2]
-  if len(trigger) == 0:
-    return np.any(stencil != me)
-  if me in trigger:
-    trigger = set(trigger)
-    trigger.remove(me)
-    trigger = list(trigger)
-  return np.any(np.in1d(stencil,np.array(trigger)))
 
 
 #--------------------------------------------------------------------------------------------------
@@ -67,19 +54,12 @@ options.trigger = np.array(options.trigger, dtype=int)
 if filenames == []: filenames = [None]
 
 for name in filenames:
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  offset = np.nanmax(geom.microstructure) if options.offset is None else options.offset
+    damask.util.croak(geom.vicinity_offset(options.vicinity,options.offset,options.trigger,
+                                           True if options.mode is 'wrap' else False))
+    geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  damask.util.croak(geom.update(np.where(ndimage.filters.generic_filter(
-                                           geom.microstructure,
-                                           taintedNeighborhood,
-                                           size=1+2*options.vicinity,mode=options.mode,
-                                           extra_arguments=(),
-                                           extra_keywords={"trigger":options.trigger,"size":1+2*options.vicinity}),
-                                           geom.microstructure + offset,geom.microstructure)))
-  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
-  geom.to_file(sys.stdout if name is None else name,pack=False)
+    geom.to_file(sys.stdout if name is None else name,pack=False)
