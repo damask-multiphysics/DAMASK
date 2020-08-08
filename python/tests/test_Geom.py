@@ -182,6 +182,21 @@ class TestGeom:
         e = default.grid
         assert np.all(modified.microstructure[:e[0],:e[1],:e[2]] == default.microstructure)
     
+    @pytest.mark.parametrize('center',[np.random.random(3)*.5,
+                                       np.random.randint(4,10,(3))])
+    @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,
+                                        np.random.randint(4,10,(3))])
+    def test_add_primitive(self,diameter,center):
+        """Same volume fraction for periodic microstructures and different center."""
+        o = np.random.random(3)-.5
+        g = np.random.randint(8,32,(3))
+        s = np.random.random(3)+.5
+        G_1 = Geom(np.ones(g,'i'),s,o)
+        G_2 = Geom(np.ones(g,'i'),s,o)
+        G_1.add_primitive(diameter,center,1)
+        G_2.add_primitive(diameter,center,1)
+        assert np.count_nonzero(G_1.microstructure!=2) == np.count_nonzero(G_2.microstructure!=2)
+
     @pytest.mark.parametrize('trigger',[[1],[]])
     def test_vicinity_offset(self,trigger):
         offset = np.random.randint(2,4)

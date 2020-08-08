@@ -7,6 +7,7 @@ import numpy as np
 from scipy import ndimage,spatial
 
 from . import environment
+from . import Rotation
 from . import VTK
 from . import util
 from . import grid_filters
@@ -501,6 +502,58 @@ class Geom:
         return ''.join(f.readlines())
 
 
+    def add_primitive(self,dimension,center,exponent,
+                      fill=None,R=Rotation(),inverse=False,periodic=True):
+        """
+        Inserts a primitive geometric object at a given position.
+
+        Parameters
+        ----------
+        dimension : numpy.ndarray of shape(3)
+            Dimension (diameter/side length) of the primitive. If given as
+            integers, grid point locations (cell centers) are addressed.
+            If given as floats, coordinates are addressed.
+        center : numpy.ndarray of shape(3)
+            Center of the primitive. If given as integers, grid point
+            locations (cell centers) are addressed.
+            If given as floats, coordinates are addressed.
+        exponent : numpy.ndarray of shape(3) or float
+            Exponents for the three axis.
+            0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1)
+            1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1)
+        fill : integer, optional
+            Fill value for primitive. Defaults to microstructure.max() + 1.
+        R : damask.Rotation, optional
+            Rotation of primitive. Defaults to no rotation.
+        inverse : Boolean, optional
+            Retain original microstructure within primitive and fill
+            outside. Defaults to False.
+        periodic : Boolean, optional
+            Repeat primitive over boundaries. Defaults to False.
+
+        """
+        # normalized 'radius' and center
+        r = np.array(dimension)/self.grid/2.0 if np.array(dimension).dtype in np.sctypes['int'] else \
+            np.array(dimension)/self.size/2.0
+        c = (np.array(center) + .5)/self.grid if np.array(center).dtype in np.sctypes['int'] else \
+            (np.array(center) - self.origin)/self.size
+
+        coords = grid_filters.cell_coord0(self.grid,np.ones(3)) \
+               - (np.ones(3)*0.5 if periodic else c)                                                # center if periodic
+        coords_rot = R.broadcast_to(tuple(self.grid))@coords
+
+        with np.errstate(over='ignore',under='ignore'):
+            mask = np.where(np.sum(np.abs(coords_rot/r)**(2.0**exponent),axis=-1) < 1,True,False)
+
+        if periodic:                                                                                # translate back to center
+            mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
+
+        fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
+        ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
+
+        return self.update(ms)
+
+
     def mirror(self,directions,reflect=False):
         """
         Mirror microstructure along given directions.
@@ -508,7 +561,8 @@ class Geom:
         Parameters
         ----------
         directions : iterable containing str
-            Direction(s) along which the microstructure is mirrored. Valid entries are 'x', 'y', 'z'.
+            Direction(s) along which the microstructure is mirrored.
+            Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
             Reflect (include) outermost layers.
 
