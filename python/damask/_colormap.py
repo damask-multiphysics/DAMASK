@@ -51,7 +51,7 @@ class Colormap(mpl.colors.ListedColormap):
             Color definition for minimum value.
         high : numpy.ndarray of shape (3)
             Color definition for maximum value.
-        N : integer, optional
+        N : int, optional
             The number of color quantization levels. Defaults to 256.
         name : str, optional
             The name of the colormap. Defaults to `DAMASK colormap`.

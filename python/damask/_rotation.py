@@ -357,7 +357,7 @@ class Rotation:
         accept_homomorph : boolean, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
-        P : integer ∈ {-1,1}, optional
+        P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -422,7 +422,7 @@ class Rotation:
             Angle ω is given in degrees. Defaults to False.
         normalize: boolean, optional
             Allow |n| ≠ 1. Defaults to False.
-        P : integer ∈ {-1,1}, optional
+        P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -505,7 +505,7 @@ class Rotation:
             (n_1, n_2, n_3, tan(ω/2)), |n| = 1  and ω ∈ [0,π].
         normalize : boolean, optional
             Allow |n| ≠ 1. Defaults to False.
-        P : integer ∈ {-1,1}, optional
+        P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -534,7 +534,7 @@ class Rotation:
         ----------
         h : numpy.ndarray of shape (...,3)
             Homochoric vector: (h_1, h_2, h_3), |h| < (3/4*π)^(1/3).
-        P : integer ∈ {-1,1}, optional
+        P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """
@@ -561,7 +561,7 @@ class Rotation:
         ----------
         c : numpy.ndarray of shape (...,3)
             Cubochoric vector: (c_1, c_2, c_3), max(c_i) < 1/2*π^(2/3).
-        P : integer ∈ {-1,1}, optional
+        P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
         """

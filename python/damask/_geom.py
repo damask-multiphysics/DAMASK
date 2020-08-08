@@ -28,7 +28,7 @@ class Geom:
             physical size of the microstructure in meter.
         origin : list or numpy.ndarray, optional
             physical origin of the microstructure in meter.
-        homogenization : integer, optional
+        homogenization : int, optional
             homogenization index.
         comments : list of str, optional
             comments lines.
@@ -210,7 +210,7 @@ class Geom:
 
         Parameters
         ----------
-        homogenization : integer
+        homogenization : int
             homogenization index
 
         """
@@ -345,7 +345,7 @@ class Geom:
 
         Parameters
         ----------
-        grid : numpy.ndarray of shape (3)
+        grid : int numpy.ndarray of shape (3)
             Number of grid points in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
             Physical size of the microstructure in meter.
@@ -391,7 +391,7 @@ class Geom:
 
         Parameters
         ----------
-        grid : numpy.ndarray of shape (3)
+        grid : int numpy.ndarray of shape (3)
             Number of grid points in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
             Physical size of the microstructure in meter.
@@ -509,11 +509,11 @@ class Geom:
 
         Parameters
         ----------
-        dimension : numpy.ndarray of shape(3)
+        dimension : int or float numpy.ndarray of shape(3)
             Dimension (diameter/side length) of the primitive. If given as
             integers, grid point locations (cell centers) are addressed.
             If given as floats, coordinates are addressed.
-        center : numpy.ndarray of shape(3)
+        center : int or float numpy.ndarray of shape(3)
             Center of the primitive. If given as integers, grid point
             locations (cell centers) are addressed.
             If given as floats, coordinates are addressed.
@@ -521,7 +521,7 @@ class Geom:
             Exponents for the three axis.
             0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1)
             1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1)
-        fill : integer, optional
+        fill : int, optional
             Fill value for primitive. Defaults to microstructure.max() + 1.
         R : damask.Rotation, optional
             Rotation of primitive. Defaults to no rotation.
