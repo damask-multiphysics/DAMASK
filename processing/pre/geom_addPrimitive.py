@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import sys
-from io import StringIO
 from optparse import OptionParser
-
-import numpy as np
 
 import damask
 
@@ -76,60 +72,4 @@ parser.set_defaults(center = (.0,.0,.0),
                     inside = True,
                    )
 
-(options, filenames) = parser.parse_args()
-
-if options.dimension is None:
-  parser.error('no dimension specified.')
-if [options.angleaxis,options.quaternion].count(None) == 0:
-  parser.error('more than one rotation specified.')
-
-if options.angleaxis is not None:
-  rotation = damask.Rotation.from_axis_angle(np.array(options.angleaxis),options.degrees,normalise=True)
-elif options.quaternion is not None:
-  rotation = damask.Rotation.from_quaternion(options.quaternion)
-else:
-  rotation = damask.Rotation()
-
-
-if filenames == []: filenames = [None]
-
-for name in filenames:
-  damask.util.report(scriptName,name)
-
-  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  grid = geom.get_grid()
-  size = geom.get_size()
-
-  # scale to box of size [1.0,1.0,1.0]
-  if options.realspace:
-    center = (np.array(options.center) - geom.get_origin())/size
-    r = np.array(options.dimension)/size/2.0
-  else:
-    center = (np.array(options.center) + 0.5)/grid
-    r = np.array(options.dimension)/grid/2.0
-
-  if np.any(center<0.0) or np.any(center>=1.0): print('error')
-
-  offset = np.ones(3)*0.5 if options.periodic else center
-  mask = np.full(grid,False)
-  # High exponents can cause underflow & overflow - okay here, just compare to 1, so +infinity and 0 are fine
-  np.seterr(over='ignore', under='ignore')
-
-  e = 2.0**np.array(options.exponent)
-  for x in range(grid[0]):
-    for y in range(grid[1]):
-      for z in range(grid[2]):
-        coords = np.array([x+0.5,y+0.5,z+0.5])/grid
-        mask[x,y,z] = np.sum(np.abs((rotation*(coords-offset))/r)**e) < 1
-
-  if options.periodic:
-    shift = ((offset-center)*grid).astype(int)
-    mask = np.roll(mask,shift,(0,1,2))
-
-  if options.inside: mask = np.logical_not(mask)
-  fill = np.nanmax(geom.microstructure)+1 if options.fill is None else options.fill
-
-  damask.util.croak(geom.update(np.where(mask,geom.microstructure,fill)))
-  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
-  geom.to_file(sys.stdout if name is None else name,pack=False)
+print('This script is broken and does nothing')
