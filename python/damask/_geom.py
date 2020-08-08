@@ -46,7 +46,6 @@ class Geom:
                f'grid     a b c:      {util.srepr(self.get_grid  ()," x ")}',
                f'size     x y z:      {util.srepr(self.get_size  ()," x ")}',
                f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}',
-               f'homogenization:      {self.get_homogenization()}',
                f'# microstructures:   {self.N_microstructure}',
                f'max microstructure:  {np.nanmax(self.microstructure)}',
               ])
@@ -99,8 +98,6 @@ class Geom:
         if np.any(origin_old != self.get_origin()):
             message[-1] = util.delete(message[-1])
             message.append(util.emph(f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}'))
-
-        message.append(f'homogenization:      {self.get_homogenization()}')
 
         message.append(f'# microstructures:   {unique_old}')
         if unique_old != self.N_microstructure:
