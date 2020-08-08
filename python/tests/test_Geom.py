@@ -44,12 +44,12 @@ class TestGeom:
     def test_set_microstructure(self,default,masked):
         old = default.get_microstructure()
         new = np.random.randint(200,size=default.grid)
-        default.set_microstructure(np.ma.MaskedArray(new,np.full_like(new,masked))) 
+        default.set_microstructure(np.ma.MaskedArray(new,np.full_like(new,masked)))
         if masked:
             assert np.all(default.microstructure==old)
         else:
             assert np.all(default.microstructure==new)
-            
+
 
     def test_write_read_str(self,default,tmpdir):
         default.to_file(str(tmpdir.join('default.geom')))
@@ -62,6 +62,16 @@ class TestGeom:
         with open(tmpdir.join('default.geom')) as f:
             new = Geom.from_file(f)
         assert geom_equal(new,default)
+
+    def test_write_show(self,default,tmpdir):
+        with open(tmpdir.join('str.geom'),'w') as f:
+            f.write(default.show())
+        with open(tmpdir.join('str.geom')) as f:
+            new = Geom.from_file(f)
+        assert geom_equal(new,default)
+
+    def test_export_vtk(self,default,tmpdir):
+        default.to_vtk(str(tmpdir.join('default')))
 
     @pytest.mark.parametrize('pack',[True,False])
     def test_pack(self,default,tmpdir,pack):
@@ -181,7 +191,7 @@ class TestGeom:
         modified.canvas(modified.grid + grid_add)
         e = default.grid
         assert np.all(modified.microstructure[:e[0],:e[1],:e[2]] == default.microstructure)
-    
+
     @pytest.mark.parametrize('center',[np.random.random(3)*.5,
                                        np.random.randint(4,10,(3))])
     @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,
@@ -201,7 +211,7 @@ class TestGeom:
     def test_vicinity_offset(self,trigger):
         offset = np.random.randint(2,4)
         vicinity = np.random.randint(2,4)
-        
+
         g=np.random.randint(28,40,(3))
         m=np.ones(g,'i')
         x=(g*np.random.permutation(np.array([.5,1,1]))).astype('i')
@@ -212,18 +222,18 @@ class TestGeom:
             m2[(np.roll(m,-vicinity,i)-m)!=0] +=offset
         if len(trigger) > 0:
             m2[m==1]=1
-        
+
         geom = Geom(m,np.random.rand(3))
         geom.vicinity_offset(vicinity,offset,trigger=trigger)
-        
+
         assert np.all(m2==geom.microstructure)
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_vicinity_offset_invariant(self,default,periodic):
         old = default.get_microstructure()
-        default.vicinity_offset(trigger=[old.max()+1,old.min()-1])  
+        default.vicinity_offset(trigger=[old.max()+1,old.min()-1])
         assert np.all(old==default.microstructure)
-    
+
     @pytest.mark.parametrize('periodic',[True,False])
     def test_tessellation_approaches(self,periodic):
         grid   = np.random.randint(10,20,3)
