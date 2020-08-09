@@ -45,10 +45,7 @@ class TestGeom:
         old = default.get_microstructure()
         new = np.random.randint(200,size=default.grid)
         default.set_microstructure(np.ma.MaskedArray(new,np.full_like(new,masked)))
-        if masked:
-            assert np.all(default.microstructure==old)
-        else:
-            assert np.all(default.microstructure==new)
+        assert np.all(default.microstructure==(old if masked else new))
 
 
     def test_write_read_str(self,default,tmpdir):
@@ -192,36 +189,36 @@ class TestGeom:
         e = default.grid
         assert np.all(modified.microstructure[:e[0],:e[1],:e[2]] == default.microstructure)
 
-    @pytest.mark.parametrize('center',[np.random.random(3)*.5,
-                                       np.random.randint(4,10,(3))])
-    @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,
-                                        np.random.randint(4,10,(3))])
-    def test_add_primitive(self,diameter,center):
-        """Same volume fraction for periodic microstructures and different center."""
-        o = np.random.random(3)-.5
-        g = np.random.randint(8,32,(3))
-        s = np.random.random(3)+.5
-        G_1 = Geom(np.ones(g,'i'),s,o)
-        G_2 = Geom(np.ones(g,'i'),s,o)
-        G_1.add_primitive(diameter,center,1)
-        G_2.add_primitive(diameter,center,1)
-        assert np.count_nonzero(G_1.microstructure!=2) == np.count_nonzero(G_2.microstructure!=2)
+    @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random(3)),       
+                                                (np.random.randint(4,8,(3)),np.random.randint(9,12,(3)))])
+    @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,                                    
+                                        np.random.randint(4,10,(3))])                               
+    def test_add_primitive(self,diameter,center1,center2):                                          
+        """Same volume fraction for periodic microstructures and different center."""               
+        o = np.random.random(3)-.5                                                                  
+        g = np.random.randint(8,32,(3))                                                             
+        s = np.random.random(3)+.5                                                                  
+        G_1 = Geom(np.ones(g,'i'),s,o)                                                              
+        G_2 = Geom(np.ones(g,'i'),s,o)                                                              
+        G_1.add_primitive(diameter,center1,1)                                                       
+        G_2.add_primitive(diameter,center2,1)                                                       
+        assert np.count_nonzero(G_1.microstructure!=2) == np.count_nonzero(G_2.microstructure!=2) 
 
     @pytest.mark.parametrize('trigger',[[1],[]])
     def test_vicinity_offset(self,trigger):
         offset = np.random.randint(2,4)
         vicinity = np.random.randint(2,4)
 
-        g=np.random.randint(28,40,(3))
-        m=np.ones(g,'i')
-        x=(g*np.random.permutation(np.array([.5,1,1]))).astype('i')
-        m[slice(0,x[0]),slice(0,x[1]),slice(0,x[2])]=2
-        m2=copy.deepcopy(m)
+        g = np.random.randint(28,40,(3))
+        m = np.ones(g,'i')
+        x = (g*np.random.permutation(np.array([.5,1,1]))).astype('i')
+        m[slice(0,x[0]),slice(0,x[1]),slice(0,x[2])] = 2
+        m2 = copy.deepcopy(m)
         for i in [0,1,2]:
-            m2[(np.roll(m,+vicinity,i)-m)!=0] +=offset
-            m2[(np.roll(m,-vicinity,i)-m)!=0] +=offset
+            m2[(np.roll(m,+vicinity,i)-m)!=0] += offset
+            m2[(np.roll(m,-vicinity,i)-m)!=0] += offset
         if len(trigger) > 0:
-            m2[m==1]=1
+            m2[m==1] = 1
 
         geom = Geom(m,np.random.rand(3))
         geom.vicinity_offset(vicinity,offset,trigger=trigger)
