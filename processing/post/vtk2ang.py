@@ -18,47 +18,43 @@ scriptID   = ' '.join([scriptName,damask.version])
 # -----------------------------
 def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
   """Returns header for ang file step size in micrometer."""
-  return '\n'.join([ \
-    '# TEM_PIXperUM          1.000000', \
-    '# x-star                1.000000', \
-    '# y-star                1.000000', \
-    '# z-star                1.000000', \
-    '# WorkingDistance       18.000000', \
-    '#', \
-    '# Phase                 1', \
-    '# MaterialName          XX', \
-    '# Formula               XX', \
-    '# Info', \
-    '# Symmetry              43', \
-    '# LatticeConstants      2.870 2.870 2.870  90.000  90.000  90.000', \
-    '# NumberFamilies        1', \
-    '# hklFamilies           1  1  0 1 0.000000 1', \
-    '# Categories            0 0 0 0 0 ', \
-    '#', \
-    '# GRID: SqrGrid', \
-    '# XSTEP: ' + str(stepsize*1e6), \
-    '# YSTEP: ' + str(stepsize*1e6), \
-    '# NCOLS_ODD: ' + str(sizeFastIndex), \
-    '# NCOLS_EVEN: ' + str(sizeFastIndex), \
-    '# NROWS: ' + str(sizeSlowIndex), \
-    '#', \
-    '# OPERATOR: ' + string.replace('$Id$','\n','\\n'), \
-    '#', \
-    '# SAMPLEID: %s'%filename, \
-    '#', \
-    '# SCANID: ', \
-    '#', \
+  return '\n'.join([
+    '# TEM_PIXperUM          1.000000',
+    '# x-star                1.000000',
+    '# y-star                1.000000',
+    '# z-star                1.000000',
+    '# WorkingDistance       18.000000',
+    '#',
+    '# Phase                 1',
+    '# MaterialName          XX',
+    '# Formula               XX',
+    '# Info',
+    '# Symmetry              43',
+    '# LatticeConstants      2.870 2.870 2.870  90.000  90.000  90.000',
+    '# NumberFamilies        1',
+    '# hklFamilies           1  1  0 1 0.000000 1',
+    '# Categories            0 0 0 0 0 ',
+    '#',
+    '# GRID: SqrGrid',
+    '# XSTEP: ' + str(stepsize*1e6),
+    '# YSTEP: ' + str(stepsize*1e6),
+    '# NCOLS_ODD: ' + str(sizeFastIndex),
+    '# NCOLS_EVEN: ' + str(sizeFastIndex),
+    '# NROWS: ' + str(sizeSlowIndex),
+    '#',
+    '# OPERATOR: ' + string.replace('$Id$','\n','\\n'),
+    '#',
+    '# SAMPLEID: {}'.format(filename),
+    '#',
+    '# SCANID: ',
+    '#',
     ]) + '\n'
 
 
 # -----------------------------
 def positiveRadians(angle):
   """Returns positive angle in radians from angle in degrees."""
-  angle = math.radians(float(angle))
-  while angle < 0.0:
-    angle += 2.0 * math.pi
-
-  return angle
+  return math.radians(float(angle)) % (2.*math.pi)
 
 
 # -----------------------------
@@ -230,11 +226,11 @@ for filename in filenames:
 # Get bounding box in rotated system (x,y,z)
 
   if options.verbose: sys.stdout.write("\nGETTING BOUNDING BOX IN ROTATED SYSTEM\n")
-  rotatedbox = [[np.inf,-np.inf] for i in range(3)]     # bounding box in rotated TSL system
-  for n in range(8):                                          # loop over eight vertices of mesh bounding box
+  rotatedbox = [[np.inf,-np.inf] for i in range(3)]        # bounding box in rotated TSL system
+  for n in range(8):                                       # loop over eight vertices of mesh bounding box
     vert = np.array([box[0+(n//1)%2],
-                        box[2+(n//2)%2],
-                        box[4+(n//4)%2]])                      # vertex in mesh system
+                     box[2+(n//2)%2],
+                     box[4+(n//4)%2]])                     # vertex in mesh system
     rotatedvert = np.dot(R,vert)                           # vertex in rotated system
     for i in range(3):
       rotatedbox[i][0] = min(rotatedbox[i][0],rotatedvert[i])
