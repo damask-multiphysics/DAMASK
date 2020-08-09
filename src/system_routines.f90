@@ -112,9 +112,11 @@ function getCWD()
 
   call getCurrentWorkDir_C(getCWD_Cstring,stat)
 
-  getCWD = merge(c_f_string(getCWD_Cstring), &
-                 'Error occured when getting currend working directory', &
-                 stat == 0_C_INT)
+  if(stat == 0) then
+    getCWD = c_f_string(getCWD_Cstring)
+  else
+    getCWD = 'Error occured when getting currend working directory'
+  endif
 
 end function getCWD
 
@@ -130,9 +132,11 @@ function getHostName()
 
   call getHostName_C(getHostName_Cstring,stat)
 
-  getHostName = merge(c_f_string(getHostName_Cstring), &
-                      'Error occured when getting host name', &
-                      stat == 0_C_INT)
+  if(stat == 0) then
+    getHostName = c_f_string(getHostName_Cstring)
+  else
+    getHostName = 'Error occured when getting host name'
+  endif
 
 end function getHostName
 
