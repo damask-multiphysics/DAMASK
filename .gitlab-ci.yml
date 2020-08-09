@@ -141,13 +141,6 @@ Pre_General:
     - release
 
 ###################################################################################################
-Post_AverageDown:
-  stage: postprocessing
-  script: averageDown/test.py
-  except:
-    - master
-    - release
-
 Post_ASCIItable:
   stage: postprocessing
   script: ASCIItable/test.py
