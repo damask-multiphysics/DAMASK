@@ -20,7 +20,6 @@ def outMentat(cmd,locals):
     py_mentat.py_send(cmd)
   else:
     py_mentat.py_send(cmd)
-  return
 
 #-------------------------------------------------------------------------------------------------
 def outFile(cmd,locals,dest):
@@ -31,7 +30,6 @@ def outFile(cmd,locals,dest):
     dest.write(cmd+'\n')
   else:
     dest.write(cmd+'\n')
-  return
 
 #-------------------------------------------------------------------------------------------------
 def output(cmds,locals,dest):
@@ -43,8 +41,6 @@ def output(cmds,locals,dest):
         outMentat(str(cmd),locals)
       else:
         outFile(str(cmd),locals,dest)
-  return
-
 
   
 #-------------------------------------------------------------------------------------------------
@@ -105,7 +101,7 @@ def mesh(r,d):
 
 #-------------------------------------------------------------------------------------------------
 def material():
-  cmds = [\
+  return [\
   "*new_mater standard",
   "*mater_option general:state:solid",
   "*mater_option structural:type:hypo_elast",
@@ -119,12 +115,10 @@ def material():
   "all_existing",
   ]
   
-  return cmds
-  
 
 #-------------------------------------------------------------------------------------------------
 def geometry():
-  cmds = [\
+  return [\
   "*geometry_type mech_three_solid",
 #  "*geometry_option red_integ_capacity:on",
   "*add_geometry_elements",
@@ -133,8 +127,6 @@ def geometry():
   "*element_type 7",
   "all_existing",
   ]
-  
-  return cmds
   
 
 #-------------------------------------------------------------------------------------------------

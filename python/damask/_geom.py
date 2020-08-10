@@ -6,7 +6,8 @@ from functools import partial
 import numpy as np
 from scipy import ndimage,spatial
 
-import damask
+from . import environment
+from . import Rotation
 from . import VTK
 from . import util
 from . import grid_filters
@@ -27,7 +28,7 @@ class Geom:
             physical size of the microstructure in meter.
         origin : list or numpy.ndarray, optional
             physical origin of the microstructure in meter.
-        homogenization : integer, optional
+        homogenization : int, optional
             homogenization index.
         comments : list of str, optional
             comments lines.
@@ -46,7 +47,6 @@ class Geom:
                f'grid     a b c:      {util.srepr(self.get_grid  ()," x ")}',
                f'size     x y z:      {util.srepr(self.get_size  ()," x ")}',
                f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}',
-               f'homogenization:      {self.get_homogenization()}',
                f'# microstructures:   {self.N_microstructure}',
                f'max microstructure:  {np.nanmax(self.microstructure)}',
               ])
@@ -100,8 +100,6 @@ class Geom:
             message[-1] = util.delete(message[-1])
             message.append(util.emph(f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}'))
 
-        message.append(f'homogenization:      {self.get_homogenization()}')
-
         message.append(f'# microstructures:   {unique_old}')
         if unique_old != self.N_microstructure:
             message[-1] = util.delete(message[-1])
@@ -146,19 +144,27 @@ class Geom:
         """
         Replace the existing microstructure representation.
 
+        The complete microstructure is replaced (indcluding grid definition),
+        unless a masked array is provided in which case the grid dimensions
+        need to match and masked entries are not replaced.
+
         Parameters
         ----------
-        microstructure : numpy.ndarray
-            microstructure array (3D).
+        microstructure : numpy.ndarray or numpy.ma.core.MaskedArray of shape (:,:,:)
+            Microstructure indices.
 
         """
         if microstructure is not None:
-            if len(microstructure.shape) != 3:
-                raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
-            elif microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
-                raise TypeError(f'Invalid microstructue data type {microstructure.dtype}')
+            if isinstance(microstructure,np.ma.core.MaskedArray):
+                self.microstructure = np.where(microstructure.mask,
+                                               self.microstructure,microstructure.data)
             else:
                 self.microstructure = np.copy(microstructure)
+
+        if len(self.microstructure.shape) != 3:
+            raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
+        elif self.microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
+            raise TypeError(f'Invalid microstructue data type {microstructure.dtype}')
 
 
     def set_size(self,size):
@@ -204,7 +210,7 @@ class Geom:
 
         Parameters
         ----------
-        homogenization : integer
+        homogenization : int
             homogenization index
 
         """
@@ -273,7 +279,7 @@ class Geom:
         Parameters
         ----------
         fname : str or file handle
-            geometry file to read.
+            Geometry file to read.
 
         """
         try:
@@ -339,16 +345,16 @@ class Geom:
 
         Parameters
         ----------
-        grid : numpy.ndarray of shape (3)
-            number of grid points in x,y,z direction.
+        grid : int numpy.ndarray of shape (3)
+            Number of grid points in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
-            physical size of the microstructure in meter.
+            Physical size of the microstructure in meter.
         seeds : numpy.ndarray of shape (:,3)
-            position of the seed points in meter. All points need to lay within the box.
+            Position of the seed points in meter. All points need to lay within the box.
         weights : numpy.ndarray of shape (seeds.shape[0])
-            weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
+            Weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
         periodic : Boolean, optional
-            perform a periodic tessellation. Defaults to True.
+            Perform a periodic tessellation. Defaults to True.
 
         """
         if periodic:
@@ -362,7 +368,7 @@ class Geom:
             seeds_p   = seeds
             coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
-        pool = multiprocessing.Pool(processes = int(damask.environment.options['DAMASK_NUM_THREADS']))
+        pool = multiprocessing.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
@@ -385,14 +391,14 @@ class Geom:
 
         Parameters
         ----------
-        grid : numpy.ndarray of shape (3)
-            number of grid points in x,y,z direction.
+        grid : int numpy.ndarray of shape (3)
+            Number of grid points in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
-            physical size of the microstructure in meter.
+            Physical size of the microstructure in meter.
         seeds : numpy.ndarray of shape (:,3)
-            position of the seed points in meter. All points need to lay within the box.
+            Position of the seed points in meter. All points need to lay within the box.
         periodic : Boolean, optional
-            perform a periodic tessellation. Defaults to True.
+            Perform a periodic tessellation. Defaults to True.
 
         """
         coords = grid_filters.cell_coord0(grid,size).reshape(-1,3)
@@ -410,9 +416,9 @@ class Geom:
         Parameters
         ----------
         fname : str or file handle
-            geometry file to write.
+            Geometry file to write.
         pack : bool, optional
-            compress geometry with 'x of y' and 'a to b'.
+            Compress geometry with 'x of y' and 'a to b'.
 
         """
         header = self.get_header()
@@ -476,7 +482,7 @@ class Geom:
         Parameters
         ----------
         fname : str, optional
-            vtk file to write. If no file is given, a string is returned.
+            Vtk file to write. If no file is given, a string is returned.
 
         """
         v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
@@ -496,6 +502,58 @@ class Geom:
         return ''.join(f.readlines())
 
 
+    def add_primitive(self,dimension,center,exponent,
+                      fill=None,R=Rotation(),inverse=False,periodic=True):
+        """
+        Inserts a primitive geometric object at a given position.
+
+        Parameters
+        ----------
+        dimension : int or float numpy.ndarray of shape(3)
+            Dimension (diameter/side length) of the primitive. If given as
+            integers, grid point locations (cell centers) are addressed.
+            If given as floats, coordinates are addressed.
+        center : int or float numpy.ndarray of shape(3)
+            Center of the primitive. If given as integers, grid point
+            locations (cell centers) are addressed.
+            If given as floats, coordinates are addressed.
+        exponent : numpy.ndarray of shape(3) or float
+            Exponents for the three axis.
+            0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1)
+            1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1)
+        fill : int, optional
+            Fill value for primitive. Defaults to microstructure.max() + 1.
+        R : damask.Rotation, optional
+            Rotation of primitive. Defaults to no rotation.
+        inverse : Boolean, optional
+            Retain original microstructure within primitive and fill
+            outside. Defaults to False.
+        periodic : Boolean, optional
+            Repeat primitive over boundaries. Defaults to False.
+
+        """
+        # normalized 'radius' and center
+        r = np.array(dimension)/self.grid/2.0 if np.array(dimension).dtype in np.sctypes['int'] else \
+            np.array(dimension)/self.size/2.0
+        c = (np.array(center) + .5)/self.grid if np.array(center).dtype in np.sctypes['int'] else \
+            (np.array(center) - self.origin)/self.size
+
+        coords = grid_filters.cell_coord0(self.grid,np.ones(3)) \
+               - (np.ones(3)*0.5 if periodic else c)                                                # center if periodic
+        coords_rot = R.broadcast_to(tuple(self.grid))@coords
+
+        with np.errstate(over='ignore',under='ignore'):
+            mask = np.where(np.sum(np.abs(coords_rot/r)**(2.0**exponent),axis=-1) < 1,True,False)
+
+        if periodic:                                                                                # translate back to center
+            mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
+
+        fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
+        ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
+
+        return self.update(ms)
+
+
     def mirror(self,directions,reflect=False):
         """
         Mirror microstructure along given directions.
@@ -503,9 +561,10 @@ class Geom:
         Parameters
         ----------
         directions : iterable containing str
-            direction(s) along which the microstructure is mirrored. Valid entries are 'x', 'y', 'z'.
+            Direction(s) along which the microstructure is mirrored.
+            Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
-            reflect (include) outermost layers.
+            Reflect (include) outermost layers.
 
         """
         valid = {'x','y','z'}
@@ -535,7 +594,7 @@ class Geom:
         Parameters
         ----------
         grid : numpy.ndarray of shape (3)
-            number of grid points in x,y,z direction.
+            Number of grid points in x,y,z direction.
 
         """
         #ToDo: self.add_comments('geom.py:scale v{}'.format(version)
@@ -558,7 +617,7 @@ class Geom:
         Parameters
         ----------
         stencil : int, optional
-            size of smoothing stencil.
+            Size of smoothing stencil.
 
         """
         def mostFrequent(arr):
@@ -591,9 +650,9 @@ class Geom:
         Parameters
         ----------
         R : damask.Rotation
-            rotation to apply to the microstructure.
+            Rotation to apply to the microstructure.
         fill : int or float, optional
-            microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+            Microstructure index to fill the corners. Defaults to microstructure.max() + 1.
 
         """
         if fill is None: fill = np.nanmax(self.microstructure) + 1
@@ -626,11 +685,11 @@ class Geom:
         Parameters
         ----------
         grid : numpy.ndarray of shape (3)
-            number of grid points in x,y,z direction.
+            Number of grid points in x,y,z direction.
         offset : numpy.ndarray of shape (3)
-            offset (measured in grid points) from old to new microstructue[0,0,0].
+            Offset (measured in grid points) from old to new microstructure[0,0,0].
         fill : int or float, optional
-            microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+            Microstructure index to fill the corners. Defaults to microstructure.max() + 1.
 
         """
         if fill is None: fill = np.nanmax(self.microstructure) + 1
@@ -653,14 +712,14 @@ class Geom:
 
     def substitute(self,from_microstructure,to_microstructure):
         """
-        Substitude microstructure indices.
+        Substitute microstructure indices.
 
         Parameters
         ----------
         from_microstructure : iterable of ints
-            microstructure indices to be substituted.
+            Microstructure indices to be substituted.
         to_microstructure : iterable of ints
-            new microstructure indices.
+            New microstructure indices.
 
         """
         substituted = self.get_microstructure()
@@ -669,3 +728,50 @@ class Geom:
 
         #ToDo: self.add_comments('geom.py:substitute v{}'.format(version)
         return self.update(substituted)
+
+
+    def vicinity_offset(self,vicinity=1,offset=None,trigger=[],periodic=True):
+        """
+        Offset microstructure index of points in the vicinity of xxx.
+
+        Different from themselves (or listed as triggers) within a given (cubic) vicinity,
+        i.e. within the region close to a grain/phase boundary.
+        ToDo: use include/exclude as in seeds.from_geom
+
+        Parameters
+        ----------
+        vicinity : int, optional
+            Voxel distance checked for presence of other microstructure.
+            Defaults to 1.
+        offset : int, optional
+            Offset (positive or negative) to tag microstructure indices,
+            defaults to microstructure.max() + 1.
+        trigger : list of ints, optional
+            List of microstructure indices triggering a change.
+            Defaults to [], meaning that different neigboors trigger a change.
+        periodic : Boolean, optional
+            Assume geometry to be periodic. Defaults to True.
+
+        """
+        def tainted_neighborhood(stencil,trigger):
+
+            me = stencil[stencil.shape[0]//2]
+            if len(trigger) == 0:
+                return np.any(stencil != me)
+            if me in trigger:
+                trigger = set(trigger)
+                trigger.remove(me)
+                trigger = list(trigger)
+            return np.any(np.in1d(stencil,np.array(trigger)))
+
+        offset_ = np.nanmax(self.microstructure) if offset is None else offset
+        mask = ndimage.filters.generic_filter(self.microstructure,
+                                              tainted_neighborhood,
+                                              size=1+2*vicinity,
+                                              mode=('wrap' if periodic else 'nearest'),
+                                              extra_keywords={'trigger':trigger})
+        microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
+
+        #ToDo: self.add_comments('geom.py:vicinity_offset v{}'.format(version)
+        return self.update(microstructure)
+

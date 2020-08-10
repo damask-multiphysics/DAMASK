@@ -210,8 +210,8 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   call VecMax(solution_vec,devNull,phi_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
     write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
-  write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
-                                                        phi_min, phi_max, stagNorm
+  write(6,'(/,a,f8.6,2x,f8.6,2x,e11.4,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
+                                                          phi_min, phi_max, stagNorm
   write(6,'(/,a)') ' ==========================================================================='
   flush(6) 
 
