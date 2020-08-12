@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------------------------------------
-!> @brief internal microstructure state for all thermal sources and kinematics constitutive models  
+!> @brief internal microstructure state for all thermal sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_thermal
 
@@ -7,7 +7,7 @@ submodule(constitutive) constitutive_thermal
 
   module subroutine source_thermal_dissipation_init
   end subroutine source_thermal_dissipation_init
- 
+
   module subroutine source_thermal_externalheat_init
   end subroutine source_thermal_externalheat_init
 
@@ -19,7 +19,7 @@ submodule(constitutive) constitutive_thermal
     integer, intent(in) :: &
       phase                                                                                         !< phase ID of element
     real(pReal),  intent(in), dimension(3,3) :: &
-      Tstar                                                                                         !< 2nd Piola Kirchoff stress tensor for a given element
+      Tstar                                                                                         !< 2nd Piola Kirchhoff stress tensor for a given element
     real(pReal),  intent(in), dimension(3,3) :: &
       Lp                                                                                            !< plastic velocuty gradient for a given element
     real(pReal),  intent(out) :: &
@@ -48,7 +48,7 @@ module subroutine thermal_init
 ! initialize source mechanisms
   if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
   if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init
- 
+
 !--------------------------------------------------------------------------------------------------
 !initialize kinematic mechanisms
   if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
@@ -66,7 +66,7 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
   real(pReal), intent(in) :: &
     T
   real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
-    S, &                                                                                            !< current 2nd Piola Kirchoff stress
+    S, &                                                                                            !< current 2nd Piola Kirchhoff stress
     Lp                                                                                              !< plastic velocity gradient
   real(pReal), intent(inout) :: &
     TDot, &
@@ -82,34 +82,34 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
     grain, &
     source, &
     constituent
- 
+
    homog  = material_homogenizationAt(el)
    instance = thermal_typeInstance(homog)
-   
+
   do grain = 1, homogenization_Ngrains(homog)
      phase = material_phaseAt(grain,el)
      constituent = material_phasememberAt(grain,ip,el)
      do source = 1, phase_Nsources(phase)
-       select case(phase_source(source,phase))                                                   
+       select case(phase_source(source,phase))
          case (SOURCE_thermal_dissipation_ID)
           call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
                                                                S(1:3,1:3,grain,ip,el), &
-                                                                Lp(1:3,1:3,grain,ip,el), & 
+                                                                Lp(1:3,1:3,grain,ip,el), &
                                                                     phase)
-   
+
          case (SOURCE_thermal_externalheat_ID)
           call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
                                                                 phase, constituent)
-   
+
          case default
           my_Tdot = 0.0_pReal
           my_dTdot_dT = 0.0_pReal
        end select
        Tdot = Tdot + my_Tdot
        dTdot_dT = dTdot_dT + my_dTdot_dT
-     enddo  
+     enddo
    enddo
- 
+
 end subroutine constitutive_thermal_getRateAndItsTangents
 
 

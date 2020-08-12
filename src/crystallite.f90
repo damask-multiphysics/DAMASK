@@ -82,7 +82,7 @@ module crystallite
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       nState, &                                                                                     !< state loop limit
       nStress                                                                                       !< stress loop limit
-    character(len=:), allocatable :: & 
+    character(len=:), allocatable :: &
       integrator                                                                                    !< integration scheme
     real(pReal) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
@@ -140,7 +140,7 @@ subroutine crystallite_init
     iMax, &                                                                                         !< maximum number of integration points
     eMax, &                                                                                         !< maximum number of elements
     myNcomponents                                                                                   !< number of components at current IP
-  
+
   class(tNode), pointer :: &
     num_crystallite, &
     debug_crystallite                                                                               ! pointer to debug options for crystallite
@@ -715,11 +715,11 @@ subroutine crystallite_results
         case('p')
           selected_tensors = select_tensors(crystallite_P,p)
           call results_writeDataset(group,selected_tensors,'P',&
-                                   'First Piola-Kirchoff stress','Pa')
+                                   'First Piola-Kirchhoff stress','Pa')
         case('s')
           selected_tensors = select_tensors(crystallite_S,p)
           call results_writeDataset(group,selected_tensors,'S',&
-                                   'Second Piola-Kirchoff stress','Pa')
+                                   'Second Piola-Kirchhoff stress','Pa')
         case('orientation')
           select case(lattice_structure(p))
             case(lattice_ISO_ID)
