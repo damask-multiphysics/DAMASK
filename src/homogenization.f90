@@ -152,12 +152,12 @@ subroutine homogenization_init
     debug_homogenization
 
   debug_homogenization => debug_root%get('homogenization', defaultVal=emptyList)
-  debugHomog%basic       =  debug_homogenization%contains('basic') 
-  debugHomog%extensive   =  debug_homogenization%contains('extensive') 
+  debugHomog%basic       =  debug_homogenization%contains('basic')
+  debugHomog%extensive   =  debug_homogenization%contains('extensive')
   debugHomog%selective   =  debug_homogenization%contains('selective')
-  debugHomog%element     =  debug_root%get_asInt('element',defaultVal = 1) 
-  debugHomog%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debugHomog%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
+  debugHomog%element     =  debug_root%get_asInt('element',defaultVal = 1)
+  debugHomog%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1)
+  debugHomog%grain       =  debug_root%get_asInt('grain',defaultVal = 1)
 
   if (debugHomog%grain < 1 &
     .or. debugHomog%grain > homogenization_Ngrains(material_homogenizationAt(debugHomog%element))) &
@@ -618,7 +618,7 @@ subroutine homogenization_results
     !                          'deformation gradient','1')
     !temp = reshape(materialpoint_P,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'P',&
-    !                          '1st Piola-Kirchoff stress','Pa')
+    !                          '1st Piola-Kirchhoff stress','Pa')
 
     group = trim(group_base)//'/mech'
     call results_closeGroup(results_addGroup(group))
