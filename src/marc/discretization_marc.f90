@@ -11,8 +11,7 @@ module discretization_marc
   use math
   use DAMASK_interface
   use IO
-  use debug
-  use numerics
+  use config
   use FEsolving
   use element
   use discretization

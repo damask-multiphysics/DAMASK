@@ -16,11 +16,10 @@ module grid_mech_FEM
   use math
   use spectral_utilities
   use FEsolving
-  use numerics
+  use config
   use homogenization
   use discretization
   use discretization_grid
-  use debug
 
   implicit none
   private

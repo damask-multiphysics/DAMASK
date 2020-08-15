@@ -14,8 +14,6 @@ module spectral_utilities
   use rotations
   use IO
   use discretization_grid
-  use numerics
-  use debug
   use config
   use discretization
   use homogenization

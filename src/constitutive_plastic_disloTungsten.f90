@@ -5,7 +5,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief crystal plasticity model for bcc metals, especially Tungsten
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_plastic) plastic_disloUCLA
+submodule(constitutive:constitutive_plastic) plastic_disloTungsten
 
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
@@ -20,8 +20,8 @@ submodule(constitutive:constitutive_plastic) plastic_disloUCLA
       b_sl, &                                                                                       !< magnitude of burgers vector [m]
       D_a, &
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations
-      atomicVolume, &
-      tau_0, &
+      atomicVolume, &                                                                               !< factor to calculate atomic volume
+      tau_0, &                                                                                      !< Peierls stress
       !* mobility law parameters
       delta_F, &                                                                                    !< activation energy for glide [J]
       v0, &                                                                                         !< dislocation velocity prefactor [m/s]
@@ -46,26 +46,26 @@ submodule(constitutive:constitutive_plastic) plastic_disloUCLA
       dipoleFormation                                                                               !< flag indicating consideration of dipole formation
   end type                                                                                          !< container type for internal constitutive parameters
 
-  type :: tDisloUCLAState
+  type :: tDisloTungstenState
     real(pReal), dimension(:,:), pointer :: &
       rho_mob, &
       rho_dip, &
       gamma_sl
-  end type tDisloUCLAState
+  end type tDisloTungstenState
 
-  type :: tDisloUCLAdependentState
+  type :: tDisloTungstendependentState
     real(pReal), dimension(:,:), allocatable :: &
       Lambda_sl, &
       threshold_stress
-  end type tDisloUCLAdependentState
+  end type tDisloTungstendependentState
 
 !--------------------------------------------------------------------------------------------------
 ! containers for parameters and state
   type(tParameters),              allocatable, dimension(:) :: param
-  type(tDisloUCLAState),          allocatable, dimension(:) :: &
+  type(tDisloTungstenState),          allocatable, dimension(:) :: &
     dotState, &
     state
-  type(tDisloUCLAdependentState), allocatable, dimension(:) :: dependentState
+  type(tDisloTungstendependentState), allocatable, dimension(:) :: dependentState
 
 contains
 
@@ -74,8 +74,9 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_disloUCLA_init
+module function plastic_disloTungsten_init() result(myPlasticity)
 
+  logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     Ninstance, &
     p, i, &
@@ -90,43 +91,59 @@ module subroutine plastic_disloUCLA_init
     a                                                                                               !< non-Schmid coefficients
   character(len=pStringLen) :: &
     extmsg = ''
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_DISLOUCLA_LABEL//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  plastic_disloTungsten init  -+>>>'
 
   write(6,'(/,a)') ' Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   write(6,'(a)')   ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
-  Ninstance = count(phase_plasticity == PLASTICITY_DISLOUCLA_ID)
+  myPlasticity = plastic_active('disloTungsten')
+
+  Ninstance = count(myPlasticity)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  if(Ninstance == 0) return
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
   allocate(dotState(Ninstance))
   allocate(dependentState(Ninstance))
 
-  do p = 1, size(phase_plasticity)
-    if (phase_plasticity(p) /= PLASTICITY_DISLOUCLA_ID) cycle
-    associate(prm => param(phase_plasticityInstance(p)), &
-              dot => dotState(phase_plasticityInstance(p)), &
-              stt => state(phase_plasticityInstance(p)), &
-              dst => dependentState(phase_plasticityInstance(p)), &
-              config => config_phase(p))
+  phases => material_root%get('phase')
+  i = 0
+  do p = 1, phases%length
+    phase => phases%get(p)
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+    if(.not. myPlasticity(p)) cycle
+    i = i + 1
+    associate(prm => param(i), &
+              dot => dotState(i), &
+              stt => state(i), &
+              dst => dependentState(i))
+    pl  => phase%get('plasticity')
+
+#if defined (__GFORTRAN__)
+    prm%output = output_asStrings(pl)
+#else
+    prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
 
     ! This data is read in already in lattice
     prm%mu = lattice_mu(p)
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
-    N_sl         = config%getInts('nslip',defaultVal=emptyIntArray)
+    N_sl         = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
     prm%sum_N_sl = sum(abs(N_sl))
     slipActive: if (prm%sum_N_sl > 0) then
-      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,config%getString('lattice_structure'),&
-                                           config%getFloat('c/a',defaultVal=0.0_pReal))
+      prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
+                                           phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
-      if(trim(config%getString('lattice_structure')) == 'bcc') then
-        a = config%getFloats('nonschmid_coefficients',defaultVal = emptyRealArray)
+      if(trim(phase%get_asString('lattice')) == 'bcc') then
+        a = pl%get_asFloats('nonSchmid_coefficients',defaultVal = emptyRealArray)
         prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
@@ -134,35 +151,36 @@ module subroutine plastic_disloUCLA_init
         prm%nonSchmid_neg = prm%P_sl
       endif
 
-      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,config%getFloats('interaction_slipslip'), &
-                                                   config%getString('lattice_structure'))
-      prm%forestProjection = lattice_forestProjection_edge(N_sl,config%getString('lattice_structure'),&
-                                                           config%getFloat('c/a',defaultVal=0.0_pReal))
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(N_sl,pl%get_asFloats('h_sl_sl'), &
+                                                   phase%get_asString('lattice'))
+      prm%forestProjection = lattice_forestProjection_edge(N_sl,phase%get_asString('lattice'),&
+                                                           phase%get_asFloat('c/a',defaultVal=0.0_pReal))
       prm%forestProjection = transpose(prm%forestProjection)
 
-      rho_mob_0       = config%getFloats('rhoedge0',       requiredSize=size(N_sl))
-      rho_dip_0       = config%getFloats('rhoedgedip0',    requiredSize=size(N_sl))
-      prm%v0          = config%getFloats('v0',             requiredSize=size(N_sl))
-      prm%b_sl        = config%getFloats('slipburgers',    requiredSize=size(N_sl))
-      prm%delta_F     = config%getFloats('qedge',          requiredSize=size(N_sl))
+      rho_mob_0       = pl%get_asFloats('rho_mob_0',     requiredSize=size(N_sl))
+      rho_dip_0       = pl%get_asFloats('rho_dip_0',     requiredSize=size(N_sl))
+      prm%v0          = pl%get_asFloats('v_0',           requiredSize=size(N_sl))
+      prm%b_sl        = pl%get_asFloats('b_sl',          requiredSize=size(N_sl))
+      prm%delta_F     = pl%get_asFloats('Q_s',           requiredSize=size(N_sl))
 
-      prm%i_sl        = config%getFloats('clambdaslip',    requiredSize=size(N_sl))
-      prm%tau_0       = config%getFloats('tau_peierls',    requiredSize=size(N_sl))
-      prm%p           = config%getFloats('p_slip',         requiredSize=size(N_sl), &
+      prm%i_sl        = pl%get_asFloats('i_sl',          requiredSize=size(N_sl))
+      prm%tau_0       = pl%get_asFloats('tau_peierls',   requiredSize=size(N_sl))
+      prm%p           = pl%get_asFloats('p_sl',          requiredSize=size(N_sl), &
                                          defaultVal=[(1.0_pReal,i=1,size(N_sl))])
-      prm%q           = config%getFloats('q_slip',         requiredSize=size(N_sl), &
+      prm%q           = pl%get_asFloats('q_sl',          requiredSize=size(N_sl), &
                                          defaultVal=[(1.0_pReal,i=1,size(N_sl))])
-      prm%kink_height = config%getFloats('kink_height',    requiredSize=size(N_sl))
-      prm%w           = config%getFloats('kink_width',     requiredSize=size(N_sl))
-      prm%omega       = config%getFloats('omega',          requiredSize=size(N_sl))
-      prm%B           = config%getFloats('friction_coeff', requiredSize=size(N_sl))
+      prm%kink_height = pl%get_asFloats('h',             requiredSize=size(N_sl))
+      prm%w           = pl%get_asFloats('w',             requiredSize=size(N_sl))
+      prm%omega       = pl%get_asFloats('omega',         requiredSize=size(N_sl))
+      prm%B           = pl%get_asFloats('B',             requiredSize=size(N_sl))
 
-      prm%D               = config%getFloat('grainsize')
-      prm%D_0             = config%getFloat('d0')
-      prm%Q_cl            = config%getFloat('qsd')
-      prm%atomicVolume    = config%getFloat('catomicvolume')       * prm%b_sl**3.0_pReal
-      prm%D_a             = config%getFloat('cedgedipmindistance') * prm%b_sl
-      prm%dipoleformation = config%getFloat('dipoleformationfactor') > 0.0_pReal                    !should be on by default, ToDo: change to /key/-type key
+      prm%D               = pl%get_asFloat('D')
+      prm%D_0             = pl%get_asFloat('D_0')
+      prm%Q_cl            = pl%get_asFloat('Q_cl')
+      prm%atomicVolume    = pl%get_asFloat('f_at')       * prm%b_sl**3.0_pReal
+      prm%D_a             = pl%get_asFloat('D_a')        * prm%b_sl
+      
+      prm%dipoleformation = pl%get_asBool('dipole_formation_factor', defaultVal = .true.)
 
       ! expand: family => system
       rho_mob_0          = math_expand(rho_mob_0,          N_sl)
@@ -184,14 +202,14 @@ module subroutine plastic_disloUCLA_init
       ! sanity checks
       if (    prm%D_0          <= 0.0_pReal)  extmsg = trim(extmsg)//' D_0'
       if (    prm%Q_cl         <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
-      if (any(rho_mob_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedge0'
-      if (any(rho_dip_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rhoedgedip0'
-      if (any(prm%v0           <  0.0_pReal)) extmsg = trim(extmsg)//' v0'
+      if (any(rho_mob_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_mob_0'
+      if (any(rho_dip_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_dip_0'
+      if (any(prm%v0           <  0.0_pReal)) extmsg = trim(extmsg)//' v_0'
       if (any(prm%b_sl         <= 0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
-      if (any(prm%delta_F      <= 0.0_pReal)) extmsg = trim(extmsg)//' qedge'
-      if (any(prm%tau_0        <  0.0_pReal)) extmsg = trim(extmsg)//' tau_0'
-      if (any(prm%D_a          <= 0.0_pReal)) extmsg = trim(extmsg)//' cedgedipmindistance or b_sl'
-      if (any(prm%atomicVolume <= 0.0_pReal)) extmsg = trim(extmsg)//' catomicvolume or b_sl'
+      if (any(prm%delta_F      <= 0.0_pReal)) extmsg = trim(extmsg)//' Q_s'
+      if (any(prm%tau_0        <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
+      if (any(prm%D_a          <= 0.0_pReal)) extmsg = trim(extmsg)//' D_a or b_sl'
+      if (any(prm%atomicVolume <= 0.0_pReal)) extmsg = trim(extmsg)//' f_at or b_sl'
 
     else slipActive
       rho_mob_0= emptyRealArray; rho_dip_0 = emptyRealArray
@@ -208,7 +226,7 @@ module subroutine plastic_disloUCLA_init
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 
-    call material_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
+    call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
@@ -217,7 +235,7 @@ module subroutine plastic_disloUCLA_init
     stt%rho_mob => plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_mob =  spread(rho_mob_0,2,NipcMyPhase)
     dot%rho_mob => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho',defaultVal=1.0_pReal)
+    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
 
     startIndex = endIndex + 1
@@ -225,7 +243,7 @@ module subroutine plastic_disloUCLA_init
     stt%rho_dip => plasticState(p)%state(startIndex:endIndex,:)
     stt%rho_dip =  spread(rho_dip_0,2,NipcMyPhase)
     dot%rho_dip => plasticState(p)%dotState(startIndex:endIndex,:)
-    plasticState(p)%atol(startIndex:endIndex) = config%getFloat('atol_rho',defaultVal=1.0_pReal)
+    plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
@@ -244,17 +262,17 @@ module subroutine plastic_disloUCLA_init
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//PLASTICITY_DISLOUCLA_LABEL//')')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(disloTungsten)')
 
   enddo
 
-end subroutine plastic_disloUCLA_init
+end function plastic_disloTungsten_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-pure module subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp, &
+pure module subroutine plastic_disloTungsten_LpAndItsTangent(Lp,dLp_dMp, &
                                                          Mp,T,instance,of)
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -291,13 +309,13 @@ pure module subroutine plastic_disloUCLA_LpAndItsTangent(Lp,dLp_dMp, &
 
   end associate
 
-end subroutine plastic_disloUCLA_LpAndItsTangent
+end subroutine plastic_disloTungsten_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
+module subroutine plastic_disloTungsten_dotState(Mp,T,instance,of)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -351,13 +369,13 @@ module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
 
   end associate
 
-end subroutine plastic_disloUCLA_dotState
+end subroutine plastic_disloTungsten_dotState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate derived quantities from state.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_disloUCLA_dependentState(instance,of)
+module subroutine plastic_disloTungsten_dependentState(instance,of)
 
   integer,      intent(in) :: &
     instance, &
@@ -376,13 +394,13 @@ module subroutine plastic_disloUCLA_dependentState(instance,of)
 
   end associate
 
-end subroutine plastic_disloUCLA_dependentState
+end subroutine plastic_disloTungsten_dependentState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_disloUCLA_results(instance,group)
+module subroutine plastic_disloTungsten_results(instance,group)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -392,26 +410,26 @@ module subroutine plastic_disloUCLA_results(instance,group)
   associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('edge_density')                                                                          ! ToDo: should be rho_mob
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_mob,'rho_mob',&
+      case('rho_mob')                                                                          
+        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_mob,trim(prm%output(o)), &
                                                      'mobile dislocation density','1/m²')
-      case('dipole_density')                                                                        ! ToDo: should be rho_dip
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,'rho_dip',&
+      case('rho_dip')                                                                        
+        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
                                                      'dislocation dipole density''1/m²')
-      case('shear_rate_slip')                                                                       ! should be gamma
-        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,'dot_gamma_sl',&            ! this is not dot!!
+      case('gamma_sl')                                                                       
+        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
                                                      'plastic shear','1')
-      case('mfp_slip')                                                                              !ToDo: should be Lambda
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,'Lambda_sl',&
+      case('Lambda_sl')                                                                              
+        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
-      case('threshold_stress_slip')                                                                 !ToDo: should be tau_pass
-        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%threshold_stress,'tau_pass',&
+      case('tau_pass')                                                                 
+        if(prm%sum_N_sl>0) call results_writeDataset(group,dst%threshold_stress,trim(prm%output(o)), &
                                                      'threshold stress for slip','Pa')
     end select
   enddo outputsLoop
   end associate
 
-end subroutine plastic_disloUCLA_results
+end subroutine plastic_disloTungsten_results
 
 
 !--------------------------------------------------------------------------------------------------
@@ -529,4 +547,4 @@ pure subroutine kinetics(Mp,T,instance,of, &
 
 end subroutine kinetics
 
-end submodule plastic_disloUCLA
+end submodule plastic_disloTungsten

@@ -5,10 +5,10 @@
 module thermal_adiabatic
   use prec
   use config
-  use numerics
   use material
   use results
   use constitutive
+  use YAML_types
   use crystallite
   use lattice
 
@@ -40,20 +40,32 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
  
-  integer :: maxNinstance,h,NofMyHomog   
- 
-  write(6,'(/,a)') ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'; flush(6)
+  integer :: maxNinstance,h,NofMyHomog
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogThermal
+
+  write(6,'(/,a)') ' <<<+-  thermal_adiabatic init  -+>>>'; flush(6)
   
   maxNinstance = count(thermal_type == THERMAL_adiabatic_ID)
   if (maxNinstance == 0) return
   
   allocate(param(maxNinstance))
   
-  do h = 1, size(thermal_type)
+  material_homogenization => material_root%get('homogenization')
+  do h = 1, material_Nhomogenization
     if (thermal_type(h) /= THERMAL_adiabatic_ID) cycle
-    associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
-              
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+    homog => material_homogenization%get(h)
+    homogThermal => homog%get('thermal')
+ 
+    associate(prm => param(thermal_typeInstance(h)))
+
+#if defined (__GFORTRAN__)
+    prm%output = output_asStrings(homogThermal)
+#else
+    prm%output = homogThermal%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
 
     NofMyHomog=count(material_homogenizationAt==h)
     thermalState(h)%sizeState = 1
@@ -205,7 +217,7 @@ subroutine thermal_adiabatic_results(homog,group)
   associate(prm => param(damage_typeInstance(homog)))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('temperature')                                                                           ! ToDo: should be 'T'
+      case('T') 
         call results_writeDataset(group,temperature(homog)%p,'T',&
                                   'temperature','K')
     end select

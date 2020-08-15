@@ -7,8 +7,6 @@ module constitutive
   use prec
   use math
   use rotations
-  use debug
-  use numerics
   use IO
   use config
   use material
@@ -20,6 +18,33 @@ module constitutive
 
   implicit none
   private
+
+  integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable, protected :: &
+    phase_elasticity                                                                                !< elasticity of each phase
+
+  integer(kind(PLASTICITY_undefined_ID)),     dimension(:),   allocatable :: &                      !ToDo: old intel compiler complains about protected
+    phase_plasticity                                                                                !< plasticity of each phase
+
+  integer(kind(SOURCE_undefined_ID)), dimension(:,:), allocatable :: &                              ! ToDo: old intel compiler complains about protected
+    phase_source, &                                                                                 !< active sources mechanisms of each phase
+    phase_kinematics, &                                                                             !< active kinematic mechanisms of each phase
+    phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
+
+  integer, dimension(:), allocatable,  public :: &                                                  ! ToDo: old intel compiler complains about protected
+    phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
+    phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
+    phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
+    phase_plasticityInstance, &                                                                     !< instance of particular plasticity of each phase
+    phase_elasticityInstance                                                                        !< instance of particular elasticity of each phase
+
+  logical, dimension(:), allocatable, public :: &                                                   ! ToDo: old intel compiler complains about protected
+    phase_localPlasticity                                                                           !< flags phases with local constitutive law
+
+  type(tPlasticState), allocatable, dimension(:), public :: &
+    plasticState
+  type(tSourceState),  allocatable, dimension(:), public :: &
+    sourceState
+
 
   integer, public, protected :: &
     constitutive_plasticity_maxSizeDotState, &
@@ -36,6 +61,23 @@ module constitutive
     module subroutine thermal_init
     end subroutine thermal_init
 
+
+    module function plastic_active(plastic_label)  result(active_plastic)
+      character(len=*), intent(in)        :: plastic_label
+      logical, dimension(:), allocatable  :: active_plastic
+    end function plastic_active
+
+    module function source_active(source_label,src_length)  result(active_source)
+      character(len=*), intent(in)          :: source_label
+      integer,          intent(in)          :: src_length
+      logical, dimension(:,:), allocatable  :: active_source
+    end function source_active
+
+    module function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
+      character(len=*), intent(in)          :: kinematics_label
+      integer,          intent(in)          :: kinematics_length
+      logical, dimension(:,:), allocatable  :: active_kinematics
+    end function kinematics_active
 
     module subroutine plastic_isotropic_dotState(Mp,instance,of)
       real(pReal), dimension(3,3),  intent(in) :: &
@@ -71,7 +113,7 @@ module constitutive
         of
     end subroutine plastic_dislotwin_dotState
 
-    module subroutine plastic_disloUCLA_dotState(Mp,T,instance,of)
+    module subroutine plastic_disloTungsten_dotState(Mp,T,instance,of)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       real(pReal),                  intent(in) :: &
@@ -79,7 +121,7 @@ module constitutive
       integer,                      intent(in) :: &
         instance, &
         of
-    end subroutine plastic_disloUCLA_dotState
+    end subroutine plastic_disloTungsten_dotState
 
     module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
                                                         instance,of,ip,el)
@@ -286,7 +328,6 @@ module constitutive
     end subroutine constitutive_plastic_LpAndItsTangents
 
   end interface constitutive_LpAndItsTangents
- 
 
   interface constitutive_dependentState
 
@@ -326,11 +367,14 @@ module constitutive
     constitutive_SandItsTangents, &
     constitutive_collectDotState, &
     constitutive_deltaState, &
-    plastic_nonlocal_updateCompatibility, &
     constitutive_damage_getRateAndItsTangents, &
     constitutive_thermal_getRateAndItsTangents, &
-    constitutive_results
-
+    constitutive_results, &
+    constitutive_allocateState, &
+    plastic_nonlocal_updateCompatibility, &
+    plastic_active, &
+    source_active, &
+    kinematics_active
 contains
 
 
@@ -340,10 +384,15 @@ contains
 subroutine constitutive_init
 
   integer :: &
-    ph, &                                                                                           !< counter in phase loop
-    s                                                                                               !< counter in source loop
+    p, &                                                                                            !< counter in phase loop
+    s, &                                                                                            !< counter in source loop
+    stiffDegradationCtr
   class (tNode), pointer :: &
-    debug_constitutive
+    debug_constitutive, &
+    phases, &
+    phase, &
+    elastic, &
+    stiffDegradation
 
   debug_constitutive => debug_root%get('constitutive', defaultVal=emptyList)
   debugConstitutive%basic      =  debug_constitutive%contains('basic') 
@@ -353,7 +402,46 @@ subroutine constitutive_init
   debugConstitutive%ip         =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
   debugConstitutive%grain      =  debug_root%get_asInt('grain',defaultVal = 1)
 
+!-------------------------------------------------------------------------------------------------
+! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
+  phases => material_root%get('phase')
+  allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
+  allocate(phase_elasticityInstance(phases%length), source = 0)
+  allocate(phase_NstiffnessDegradations(phases%length),source=0)
 
+  do p = 1, phases%length
+    phase   => phases%get(p)
+    elastic => phase%get('elasticity')
+    if(elastic%get_asString('type') == 'hooke') then
+      phase_elasticity(p) = ELASTICITY_HOOKE_ID
+    else
+      call IO_error(200,ext_msg=elastic%get_asString('type'))
+    endif
+    stiffDegradation => phase%get('stiffness_degradation',defaultVal=emptyList)     ! check for stiffness degradation mechanisms
+    phase_NstiffnessDegradations(p) = stiffDegradation%length
+  enddo
+
+  allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),phases%length), &
+                        source=STIFFNESS_DEGRADATION_undefined_ID)
+
+  if(maxVal(phase_NstiffnessDegradations)/=0) then
+    do p = 1, phases%length
+      phase => phases%get(p)
+      stiffDegradation => phase%get('stiffness_degradation',defaultVal=emptyList)
+      do stiffDegradationCtr = 1, stiffDegradation%length
+        if(stiffDegradation%get_asString(stiffDegradationCtr) == 'damage') &
+            phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_damage_ID
+      enddo
+    enddo
+  endif
+
+  do p = 1, phases%length
+    phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
+  enddo
+
+
+!--------------------------------------------------------------------------------------------------
+! initialize constitutive laws
   call plastic_init
   call damage_init
   call thermal_init
@@ -361,22 +449,86 @@ subroutine constitutive_init
   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'; flush(6)
 
   constitutive_source_maxSizeDotState = 0
-  PhaseLoop2:do ph = 1,material_Nphase
+  PhaseLoop2:do p = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
-    plasticState(ph)%partionedState0 = plasticState(ph)%state0
-    plasticState(ph)%state           = plasticState(ph)%partionedState0
-    forall(s = 1:phase_Nsources(ph))
-      sourceState(ph)%p(s)%partionedState0 = sourceState(ph)%p(s)%state0
-      sourceState(ph)%p(s)%state           = sourceState(ph)%p(s)%partionedState0
+    plasticState(p)%partionedState0 = plasticState(p)%state0
+    plasticState(p)%state           = plasticState(p)%partionedState0
+    forall(s = 1:phase_Nsources(p))
+      sourceState(p)%p(s)%partionedState0 = sourceState(p)%p(s)%state0
+      sourceState(p)%p(s)%state           = sourceState(p)%p(s)%partionedState0
     end forall
 
     constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
-                                                maxval(sourceState(ph)%p%sizeDotState))
+                                                maxval(sourceState(p)%p%sizeDotState))
   enddo PhaseLoop2
   constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine constitutive_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief checks if a source mechanism is active or not
+!--------------------------------------------------------------------------------------------------
+module function source_active(source_label,src_length)  result(active_source)
+
+  character(len=*), intent(in)         :: source_label                                              !< name of source mechanism 
+  integer,          intent(in)         :: src_length                                                !< max. number of sources in system
+  logical, dimension(:,:), allocatable :: active_source
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    sources, &
+    src 
+  integer :: p,s
+
+  phases => material_root%get('phase')
+  allocate(active_source(src_length,phases%length), source = .false. )
+  do p = 1, phases%length
+    phase => phases%get(p)
+    sources => phase%get('source',defaultVal=emptyList)
+    do s = 1, sources%length
+      src => sources%get(s)
+      if(src%get_asString('type') == source_label) active_source(s,p) = .true.
+    enddo
+  enddo
+
+
+end function source_active
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief checks if a kinematic mechanism is active or not
+!--------------------------------------------------------------------------------------------------
+
+module function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
+
+  character(len=*), intent(in)         :: kinematics_label                                          !< name of kinematic mechanism
+  integer,          intent(in)         :: kinematics_length                                         !< max. number of kinematics in system
+  logical, dimension(:,:), allocatable :: active_kinematics
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    kinematics, &
+    kinematics_type 
+  integer :: p,k
+
+  phases => material_root%get('phase')
+  allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
+  do p = 1, phases%length
+    phase => phases%get(p)
+    kinematics => phase%get('kinematics',defaultVal=emptyList)
+    do k = 1, kinematics%length
+      kinematics_type => kinematics%get(k)
+      if(kinematics_type%get_asString('type') == kinematics_label) active_kinematics(k,p) = .true.
+    enddo
+  enddo
+
+
+end function kinematics_active
+  
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenize elasticity matrix
@@ -626,7 +778,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
   plasticityType: select case (phase_plasticity(phase))
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call plastic_isotropic_dotState    (Mp,instance,of)
+      call plastic_isotropic_dotState(Mp,instance,of)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
       call plastic_phenopowerlaw_dotState(Mp,instance,of)
@@ -635,13 +787,13 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
       call plastic_kinehardening_dotState(Mp,instance,of)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_dotState    (Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_dislotwin_dotState(Mp,temperature(ho)%p(tme),instance,of)
 
-    case (PLASTICITY_DISLOUCLA_ID) plasticityType
-      call plastic_disloucla_dotState    (Mp,temperature(ho)%p(tme),instance,of)
+    case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
+      call plastic_disloTungsten_dotState(Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dotState     (Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
+      call plastic_nonlocal_dotState(Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
                                           instance,of,ip,el)
   end select plasticityType
   broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
@@ -651,13 +803,13 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
     sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
-        call source_damage_anisoBrittle_dotState (S, ipc, ip, el) ! correct stress?
+        call source_damage_anisoBrittle_dotState(S, ipc, ip, el) ! correct stress?
 
       case (SOURCE_damage_isoDuctile_ID) sourceType
-        call source_damage_isoDuctile_dotState   (   ipc, ip, el)
+        call source_damage_isoDuctile_dotState(ipc, ip, el)
 
       case (SOURCE_damage_anisoDuctile_ID) sourceType
-        call source_damage_anisoDuctile_dotState (   ipc, ip, el)
+        call source_damage_anisoDuctile_dotState(ipc, ip, el)
 
       case (SOURCE_thermal_externalheat_ID) sourceType
         call source_thermal_externalheat_dotState(phase,of)
@@ -750,6 +902,39 @@ end function constitutive_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Allocate the components of the state structure for a given phase
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_allocateState(state, &
+                                  NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
+
+  class(tState), intent(out) :: &
+    state
+  integer, intent(in) :: &
+    NipcMyPhase, &
+    sizeState, &
+    sizeDotState, &
+    sizeDeltaState
+
+  state%sizeState        = sizeState
+  state%sizeDotState     = sizeDotState
+  state%sizeDeltaState   = sizeDeltaState
+  state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
+
+  allocate(state%atol           (sizeState),             source=0.0_pReal)
+  allocate(state%state0         (sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%partionedState0(sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%subState0      (sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%state          (sizeState,NipcMyPhase), source=0.0_pReal)
+
+  allocate(state%dotState    (sizeDotState,NipcMyPhase), source=0.0_pReal)
+
+  allocate(state%deltaState(sizeDeltaState,NipcMyPhase), source=0.0_pReal)
+
+
+end subroutine constitutive_allocateState
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results
@@ -758,5 +943,6 @@ subroutine constitutive_results
   call damage_results
 
 end subroutine constitutive_results
+
 
 end module constitutive

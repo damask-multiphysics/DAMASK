@@ -4,19 +4,18 @@
 !> @brief Parser for YAML files
 !> @details module converts a YAML input file to an equivalent YAML flow style which is then parsed.
 !----------------------------------------------------------------------------------------------------
-
 module YAML_parse
-
   use prec
   use IO
   use YAML_types
 
   implicit none
- 
   private
  
-  public :: YAML_init
-  public :: parse_flow,to_flow
+  public :: &
+    YAML_init, &
+    parse_flow, &
+    to_flow
 
 contains
 
@@ -34,19 +33,22 @@ end subroutine YAML_init
 !> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
 !> @details  A node type pointer can either point to a dictionary, list or scalar type entities.
 !--------------------------------------------------------------------------------------------------
-recursive function parse_flow(flow_string) result(node)
+recursive function parse_flow(YAML_flow) result(node)
 
-  character(len=*), intent(inout) :: flow_string                                                    !< YAML file in flow style
+  character(len=*), intent(in)    :: YAML_flow                                                      !< YAML file in flow style
   class (tNode), pointer          :: node
 
-  class (tNode),    pointer       :: myVal
-  character(len=pStringLen)       :: key
-
-  integer                         :: e, &                                                           ! end position of dictionary or list
-                                     s, &                                                           ! start position of dictionary or list
-                                     d                                                              ! position of key: value separator (':')
-
-  flow_string = trim(adjustl(flow_string(:)))
+  class (tNode),    pointer       :: &
+    myVal
+  character(len=:), allocatable   :: &
+    flow_string, &
+    key
+  integer :: &
+    e, &                                                                                            ! end position of dictionary or list
+    s, &                                                                                            ! start position of dictionary or list
+    d                                                                                               ! position of key: value separator (':')
+  
+  flow_string = trim(adjustl(YAML_flow(:)))
   if (len_trim(flow_string) == 0) then
     node => emptyDict
     return
@@ -166,7 +168,12 @@ logical function isListItem(line)
 
   character(len=*), intent(in) :: line
 
-  isListItem = index(adjustl(line),'-') == 1
+  isListItem = .false.
+  if(len_trim(adjustl(line))> 2 .and. index(trim(adjustl(line)), '-') == 1) then
+    isListItem = scan(trim(adjustl(line)),' ') == 2
+  else
+    isListItem = trim(adjustl(line)) == '-'
+  endif
 
 end function isListItem
 
@@ -337,7 +344,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   integer,          intent(inout) :: s_blck, &                                                      !< start position in blck
                                      s_flow, &                                                      !< start position in flow
                                      offset                                                         !< stores leading '- ' in nested lists
-  character(len=pStringLen) :: line
+  character(len=:), allocatable :: line
   integer :: e_blck,indent
 
   indent = indentDepth(blck(s_blck:),offset)
@@ -373,8 +380,6 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
           offset = 0
         endif
       else                                                                                          ! list item in the same line
-        if(line(indentDepth(line)+2:indentDepth(line)+2) /= ' ') &
-          call IO_error(703,ext_msg=line)
         line = line(indentDepth(line)+3:)
         if(isScalar(line)) then
           call line_toFlow(flow,s_flow,line)
@@ -419,7 +424,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
                                      s_flow, &                                                      !< start position in flow
                                      offset
 
-  character(len=pStringLen) :: line
+  character(len=:), allocatable :: line
   integer :: e_blck,indent
   logical :: previous_isKey
 
@@ -490,7 +495,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
                                      s_flow, &                                                      !< start position in flow
                                      offset
   integer :: e_blck
-  character(len=pStringLen) :: line
+  character(len=:), allocatable :: line
 
   if(s_blck <= len(blck)) then
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
@@ -564,8 +569,9 @@ subroutine selfTest()
   if (.not. isFlow(' ['))         call IO_error(0,ext_msg='isFlow')
 
   if (      isListItem(' a'))     call IO_error(0,ext_msg='isListItem')
+  if (      isListItem(' -b'))    call IO_error(0,ext_msg='isListItem')
   if (.not. isListItem('- a '))   call IO_error(0,ext_msg='isListItem')
-  if (.not. isListItem(' -b'))    call IO_error(0,ext_msg='isListItem')
+  if (.not. isListItem('- -a '))  call IO_error(0,ext_msg='isListItem')
 
   if (      isKeyValue(' a'))     call IO_error(0,ext_msg='isKeyValue')
   if (      isKeyValue(' a: '))   call IO_error(0,ext_msg='isKeyValue')

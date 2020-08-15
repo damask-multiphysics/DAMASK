@@ -8,10 +8,8 @@ module homogenization
   use prec
   use IO
   use config
-  use debug
   use math
   use material
-  use numerics
   use constitutive
   use crystallite
   use FEsolving
@@ -180,7 +178,6 @@ subroutine homogenization_init
   if (any(damage_type == DAMAGE_local_ID))     call damage_local_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
 
-  call config_deallocate('material.config/homogenization')
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
@@ -607,8 +604,8 @@ subroutine homogenization_results
 
   !real(pReal), dimension(:,:,:), allocatable :: temp
 
-  do p=1,size(config_name_homogenization)
-    group_base = 'current/materialpoint/'//trim(config_name_homogenization(p))
+  do p=1,size(material_name_homogenization)
+    group_base = 'current/materialpoint/'//trim(material_name_homogenization(p))
     call results_closeGroup(results_addGroup(group_base))
 
     group = trim(group_base)//'/generic'

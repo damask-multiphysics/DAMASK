@@ -175,10 +175,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
                    jtype,lclass,ifr,ifu)
   use prec
   use DAMASK_interface
-  use numerics
+  use config
   use YAML_types
   use FEsolving
-  use debug
   use discretization_marc
   use homogenization
   use CPFEM

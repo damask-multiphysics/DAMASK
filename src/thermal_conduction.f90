@@ -10,6 +10,7 @@ module thermal_conduction
   use results
   use crystallite
   use constitutive
+  use YAML_types
 
   implicit none
   private
@@ -41,17 +42,28 @@ contains
 subroutine thermal_conduction_init
 
   integer :: Ninstance,NofMyHomog,h
-
-  write(6,'(/,a)') ' <<<+-  thermal_'//THERMAL_CONDUCTION_label//' init  -+>>>'; flush(6)
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogThermal
+ 
+  write(6,'(/,a)') ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
 
   Ninstance = count(thermal_type == THERMAL_conduction_ID)
   allocate(param(Ninstance))
 
-  do h = 1, size(config_homogenization)
+  material_homogenization => material_root%get('homogenization')
+  do h = 1, material_Nhomogenization
     if (thermal_type(h) /= THERMAL_conduction_ID) cycle
-    associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
+    homog => material_homogenization%get(h)
+    homogThermal => homog%get('thermal')
+    associate(prm => param(thermal_typeInstance(h)))
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+#if defined (__GFORTRAN__)
+    prm%output = output_asStrings(homogThermal)
+#else
+    prm%output = homogThermal%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
 
     NofMyHomog=count(material_homogenizationAt==h)
     thermalState(h)%sizeState = 0
@@ -213,7 +225,7 @@ subroutine thermal_conduction_results(homog,group)
   associate(prm => param(damage_typeInstance(homog)))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('temperature')                                                                           ! ToDo: should be 'T'
+      case('T')
         call results_writeDataset(group,temperature(homog)%p,'T',&
                                   'temperature','K')
     end select

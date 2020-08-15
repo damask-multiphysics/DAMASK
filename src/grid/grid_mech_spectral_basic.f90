@@ -17,10 +17,8 @@ module grid_mech_spectral_basic
   use spectral_utilities
   use FEsolving
   use config
-  use numerics
   use homogenization
   use discretization_grid
-  use debug
 
   implicit none
   private

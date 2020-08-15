@@ -18,9 +18,9 @@ subroutine thermal_isothermal_init
 
   integer :: h,NofMyHomog
 
-  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_isothermal_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)')   ' <<<+-  thermal_isothermal init  -+>>>'; flush(6)
 
-  do h = 1, size(config_homogenization)
+  do h = 1, material_Nhomogenization
     if (thermal_type(h) /= THERMAL_isothermal_ID) cycle
 
     NofMyHomog = count(material_homogenizationAt == h)

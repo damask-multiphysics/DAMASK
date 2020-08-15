@@ -10,10 +10,10 @@ submodule(constitutive:constitutive_damage) kinematics_cleavage_opening
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
-      sum_N_cl
+      sum_N_cl                                                                                      !< total number of cleavage planes
     real(pReal) :: &
-      sdot0, &
-      n
+      sdot0, &                                                                                      !< opening rate of cleavage planes
+      n                                                                                             !< damage rate sensitivity
     real(pReal),   dimension(:),   allocatable :: &
       critLoad
     real(pReal), dimension(:,:,:,:), allocatable :: &
@@ -30,54 +30,73 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_cleavage_opening_init
+module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
+ 
+  integer, intent(in)                  :: kinematics_length  
+  logical, dimension(:,:), allocatable :: myKinematics
 
-  integer :: Ninstance,p
+  integer :: Ninstance,p,k
   integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
   character(len=pStringLen) :: extmsg = ''
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl, &
+    kinematics, &
+    kinematic_type 
+       
+  write(6,'(/,a)') ' <<<+-  kinematics_cleavage_opening init  -+>>>'
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_CLEAVAGE_OPENING_LABEL//' init  -+>>>'
-
-  Ninstance = count(phase_kinematics == KINEMATICS_CLEAVAGE_OPENING_ID)
+  myKinematics = kinematics_active('cleavage_opening',kinematics_length)
+  
+  Ninstance = count(myKinematics)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  if(Ninstance == 0) return
 
-  allocate(kinematics_cleavage_opening_instance(size(config_phase)), source=0)
+  phases => material_root%get('phase')
   allocate(param(Ninstance))
+  allocate(kinematics_cleavage_opening_instance(phases%length), source=0)
 
-  do p = 1, size(config_phase)
-    kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_CLEAVAGE_OPENING_ID)
-    if (all(phase_kinematics(:,p) /= KINEMATICS_CLEAVAGE_OPENING_ID)) cycle
+  do p = 1, phases%length
+    if(any(myKinematics(:,p))) kinematics_cleavage_opening_instance(p) = count(myKinematics(:,1:p))
+    phase => phases%get(p) 
+    pl => phase%get('plasticity')
+    if(count(myKinematics(:,p)) == 0) cycle
+    kinematics => phase%get('kinematics')
+    do k = 1, kinematics%length
+      if(myKinematics(k,p)) then
+        associate(prm  => param(kinematics_cleavage_opening_instance(p)))
+        kinematic_type => kinematics%get(k) 
 
-    associate(prm => param(kinematics_cleavage_opening_instance(p)), &
-              config => config_phase(p))
+        N_cl = kinematic_type%get_asInts('N_cl')
+        prm%sum_N_cl = sum(abs(N_cl))
 
-    N_cl = config%getInts('ncleavage')
-    prm%sum_N_cl = sum(abs(N_cl))
+        prm%n         = kinematic_type%get_asFloat('q')
+        prm%sdot0     = kinematic_type%get_asFloat('dot_o')
 
-    prm%n         = config%getFloat('anisobrittle_ratesensitivity')
-    prm%sdot0     = config%getFloat('anisobrittle_sdot0')
+        prm%critLoad  = kinematic_type%get_asFloats('g_crit',requiredSize=size(N_cl))
 
-    prm%critLoad  = config%getFloats('anisobrittle_criticalload',requiredSize=size(N_cl))
+        prm%cleavage_systems  = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
+                                                        phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
-    prm%cleavage_systems  = lattice_SchmidMatrix_cleavage(N_cl,config%getString('lattice_structure'),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
+  ! expand: family => system
+        prm%critLoad = math_expand(prm%critLoad,N_cl)
 
-    ! expand: family => system
-    prm%critLoad = math_expand(prm%critLoad,N_cl)
-
-    ! sanity checks
-    if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_n'
-    if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_sdot0'
-    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critLoad'
+  ! sanity checks
+        if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
+        if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
+        if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//KINEMATICS_CLEAVAGE_OPENING_LABEL//')')
-
-    end associate
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(cleavage_opening)')
+        end associate
+      endif
+    enddo
   enddo
 
-end subroutine kinematics_cleavage_opening_init
+
+end function kinematics_cleavage_opening_init
 
 
 !--------------------------------------------------------------------------------------------------

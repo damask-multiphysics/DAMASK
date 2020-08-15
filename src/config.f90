@@ -1,35 +1,36 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Reads in the material configuration from file
-!> @details Reads the material configuration file, where solverJobName.materialConfig takes
-!! precedence over material.config. Stores the raw strings and the positions of delimiters for the
-!! parts 'homogenization', 'crystallite', 'phase', 'texture', and 'microstucture'
+!> @brief Reads in the material, numerics & debug configuration from their respective file
+!> @details Reads the material configuration file, where solverJobName.yaml takes
+!! precedence over material.yaml. 
 !--------------------------------------------------------------------------------------------------
 module config
   use prec
   use DAMASK_interface
   use IO
-  use debug
-  use list
   use YAML_parse
   use YAML_types
+
+#ifdef PETSc
+#include <petsc/finclude/petscsys.h>
+   use petscsys
+#endif
+!$ use OMP_LIB
 
   implicit none
   private
 
-  type(tPartitionedStringList), public, protected, allocatable, dimension(:) :: &
-    config_phase, &
-    config_microstructure, &
-    config_homogenization, &
-    config_texture, &
-    config_crystallite
+  class(tNode), pointer, public :: &
+    material_root, &
+    numerics_root, &
+    debug_root
 
-  character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
-    config_name_phase, &                                                                            !< name of each phase
-    config_name_homogenization, &                                                                   !< name of each homogenization
-    config_name_crystallite, &                                                                      !< name of each crystallite setting
-    config_name_microstructure, &                                                                   !< name of each microstructure
-    config_name_texture                                                                             !< name of each texture
+  integer, protected, public :: &
+    worldrank                  = 0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
+    worldsize                  = 1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
+  integer(4), protected, public :: &
+    DAMASK_NumThreadsInt       =  0                                                                 !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
+
 
   public :: &
     config_init, &
@@ -38,227 +39,117 @@ module config
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads material.config and stores its content per part
+!> @brief calls subroutines that reads material, numerics and debug configuration files
 !--------------------------------------------------------------------------------------------------
 subroutine config_init
 
-  integer :: i
-  logical :: verbose
-
-  character(len=pStringLen) :: &
-    line, &
-    part
-  character(len=pStringLen), dimension(:), allocatable :: fileContent
-  class(tNode), pointer :: &
-    debug_material
- logical :: fileExists
-
   write(6,'(/,a)') ' <<<+-  config init  -+>>>'; flush(6)
-
-  debug_material => debug_root%get('material',defaultVal=emptyList)
-  verbose = debug_material%contains('basic')
-
-  inquire(file=trim(getSolverJobName())//'.materialConfig',exist=fileExists)
-  if(fileExists) then
-    write(6,'(/,a)') ' reading '//trim(getSolverJobName())//'.materialConfig'; flush(6)
-    fileContent = read_materialConfig(trim(getSolverJobName())//'.materialConfig')
-  else
-    inquire(file='material.config',exist=fileExists)
-    if(.not. fileExists) call IO_error(100,ext_msg='material.config')
-    write(6,'(/,a)') ' reading material.config'; flush(6)
-    fileContent = read_materialConfig('material.config')
-  endif
-
-  do i = 1, size(fileContent)
-    line = trim(fileContent(i))
-    part = IO_lc(IO_getTag(line,'<','>'))
-    select case (trim(part))
-    
-      case (trim('phase'))
-        call parse_materialConfig(config_name_phase,config_phase,line,fileContent(i+1:))
-        if (verbose) write(6,'(a)') ' Phase          parsed'; flush(6)
-    
-      case (trim('microstructure'))
-        call parse_materialConfig(config_name_microstructure,config_microstructure,line,fileContent(i+1:))
-        if (verbose) write(6,'(a)') ' Microstructure parsed'; flush(6)
-    
-      case (trim('crystallite'))
-        call parse_materialConfig(config_name_crystallite,config_crystallite,line,fileContent(i+1:))
-        if (verbose) write(6,'(a)') ' Crystallite    parsed'; flush(6)
-        deallocate(config_crystallite)
-    
-      case (trim('homogenization'))
-        call parse_materialConfig(config_name_homogenization,config_homogenization,line,fileContent(i+1:))
-        if (verbose) write(6,'(a)') ' Homogenization parsed'; flush(6)
-    
-      case (trim('texture'))
-        call parse_materialConfig(config_name_texture,config_texture,line,fileContent(i+1:))
-        if (verbose) write(6,'(a)') ' Texture        parsed'; flush(6)
-
-    end select
-
-  enddo
- 
-  if (.not. allocated(config_homogenization) .or. size(config_homogenization) < 1) &
-    call IO_error(160,ext_msg='<homogenization>')
-  if (.not. allocated(config_microstructure) .or. size(config_microstructure) < 1) &
-    call IO_error(160,ext_msg='<microstructure>')
-  if (.not. allocated(config_phase)          .or. size(config_phase)          < 1) &
-    call IO_error(160,ext_msg='<phase>')
-  if (.not. allocated(config_texture)        .or. size(config_texture)        < 1) &
-    call IO_error(160,ext_msg='<texture>')
- 
-
-contains
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief reads material.config
-!!        Recursion is triggered by "{path/to/inputfile}" in a line
-!--------------------------------------------------------------------------------------------------
-recursive function read_materialConfig(fileName,cnt) result(fileContent)
-
-  character(len=*),          intent(in)                :: fileName                                  !< name of the material configuration file
-  integer,                   intent(in), optional      :: cnt                                       !< recursion counter
-  character(len=pStringLen), dimension(:), allocatable :: fileContent                               !< file content, separated per lines
-  character(len=pStringLen), dimension(:), allocatable :: includedContent
-  character(len=pStringLen)                            :: line
-  character(len=pStringLen), parameter                 :: dummy = 'https://damask.mpie.de'          !< to fill up remaining array
-  character(len=:),                        allocatable :: rawData
-  integer ::  &
-    startPos, endPos, &
-    myTotalLines, &                                                                                 !< # lines read from file without include statements
-    l,i
-  logical :: warned
   
-  if (present(cnt)) then
-    if (cnt>10) call IO_error(106,ext_msg=trim(fileName))
-  endif
+  call parse_material
+  call parse_numerics
+  call parse_debug
 
-  rawData = IO_read(fileName)                                                                   ! read data as stream
-
-!--------------------------------------------------------------------------------------------------
-! count lines to allocate string array
-  myTotalLines = 1
-  do l=1, len(rawData)
-    if (rawData(l:l) == IO_EOL) myTotalLines = myTotalLines+1
-  enddo
-  allocate(fileContent(myTotalLines))
-
-!--------------------------------------------------------------------------------------------------
-! split raw data at end of line and handle includes
-  warned = .false.
-  startPos = 1
-  l = 1
-  do while (l <= myTotalLines)
-    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= myTotalLines)
-    if (endPos - startPos > pStringLen -1) then
-      line = rawData(startPos:startPos+pStringLen-1)
-      if (.not. warned) then
-        call IO_warning(207,ext_msg=trim(fileName),el=l)
-        warned = .true.
-      endif
-    else
-      line = rawData(startPos:endpos)
-    endif
-    startPos = endPos + 2                                                                           ! jump to next line start
-
-    recursion: if (scan(trim(adjustl(line)),'{') == 1 .and. scan(trim(line),'}') > 2) then
-      includedContent = read_materialConfig(trim(line(scan(line,'{')+1:scan(line,'}')-1)), &
-                        merge(cnt,1,present(cnt)))                                                  ! to track recursion depth
-      fileContent     = [ fileContent(1:l-1), includedContent, [(dummy,i=1,myTotalLines-l)] ]       ! add content and grow array
-      myTotalLines    = myTotalLines - 1 + size(includedContent)
-      l               = l            - 1 + size(includedContent)
-    else recursion
-      fileContent(l) = line
-      l = l + 1
-    endif recursion
-
-  enddo
-
-end function read_materialConfig
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief parses the material.config file
-!--------------------------------------------------------------------------------------------------
-subroutine parse_materialConfig(sectionNames,part,line, &
-                                fileContent)
-
-  character(len=pStringLen),    allocatable, dimension(:), intent(out)   :: sectionNames
-  type(tPartitionedStringList), allocatable, dimension(:), intent(inout) :: part
-  character(len=pStringLen),                               intent(inout) :: line
-  character(len=pStringLen),                 dimension(:), intent(in)    :: fileContent
-
-  integer, allocatable, dimension(:) :: partPosition                                                !< position of [] tags + last line in section
-  integer :: i, j
-  logical :: echo
-  character(len=pStringLen) :: sectionName
-
-  echo = .false. 
-
-  if (allocated(part)) call IO_error(161,ext_msg=trim(line))
-  allocate(partPosition(0))
- 
-  do i = 1, size(fileContent)
-    line = trim(fileContent(i))
-    if (IO_getTag(line,'<','>') /= '') exit
-    nextSection: if (IO_getTag(line,'[',']') /= '') then
-      partPosition = [partPosition, i]
-      cycle
-    endif nextSection
-    if (size(partPosition) < 1) &
-      echo = (trim(IO_getTag(line,'/','/')) == 'echo') .or. echo
-  enddo
-
-  allocate(sectionNames(size(partPosition)))
-  allocate(part(size(partPosition)))
-
-  partPosition = [partPosition, i]                                                                  ! needed when actually storing content
-
-  do i = 1, size(partPosition) -1
-    write(sectionName,'(i0,a,a)') i,'_',trim(IO_getTag(fileContent(partPosition(i)),'[',']'))
-    sectionNames(i) = sectionName
-    do j = partPosition(i) + 1,  partPosition(i+1) -1
-      call part(i)%add(trim(adjustl(fileContent(j))))
-    enddo
-    if (echo) then
-      write(6,*) 'section',i, '"'//trim(sectionNames(i))//'"'
-      call part(i)%show()
-    endif
-  enddo
-
-end subroutine parse_materialConfig
-
+  
 end subroutine config_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief deallocates the linked lists that store the content of the configuration files
+!> @brief reads material.yaml
 !--------------------------------------------------------------------------------------------------
-subroutine config_deallocate(what)
+subroutine parse_material
 
-  character(len=*), intent(in) :: what
+  logical :: fileExists
+  character(len=:), allocatable :: fname,flow
 
-  select case(trim(what))
+  fname = getSolverJobName()//'.yaml'
+  inquire(file=fname,exist=fileExists)
+  if(.not. fileExists) then
+    fname = 'material.yaml'
+    inquire(file=fname,exist=fileExists)
+    if(.not. fileExists) call IO_error(100,ext_msg=fname)
+  endif
 
-    case('material.config/phase')
-      deallocate(config_phase)
+  write(6,'(/,a)') ' reading '//fname; flush(6)
+  flow = to_flow(IO_read(fname))
+  material_root => parse_flow(flow)
 
-    case('material.config/microstructure')
-      deallocate(config_microstructure)
+end subroutine parse_material
 
-    case('material.config/homogenization')
-      deallocate(config_homogenization)
 
-    case('material.config/texture')
-      deallocate(config_texture)
-     
-    case default
-      call IO_error(0,ext_msg='config_deallocate')
+!--------------------------------------------------------------------------------------------------
+!> @brief reads in parameters from numerics.yaml and sets openMP related parameters. Also does
+! a sanity check
+!--------------------------------------------------------------------------------------------------
+subroutine parse_numerics
 
-  end select
+!$ integer :: gotDAMASK_NUM_THREADS = 1
+  integer :: ierr
+  character(len=:), allocatable :: &
+    numerics_inFlow
+  logical :: fexist
+!$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
+#ifdef PETSc
+  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
+#endif
+
+!$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
+!$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
+!$   call IO_warning(35,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
+!$   DAMASK_NumThreadsInt = 1_4
+!$ else
+!$   read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                      ! read as integer
+!$   if (DAMASK_NumThreadsInt < 1_4) DAMASK_NumThreadsInt = 1_4                                     ! in case of string conversion fails, set it to one
+!$ endif
+!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
+
+  numerics_root => emptyDict
+  inquire(file='numerics.yaml', exist=fexist)
+  
+  if (fexist) then
+    write(6,'(a,/)') ' using values from config.yaml file'
+    flush(6)
+    numerics_inFlow = to_flow(IO_read('numerics.yaml'))
+    numerics_root =>  parse_flow(numerics_inFlow)
+  endif
+
+!--------------------------------------------------------------------------------------------------
+! openMP parameter
+ !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
+
+end subroutine parse_numerics
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads in parameters from debug.yaml
+!--------------------------------------------------------------------------------------------------
+subroutine parse_debug
+
+  character(len=:), allocatable :: debug_inFlow
+  logical :: fexist 
+
+#ifdef DEBUG
+  write(6,'(a)') achar(27)//'[31m <<<+-  DEBUG version  -+>>>'//achar(27)//'[0m'
+#endif
+
+  debug_root => emptyDict
+  inquire(file='debug.yaml', exist=fexist)
+  fileExists: if (fexist) then
+    debug_inFlow = to_flow(IO_read('debug.yaml'))
+    debug_root   => parse_flow(debug_inFlow)
+  endif fileExists
+
+end subroutine parse_debug
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief deallocates material.yaml structure
+!--------------------------------------------------------------------------------------------------
+subroutine config_deallocate
+
+  deallocate(material_root)                            !ToDo: deallocation of numerics and debug (slightly different for optional files)
+  
 end subroutine config_deallocate
 
 end module config

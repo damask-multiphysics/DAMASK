@@ -32,31 +32,33 @@ module subroutine mech_isostrain_init
     Ninstance, &
     h, &
     NofMyHomog
-  character(len=pStringLen) :: &
-    tag  = ''
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogMech
  
-  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_LABEL//' init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  homogenization_mech_isostrain init  -+>>>'
  
   Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
  
   allocate(param(Ninstance))                                                                        ! one container of parameters per instance
- 
+
+  material_homogenization => material_root%get('homogenization') 
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
-    
-    associate(prm => param(homogenization_typeInstance(h)),&
-              config => config_homogenization(h))
+    homog => material_homogenization%get(h)
+    homogMech => homog%get('mech')
+    associate(prm => param(homogenization_typeInstance(h)))
    
-    prm%Nconstituents = config_homogenization(h)%getInt('nconstituents')
-    tag = 'sum'
-    select case(trim(config%getString('mapping',defaultVal = tag)))
+    prm%Nconstituents = homogMech%get_asInt('N_constituents')
+    select case(homogMech%get_asString('mapping',defaultVal = 'sum'))
       case ('sum')
         prm%mapping = parallel_ID
       case ('avg')
         prm%mapping = average_ID
       case default
-        call IO_error(211,ext_msg=trim(tag)//' ('//HOMOGENIZATION_ISOSTRAIN_LABEL//')')
+        call IO_error(211,ext_msg='sum'//' (mech_isostrain)')
     end select
  
     NofMyHomog = count(material_homogenizationAt == h)
