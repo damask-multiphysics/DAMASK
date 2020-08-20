@@ -13,7 +13,7 @@ module HDF5_utilities
   use prec
   use IO
   use rotations
-  use numerics
+  use config
 
  implicit none
  public

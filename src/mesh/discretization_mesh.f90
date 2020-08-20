@@ -14,9 +14,8 @@ module discretization_mesh
 
   use DAMASK_interface
   use IO
-  use debug
+  use config
   use discretization
-  use numerics
   use FEsolving
   use FEM_quadrature
   use YAML_types

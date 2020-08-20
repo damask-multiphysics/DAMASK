@@ -14,7 +14,6 @@ module crystallite
   use HDF5_utilities
   use DAMASK_interface
   use config
-  use debug
   use rotations
   use math
   use FEsolving
@@ -143,7 +142,10 @@ subroutine crystallite_init
 
   class(tNode), pointer :: &
     num_crystallite, &
-    debug_crystallite                                                                               ! pointer to debug options for crystallite
+    debug_crystallite, &                                                                            ! pointer to debug options for crystallite
+    phases, &
+    phase, &
+    generic_param
 
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
 
@@ -233,19 +235,19 @@ subroutine crystallite_init
      call IO_error(301,ext_msg='integrator')
   end select
 
-  allocate(output_constituent(size(config_phase)))
-  do c = 1, size(config_phase)
+  phases => material_root%get('phase')
+
+  allocate(output_constituent(phases%length))
+  do c = 1, phases%length
+    phase => phases%get(c)
+    generic_param  => phase%get('generic',defaultVal = emptyDict) 
 #if defined(__GFORTRAN__)
-    allocate(output_constituent(c)%label(1))
-    output_constituent(c)%label(1)= 'GfortranBug86277'
-    output_constituent(c)%label  = config_phase(c)%getStrings('(output)',defaultVal=output_constituent(c)%label )
-    if (output_constituent(c)%label (1) == 'GfortranBug86277') output_constituent(c)%label  = [character(len=pStringLen)::]
+    output_constituent(c)%label  = output_asStrings(generic_param)
 #else
-    output_constituent(c)%label  = config_phase(c)%getStrings('(output)',defaultVal=[character(len=pStringLen)::])
+    output_constituent(c)%label  = generic_param%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
-  call config_deallocate('material.config/phase')
 
 !--------------------------------------------------------------------------------------------------
 ! initialize
@@ -681,46 +683,46 @@ subroutine crystallite_results
   type(rotation), allocatable, dimension(:)     :: selected_rotations
   character(len=pStringLen)                     :: group,structureLabel
 
-  do p=1,size(config_name_phase)
-    group = trim('current/constituent')//'/'//trim(config_name_phase(p))//'/generic'
+  do p=1,size(material_name_phase)
+    group = trim('current/constituent')//'/'//trim(material_name_phase(p))//'/generic'
 
     call results_closeGroup(results_addGroup(group))
 
     do o = 1, size(output_constituent(p)%label)
       select case (output_constituent(p)%label(o))
-        case('f')
+        case('F')
           selected_tensors = select_tensors(crystallite_partionedF,p)
-          call results_writeDataset(group,selected_tensors,'F',&
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'deformation gradient','1')
-        case('fe')
+        case('Fe')
           selected_tensors = select_tensors(crystallite_Fe,p)
-          call results_writeDataset(group,selected_tensors,'Fe',&
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'elastic deformation gradient','1')
-        case('fp')
+        case('Fp')
           selected_tensors = select_tensors(crystallite_Fp,p)
-          call results_writeDataset(group,selected_tensors,'Fp',&
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic deformation gradient','1')
-        case('fi')
+        case('Fi')
           selected_tensors = select_tensors(crystallite_Fi,p)
-          call results_writeDataset(group,selected_tensors,'Fi',&
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic deformation gradient','1')
-        case('lp')
+        case('Lp')
           selected_tensors = select_tensors(crystallite_Lp,p)
-          call results_writeDataset(group,selected_tensors,'Lp',&
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic velocity gradient','1/s')
-        case('li')
+        case('Li')
           selected_tensors = select_tensors(crystallite_Li,p)
-          call results_writeDataset(group,selected_tensors,'Li',&
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic velocity gradient','1/s')
-        case('p')
+        case('P')
           selected_tensors = select_tensors(crystallite_P,p)
-          call results_writeDataset(group,selected_tensors,'P',&
-                                   'First Piola-Kirchhoff stress','Pa')
-        case('s')
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
+                                   'First Piola-Kirchoff stress','Pa')
+        case('S')
           selected_tensors = select_tensors(crystallite_S,p)
-          call results_writeDataset(group,selected_tensors,'S',&
-                                   'Second Piola-Kirchhoff stress','Pa')
-        case('orientation')
+          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
+                                   'Second Piola-Kirchoff stress','Pa')
+        case('O')
           select case(lattice_structure(p))
             case(lattice_ISO_ID)
               structureLabel = 'iso'
@@ -736,7 +738,7 @@ subroutine crystallite_results
               structureLabel = 'ort'
           end select
           selected_rotations = select_rotations(crystallite_orientation,p)
-          call results_writeDataset(group,selected_rotations,'orientation',&
+          call results_writeDataset(group,selected_rotations,output_constituent(p)%label(o),&
                                    'crystal orientation as quaternion',structureLabel)
       end select
     enddo
@@ -1575,7 +1577,7 @@ subroutine crystallite_restartWrite
   call HDF5_write(fileHandle,crystallite_S,         'S')
 
   groupHandle = HDF5_addGroup(fileHandle,'constituent')
-  do i = 1,size(phase_plasticity)
+  do i = 1,size(material_name_phase)
     write(datasetName,'(i0,a)') i,'_omega_plastic'
     call HDF5_write(groupHandle,plasticState(i)%state,datasetName)
   enddo
@@ -1616,7 +1618,7 @@ subroutine crystallite_restartRead
   call HDF5_read(fileHandle,crystallite_S0, 'S')
 
   groupHandle = HDF5_openGroup(fileHandle,'constituent')
-  do i = 1,size(phase_plasticity)
+  do i = 1,size(material_name_phase)
     write(datasetName,'(i0,a)') i,'_omega_plastic'
     call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
   enddo

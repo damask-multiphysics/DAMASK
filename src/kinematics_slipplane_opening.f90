@@ -10,10 +10,10 @@ submodule(constitutive:constitutive_damage) kinematics_slipplane_opening
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
-      sum_N_sl
+      sum_N_sl                                                                                      !< total number of cleavage planes
     real(pReal) :: &
-      sdot0, &
-      n
+      sdot0, &                                                                                      !< opening rate of cleavage planes
+      n                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:),   allocatable :: &
       critLoad
     real(pReal), dimension(:,:,:), allocatable     :: &
@@ -32,64 +32,85 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_slipplane_opening_init
+module function kinematics_slipplane_opening_init(kinematics_length) result(myKinematics)
 
-  integer :: Ninstance,p,i
+  integer, intent(in)                  :: kinematics_length  
+  logical, dimension(:,:), allocatable :: myKinematics
+
+  integer :: Ninstance,p,i,k
   character(len=pStringLen) :: extmsg = ''
   integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl, &
+    kinematics, &
+    kinematic_type 
+ 
+  write(6,'(/,a)') ' <<<+-  kinematics_slipplane init  -+>>>'
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_SLIPPLANE_OPENING_LABEL//' init  -+>>>'
-
-  Ninstance = count(phase_kinematics == KINEMATICS_SLIPPLANE_OPENING_ID)
+  myKinematics = kinematics_active('slipplane_opening',kinematics_length)
+ 
+  Ninstance = count(myKinematics)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  if(Ninstance == 0) return
 
-  allocate(kinematics_slipplane_opening_instance(size(config_phase)), source=0)
+  phases => material_root%get('phase')
+  allocate(kinematics_slipplane_opening_instance(phases%length), source=0)
   allocate(param(Ninstance))
 
-  do p = 1, size(config_phase)
-    kinematics_slipplane_opening_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_SLIPPLANE_OPENING_ID)
-    if (all(phase_kinematics(:,p) /= KINEMATICS_SLIPPLANE_OPENING_ID)) cycle
-    associate(prm => param(kinematics_slipplane_opening_instance(p)), &
-             config => config_phase(p))
+  do p = 1, phases%length
+    if(any(myKinematics(:,p))) kinematics_slipplane_opening_instance(p) = count(myKinematics(:,1:p))
+    phase => phases%get(p) 
+    pl => phase%get('plasticity')
+    if(count(myKinematics(:,p)) == 0) cycle
+    kinematics => phase%get('kinematics')
+    do k = 1, kinematics%length
+      if(myKinematics(k,p)) then
+        associate(prm  => param(kinematics_slipplane_opening_instance(p)))
+        kinematic_type => kinematics%get(k) 
 
-    prm%sdot0    = config%getFloat('anisoductile_sdot0')
-    prm%n        = config%getFloat('anisoductile_ratesensitivity')
-    N_sl         = config%getInts('nslip')
-    prm%sum_N_sl = sum(abs(N_sl))
+        prm%sdot0    = kinematic_type%get_asFloat('dot_o')
+        prm%n        = kinematic_type%get_asFloat('q')
+        N_sl         = pl%get_asInts('N_sl')
+        prm%sum_N_sl = sum(abs(N_sl))
 
-    d = lattice_slip_direction (N_sl,config%getString('lattice_structure'),&
-                                config%getFloat('c/a',defaultVal=0.0_pReal))
-    t = lattice_slip_transverse(N_sl,config%getString('lattice_structure'),&
-                                config%getFloat('c/a',defaultVal=0.0_pReal))
-    n = lattice_slip_normal    (N_sl,config%getString('lattice_structure'),&
-                                config%getFloat('c/a',defaultVal=0.0_pReal))
-    allocate(prm%P_d(3,3,size(d,2)),prm%P_t(3,3,size(t,2)),prm%P_n(3,3,size(n,2)))
+        d = lattice_slip_direction (N_sl,phase%get_asString('lattice'),&
+                                    phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+        t = lattice_slip_transverse(N_sl,phase%get_asString('lattice'),&
+                                    phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+        n = lattice_slip_normal    (N_sl,phase%get_asString('lattice'),&
+                                    phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+        allocate(prm%P_d(3,3,size(d,2)),prm%P_t(3,3,size(t,2)),prm%P_n(3,3,size(n,2)))
 
-    do i=1, size(n,2)
-      prm%P_d(1:3,1:3,i) = math_outer(d(1:3,i), n(1:3,i))
-      prm%P_t(1:3,1:3,i) = math_outer(t(1:3,i), n(1:3,i))
-      prm%P_n(1:3,1:3,i) = math_outer(n(1:3,i), n(1:3,i))
-    enddo
+        do i=1, size(n,2)
+          prm%P_d(1:3,1:3,i) = math_outer(d(1:3,i), n(1:3,i))
+          prm%P_t(1:3,1:3,i) = math_outer(t(1:3,i), n(1:3,i))
+          prm%P_n(1:3,1:3,i) = math_outer(n(1:3,i), n(1:3,i))
+        enddo
 
-    prm%critLoad = config%getFloats('anisoductile_criticalload',requiredSize=size(N_sl))
+        prm%critLoad = kinematic_type%get_asFloats('g_crit',requiredSize=size(N_sl))
 
-    ! expand: family => system
-    prm%critLoad = math_expand(prm%critLoad,N_sl)
+        ! expand: family => system
+        prm%critLoad = math_expand(prm%critLoad,N_sl)
 
-    ! sanity checks
-    if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_n'
-    if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_sdot0'
-    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisoDuctile_critLoad'
+        ! sanity checks
+        if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_n'
+        if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_sdot0'
+        if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisoDuctile_critLoad'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//KINEMATICS_SLIPPLANE_OPENING_LABEL//')')
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(slipplane_opening)')
 
-    end associate
+        end associate
+      endif
+    enddo
   enddo
 
-end subroutine kinematics_slipplane_opening_init
+
+end function kinematics_slipplane_opening_init
 
 
 !--------------------------------------------------------------------------------------------------

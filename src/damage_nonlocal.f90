@@ -6,7 +6,6 @@ module damage_nonlocal
   use prec
   use material
   use config
-  use numerics
   use YAML_types
   use crystallite
   use lattice
@@ -49,9 +48,12 @@ subroutine damage_nonlocal_init
 
   integer :: Ninstance,NofMyHomog,h
   class(tNode), pointer :: &
-    num_generic
+    num_generic, &
+    material_homogenization, &
+    homog, &
+    homogDamage
 
-  write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_nonlocal_label//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  damage_nonlocal init  -+>>>'; flush(6)
 
 !------------------------------------------------------------------------------------
 ! read numerics parameter
@@ -61,11 +63,18 @@ subroutine damage_nonlocal_init
   Ninstance = count(damage_type == DAMAGE_nonlocal_ID)
   allocate(param(Ninstance))
 
-  do h = 1, size(config_homogenization)
+  material_homogenization => material_root%get('homogenization')
+  do h = 1, material_homogenization%length
     if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
-    associate(prm => param(damage_typeInstance(h)),config => config_homogenization(h))
+    homog => material_homogenization%get(h)
+    homogDamage => homog%get('damage')
+    associate(prm => param(damage_typeInstance(h)))
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+#if defined (__GFORTRAN__)
+    prm%output = output_asStrings(homogDamage)
+#else
+    prm%output = homogDamage%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
 
     NofMyHomog = count(material_homogenizationAt == h)
     damageState(h)%sizeState = 1
@@ -191,8 +200,8 @@ subroutine damage_nonlocal_results(homog,group)
   associate(prm => param(damage_typeInstance(homog)))
   outputsLoop: do o = 1,size(prm%output)
     select case(prm%output(o))
-      case ('damage')
-        call results_writeDataset(group,damage(homog)%p,'phi',&
+      case ('phi')
+        call results_writeDataset(group,damage(homog)%p,prm%output(o),&
                                   'damage indicator','-')
     end select
   enddo outputsLoop

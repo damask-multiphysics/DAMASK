@@ -13,7 +13,6 @@ program DAMASK_grid
   use DAMASK_interface
   use IO
   use config
-  use debug
   use math
   use CPFEM2
   use material

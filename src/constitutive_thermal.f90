@@ -5,14 +5,20 @@ submodule(constitutive) constitutive_thermal
 
   interface
 
-  module subroutine source_thermal_dissipation_init
-  end subroutine source_thermal_dissipation_init
+  module function source_thermal_dissipation_init(source_length) result(mySources)
+    integer, intent(in) :: source_length
+    logical, dimension(:,:), allocatable :: mySources
+  end function source_thermal_dissipation_init
+ 
+  module function source_thermal_externalheat_init(source_length) result(mySources)
+    integer, intent(in) :: source_length
+    logical, dimension(:,:), allocatable :: mySources
+  end function source_thermal_externalheat_init
 
-  module subroutine source_thermal_externalheat_init
-  end subroutine source_thermal_externalheat_init
-
-  module subroutine kinematics_thermal_expansion_init
-  end subroutine kinematics_thermal_expansion_init
+  module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
+    integer, intent(in) :: kinematics_length
+    logical, dimension(:,:), allocatable :: myKinematics
+  end function kinematics_thermal_expansion_init
 
 
   module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
@@ -46,12 +52,15 @@ contains
 module subroutine thermal_init
 
 ! initialize source mechanisms
-  if (any(phase_source == SOURCE_thermal_dissipation_ID))     call source_thermal_dissipation_init
-  if (any(phase_source == SOURCE_thermal_externalheat_ID))    call source_thermal_externalheat_init
-
+  if(maxval(phase_Nsources) /= 0) then
+    where(source_thermal_dissipation_init (maxval(phase_Nsources))) phase_source = SOURCE_thermal_dissipation_ID
+    where(source_thermal_externalheat_init(maxval(phase_Nsources))) phase_source = SOURCE_thermal_externalheat_ID
+  endif 
+ 
 !--------------------------------------------------------------------------------------------------
 !initialize kinematic mechanisms
-  if (any(phase_kinematics == KINEMATICS_thermal_expansion_ID)) call kinematics_thermal_expansion_init
+  if(maxval(phase_Nkinematics) /= 0) where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) &
+                                           phase_kinematics = KINEMATICS_thermal_expansion_ID
 
 end subroutine thermal_init
 

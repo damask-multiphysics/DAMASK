@@ -8,12 +8,10 @@
 !--------------------------------------------------------------------------------------------------
 
 module YAML_types
-
   use IO
   use prec
 
   implicit none
-
   private
 
   type, abstract, public :: tNode
@@ -74,7 +72,7 @@ module YAML_types
       getKey                      => tNode_getKey_byIndex
     procedure :: &
       contains                    => tNode_contains
-
+ 
     generic :: &
       get           => tNode_get_byIndex, &
                        tNode_get_byKey
@@ -181,6 +179,7 @@ module YAML_types
 
   public :: &
     YAML_types_init, &
+    output_asStrings, &                                        !ToDo: Hack for GNU. Remove later 
     assignment(=)
 
 contains
@@ -210,9 +209,9 @@ subroutine selfTest
       s1 = '1'
       if(s1%asInt() /= 1)              call IO_error(0,ext_msg='tScalar_asInt')
       if(dNeq(s1%asFloat(),1.0_pReal)) call IO_error(0,ext_msg='tScalar_asFloat')
-      s1 = 'True'
+      s1 = 'true'
       if(.not. s1%asBool())            call IO_error(0,ext_msg='tScalar_asBool')
-      if(s1%asString() /= 'True')      call IO_error(0,ext_msg='tScalar_asString')
+      if(s1%asString() /= 'true')      call IO_error(0,ext_msg='tScalar_asString')
   end select
 
   block
@@ -259,7 +258,7 @@ subroutine selfTest
      allocate(tScalar::s2)
      s3 => s1%asScalar()
      s4 => s2%asScalar()
-     s3 = 'True'
+     s3 = 'true'
      s4 = 'False'
 
      call l1%append(s1)
@@ -267,9 +266,9 @@ subroutine selfTest
      n => l1
 
      if(any(l1%asBools() .neqv. [.true., .false.])) call IO_error(0,ext_msg='tList_asBools')
-     if(any(l1%asStrings() /=   ['True ','False'])) call IO_error(0,ext_msg='tList_asStrings')
+     if(any(l1%asStrings() /=   ['true ','False'])) call IO_error(0,ext_msg='tList_asStrings')
      if(n%get_asBool(2))                            call IO_error(0,ext_msg='byIndex_asBool')
-     if(n%get_asString(1) /= 'True')                call IO_error(0,ext_msg='byIndex_asString')
+     if(n%get_asString(1) /= 'true')                call IO_error(0,ext_msg='byIndex_asString')
   end block
 
 end subroutine selfTest
@@ -710,7 +709,6 @@ function tNode_get_byKey_asFloat(self,k,defaultVal) result(nodeAsFloat)
   else
     call IO_error(143,ext_msg=k)
   endif
-  
 
 end function tNode_get_byKey_asFloat
 
@@ -764,7 +762,6 @@ function tNode_get_byKey_asBool(self,k,defaultVal) result(nodeAsBool)
     call IO_error(143,ext_msg=k)
   endif
 
-
 end function tNode_get_byKey_asBool
 
 
@@ -791,25 +788,37 @@ function tNode_get_byKey_asString(self,k,defaultVal) result(nodeAsString)
     call IO_error(143,ext_msg=k)
   endif
 
-
 end function tNode_get_byKey_asString
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Access by key and convert to float array
 !--------------------------------------------------------------------------------------------------
-function tNode_get_byKey_asFloats(self,k) result(nodeAsFloats)
+function tNode_get_byKey_asFloats(self,k,defaultVal,requiredSize) result(nodeAsFloats)
 
-  class(tNode),     intent(in), target :: self
-  character(len=*), intent(in)         :: k
+  class(tNode),     intent(in), target                 :: self
+  character(len=*), intent(in)                         :: k
+  real(pReal),      intent(in), dimension(:), optional :: defaultVal
+  integer,          intent(in),               optional :: requiredSize
+
   real(pReal), dimension(:), allocatable :: nodeAsFloats
 
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node => self%get(k)
-  list => node%asList()
-  nodeAsFloats = list%asFloats()
+  if(self%contains(k)) then
+    node => self%get(k)
+    list => node%asList()
+    nodeAsFloats = list%asFloats()
+  elseif(present(defaultVal)) then
+    nodeAsFloats = defaultVal
+  else
+    call IO_error(143,ext_msg=k)
+  endif
+
+  if(present(requiredSize)) then
+    if(requiredSize /= size(nodeAsFloats)) call IO_error(146,ext_msg=k)
+  endif
 
 end function tNode_get_byKey_asFloats
 
@@ -817,18 +826,30 @@ end function tNode_get_byKey_asFloats
 !--------------------------------------------------------------------------------------------------
 !> @brief Access by key and convert to int array
 !--------------------------------------------------------------------------------------------------
-function tNode_get_byKey_asInts(self,k) result(nodeAsInts)
+function tNode_get_byKey_asInts(self,k,defaultVal,requiredSize) result(nodeAsInts)
 
-  class(tNode),     intent(in), target :: self
-  character(len=*), intent(in)         :: k
+  class(tNode),          intent(in), target   :: self
+  character(len=*),      intent(in)           :: k
+  integer, dimension(:), intent(in), optional :: defaultVal
+  integer,               intent(in), optional :: requiredSize
   integer, dimension(:), allocatable :: nodeAsInts
 
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node => self%get(k)
-  list => node%asList()
-  nodeAsInts = list%asInts()
+  if(self%contains(k)) then
+    node => self%get(k)
+    list => node%asList()
+    nodeAsInts = list%asInts()
+  elseif(present(defaultVal)) then
+    nodeAsInts = defaultVal
+  else
+    call IO_error(143,ext_msg=k)
+  endif
+
+  if(present(requiredSize)) then
+    if(requiredSize /= size(nodeAsInts)) call IO_error(146,ext_msg=k)
+  endif
 
 end function tNode_get_byKey_asInts
 
@@ -836,18 +857,25 @@ end function tNode_get_byKey_asInts
 !--------------------------------------------------------------------------------------------------
 !> @brief Access by key and convert to bool array
 !--------------------------------------------------------------------------------------------------
-function tNode_get_byKey_asBools(self,k) result(nodeAsBools)
+function tNode_get_byKey_asBools(self,k,defaultVal) result(nodeAsBools)
 
-  class(tNode),     intent(in), target :: self
-  character(len=*), intent(in)         :: k
-  logical, dimension(:), allocatable :: nodeAsBools
+  class(tNode),          intent(in), target   :: self
+  character(len=*),      intent(in)           :: k
+  logical, dimension(:), intent(in), optional :: defaultVal
+  logical, dimension(:), allocatable          :: nodeAsBools
 
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node => self%get(k)
-  list => node%asList()
-  nodeAsBools = list%asBools()
+  if(self%contains(k)) then
+    node => self%get(k)
+    list => node%asList()
+    nodeAsBools = list%asBools()
+  elseif(present(defaultVal)) then
+    nodeAsBools = defaultVal
+  else
+    call IO_error(143,ext_msg=k)
+  endif
 
 end function tNode_get_byKey_asBools
 
@@ -855,21 +883,49 @@ end function tNode_get_byKey_asBools
 !--------------------------------------------------------------------------------------------------
 !> @brief Access by key and convert to string array
 !--------------------------------------------------------------------------------------------------
-function tNode_get_byKey_asStrings(self,k) result(nodeAsStrings)
+function tNode_get_byKey_asStrings(self,k,defaultVal) result(nodeAsStrings)
 
-  class(tNode),     intent(in), target :: self
-  character(len=*), intent(in)         :: k
-  character(len=:), allocatable, dimension(:) :: nodeAsStrings
+  class(tNode),     intent(in), target                 :: self
+  character(len=*), intent(in)                         :: k
+  character(len=*), intent(in), dimension(:), optional :: defaultVal
+  character(len=:), allocatable, dimension(:)          :: nodeAsStrings
 
   class(tNode), pointer :: node
   type(tList),  pointer :: list
 
-  node => self%get(k)
-  list => node%asList()
-  nodeAsStrings = list%asStrings()
+  if(self%contains(k)) then
+    node => self%get(k)
+    list => node%asList()
+    nodeAsStrings = list%asStrings()
+  elseif(present(defaultVal)) then
+    nodeAsStrings = defaultVal
+  else
+    call IO_error(143,ext_msg=k)
+  endif
 
 end function tNode_get_byKey_asStrings
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns string output array (hack for GNU)
+!--------------------------------------------------------------------------------------------------
+function output_asStrings(self)  result(output)                   !ToDo: SR: Remove whenever GNU works
+
+  class(tNode), pointer,intent(in)   ::  self
+  character(len=pStringLen), allocatable, dimension(:) :: output
+
+  class(tNode), pointer :: output_list
+  integer :: o
+
+  output_list   => self%get('output',defaultVal=emptyList)
+  allocate(output(output_list%length))
+  do o = 1, output_list%length
+    output(o) = output_list%get_asString(o)
+  enddo
+
+
+end function output_asStrings
+ 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns the index of a key in a dictionary

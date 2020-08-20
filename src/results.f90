@@ -7,7 +7,7 @@
 module results
   use DAMASK_interface
   use rotations
-  use numerics
+  use config
   use HDF5_utilities
 #ifdef PETSc
   use PETSC

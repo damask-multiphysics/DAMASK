@@ -392,9 +392,9 @@ logical function IO_stringAsBool(string)
 
   character(len=*), intent(in) :: string                                                            !< string for conversion to int value
 
-  if     (trim(adjustl(string)) == 'True') then
+  if     (trim(adjustl(string)) == 'True' .or.  trim(adjustl(string)) == 'true') then
     IO_stringAsBool = .true.
-  elseif (trim(adjustl(string)) == 'False') then
+  elseif (trim(adjustl(string)) == 'False' .or. trim(adjustl(string)) == 'false') then
     IO_stringAsBool = .false.
   else
     IO_stringAsBool = .false.
@@ -568,8 +568,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Incorrect indent/Null value not allowed'
     case (702)
       msg = 'Invalid use of flow yaml'
-    case (703)
-      msg = 'Space expected after a list indicator - '
     case (704)
       msg = 'Space expected after a colon for <key>: <value> pair'
     case (705)
@@ -751,9 +749,9 @@ subroutine selfTest
   if(-3112019 /= IO_stringAsInt('-3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
   if(3112019  /= IO_stringAsInt('+3112019 '))       call IO_error(0,ext_msg='IO_stringAsInt')
 
-  if(.not. IO_stringAsBool(' True'))                call IO_error(0,ext_msg='IO_stringAsBool')
+  if(.not. IO_stringAsBool(' true'))                call IO_error(0,ext_msg='IO_stringAsBool')
   if(.not. IO_stringAsBool(' True '))               call IO_error(0,ext_msg='IO_stringAsBool')
-  if(      IO_stringAsBool(' False'))               call IO_error(0,ext_msg='IO_stringAsBool')
+  if(      IO_stringAsBool(' false'))               call IO_error(0,ext_msg='IO_stringAsBool')
   if(      IO_stringAsBool('False'))                call IO_error(0,ext_msg='IO_stringAsBool')
 
   if(any([1,1,1]     /= IO_stringPos('a')))         call IO_error(0,ext_msg='IO_stringPos')

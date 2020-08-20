@@ -10,16 +10,16 @@ submodule(constitutive:constitutive_damage)  source_damage_anisoDuctile
     source_damage_anisoDuctile_offset, &                                                            !< which source is my current damage mechanism?
     source_damage_anisoDuctile_instance                                                             !< instance of damage source mechanism
 
-  type :: tParameters                                                                       !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      n
+      n                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:), allocatable :: &
-      critPlasticStrain
+      critPlasticStrain                                                                             !< critical plastic strain per slip system
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                     !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
 
 contains
 
@@ -28,61 +28,80 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisoDuctile_init
+module function source_damage_anisoDuctile_init(source_length) result(mySources)
 
+  integer, intent(in)                  :: source_length  
+  logical, dimension(:,:), allocatable :: mySources
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl, &
+    sources, &
+    src
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  source_damage_anisoDuctile init  -+>>>'
 
-  Ninstance = count(phase_source == SOURCE_DAMAGE_ANISODUCTILE_ID)
+  mySources = source_active('damage_anisoDuctile',source_length)
+  
+  Ninstance = count(mySources)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
 
-  allocate(source_damage_anisoDuctile_offset  (size(config_phase)), source=0)
-  allocate(source_damage_anisoDuctile_instance(size(config_phase)), source=0)
+  if(Ninstance == 0) return
+
+  phases => material_root%get('phase')
   allocate(param(Ninstance))
+  allocate(source_damage_anisoDuctile_offset  (phases%length), source=0)
+  allocate(source_damage_anisoDuctile_instance(phases%length), source=0)
 
-  do p = 1, size(config_phase)
-    source_damage_anisoDuctile_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ANISODUCTILE_ID)
-    do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_DAMAGE_ANISODUCTILE_ID) then
+  do p = 1, phases%length
+    phase => phases%get(p) 
+    if(any(mySources(:,p))) source_damage_anisoDuctile_instance(p) = count(mySources(:,1:p))
+    if(count(mySources(:,p)) == 0) cycle
+    sources => phase%get('source')
+    pl => phase%get('plasticity')
+    do sourceOffset = 1, sources%length
+      if(mySources(sourceOffset,p)) then
         source_damage_anisoDuctile_offset(p) = sourceOffset
-        exit
-      endif
-    enddo
+        associate(prm  => param(source_damage_anisoDuctile_instance(p)))
+        src => sources%get(sourceOffset) 
 
-    if (all(phase_source(:,p) /= SOURCE_DAMAGE_ANISODUCTILE_ID)) cycle
-    associate(prm => param(source_damage_anisoDuctile_instance(p)), &
-              config => config_phase(p))
+        N_sl = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+        prm%n                 = src%get_asFloat('q')
+        prm%critPlasticStrain = src%get_asFloats('gamma_crit',requiredSize=size(N_sl))
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+        ! expand: family => system
+        prm%critPlasticStrain = math_expand(prm%critPlasticStrain,N_sl)
 
-    N_sl = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%n                 = config%getFloat('anisoductile_ratesensitivity')
-    prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(N_sl))
+#if defined (__GFORTRAN__)
+        prm%output = output_asStrings(src)
+#else
+        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
+ 
+        ! sanity checks
+        if (prm%n                     <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
+        if (any(prm%critPlasticStrain <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
 
-    ! expand: family => system
-    prm%critPlasticStrain = math_expand(prm%critPlasticStrain,N_sl)
+        NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
+        sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('anisoDuctile_atol',defaultVal=1.0e-3_pReal)
+        if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
 
-    ! sanity checks
-    if (prm%n                     <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
-    if (any(prm%critPlasticStrain <  0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_criticalplasticstrain'
-
-    NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
-    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
-    sourceState(p)%p(sourceOffset)%atol = config%getFloat('anisoductile_atol',defaultVal=1.0e-3_pReal)
-    if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
-
-    end associate
+        end associate
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISODUCTILE_LABEL//')')
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoDuctile)')
+      endif
+    enddo
+  enddo
 
-enddo
 
-end subroutine source_damage_anisoDuctile_init
+end function source_damage_anisoDuctile_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -157,8 +176,8 @@ module subroutine source_damage_anisoDuctile_results(phase,group)
             stt => sourceState(phase)%p(source_damage_anisoDuctile_offset(phase))%state)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case ('anisoductile_drivingforce')
-        call results_writeDataset(group,stt,'tbd','driving force','tbd')
+      case ('f_phi')
+        call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
     end select
   enddo outputsLoop
   end associate

@@ -87,9 +87,12 @@ module subroutine mech_RGC_init(num_homogMech)
     sizeState, nIntFaceTot
   
   class (tNode), pointer :: &
-    num_RGC                                                                                         ! pointer to RGC numerics data
+    num_RGC, &                                                                                      ! pointer to RGC numerics data
+    material_homogenization, &
+    homog, &
+    homogMech
 
-  write(6,'(/,a)') ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  homogenization_mech_rgc init  -+>>>'
 
   write(6,'(/,a)') ' Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
   write(6,'(a)')   ' https://doi.org/10.1007/s12289-009-0619-1'
@@ -135,13 +138,16 @@ module subroutine mech_RGC_init(num_homogMech)
   if (num%volDiscrMod < 0.0_pReal)   call IO_error(301,ext_msg='volDiscrMod_RGC')
   if (num%volDiscrPow <= 0.0_pReal)  call IO_error(301,ext_msg='volDiscrPw_RGC')
 
+
+  material_homogenization => material_root%get('homogenization') 
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
+    homog => material_homogenization%get(h)
+    homogMech => homog%get('mech')
     associate(prm => param(homogenization_typeInstance(h)), &
               stt => state(homogenization_typeInstance(h)), &
               st0 => state0(homogenization_typeInstance(h)), &
-              dst => dependentState(homogenization_typeInstance(h)), &
-              config => config_homogenization(h))
+              dst => dependentState(homogenization_typeInstance(h)))
 
 #ifdef DEBUG
     if  (h==material_homogenizationAt(debugHomog%element)) then
@@ -149,17 +155,21 @@ module subroutine mech_RGC_init(num_homogMech)
     endif
 #endif
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+#if defined (__GFORTRAN__)
+    prm%output = output_asStrings(homogMech)
+#else
+    prm%output = homogMech%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
 
-    prm%Nconstituents = config%getInts('clustersize',requiredSize=3)
+    prm%Nconstituents = homogMech%get_asInts('cluster_size',requiredSize=3)
     if (homogenization_Ngrains(h) /= product(prm%Nconstituents)) &
-      call IO_error(211,ext_msg='clustersize ('//HOMOGENIZATION_RGC_label//')')
+      call IO_error(211,ext_msg='clustersize (mech_rgc)')
 
-    prm%xiAlpha = config%getFloat('scalingparameter')
-    prm%ciAlpha = config%getFloat('overproportionality')
+    prm%xiAlpha = homogMech%get_asFloat('xi_alpha')
+    prm%ciAlpha = homogMech%get_asFloat('c_alpha')
 
-    prm%dAlpha  = config%getFloats('grainsize',         requiredSize=3)
-    prm%angles  = config%getFloats('clusterorientation',requiredSize=3)
+    prm%dAlpha  = homogMech%get_asFloats('D_alpha', requiredSize=3)
+    prm%angles  = homogMech%get_asFloats('a_g',     requiredSize=3)
 
     NofMyHomog = count(material_homogenizationAt == h)
     nIntFaceTot = 3*(  (prm%Nconstituents(1)-1)*prm%Nconstituents(2)*prm%Nconstituents(3) &
@@ -946,23 +956,23 @@ module subroutine mech_RGC_results(instance,group)
   associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('constitutivework')
-        call results_writeDataset(group,stt%work,'W',&
+      case('W')
+        call results_writeDataset(group,stt%work,trim(prm%output(o)), &
                                   'work density','J/m³')
-      case('magnitudemismatch')
-        call results_writeDataset(group,dst%mismatch,'N',&
+      case('M')                                         
+        call results_writeDataset(group,dst%mismatch,trim(prm%output(o)), &
                                   'average mismatch tensor','1')
-      case('penaltyenergy')
-        call results_writeDataset(group,stt%penaltyEnergy,'R',&
+      case('R')
+        call results_writeDataset(group,stt%penaltyEnergy,trim(prm%output(o)), &
                                   'mismatch penalty density','J/m³')
-      case('volumediscrepancy')
-        call results_writeDataset(group,dst%volumeDiscrepancy,'Delta_V',&
+      case('Delta_V')
+        call results_writeDataset(group,dst%volumeDiscrepancy,trim(prm%output(o)), &
                                   'volume discrepancy','m³')
-      case('maximumrelaxrate')
-        call results_writeDataset(group,dst%relaxationrate_max,'max_alpha_dot',&
+      case('max_a_dot')
+        call results_writeDataset(group,dst%relaxationrate_max,trim(prm%output(o)), &
                                   'maximum relaxation rate','m/s')
-      case('averagerelaxrate')
-        call results_writeDataset(group,dst%relaxationrate_avg,'avg_alpha_dot',&
+      case('avg_a_dot')
+        call results_writeDataset(group,dst%relaxationrate_avg,trim(prm%output(o)), &
                                   'average relaxation rate','m/s')
     end select
   enddo outputsLoop
