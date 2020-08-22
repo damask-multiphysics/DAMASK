@@ -1,5 +1,3 @@
-import copy
-
 import pytest
 import numpy as np
 
@@ -31,7 +29,7 @@ def reference_dir(reference_dir_base):
 class TestGeom:
 
     def test_update(self,default):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         modified.update(
                         default.get_microstructure(),
                         default.get_size(),
@@ -89,12 +87,12 @@ class TestGeom:
             default.update(default.microstructure[1:,1:,1:],origin=np.ones(4))
 
     def test_invalid_microstructure_size(self,default):
-        microstructure=np.ones((3,3))
+        microstructure = np.ones((3,3))
         with pytest.raises(ValueError):
             default.update(microstructure)
 
     def test_invalid_microstructure_type(self,default):
-        microstructure=np.random.randint(1,300,(3,4,5))==1
+        microstructure = np.random.randint(1,300,(3,4,5))==1
         with pytest.raises(TypeError):
             default.update(microstructure)
 
@@ -110,7 +108,7 @@ class TestGeom:
                                                   ]
                             )
     def test_mirror(self,default,update,reference_dir,directions,reflect):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         modified.mirror(directions,reflect)
         tag = f'directions={"-".join(directions)}_reflect={reflect}'
         reference = reference_dir/f'mirror_{tag}.geom'
@@ -119,7 +117,7 @@ class TestGeom:
 
     @pytest.mark.parametrize('stencil',[1,2,3,4])
     def test_clean(self,default,update,reference_dir,stencil):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         modified.clean(stencil)
         tag = f'stencil={stencil}'
         reference = reference_dir/f'clean_{tag}.geom'
@@ -136,7 +134,7 @@ class TestGeom:
                                     ]
                             )
     def test_scale(self,default,update,reference_dir,grid):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         modified.scale(grid)
         tag = f'grid={util.srepr(grid,"-")}'
         reference = reference_dir/f'scale_{tag}.geom'
@@ -144,7 +142,7 @@ class TestGeom:
         assert geom_equal(modified,Geom.from_file(reference))
 
     def test_renumber(self,default):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         microstructure = modified.get_microstructure()
         for m in np.unique(microstructure):
             microstructure[microstructure==m] = microstructure.max() + np.random.randint(1,30)
@@ -154,10 +152,10 @@ class TestGeom:
         assert geom_equal(modified,default)
 
     def test_substitute(self,default):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         microstructure = modified.get_microstructure()
         offset = np.random.randint(1,500)
-        microstructure+=offset
+        microstructure += offset
         modified.update(microstructure)
         assert not geom_equal(modified,default)
         modified.substitute(np.arange(default.microstructure.max())+1+offset,
@@ -167,7 +165,7 @@ class TestGeom:
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
                                            np.array([1,0,0,175]),np.array([0,-1,0,178]),np.array([0,0,1,180])])
     def test_rotate360(self,default,axis_angle):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         for i in range(np.rint(360/axis_angle[3]).astype(int)):
             modified.rotate(Rotation.from_axis_angle(axis_angle,degrees=True))
         assert geom_equal(modified,default)
@@ -175,7 +173,7 @@ class TestGeom:
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
     def test_rotate(self,default,update,reference_dir,Eulers):
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         modified.rotate(Rotation.from_Eulers(Eulers,degrees=True))
         tag = f'Eulers={util.srepr(Eulers,"-")}'
         reference = reference_dir/f'rotate_{tag}.geom'
@@ -184,25 +182,25 @@ class TestGeom:
 
     def test_canvas(self,default):
         grid_add = np.random.randint(0,30,(3))
-        modified = copy.deepcopy(default)
+        modified = default.copy()
         modified.canvas(modified.grid + grid_add)
         e = default.grid
         assert np.all(modified.microstructure[:e[0],:e[1],:e[2]] == default.microstructure)
 
-    @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random(3)),       
+    @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random(3)),
                                                 (np.random.randint(4,8,(3)),np.random.randint(9,12,(3)))])
-    @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,                                    
-                                        np.random.randint(4,10,(3))])                               
-    def test_add_primitive(self,diameter,center1,center2):                                          
-        """Same volume fraction for periodic microstructures and different center."""               
-        o = np.random.random(3)-.5                                                                  
-        g = np.random.randint(8,32,(3))                                                             
-        s = np.random.random(3)+.5                                                                  
-        G_1 = Geom(np.ones(g,'i'),s,o)                                                              
-        G_2 = Geom(np.ones(g,'i'),s,o)                                                              
-        G_1.add_primitive(diameter,center1,1)                                                       
-        G_2.add_primitive(diameter,center2,1)                                                       
-        assert np.count_nonzero(G_1.microstructure!=2) == np.count_nonzero(G_2.microstructure!=2) 
+    @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,
+                                        np.random.randint(4,10,(3))])
+    def test_add_primitive(self,diameter,center1,center2):
+        """Same volume fraction for periodic microstructures and different center."""
+        o = np.random.random(3)-.5
+        g = np.random.randint(8,32,(3))
+        s = np.random.random(3)+.5
+        G_1 = Geom(np.ones(g,'i'),s,o)
+        G_2 = Geom(np.ones(g,'i'),s,o)
+        G_1.add_primitive(diameter,center1,1)
+        G_2.add_primitive(diameter,center2,1)
+        assert np.count_nonzero(G_1.microstructure!=2) == np.count_nonzero(G_2.microstructure!=2)
 
     @pytest.mark.parametrize('trigger',[[1],[]])
     def test_vicinity_offset(self,trigger):
@@ -213,7 +211,7 @@ class TestGeom:
         m = np.ones(g,'i')
         x = (g*np.random.permutation(np.array([.5,1,1]))).astype('i')
         m[slice(0,x[0]),slice(0,x[1]),slice(0,x[2])] = 2
-        m2 = copy.deepcopy(m)
+        m2 = m.copy()
         for i in [0,1,2]:
             m2[(np.roll(m,+vicinity,i)-m)!=0] += offset
             m2[(np.roll(m,-vicinity,i)-m)!=0] += offset

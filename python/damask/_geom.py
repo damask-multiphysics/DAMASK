@@ -1,4 +1,5 @@
 import sys
+import copy
 from io import StringIO
 import multiprocessing
 from functools import partial
@@ -50,6 +51,16 @@ class Geom:
                f'# microstructures:   {self.N_microstructure}',
                f'max microstructure:  {np.nanmax(self.microstructure)}',
               ])
+
+
+    def __copy__(self):
+        """Copy geometry."""
+        return copy.deepcopy(self)
+
+
+    def copy(self):
+        """Copy geometry."""
+        return self.__copy__()
 
 
     def update(self,microstructure=None,size=None,origin=None,rescale=False):
@@ -774,4 +785,3 @@ class Geom:
 
         #ToDo: self.add_comments('geom.py:vicinity_offset v{}'.format(version)
         return self.update(microstructure)
-
