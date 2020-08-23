@@ -28,6 +28,19 @@ def reference_dir(reference_dir_base):
 
 class TestGeom:
 
+    @pytest.mark.parametrize('flavor',['plain','explicit'])
+    def test_duplicate(self,default,flavor):
+        if flavor == 'plain':
+            modified = default.duplicate()
+        elif flavor == 'explicit':
+            modified = default.duplicate(
+                            default.get_microstructure(),
+                            default.get_size(),
+                            default.get_origin()
+                           )
+        print(modified)
+        assert geom_equal(default,modified)
+
     def test_update(self,default):
         modified = default.copy()
         modified.update(
@@ -36,7 +49,7 @@ class TestGeom:
                         default.get_origin()
                        )
         print(modified)
-        assert geom_equal(modified,default)
+        assert geom_equal(default,modified)
 
     @pytest.mark.parametrize('masked',[True,False])
     def test_set_microstructure(self,default,masked):
@@ -47,36 +60,38 @@ class TestGeom:
 
 
     def test_write_read_str(self,default,tmpdir):
-        default.to_file(str(tmpdir.join('default.geom')))
-        new = Geom.from_file(str(tmpdir.join('default.geom')))
-        assert geom_equal(new,default)
+        default.to_file(tmpdir/'default.geom')
+        new = Geom.from_file(tmpdir/'default.geom')
+        assert geom_equal(default,new)
 
     def test_write_read_file(self,default,tmpdir):
-        with open(tmpdir.join('default.geom'),'w') as f:
+        with open(tmpdir/'default.geom','w') as f:
             default.to_file(f)
-        with open(tmpdir.join('default.geom')) as f:
+        with open(tmpdir/'default.geom') as f:
             new = Geom.from_file(f)
-        assert geom_equal(new,default)
+        assert geom_equal(default,new)
 
     def test_write_show(self,default,tmpdir):
-        with open(tmpdir.join('str.geom'),'w') as f:
+        with open(tmpdir/'str.geom','w') as f:
             f.write(default.show())
-        with open(tmpdir.join('str.geom')) as f:
+        with open(tmpdir/'str.geom') as f:
             new = Geom.from_file(f)
-        assert geom_equal(new,default)
+        assert geom_equal(default,new)
 
-    def test_export_vtk(self,default,tmpdir):
-        default.to_vtk(str(tmpdir.join('default')))
+    def test_export_import_vtk(self,default,tmpdir):
+        default.to_vtk(tmpdir/'default')
+        assert geom_equal(default,Geom.from_vtk(tmpdir/'default.vtr'))
+
 
     @pytest.mark.parametrize('pack',[True,False])
     def test_pack(self,default,tmpdir,pack):
-        default.to_file(tmpdir.join('default.geom'),pack=pack)
-        new = Geom.from_file(tmpdir.join('default.geom'))
+        default.to_file(tmpdir/'default.geom',pack=pack)
+        new = Geom.from_file(tmpdir/'default.geom')
         assert geom_equal(new,default)
 
     def test_invalid_combination(self,default):
         with pytest.raises(ValueError):
-            default.update(default.microstructure[1:,1:,1:],size=np.ones(3), rescale=True)
+            default.update(default.microstructure[1:,1:,1:],size=np.ones(3), autosize=True)
 
     def test_invalid_size(self,default):
         with pytest.raises(ValueError):
@@ -108,21 +123,36 @@ class TestGeom:
                                                   ]
                             )
     def test_mirror(self,default,update,reference_dir,directions,reflect):
-        modified = default.copy()
-        modified.mirror(directions,reflect)
+        modified = default.mirror(directions,reflect)
         tag = f'directions={"-".join(directions)}_reflect={reflect}'
         reference = reference_dir/f'mirror_{tag}.geom'
         if update: modified.to_file(reference)
-        assert geom_equal(modified,Geom.from_file(reference))
+        assert geom_equal(Geom.from_file(reference),
+                          modified)
+
+    @pytest.mark.parametrize('directions',[
+                                           ['x'],
+                                           ['x','y','z'],
+                                           ['z','x','y'],
+                                           ['y','z'],
+                                          ]
+                            )
+    def test_flip(self,default,update,reference_dir,directions):
+        modified = default.flip(directions)
+        tag = f'directions={"-".join(directions)}'
+        reference = reference_dir/f'flip_{tag}.geom'
+        if update: modified.to_file(reference)
+        assert geom_equal(Geom.from_file(reference),
+                          modified)
 
     @pytest.mark.parametrize('stencil',[1,2,3,4])
     def test_clean(self,default,update,reference_dir,stencil):
-        modified = default.copy()
-        modified.clean(stencil)
+        modified = default.clean(stencil)
         tag = f'stencil={stencil}'
         reference = reference_dir/f'clean_{tag}.geom'
         if update: modified.to_file(reference)
-        assert geom_equal(modified,Geom.from_file(reference))
+        assert geom_equal(Geom.from_file(reference),
+                          modified)
 
     @pytest.mark.parametrize('grid',[
                                      (10,11,10),
@@ -134,33 +164,29 @@ class TestGeom:
                                     ]
                             )
     def test_scale(self,default,update,reference_dir,grid):
-        modified = default.copy()
-        modified.scale(grid)
+        modified = default.scale(grid)
         tag = f'grid={util.srepr(grid,"-")}'
         reference = reference_dir/f'scale_{tag}.geom'
         if update: modified.to_file(reference)
-        assert geom_equal(modified,Geom.from_file(reference))
+        assert geom_equal(Geom.from_file(reference),
+                          modified)
 
     def test_renumber(self,default):
-        modified = default.copy()
-        microstructure = modified.get_microstructure()
+        microstructure = default.get_microstructure()
         for m in np.unique(microstructure):
             microstructure[microstructure==m] = microstructure.max() + np.random.randint(1,30)
-        modified.update(microstructure)
+        modified = default.duplicate(microstructure)
         assert not geom_equal(modified,default)
-        modified.renumber()
-        assert geom_equal(modified,default)
+        assert geom_equal(default,
+                          modified.renumber())
 
     def test_substitute(self,default):
-        modified = default.copy()
-        microstructure = modified.get_microstructure()
         offset = np.random.randint(1,500)
-        microstructure += offset
-        modified.update(microstructure)
+        modified = default.duplicate(default.get_microstructure() + offset)
         assert not geom_equal(modified,default)
-        modified.substitute(np.arange(default.microstructure.max())+1+offset,
-                            np.arange(default.microstructure.max())+1)
-        assert geom_equal(modified,default)
+        assert geom_equal(default,
+                          modified.substitute(np.arange(default.microstructure.max())+1+offset,
+                                              np.arange(default.microstructure.max())+1))
 
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
                                            np.array([1,0,0,175]),np.array([0,-1,0,178]),np.array([0,0,1,180])])
@@ -168,38 +194,35 @@ class TestGeom:
         modified = default.copy()
         for i in range(np.rint(360/axis_angle[3]).astype(int)):
             modified.rotate(Rotation.from_axis_angle(axis_angle,degrees=True))
-        assert geom_equal(modified,default)
+        assert geom_equal(default,modified)
 
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
     def test_rotate(self,default,update,reference_dir,Eulers):
-        modified = default.copy()
-        modified.rotate(Rotation.from_Eulers(Eulers,degrees=True))
+        modified = default.rotate(Rotation.from_Eulers(Eulers,degrees=True))
         tag = f'Eulers={util.srepr(Eulers,"-")}'
         reference = reference_dir/f'rotate_{tag}.geom'
         if update: modified.to_file(reference)
-        assert geom_equal(modified,Geom.from_file(reference))
+        assert geom_equal(Geom.from_file(reference),
+                          modified)
 
     def test_canvas(self,default):
+        grid = default.grid
         grid_add = np.random.randint(0,30,(3))
-        modified = default.copy()
-        modified.canvas(modified.grid + grid_add)
-        e = default.grid
-        assert np.all(modified.microstructure[:e[0],:e[1],:e[2]] == default.microstructure)
+        modified = default.canvas(grid + grid_add)
+        assert np.all(modified.microstructure[:grid[0],:grid[1],:grid[2]] == default.microstructure)
 
     @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random(3)),
                                                 (np.random.randint(4,8,(3)),np.random.randint(9,12,(3)))])
     @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,
-                                        np.random.randint(4,10,(3))])
+                                         np.random.randint(4,10,(3))])
     def test_add_primitive(self,diameter,center1,center2):
         """Same volume fraction for periodic microstructures and different center."""
         o = np.random.random(3)-.5
         g = np.random.randint(8,32,(3))
         s = np.random.random(3)+.5
-        G_1 = Geom(np.ones(g,'i'),s,o)
-        G_2 = Geom(np.ones(g,'i'),s,o)
-        G_1.add_primitive(diameter,center1,1)
-        G_2.add_primitive(diameter,center2,1)
+        G_1 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center1,1)
+        G_2 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center2,1)
         assert np.count_nonzero(G_1.microstructure!=2) == np.count_nonzero(G_2.microstructure!=2)
 
     @pytest.mark.parametrize('trigger',[[1],[]])
@@ -218,8 +241,7 @@ class TestGeom:
         if len(trigger) > 0:
             m2[m==1] = 1
 
-        geom = Geom(m,np.random.rand(3))
-        geom.vicinity_offset(vicinity,offset,trigger=trigger)
+        geom = Geom(m,np.random.rand(3)).vicinity_offset(vicinity,offset,trigger=trigger)
 
         assert np.all(m2==geom.microstructure)
 

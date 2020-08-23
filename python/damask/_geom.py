@@ -7,6 +7,7 @@ from functools import partial
 import numpy as np
 from scipy import ndimage,spatial
 
+from . import version
 from . import environment
 from . import Rotation
 from . import VTK
@@ -24,15 +25,15 @@ class Geom:
         Parameters
         ----------
         microstructure : numpy.ndarray
-            microstructure array (3D)
+            Microstructure array (3D)
         size : list or numpy.ndarray
-            physical size of the microstructure in meter.
+            Physical size of the microstructure in meter.
         origin : list or numpy.ndarray, optional
-            physical origin of the microstructure in meter.
+            Physical origin of the microstructure in meter.
         homogenization : int, optional
-            homogenization index.
+            Homogenization index.
         comments : list of str, optional
-            comments lines.
+            Comment lines.
 
         """
         self.set_microstructure(microstructure)
@@ -50,7 +51,7 @@ class Geom:
                f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}',
                f'# microstructures:   {self.N_microstructure}',
                f'max microstructure:  {np.nanmax(self.microstructure)}',
-              ])
+              ]+self.get_comments())
 
 
     def __copy__(self):
@@ -63,20 +64,57 @@ class Geom:
         return self.__copy__()
 
 
-    def update(self,microstructure=None,size=None,origin=None,rescale=False):
+    def duplicate(self,microstructure=None,size=None,origin=None,comments=None,autosize=False):
+        """
+        Create a duplicate having updated microstructure, size, and origin.
+
+        Parameters
+        ----------
+        microstructure : numpy.ndarray, optional
+            Microstructure array (3D).
+        size : list or numpy.ndarray, optional
+            Physical size of the microstructure in meter.
+        origin : list or numpy.ndarray, optional
+            Physical origin of the microstructure in meter.
+        comments : list of str, optional
+            Comment lines.
+        autosize : bool, optional
+            Ignore size parameter and rescale according to change of grid points.
+
+        """
+        if size is not None and autosize:
+            raise ValueError('Auto sizing conflicts with explicit size parameter.')
+
+        grid_old = self.get_grid()
+        dup = self.copy()
+        dup.set_microstructure(microstructure)
+        dup.set_origin(origin)
+
+        if comments is not None:
+            dup.set_comments(comments)
+
+        if size is not None:
+            dup.set_size(size)
+        elif autosize:
+            dup.set_size(dup.get_grid()/grid_old*self.get_size())
+
+        return dup
+
+
+    def update(self,microstructure=None,size=None,origin=None,autosize=False):
         """
         Update microstructure and size.
 
         Parameters
         ----------
         microstructure : numpy.ndarray, optional
-            microstructure array (3D).
+            Microstructure array (3D).
         size : list or numpy.ndarray, optional
-            physical size of the microstructure in meter.
+            Physical size of the microstructure in meter.
         origin : list or numpy.ndarray, optional
-            physical origin of the microstructure in meter.
-        rescale : bool, optional
-            ignore size parameter and rescale according to change of grid points.
+            Physical origin of the microstructure in meter.
+        autosize : bool, optional
+            Ignore size parameter and rescale according to change of grid points.
 
         """
         grid_old    = self.get_grid()
@@ -85,15 +123,15 @@ class Geom:
         unique_old  = self.N_microstructure
         max_old     = np.nanmax(self.microstructure)
 
-        if size is not None and rescale:
-            raise ValueError('Either set size explicitly or rescale automatically')
+        if size is not None and autosize:
+            raise ValueError('Auto sizing conflicts with explicit size parameter.')
 
         self.set_microstructure(microstructure)
         self.set_origin(origin)
 
         if size is not None:
             self.set_size(size)
-        elif rescale:
+        elif autosize:
             self.set_size(self.get_grid()/grid_old*self.size)
 
         message = [f'grid     a b c:      {util.srepr(grid_old," x ")}']
@@ -124,6 +162,40 @@ class Geom:
         return util.return_message(message)
 
 
+    def diff(self,other):
+        """
+        Report property differences of self relative to other.
+
+        Parameters
+        ----------
+        other : Geom
+            Geometry to compare self against.
+
+        """
+        message = []
+        if np.any(other.get_grid() != self.get_grid()):
+            message.append(util.delete(f'grid     a b c:      {util.srepr(other.get_grid()," x ")}'))
+            message.append(util.emph(  f'grid     a b c:      {util.srepr( self.get_grid()," x ")}'))
+
+        if np.any(other.get_size() != self.get_size()):
+            message.append(util.delete(f'size     x y z:      {util.srepr(other.get_size()," x ")}'))
+            message.append(util.emph(  f'size     x y z:      {util.srepr( self.get_size()," x ")}'))
+
+        if np.any(other.get_origin() != self.get_origin()):
+            message.append(util.delete(f'origin   x y z:      {util.srepr(other.get_origin(),"   ")}'))
+            message.append(util.emph(  f'origin   x y z:      {util.srepr( self.get_origin(),"   ")}'))
+
+        if other.N_microstructure != self.N_microstructure:
+            message.append(util.delete(f'# microstructures:   {other.N_microstructure}'))
+            message.append(util.emph(  f'# microstructures:   { self.N_microstructure}'))
+
+        if np.nanmax(other.microstructure) != np.nanmax(self.microstructure):
+            message.append(util.delete(f'max microstructure:  {np.nanmax(other.microstructure)}'))
+            message.append(util.emph(  f'max microstructure:  {np.nanmax( self.microstructure)}'))
+
+        return util.return_message(message)
+
+
     def set_comments(self,comments):
         """
         Replace all existing comments.
@@ -131,7 +203,7 @@ class Geom:
         Parameters
         ----------
         comments : list of str
-            new comments.
+            All comments.
 
         """
         self.comments = []
@@ -145,7 +217,7 @@ class Geom:
         Parameters
         ----------
         comments : list of str
-            new comments.
+            New comments.
 
         """
         self.comments += [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
@@ -172,6 +244,10 @@ class Geom:
             else:
                 self.microstructure = np.copy(microstructure)
 
+        if         self.microstructure.dtype == float and \
+            np.all(self.microstructure == self.microstructure.astype(int).astype(float)):
+            self.microstructure = self.microstructure.astype(int)
+
         if len(self.microstructure.shape) != 3:
             raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
         elif self.microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
@@ -185,7 +261,7 @@ class Geom:
         Parameters
         ----------
         size : list or numpy.ndarray
-            physical size of the microstructure in meter.
+            Physical size of the microstructure in meter.
 
         """
         if size is None:
@@ -205,7 +281,7 @@ class Geom:
         Parameters
         ----------
         origin : list or numpy.ndarray
-            physical origin of the microstructure in meter
+            Physical origin of the microstructure in meter.
 
         """
         if origin is not None:
@@ -222,12 +298,12 @@ class Geom:
         Parameters
         ----------
         homogenization : int
-            homogenization index
+            Homogenization index.
 
         """
         if homogenization is not None:
             if not isinstance(homogenization,int) or homogenization < 1:
-                raise TypeError(f'Invalid homogenization {homogenization}')
+                raise TypeError(f'Invalid homogenization {homogenization}.')
             else:
                 self.homogenization = homogenization
 
@@ -419,8 +495,11 @@ class Geom:
         else:
             microstructure = microstructure.reshape(grid)
 
-        #ToDo: comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
-        return Geom(microstructure+1,size,homogenization=1)
+        return Geom(microstructure+1,
+                    size,
+                    homogenization=1,
+                    comments=f'geom.py:from_Laguerre_tessellation v{version}',
+                   )
 
 
     @staticmethod
@@ -444,8 +523,11 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
-        #ToDo: comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
-        return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
+        return Geom(microstructure.reshape(grid)+1,
+                    size,
+                    homogenization=1,
+                    comments=f'geom.py:from_Voronoi_tessellation v{version}',
+                   )
 
 
     def to_file(self,fname,pack=None):
@@ -535,7 +617,7 @@ class Geom:
 
     def show(self):
         """Show raw content (as in file)."""
-        f=StringIO()
+        f = StringIO()
         self.to_file(f)
         f.seek(0)
         return ''.join(f.readlines())
@@ -565,10 +647,10 @@ class Geom:
         R : damask.Rotation, optional
             Rotation of primitive. Defaults to no rotation.
         inverse : Boolean, optional
-            Retain original microstructure within primitive and fill
-            outside. Defaults to False.
+            Retain original microstructure within primitive and fill outside.
+            Defaults to False.
         periodic : Boolean, optional
-            Repeat primitive over boundaries. Defaults to False.
+            Repeat primitive over boundaries. Defaults to True.
 
         """
         # normalized 'radius' and center
@@ -578,11 +660,11 @@ class Geom:
             (np.array(center) - self.origin)/self.size
 
         coords = grid_filters.cell_coord0(self.grid,np.ones(3)) \
-               - (np.ones(3)*0.5 if periodic else c)                                                # center if periodic
+               - ((np.ones(3)-(1./self.grid if np.array(center).dtype in np.sctypes['int'] else 0))*0.5 if periodic else c)  # periodic center is always at CoG
         coords_rot = R.broadcast_to(tuple(self.grid))@coords
 
         with np.errstate(over='ignore',under='ignore'):
-            mask = np.where(np.sum(np.abs(coords_rot/r)**(2.0**exponent),axis=-1) < 1,True,False)
+            mask = np.where(np.sum(np.abs(coords_rot/r)**(2.0**exponent),axis=-1) <= 1.0,False,True)
 
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
@@ -590,7 +672,9 @@ class Geom:
         fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
         ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
 
-        return self.update(ms)
+        return self.duplicate(ms,
+                              comments=self.get_comments()+[f'geom.py:add_primitive v{version}'],
+                             )
 
 
     def mirror(self,directions,reflect=False):
@@ -622,8 +706,41 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
-        #ToDo: self.add_comments('geom.py:mirror v{}'.format(version)
-        return self.update(ms,rescale=True)
+        return self.duplicate(ms,
+                              comments=self.get_comments()+[f'geom.py:mirror {set(directions)} v{version}'],
+                              autosize=True)
+
+
+    def flip(self,directions):
+        """
+        Flip microstructure along given directions.
+
+        Parameters
+        ----------
+        directions : iterable containing str
+            Direction(s) along which the microstructure is flipped.
+            Valid entries are 'x', 'y', 'z'.
+
+        """
+        valid = {'x','y','z'}
+        if not all(isinstance(d, str) for d in directions):
+            raise TypeError('Directions are not of type str.')
+        elif not set(directions).issubset(valid):
+            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
+
+        limits = [None,None]
+        ms = self.get_microstructure()
+
+        if 'z' in directions:
+            ms = ms[:,:,limits[0]:limits[1]:-1]
+        if 'y' in directions:
+            ms = ms[:,limits[0]:limits[1]:-1,:]
+        if 'x' in directions:
+            ms = ms[limits[0]:limits[1]:-1,:,:]
+
+        return self.duplicate(ms,
+                              comments=self.get_comments()+[f'geom.py:flip {set(directions)} v{version}'],
+                             )
 
 
     def scale(self,grid):
@@ -636,17 +753,16 @@ class Geom:
             Number of grid points in x,y,z direction.
 
         """
-        #ToDo: self.add_comments('geom.py:scale v{}'.format(version)
-        return self.update(
-                           ndimage.interpolation.zoom(
-                                                      self.microstructure,
-                                                      grid/self.get_grid(),
-                                                      output=self.microstructure.dtype,
-                                                      order=0,
-                                                      mode='nearest',
-                                                      prefilter=False
-                                                     )
-                          )
+        return self.duplicate(ndimage.interpolation.zoom(
+                                                         self.microstructure,
+                                                         grid/self.get_grid(),
+                                                         output=self.microstructure.dtype,
+                                                         order=0,
+                                                         mode='nearest',
+                                                         prefilter=False
+                                                        ),
+                              comments=self.get_comments()+[f'geom.py:scale {grid} v{version}'],
+                             )
 
 
     def clean(self,stencil=3,mode='nearest',selection=None):
@@ -672,15 +788,15 @@ class Geom:
             else:
                 return me
 
-        #ToDo: self.add_comments('geom.py:clean v{}'.format(version)
-        return self.update(ndimage.filters.generic_filter(
-                                                          self.microstructure,
-                                                          mostFrequent,
-                                                          size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                          mode=mode,
-                                                          extra_keywords=dict(selection=selection),
-                                                         ).astype(self.microstructure.dtype)
-                          )
+        return self.duplicate(ndimage.filters.generic_filter(
+                                                             self.microstructure,
+                                                             mostFrequent,
+                                                             size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                             mode=mode,
+                                                             extra_keywords=dict(selection=selection),
+                                                            ).astype(self.microstructure.dtype),
+                              comments=self.get_comments()+[f'geom.py:clean {stencil} {mode} v{version}'],
+                             )
 
 
     def renumber(self):
@@ -689,8 +805,9 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
-        #ToDo: self.add_comments('geom.py:renumber v{}'.format(version)
-        return self.update(renumbered)
+        return self.duplicate(renumbered,
+                              comments=self.get_comments()+[f'geom.py:renumber v{version}'],
+                             )
 
 
     def rotate(self,R,fill=None):
@@ -724,8 +841,11 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        #ToDo: self.add_comments('geom.py:rotate v{}'.format(version)
-        return self.update(microstructure_in,origin=origin,rescale=True)
+        return self.duplicate(microstructure_in,
+                              origin=origin,
+                              comments=self.get_comments()+[f'geom.py:rotate {R.as_quaternion()} v{version}'],
+                              autosize=True,
+                             )
 
 
     def canvas(self,grid=None,offset=None,fill=None):
@@ -757,8 +877,11 @@ class Geom:
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        #ToDo: self.add_comments('geom.py:canvas v{}'.format(version)
-        return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
+        return self.duplicate(canvas,
+                              origin=self.origin+offset*self.size/self.grid,
+                              comments=self.get_comments()+[f'geom.py:canvas {grid} {offset} {fill} v{version}'],
+                              autosize=True,
+                             )
 
 
     def substitute(self,from_microstructure,to_microstructure):
@@ -777,8 +900,9 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
-        #ToDo: self.add_comments('geom.py:substitute v{}'.format(version)
-        return self.update(substituted)
+        return self.duplicate(substituted,
+                              comments=self.get_comments()+[f'geom.py:substitute v{version}'],
+                             )
 
 
     def vicinity_offset(self,vicinity=1,offset=None,trigger=[],periodic=True):
@@ -819,9 +943,10 @@ class Geom:
         mask = ndimage.filters.generic_filter(self.microstructure,
                                               tainted_neighborhood,
                                               size=1+2*vicinity,
-                                              mode=('wrap' if periodic else 'nearest'),
+                                              mode='wrap' if periodic else 'nearest',
                                               extra_keywords={'trigger':trigger})
         microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
-        #ToDo: self.add_comments('geom.py:vicinity_offset v{}'.format(version)
-        return self.update(microstructure)
+        return self.duplicate(microstructure,
+                              comments=self.get_comments()+[f'geom.py:vicinity_offset {vicinity} v{version}'],
+                             )
