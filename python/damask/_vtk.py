@@ -232,6 +232,33 @@ class VTK:
             raise TypeError
 
 
+    def get_comments(self):
+        """Return the comments."""
+        fielddata = self.geom.GetFieldData()
+        for a in range(fielddata.GetNumberOfArrays()):
+            if fielddata.GetArrayName(a) == 'comments':
+                comments = fielddata.GetAbstractArray(a)
+                return [comments.GetValue(i) for i in range(comments.GetNumberOfValues())]
+        return []
+
+
+    def set_comments(self,comments):
+        """
+        Add Comments.
+
+        Parameters
+        ----------
+        comments : str or list of str
+            Comments to add
+
+        """
+        s = vtk.vtkStringArray()
+        s.SetName('comments')
+        for c in [comments] if isinstance(comments,str) else comments:
+            s.InsertNextValue(c)
+        self.geom.GetFieldData().AddArray(s)
+
+
     def __repr__(self):
         """ASCII representation of the VTK data."""
         writer = vtk.vtkDataSetWriter()
@@ -240,7 +267,10 @@ class VTK:
         writer.SetInputData(self.geom)
         writer.Write()
         return writer.GetOutputString()
-
+        celldata = g.GetCellData()
+        for a in range(celldata.GetNumberOfArrays()):
+            if celldata.GetArrayName(a) == 'materialpoint':
+                materialpoint = vtk_to_np(celldata.GetArray(a))
 
     def show(self):
         """
