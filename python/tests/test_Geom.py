@@ -4,6 +4,7 @@ import time
 import pytest
 import numpy as np
 
+from damask import VTK
 from damask import Geom
 from damask import Rotation
 from damask import util
@@ -50,37 +51,47 @@ class TestGeom:
 
 
     def test_write_read_str(self,default,tmpdir):
-        default.to_file(str(tmpdir.join('default.geom')))
-        new = Geom.from_file(str(tmpdir.join('default.geom')))
+        default.to_file(str(tmpdir/'default.geom'))
+        new = Geom.from_file(str(tmpdir/'default.geom'))
         assert geom_equal(new,default)
 
     def test_write_read_file(self,default,tmpdir):
-        with open(tmpdir.join('default.geom'),'w') as f:
+        with open(tmpdir/'default.geom','w') as f:
             default.to_file(f)
-        with open(tmpdir.join('default.geom')) as f:
+        with open(tmpdir/'default.geom') as f:
             new = Geom.from_file(f)
         assert geom_equal(new,default)
 
     def test_write_show(self,default,tmpdir):
-        with open(tmpdir.join('str.geom'),'w') as f:
+        with open(tmpdir/'str.geom','w') as f:
             f.write(default.show())
-        with open(tmpdir.join('str.geom')) as f:
+        with open(tmpdir/'str.geom') as f:
             new = Geom.from_file(f)
         assert geom_equal(new,default)
 
     def test_read_write_vtk(self,default,tmpdir):
-        default.to_vtk(str(tmpdir.join('default')))
-        for _ in range(3):
-            if os.path.exists(tmpdir.join('default.vtr')): break
-            time.sleep(1)
-        new = Geom.from_vtk(str(tmpdir.join('default.vtr')))
+        default.to_vtk(tmpdir/'default')
+        for _ in range(10):
+            time.sleep(.2)
+            if os.path.exists(tmpdir/'default.vtr'): break
+
+        new = Geom.from_vtk(tmpdir/'default.vtr')
         assert geom_equal(new,default)
+
+    def test_invalid_vtk(self,tmpdir):
+        v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
+        v.write(tmpdir/'no_materialpoint.vtr')
+        for _ in range(10):
+            time.sleep(.2)
+            if os.path.exists(tmpdir/'no_materialpoint.vtr'): break
+        with pytest.raises(ValueError):
+            Geom.from_vtk(tmpdir/'no_materialpoint.vtr')
 
 
     @pytest.mark.parametrize('pack',[True,False])
     def test_pack(self,default,tmpdir,pack):
-        default.to_file(tmpdir.join('default.geom'),pack=pack)
-        new = Geom.from_file(tmpdir.join('default.geom'))
+        default.to_file(tmpdir/'default.geom',pack=pack)
+        new = Geom.from_file(tmpdir/'default.geom')
         assert geom_equal(new,default)
 
     def test_invalid_combination(self,default):

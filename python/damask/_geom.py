@@ -46,11 +46,11 @@ class Geom:
     def __repr__(self):
         """Basic information on geometry definition."""
         return util.srepr([
-               f'grid     a b c:      {util.srepr(self.get_grid  ()," x ")}',
-               f'size     x y z:      {util.srepr(self.get_size  ()," x ")}',
-               f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}',
-               f'# microstructures:   {self.N_microstructure}',
-               f'max microstructure:  {np.nanmax(self.microstructure)}',
+               f'grid     a b c:     {util.srepr(self.get_grid  ()," x ")}',
+               f'size     x y z:     {util.srepr(self.get_size  ()," x ")}',
+               f'origin   x y z:     {util.srepr(self.get_origin(),"   ")}',
+               f'# materialpoints:   {self.N_microstructure}',
+               f'max materialpoint:  {np.nanmax(self.microstructure)}',
               ])
 
 
@@ -364,10 +364,12 @@ class Geom:
 
         celldata = g.GetCellData()
         for a in range(celldata.GetNumberOfArrays()):
-            if celldata.GetArrayName(a) == 'microstructure':
-                microstructure = vtk_to_np(celldata.GetArray(a))
+            if celldata.GetArrayName(a) == 'materialpoint':
+                materialpoint = vtk_to_np(celldata.GetArray(a))
+                return Geom(materialpoint.reshape(grid,order='F'),size,bbox[0])
 
-        return Geom(microstructure.reshape(grid,order='F'),size,bbox[0])
+        raise ValueError(f'"materialpoint" array not found in {fname}')
+
 
 
     @staticmethod
@@ -522,7 +524,7 @@ class Geom:
 
         """
         v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
-        v.add(self.microstructure.flatten(order='F'),'microstructure')
+        v.add(self.microstructure.flatten(order='F'),'materialpoint')
 
         if fname:
             v.write(fname)
@@ -747,7 +749,7 @@ class Geom:
                          np.nanmax(self.microstructure)+1 if fill is None else fill,
                          dtype)
 
-        LL = np.clip( offset,          0,np.minimum(self.grid,     grid+offset))                       # noqa
+        LL = np.clip( offset,          0,np.minimum(self.grid,     grid+offset))
         UR = np.clip( offset+grid,     0,np.minimum(self.grid,     grid+offset))
         ll = np.clip(-offset,          0,np.minimum(     grid,self.grid-offset))
         ur = np.clip(-offset+self.grid,0,np.minimum(     grid,self.grid-offset))
