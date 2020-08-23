@@ -175,7 +175,7 @@ class Geom:
         if len(self.microstructure.shape) != 3:
             raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
         elif self.microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
-            raise TypeError(f'Invalid microstructue data type {microstructure.dtype}')
+            raise TypeError(f'Invalid microstructure data type {microstructure.dtype}')
 
 
     def set_size(self,size):
@@ -343,6 +343,34 @@ class Geom:
             microstructure = microstructure.astype('int')
 
         return Geom(microstructure.reshape(grid,order='F'),size,origin,homogenization,comments)
+
+
+    @staticmethod
+    def from_vtk(fname):
+        """
+        Read a geom from a VTK file.
+
+        Parameters
+        ----------
+        fname : str or file handle
+            Geometry file to read.
+
+        """
+        g = VTK.from_file(fname).geom
+        N_cells = g.GetNumberOfCells()
+        microstructure = np.zeros(N_cells)
+        grid = np.array(g.GetDimensions())-1
+        bbox = np.array(g.GetBounds()).reshape(3,2).T
+        size = bbox[1] - bbox[0]
+
+        celldata = g.GetCellData()
+        for a in range(celldata.GetNumberOfArrays()):
+            if celldata.GetArrayName(a) == 'microstructure':
+                array = celldata.GetArray(a)
+                for c in range(N_cells):
+                    microstructure[c] = array.GetValue(c)
+
+        return Geom(microstructure.reshape(grid,order='F'),size,bbox[0])
 
 
     @staticmethod
@@ -621,7 +649,7 @@ class Geom:
                           )
 
 
-    def clean(self,stencil=3):
+    def clean(self,stencil=3,mode='nearest',selection=None):
         """
         Smooth microstructure by selecting most frequent index within given stencil at each location.
 
@@ -629,17 +657,28 @@ class Geom:
         ----------
         stencil : int, optional
             Size of smoothing stencil.
+        mode : string, optional
+            The mode parameter determines how the input array is extended beyond its boundaries.
+            Default is 'nearest'. See scipy.ndimage.generic_filter for all options.
+        selection : list, optional
+            Field values that can be altered. Defaults to all.
 
         """
-        def mostFrequent(arr):
-            unique, inverse = np.unique(arr, return_inverse=True)
-            return unique[np.argmax(np.bincount(inverse))]
+        def mostFrequent(arr,selection=None):
+            me = arr[arr.size//2]
+            if selection is None or me in selection:
+                unique, inverse = np.unique(arr, return_inverse=True)
+                return unique[np.argmax(np.bincount(inverse))]
+            else:
+                return me
 
         #ToDo: self.add_comments('geom.py:clean v{}'.format(version)
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
-                                                          size=(stencil,)*3
+                                                          size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                          mode=mode,
+                                                          extra_keywords=dict(selection=selection),
                                                          ).astype(self.microstructure.dtype)
                           )
 
@@ -708,14 +747,15 @@ class Geom:
         dtype = float if int(fill) != fill or self.microstructure.dtype==np.float else int
 
         canvas = np.full(self.grid if grid is None else grid,
-                         fill if fill is not None else np.nanmax(self.microstructure)+1,dtype)
+                         np.nanmax(self.microstructure)+1 if fill is None else fill,
+                         dtype)
 
-        l = np.clip( offset,          0,np.minimum(self.grid  +offset,grid))                        # noqa
-        r = np.clip( offset+self.grid,0,np.minimum(self.grid*2+offset,grid))
-        L = np.clip(-offset,          0,np.minimum(grid       -offset,self.grid))
-        R = np.clip(-offset+grid,     0,np.minimum(grid*2     -offset,self.grid))
+        LL = np.clip( offset,          0,np.minimum(self.grid,     grid+offset))                       # noqa
+        UR = np.clip( offset+grid,     0,np.minimum(self.grid,     grid+offset))
+        ll = np.clip(-offset,          0,np.minimum(     grid,self.grid-offset))
+        ur = np.clip(-offset+self.grid,0,np.minimum(     grid,self.grid-offset))
 
-        canvas[l[0]:r[0],l[1]:r[1],l[2]:r[2]] = self.microstructure[L[0]:R[0],L[1]:R[1],L[2]:R[2]]
+        canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
         #ToDo: self.add_comments('geom.py:canvas v{}'.format(version)
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
