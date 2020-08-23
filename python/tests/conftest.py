@@ -1,11 +1,29 @@
 from pathlib import Path
+import datetime
+
 import numpy as np
-
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 
-# Use to monkeypatch damask.version (for comparsion to reference files that contain version information)
-def pytest_configure():
-    pytest.dummy_version = '99.99.99-9999-pytest'
+import damask
+
+
+patched_version = '99.99.99-9999-pytest'
+@pytest.fixture
+def patch_damask_version(monkeysession):
+    """Set damask.version for reproducible tests results."""
+    monkeysession.setattr(damask, 'version', patched_version)
+
+patched_date = datetime.datetime(2019, 11, 2, 11, 58, 0)
+@pytest.fixture
+def patch_datetime_now(monkeysession):
+    """Set datetime.datetime.now for reproducible tests results."""
+    class mydatetime:
+        @classmethod
+        def now(cls):
+            return patched_date
+
+    monkeysession.setattr(datetime, 'datetime', mydatetime)
 
 
 def pytest_addoption(parser):

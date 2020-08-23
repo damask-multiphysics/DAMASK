@@ -17,6 +17,10 @@ def reference_dir(reference_dir_base):
 
 class TestColormap:
 
+    @pytest.fixture(autouse=True)
+    def _patch_damask_version(self, patch_damask_version):
+        print('patched damask.version')
+
     def test_conversion(self):
 
         specials = np.array([[0.,0.,0.],
@@ -29,7 +33,6 @@ class TestColormap:
                              [1.,1.,1.]
                              ])
         rgbs = np.vstack((specials,np.random.rand(100,3)))
-        pass # class not integrated
         for rgb in rgbs:
             print('rgb',rgb)
 
@@ -150,8 +153,7 @@ class TestColormap:
                                            ('GOM','.legend'),
                                            ('Gmsh','.msh')
                                           ])
-    def test_compare_reference(self,format,ext,tmpdir,reference_dir,update,monkeypatch):
-        monkeypatch.setattr(damask, 'version', pytest.dummy_version)
+    def test_compare_reference(self,format,ext,tmpdir,reference_dir,update):
         name = 'binary'
         c = Colormap.from_predefined(name)
         if update:
