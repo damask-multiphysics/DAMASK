@@ -347,17 +347,18 @@ class Geom:
 
 
     @staticmethod
-    def from_vtk(fname):
+    def from_vtr(fname):
         """
-        Read a geom from a VTK file.
+        Read a VTK rectilinear grid.
 
         Parameters
         ----------
-        fname : str or file handle
+        fname : str or or pathlib.Path
             Geometry file to read.
+            Valid extension is .vtr, it will be appended if not given.
 
         """
-        g = VTK.from_file(fname).geom
+        g = VTK.from_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr').geom
         grid = np.array(g.GetDimensions())-1
         bbox = np.array(g.GetBounds()).reshape(3,2).T
         size = bbox[1] - bbox[0]
@@ -513,21 +514,22 @@ class Geom:
                 f.write(f'{reps} of {former}\n')
 
 
-    def to_vtk(self,fname=None):
+    def to_vtr(self,fname=None):
         """
-        Generates vtk file.
+        Generates vtk rectilinear grid.
 
         Parameters
         ----------
         fname : str, optional
-            Vtk file to write. If no file is given, a string is returned.
+            Filename to write. If no file is given, a string is returned.
+            Valid extension is .vtr, it will be appended if not given.
 
         """
         v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
         v.add(self.microstructure.flatten(order='F'),'materialpoint')
 
         if fname:
-            v.write(fname)
+            v.write(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
         else:
             sys.stdout.write(v.__repr__())
 
@@ -642,7 +644,7 @@ class Geom:
                                                       grid/self.get_grid(),
                                                       output=self.microstructure.dtype,
                                                       order=0,
-                                                       mode=('wrap' if periodic else 'nearest'),
+                                                      mode=('wrap' if periodic else 'nearest'),
                                                       prefilter=False
                                                      )
                           )

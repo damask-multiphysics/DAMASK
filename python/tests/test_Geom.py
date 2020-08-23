@@ -69,23 +69,23 @@ class TestGeom:
             new = Geom.from_file(f)
         assert geom_equal(new,default)
 
-    def test_read_write_vtk(self,default,tmpdir):
-        default.to_vtk(tmpdir/'default')
+    def test_read_write_vtr(self,default,tmpdir):
+        default.to_vtr(tmpdir/'default')
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'default.vtr'): break
 
-        new = Geom.from_vtk(tmpdir/'default.vtr')
+        new = Geom.from_vtr(tmpdir/'default.vtr')
         assert geom_equal(new,default)
 
-    def test_invalid_vtk(self,tmpdir):
+    def test_invalid_vtr(self,tmpdir):
         v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
         v.write(tmpdir/'no_materialpoint.vtr')
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'no_materialpoint.vtr'): break
         with pytest.raises(ValueError):
-            Geom.from_vtk(tmpdir/'no_materialpoint.vtr')
+            Geom.from_vtr(tmpdir/'no_materialpoint.vtr')
 
 
     @pytest.mark.parametrize('pack',[True,False])
@@ -136,13 +136,19 @@ class TestGeom:
         assert geom_equal(modified,Geom.from_file(reference))
 
     @pytest.mark.parametrize('stencil',[1,2,3,4])
-    def test_clean(self,default,update,reference_dir,stencil):
-        modified = default.copy()
-        modified.clean(stencil)
-        tag = f'stencil={stencil}'
-        reference = reference_dir/f'clean_{tag}.geom'
-        if update: modified.to_file(reference)
-        assert geom_equal(modified,Geom.from_file(reference))
+    @pytest.mark.parametrize('selection',[None,1])
+    @pytest.mark.parametrize('periodic',[True,False])
+    def test_clean(self,update,reference_dir,stencil,selection,periodic):
+        current = Geom.from_vtr((reference_dir/'clean').with_suffix('.vtr'))
+        current.clean(stencil,None if selection is None else [selection],periodic)
+        reference = reference_dir/f'clean_{stencil}_{selection}_{periodic}'
+        altered = stencil !=1 and selection is not None
+        if update and stencil !=1:
+            current.to_vtr(reference)
+            for _ in range(10):
+                time.sleep(.2)
+                if os.path.exists(reference.with_suffix('.vtr')): break
+        assert geom_equal(current,Geom.from_vtr(reference if stencil !=1 else reference_dir/'clean'))
 
     @pytest.mark.parametrize('grid',[
                                      (10,11,10),

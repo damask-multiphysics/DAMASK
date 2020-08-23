@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<VTKFile type="RectilinearGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <RectilinearGrid WholeExtent="0 20 0 18 0 8">
+  <Piece Extent="0 20 0 18 0 8">
+    <PointData>
+    </PointData>
+    <CellData>
+      <DataArray type="Int32" Name="materialpoint" format="binary" RangeMin="1" RangeMax="2">
+        AQAAAACAAAAALQAAOgAAAA==eF7t1CEOACAMBMHS/z8aXwNJSagYMe6y8jIislgNtTW9d9oD/PL6r6b3AAAAAAAAAAAA4MYGlRYLYA==
+      </DataArray>
+    </CellData>
+    <Coordinates>
+      <DataArray type="Float64" Name="x" format="binary" RangeMin="0" RangeMax="1">
+        AQAAAACAAACoAAAAVQAAAA==eF5jYICAWTNBYKU9hN5pb2IMAoeh/JP2EFUXoOKX7dPTQOAaVP6m/dkzIHAHqu4BVPwhVP1jqPwTqL5nUHUvoOpeQtW9hqp7A1X3Dqrugz0ASSZF3Q==
+      </DataArray>
+      <DataArray type="Float64" Name="y" format="binary" RangeMin="0" RangeMax="1">
+        AQAAAACAAACYAAAAVgAAAA==eF5jYIAAmeOFQLTGHkLvsQ8Fg6NQ/hn7IjDjIlT8qr1F32MgugGVv2MPMeUBVN1D+8cQBVD1T+3BymSeQ/W9sF8FBq+g+t/Yg4Ut3kHN+WAPAAVdQE4=
+      </DataArray>
+      <DataArray type="Float64" Name="z" format="binary" RangeMin="0" RangeMax="1">
+        AQAAAACAAABIAAAAIgAAAA==eF5jYEAGB+wh9AUofQNKP4DST6D0Cyj9Bkp/sAcAAU8I6Q==
+      </DataArray>
+    </Coordinates>
+  </Piece>
+  </RectilinearGrid>
+</VTKFile>
