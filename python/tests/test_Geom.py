@@ -135,14 +135,18 @@ class TestGeom:
         if update: modified.to_file(reference)
         assert geom_equal(modified,Geom.from_file(reference))
 
+    @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
+    def test_mirror_invalid(self,default,directions):
+        with pytest.raises(ValueError):
+            default.mirror(directions)
+
     @pytest.mark.parametrize('stencil',[1,2,3,4])
-    @pytest.mark.parametrize('selection',[None,1])
+    @pytest.mark.parametrize('selection',[None,1,2])
     @pytest.mark.parametrize('periodic',[True,False])
     def test_clean(self,update,reference_dir,stencil,selection,periodic):
         current = Geom.from_vtr((reference_dir/'clean').with_suffix('.vtr'))
         current.clean(stencil,None if selection is None else [selection],periodic)
         reference = reference_dir/f'clean_{stencil}_{selection}_{periodic}'
-        altered = stencil !=1 and selection is not None
         if update and stencil !=1:
             current.to_vtr(reference)
             for _ in range(10):

@@ -608,9 +608,7 @@ class Geom:
 
         """
         valid = {'x','y','z'}
-        if not all(isinstance(d, str) for d in directions):
-            raise TypeError('Directions are not of type str.')
-        elif not set(directions).issubset(valid):
+        if not set(directions).issubset(valid):
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
         limits = [None,None] if reflect else [-2,0]
