@@ -7,7 +7,6 @@ import pytest
 from PIL import Image
 from PIL import ImageChops
 
-import damask
 from damask import Colormap
 
 @pytest.fixture
@@ -22,7 +21,6 @@ class TestColormap:
         print('patched damask.version')
 
     def test_conversion(self):
-
         specials = np.array([[0.,0.,0.],
                              [1.,0.,0.],
                              [0.,1.,0.],
