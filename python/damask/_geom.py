@@ -621,11 +621,10 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
-        #ToDo: self.add_comments('geom.py:mirror v{}'.format(version)
         return self.update(ms,rescale=True)
 
 
-    def scale(self,grid):
+    def scale(self,grid,periodic=True):
         """
         Scale microstructure to new grid.
 
@@ -633,22 +632,23 @@ class Geom:
         ----------
         grid : numpy.ndarray of shape (3)
             Number of grid points in x,y,z direction.
+        periodic : Boolean, optional
+            Assume geometry to be periodic. Defaults to True.
 
         """
-        #ToDo: self.add_comments('geom.py:scale v{}'.format(version)
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
                                                       grid/self.get_grid(),
                                                       output=self.microstructure.dtype,
                                                       order=0,
-                                                      mode='nearest',
+                                                       mode=('wrap' if periodic else 'nearest'),
                                                       prefilter=False
                                                      )
                           )
 
 
-    def clean(self,stencil=3,mode='nearest',selection=None):
+    def clean(self,stencil=3,selection=None,periodic=True):
         """
         Smooth microstructure by selecting most frequent index within given stencil at each location.
 
@@ -656,11 +656,10 @@ class Geom:
         ----------
         stencil : int, optional
             Size of smoothing stencil.
-        mode : string, optional
-            The mode parameter determines how the input array is extended beyond its boundaries.
-            Default is 'nearest'. See scipy.ndimage.generic_filter for all options.
         selection : list, optional
             Field values that can be altered. Defaults to all.
+        periodic : Boolean, optional
+            Assume geometry to be periodic. Defaults to True.
 
         """
         def mostFrequent(arr,selection=None):
@@ -671,12 +670,11 @@ class Geom:
             else:
                 return me
 
-        #ToDo: self.add_comments('geom.py:clean v{}'.format(version)
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
                                                           size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                          mode=mode,
+                                                          mode=('wrap' if periodic else 'nearest'),
                                                           extra_keywords=dict(selection=selection),
                                                          ).astype(self.microstructure.dtype)
                           )
@@ -688,7 +686,6 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
-        #ToDo: self.add_comments('geom.py:renumber v{}'.format(version)
         return self.update(renumbered)
 
 
@@ -723,7 +720,6 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        #ToDo: self.add_comments('geom.py:rotate v{}'.format(version)
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -756,7 +752,6 @@ class Geom:
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        #ToDo: self.add_comments('geom.py:canvas v{}'.format(version)
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -776,7 +771,6 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
-        #ToDo: self.add_comments('geom.py:substitute v{}'.format(version)
         return self.update(substituted)
 
 
@@ -822,5 +816,4 @@ class Geom:
                                               extra_keywords={'trigger':trigger})
         microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
-        #ToDo: self.add_comments('geom.py:vicinity_offset v{}'.format(version)
         return self.update(microstructure)
