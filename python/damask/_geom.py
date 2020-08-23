@@ -358,7 +358,7 @@ class Geom:
         """
         g = VTK.from_file(fname).geom
         N_cells = g.GetNumberOfCells()
-        microstructure = np.zeros(N_cells)
+        microstructure = np.zeros(N_cells,'i')
         grid = np.array(g.GetDimensions())-1
         bbox = np.array(g.GetBounds()).reshape(3,2).T
         size = bbox[1] - bbox[0]

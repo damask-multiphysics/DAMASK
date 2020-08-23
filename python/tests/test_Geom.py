@@ -1,3 +1,6 @@
+import os
+import time
+
 import pytest
 import numpy as np
 
@@ -65,8 +68,14 @@ class TestGeom:
             new = Geom.from_file(f)
         assert geom_equal(new,default)
 
-    def test_export_vtk(self,default,tmpdir):
+    def test_read_write_vtk(self,default,tmpdir):
         default.to_vtk(str(tmpdir.join('default')))
+        for _ in range(3):
+            if os.path.exists(tmpdir.join('default.vtr')): break
+            time.sleep(1)
+        new = Geom.from_vtk(str(tmpdir.join('default.vtr')))
+        assert geom_equal(new,default)
+
 
     @pytest.mark.parametrize('pack',[True,False])
     def test_pack(self,default,tmpdir,pack):
