@@ -189,10 +189,7 @@ class Geom:
             physical size of the microstructure in meter.
 
         """
-        if size is None:
-            grid = np.asarray(self.microstructure.shape)
-            self.size = grid/np.max(grid)
-        else:
+        if size is not None:
             if len(size) != 3 or any(np.array(size) <= 0):
                 raise ValueError(f'Invalid size {size}')
             else:
