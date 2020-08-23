@@ -6,6 +6,7 @@ from functools import partial
 
 import numpy as np
 from scipy import ndimage,spatial
+from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
 from . import environment
 from . import Rotation
@@ -357,8 +358,6 @@ class Geom:
 
         """
         g = VTK.from_file(fname).geom
-        N_cells = g.GetNumberOfCells()
-        microstructure = np.zeros(N_cells,'i')
         grid = np.array(g.GetDimensions())-1
         bbox = np.array(g.GetBounds()).reshape(3,2).T
         size = bbox[1] - bbox[0]
@@ -366,9 +365,7 @@ class Geom:
         celldata = g.GetCellData()
         for a in range(celldata.GetNumberOfArrays()):
             if celldata.GetArrayName(a) == 'microstructure':
-                array = celldata.GetArray(a)
-                for c in range(N_cells):
-                    microstructure[c] = array.GetValue(c)
+                microstructure = vtk_to_np(celldata.GetArray(a))
 
         return Geom(microstructure.reshape(grid,order='F'),size,bbox[0])
 
