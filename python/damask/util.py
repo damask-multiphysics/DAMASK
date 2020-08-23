@@ -9,6 +9,8 @@ from optparse import Option
 
 import numpy as np
 
+import damask
+
 # limit visibility
 __all__=[
          'srepr',
@@ -20,6 +22,7 @@ __all__=[
          'scale_to_coprime',
          'return_message',
          'extendableOption',
+         'edit_info'
         ]
 
 ####################################################################################################
@@ -173,6 +176,11 @@ def scale_to_coprime(v):
         raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
 
     return m
+
+
+def edit_info(who):
+    now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
+    return f'{who} v{damask.version} ({now})'
 
 
 ####################################################################################################

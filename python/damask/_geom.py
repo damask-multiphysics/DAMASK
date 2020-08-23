@@ -1,7 +1,8 @@
 import sys
 import copy
-from io import StringIO
+import inspect
 import multiprocessing
+from io import StringIO
 from functools import partial
 
 import numpy as np
@@ -416,8 +417,8 @@ class Geom:
         else:
             microstructure = microstructure.reshape(grid)
 
-        #ToDo: comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
-        return Geom(microstructure+1,size,homogenization=1)
+        creator = util.edit_info('damask.Result.'+inspect.stack()[0][3])
+        return Geom(microstructure+1,size,homogenization=1,comments=creator)
 
 
     @staticmethod
@@ -441,8 +442,8 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
-        #ToDo: comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
-        return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
+        creator = util.edit_info('damask.Result.'+inspect.stack()[0][3])
+        return Geom(microstructure.reshape(grid)+1,size,homogenization=1,comments=creator)
 
 
     def to_file(self,fname,pack=None):
@@ -588,6 +589,7 @@ class Geom:
         fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
         ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(ms)
 
 
@@ -618,6 +620,7 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(ms,rescale=True)
 
 
@@ -633,6 +636,7 @@ class Geom:
             Assume geometry to be periodic. Defaults to True.
 
         """
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
@@ -667,6 +671,7 @@ class Geom:
             else:
                 return me
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
@@ -683,6 +688,7 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(renumbered)
 
 
@@ -717,6 +723,7 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -749,6 +756,7 @@ class Geom:
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -768,6 +776,7 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(substituted)
 
 
@@ -813,4 +822,5 @@ class Geom:
                                               extra_keywords={'trigger':trigger})
         microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
+        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
         return self.update(microstructure)
