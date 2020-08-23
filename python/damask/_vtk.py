@@ -267,10 +267,7 @@ class VTK:
         writer.SetInputData(self.geom)
         writer.Write()
         return writer.GetOutputString()
-        celldata = g.GetCellData()
-        for a in range(celldata.GetNumberOfArrays()):
-            if celldata.GetArrayName(a) == 'materialpoint':
-                materialpoint = vtk_to_np(celldata.GetArray(a))
+
 
     def show(self):
         """
