@@ -4,7 +4,7 @@ from itertools import permutations
 import pytest
 import numpy as np
 
-import damask
+from damask import Table
 from damask import Rotation
 from damask import Orientation
 from damask import Lattice
@@ -68,7 +68,7 @@ class TestOrientation:
                                       {'label':'blue', 'RGB':[0,0,1],'direction':[1,1,1]}])
     @pytest.mark.parametrize('lattice',['fcc','bcc'])
     def test_IPF_cubic(self,color,lattice):
-        cube = damask.Orientation(damask.Rotation(),lattice)
+        cube = Orientation(Rotation(),lattice)
         for direction in set(permutations(np.array(color['direction']))):
             assert np.allclose(cube.IPF_color(np.array(direction)),np.array(color['RGB']))
 
@@ -104,15 +104,15 @@ class TestOrientation:
         eu = np.array([o.rotation.as_Eulers(degrees=True) for o in ori.related(model)])
         if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
-            table = damask.Table(eu,{'Eulers':(3,)})
+            table = Table(eu,{'Eulers':(3,)})
             table.add('pos',coords)
             table.to_ASCII(reference)
-        assert np.allclose(eu,damask.Table.from_ASCII(reference).get('Eulers'))
+        assert np.allclose(eu,Table.from_ASCII(reference).get('Eulers'))
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)
     def test_disorientation360(self,lattice):
         R_1 = Orientation(Rotation(),lattice)
-        R_2 = Orientation(damask.Rotation.from_Eulers([360,0,0],degrees=True),lattice)
+        R_2 = Orientation(Rotation.from_Eulers([360,0,0],degrees=True),lattice)
         assert np.allclose(R_1.disorientation(R_2).as_matrix(),np.eye(3))
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)
@@ -127,6 +127,6 @@ class TestOrientation:
     def test_from_average(self,lattice):
         R_1 = Orientation(Rotation.from_random(),lattice)
         eqs = [r for r in R_1.equivalent]
-        R_2 = damask.Orientation.from_average(eqs)
+        R_2 = Orientation.from_average(eqs)
         assert np.allclose(R_1.rotation.quaternion,R_2.rotation.quaternion)
 

@@ -9,6 +9,8 @@ from optparse import Option
 
 import numpy as np
 
+from . import version
+
 # limit visibility
 __all__=[
          'srepr',
@@ -20,6 +22,7 @@ __all__=[
          'scale_to_coprime',
          'return_message',
          'extendableOption',
+         'execution_stamp'
         ]
 
 ####################################################################################################
@@ -173,6 +176,13 @@ def scale_to_coprime(v):
         raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
 
     return m
+
+
+def execution_stamp(class_name,function_name=None):
+    """Timestamp the execution of a (function within a) class."""
+    now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
+    _function_name = '' if function_name is None else f'.{function_name}'
+    return f'damask.{class_name}{_function_name} v{version} ({now})'
 
 
 ####################################################################################################

@@ -8,8 +8,9 @@ import pytest
 import numpy as np
 import h5py
 
-import damask
 from damask import Result
+from damask import Rotation
+from damask import Orientation
 from damask import mechanics
 from damask import grid_filters
 
@@ -174,7 +175,7 @@ class TestResult:
         crystal_structure = default.get_crystal_structure()
         in_memory = np.empty((qu.shape[0],3),np.uint8)
         for i,q in enumerate(qu):
-            o = damask.Orientation(q,crystal_structure).reduced
+            o = Orientation(q,crystal_structure).reduced
             in_memory[i] = np.uint8(o.IPF_color(np.array(d))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
@@ -233,7 +234,7 @@ class TestResult:
         default.add_pole('orientation',pole,polar)
         loc = {'orientation': default.get_dataset_location('orientation'),
                'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
-        rot = damask.Rotation(default.read_dataset(loc['orientation']).view(np.double))
+        rot = Rotation(default.read_dataset(loc['orientation']).view(np.double))
         rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
         xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
         in_memory = xy if not polar else \

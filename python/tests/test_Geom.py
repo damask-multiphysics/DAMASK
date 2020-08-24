@@ -1,6 +1,10 @@
+import os
+import time
+
 import pytest
 import numpy as np
 
+from damask import VTK
 from damask import Geom
 from damask import Rotation
 from damask import util
@@ -41,15 +45,6 @@ class TestGeom:
         print(modified)
         assert geom_equal(default,modified)
 
-    def test_update(self,default):
-        modified = default.copy()
-        modified.update(
-                        default.get_microstructure(),
-                        default.get_size(),
-                        default.get_origin()
-                       )
-        print(modified)
-        assert geom_equal(default,modified)
 
     @pytest.mark.parametrize('masked',[True,False])
     def test_set_microstructure(self,default,masked):
@@ -71,16 +66,34 @@ class TestGeom:
             new = Geom.from_file(f)
         assert geom_equal(default,new)
 
-    def test_write_show(self,default,tmpdir):
+    def test_write_as_ASCII(self,default,tmpdir):
         with open(tmpdir/'str.geom','w') as f:
-            f.write(default.show())
+            f.write(default.as_ASCII())
         with open(tmpdir/'str.geom') as f:
             new = Geom.from_file(f)
         assert geom_equal(default,new)
 
     def test_export_import_vtk(self,default,tmpdir):
-        default.to_vtk(tmpdir/'default')
-        assert geom_equal(default,Geom.from_vtk(tmpdir/'default.vtr'))
+        default.to_vtr(tmpdir/'default')
+        assert geom_equal(default,Geom.from_vtr(tmpdir/'default.vtr'))
+
+    def test_read_write_vtr(self,default,tmpdir):
+        default.to_vtr(tmpdir/'default')
+        for _ in range(10):
+            time.sleep(.2)
+            if os.path.exists(tmpdir/'default.vtr'): break
+
+        new = Geom.from_vtr(tmpdir/'default.vtr')
+        assert geom_equal(new,default)
+
+    def test_invalid_vtr(self,tmpdir):
+        v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
+        v.write(tmpdir/'no_materialpoint.vtr')
+        for _ in range(10):
+            time.sleep(.2)
+            if os.path.exists(tmpdir/'no_materialpoint.vtr'): break
+        with pytest.raises(ValueError):
+            Geom.from_vtr(tmpdir/'no_materialpoint.vtr')
 
 
     @pytest.mark.parametrize('pack',[True,False])
@@ -91,25 +104,25 @@ class TestGeom:
 
     def test_invalid_combination(self,default):
         with pytest.raises(ValueError):
-            default.update(default.microstructure[1:,1:,1:],size=np.ones(3), autosize=True)
+            default.duplicate(default.microstructure[1:,1:,1:],size=np.ones(3), autosize=True)
 
     def test_invalid_size(self,default):
         with pytest.raises(ValueError):
-            default.update(default.microstructure[1:,1:,1:],size=np.ones(2))
+            default.duplicate(default.microstructure[1:,1:,1:],size=np.ones(2))
 
     def test_invalid_origin(self,default):
         with pytest.raises(ValueError):
-            default.update(default.microstructure[1:,1:,1:],origin=np.ones(4))
+            default.duplicate(default.microstructure[1:,1:,1:],origin=np.ones(4))
 
     def test_invalid_microstructure_size(self,default):
         microstructure = np.ones((3,3))
         with pytest.raises(ValueError):
-            default.update(microstructure)
+            default.duplicate(microstructure)
 
     def test_invalid_microstructure_type(self,default):
         microstructure = np.random.randint(1,300,(3,4,5))==1
         with pytest.raises(TypeError):
-            default.update(microstructure)
+            default.duplicate(microstructure)
 
     def test_invalid_homogenization(self,default):
         with pytest.raises(TypeError):
@@ -145,14 +158,25 @@ class TestGeom:
         assert geom_equal(Geom.from_file(reference),
                           modified)
 
+    @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
+    def test_mirror_invalid(self,default,directions):
+        with pytest.raises(ValueError):
+            default.mirror(directions)
+
     @pytest.mark.parametrize('stencil',[1,2,3,4])
-    def test_clean(self,default,update,reference_dir,stencil):
-        modified = default.clean(stencil)
-        tag = f'stencil={stencil}'
-        reference = reference_dir/f'clean_{tag}.geom'
-        if update: modified.to_file(reference)
-        assert geom_equal(Geom.from_file(reference),
-                          modified)
+    @pytest.mark.parametrize('selection',[None,[1],[1,2,3]])
+    @pytest.mark.parametrize('periodic',[True,False])
+    def test_clean(self,default,update,reference_dir,stencil,selection,periodic):
+        current = default.clean(stencil,selection,periodic)
+        reference = reference_dir/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
+        if update and stencil > 1:
+            current.to_vtr(reference)
+            for _ in range(10):
+                time.sleep(.2)
+                if os.path.exists(reference.with_suffix('.vtr')): break
+        assert geom_equal(Geom.from_vtr(reference) if stencil > 1 else default,
+                          current
+                         )
 
     @pytest.mark.parametrize('grid',[
                                      (10,11,10),
