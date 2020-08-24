@@ -118,8 +118,14 @@ subroutine results_addIncrement(inc,time)
   call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
-  call results_closeGroup(results_addGroup('current/constituent'))
-  call results_closeGroup(results_addGroup('current/materialpoint'))
+  call results_closeGroup(results_addGroup('current/phase'))
+  call results_closeGroup(results_addGroup('current/homogenization'))
+
+  ! for backward compatibility
+  call results_setLink(trim('/inc'//trim(adjustl(incChar)))//'/phase',&
+                       trim('/inc'//trim(adjustl(incChar)))//'/constituent')
+  call results_setLink(trim('/inc'//trim(adjustl(incChar)))//'/homogenization',&
+                       trim('/inc'//trim(adjustl(incChar)))//'/materialpoint')
 
 end subroutine results_addIncrement
 
@@ -181,7 +187,6 @@ subroutine results_setLink(path,link)
   call HDF5_setLink(resultsFile,path,link)
 
 end subroutine results_setLink
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a string attribute to an object in the results file
