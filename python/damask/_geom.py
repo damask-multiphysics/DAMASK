@@ -7,7 +7,6 @@ from functools import partial
 
 import numpy as np
 from scipy import ndimage,spatial
-from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
 from . import environment
 from . import Rotation
@@ -271,16 +270,6 @@ class Geom:
         return self.comments[:]
 
 
-    def get_header(self):
-        """Return the full header (grid, size, origin, homogenization, comments)."""
-        header =  [f'{len(self.comments)+4} header'] + self.comments
-        header.append('grid   a {} b {} c {}'.format(*self.get_grid()))
-        header.append('size   x {} y {} z {}'.format(*self.get_size()))
-        header.append('origin x {} y {} z {}'.format(*self.get_origin()))
-        header.append(f'homogenization {self.get_homogenization()}')
-        return header
-
-
     @staticmethod
     def from_file(fname):
         """
@@ -356,19 +345,12 @@ class Geom:
             Valid extension is .vtr, it will be appended if not given.
 
         """
-        g = VTK.from_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr').geom
-        grid = np.array(g.GetDimensions())-1
-        bbox = np.array(g.GetBounds()).reshape(3,2).T
+        v = VTK.from_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+        grid = np.array(v.geom.GetDimensions())-1
+        bbox = np.array(v.geom.GetBounds()).reshape(3,2).T
         size = bbox[1] - bbox[0]
 
-        celldata = g.GetCellData()
-        for a in range(celldata.GetNumberOfArrays()):
-            if celldata.GetArrayName(a) == 'materialpoint':
-                materialpoint = vtk_to_np(celldata.GetArray(a))
-                return Geom(materialpoint.reshape(grid,order='F'),size,bbox[0])
-
-        raise ValueError(f'"materialpoint" array not found in {fname}')
-
+        return Geom(v.get('materialpoint').reshape(grid,order='F'),size,bbox[0])
 
 
     @staticmethod
@@ -417,7 +399,7 @@ class Geom:
         else:
             microstructure = microstructure.reshape(grid)
 
-        creator = util.edit_info('damask.Result.'+inspect.stack()[0][3])
+        creator = util.edit_info('damask.Geom.'+inspect.stack()[0][3])
         return Geom(microstructure+1,size,homogenization=1,comments=creator)
 
 
@@ -442,7 +424,7 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
-        creator = util.edit_info('damask.Result.'+inspect.stack()[0][3])
+        creator = util.edit_info('damask.Geom.'+inspect.stack()[0][3])
         return Geom(microstructure.reshape(grid)+1,size,homogenization=1,comments=creator)
 
 
@@ -458,8 +440,13 @@ class Geom:
             Compress geometry with 'x of y' and 'a to b'.
 
         """
-        header = self.get_header()
-        grid   = self.get_grid()
+        header =  [f'{len(self.comments)+4} header'] + self.comments
+        header.append('grid   a {} b {} c {}'.format(*self.get_grid()))
+        header.append('size   x {} y {} z {}'.format(*self.get_size()))
+        header.append('origin x {} y {} z {}'.format(*self.get_origin()))
+        header.append(f'homogenization {self.get_homogenization()}')
+
+        grid = self.get_grid()
 
         if pack is None:
             plain = grid.prod()/self.N_microstructure < 250
@@ -490,7 +477,7 @@ class Geom:
                     reps += 1
                 else:
                     if   compressType is None:
-                        f.write('\n'.join(self.get_header())+'\n')
+                        f.write('\n'.join(header)+'\n')
                     elif compressType == '.':
                         f.write(f'{former}\n')
                     elif compressType == 'to':
@@ -589,7 +576,7 @@ class Geom:
         fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
         ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(ms)
 
 
@@ -620,7 +607,7 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(ms,rescale=True)
 
 
@@ -636,7 +623,7 @@ class Geom:
             Assume geometry to be periodic. Defaults to True.
 
         """
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
@@ -671,7 +658,7 @@ class Geom:
             else:
                 return me
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
@@ -688,7 +675,7 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(renumbered)
 
 
@@ -723,7 +710,7 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -756,7 +743,7 @@ class Geom:
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -776,7 +763,7 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(substituted)
 
 
@@ -822,5 +809,5 @@ class Geom:
                                               extra_keywords={'trigger':trigger})
         microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
-        self.add_comments(util.edit_info('damask.Result.'+inspect.stack()[0][3]))
+        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
         return self.update(microstructure)
