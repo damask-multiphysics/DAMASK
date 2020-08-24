@@ -6,6 +6,7 @@ import numpy as np
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
 from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
+from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 
 import damask
 from . import Table
@@ -204,7 +205,18 @@ class VTK:
     # Check https://blog.kitware.com/ghost-and-blanking-visibility-changes/ for missing data
     # Needs support for pd.DataFrame and/or table
     def add(self,data,label=None):
-        """Add data to either cells or points."""
+        """
+        Add data to either cells or points.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            Data to add. First dimension need to match either
+            number of cells or number of points
+        label : str
+            Data label.
+
+        """
         N_points = self.geom.GetNumberOfPoints()
         N_cells  = self.geom.GetNumberOfCells()
 
@@ -232,6 +244,33 @@ class VTK:
             raise TypeError
 
 
+    def get(self,label):
+        """
+        Get either cell or point data.
+
+        Cell data takes precedence over point data, i.e. this
+        function assumes that labels are unique among cell and
+        point data.
+
+        Parameters
+        ----------
+        label : str
+            Data label.
+
+        """
+        celldata = self.geom.GetCellData()
+        for a in range(celldata.GetNumberOfArrays()):
+            if celldata.GetArrayName(a) == label:
+                return vtk_to_np(celldata.GetArray(a))
+
+        pointdata = self.geom.GetPointData()
+        for a in range(celldata.GetNumberOfArrays()):
+            if pointdata.GetArrayName(a) == label:
+                return vtk_to_np(pointdata.GetArray(a))
+
+        raise ValueError(f'array "{label}" not found')
+
+
     def get_comments(self):
         """Return the comments."""
         fielddata = self.geom.GetFieldData()
@@ -244,12 +283,12 @@ class VTK:
 
     def set_comments(self,comments):
         """
-        Add Comments.
+        Set Comments.
 
         Parameters
         ----------
         comments : str or list of str
-            Comments to add
+            Comments.
 
         """
         s = vtk.vtkStringArray()
@@ -257,6 +296,19 @@ class VTK:
         for c in [comments] if isinstance(comments,str) else comments:
             s.InsertNextValue(c)
         self.geom.GetFieldData().AddArray(s)
+
+
+    def add_comments(self,comments):
+        """
+        Add Comments.
+
+        Parameters
+        ----------
+        comments : str or list of str
+            Comments to add.
+
+        """
+        self.set_comments(self.get_comments + ([comments] if isinstance(comments,str) else comments))
 
 
     def __repr__(self):
