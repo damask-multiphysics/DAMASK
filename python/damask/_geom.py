@@ -45,12 +45,12 @@ class Geom:
     def __repr__(self):
         """Basic information on geometry definition."""
         return util.srepr([
-               f'grid     a b c:      {util.srepr(self.get_grid  ()," x ")}',
-               f'size     x y z:      {util.srepr(self.get_size  ()," x ")}',
-               f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}',
-               f'# microstructures:   {self.N_microstructure}',
-               f'max microstructure:  {np.nanmax(self.microstructure)}',
-              ]+self.get_comments())
+               f'grid     a b c:     {util.srepr(self.get_grid  ()," x ")}',
+               f'size     x y z:     {util.srepr(self.get_size  ()," x ")}',
+               f'origin   x y z:     {util.srepr(self.get_origin(),"   ")}',
+               f'# materialpoints:   {self.N_microstructure}',
+               f'max materialpoint:  {np.nanmax(self.microstructure)}',
+              ])
 
 
     def __copy__(self):
@@ -182,7 +182,7 @@ class Geom:
             else:
                 self.microstructure = np.copy(microstructure)
 
-        if         self.microstructure.dtype == float and \
+        if         self.microstructure.dtype in np.sctypes['float'] and \
             np.all(self.microstructure == self.microstructure.astype(int).astype(float)):
             self.microstructure = self.microstructure.astype(int)
 
@@ -640,9 +640,7 @@ class Geom:
 
         """
         valid = {'x','y','z'}
-        if not all(isinstance(d, str) for d in directions):
-            raise TypeError('Directions are not of type str.')
-        elif not set(directions).issubset(valid):
+        if not set(directions).issubset(valid):
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
         limits = [None,None]
