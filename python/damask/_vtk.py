@@ -284,7 +284,7 @@ class VTK:
 
     def set_comments(self,comments):
         """
-        Set Comments.
+        Set comments.
 
         Parameters
         ----------
@@ -301,7 +301,7 @@ class VTK:
 
     def add_comments(self,comments):
         """
-        Add Comments.
+        Add comments.
 
         Parameters
         ----------
@@ -309,7 +309,7 @@ class VTK:
             Comments to add.
 
         """
-        self.set_comments(self.get_comments + ([comments] if isinstance(comments,str) else comments))
+        self.set_comments(self.get_comments() + ([comments] if isinstance(comments,str) else comments))
 
 
     def __repr__(self):

@@ -359,11 +359,12 @@ class Geom:
 
         """
         v = VTK.from_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+        comments = v.get_comments()
         grid = np.array(v.geom.GetDimensions())-1
         bbox = np.array(v.geom.GetBounds()).reshape(3,2).T
         size = bbox[1] - bbox[0]
 
-        return Geom(v.get('materialpoint').reshape(grid,order='F'),size,bbox[0])
+        return Geom(v.get('materialpoint').reshape(grid,order='F'),size,bbox[0],comments=comments)
 
 
     @staticmethod
@@ -527,6 +528,7 @@ class Geom:
         """
         v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
         v.add(self.microstructure.flatten(order='F'),'materialpoint')
+        v.add_comments(self.comments)
 
         if fname:
             v.write(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
