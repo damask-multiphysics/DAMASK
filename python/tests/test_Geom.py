@@ -13,7 +13,8 @@ from damask import util
 def geom_equal(a,b):
     return np.all(a.get_microstructure() == b.get_microstructure()) and \
            np.all(a.get_grid()           == b.get_grid()) and \
-           np.allclose(a.get_size(), b.get_size())
+           np.allclose(a.get_size(), b.get_size()) and \
+           str(a.diff(b)) == str(b.diff(a))
 
 @pytest.fixture
 def default():
@@ -45,6 +46,13 @@ class TestGeom:
         print(modified)
         assert geom_equal(default,modified)
 
+    def test_diff_equal(self,default):
+        assert str(default.diff(default)) == ''
+
+    def test_diff_not_equal(self,default):
+        new = Geom(default.microstructure[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
+        assert str(default.diff(new)) != ''
+
 
     @pytest.mark.parametrize('masked',[True,False])
     def test_set_microstructure(self,default,masked):
@@ -55,8 +63,8 @@ class TestGeom:
 
 
     def test_write_read_str(self,default,tmpdir):
-        default.to_file(tmpdir/'default.geom')
-        new = Geom.from_file(tmpdir/'default.geom')
+        default.to_file(str(tmpdir/'default.geom'))
+        new = Geom.from_file(str(tmpdir/'default.geom'))
         assert geom_equal(default,new)
 
     def test_write_read_file(self,default,tmpdir):
@@ -139,6 +147,12 @@ class TestGeom:
         assert geom_equal(Geom.from_file(reference),
                           modified)
 
+    @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
+    def test_mirror_invalid(self,default,directions):
+        with pytest.raises(ValueError):
+            default.mirror(directions)
+
+
     @pytest.mark.parametrize('directions',[
                                            ['x'],
                                            ['x','y','z'],
@@ -155,9 +169,10 @@ class TestGeom:
                           modified)
 
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
-    def test_mirror_invalid(self,default,directions):
+    def test_flip_invalid(self,default,directions):
         with pytest.raises(ValueError):
-            default.mirror(directions)
+            default.flip(directions)
+
 
     @pytest.mark.parametrize('stencil',[1,2,3,4])
     @pytest.mark.parametrize('selection',[None,[1],[1,2,3]])

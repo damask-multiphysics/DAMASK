@@ -112,24 +112,24 @@ class Geom:
         """
         message = []
         if np.any(other.get_grid() != self.get_grid()):
-            message.append(util.delete(f'grid     a b c:      {util.srepr(other.get_grid()," x ")}'))
-            message.append(util.emph(  f'grid     a b c:      {util.srepr( self.get_grid()," x ")}'))
+            message.append(util.delete(f'grid     a b c:     {util.srepr(other.get_grid()," x ")}'))
+            message.append(util.emph(  f'grid     a b c:     {util.srepr( self.get_grid()," x ")}'))
 
         if np.any(other.get_size() != self.get_size()):
-            message.append(util.delete(f'size     x y z:      {util.srepr(other.get_size()," x ")}'))
-            message.append(util.emph(  f'size     x y z:      {util.srepr( self.get_size()," x ")}'))
+            message.append(util.delete(f'size     x y z:     {util.srepr(other.get_size()," x ")}'))
+            message.append(util.emph(  f'size     x y z:     {util.srepr( self.get_size()," x ")}'))
 
         if np.any(other.get_origin() != self.get_origin()):
-            message.append(util.delete(f'origin   x y z:      {util.srepr(other.get_origin(),"   ")}'))
-            message.append(util.emph(  f'origin   x y z:      {util.srepr( self.get_origin(),"   ")}'))
+            message.append(util.delete(f'origin   x y z:     {util.srepr(other.get_origin(),"   ")}'))
+            message.append(util.emph(  f'origin   x y z:     {util.srepr( self.get_origin(),"   ")}'))
 
         if other.N_microstructure != self.N_microstructure:
-            message.append(util.delete(f'# microstructures:   {other.N_microstructure}'))
-            message.append(util.emph(  f'# microstructures:   { self.N_microstructure}'))
+            message.append(util.delete(f'# materialpoints:   {other.N_microstructure}'))
+            message.append(util.emph(  f'# materialpoints:   { self.N_microstructure}'))
 
         if np.nanmax(other.microstructure) != np.nanmax(self.microstructure):
-            message.append(util.delete(f'max microstructure:  {np.nanmax(other.microstructure)}'))
-            message.append(util.emph(  f'max microstructure:  {np.nanmax( self.microstructure)}'))
+            message.append(util.delete(f'max materialpoint:  {np.nanmax(other.microstructure)}'))
+            message.append(util.emph(  f'max materialpoint:  {np.nanmax( self.microstructure)}'))
 
         return util.return_message(message)
 
