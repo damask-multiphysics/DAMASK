@@ -49,7 +49,7 @@ class Result:
                 self.version_major = f.attrs['DADF5-major']
                 self.version_minor = f.attrs['DADF5-minor']
 
-            if self.version_major != 0 or not 2 <= self.version_minor <= 6:
+            if self.version_major != 0 or not 2 <= self.version_minor <= 7:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
