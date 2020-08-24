@@ -73,10 +73,6 @@ class TestGeom:
             new = Geom.from_file(f)
         assert geom_equal(default,new)
 
-    def test_export_import_vtk(self,default,tmpdir):
-        default.to_vtr(tmpdir/'default')
-        assert geom_equal(default,Geom.from_vtr(tmpdir/'default.vtr'))
-
     def test_read_write_vtr(self,default,tmpdir):
         default.to_vtr(tmpdir/'default')
         for _ in range(10):
