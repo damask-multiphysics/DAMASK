@@ -25,6 +25,15 @@ def patch_datetime_now(monkeypatch):
 
     monkeypatch.setattr(datetime, 'datetime', mydatetime)
 
+@pytest.fixture
+def version_date(monkeypatch):
+    """Set damask.util.version_date for reproducible tests results."""
+    def version_date(class_name,function_name=None):
+        _function_name = '' if function_name is None else f'.{function_name}'
+        return f'damask.{class_name}{_function_name} v{patched_version} ({patched_date})'
+
+    monkeypatch.setattr(damask.util, 'version_date', version_date)
+
 
 def pytest_addoption(parser):
     parser.addoption("--update",

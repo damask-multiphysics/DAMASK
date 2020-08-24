@@ -1,6 +1,5 @@
 import sys
 import copy
-import inspect
 import multiprocessing
 from io import StringIO
 from functools import partial
@@ -399,7 +398,7 @@ class Geom:
         else:
             microstructure = microstructure.reshape(grid)
 
-        creator = util.edit_info('damask.Geom.'+inspect.stack()[0][3])
+        creator = util.version_date('Geom','from_Laguerre_tessellation')
         return Geom(microstructure+1,size,homogenization=1,comments=creator)
 
 
@@ -424,7 +423,7 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
-        creator = util.edit_info('damask.Geom.'+inspect.stack()[0][3])
+        creator = util.version_date('Geom','from_Voronoi_tessellation')
         return Geom(microstructure.reshape(grid)+1,size,homogenization=1,comments=creator)
 
 
@@ -576,7 +575,7 @@ class Geom:
         fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
         ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','add_primitive'))
         return self.update(ms)
 
 
@@ -607,7 +606,7 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','mirror'))
         return self.update(ms,rescale=True)
 
 
@@ -623,7 +622,7 @@ class Geom:
             Assume geometry to be periodic. Defaults to True.
 
         """
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','scale'))
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
@@ -658,7 +657,7 @@ class Geom:
             else:
                 return me
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','clean'))
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
@@ -675,7 +674,7 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','renumber'))
         return self.update(renumbered)
 
 
@@ -710,7 +709,7 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','rotate'))
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -743,7 +742,7 @@ class Geom:
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','canvas'))
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -763,7 +762,7 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','substitute'))
         return self.update(substituted)
 
 
@@ -809,5 +808,5 @@ class Geom:
                                               extra_keywords={'trigger':trigger})
         microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
-        self.add_comments(util.edit_info('damask.Geom.'+inspect.stack()[0][3]))
+        self.add_comments(util.version_date('Geom','vicinity_offset'))
         return self.update(microstructure)

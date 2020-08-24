@@ -4,6 +4,7 @@ from itertools import permutations
 import pytest
 import numpy as np
 
+from damask import Table
 from damask import Rotation
 from damask import Orientation
 from damask import Lattice
@@ -103,10 +104,10 @@ class TestOrientation:
         eu = np.array([o.rotation.as_Eulers(degrees=True) for o in ori.related(model)])
         if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
-            table = damask.Table(eu,{'Eulers':(3,)})
+            table = Table(eu,{'Eulers':(3,)})
             table.add('pos',coords)
             table.to_ASCII(reference)
-        assert np.allclose(eu,damask.Table.from_ASCII(reference).get('Eulers'))
+        assert np.allclose(eu,Table.from_ASCII(reference).get('Eulers'))
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)
     def test_disorientation360(self,lattice):
