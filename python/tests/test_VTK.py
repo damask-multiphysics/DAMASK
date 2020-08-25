@@ -100,22 +100,24 @@ class TestVTK:
         with pytest.raises(ValueError):
             default.get('does_not_exist')
 
-    @pytest.mark.parametrize('data,label',[(np.ones(3),'valid'),
-                                           (np.ones(3),None)])
-    def test_invalid_add(self,default,data,label):
+    def test_invalid_add_shape(self,default):
         with pytest.raises(ValueError):
-            default.add(np.ones(3),label)
+            default.add(np.ones(3),'valid')
+
+    def test_invalid_add_missing_label(self,default):
+        data = np.random.randint(9,size=np.prod(np.array(default.vtk_data.GetDimensions())-1))
+        with pytest.raises(ValueError):
+            default.add(data)
 
     def test_invalid_add_type(self,default):
         with pytest.raises(TypeError):
-            default.add('invalid_type','label')
+            default.add('invalid_type','valid')
 
     def test_comments(self,tmp_path,default):
         default.add_comments(['this is a comment'])
         default.write(tmp_path/'with_comments',parallel=False)
         new = VTK.from_file(tmp_path/'with_comments.vtr')
         assert new.get_comments() == ['this is a comment']
-
 
     def test_compare_reference_polyData(self,update,reference_dir,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()

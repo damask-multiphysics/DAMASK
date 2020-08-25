@@ -171,6 +171,10 @@ class TestGeom:
     def test_flip_invariant(self,default):
         assert geom_equal(default,default.flip([]))
 
+    @pytest.mark.parametrize('direction',[['x'],['x','y']])
+    def test_flip_double(self,default,direction):
+        assert geom_equal(default,default.flip(direction).flip(direction))
+
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
     def test_flip_invalid(self,default,directions):
         with pytest.raises(ValueError):
