@@ -769,16 +769,14 @@ class Geom:
         offset : numpy.ndarray of shape (3)
             Offset (measured in grid points) from old to new microstructure[0,0,0].
         fill : int or float, optional
-            Microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+            Microstructure index to fill the background. Defaults to microstructure.max() + 1.
 
         """
-        if fill is None: fill = np.nanmax(self.microstructure) + 1
         if offset is None: offset = 0
-        dtype = float if int(fill) != fill or self.microstructure.dtype==np.float else int
+        if fill is None: fill = np.nanmax(self.microstructure) + 1
+        dtype = float if int(fill) != fill or self.microstructure.dtype in np.sctypes['float'] else int
 
-        canvas = np.full(self.grid if grid is None else grid,
-                         np.nanmax(self.microstructure)+1 if fill is None else fill,
-                         dtype)
+        canvas = np.full(self.grid if grid is None else grid,fill,dtype)
 
         LL = np.clip( offset,          0,np.minimum(self.grid,     grid+offset))
         UR = np.clip( offset+grid,     0,np.minimum(self.grid,     grid+offset))
