@@ -608,10 +608,10 @@ class Geom:
             Direction(s) along which the microstructure is mirrored.
             Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
-            Reflect (include) outermost layers.
+            Reflect (include) outermost layers. Defaults to False.
 
         """
-        valid = {'x','y','z'}
+        valid = ['x','y','z']
         if not set(directions).issubset(valid):
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
@@ -641,19 +641,11 @@ class Geom:
             Valid entries are 'x', 'y', 'z'.
 
         """
-        valid = {'x','y','z'}
+        valid = ['x','y','z']
         if not set(directions).issubset(valid):
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
-        limits = [None,None]
-        ms = self.get_microstructure()
-
-        if 'z' in directions:
-            ms = ms[:,:,limits[0]:limits[1]:-1]
-        if 'y' in directions:
-            ms = ms[:,limits[0]:limits[1]:-1,:]
-        if 'x' in directions:
-            ms = ms[limits[0]:limits[1]:-1,:,:]
+        ms = np.flip(self.microstructure, (valid.index(d) for d in directions if d in valid))
 
         return self.duplicate(ms,
                               comments=self.get_comments()+[util.execution_stamp('Geom','flip')],
