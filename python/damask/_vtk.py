@@ -20,18 +20,19 @@ class VTK:
     High-level interface to VTK.
     """
 
-    def __init__(self,geom):
+    def __init__(self,vtk_data):
         """
-        Set geometry and topology.
+        Initialize from vtk dataset.
 
         Parameters
         ----------
-        geom : subclass of vtk.vtkDataSet
-            Description of geometry and topology. Valid types are vtk.vtkRectilinearGrid,
-            vtk.vtkUnstructuredGrid, or vtk.vtkPolyData.
+        vtk_data : subclass of vtk.vtkDataSet
+            Description of geometry and topology, optionally with attached data.
+            Valid types are vtk.vtkRectilinearGrid, vtk.vtkUnstructuredGrid,
+            or vtk.vtkPolyData.
 
         """
-        self.geom = geom
+        self.vtk_data = vtk_data
 
 
     @staticmethod
@@ -51,15 +52,15 @@ class VTK:
             Spatial origin.
 
         """
-        geom = vtk.vtkRectilinearGrid()
-        geom.SetDimensions(*(grid+1))
+        vtk_data = vtk.vtkRectilinearGrid()
+        vtk_data.SetDimensions(*(grid+1))
         coord = [np_to_vtk(np.linspace(origin[i],origin[i]+size[i],grid[i]+1),deep=True) for i in [0,1,2]]
         [coord[i].SetName(n) for i,n in enumerate(['x','y','z'])]
-        geom.SetXCoordinates(coord[0])
-        geom.SetYCoordinates(coord[1])
-        geom.SetZCoordinates(coord[2])
+        vtk_data.SetXCoordinates(coord[0])
+        vtk_data.SetYCoordinates(coord[1])
+        vtk_data.SetZCoordinates(coord[2])
 
-        return VTK(geom)
+        return VTK(vtk_data)
 
 
     @staticmethod
@@ -87,11 +88,11 @@ class VTK:
                             connectivity),axis=1).ravel()
         cells.SetCells(connectivity.shape[0],np_to_vtkIdTypeArray(T,deep=True))
 
-        geom = vtk.vtkUnstructuredGrid()
-        geom.SetPoints(vtk_nodes)
-        geom.SetCells(eval(f'vtk.VTK_{cell_type.split("_",1)[-1].upper()}'),cells)
+        vtk_data = vtk.vtkUnstructuredGrid()
+        vtk_data.SetPoints(vtk_nodes)
+        vtk_data.SetCells(eval(f'vtk.VTK_{cell_type.split("_",1)[-1].upper()}'),cells)
 
-        return VTK(geom)
+        return VTK(vtk_data)
 
 
     @staticmethod
@@ -110,10 +111,10 @@ class VTK:
         vtk_points = vtk.vtkPoints()
         vtk_points.SetData(np_to_vtk(points))
 
-        geom = vtk.vtkPolyData()
-        geom.SetPoints(vtk_points)
+        vtk_data = vtk.vtkPolyData()
+        vtk_data.SetPoints(vtk_points)
 
-        return VTK(geom)
+        return VTK(vtk_data)
 
 
     @staticmethod
@@ -138,13 +139,13 @@ class VTK:
                 raise TypeError('Dataset type for *.vtk file not given.')
             elif dataset_type.lower().endswith('rectilineargrid'):
                 reader.Update()
-                geom = reader.GetRectilinearGridOutput()
+                vtk_data = reader.GetRectilinearGridOutput()
             elif dataset_type.lower().endswith('unstructuredgrid'):
                 reader.Update()
-                geom = reader.GetUnstructuredGridOutput()
+                vtk_data = reader.GetUnstructuredGridOutput()
             elif dataset_type.lower().endswith('polydata'):
                 reader.Update()
-                geom = reader.GetPolyDataOutput()
+                vtk_data = reader.GetPolyDataOutput()
             else:
                 raise TypeError(f'Unknown dataset type {dataset_type} for vtk file')
         else:
@@ -159,9 +160,9 @@ class VTK:
 
             reader.SetFileName(str(fname))
             reader.Update()
-            geom = reader.GetOutput()
+            vtk_data = reader.GetOutput()
 
-        return VTK(geom)
+        return VTK(vtk_data)
 
     @staticmethod
     def _write(writer):
@@ -179,11 +180,11 @@ class VTK:
             Write data in parallel background process. Defaults to True.
 
         """
-        if   isinstance(self.geom,vtk.vtkRectilinearGrid):
+        if   isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
             writer = vtk.vtkXMLRectilinearGridWriter()
-        elif isinstance(self.geom,vtk.vtkUnstructuredGrid):
+        elif isinstance(self.vtk_data,vtk.vtkUnstructuredGrid):
             writer = vtk.vtkXMLUnstructuredGridWriter()
-        elif isinstance(self.geom,vtk.vtkPolyData):
+        elif isinstance(self.vtk_data,vtk.vtkPolyData):
             writer = vtk.vtkXMLPolyDataWriter()
 
         default_ext = writer.GetDefaultFileExtension()
@@ -193,7 +194,7 @@ class VTK:
         writer.SetFileName(str(Path(fname).with_suffix('.'+default_ext)))
         writer.SetCompressorTypeToZLib()
         writer.SetDataModeToBinary()
-        writer.SetInputData(self.geom)
+        writer.SetInputData(self.vtk_data)
 
         if parallel:
             try:
@@ -220,8 +221,8 @@ class VTK:
             Data label.
 
         """
-        N_points = self.geom.GetNumberOfPoints()
-        N_cells  = self.geom.GetNumberOfCells()
+        N_points = self.vtk_data.GetNumberOfPoints()
+        N_cells  = self.vtk_data.GetNumberOfCells()
 
         if   isinstance(data,np.ndarray):
             if label is None:
@@ -234,9 +235,9 @@ class VTK:
             d.SetName(label)
 
             if   data.shape[0] == N_cells:
-                self.geom.GetCellData().AddArray(d)
+                self.vtk_data.GetCellData().AddArray(d)
             elif data.shape[0] == N_points:
-                self.geom.GetPointData().AddArray(d)
+                self.vtk_data.GetPointData().AddArray(d)
             else:
                 raise ValueError(f'Invalid shape {data.shape[0]}')
         elif isinstance(data,pd.DataFrame):
@@ -261,12 +262,12 @@ class VTK:
             Data label.
 
         """
-        cell_data = self.geom.GetCellData()
+        cell_data = self.vtk_data.GetCellData()
         for a in range(cell_data.GetNumberOfArrays()):
             if cell_data.GetArrayName(a) == label:
                 return vtk_to_np(cell_data.GetArray(a))
 
-        point_data = self.geom.GetPointData()
+        point_data = self.vtk_data.GetPointData()
         for a in range(point_data.GetNumberOfArrays()):
             if point_data.GetArrayName(a) == label:
                 return vtk_to_np(point_data.GetArray(a))
@@ -276,7 +277,7 @@ class VTK:
 
     def get_comments(self):
         """Return the comments."""
-        fielddata = self.geom.GetFieldData()
+        fielddata = self.vtk_data.GetFieldData()
         for a in range(fielddata.GetNumberOfArrays()):
             if fielddata.GetArrayName(a) == 'comments':
                 comments = fielddata.GetAbstractArray(a)
@@ -298,7 +299,7 @@ class VTK:
         s.SetName('comments')
         for c in [comments] if isinstance(comments,str) else comments:
             s.InsertNextValue(c)
-        self.geom.GetFieldData().AddArray(s)
+        self.vtk_data.GetFieldData().AddArray(s)
 
 
     def add_comments(self,comments):
@@ -319,7 +320,7 @@ class VTK:
         writer = vtk.vtkDataSetWriter()
         writer.SetHeader(f'# {util.execution_stamp("VTK")}')
         writer.WriteToOutputStringOn()
-        writer.SetInputData(self.geom)
+        writer.SetInputData(self.vtk_data)
         writer.Write()
         return writer.GetOutputString()
 
@@ -331,7 +332,7 @@ class VTK:
         See http://compilatrix.com/article/vtk-1 for further ideas.
         """
         mapper = vtk.vtkDataSetMapper()
-        mapper.SetInputData(self.geom)
+        mapper.SetInputData(self.vtk_data)
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
 

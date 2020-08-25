@@ -360,8 +360,8 @@ class Geom:
         """
         v = VTK.from_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
         comments = v.get_comments()
-        grid = np.array(v.geom.GetDimensions())-1
-        bbox = np.array(v.geom.GetBounds()).reshape(3,2).T
+        grid = np.array(v.vtk_data.GetDimensions())-1
+        bbox = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
         size = bbox[1] - bbox[0]
 
         return Geom(v.get('materialpoint').reshape(grid,order='F'),size,bbox[0],comments=comments)
