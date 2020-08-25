@@ -9,6 +9,8 @@ from optparse import Option
 
 import numpy as np
 
+from . import version
+
 # limit visibility
 __all__=[
          'srepr',
@@ -20,6 +22,7 @@ __all__=[
          'scale_to_coprime',
          'return_message',
          'extendableOption',
+         'version_date'
         ]
 
 ####################################################################################################
@@ -173,6 +176,13 @@ def scale_to_coprime(v):
         raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
 
     return m
+
+
+def version_date(class_name,function_name=None):
+    """tbd."""
+    _function_name = '' if function_name is None else f'.{function_name}'
+    now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
+    return f'damask.{class_name}{_function_name} v{version} ({now})'
 
 
 ####################################################################################################

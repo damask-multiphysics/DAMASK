@@ -1,7 +1,7 @@
 import sys
 import copy
-from io import StringIO
 import multiprocessing
+from io import StringIO
 from functools import partial
 
 import numpy as np
@@ -45,11 +45,11 @@ class Geom:
     def __repr__(self):
         """Basic information on geometry definition."""
         return util.srepr([
-               f'grid     a b c:      {util.srepr(self.get_grid  ()," x ")}',
-               f'size     x y z:      {util.srepr(self.get_size  ()," x ")}',
-               f'origin   x y z:      {util.srepr(self.get_origin(),"   ")}',
-               f'# microstructures:   {self.N_microstructure}',
-               f'max microstructure:  {np.nanmax(self.microstructure)}',
+               f'grid     a b c:     {util.srepr(self.get_grid  ()," x ")}',
+               f'size     x y z:     {util.srepr(self.get_size  ()," x ")}',
+               f'origin   x y z:     {util.srepr(self.get_origin(),"   ")}',
+               f'# materialpoints:   {self.N_microstructure}',
+               f'max materialpoint:  {np.nanmax(self.microstructure)}',
               ])
 
 
@@ -188,10 +188,7 @@ class Geom:
             physical size of the microstructure in meter.
 
         """
-        if size is None:
-            grid = np.asarray(self.microstructure.shape)
-            self.size = grid/np.max(grid)
-        else:
+        if size is not None:
             if len(size) != 3 or any(np.array(size) <= 0):
                 raise ValueError(f'Invalid size {size}')
             else:
@@ -272,16 +269,6 @@ class Geom:
         return self.comments[:]
 
 
-    def get_header(self):
-        """Return the full header (grid, size, origin, homogenization, comments)."""
-        header =  [f'{len(self.comments)+4} header'] + self.comments
-        header.append('grid   a {} b {} c {}'.format(*self.get_grid()))
-        header.append('size   x {} y {} z {}'.format(*self.get_size()))
-        header.append('origin x {} y {} z {}'.format(*self.get_origin()))
-        header.append(f'homogenization {self.get_homogenization()}')
-        return header
-
-
     @staticmethod
     def from_file(fname):
         """
@@ -346,31 +333,23 @@ class Geom:
 
 
     @staticmethod
-    def from_vtk(fname):
+    def from_vtr(fname):
         """
-        Read a geom from a VTK file.
+        Read a VTK rectilinear grid.
 
         Parameters
         ----------
-        fname : str or file handle
+        fname : str or or pathlib.Path
             Geometry file to read.
+            Valid extension is .vtr, it will be appended if not given.
 
         """
-        g = VTK.from_file(fname).geom
-        N_cells = g.GetNumberOfCells()
-        microstructure = np.zeros(N_cells)
-        grid = np.array(g.GetDimensions())-1
-        bbox = np.array(g.GetBounds()).reshape(3,2).T
+        v = VTK.from_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+        grid = np.array(v.geom.GetDimensions())-1
+        bbox = np.array(v.geom.GetBounds()).reshape(3,2).T
         size = bbox[1] - bbox[0]
 
-        celldata = g.GetCellData()
-        for a in range(celldata.GetNumberOfArrays()):
-            if celldata.GetArrayName(a) == 'microstructure':
-                array = celldata.GetArray(a)
-                for c in range(N_cells):
-                    microstructure[c] = array.GetValue(c)
-
-        return Geom(microstructure.reshape(grid,order='F'),size,bbox[0])
+        return Geom(v.get('materialpoint').reshape(grid,order='F'),size,bbox[0])
 
 
     @staticmethod
@@ -419,8 +398,8 @@ class Geom:
         else:
             microstructure = microstructure.reshape(grid)
 
-        #ToDo: comments = 'geom.py:from_Laguerre_tessellation v{}'.format(version)
-        return Geom(microstructure+1,size,homogenization=1)
+        creator = util.version_date('Geom','from_Laguerre_tessellation')
+        return Geom(microstructure+1,size,homogenization=1,comments=creator)
 
 
     @staticmethod
@@ -444,8 +423,8 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,microstructure = KDTree.query(coords)
 
-        #ToDo: comments = 'geom.py:from_Voronoi_tessellation v{}'.format(version)
-        return Geom(microstructure.reshape(grid)+1,size,homogenization=1)
+        creator = util.version_date('Geom','from_Voronoi_tessellation')
+        return Geom(microstructure.reshape(grid)+1,size,homogenization=1,comments=creator)
 
 
     def to_file(self,fname,pack=None):
@@ -460,8 +439,13 @@ class Geom:
             Compress geometry with 'x of y' and 'a to b'.
 
         """
-        header = self.get_header()
-        grid   = self.get_grid()
+        header =  [f'{len(self.comments)+4} header'] + self.comments
+        header.append('grid   a {} b {} c {}'.format(*self.get_grid()))
+        header.append('size   x {} y {} z {}'.format(*self.get_size()))
+        header.append('origin x {} y {} z {}'.format(*self.get_origin()))
+        header.append(f'homogenization {self.get_homogenization()}')
+
+        grid = self.get_grid()
 
         if pack is None:
             plain = grid.prod()/self.N_microstructure < 250
@@ -492,7 +476,7 @@ class Geom:
                     reps += 1
                 else:
                     if   compressType is None:
-                        f.write('\n'.join(self.get_header())+'\n')
+                        f.write('\n'.join(header)+'\n')
                     elif compressType == '.':
                         f.write(f'{former}\n')
                     elif compressType == 'to':
@@ -514,21 +498,22 @@ class Geom:
                 f.write(f'{reps} of {former}\n')
 
 
-    def to_vtk(self,fname=None):
+    def to_vtr(self,fname=None):
         """
-        Generates vtk file.
+        Generates vtk rectilinear grid.
 
         Parameters
         ----------
         fname : str, optional
-            Vtk file to write. If no file is given, a string is returned.
+            Filename to write. If no file is given, a string is returned.
+            Valid extension is .vtr, it will be appended if not given.
 
         """
         v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
-        v.add(self.microstructure.flatten(order='F'),'microstructure')
+        v.add(self.microstructure.flatten(order='F'),'materialpoint')
 
         if fname:
-            v.write(fname)
+            v.write(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
         else:
             sys.stdout.write(v.__repr__())
 
@@ -590,6 +575,7 @@ class Geom:
         fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
         ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
 
+        self.add_comments(util.version_date('Geom','add_primitive'))
         return self.update(ms)
 
 
@@ -607,9 +593,7 @@ class Geom:
 
         """
         valid = {'x','y','z'}
-        if not all(isinstance(d, str) for d in directions):
-            raise TypeError('Directions are not of type str.')
-        elif not set(directions).issubset(valid):
+        if not set(directions).issubset(valid):
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
         limits = [None,None] if reflect else [-2,0]
@@ -622,11 +606,11 @@ class Geom:
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
-        #ToDo: self.add_comments('geom.py:mirror v{}'.format(version)
+        self.add_comments(util.version_date('Geom','mirror'))
         return self.update(ms,rescale=True)
 
 
-    def scale(self,grid):
+    def scale(self,grid,periodic=True):
         """
         Scale microstructure to new grid.
 
@@ -634,22 +618,24 @@ class Geom:
         ----------
         grid : numpy.ndarray of shape (3)
             Number of grid points in x,y,z direction.
+        periodic : Boolean, optional
+            Assume geometry to be periodic. Defaults to True.
 
         """
-        #ToDo: self.add_comments('geom.py:scale v{}'.format(version)
+        self.add_comments(util.version_date('Geom','scale'))
         return self.update(
                            ndimage.interpolation.zoom(
                                                       self.microstructure,
                                                       grid/self.get_grid(),
                                                       output=self.microstructure.dtype,
                                                       order=0,
-                                                      mode='nearest',
+                                                      mode=('wrap' if periodic else 'nearest'),
                                                       prefilter=False
                                                      )
                           )
 
 
-    def clean(self,stencil=3,mode='nearest',selection=None):
+    def clean(self,stencil=3,selection=None,periodic=True):
         """
         Smooth microstructure by selecting most frequent index within given stencil at each location.
 
@@ -657,11 +643,10 @@ class Geom:
         ----------
         stencil : int, optional
             Size of smoothing stencil.
-        mode : string, optional
-            The mode parameter determines how the input array is extended beyond its boundaries.
-            Default is 'nearest'. See scipy.ndimage.generic_filter for all options.
         selection : list, optional
             Field values that can be altered. Defaults to all.
+        periodic : Boolean, optional
+            Assume geometry to be periodic. Defaults to True.
 
         """
         def mostFrequent(arr,selection=None):
@@ -672,12 +657,12 @@ class Geom:
             else:
                 return me
 
-        #ToDo: self.add_comments('geom.py:clean v{}'.format(version)
+        self.add_comments(util.version_date('Geom','clean'))
         return self.update(ndimage.filters.generic_filter(
                                                           self.microstructure,
                                                           mostFrequent,
                                                           size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                          mode=mode,
+                                                          mode=('wrap' if periodic else 'nearest'),
                                                           extra_keywords=dict(selection=selection),
                                                          ).astype(self.microstructure.dtype)
                           )
@@ -689,7 +674,7 @@ class Geom:
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
-        #ToDo: self.add_comments('geom.py:renumber v{}'.format(version)
+        self.add_comments(util.version_date('Geom','renumber'))
         return self.update(renumbered)
 
 
@@ -724,7 +709,7 @@ class Geom:
 
         origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        #ToDo: self.add_comments('geom.py:rotate v{}'.format(version)
+        self.add_comments(util.version_date('Geom','rotate'))
         return self.update(microstructure_in,origin=origin,rescale=True)
 
 
@@ -750,14 +735,14 @@ class Geom:
                          np.nanmax(self.microstructure)+1 if fill is None else fill,
                          dtype)
 
-        LL = np.clip( offset,          0,np.minimum(self.grid,     grid+offset))                       # noqa
+        LL = np.clip( offset,          0,np.minimum(self.grid,     grid+offset))
         UR = np.clip( offset+grid,     0,np.minimum(self.grid,     grid+offset))
         ll = np.clip(-offset,          0,np.minimum(     grid,self.grid-offset))
         ur = np.clip(-offset+self.grid,0,np.minimum(     grid,self.grid-offset))
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        #ToDo: self.add_comments('geom.py:canvas v{}'.format(version)
+        self.add_comments(util.version_date('Geom','canvas'))
         return self.update(canvas,origin=self.origin+offset*self.size/self.grid,rescale=True)
 
 
@@ -777,7 +762,7 @@ class Geom:
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
-        #ToDo: self.add_comments('geom.py:substitute v{}'.format(version)
+        self.add_comments(util.version_date('Geom','substitute'))
         return self.update(substituted)
 
 
@@ -823,5 +808,5 @@ class Geom:
                                               extra_keywords={'trigger':trigger})
         microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
-        #ToDo: self.add_comments('geom.py:vicinity_offset v{}'.format(version)
+        self.add_comments(util.version_date('Geom','vicinity_offset'))
         return self.update(microstructure)
