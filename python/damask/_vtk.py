@@ -131,17 +131,19 @@ class VTK:
 
         """
         ext = Path(fname).suffix
-        if ext == '.vtk' or dataset_type:
+        if ext == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
             reader.SetFileName(str(fname))
-            reader.Update()
             if dataset_type is None:
                 raise TypeError('Dataset type for *.vtk file not given.')
             elif dataset_type.lower().endswith('rectilineargrid'):
+                reader.Update()
                 geom = reader.GetRectilinearGridOutput()
             elif dataset_type.lower().endswith('unstructuredgrid'):
+                reader.Update()
                 geom = reader.GetUnstructuredGridOutput()
             elif dataset_type.lower().endswith('polydata'):
+                reader.Update()
                 geom = reader.GetPolyDataOutput()
             else:
                 raise TypeError(f'Unknown dataset type {dataset_type} for vtk file')
@@ -259,15 +261,15 @@ class VTK:
             Data label.
 
         """
-        celldata = self.geom.GetCellData()
-        for a in range(celldata.GetNumberOfArrays()):
-            if celldata.GetArrayName(a) == label:
-                return vtk_to_np(celldata.GetArray(a))
+        cell_data = self.geom.GetCellData()
+        for a in range(cell_data.GetNumberOfArrays()):
+            if cell_data.GetArrayName(a) == label:
+                return vtk_to_np(cell_data.GetArray(a))
 
-        pointdata = self.geom.GetPointData()
-        for a in range(celldata.GetNumberOfArrays()):
-            if pointdata.GetArrayName(a) == label:
-                return vtk_to_np(pointdata.GetArray(a))
+        point_data = self.geom.GetPointData()
+        for a in range(point_data.GetNumberOfArrays()):
+            if point_data.GetArrayName(a) == label:
+                return vtk_to_np(point_data.GetArray(a))
 
         raise ValueError(f'array "{label}" not found')
 
