@@ -613,8 +613,8 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
 ! write the components of the compound type individually
   call h5pset_preserve_f(plist_id, .TRUE., ierr)
 
-  loc_id = results_openGroup('/mapping/cellResults')
-  call h5dcreate_f(loc_id, 'constituent', dtype_id, filespace_id, dset_id, ierr)
+  loc_id = results_openGroup('/mapping')
+  call h5dcreate_f(loc_id, 'phase', dtype_id, filespace_id, dset_id, ierr)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dcreate_f')
 
   call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
@@ -634,6 +634,9 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   call h5tclose_f(dtype_id, ierr)
   call h5tclose_f(name_id, ierr)
   call h5tclose_f(position_id, ierr)
+
+  ! for backward compatibility
+  call results_setLink('/mapping/phase','/mapping/cellResults/constituent')
 
 end subroutine results_mapping_constituent
 
@@ -748,8 +751,8 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
 ! write the components of the compound type individually
   call h5pset_preserve_f(plist_id, .TRUE., ierr)
 
-  loc_id = results_openGroup('/mapping/cellResults')
-  call h5dcreate_f(loc_id, 'materialpoint', dtype_id, filespace_id, dset_id, ierr)
+  loc_id = results_openGroup('/mapping')
+  call h5dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, ierr)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dcreate_f')
 
   call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
@@ -769,6 +772,9 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
   call h5tclose_f(dtype_id, ierr)
   call h5tclose_f(name_id, ierr)
   call h5tclose_f(position_id, ierr)
+
+  ! for backward compatibility
+  call results_setLink('/mapping/homogenization','/mapping/cellResults/materialpoint')
 
 end subroutine results_mapping_materialpoint
 
