@@ -164,16 +164,16 @@ class Symmetry:
         with np.errstate(invalid='ignore'):
             # using '*'/prod for 'and'
             if self.system == 'cubic':
-                return np.where(np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) * \
+                return np.where(np.prod(np.sqrt(2)-1. >= rho_abs,axis=-1) *
                                 (1. >= np.sum(rho_abs,axis=-1)),True,False)
             elif self.system == 'hexagonal':
-                return np.where(np.prod(1.             >= rho_abs,axis=-1) * \
-                                (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) * \
-                                (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) * \
+                return np.where(np.prod(1.             >= rho_abs,axis=-1) *
+                                (2. >= np.sqrt(3)*rho_abs[...,0] + rho_abs[...,1]) *
+                                (2. >= np.sqrt(3)*rho_abs[...,1] + rho_abs[...,0]) *
                                 (2. >= np.sqrt(3) + rho_abs[...,2]),True,False)
             elif self.system == 'tetragonal':
-                return np.where(np.prod(1.             >= rho_abs[...,:2],axis=-1) * \
-                                (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) * \
+                return np.where(np.prod(1.             >= rho_abs[...,:2],axis=-1) *
+                                (np.sqrt(2) >= rho_abs[...,0] + rho_abs[...,1]) *
                                 (np.sqrt(2) >= rho_abs[...,2] + 1.),True,False)
             elif self.system == 'orthorhombic':
                 return np.where(np.prod(1.             >= rho_abs,axis=-1),True,False)
