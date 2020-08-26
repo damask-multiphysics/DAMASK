@@ -321,6 +321,7 @@ class Lattice: # ToDo: Make a subclass of Symmetry!
     """
 
     lattices = {
+                'iso':      {'system':None},
                 'triclinic':{'system':None},
                 'bct':      {'system':'tetragonal'},
                 'hex':      {'system':'hexagonal'},
