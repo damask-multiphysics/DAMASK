@@ -1065,6 +1065,10 @@ class Result:
         lock = mp.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
+        if len(groups) == 0:
+            print('No matching dataset found, no data was added.')
+            return
+
         default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
 
         for result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
