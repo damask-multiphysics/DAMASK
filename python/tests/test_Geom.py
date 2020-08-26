@@ -69,7 +69,7 @@ class TestGeom:
 
     def test_write_read_file(self,default,tmpdir):
         with open(tmpdir/'default.geom','w') as f:
-            default.to_file(f)
+            default.to_file(f,pack=True)
         with open(tmpdir/'default.geom') as f:
             new = Geom.from_file(f)
         assert geom_equal(default,new)
@@ -83,12 +83,20 @@ class TestGeom:
 
     def test_read_write_vtr(self,default,tmpdir):
         default.to_vtr(tmpdir/'default')
+        print(default.to_vtr())
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'default.vtr'): break
 
         new = Geom.from_vtr(tmpdir/'default.vtr')
         assert geom_equal(new,default)
+
+    def test_invalid_geom(self,tmpdir):
+        with open('invalid_file','w') as f:
+            f.write('this is not a valid header')
+        with open('invalid_file','r') as f:
+            with pytest.raises(TypeError):
+                Geom.from_file(f)
 
     def test_invalid_vtr(self,tmpdir):
         v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
@@ -254,18 +262,38 @@ class TestGeom:
         modified = default.canvas(grid + grid_add)
         assert np.all(modified.microstructure[:grid[0],:grid[1],:grid[2]] == default.microstructure)
 
-    @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random(3)),
+    @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random()*8),
                                                 (np.random.randint(4,8,(3)),np.random.randint(9,12,(3)))])
     @pytest.mark.parametrize('diameter',[np.random.random(3)*.5,
-                                         np.random.randint(4,10,(3))])
-    def test_add_primitive(self,diameter,center1,center2):
+                                         np.random.randint(4,10,(3)),
+                                         np.random.rand(),
+                                         np.random.randint(30)])
+    @pytest.mark.parametrize('exponent',[np.random.random(3)*.5,
+                                         np.random.randint(4,10,(3)),
+                                         np.random.rand()*4,
+                                         np.random.randint(20)])
+    def test_add_primitive(self,center1,center2,diameter,exponent):
         """Same volume fraction for periodic microstructures and different center."""
         o = np.random.random(3)-.5
         g = np.random.randint(8,32,(3))
         s = np.random.random(3)+.5
-        G_1 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center1,1)
-        G_2 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center2,1)
+        G_1 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center1,exponent)
+        G_2 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center2,exponent)
         assert np.count_nonzero(G_1.microstructure!=2) == np.count_nonzero(G_2.microstructure!=2)
+
+    @pytest.mark.parametrize('center',[np.random.randint(4,10,(3)),
+                                       np.random.randint(2,10),
+                                       np.random.rand()*4,
+                                       np.random.rand(3)*10])
+    @pytest.mark.parametrize('inverse',[True,False])
+    @pytest.mark.parametrize('periodic',[True,False])
+    def test_add_primitive_rotation(self,center,inverse,periodic):
+        g = np.random.randint(8,32,(3))
+        s = np.random.random()+.5
+        fill = np.random.randint(10)+2
+        G_1 = Geom(np.ones(g,'i'),[s,s,s]).add_primitive(s*.3,center,1,fill,inverse=inverse,periodic=periodic)
+        G_2 = Geom(np.ones(g,'i'),[s,s,s]).add_primitive(s*.3,center,1,fill,Rotation.from_random(),inverse,periodic=periodic)
+        assert geom_equal(G_1,G_2)
 
     @pytest.mark.parametrize('trigger',[[1],[]])
     def test_vicinity_offset(self,trigger):
