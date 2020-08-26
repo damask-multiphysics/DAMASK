@@ -585,7 +585,7 @@ class Geom:
         coords_rot = R.broadcast_to(tuple(self.grid))@coords
 
         with np.errstate(over='ignore',under='ignore'):
-            mask = np.where(np.linalg.norm(coords_rot/r,2.0**exponent,axis=-1) <= 1.0,False,True)
+            mask = np.where(np.sum(np.power(coords_rot/r,2.0**exponent),axis=-1) <= 1.0,False,True)
 
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
