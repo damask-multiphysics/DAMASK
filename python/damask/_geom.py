@@ -513,7 +513,7 @@ class Geom:
         v.add(self.microstructure.flatten(order='F'),'materialpoint')
 
         if fname:
-            v.write(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+            v.to_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
         else:
             sys.stdout.write(v.__repr__())
 

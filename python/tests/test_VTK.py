@@ -21,7 +21,7 @@ class TestVTK:
         origin = np.random.random(3)
         v = VTK.from_rectilinearGrid(grid,size,origin)
         string = v.__repr__()
-        v.write(tmp_path/'rectilinearGrid',False)
+        v.to_file(tmp_path/'rectilinearGrid',False)
         vtr = VTK.from_file(tmp_path/'rectilinearGrid.vtr')
         with open(tmp_path/'rectilinearGrid.vtk','w') as f:
             f.write(string)
@@ -32,7 +32,7 @@ class TestVTK:
         points = np.random.rand(100,3)
         v = VTK.from_polyData(points)
         string = v.__repr__()
-        v.write(tmp_path/'polyData',False)
+        v.to_file(tmp_path/'polyData',False)
         vtp = VTK.from_file(tmp_path/'polyData.vtp')
         with open(tmp_path/'polyData.vtk','w') as f:
             f.write(string)
@@ -51,7 +51,7 @@ class TestVTK:
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructuredGrid(nodes,connectivity,cell_type)
         string = v.__repr__()
-        v.write(tmp_path/'unstructuredGrid',False)
+        v.to_file(tmp_path/'unstructuredGrid',False)
         vtu = VTK.from_file(tmp_path/'unstructuredGrid.vtu')
         with open(tmp_path/'unstructuredGrid.vtk','w') as f:
             f.write(string)
@@ -64,8 +64,8 @@ class TestVTK:
         v = VTK.from_polyData(points)
         fname_s = tmp_path/'single.vtp'
         fname_p = tmp_path/'parallel.vtp'
-        v.write(fname_s,False)
-        v.write(fname_p,True)
+        v.to_file(fname_s,False)
+        v.to_file(fname_p,True)
         for i in range(10):
             if os.path.isfile(fname_p) and filecmp.cmp(fname_s,fname_p):
                 assert(True)
@@ -105,4 +105,3 @@ class TestVTK:
         else:
              reference = VTK.from_file(reference_dir/'rectilinearGrid.vtr')
              assert rectilinearGrid.__repr__() == reference.__repr__()
-

@@ -1264,4 +1264,4 @@ class Result:
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            v.write(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')
+            v.to_file(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')
