@@ -13,7 +13,6 @@ program DAMASK_grid
   use DAMASK_interface
   use IO
   use config
-  use debug
   use math
   use CPFEM2
   use material
@@ -36,7 +35,7 @@ program DAMASK_grid
     N_t   = 0, &                                                                                    !< # of time indicators found in load case file
     N_n   = 0, &                                                                                    !< # of increment specifiers found in load case file
     N_def = 0                                                                                       !< # of rate of deformation specifiers found in load case file
-  character(len=pStringLen) :: &
+  character(len=:), allocatable :: &
     line
 
 !--------------------------------------------------------------------------------------------------

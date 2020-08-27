@@ -15,7 +15,7 @@ program DAMASK_mesh
   use math
   use CPFEM2
   use FEsolving
-  use numerics
+  use config
   use discretization_mesh
   use FEM_Utilities
   use mesh_mech_FEM
@@ -27,7 +27,7 @@ program DAMASK_mesh
   integer, allocatable, dimension(:) :: chunkPos                                                    ! this is longer than needed for geometry parsing
   integer :: &
     N_def = 0                                                                                       !< # of rate of deformation specifiers found in load case file
-  character(len=pStringLen) :: &
+  character(len=:), allocatable :: &
     line
 
 !--------------------------------------------------------------------------------------------------

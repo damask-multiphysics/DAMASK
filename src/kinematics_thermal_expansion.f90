@@ -24,43 +24,64 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_thermal_expansion_init
+module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
 
-  integer :: Ninstance,p,i
+  integer, intent(in)                  :: kinematics_length  
+  logical, dimension(:,:), allocatable :: myKinematics
+
+  integer :: Ninstance,p,i,k
   real(pReal), dimension(:), allocatable :: temp
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl, &
+    kinematics, &
+    kinematic_type 
+ 
+  write(6,'(/,a)') ' <<<+-  kinematics_thermal_expansion init  -+>>>'
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_thermal_expansion_LABEL//' init  -+>>>'
-
-  Ninstance = count(phase_kinematics == KINEMATICS_thermal_expansion_ID)
+  myKinematics = kinematics_active('thermal_expansion',kinematics_length)
+ 
+  Ninstance = count(myKinematics)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  if(Ninstance == 0) return
 
-  allocate(kinematics_thermal_expansion_instance(size(config_phase)), source=0)
+  phases => material_root%get('phase')
   allocate(param(Ninstance))
+  allocate(kinematics_thermal_expansion_instance(phases%length), source=0)
 
-  do p = 1, size(config_phase)
-    kinematics_thermal_expansion_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_thermal_expansion_ID)
-    if (all(phase_kinematics(:,p) /= KINEMATICS_thermal_expansion_ID)) cycle
+  do p = 1, phases%length
+    if(any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
+    phase => phases%get(p) 
+    pl => phase%get('plasticity')
+    if(count(myKinematics(:,p)) == 0) cycle
+    kinematics => phase%get('kinematics')
+    do k = 1, kinematics%length
+      if(myKinematics(k,p)) then
+        associate(prm  => param(kinematics_thermal_expansion_instance(p)))
+        kinematic_type => kinematics%get(k) 
 
-    associate(prm => param(kinematics_thermal_expansion_instance(p)), &
-              config => config_phase(p))
+        prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=0.0_pReal)
 
-    prm%T_ref = config%getFloat('reference_temperature', defaultVal=0.0_pReal)
+        ! read up to three parameters (constant, linear, quadratic with T)
+        temp = kinematic_type%get_asFloats('A_11')
+        prm%expansion(1,1,1:size(temp)) = temp
+        temp = kinematic_type%get_asFloats('A_22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
+        prm%expansion(2,2,1:size(temp)) = temp
+        temp = kinematic_type%get_asFloats('A_33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
+        prm%expansion(3,3,1:size(temp)) = temp
+        do i=1, size(prm%expansion,3)
+          prm%expansion(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%expansion(1:3,1:3,i),&
+                                                   phase%get_asString('lattice'))
+        enddo
 
-    ! read up to three parameters (constant, linear, quadratic with T)
-    temp = config%getFloats('thermal_expansion11')
-    prm%expansion(1,1,1:size(temp)) = temp
-    temp = config%getFloats('thermal_expansion22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-    prm%expansion(2,2,1:size(temp)) = temp
-    temp = config%getFloats('thermal_expansion33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-    prm%expansion(3,3,1:size(temp)) = temp
-    do i=1, size(prm%expansion,3)
-      prm%expansion(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%expansion(1:3,1:3,i),config%getString('lattice_structure'))
+        end associate
+      endif
     enddo
-
-    end associate
   enddo
 
-end subroutine kinematics_thermal_expansion_init
+
+end function kinematics_thermal_expansion_init
 
 
 !--------------------------------------------------------------------------------------------------

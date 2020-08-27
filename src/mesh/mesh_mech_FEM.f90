@@ -18,7 +18,8 @@ module mesh_mech_FEM
   use FEM_utilities
   use discretization_mesh
   use DAMASK_interface
-  use numerics
+  use config
+  use IO
   use FEM_quadrature
   use homogenization
   use math

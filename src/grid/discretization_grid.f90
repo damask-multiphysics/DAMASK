@@ -12,8 +12,7 @@ module discretization_grid
   use system_routines
   use DAMASK_interface
   use IO
-  use debug
-  use numerics
+  use config
   use results
   use discretization
   use geometry_plastic_nonlocal

@@ -452,11 +452,15 @@ contains
 subroutine lattice_init
 
   integer :: Nphases, p,i
-  character(len=pStringLen) :: structure = ''
-
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    elasticity
+ 
   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'; flush(6)
 
-  Nphases = size(config_phase)
+  phases => material_root%get('phase')
+  Nphases = phases%length
 
   allocate(lattice_structure(Nphases),source = lattice_UNDEFINED_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
@@ -469,21 +473,21 @@ subroutine lattice_init
            lattice_mu, lattice_nu,&
            source=[(0.0_pReal,i=1,Nphases)])
 
-  do p = 1, size(config_phase)
+  do p = 1, phases%length
+    phase => phases%get(p)
+    elasticity => phase%get('elasticity')
+    lattice_C66(1,1,p) = elasticity%get_asFloat('C_11')
+    lattice_C66(1,2,p) = elasticity%get_asFloat('C_12')
 
-    lattice_C66(1,1,p) = config_phase(p)%getFloat('c11')
-    lattice_C66(1,2,p) = config_phase(p)%getFloat('c12')
+    lattice_C66(1,3,p) = elasticity%get_asFloat('C_13',defaultVal=0.0_pReal)
+    lattice_C66(2,2,p) = elasticity%get_asFloat('C_22',defaultVal=0.0_pReal)
+    lattice_C66(2,3,p) = elasticity%get_asFloat('C_23',defaultVal=0.0_pReal)
+    lattice_C66(3,3,p) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
+    lattice_C66(4,4,p) = elasticity%get_asFloat('C_44',defaultVal=0.0_pReal)
+    lattice_C66(5,5,p) = elasticity%get_asFloat('C_55',defaultVal=0.0_pReal)
+    lattice_C66(6,6,p) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
 
-    lattice_C66(1,3,p) = config_phase(p)%getFloat('c13',defaultVal=0.0_pReal)
-    lattice_C66(2,2,p) = config_phase(p)%getFloat('c22',defaultVal=0.0_pReal)
-    lattice_C66(2,3,p) = config_phase(p)%getFloat('c23',defaultVal=0.0_pReal)
-    lattice_C66(3,3,p) = config_phase(p)%getFloat('c33',defaultVal=0.0_pReal)
-    lattice_C66(4,4,p) = config_phase(p)%getFloat('c44',defaultVal=0.0_pReal)
-    lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
-    lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
-
-    structure = config_phase(p)%getString('lattice_structure')
-    select case(trim(structure))
+    select case(phase%get_asString('lattice'))
       case('iso')
         lattice_structure(p) = lattice_ISO_ID
       case('fcc')
@@ -497,10 +501,10 @@ subroutine lattice_init
       case('ort')
         lattice_structure(p) = lattice_ORT_ID
       case default
-        call IO_error(130,ext_msg='lattice_init: '//trim(structure))
+        call IO_error(130,ext_msg='lattice_init: '//phase%get_asString('lattice'))
     end select
 
-    lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),structure)
+    lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),phase%get_asString('lattice'))
 
     lattice_mu(p) = equivalent_mu(lattice_C66(1:6,1:6,p),'voigt')
     lattice_nu(p) = equivalent_nu(lattice_C66(1:6,1:6,p),'voigt')
@@ -513,20 +517,22 @@ subroutine lattice_init
 
 
     ! SHOULD NOT BE PART OF LATTICE BEGIN
-    lattice_thermalConductivity(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_thermalConductivity(1:3,1:3,p),structure)
+    lattice_thermalConductivity(1,1,p) = phase%get_asFloat('K_11',defaultVal=0.0_pReal)
+    lattice_thermalConductivity(2,2,p) = phase%get_asFloat('K_22',defaultVal=0.0_pReal)
+    lattice_thermalConductivity(3,3,p) = phase%get_asFloat('K_33',defaultVal=0.0_pReal)
+    lattice_thermalConductivity(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_thermalConductivity(1:3,1:3,p), &
+                                                                                 phase%get_asString('lattice'))
 
-    lattice_specificHeat(p) = config_phase(p)%getFloat('specific_heat',defaultVal=0.0_pReal)
-    lattice_massDensity(p)  = config_phase(p)%getFloat('mass_density', defaultVal=0.0_pReal)
+    lattice_specificHeat(p) = phase%get_asFloat('c_p',defaultVal=0.0_pReal)
+    lattice_massDensity(p)  = phase%get_asFloat('rho', defaultVal=0.0_pReal)
 
-    lattice_DamageDiffusion(1,1,p) = config_phase(p)%getFloat('damage_diffusion11',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(2,2,p) = config_phase(p)%getFloat('damage_diffusion22',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(3,3,p) = config_phase(p)%getFloat('damage_diffusion33',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_DamageDiffusion(1:3,1:3,p),structure)
+    lattice_DamageDiffusion(1,1,p) = phase%get_asFloat('D_11',defaultVal=0.0_pReal)
+    lattice_DamageDiffusion(2,2,p) = phase%get_asFloat('D_22',defaultVal=0.0_pReal)
+    lattice_DamageDiffusion(3,3,p) = phase%get_asFloat('D_33',defaultVal=0.0_pReal)
+    lattice_DamageDiffusion(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_DamageDiffusion(1:3,1:3,p), &
+                                                                     phase%get_asString('lattice'))
 
-    lattice_DamageMobility(p) = config_phase(p)%getFloat('damage_mobility',defaultVal=0.0_pReal)
+    lattice_DamageMobility(p) = phase%get_asFloat('M',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
 
     call selfTest

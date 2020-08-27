@@ -14,8 +14,7 @@ module FEM_utilities
   use prec
   use FEsolving
   use homogenization
-  use numerics
-  use debug
+  use config
   use math
   use discretization_mesh
 

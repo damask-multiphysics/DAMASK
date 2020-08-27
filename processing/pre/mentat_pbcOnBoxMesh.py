@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 no BOM -*-
 
-import sys,os,re,time,tempfile
-import numpy as np
+import sys
+import os
+import re
+import time
+import tempfile
 from optparse import OptionParser
+
+import numpy as np
+
 import damask
 
 sys.path.append(str(damask.solver.Marc().library_path))

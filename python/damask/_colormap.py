@@ -8,8 +8,9 @@ if os.name == 'posix' and 'DISPLAY' not in os.environ:
     mpl.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from PIL import Image
 
-import damask
+from . import util
 from . import Table
 
 _eps   = 216./24389.
@@ -50,7 +51,7 @@ class Colormap(mpl.colors.ListedColormap):
             Color definition for minimum value.
         high : numpy.ndarray of shape (3)
             Color definition for maximum value.
-        N : integer, optional
+        N : int, optional
             The number of color quantization levels. Defaults to 256.
         name : str, optional
             The name of the colormap. Defaults to `DAMASK colormap`.
@@ -161,6 +162,47 @@ class Colormap(mpl.colors.ListedColormap):
             print('  '+', '.join(cat[1]))
 
 
+    def shade(self,field,bounds=None,gap=None):
+        """
+        Generate PIL image of 2D field using colormap.
+
+        Parameters
+        ----------
+        field : numpy.array of shape(:,:)
+            Data to be shaded.
+        bounds : iterable of len(2), optional
+            Colormap value range (low,high).
+        gap : field.dtype, optional
+            Transparent value. NaN will always be rendered transparent.
+
+        Returns
+        -------
+        PIL.Image
+            RGBA image of shaded data.
+
+        """
+        N = len(self.colors)
+        mask = np.logical_not(np.isnan(field) if gap is None else \
+               np.logical_or (np.isnan(field), field == gap))                                       # mask NaN (and gap if present)
+
+        lo,hi = (field[mask].min(),field[mask].max()) if bounds is None else \
+                (min(bounds[:2]),max(bounds[:2]))
+
+        delta,avg = hi-lo,0.5*(hi+lo)
+
+        if delta * 1e8 <= avg:                                                                      # delta is similar to numerical noise
+            hi,lo = hi+0.5*avg,lo-0.5*avg                                                           # extend range to have actual data centered within
+
+        return Image.fromarray(
+            (np.dstack((
+                        self.colors[(np.round(np.clip((field-lo)/(hi-lo),0.0,1.0)*(N-1))).astype(np.uint16),:3],
+                        mask.astype(float)
+                       )
+                      )*255
+            ).astype(np.uint8),
+            mode='RGBA')
+
+
     def show(self,aspect=10,vertical=False):
         """Show colormap as matplotlib figure."""
         fig = plt.figure(figsize=(5/aspect,5) if vertical else (5,5/aspect))
@@ -238,7 +280,7 @@ class Colormap(mpl.colors.ListedColormap):
             colors+=[i]+c
 
         out = [{
-                'Creator':f'damask.Colormap v{damask.version}',
+                'Creator':util.version_date('Colormap'),
                 'ColorSpace':'RGB',
                 'Name':colormap.name,
                 'DefaultMap':True,
@@ -254,7 +296,7 @@ class Colormap(mpl.colors.ListedColormap):
     def _export_ASCII(colormap,fhandle=None):
         """Write colormap to ASCII table."""
         labels = {'RGBA':4} if colormap.colors.shape[1] == 4 else {'RGB': 3}
-        t = Table(colormap.colors,labels,f'Creator: damask.Colormap v{damask.version}')
+        t = Table(colormap.colors,labels,f'Creator: {util.version_date("Colormap")}')
 
         if fhandle is None:
             with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:

@@ -3,7 +3,6 @@ import re
 import pandas as pd
 import numpy as np
 
-from . import version
 from . import util
 
 class Table:
@@ -49,7 +48,9 @@ class Table:
 
     def _add_comment(self,label,shape,info):
         if info is not None:
-            self.comments.append(f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}')
+            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
+            general  = util.version_date('Table')
+            self.comments.append(f'{specific} / {general}')
 
 
     @staticmethod
@@ -135,7 +136,7 @@ class Table:
 
         content = f.readlines()
 
-        comments = [f'table.py:from_ang v{version}']
+        comments = [util.version_date('Table','from_ang')]
         for line in content:
             if line.startswith('#'):
                 comments.append(line.strip())

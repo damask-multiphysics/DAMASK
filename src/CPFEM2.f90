@@ -5,8 +5,6 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM2
   use prec
-  use numerics
-  use debug
   use config
   use FEsolving
   use math
@@ -47,8 +45,6 @@ subroutine CPFEM_initAll
 #ifdef Mesh
   call FEM_quadrature_init
 #endif
-  call numerics_init
-  call debug_init
   call config_init
   call math_init
   call rotations_init
@@ -67,6 +63,7 @@ subroutine CPFEM_initAll
   call crystallite_init
   call homogenization_init
   call CPFEM_init
+  call config_deallocate
 
 end subroutine CPFEM_initAll
 

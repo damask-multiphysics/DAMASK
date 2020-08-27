@@ -18,9 +18,9 @@ subroutine damage_none_init
 
   integer :: h,NofMyHomog
 
-  write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_NONE_LABEL//' init  -+>>>'; flush(6)
+  write(6,'(/,a)') ' <<<+-  damage_none init  -+>>>'; flush(6)
 
-  do h = 1, size(config_homogenization)
+  do h = 1, material_Nhomogenization
     if (damage_type(h) /= DAMAGE_NONE_ID) cycle
 
     NofMyHomog = count(material_homogenizationAt == h)

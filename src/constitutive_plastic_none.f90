@@ -12,26 +12,40 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_none_init
+module function plastic_none_init()  result(myPlasticity)
 
+  logical, dimension(:), allocatable :: myPlasticity
   integer :: &
     Ninstance, &
     p, &
     NipcMyPhase
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl
 
-  write(6,'(/,a)') ' <<<+-  plastic_'//PLASTICITY_NONE_LABEL//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  plastic_none init  -+>>>'
 
-  Ninstance = count(phase_plasticity == PLASTICITY_NONE_ID)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
-
-  do p = 1, size(phase_plasticity)
-    if (phase_plasticity(p) /= PLASTICITY_NONE_ID) cycle
-
-    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
-    call material_allocateState(plasticState(p),NipcMyPhase,0,0,0)
-
+  phases => material_root%get('phase')
+  allocate(myPlasticity(phases%length), source = .false. )
+  do p = 1, phases%length
+    phase => phases%get(p)
+    pl => phase%get('plasticity')
+    if(pl%get_asString('type') == 'none') myPlasticity(p) = .true.
   enddo
 
-end subroutine plastic_none_init
+  Ninstance = count(myPlasticity)  
+  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  if(Ninstance == 0) return
+  
+  do p = 1, phases%length
+    phase => phases%get(p)
+    if(.not. myPlasticity(p)) cycle
+    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
+    call constitutive_allocateState(plasticState(p),NipcMyPhase,0,0,0)
+  enddo
+
+end function plastic_none_init
+
 
 end submodule plastic_none

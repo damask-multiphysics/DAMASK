@@ -4,8 +4,9 @@ import time
 
 import numpy as np
 import pytest
+from PIL import Image
+from PIL import ImageChops
 
-import damask
 from damask import Colormap
 
 @pytest.fixture
@@ -15,8 +16,11 @@ def reference_dir(reference_dir_base):
 
 class TestColormap:
 
-    def test_conversion(self):
+    @pytest.fixture(autouse=True)
+    def _version_date(self, version_date):
+        print('patched damask.util.version_date')
 
+    def test_conversion(self):
         specials = np.array([[0.,0.,0.],
                              [1.,0.,0.],
                              [0.,1.,0.],
@@ -27,7 +31,6 @@ class TestColormap:
                              [1.,1.,1.]
                              ])
         rgbs = np.vstack((specials,np.random.rand(100,3)))
-        pass # class not integrated
         for rgb in rgbs:
             print('rgb',rgb)
 
@@ -129,6 +132,17 @@ class TestColormap:
         c += c
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
 
+    @pytest.mark.parametrize('bounds',[None,[2,10]])
+    def test_shade(self,reference_dir,update,bounds):
+        data = np.add(*np.indices((10, 11)))
+        img_current = Colormap.from_predefined('orientation').shade(data,bounds=bounds)
+        if update:
+            img_current.save(reference_dir/f'shade_{bounds}.png')
+        else:
+            img_reference = Image.open(reference_dir/f'shade_{bounds}.png')
+            diff = ImageChops.difference(img_reference.convert('RGB'),img_current.convert('RGB'))
+            assert not diff.getbbox()
+
     def test_list(self):
         Colormap.list_predefined()
 
@@ -137,8 +151,7 @@ class TestColormap:
                                            ('GOM','.legend'),
                                            ('Gmsh','.msh')
                                           ])
-    def test_compare_reference(self,format,ext,tmpdir,reference_dir,update,monkeypatch):
-        monkeypatch.setattr(damask, 'version', pytest.dummy_version)
+    def test_compare_reference(self,format,ext,tmpdir,reference_dir,update):
         name = 'binary'
         c = Colormap.from_predefined(name)
         if update:

@@ -11,9 +11,9 @@ submodule(constitutive:constitutive_thermal) source_thermal_externalheat
     source_thermal_externalheat_offset, &                                                           !< which source is my current thermal dissipation mechanism?
     source_thermal_externalheat_instance                                                            !< instance of thermal dissipation source mechanism
 
-  type :: tParameters                                                                              !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal), dimension(:), allocatable :: &
-      time, &
+      time, & 
       heat_rate
     integer :: &
      nIntervals
@@ -29,44 +29,56 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module subroutine source_thermal_externalheat_init
+module function source_thermal_externalheat_init(source_length) result(mySources)
 
+  integer, intent(in)                  :: source_length  
+  logical, dimension(:,:), allocatable :: mySources
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    sources, &
+    src 
   integer :: Ninstance,sourceOffset,NipcMyPhase,p
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_externalheat_label//' init  -+>>>'
+  write(6,'(/,a)') ' <<<+-  source_thermal_externalHeat init  -+>>>'
 
-  Ninstance = count(phase_source == SOURCE_thermal_externalheat_ID)
+  mySources = source_active('thermal_externalheat',source_length)
+  
+  Ninstance = count(mySources)
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  if(Ninstance == 0) return
 
-  allocate(source_thermal_externalheat_offset  (size(config_phase)), source=0)
-  allocate(source_thermal_externalheat_instance(size(config_phase)), source=0)
+  phases => material_root%get('phase')
   allocate(param(Ninstance))
+  allocate(source_thermal_externalheat_offset  (phases%length), source=0)
+  allocate(source_thermal_externalheat_instance(phases%length), source=0)
 
-  do p = 1, size(config_phase)
-    source_thermal_externalheat_instance(p) = count(phase_source(:,1:p) == SOURCE_thermal_externalheat_ID)
-    do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_thermal_externalheat_ID) then
+  do p = 1, phases%length
+    phase => phases%get(p) 
+    if(any(mySources(:,p))) source_thermal_externalheat_instance(p) = count(mySources(:,1:p))
+    if(count(mySources(:,p)) == 0) cycle
+    sources => phase%get('source')
+    do sourceOffset = 1, sources%length
+      if(mySources(sourceOffset,p)) then
         source_thermal_externalheat_offset(p) = sourceOffset
-        exit
+        associate(prm  => param(source_thermal_externalheat_instance(p)))
+        src => sources%get(sourceOffset) 
+
+        prm%time       = src%get_asFloats('t_n')
+        prm%nIntervals = size(prm%time) - 1
+
+        prm%heat_rate = src%get_asFloats('f_T',requiredSize = size(prm%time))
+
+        NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
+        end associate
+
       endif
     enddo
-
-    if (all(phase_source(:,p) /= SOURCE_thermal_externalheat_ID)) cycle
-    associate(prm => param(source_thermal_externalheat_instance(p)), &
-              config => config_phase(p))
-
-    prm%time       = config%getFloats('externalheat_time')
-    prm%nIntervals = size(prm%time) - 1
-
-    prm%heat_rate = config%getFloats('externalheat_rate',requiredSize = size(prm%time))
-
-    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
-
-    end associate
   enddo
 
-end subroutine source_thermal_externalheat_init
+end function source_thermal_externalheat_init
 
 
 !--------------------------------------------------------------------------------------------------
