@@ -587,7 +587,7 @@ class Geom:
                - ((np.ones(3)-(1./self.grid if np.array(center).dtype in np.sctypes['int'] else 0))*0.5 if periodic else c)  # periodic center is always at CoG
         coords_rot = R.broadcast_to(tuple(self.grid))@coords
 
-        with np.errstate(over='ignore',under='ignore',invalid='ignore'):
+        with np.errstate(all='ignore'):
             mask = np.where(np.sum(np.power(coords_rot/r,2.0**exponent),axis=-1) > 1.0,True,False)
 
         if periodic:                                                                                # translate back to center
