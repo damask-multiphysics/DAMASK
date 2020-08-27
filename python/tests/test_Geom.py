@@ -272,7 +272,7 @@ class TestGeom:
                                          np.random.randint(4,10,(3)),
                                          np.random.rand()*4,
                                          np.random.randint(20)])
-    def test_add_primitive(self,center1,center2,diameter,exponent):
+    def test_add_primitive_shift(self,center1,center2,diameter,exponent):
         """Same volume fraction for periodic microstructures and different center."""
         o = np.random.random(3)-.5
         g = np.random.randint(8,32,(3))
@@ -288,11 +288,12 @@ class TestGeom:
     @pytest.mark.parametrize('inverse',[True,False])
     @pytest.mark.parametrize('periodic',[True,False])
     def test_add_primitive_rotation(self,center,inverse,periodic):
-        g = np.random.randint(8,32,(3))
-        s = np.random.random()+.5
+        """Rotation should not chage result for sphere (avoid discretization errors."""
+        g = np.array([32,32,32])
         fill = np.random.randint(10)+2
-        G_1 = Geom(np.ones(g,'i'),[s,s,s]).add_primitive(s*.3,center,1,fill,inverse=inverse,periodic=periodic)
-        G_2 = Geom(np.ones(g,'i'),[s,s,s]).add_primitive(s*.3,center,1,fill,Rotation.from_random(),inverse,periodic=periodic)
+        eu=np.array([np.random.randint(4),np.random.randint(2),np.random.randint(4)])*.5*np.pi
+        G_1 = Geom(np.ones(g,'i'),[1.,1.,1.]).add_primitive(.3,center,1,fill,inverse=inverse,periodic=periodic)
+        G_2 = Geom(np.ones(g,'i'),[1.,1.,1.]).add_primitive(.3,center,1,fill,Rotation.from_Eulers(eu),inverse,periodic=periodic)
         assert geom_equal(G_1,G_2)
 
     @pytest.mark.parametrize('trigger',[[1],[]])
