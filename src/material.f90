@@ -80,7 +80,7 @@ module material
     damage_initialPhi                                                                               !< initial damage per each homogenization
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
-    material_homogenizationAt                                                                       !< homogenization ID of each element (copy of discretization_homogenizationAt)
+    material_homogenizationAt                                                                       !< homogenization ID of each element
   integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)

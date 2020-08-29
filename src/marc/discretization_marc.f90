@@ -52,8 +52,7 @@ subroutine discretization_marc_init
   type(tElement) :: elem
 
   integer,     dimension(:),   allocatable :: &
-    microstructureAt, &
-    homogenizationAt
+    microstructureAt
   integer:: &
     Nnodes, &                                                                                       !< total number of nodes in the mesh
     Nelems, &                                                                                       !< total number of elements in the mesh
@@ -84,7 +83,7 @@ subroutine discretization_marc_init
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
 
-  call inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
+  call inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
   nElems = size(connectivity_elem,2)
 
   if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
@@ -104,7 +103,7 @@ subroutine discretization_marc_init
   call buildIPcoordinates(IP_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
                           elem%nIPs*nElems]),node0_cell)
 
-  call discretization_init(microstructureAt,homogenizationAt,&
+  call discretization_init(microstructureAt,&
                            IP_reshaped,&
                            node0_cell)
 
@@ -173,7 +172,7 @@ end subroutine writeGeometry
 !--------------------------------------------------------------------------------------------------
 !> @brief Read mesh from marc input file
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogenizationAt)
+subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
 
   type(tElement), intent(out) :: elem
   real(pReal), dimension(:,:), allocatable, intent(out) :: &
@@ -181,8 +180,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
   integer, dimension(:,:),     allocatable, intent(out) :: &
     connectivity_elem
   integer,     dimension(:),   allocatable, intent(out) :: &
-    microstructureAt, &
-    homogenizationAt
+    microstructureAt
 
   integer :: &
     fileFormatVersion, &
@@ -228,9 +226,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt,homogeni
 
   connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,inputFile)
 
-  call inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
-                                                 nElems,elem%nNodes,nameElemSet,mapElemSet,&
-                                                 initialcondTableStyle,inputFile)
+  call inputRead_microstructureAnd(microstructureAt, &
+                                   nElems,elem%nNodes,nameElemSet,mapElemSet,&
+                                   initialcondTableStyle,inputFile)
 end subroutine inputRead
 
 
@@ -677,14 +675,13 @@ end function inputRead_connectivityElem
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Stores homogenization and microstructure ID
+!> @brief Store microstructure ID
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogenizationAt, &
+subroutine inputRead_microstructure(microstructureAt,&
                                     nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileContent)
 
   integer, dimension(:), allocatable, intent(out) :: &
-    microstructureAt, &
-    homogenizationAt
+    microstructureAt
   integer, intent(in) :: &
     nElem, &
     nNodes, &                                                                                       !< number of nodes per element
@@ -700,7 +697,6 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
 
 
   allocate(microstructureAt(nElem),source=0)
-  allocate(homogenizationAt(nElem),source=0)
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
@@ -720,7 +716,6 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
           do i = 1,contInts(1)
             e = mesh_FEM2DAMASK_elem(contInts(1+i))
             if (sv == 2) microstructureAt(e) = myVal
-            if (sv == 3) homogenizationAt(e) = myVal
           enddo
           if (initialcondTableStyle == 0) m = m + 1
         enddo
@@ -728,7 +723,7 @@ subroutine inputRead_microstructureAndHomogenization(microstructureAt,homogeniza
     endif
   enddo
 
-end subroutine inputRead_microstructureAndHomogenization
+end subroutine inputRead_microstructure
 
 
 !--------------------------------------------------------------------------------------------------

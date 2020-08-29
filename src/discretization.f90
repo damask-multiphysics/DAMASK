@@ -15,7 +15,6 @@ module discretization
     discretization_nElem
     
   integer,     public, protected, dimension(:),   allocatable :: &
-    discretization_homogenizationAt, &
     discretization_microstructureAt   
 
   real(pReal), public, protected, dimension(:,:), allocatable :: & 
@@ -38,12 +37,11 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief stores the relevant information in globally accesible variables
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_init(homogenizationAt,microstructureAt,&
+subroutine discretization_init(microstructureAt,&
                                IPcoords0,NodeCoords0,&
                                sharedNodesBegin)
 
   integer,     dimension(:),   intent(in) :: &
-    homogenizationAt, &
     microstructureAt
   real(pReal), dimension(:,:), intent(in) :: &
     IPcoords0, &
@@ -56,7 +54,6 @@ subroutine discretization_init(homogenizationAt,microstructureAt,&
   discretization_nElem = size(microstructureAt,1)
   discretization_nIP   = size(IPcoords0,2)/discretization_nElem
 
-  discretization_homogenizationAt = homogenizationAt
   discretization_microstructureAt = microstructureAt  
 
   discretization_IPcoords0   = IPcoords0
