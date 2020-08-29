@@ -715,7 +715,7 @@ subroutine inputRead_microstructure(microstructureAt,&
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
             e = mesh_FEM2DAMASK_elem(contInts(1+i))
-            if (sv == 2) microstructureAt(e) = myVal
+            if (sv == 3) microstructureAt(e) = myVal
           enddo
           if (initialcondTableStyle == 0) m = m + 1
         enddo
