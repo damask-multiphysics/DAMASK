@@ -288,7 +288,7 @@ class TestGeom:
     @pytest.mark.parametrize('inverse',[True,False])
     @pytest.mark.parametrize('periodic',[True,False])
     def test_add_primitive_rotation(self,center,inverse,periodic):
-        """Rotation should not chage result for sphere (avoid discretization errors."""
+        """Rotation should not change result for sphere (except for discretization errors)."""
         g = np.array([32,32,32])
         fill = np.random.randint(10)+2
         eu=np.array([np.random.randint(4),np.random.randint(2),np.random.randint(4)])*.5*np.pi
