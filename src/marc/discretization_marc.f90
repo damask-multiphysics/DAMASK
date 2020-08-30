@@ -226,9 +226,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
 
   connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,inputFile)
 
-  call inputRead_microstructureAnd(microstructureAt, &
-                                   nElems,elem%nNodes,nameElemSet,mapElemSet,&
-                                   initialcondTableStyle,inputFile)
+  call inputRead_microstructure(microstructureAt, &
+                                nElems,elem%nNodes,nameElemSet,mapElemSet,&
+                                initialcondTableStyle,inputFile)
 end subroutine inputRead
 
 
