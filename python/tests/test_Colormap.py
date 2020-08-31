@@ -17,8 +17,8 @@ def reference_dir(reference_dir_base):
 class TestColormap:
 
     @pytest.fixture(autouse=True)
-    def _version_date(self, version_date):
-        print('patched damask.util.version_date')
+    def _execution_stamp(self, execution_stamp):
+        print('patched damask.util.execution_stamp')
 
     def test_conversion(self):
         specials = np.array([[0.,0.,0.],
