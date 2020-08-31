@@ -5,8 +5,8 @@
     <PointData>
     </PointData>
     <CellData>
-      <DataArray type="Int64" Name="materialpoint" format="binary" RangeMin="1" RangeMax="2">
-        AQAAAACAAAAABQAAGwAAAA==eF5jZIAAxlF6lB4AmmmUpogeDUfKaAD7jwDw
+      <DataArray type="Int64" Name="materialpoint" format="binary" RangeMin="1" RangeMax="41">
+        AQAAAACAAAAABQAAYQAAAA==eF7t0scVglAAAEHgqZgBA2ZExdR/gx6YCpDj38s0sEnUlgR7ccAhR0w55oRTzjjngktmzFlwxTU33LLkjnseeOSJZ15Y8cqaN975YMMnX3zzwy/j4F+GD9u6fvgD+gwHCA==
       </DataArray>
     </CellData>
     <Coordinates>
