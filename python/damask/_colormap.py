@@ -280,7 +280,7 @@ class Colormap(mpl.colors.ListedColormap):
             colors+=[i]+c
 
         out = [{
-                'Creator':util.version_date('Colormap'),
+                'Creator':util.execution_stamp('Colormap'),
                 'ColorSpace':'RGB',
                 'Name':colormap.name,
                 'DefaultMap':True,
@@ -296,7 +296,7 @@ class Colormap(mpl.colors.ListedColormap):
     def _export_ASCII(colormap,fhandle=None):
         """Write colormap to ASCII table."""
         labels = {'RGBA':4} if colormap.colors.shape[1] == 4 else {'RGB': 3}
-        t = Table(colormap.colors,labels,f'Creator: {util.version_date("Colormap")}')
+        t = Table(colormap.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
 
         if fhandle is None:
             with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:

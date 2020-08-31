@@ -49,7 +49,7 @@ class Table:
     def _add_comment(self,label,shape,info):
         if info is not None:
             specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
-            general  = util.version_date('Table')
+            general  = util.execution_stamp('Table')
             self.comments.append(f'{specific} / {general}')
 
 
@@ -136,7 +136,7 @@ class Table:
 
         content = f.readlines()
 
-        comments = [util.version_date('Table','from_ang')]
+        comments = [util.execution_stamp('Table','from_ang')]
         for line in content:
             if line.startswith('#'):
                 comments.append(line.strip())
