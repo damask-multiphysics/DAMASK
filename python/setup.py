@@ -16,12 +16,11 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires = [
-        "pandas",
+        "pandas",                                                                                   # requires numpy
         "scipy",
-        "h5py",
+        "h5py",                                                                                     # requires numpy
         "vtk",
-        "matplotlib",
-        "PIL",
+        "matplotlib",                                                                               # requires numpy, pillow
     ],
     classifiers = [
         "Intended Audience :: Science/Research",

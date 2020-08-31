@@ -401,8 +401,9 @@ class Result:
                             if sets is True:
                                 groups.append(group)
                             else:
-                                match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-                                if len(set(match)) == len(sets): groups.append(group)
+                                if group in f.keys():
+                                    match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+                                    if len(set(match)) == len(sets): groups.append(group)
         return groups
 
 
