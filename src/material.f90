@@ -80,7 +80,7 @@ module material
     damage_initialPhi                                                                               !< initial damage per each homogenization
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
-    material_homogenizationAt                                                                       !< homogenization ID of each element (copy of discretization_homogenizationAt)
+    material_homogenizationAt                                                                       !< homogenization ID of each element
   integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
@@ -241,7 +241,6 @@ subroutine material_parseHomogenization
     homogDamage
 
   integer :: h
-  logical, dimension(:), allocatable :: homogenization_active
 
   material_homogenization => material_root%get('homogenization')
   material_Nhomogenization = material_homogenization%length
@@ -253,12 +252,8 @@ subroutine material_parseHomogenization
   allocate(thermal_typeInstance(material_Nhomogenization),          source=0)
   allocate(damage_typeInstance(material_Nhomogenization),           source=0)
   allocate(homogenization_Ngrains(material_Nhomogenization),        source=0)
-  allocate(homogenization_active(material_Nhomogenization),         source=.false.)  !!!!!!!!!!!!!!!
   allocate(thermal_initialT(material_Nhomogenization),              source=300.0_pReal)
   allocate(damage_initialPhi(material_Nhomogenization),             source=1.0_pReal)
-
-  forall (h = 1:material_Nhomogenization) &
-    homogenization_active(h) = any(discretization_homogenizationAt == h)  !ToDo: SR: needed??
 
   do h=1, material_Nhomogenization
     homog => material_homogenization%get(h)
@@ -317,7 +312,7 @@ subroutine material_parseHomogenization
     damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
   enddo
 
-  homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
+  homogenization_maxNgrains = maxval(homogenization_Ngrains)
 
 
 end subroutine material_parseHomogenization

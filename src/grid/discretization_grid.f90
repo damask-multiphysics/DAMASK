@@ -53,8 +53,7 @@ subroutine discretization_grid_init(restart)
     myGrid                                                                                          !< domain grid of this process
 
   integer,     dimension(:),   allocatable :: &
-    microstructureAt, &
-    homogenizationAt
+    microstructureAt
 
   integer :: &
     j, &
@@ -65,7 +64,7 @@ subroutine discretization_grid_init(restart)
 
   write(6,'(/,a)') ' <<<+-  discretization_grid init  -+>>>'; flush(6)
 
-  call readGeom(grid,geomSize,origin,microstructureAt,homogenizationAt)
+  call readGeom(grid,geomSize,origin,microstructureAt)
 
 !--------------------------------------------------------------------------------------------------
 ! grid solver specific quantities
@@ -94,10 +93,8 @@ subroutine discretization_grid_init(restart)
 ! general discretization
   microstructureAt = microstructureAt(product(grid(1:2))*grid3Offset+1: &
                                       product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
-  homogenizationAt = homogenizationAt(product(grid(1:2))*grid3Offset+1: &
-                                      product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
 
-  call discretization_init(homogenizationAt,microstructureAt, &
+  call discretization_init(microstructureAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
                            Nodes0(myGrid,mySize,grid3Offset),&
                            merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer
@@ -139,7 +136,7 @@ end subroutine discretization_grid_init
 !> @details important variables have an implicit "save" attribute. Therefore, this function is
 ! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
-subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
+subroutine readGeom(grid,geomSize,origin,microstructure)
 
   integer,     dimension(3), intent(out) :: &
     grid                                                                                            ! grid (for all processes!)
@@ -147,8 +144,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
     geomSize, &                                                                                     ! size (for all processes!)
     origin                                                                                          ! origin (for all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
-    microstructure, &
-    homogenization
+    microstructure
 
   character(len=:),      allocatable :: rawData
   character(len=65536)               :: line
@@ -249,24 +245,18 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
           enddo
         endif
 
-      case ('homogenization')
-        if (chunkPos(1) > 1) h = IO_intValue(line,chunkPos,2)
-
     end select
 
   enddo
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
-  if(h < 1) &
-    call IO_error(error_ID = 842, ext_msg='homogenization (readGeom)')
   if(any(grid < 1)) &
     call IO_error(error_ID = 842, ext_msg='grid (readGeom)')
   if(any(geomSize < 0.0_pReal)) &
     call IO_error(error_ID = 842, ext_msg='size (readGeom)')
 
   allocate(microstructure(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
-  allocate(homogenization(product(grid)), source = h)                                               ! too large in case of MPI (shrink later, not very elegant)
 
 !--------------------------------------------------------------------------------------------------
 ! read and interpret content
