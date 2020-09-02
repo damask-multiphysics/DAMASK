@@ -94,7 +94,7 @@ class TestVTK:
 
     def test_invalid_extension_write(self,default):
         with pytest.raises(ValueError):
-            default.write('default.txt')
+            default.to_file('default.txt')
 
     def test_invalid_get(self,default):
         with pytest.raises(ValueError):
@@ -115,7 +115,7 @@ class TestVTK:
 
     def test_comments(self,tmp_path,default):
         default.add_comments(['this is a comment'])
-        default.write(tmp_path/'with_comments',parallel=False)
+        default.to_file(tmp_path/'with_comments',parallel=False)
         new = VTK.from_file(tmp_path/'with_comments.vtr')
         assert new.get_comments() == ['this is a comment']
 
@@ -124,7 +124,7 @@ class TestVTK:
         polyData = VTK.from_polyData(points)
         polyData.add(points,'coordinates')
         if update:
-             polyData.write(reference_dir/'polyData')
+             polyData.to_file(reference_dir/'polyData')
         else:
              reference = VTK.from_file(reference_dir/'polyData.vtp')
              assert polyData.__repr__() == reference.__repr__() and \
@@ -139,7 +139,7 @@ class TestVTK:
         rectilinearGrid.add(c,'cell')
         rectilinearGrid.add(n,'node')
         if update:
-             rectilinearGrid.write(reference_dir/'rectilinearGrid')
+             rectilinearGrid.to_file(reference_dir/'rectilinearGrid')
         else:
              reference = VTK.from_file(reference_dir/'rectilinearGrid.vtr')
              assert rectilinearGrid.__repr__() == reference.__repr__() and \
