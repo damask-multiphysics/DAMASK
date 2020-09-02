@@ -100,7 +100,7 @@ class TestGeom:
 
     def test_invalid_vtr(self,tmpdir):
         v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
-        v.write(tmpdir/'no_materialpoint.vtr')
+        v.to_file(tmpdir/'no_materialpoint.vtr')
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'no_materialpoint.vtr'): break

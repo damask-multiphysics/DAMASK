@@ -32,7 +32,7 @@ class TestVTK:
         origin = np.random.random(3)
         v = VTK.from_rectilinearGrid(grid,size,origin)
         string = v.__repr__()
-        v.write(tmp_path/'rectilinearGrid',False)
+        v.to_file(tmp_path/'rectilinearGrid',False)
         vtr = VTK.from_file(tmp_path/'rectilinearGrid.vtr')
         with open(tmp_path/'rectilinearGrid.vtk','w') as f:
             f.write(string)
@@ -43,7 +43,7 @@ class TestVTK:
         points = np.random.rand(100,3)
         v = VTK.from_polyData(points)
         string = v.__repr__()
-        v.write(tmp_path/'polyData',False)
+        v.to_file(tmp_path/'polyData',False)
         vtp = VTK.from_file(tmp_path/'polyData.vtp')
         with open(tmp_path/'polyData.vtk','w') as f:
             f.write(string)
@@ -62,7 +62,7 @@ class TestVTK:
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructuredGrid(nodes,connectivity,cell_type)
         string = v.__repr__()
-        v.write(tmp_path/'unstructuredGrid',False)
+        v.to_file(tmp_path/'unstructuredGrid',False)
         vtu = VTK.from_file(tmp_path/'unstructuredGrid.vtu')
         with open(tmp_path/'unstructuredGrid.vtk','w') as f:
             f.write(string)
@@ -75,8 +75,8 @@ class TestVTK:
         v = VTK.from_polyData(points)
         fname_s = tmp_path/'single.vtp'
         fname_p = tmp_path/'parallel.vtp'
-        v.write(fname_s,False)
-        v.write(fname_p,True)
+        v.to_file(fname_s,False)
+        v.to_file(fname_p,True)
         for i in range(10):
             if os.path.isfile(fname_p) and filecmp.cmp(fname_s,fname_p):
                 assert(True)
@@ -94,7 +94,7 @@ class TestVTK:
 
     def test_invalid_extension_write(self,default):
         with pytest.raises(ValueError):
-            default.write('default.txt')
+            default.to_file('default.txt')
 
     def test_invalid_get(self,default):
         with pytest.raises(ValueError):
@@ -115,7 +115,7 @@ class TestVTK:
 
     def test_comments(self,tmp_path,default):
         default.add_comments(['this is a comment'])
-        default.write(tmp_path/'with_comments',parallel=False)
+        default.to_file(tmp_path/'with_comments',parallel=False)
         new = VTK.from_file(tmp_path/'with_comments.vtr')
         assert new.get_comments() == ['this is a comment']
 
@@ -124,7 +124,7 @@ class TestVTK:
         polyData = VTK.from_polyData(points)
         polyData.add(points,'coordinates')
         if update:
-             polyData.write(reference_dir/'polyData')
+             polyData.to_file(reference_dir/'polyData')
         else:
              reference = VTK.from_file(reference_dir/'polyData.vtp')
              assert polyData.__repr__() == reference.__repr__() and \
@@ -139,7 +139,7 @@ class TestVTK:
         rectilinearGrid.add(c,'cell')
         rectilinearGrid.add(n,'node')
         if update:
-             rectilinearGrid.write(reference_dir/'rectilinearGrid')
+             rectilinearGrid.to_file(reference_dir/'rectilinearGrid')
         else:
              reference = VTK.from_file(reference_dir/'rectilinearGrid.vtr')
              assert rectilinearGrid.__repr__() == reference.__repr__() and \

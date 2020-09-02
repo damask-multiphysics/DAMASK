@@ -168,7 +168,7 @@ class VTK:
     def _write(writer):
         """Wrapper for parallel writing."""
         writer.Write()
-    def write(self,fname,parallel=True):
+    def to_file(self,fname,parallel=True):
         """
         Write to file.
 
