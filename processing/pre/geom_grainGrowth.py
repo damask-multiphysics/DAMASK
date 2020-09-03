@@ -172,4 +172,4 @@ for name in filenames:
   geom=geom.duplicate(microstructure[0:grid_original[0],0:grid_original[1],0:grid_original[2]])
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  geom.to_file(sys.stdout if name is None else name,pack=False)
+  geom.to_file(sys.stdout if name is None else name,format='ASCII',pack=False)

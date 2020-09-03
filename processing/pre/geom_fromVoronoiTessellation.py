@@ -228,4 +228,5 @@ for name in filenames:
                        homogenization=options.homogenization,comments=header)
     damask.util.croak(geom)
 
-    geom.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',pack=False)
+    geom.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',
+                 format='ASCII',pack=False)

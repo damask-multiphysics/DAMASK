@@ -57,8 +57,8 @@ for name in filenames:
     table        = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     indexedTable = damask.Table.from_ASCII(options.asciitable)
     idx = np.reshape(table.get(options.index).astype(int) + options.offset,(-1))-1
-    
+
     for data in options.label:
         table.add(data+'_addIndexed',indexedTable.get(data)[idx],scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_ASCII(sys.stdout if name is None else name)
+    table.to_file(sys.stdout if name is None else name)
