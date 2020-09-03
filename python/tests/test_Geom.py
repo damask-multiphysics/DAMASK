@@ -63,13 +63,13 @@ class TestGeom:
 
 
     def test_write_read_str(self,default,tmpdir):
-        default.to_file(str(tmpdir/'default.geom'))
+        default.to_file(str(tmpdir/'default.geom'),format='ASCII')
         new = Geom.from_file(str(tmpdir/'default.geom'))
         assert geom_equal(default,new)
 
     def test_write_read_file(self,default,tmpdir):
         with open(tmpdir/'default.geom','w') as f:
-            default.to_file(f,pack=True)
+            default.to_file(f,format='ASCII',pack=True)
         with open(tmpdir/'default.geom') as f:
             new = Geom.from_file(f)
         assert geom_equal(default,new)
@@ -82,8 +82,7 @@ class TestGeom:
         assert geom_equal(default,new)
 
     def test_read_write_vtr(self,default,tmpdir):
-        default.to_vtr(tmpdir/'default')
-        print(default.to_vtr())
+        default.to_file(tmpdir/'default',format='vtr')
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'default.vtr'): break
@@ -110,7 +109,7 @@ class TestGeom:
 
     @pytest.mark.parametrize('pack',[True,False])
     def test_pack(self,default,tmpdir,pack):
-        default.to_file(tmpdir/'default.geom',pack=pack)
+        default.to_file(tmpdir/'default.geom',format='ASCII',pack=pack)
         new = Geom.from_file(tmpdir/'default.geom')
         assert geom_equal(new,default)
 
@@ -139,6 +138,10 @@ class TestGeom:
     def test_invalid_homogenization(self,default):
         with pytest.raises(TypeError):
             default.set_homogenization(homogenization=0)
+
+    def test_invalid_write_format(self,default):
+        with pytest.raises(TypeError):
+            default.to_file(format='invalid')
 
     @pytest.mark.parametrize('directions,reflect',[
                                                    (['x'],        False),
@@ -196,7 +199,7 @@ class TestGeom:
         current = default.clean(stencil,selection,periodic)
         reference = reference_dir/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
         if update and stencil > 1:
-            current.to_vtr(reference)
+            current.to_file(reference,format='vtr')
             for _ in range(10):
                 time.sleep(.2)
                 if os.path.exists(reference.with_suffix('.vtr')): break

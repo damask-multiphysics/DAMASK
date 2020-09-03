@@ -35,7 +35,7 @@ class TestTable:
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_write_read(self,default,tmpdir,mode):
-        default.to_ASCII(tmpdir/'default.txt')
+        default.to_file(tmpdir/'default.txt')
         if   mode == 'path':
             new = Table.from_ASCII(tmpdir/'default.txt')
         elif mode == 'str':
@@ -43,19 +43,22 @@ class TestTable:
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmpdir):
-        with open(tmpdir.join('default.txt'),'w') as f:
-            default.to_ASCII(f)
-        with open(tmpdir.join('default.txt')) as f:
+        with open(tmpdir/'default.txt','w') as f:
+            default.to_file(f)
+        with open(tmpdir/'default.txt') as f:
             new = Table.from_ASCII(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_read_new_style(self,default,tmpdir):
-        with open(tmpdir.join('new_style.txt'),'w') as f:
-            default.to_ASCII(f,new_style=True)
-        with open(tmpdir.join('new_style.txt')) as f:
+        with open(tmpdir/'new_style.txt','w') as f:
+            default.to_file(f,new_style=True)
+        with open(tmpdir/'new_style.txt') as f:
             new = Table.from_ASCII(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
+    def test_write_invalid_format(self,default,tmpdir):
+        with pytest.raises(TypeError):
+            default.to_file(tmpdir/'shouldnotbethere.txt',format='invalid')
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_read_ang(self,reference_dir,mode):
