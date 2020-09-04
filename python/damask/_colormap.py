@@ -300,9 +300,9 @@ class Colormap(mpl.colors.ListedColormap):
 
         if fhandle is None:
             with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:
-                t.to_ASCII(f,True)
+                t.to_file(f,new_style=True)
         else:
-            t.to_ASCII(fhandle,True)
+            t.to_file(fhandle,new_style=True)
 
     @staticmethod
     def _export_GOM(colormap,fhandle=None):

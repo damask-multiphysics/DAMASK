@@ -55,4 +55,4 @@ for name in filenames:
                   curl.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape),order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_ASCII(sys.stdout if name is None else name)
+    table.to_file(sys.stdout if name is None else name)

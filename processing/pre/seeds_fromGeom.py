@@ -65,5 +65,5 @@ for name in filenames:
 
     table = damask.Table(seeds[mask],{'pos':(3,)},comments)
     table.add('microstructure',microstructure[mask])
-    table.to_ASCII(sys.stdout if name is None else \
-                   os.path.splitext(name)[0]+'.seeds')
+    table.to_file(sys.stdout if name is None else \
+                  os.path.splitext(name)[0]+'.seeds')
