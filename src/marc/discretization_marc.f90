@@ -706,7 +706,7 @@ subroutine inputRead_microstructure(microstructureAt,&
       k = merge(2,1,initialcondTableStyle == 2)
       chunkPos = IO_stringPos(fileContent(l+k))
       sv = IO_IntValue(fileContent(l+k),chunkPos,1)                                                 ! figure state variable index
-      if( (sv == 2) .or. (sv == 3) ) then                                                           ! only state vars 2 and 3 of interest
+      if( (sv == 2)) then                                                                           ! state var 2 is used to identify material from material.yaml
         m = 1
         chunkPos = IO_stringPos(fileContent(l+k+m))
         do while (scan(IO_stringValue(fileContent(l+k+m),chunkPos,1),'+-',back=.true.)>1)           ! is noEfloat value?
@@ -715,7 +715,7 @@ subroutine inputRead_microstructure(microstructureAt,&
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
             e = mesh_FEM2DAMASK_elem(contInts(1+i))
-            if (sv == 3) microstructureAt(e) = myVal
+            microstructureAt(e) = myVal
           enddo
           if (initialcondTableStyle == 0) m = m + 1
         enddo
