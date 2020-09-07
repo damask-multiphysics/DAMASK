@@ -12,8 +12,7 @@ submodule(constitutive:constitutive_damage) source_damage_isoBrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      critStrainEnergy, &                                                                           !< critical elastic strain energy
-      N                              
+      critStrainEnergy                                                                              !< critical elastic strain energy
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -64,7 +63,6 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
         associate(prm  => param(source_damage_isoBrittle_instance(p)))
         src => sources%get(sourceOffset) 
 
-        prm%N                = src%get_asFloat('m')
         prm%critStrainEnergy = src%get_asFloat('W_crit')
 
 #if defined (__GFORTRAN__)
@@ -74,7 +72,6 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
 #endif
  
         ! sanity checks
-        if (prm%N                <= 0.0_pReal) extmsg = trim(extmsg)//' m'
         if (prm%critStrainEnergy <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
         NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
@@ -161,10 +158,9 @@ module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLo
   sourceOffset = source_damage_isoBrittle_offset(phase)
 
   associate(prm => param(source_damage_isoBrittle_instance(phase)))
-  localphiDot = (1.0_pReal - phi)**(prm%n - 1.0_pReal) &
+  localphiDot = 1.0_pReal &
               - phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
-  dLocalphiDot_dPhi = - (prm%n - 1.0_pReal)* (1.0_pReal - phi)**max(0.0_pReal,prm%n - 2.0_pReal) &
-                      - sourceState(phase)%p(sourceOffset)%state(1,constituent)
+  dLocalphiDot_dPhi = - sourceState(phase)%p(sourceOffset)%state(1,constituent)
   end associate
 
 end subroutine source_damage_isoBrittle_getRateAndItsTangent
