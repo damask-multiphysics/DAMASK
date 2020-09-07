@@ -12,7 +12,7 @@ submodule(constitutive:constitutive_damage) source_damage_isoBrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      critStrainEnergy                                                                              !< critical elastic strain energy
+      W_crit                                                                                        !< critical elastic strain energy
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -63,7 +63,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
         associate(prm  => param(source_damage_isoBrittle_instance(p)))
         src => sources%get(sourceOffset) 
 
-        prm%critStrainEnergy = src%get_asFloat('W_crit')
+        prm%W_crit = src%get_asFloat('W_crit')
 
 #if defined (__GFORTRAN__)
         prm%output = output_asStrings(src)
@@ -72,7 +72,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
 #endif
  
         ! sanity checks
-        if (prm%critStrainEnergy <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
+        if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
         NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,1)
@@ -122,8 +122,8 @@ module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
   associate(prm => param(source_damage_isoBrittle_instance(phase)))
-  strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%critStrainEnergy
-  ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/param(instance)%critStrainEnergy
+  strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%W_crit
+  ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
 
   if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
     sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
