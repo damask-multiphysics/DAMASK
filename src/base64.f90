@@ -112,7 +112,7 @@ pure subroutine decode_base64(bytes,base64_str)
   c = 1_pLongInt
   b = 1_pLongInt
 
-  do while(.True.)
+  do while(b <= bytesLen+3_pLongInt .and. c <= base64Len+4_pLongInt)
     do p=0_pLongInt,3_pLongInt
       if(c+p<=len(base64_str,kind=pLongInt)) then
         charPos(p) = int(merge(index(encoding,base64_str(c+p:c+p))-1, 0, base64_str(c+p:c+p) /= '='),C_SIGNED_CHAR)
@@ -135,7 +135,6 @@ pure subroutine decode_base64(bytes,base64_str)
     endif
     b = b+3_pLongInt
     c = c+4_pLongInt
-    if(b>bytesLen+3_pLongInt .or. c > base64Len+4_pLongInt) exit
   enddo
 
 end subroutine decode_base64
