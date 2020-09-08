@@ -723,6 +723,8 @@ subroutine inputRead_microstructure(microstructureAt,&
     endif
   enddo
 
+  if(any(microstructureAt < 1)) call IO_error(190)
+
 end subroutine inputRead_microstructure
 
 
@@ -1061,7 +1063,7 @@ function IPneighborhood(elem,connectivity)
   integer, dimension(size(connectivity,1))  :: myConnectivity
   integer, dimension(size(elem%cellFace,1)) :: face_unordered
   integer :: e,i,f,n,c,s
- 
+
   c = 0
   do e = 1, size(connectivity,3)
     do i = 1, size(connectivity,2)
@@ -1078,9 +1080,9 @@ function IPneighborhood(elem,connectivity)
   enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
-! sort face definitions 
+! sort face definitions
   call math_sort(face,sortDim=1)
-  do c=2, size(face,1)-4 
+  do c=2, size(face,1)-4
     s = 1
     e = 1
     do while (e < size(face,2))
@@ -1091,8 +1093,8 @@ function IPneighborhood(elem,connectivity)
       endif
     enddo
   enddo
- 
-  IPneighborhood = 0 
+
+  IPneighborhood = 0
   do c=1, size(face,2) - 1
     if(all(face(:n-1,c) == face(:n-1,c+1))) then
       IPneighborhood(:,face(n+2,c+1),face(n+1,c+1),face(n+0,c+1)) = face(n:n+3,c+0)
