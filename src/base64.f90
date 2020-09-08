@@ -1,6 +1,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief  Decode Base64 strings
+!> @brief  Decode Base64 strings.
+!> @details See https://en.wikipedia.org/wiki/Base64.
 !--------------------------------------------------------------------------------------------------
 module base64
   use prec
@@ -8,6 +9,9 @@ module base64
 
   implicit none
   private
+
+  character(len=*), parameter :: &
+    base64_encoding='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
   public :: &
     base64_init, &
@@ -19,7 +23,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do self test
+!> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine base64_init
 
@@ -31,7 +35,7 @@ end subroutine base64_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate number of Base64 characters required for storage of N bytes
+!> @brief Calculate number of Base64 characters required for storage of N bytes.
 !--------------------------------------------------------------------------------------------------
 pure function base64_nBase64(nByte)
 
@@ -44,7 +48,7 @@ end function base64_nBase64
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate number of bytes required for storage of N Base64 characters
+!> @brief Calculate number of bytes required for storage of N Base64 characters.
 !--------------------------------------------------------------------------------------------------
 pure function base64_nByte(nBase64)
 
@@ -57,112 +61,114 @@ end function base64_nByte
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return byte-wise binary representation of a (part of a) Base64 ASCII string
+!> @brief Decode Base64 ASCII string into byte-wise binary representation.
 !--------------------------------------------------------------------------------------------------
-pure function base64_to_bytes(base64_str,s,e) result(bytes)
+function base64_to_bytes(base64_str,s,e) result(bytes)
 
   character(len=*),  intent(in) :: base64_str                                                       !< Base64 string representation
   integer(pLongInt), intent(in), optional :: &
     s, &                                                                                            !< start (in bytes)
     e                                                                                               !< end (in bytes)
 
-  integer(pLongInt) :: s_, e_
-  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes, bytes_raw
+  integer(pLongInt) :: s_bytes, e_bytes, s_str, e_str
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
-  allocate(bytes_raw(base64_nByte(len_trim(base64_str,pLongInt))))
+  if(.not. valid_base64(base64_str)) call IO_error(114,'invalid character')
 
   if(present(s)) then
-    s_ = s
+    if(s<1_pLongInt) call IO_error(114, 's out of range')
+    s_str = ((s-1_pLongInt)/3_pLongInt)*4_pLongInt + 1_pLongInt
+    s_bytes = mod(s-1_pLongInt,3_pLongInt) + 1_pLongInt
   else
-    s_ = 1
+    s_str = 1_pLongInt
+    s_bytes = 1_pLongInt
   endif
 
   if(present(e)) then
-    e_ = e
+    if(e>base64_nByte(len(base64_str,kind=pLongInt))) call IO_error(114, 'e out of range')
+    e_str = ((e-1_pLongInt)/3_pLongInt)*4_pLongInt + 4_pLongInt
+    e_bytes = e
   else
-    e_ = size(bytes_raw,kind=pLongInt)
+    e_str = len(base64_str,kind=pLongInt)
+    e_bytes = base64_nByte(len(base64_str,kind=pLongInt))
+    if(base64_str(len(base64_str)-0_pLongInt:len(base64_str)-0_pLongInt) == '=') &
+      e_bytes = e_bytes -1_pLongInt
+    if(base64_str(len(base64_str)-1_pLongInt:len(base64_str)-1_pLongInt) == '=') &
+      e_bytes = e_bytes -1_pLongInt
   endif
 
-  ! ToDo: inefficient for s_>>1 or e_<<size(bytes_raw)
-  call decode_base64(bytes_raw,base64_str)
-  bytes = bytes_raw(s_:e_)
+  e_bytes = e_bytes - base64_nByte(s_str)
+  
+  bytes = decode_base64(base64_str(s_str:e_str))
+  bytes = bytes(s_bytes:e_bytes)
 
 end function base64_to_bytes
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convert a Base64 ASCII string into its byte-wise binary representation
-!> @details https://en.wikipedia.org/wiki/Base64
+!> @brief Convert a Base64 ASCII string into its byte-wise binary representation.
 !--------------------------------------------------------------------------------------------------
-pure subroutine decode_base64(bytes,base64_str)
+pure function decode_base64(base64_str) result(bytes)
 
-  integer(C_SIGNED_CHAR), intent(out),dimension(:) :: bytes                                         !< byte-wise representation
-  character(len=*),       intent(in)               :: base64_str                                    !< Base64 string representation
+  character(len=*), intent(in) :: base64_str                                                        !< Base64 string representation
+
+  integer(C_SIGNED_CHAR), dimension(base64_nByte(len(base64_str,pLongInt))) :: bytes
 
   integer(C_SIGNED_CHAR), dimension(0:3) :: charPos
-  integer(pLongInt) :: c, b, bytesLen,base64Len, p
-  character(len=*), parameter :: encoding='ABCDEFGHIJKLMNOPQRSTUVWXYZ&
-                                          &abcdefghijklmnopqrstuvwxyz0123456789+/'
-
-  bytes = 0_C_SIGNED_CHAR
-
-  bytesLen  = size(bytes,kind=pLongInt)
-  base64Len = len_trim(base64_str,kind=pLongInt)
+  integer(pLongInt) :: c, b, p
 
   c = 1_pLongInt
   b = 1_pLongInt
 
-  do while(b <= bytesLen+3_pLongInt .and. c <= base64Len+4_pLongInt)
+  do while(c < len(base64_str,kind=pLongInt))
     do p=0_pLongInt,3_pLongInt
       if(c+p<=len(base64_str,kind=pLongInt)) then
-        charPos(p) = int(merge(index(encoding,base64_str(c+p:c+p))-1, 0, base64_str(c+p:c+p) /= '='),C_SIGNED_CHAR)
+        charPos(p) = int(index(base64_encoding,base64_str(c+p:c+p))-1,C_SIGNED_CHAR)
       else
         charPos(p) = 0_C_SIGNED_CHAR
       endif
     enddo
 
-    if (b+0<=bytesLen) then
-       call mvbits(charPos(0),0,6,bytes(b+0),2)
-       call mvbits(charPos(1),4,2,bytes(b+0),0)
-    endif
-    if (b+1<=bytesLen) then
-       call mvbits(charPos(1),0,4,bytes(b+1),4)
-       call mvbits(charPos(2),2,4,bytes(b+1),0)
-    endif
-    if (b+2<=bytesLen) then
-       call mvbits(charPos(2),0,2,bytes(b+2),6)
-       call mvbits(charPos(3),0,6,bytes(b+2),0)
-    endif
+    call mvbits(charPos(0),0,6,bytes(b+0),2)
+    call mvbits(charPos(1),4,2,bytes(b+0),0)
+    call mvbits(charPos(1),0,4,bytes(b+1),4)
+    call mvbits(charPos(2),2,4,bytes(b+1),0)
+    call mvbits(charPos(2),0,2,bytes(b+2),6)
+    call mvbits(charPos(3),0,6,bytes(b+2),0)
     b = b+3_pLongInt
     c = c+4_pLongInt
   enddo
 
-end subroutine decode_base64
+end function decode_base64
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of base64 functions
+!> @brief Test for valid Base64 encoded string.
+!> @details Input string must be properly padded.
+!--------------------------------------------------------------------------------------------------
+pure logical function valid_base64(base64_str)
+
+  character(len=*), intent(in) :: base64_str                                                        !< Base64 string representation
+
+  integer(pLongInt) :: l
+
+  l = len(base64_str,pLongInt)
+  valid_base64 = .true.
+
+  if(mod(l,4_pLongInt)/=0_pLongInt .or. l < 4_pInt)                                      valid_base64 = .false.
+  if(verify(base64_str(:l-2_pLongInt),base64_encoding,     kind=pLongInt) /= 0_pLongInt) valid_base64 = .false.
+  if(verify(base64_str(l-1_pLongInt:),base64_encoding//'=',kind=pLongInt) /= 0_pLongInt) valid_base64 = .false.
+
+end function valid_base64
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of base64 functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
   character(len=*), parameter :: zero_to_three = 'AAECAw=='
-
-  allocate(bytes(7), source = -1_C_SIGNED_CHAR)
-  call decode_base64(bytes,zero_to_three)
-  if(any(bytes /= int([0,1,2,3,0,0,0],C_SIGNED_CHAR)) .or. size(bytes) /= 7) call IO_error(0,ext_msg='base64_decode')
-
-  bytes = base64_to_bytes(zero_to_three)
-  if(any(bytes /= int([0,1,2,3,0,0],C_SIGNED_CHAR))   .or. size(bytes) /= 6) call IO_error(0,ext_msg='base64_to_bytes')
-
-  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt)
-  if(any(bytes /= int([1,2,3,0,0],C_SIGNED_CHAR))     .or. size(bytes) /= 5) call IO_error(0,ext_msg='base64_to_bytes/s')
-
-  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt,e=3_pLongInt)
-  if(any(bytes /= int([1,2],C_SIGNED_CHAR))           .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/s/e')
-
-  bytes = base64_to_bytes(zero_to_three,e=2_pLongInt)
-  if(any(bytes /= int([0,1],C_SIGNED_CHAR))           .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/e')
 
   ! https://en.wikipedia.org/wiki/Base64#Output_padding
   if(base64_nBase64(20_pLongInt) /= 28_pLongInt) call IO_error(0,ext_msg='base64_nBase64/20/28')
@@ -173,6 +179,37 @@ subroutine selfTest
 
   if(base64_nByte(4_pLongInt)    /= 3_pLongInt)  call IO_error(0,ext_msg='base64_nByte/4/3')
   if(base64_nByte(8_pLongInt)    /= 6_pLongInt)  call IO_error(0,ext_msg='base64_nByte/8/6')
+
+  bytes = base64_to_bytes(zero_to_three)
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes//')
+  
+  bytes = base64_to_bytes(zero_to_three,e=1_pLongInt)
+  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes//1')
+  bytes = base64_to_bytes(zero_to_three,e=2_pLongInt)
+  if(any(bytes /= int([0,1],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes//2')
+  bytes = base64_to_bytes(zero_to_three,e=3_pLongInt)
+  if(any(bytes /= int([0,1,2],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes//3')
+  bytes = base64_to_bytes(zero_to_three,e=4_pLongInt)
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes//4')
+  
+  bytes = base64_to_bytes(zero_to_three,s=1_pLongInt)
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes/1/')
+  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt)
+  if(any(bytes /= int([1,2,3],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes/2/')
+  bytes = base64_to_bytes(zero_to_three,s=3_pLongInt)
+  if(any(bytes /= int([2,3],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/3/')
+  bytes = base64_to_bytes(zero_to_three,s=4_pLongInt)
+  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/4/')
+  
+  bytes = base64_to_bytes(zero_to_three,s=1_pLongInt,e=1_pLongInt)
+  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/1/1')
+  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt,e=2_pLongInt)
+  if(any(bytes /= int([1],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/2/2')
+  bytes = base64_to_bytes(zero_to_three,s=3_pLongInt,e=3_pLongInt)
+  if(any(bytes /= int([2],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/3/3')
+  bytes = base64_to_bytes(zero_to_three,s=4_pLongInt,e=4_pLongInt)
+  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/4/4')
+ 
 
 end subroutine selfTest
 
