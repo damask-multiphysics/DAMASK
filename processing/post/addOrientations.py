@@ -104,8 +104,8 @@ input = [options.eulers     is not None,
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
 
-r = damask.Rotation.from_axis_angle(np.array(options.crystalrotation),options.degrees,normalise=True)
-R = damask.Rotation.from_axis_angle(np.array(options.labrotation),options.degrees,normalise=True)
+r = damask.Rotation.from_axis_angle(np.array(options.crystalrotation),options.degrees,normalize=True)
+R = damask.Rotation.from_axis_angle(np.array(options.labrotation),options.degrees,normalize=True)
 
 for name in filenames:
     damask.util.report(scriptName,name)
