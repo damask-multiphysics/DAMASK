@@ -70,22 +70,26 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
     s, &                                                                                            !< start (in bytes)
     e                                                                                               !< end (in bytes)
 
-  integer(pLongInt) :: s_bytes, e_bytes
-  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes, bytes_raw
+  integer(pLongInt) :: s_bytes, e_bytes, s_str, e_str
+  integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
-  if(.not. valid_base64(base64_str)) error stop 'invalid base64'
+  if(.not. valid_base64(base64_str)) call IO_error(114,'invalid character')
 
   if(present(s)) then
-    if(s<1_pLongInt) error stop 'invalid s'
-    s_bytes = s
+    if(s<1_pLongInt) call IO_error(114, 's out of range')
+    s_str = ((s-1_pLongInt)/3_pLongInt)*4_pLongInt + 1_pLongInt
+    s_bytes = mod(s-1_pLongInt,3_pLongInt) + 1_pLongInt
   else
-    s_bytes = 1
+    s_str = 1_pLongInt
+    s_bytes = 1_pLongInt
   endif
 
   if(present(e)) then
-    if(e>base64_nByte(len(base64_str,kind=pLongInt))) error stop 'invalid e'
+    if(e>base64_nByte(len(base64_str,kind=pLongInt))) call IO_error(114, 'e out of range')
+    e_str = ((e-1_pLongInt)/3_pLongInt)*4_pLongInt + 4_pLongInt
     e_bytes = e
   else
+    e_str = len(base64_str,kind=pLongInt)
     e_bytes = base64_nByte(len(base64_str,kind=pLongInt))
     if(base64_str(len(base64_str)-0_pLongInt:len(base64_str)-0_pLongInt) == '=') &
       e_bytes = e_bytes -1_pLongInt
@@ -93,9 +97,10 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
       e_bytes = e_bytes -1_pLongInt
   endif
 
-  ! ToDo: inefficient for s_>>1 or e_<<size(bytes_raw)
-  bytes_raw = decode_base64(base64_str)
-  bytes     = bytes_raw(s_bytes:e_bytes)
+  e_bytes = e_bytes - base64_nByte(s_str)
+  
+  bytes = decode_base64(base64_str(s_str:e_str))
+  bytes = bytes(s_bytes:e_bytes)
 
 end function base64_to_bytes
 
@@ -165,18 +170,6 @@ subroutine selfTest
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
   character(len=*), parameter :: zero_to_three = 'AAECAw=='
 
-  bytes = base64_to_bytes(zero_to_three)
-  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes')
-
-  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt)
-  if(any(bytes /= int([1,2,3],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes/s')
-
-  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt,e=3_pLongInt)
-  if(any(bytes /= int([1,2],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/s/e')
-
-  bytes = base64_to_bytes(zero_to_three,e=2_pLongInt)
-  if(any(bytes /= int([0,1],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/e')
-
   ! https://en.wikipedia.org/wiki/Base64#Output_padding
   if(base64_nBase64(20_pLongInt) /= 28_pLongInt) call IO_error(0,ext_msg='base64_nBase64/20/28')
   if(base64_nBase64(19_pLongInt) /= 28_pLongInt) call IO_error(0,ext_msg='base64_nBase64/19/28')
@@ -186,6 +179,37 @@ subroutine selfTest
 
   if(base64_nByte(4_pLongInt)    /= 3_pLongInt)  call IO_error(0,ext_msg='base64_nByte/4/3')
   if(base64_nByte(8_pLongInt)    /= 6_pLongInt)  call IO_error(0,ext_msg='base64_nByte/8/6')
+
+  bytes = base64_to_bytes(zero_to_three)
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes//')
+  
+  bytes = base64_to_bytes(zero_to_three,e=1_pLongInt)
+  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes//1')
+  bytes = base64_to_bytes(zero_to_three,e=2_pLongInt)
+  if(any(bytes /= int([0,1],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes//2')
+  bytes = base64_to_bytes(zero_to_three,e=3_pLongInt)
+  if(any(bytes /= int([0,1,2],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes//3')
+  bytes = base64_to_bytes(zero_to_three,e=4_pLongInt)
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes//4')
+  
+  bytes = base64_to_bytes(zero_to_three,s=1_pLongInt)
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes/1/')
+  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt)
+  if(any(bytes /= int([1,2,3],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes/2/')
+  bytes = base64_to_bytes(zero_to_three,s=3_pLongInt)
+  if(any(bytes /= int([2,3],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/3/')
+  bytes = base64_to_bytes(zero_to_three,s=4_pLongInt)
+  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/4/')
+  
+  bytes = base64_to_bytes(zero_to_three,s=1_pLongInt,e=1_pLongInt)
+  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/1/1')
+  bytes = base64_to_bytes(zero_to_three,s=2_pLongInt,e=2_pLongInt)
+  if(any(bytes /= int([1],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/2/2')
+  bytes = base64_to_bytes(zero_to_three,s=3_pLongInt,e=3_pLongInt)
+  if(any(bytes /= int([2],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/3/3')
+  bytes = base64_to_bytes(zero_to_three,s=4_pLongInt,e=4_pLongInt)
+  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/4/4')
+ 
 
 end subroutine selfTest
 

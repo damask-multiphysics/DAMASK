@@ -448,6 +448,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid character for float:'
     case (113)
       msg = 'invalid character for logical:'
+    case (114)
+      msg = 'cannot decode base64 string:'
+
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
     case (130)
