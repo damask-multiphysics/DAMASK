@@ -101,7 +101,7 @@ end subroutine prec_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for float with double precision
+!> @brief Test floating point numbers with double precision for equality.
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative
@@ -124,7 +124,7 @@ end function dEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for float with double precision
+!> @brief Test floating point numbers with double precision for inequality.
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative NOT
@@ -144,7 +144,7 @@ end function dNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality to 0 comparison for float with double precision
+!> @brief Test floating point number with double precision for equality to 0.
 ! replaces "==0" but everything not representable as a normal number is treated as 0. Counterpart to dNeq0
 ! https://de.mathworks.com/help/matlab/ref/realmin.html
 ! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
@@ -167,7 +167,7 @@ end function dEq0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality to 0 comparison for float with double precision
+!> @brief Test floating point number with double precision for inequality to 0.
 ! replaces "!=0" but everything not representable as a normal number is treated as 0. Counterpart to dEq0
 ! https://de.mathworks.com/help/matlab/ref/realmin.html
 ! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
@@ -187,7 +187,7 @@ end function dNeq0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for complex with double precision
+!> @brief Test complex floating point numbers with double precision for equality.
 ! replaces "==" but for certain (relative) tolerance. Counterpart to cNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
@@ -211,7 +211,7 @@ end function cEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for complex with double precision
+!> @brief Test complex floating point numbers with double precision for inequality.
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to cEq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
@@ -232,7 +232,7 @@ end function cNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_FLOAT (4 byte float)
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_FLOAT array (4 byte float).
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_FLOAT(bytes)
 
@@ -246,7 +246,7 @@ end function bytes_to_C_FLOAT
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_DOUBLE (8 byte float)
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_DOUBLE array (8 byte float).
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_DOUBLE(bytes)
 
@@ -260,7 +260,7 @@ end function bytes_to_C_DOUBLE
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_INT32_T (4 byte signed integer)
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_INT32_T array (4 byte signed integer).
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_INT32_T(bytes)
 
@@ -274,7 +274,7 @@ end function bytes_to_C_INT32_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_INT64_T (8 byte signed integer)
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_INT64_T array (8 byte signed integer).
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_INT64_T(bytes)
 
@@ -288,7 +288,7 @@ end function bytes_to_C_INT64_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some prec functions
+!> @brief Check correctness of some prec functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
