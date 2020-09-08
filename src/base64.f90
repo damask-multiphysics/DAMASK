@@ -73,10 +73,10 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
   integer(pLongInt) :: s_bytes, e_bytes, s_str, e_str
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
-  if(.not. valid_base64(base64_str)) call IO_error(114,'invalid character')
+  if(.not. valid_base64(base64_str)) call IO_error(114,ext_msg='invalid character')
 
   if(present(s)) then
-    if(s<1_pLongInt) call IO_error(114, 's out of range')
+    if(s<1_pLongInt) call IO_error(114, ext_msg='s out of range')
     s_str = ((s-1_pLongInt)/3_pLongInt)*4_pLongInt + 1_pLongInt
     s_bytes = mod(s-1_pLongInt,3_pLongInt) + 1_pLongInt
   else
@@ -85,7 +85,7 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
   endif
 
   if(present(e)) then
-    if(e>base64_nByte(len(base64_str,kind=pLongInt))) call IO_error(114, 'e out of range')
+    if(e>base64_nByte(len(base64_str,kind=pLongInt))) call IO_error(114, ext_msg='e out of range')
     e_str = ((e-1_pLongInt)/3_pLongInt)*4_pLongInt + 4_pLongInt
     e_bytes = e
   else
