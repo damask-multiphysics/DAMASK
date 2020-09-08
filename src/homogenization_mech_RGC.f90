@@ -85,7 +85,7 @@ module subroutine mech_RGC_init(num_homogMech)
     h, &
     NofMyHomog, &
     sizeState, nIntFaceTot
-  
+
   class (tNode), pointer :: &
     num_RGC, &                                                                                      ! pointer to RGC numerics data
     material_homogenization, &
@@ -107,7 +107,7 @@ module subroutine mech_RGC_init(num_homogMech)
   allocate(state(Ninstance))
   allocate(state0(Ninstance))
   allocate(dependentState(Ninstance))
- 
+
   num_RGC => num_homogMech%get('RGC',defaultVal=emptyDict)
 
   num%atol         =  num_RGC%get_asFloat('atol',              defaultVal=1.0e+4_pReal)
@@ -139,7 +139,7 @@ module subroutine mech_RGC_init(num_homogMech)
   if (num%volDiscrPow <= 0.0_pReal)  call IO_error(301,ext_msg='volDiscrPw_RGC')
 
 
-  material_homogenization => material_root%get('homogenization') 
+  material_homogenization => material_root%get('homogenization')
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
     homog => material_homogenization%get(h)
@@ -188,10 +188,10 @@ module subroutine mech_RGC_init(num_homogMech)
     stt%work               => homogState(h)%state(nIntFaceTot+1,:)
     stt%penaltyEnergy      => homogState(h)%state(nIntFaceTot+2,:)
 
-    allocate(dst%volumeDiscrepancy(   NofMyHomog))
-    allocate(dst%relaxationRate_avg(  NofMyHomog))
-    allocate(dst%relaxationRate_max(  NofMyHomog))
-    allocate(dst%mismatch(          3,NofMyHomog))
+    allocate(dst%volumeDiscrepancy(   NofMyHomog), source=0.0_pReal)
+    allocate(dst%relaxationRate_avg(  NofMyHomog), source=0.0_pReal)
+    allocate(dst%relaxationRate_max(  NofMyHomog), source=0.0_pReal)
+    allocate(dst%mismatch(          3,NofMyHomog), source=0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
@@ -959,7 +959,7 @@ module subroutine mech_RGC_results(instance,group)
       case('W')
         call results_writeDataset(group,stt%work,trim(prm%output(o)), &
                                   'work density','J/m³')
-      case('M')                                         
+      case('M')
         call results_writeDataset(group,dst%mismatch,trim(prm%output(o)), &
                                   'average mismatch tensor','1')
       case('R')
