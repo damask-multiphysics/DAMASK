@@ -232,7 +232,7 @@ end function cNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interprete array of bytes (C_SIGNED_CHAR) as C_FLOAT (4 byte float)
+!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_FLOAT (4 byte float)
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_FLOAT(bytes)
 
@@ -246,7 +246,7 @@ end function bytes_to_C_FLOAT
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interprete array of bytes (C_SIGNED_CHAR) as C_DOUBLE (8 byte float)
+!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_DOUBLE (8 byte float)
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_DOUBLE(bytes)
 
@@ -260,7 +260,7 @@ end function bytes_to_C_DOUBLE
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interprete array of bytes (C_SIGNED_CHAR) as C_INT32_T (4 byte signed integer)
+!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_INT32_T (4 byte signed integer)
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_INT32_T(bytes)
 
@@ -274,7 +274,7 @@ end function bytes_to_C_INT32_T
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief interprete array of bytes (C_SIGNED_CHAR) as C_INT64_T (8 byte signed integer)
+!> @brief interpret array of bytes (C_SIGNED_CHAR) as C_INT64_T (8 byte signed integer)
 !--------------------------------------------------------------------------------------------------
 pure function bytes_to_C_INT64_T(bytes)
 
