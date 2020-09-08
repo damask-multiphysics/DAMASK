@@ -251,13 +251,6 @@ Thermal:
     - master
     - release
 
-grid_packedGeometry:
-  stage: grid
-  script: grid_packedGeometry/test.py
-  except:
-    - master
-    - release
-
 grid_parsingArguments:
   stage: grid
   script: grid_parsingArguments/test.py
