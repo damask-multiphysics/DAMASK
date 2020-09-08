@@ -698,13 +698,13 @@ class TestRotation:
             assert ok and np.isclose(np.linalg.norm(o),1.0)
 
     @pytest.mark.parametrize('P',[1,-1])
-    @pytest.mark.parametrize('normalise',[True,False])
+    @pytest.mark.parametrize('normalize',[True,False])
     @pytest.mark.parametrize('degrees',[True,False])
-    def test_axis_angle(self,set_of_rotations,degrees,normalise,P):
+    def test_axis_angle(self,set_of_rotations,degrees,normalize,P):
         c = np.array([P*-1,P*-1,P*-1,1.])
         for rot in set_of_rotations:
             m = rot.as_Eulers()
-            o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalise,P).as_Eulers()
+            o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalize,P).as_Eulers()
             u = np.array([np.pi*2,np.pi,np.pi*2])
             ok = np.allclose(m,o,atol=atol)
             ok = ok or np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
@@ -725,12 +725,12 @@ class TestRotation:
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi+1.e-9
 
     @pytest.mark.parametrize('P',[1,-1])
-    @pytest.mark.parametrize('normalise',[True,False])
-    def test_Rodrigues(self,set_of_rotations,normalise,P):
+    @pytest.mark.parametrize('normalize',[True,False])
+    def test_Rodrigues(self,set_of_rotations,normalize,P):
         c = np.array([P*-1,P*-1,P*-1,1.])
         for rot in set_of_rotations:
             m = rot.as_matrix()
-            o = Rotation.from_Rodrigues(rot.as_Rodrigues()*c,normalise,P).as_matrix()
+            o = Rotation.from_Rodrigues(rot.as_Rodrigues()*c,normalize,P).as_matrix()
             ok = np.allclose(m,o,atol=atol)
             print(m,o)
             assert ok and np.isclose(np.linalg.det(o),1.0)
