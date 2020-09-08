@@ -84,7 +84,7 @@ pure function base64_to_bytes(base64_str,s,e) result(bytes)
   endif
 
   ! ToDo: inefficient for s_>>1 or e_<<size(bytes_raw)
-  call decode_base64(bytes_raw,base64_str)
+  bytes_raw = decode_base64(base64_str)
   bytes = bytes_raw(s_:e_)
 
 end function base64_to_bytes
@@ -92,27 +92,23 @@ end function base64_to_bytes
 
 !--------------------------------------------------------------------------------------------------
 !> @brief convert a Base64 ASCII string into its byte-wise binary representation
-!> @details https://en.wikipedia.org/wiki/Base64
+!> @details see https://en.wikipedia.org/wiki/Base64. Input string must be properly padded.
 !--------------------------------------------------------------------------------------------------
-pure subroutine decode_base64(bytes,base64_str)
+pure function decode_base64(base64_str) result(bytes)
 
-  integer(C_SIGNED_CHAR), intent(out),dimension(:) :: bytes                                         !< byte-wise representation
-  character(len=*),       intent(in)               :: base64_str                                    !< Base64 string representation
+  character(len=*), intent(in) :: base64_str                                                        !< Base64 string representation
+
+  integer(C_SIGNED_CHAR), dimension(base64_nByte(len_trim(base64_str,pLongInt))) :: bytes
 
   integer(C_SIGNED_CHAR), dimension(0:3) :: charPos
-  integer(pLongInt) :: c, b, bytesLen,base64Len, p
+  integer(pLongInt) :: c, b, p
   character(len=*), parameter :: encoding='ABCDEFGHIJKLMNOPQRSTUVWXYZ&
                                           &abcdefghijklmnopqrstuvwxyz0123456789+/'
-
-  bytes = 0_C_SIGNED_CHAR
-
-  bytesLen  = size(bytes,kind=pLongInt)
-  base64Len = len_trim(base64_str,kind=pLongInt)
 
   c = 1_pLongInt
   b = 1_pLongInt
 
-  do while(b <= bytesLen+3_pLongInt .and. c <= base64Len+4_pLongInt)
+  do while(c + 3_pInt <= len_trim(base64_str,kind=pLongInt)) !ToDo: Confusing + 3
     do p=0_pLongInt,3_pLongInt
       if(c+p<=len(base64_str,kind=pLongInt)) then
         charPos(p) = int(merge(index(encoding,base64_str(c+p:c+p))-1, 0, base64_str(c+p:c+p) /= '='),C_SIGNED_CHAR)
@@ -121,23 +117,17 @@ pure subroutine decode_base64(bytes,base64_str)
       endif
     enddo
 
-    if (b+0<=bytesLen) then
-       call mvbits(charPos(0),0,6,bytes(b+0),2)
-       call mvbits(charPos(1),4,2,bytes(b+0),0)
-    endif
-    if (b+1<=bytesLen) then
-       call mvbits(charPos(1),0,4,bytes(b+1),4)
-       call mvbits(charPos(2),2,4,bytes(b+1),0)
-    endif
-    if (b+2<=bytesLen) then
-       call mvbits(charPos(2),0,2,bytes(b+2),6)
-       call mvbits(charPos(3),0,6,bytes(b+2),0)
-    endif
+    call mvbits(charPos(0),0,6,bytes(b+0),2)
+    call mvbits(charPos(1),4,2,bytes(b+0),0)
+    call mvbits(charPos(1),0,4,bytes(b+1),4)
+    call mvbits(charPos(2),2,4,bytes(b+1),0)
+    call mvbits(charPos(2),0,2,bytes(b+2),6)
+    call mvbits(charPos(3),0,6,bytes(b+2),0)
     b = b+3_pLongInt
     c = c+4_pLongInt
   enddo
 
-end subroutine decode_base64
+end function decode_base64
 
 
 !--------------------------------------------------------------------------------------------------
@@ -147,10 +137,6 @@ subroutine selfTest
 
   integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
   character(len=*), parameter :: zero_to_three = 'AAECAw=='
-
-  allocate(bytes(7), source = -1_C_SIGNED_CHAR)
-  call decode_base64(bytes,zero_to_three)
-  if(any(bytes /= int([0,1,2,3,0,0,0],C_SIGNED_CHAR)) .or. size(bytes) /= 7) call IO_error(0,ext_msg='base64_decode')
 
   bytes = base64_to_bytes(zero_to_three)
   if(any(bytes /= int([0,1,2,3,0,0],C_SIGNED_CHAR))   .or. size(bytes) /= 6) call IO_error(0,ext_msg='base64_to_bytes')
