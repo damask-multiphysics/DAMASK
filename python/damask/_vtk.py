@@ -221,7 +221,6 @@ class VTK:
             Data label.
 
         """
-        N_data = data.shape[0]
         N_points = self.vtk_data.GetNumberOfPoints()
         N_cells  = self.vtk_data.GetNumberOfCells()
 
@@ -229,7 +228,8 @@ class VTK:
             if label is None:
                 raise ValueError('No label defined for numpy.ndarray')
 
-            d = np_to_vtk((data.astype(np.float32) if data.dtype in [np.float64, np.float128] 
+            N_data = data.shape[0]
+            d = np_to_vtk((data.astype(np.float32) if data.dtype in [np.float64, np.float128]
                       else data).reshape(N_data,-1),deep=True)                               # avoid large files
             d.SetName(label)
 
