@@ -87,18 +87,14 @@ function base64_to_bytes(base64_str,s,e) result(bytes)
   if(present(e)) then
     if(e>base64_nByte(len(base64_str,kind=pLongInt))) call IO_error(114, ext_msg='e out of range')
     e_str = ((e-1_pLongInt)/3_pLongInt)*4_pLongInt + 4_pLongInt
-    e_bytes = e
+    e_bytes = e - base64_nByte(s_str)
   else
     e_str = len(base64_str,kind=pLongInt)
-    e_bytes = base64_nByte(len(base64_str,kind=pLongInt))
-    if(base64_str(len(base64_str)-0_pLongInt:len(base64_str)-0_pLongInt) == '=') &
-      e_bytes = e_bytes -1_pLongInt
-    if(base64_str(len(base64_str)-1_pLongInt:len(base64_str)-1_pLongInt) == '=') &
-      e_bytes = e_bytes -1_pLongInt
+    e_bytes = base64_nByte(len(base64_str,kind=pLongInt)) - base64_nByte(s_str)
+    if(base64_str(e_str-0_pLongInt:e_str-0_pLongInt) == '=') e_bytes = e_bytes - 1_pLongInt
+    if(base64_str(e_str-1_pLongInt:e_str-1_pLongInt) == '=') e_bytes = e_bytes - 1_pLongInt
   endif
 
-  e_bytes = e_bytes - base64_nByte(s_str)
-  
   bytes = decode_base64(base64_str(s_str:e_str))
   bytes = bytes(s_bytes:e_bytes)
 
