@@ -14,6 +14,7 @@ module CPFEM2
   use material
   use lattice
   use IO
+  use base64
   use DAMASK_interface
   use results
   use discretization
@@ -42,6 +43,7 @@ subroutine CPFEM_initAll
   call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
   call prec_init
   call IO_init
+  call base64_init
 #ifdef Mesh
   call FEM_quadrature_init
 #endif

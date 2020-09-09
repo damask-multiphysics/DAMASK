@@ -10,6 +10,7 @@ module IO
 
   implicit none
   private
+
   character(len=*), parameter, public :: &
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
   character, parameter, public :: &
@@ -50,7 +51,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief does nothing.
+!> @brief do self test
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
@@ -447,6 +448,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid character for float:'
     case (113)
       msg = 'invalid character for logical:'
+    case (114)
+      msg = 'cannot decode base64 string:'
+
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
     case (130)

@@ -8,6 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 module prec
   use, intrinsic :: IEEE_arithmetic
+  use, intrinsic :: ISO_C_Binding
 
   implicit none
   public
@@ -81,7 +82,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reporting precision
+!> @brief report precision and do self test
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
 
@@ -100,7 +101,7 @@ end subroutine prec_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for float with double precision
+!> @brief Test floating point numbers with double precision for equality.
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative
@@ -123,7 +124,7 @@ end function dEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for float with double precision
+!> @brief Test floating point numbers with double precision for inequality.
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative NOT
@@ -143,7 +144,7 @@ end function dNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality to 0 comparison for float with double precision
+!> @brief Test floating point number with double precision for equality to 0.
 ! replaces "==0" but everything not representable as a normal number is treated as 0. Counterpart to dNeq0
 ! https://de.mathworks.com/help/matlab/ref/realmin.html
 ! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
@@ -166,7 +167,7 @@ end function dEq0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality to 0 comparison for float with double precision
+!> @brief Test floating point number with double precision for inequality to 0.
 ! replaces "!=0" but everything not representable as a normal number is treated as 0. Counterpart to dEq0
 ! https://de.mathworks.com/help/matlab/ref/realmin.html
 ! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
@@ -186,7 +187,7 @@ end function dNeq0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for complex with double precision
+!> @brief Test complex floating point numbers with double precision for equality.
 ! replaces "==" but for certain (relative) tolerance. Counterpart to cNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
@@ -210,7 +211,7 @@ end function cEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for complex with double precision
+!> @brief Test complex floating point numbers with double precision for inequality.
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to cEq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
@@ -231,14 +232,75 @@ end function cNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some prec functions
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_FLOAT array (4 byte float).
+!--------------------------------------------------------------------------------------------------
+pure function bytes_to_C_FLOAT(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_FLOAT array
+  real(C_FLOAT), dimension(size(bytes,kind=pLongInt)/(storage_size(0._C_FLOAT,pLongInt)/8_pLongInt)) :: &
+    bytes_to_C_FLOAT
+
+  bytes_to_C_FLOAT = transfer(bytes,bytes_to_C_FLOAT,size(bytes_to_C_FLOAT))
+
+end function bytes_to_C_FLOAT
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_DOUBLE array (8 byte float).
+!--------------------------------------------------------------------------------------------------
+pure function bytes_to_C_DOUBLE(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_DOUBLE array
+  real(C_DOUBLE), dimension(size(bytes,kind=pLongInt)/(storage_size(0._C_DOUBLE,pLongInt)/8_pLongInt)) :: &
+    bytes_to_C_DOUBLE
+
+  bytes_to_C_DOUBLE = transfer(bytes,bytes_to_C_DOUBLE,size(bytes_to_C_DOUBLE))
+
+end function bytes_to_C_DOUBLE
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_INT32_T array (4 byte signed integer).
+!--------------------------------------------------------------------------------------------------
+pure function bytes_to_C_INT32_T(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_INT32_T array
+  integer(C_INT32_T), dimension(size(bytes,kind=pLongInt)/(storage_size(0_C_INT32_T,pLongInt)/8_pLongInt)) :: &
+    bytes_to_C_INT32_T
+
+  bytes_to_C_INT32_T = transfer(bytes,bytes_to_C_INT32_T,size(bytes_to_C_INT32_T))
+
+end function bytes_to_C_INT32_T
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_INT64_T array (8 byte signed integer).
+!--------------------------------------------------------------------------------------------------
+pure function bytes_to_C_INT64_T(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_INT64_T array
+  integer(C_INT64_T), dimension(size(bytes,kind=pLongInt)/(storage_size(0_C_INT64_T,pLongInt)/8_pLongInt)) :: &
+     bytes_to_C_INT64_T
+
+  bytes_to_C_INT64_T = transfer(bytes,bytes_to_C_INT64_T,size(bytes_to_C_INT64_T))
+
+end function bytes_to_C_INT64_T
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of some prec functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
   integer, allocatable, dimension(:) :: realloc_lhs_test
-  real(pReal), dimension(2) :: r
+  real(pReal),   dimension(1) :: f
+  integer(pInt), dimension(1) :: i
+  real(pReal),   dimension(2) :: r
   external :: &
     quit
+
+  realloc_lhs_test = [1,2]
+  if (any(realloc_lhs_test/=[1,2])) call quit(9000)
 
   call random_number(r)
   r = r/minval(r)
@@ -246,8 +308,19 @@ subroutine selfTest
   if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) call quit(9000)
   if(.not. all(dEq0(r-(r+PREAL_MIN))))     call quit(9000)
 
-  realloc_lhs_test = [1,2]
-  if (any(realloc_lhs_test/=[1,2])) call quit(9000)
+  ! https://www.binaryconvert.com
+  ! https://www.rapidtables.com/convert/number/binary-to-decimal.html
+  f = real(bytes_to_C_FLOAT(int([-65,+11,-102,+75],C_SIGNED_CHAR)),pReal)
+  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) call quit(9000)
+
+  f = real(bytes_to_C_DOUBLE(int([0,0,0,-32,+119,+65,+115,65],C_SIGNED_CHAR)),pReal)
+  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) call quit(9000)
+
+  i = int(bytes_to_C_INT32_T(int([+126,+23,+52,+1],C_SIGNED_CHAR)),pInt)
+  if(i(1) /= 20191102_pInt)                 call quit(9000)
+
+  i = int(bytes_to_C_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pInt)
+  if(i(1) /= 20191102_pInt)                 call quit(9000)
 
 end subroutine selfTest
 
