@@ -723,7 +723,7 @@ subroutine inputRead_microstructure(microstructureAt,&
     endif
   enddo
 
-  if(any(microstructureAt < 1)) call IO_error(190)
+  if(any(microstructureAt < 1)) call IO_error(180)
 
 end subroutine inputRead_microstructure
 
