@@ -16,7 +16,7 @@ module base64
   public :: &
     base64_init, &
     base64_to_bytes, &
-    base64_nBase64, &
+    base64_nChar, &
     base64_nByte
 
 contains
@@ -37,14 +37,14 @@ end subroutine base64_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate number of Base64 characters required for storage of N bytes.
 !--------------------------------------------------------------------------------------------------
-pure function base64_nBase64(nByte)
+pure function base64_nChar(nByte)
 
   integer(pLongInt), intent(in) :: nByte
-  integer(pLongInt)             :: base64_nBase64
+  integer(pLongInt)             :: base64_nChar
 
-  base64_nBase64 = 4_pLongInt * (nByte/3_pLongInt + merge(1_pLongInt,0_pLongInt,mod(nByte,3_pLongInt) /= 0_pLongInt))
+  base64_nChar = 4_pLongInt * (nByte/3_pLongInt + merge(1_pLongInt,0_pLongInt,mod(nByte,3_pLongInt) /= 0_pLongInt))
 
-end function base64_nBase64
+end function base64_nChar
 
 
 !--------------------------------------------------------------------------------------------------
@@ -167,14 +167,14 @@ subroutine selfTest
   character(len=*), parameter :: zero_to_three = 'AAECAw=='
 
   ! https://en.wikipedia.org/wiki/Base64#Output_padding
-  if(base64_nBase64(20_pLongInt) /= 28_pLongInt) call IO_error(0,ext_msg='base64_nBase64/20/28')
-  if(base64_nBase64(19_pLongInt) /= 28_pLongInt) call IO_error(0,ext_msg='base64_nBase64/19/28')
-  if(base64_nBase64(18_pLongInt) /= 24_pLongInt) call IO_error(0,ext_msg='base64_nBase64/18/24')
-  if(base64_nBase64(17_pLongInt) /= 24_pLongInt) call IO_error(0,ext_msg='base64_nBase64/17/24')
-  if(base64_nBase64(16_pLongInt) /= 24_pLongInt) call IO_error(0,ext_msg='base64_nBase64/16/24')
+  if(base64_nChar(20_pLongInt) /= 28_pLongInt) call IO_error(0,ext_msg='base64_nChar/20/28')
+  if(base64_nChar(19_pLongInt) /= 28_pLongInt) call IO_error(0,ext_msg='base64_nChar/19/28')
+  if(base64_nChar(18_pLongInt) /= 24_pLongInt) call IO_error(0,ext_msg='base64_nChar/18/24')
+  if(base64_nChar(17_pLongInt) /= 24_pLongInt) call IO_error(0,ext_msg='base64_nChar/17/24')
+  if(base64_nChar(16_pLongInt) /= 24_pLongInt) call IO_error(0,ext_msg='base64_nChar/16/24')
 
-  if(base64_nByte(4_pLongInt)    /= 3_pLongInt)  call IO_error(0,ext_msg='base64_nByte/4/3')
-  if(base64_nByte(8_pLongInt)    /= 6_pLongInt)  call IO_error(0,ext_msg='base64_nByte/8/6')
+  if(base64_nByte(4_pLongInt)  /= 3_pLongInt)  call IO_error(0,ext_msg='base64_nByte/4/3')
+  if(base64_nByte(8_pLongInt)  /= 6_pLongInt)  call IO_error(0,ext_msg='base64_nByte/8/6')
 
   bytes = base64_to_bytes(zero_to_three)
   if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes//')
