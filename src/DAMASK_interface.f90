@@ -124,16 +124,24 @@ subroutine DAMASK_interface_init
 
   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
 
- ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK
+ ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
+#ifdef DEBUG
+  write(6,*) achar(27)//'[31m'
+  write(6,'(a,/)') ' debug version - debug version - debug version - debug version - debug version'
+#else
   write(6,*) achar(27)//'[94m'
-  write(6,*) '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/'
-  write(6,*) '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/'
-  write(6,*) '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/'
-  write(6,*) '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/'
-  write(6,*) ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/'
+#endif
+  write(6,*) '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
+  write(6,*) '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
+  write(6,*) '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
+  write(6,*) '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
+  write(6,*) ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
+#ifdef DEBUG
+  write(6,'(/,a)') ' debug version - debug version - debug version - debug version - debug version'
+#endif
   write(6,*) achar(27)//'[0m'
 
-  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
+  write(6,'(a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
   write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
 
   write(6,'(/,a)') ' Version: '//DAMASKVERSION
