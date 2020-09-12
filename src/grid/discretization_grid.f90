@@ -435,7 +435,6 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     real(pReal), dimension(:), allocatable :: coords
 
     coords = as_pReal(base64_str,header_type,compressed,data_type)
-
     origin(direction) = coords(1)
     geomSize(direction) = coords(size(coords)) - coords(1)
 
@@ -464,7 +463,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
       case('Float64')
         as_Int = int(bytes_to_C_DOUBLE (asBytes(base64_str,header_type,compressed)))
       case default
-        allocate(as_Int(0))
+        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(data_type))
     end select
 
   end function as_Int
@@ -492,7 +491,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
       case('Float64')
         as_pReal = real(bytes_to_C_DOUBLE (asBytes(base64_str,header_type,compressed)),pReal)
       case default
-        allocate(as_pReal(0))
+        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(data_type))
     end select
 
   end function as_pReal
@@ -531,7 +530,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
                                     header_type                                                     ! header type (UInt32 or Uint64)
 
-    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
+    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes, bytes_inflated
 
     integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
     integer(pI64) :: header_len, N_blocks, b,s,e
@@ -551,13 +550,14 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     allocate(size_inflated(N_blocks),source=temp(2))
     size_inflated(N_blocks) = merge(temp(3),temp(2),temp(3)/=0_pI64)
     size_deflated = temp(4:)
-    allocate(bytes(0))
+    bytes_inflated = base64_to_bytes(base64_str(base64_nChar(header_len)+1_pI64:))
 
+    allocate(bytes(0))
     e = 0_pI64
     do b = 1, N_blocks
       s = e + 1_pI64
       e = s + size_deflated(b) - 1_pI64
-      bytes = [bytes,zlib_inflate(base64_to_bytes(base64_str(base64_nChar(header_len)+1:),s,e),size_inflated(b))]
+      bytes = [bytes,zlib_inflate(bytes_inflated(s:e),size_inflated(b))]
     enddo
 
   end function asBytes_compressed
