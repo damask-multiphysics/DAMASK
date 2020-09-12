@@ -41,7 +41,6 @@ contains
 subroutine CPFEM_initAll
 
   call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
-  call prec_init
   call IO_init
   call base64_init
 #ifdef Mesh

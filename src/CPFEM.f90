@@ -75,7 +75,6 @@ contains
 subroutine CPFEM_initAll
 
   call DAMASK_interface_init
-  call prec_init
   call IO_init
   call config_init
   call math_init

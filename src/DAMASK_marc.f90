@@ -26,6 +26,7 @@
 #define PASTE(x,y) x ## y
 
 #include "prec.f90"
+#include "parallelization.f90"
 
 module DAMASK_interface
   use prec
@@ -42,7 +43,7 @@ module DAMASK_interface
 
   logical,          protected, public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
-  
+
 
   public :: &
     DAMASK_interface_init, &
@@ -89,6 +90,9 @@ subroutine DAMASK_interface_init
     call quit(1)
   endif
   symmetricSolver = solverIsSymmetric()
+
+  call prec_init
+  call parallelization_init
 
 end subroutine DAMASK_interface_init
 

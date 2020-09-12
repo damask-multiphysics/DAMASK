@@ -19,6 +19,7 @@ module DAMASK_interface
   use PETScSys
 
   use prec
+  use parallelization
   use system_routines
 
   implicit none
@@ -268,6 +269,8 @@ subroutine DAMASK_interface_init
   call setSIGUSR1(.false.)
   call setSIGUSR2(.false.)
 
+  call prec_init
+  call parallelization_init
 
 end subroutine DAMASK_interface_init
 
