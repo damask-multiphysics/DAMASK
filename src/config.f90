@@ -15,7 +15,6 @@ module config
 #include <petsc/finclude/petscsys.h>
    use petscsys
 #endif
-!$ use OMP_LIB
 
   implicit none
   private
@@ -28,8 +27,6 @@ module config
   integer, protected, public :: &
     worldrank                  = 0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
     worldsize                  = 1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
-  integer(4), protected, public :: &
-    DAMASK_NumThreadsInt       = 0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
   public :: &
     config_init, &
@@ -80,23 +77,11 @@ subroutine parse_numerics
 
   logical :: fexist
   integer :: ierr
-!$ integer :: gotDAMASK_NUM_THREADS = 1
-!$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
 #ifdef PETSc
   call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
   call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
 #endif
-
-!$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
-!$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
-!$   call IO_warning(35,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
-!$   DAMASK_NumThreadsInt = 1_4
-!$ else
-!$   read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                      ! read as integer
-!$   if (DAMASK_NumThreadsInt < 1_4) DAMASK_NumThreadsInt = 1_4                                     ! in case of string conversion fails, set it to one
-!$ endif
-!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
 
   numerics_root => emptyDict
   inquire(file='numerics.yaml', exist=fexist)
@@ -105,9 +90,6 @@ subroutine parse_numerics
     numerics_root =>  parse_flow(to_flow(IO_read('numerics.yaml')))
   endif
 
-!--------------------------------------------------------------------------------------------------
-! openMP parameter
- !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
 
 end subroutine parse_numerics
 
