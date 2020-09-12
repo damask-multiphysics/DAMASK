@@ -617,7 +617,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     else
       s = s + 1 + scan(line(s+1:),"'"//'"')
 #ifdef __INTEL_COMPILER
-      q = str(s-1:s-1)
+      q = line(s-1:s-1)
       e = s + index(line(s:),q) - 1
 #else
       e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
