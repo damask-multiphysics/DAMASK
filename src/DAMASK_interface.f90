@@ -193,18 +193,18 @@ subroutine DAMASK_interface_init
   call get_environment_variable('USER',userName)
   ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
   write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
-  write(6,'(a,a)')      ' Host name: ', trim(getHostName())
-  write(6,'(a,a)')      ' User name: ', trim(userName)
+  write(6,'(a)')        ' Host name: '//trim(getHostName())
+  write(6,'(a)')        ' User name: '//trim(userName)
 
-  write(6,'(/a,a)')     ' Command line call:      ', trim(commandLine)
+  write(6,'(/a)')       ' Command line call:      '//trim(commandLine)
   if (len_trim(workingDirArg) > 0) &
-    write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
-  write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
-  write(6,'(a,a)')      ' Load case argument:     ', trim(loadcaseArg)
-  write(6,'(a,a)')      ' Working directory:      ', getCWD()
-  write(6,'(a,a)')      ' Geometry file:          ', interface_geomFile
-  write(6,'(a,a)')      ' Loadcase file:          ', interface_loadFile
-  write(6,'(a,a)')      ' Solver job name:        ', getSolverJobName()
+    write(6,'(a)')      ' Working dir argument:   '//trim(workingDirArg)
+  write(6,'(a)')        ' Geometry argument:      '//trim(geometryArg)
+  write(6,'(a)')        ' Load case argument:     '//trim(loadcaseArg)
+  write(6,'(a)')        ' Working directory:      '//getCWD()
+  write(6,'(a)')        ' Geometry file:          '//interface_geomFile
+  write(6,'(a)')        ' Loadcase file:          '//interface_loadFile
+  write(6,'(a)')        ' Solver job name:        '//getSolverJobName()
   if (interface_restartInc > 0) &
     write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
 
