@@ -139,7 +139,7 @@ module subroutine mech_RGC_init(num_homogMech)
   if (num%volDiscrPow <= 0.0_pReal)  call IO_error(301,ext_msg='volDiscrPw_RGC')
 
 
-  material_homogenization => material_root%get('homogenization')
+  material_homogenization => config_material%get('homogenization')
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
     homog => material_homogenization%get(h)

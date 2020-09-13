@@ -207,7 +207,7 @@ subroutine spectral_utilities_init
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
-  debug_grid      => debug_root%get('grid',defaultVal=emptyList)
+  debug_grid      => config_debug%get('grid',defaultVal=emptyList)
   debugGeneral    =  debug_grid%contains('basic')
   debugRotation   =  debug_grid%contains('rotation')
   debugPETSc      =  debug_grid%contains('petsc')
@@ -218,7 +218,7 @@ subroutine spectral_utilities_init
                  trim(PETScDebug), &
                  ' add more using the PETSc_Options keyword in numerics.yaml '; flush(6)
 
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
   call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)

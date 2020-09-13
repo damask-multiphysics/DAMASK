@@ -93,8 +93,8 @@ subroutine discretization_grid_init(restart)
 
 !-------------------------------------------------------------------------------------------------
 ! debug parameters
-  debug_element = debug_root%get_asInt('element',defaultVal=1)
-  debug_ip      = debug_root%get_asInt('integrationpoint',defaultVal=1)
+  debug_element = config_debug%get_asInt('element',defaultVal=1)
+  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
 !--------------------------------------------------------------------------------------------------
 ! general discretization

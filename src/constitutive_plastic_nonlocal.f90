@@ -209,7 +209,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(deltaState(Ninstance))
   allocate(microstructure(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)

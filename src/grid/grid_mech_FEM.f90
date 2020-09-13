@@ -126,12 +126,12 @@ subroutine grid_mech_FEM_init
 
 !-----------------------------------------------------------------------------------------------
 ! debugging options
-  debug_grid => debug_root%get('grid', defaultVal=emptyList)
+  debug_grid => config_debug%get('grid', defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
  
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameter and do sanity checks
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
   num%eps_div_atol    = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
   num%eps_div_rtol    = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
   num%eps_stress_atol = num_grid%get_asFloat ('eps_stress_atol', defaultVal=1.0e3_pReal)

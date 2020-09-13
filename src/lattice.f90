@@ -459,7 +459,7 @@ subroutine lattice_init
  
   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'; flush(6)
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   Nphases = phases%length
 
   allocate(lattice_structure(Nphases),source = lattice_UNDEFINED_ID)

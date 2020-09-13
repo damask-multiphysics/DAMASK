@@ -115,19 +115,19 @@ subroutine CPFEM_init
 
 !------------------------------------------------------------------------------
 ! read numerical parameters and do sanity check
-  num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
+  num_commercialFEM => config_numerics%get('commercialFEM',defaultVal=emptyDict)
   num%iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
   if (num%iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
 
 !------------------------------------------------------------------------------
 ! read debug options
 
-  debug_CPFEM => debug_root%get('cpfem',defaultVal=emptyList)
+  debug_CPFEM => config_debug%get('cpfem',defaultVal=emptyList)
   debugCPFEM%basic     = debug_CPFEM%contains('basic')
   debugCPFEM%extensive = debug_CPFEM%contains('extensive')
   debugCPFEM%selective = debug_CPFEM%contains('selective')
-  debugCPFEM%element   = debug_root%get_asInt('element',defaultVal = 1)
-  debugCPFEM%ip        = debug_root%get_asInt('integrationpoint',defaultVal = 1)
+  debugCPFEM%element   = config_debug%get_asInt('element',defaultVal = 1)
+  debugCPFEM%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
 
   if(debugCPFEM%basic) then
     write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)

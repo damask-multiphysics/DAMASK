@@ -20,9 +20,9 @@ module config
   private
 
   class(tNode), pointer, public :: &
-    material_root, &
-    numerics_root, &
-    debug_root
+    config_material, &
+    config_numerics, &
+    config_debug
 
   public :: &
     config_init, &
@@ -60,7 +60,7 @@ subroutine parse_material
     if(.not. fileExists) call IO_error(100,ext_msg=fname)
   endif
   write(6,*) 'reading '//fname; flush(6)
-  material_root => parse_flow(to_flow(IO_read(fname)))
+  config_material => parse_flow(to_flow(IO_read(fname)))
 
 end subroutine parse_material
 
@@ -73,11 +73,11 @@ subroutine parse_numerics
 
   logical :: fexist
 
-  numerics_root => emptyDict
+  config_numerics => emptyDict
   inquire(file='numerics.yaml', exist=fexist)
   if (fexist) then
     write(6,*) 'reading numerics.yaml'; flush(6)
-    numerics_root =>  parse_flow(to_flow(IO_read('numerics.yaml')))
+    config_numerics =>  parse_flow(to_flow(IO_read('numerics.yaml')))
   endif
 
 end subroutine parse_numerics
@@ -90,11 +90,11 @@ subroutine parse_debug
 
   logical :: fexist
 
-  debug_root => emptyDict
+  config_debug => emptyDict
   inquire(file='debug.yaml', exist=fexist)
   fileExists: if (fexist) then
     write(6,*) 'reading debug.yaml'; flush(6)
-    debug_root  => parse_flow(to_flow(IO_read('debug.yaml')))
+    config_debug  => parse_flow(to_flow(IO_read('debug.yaml')))
   endif fileExists
 
 end subroutine parse_debug
@@ -106,7 +106,7 @@ end subroutine parse_debug
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate
 
-  deallocate(material_root)                            
+  deallocate(config_material)
 
 end subroutine config_deallocate
 

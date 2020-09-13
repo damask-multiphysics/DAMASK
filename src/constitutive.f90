@@ -140,7 +140,7 @@ module constitutive
         el                                                                                          !< current element number
     end subroutine plastic_nonlocal_dotState
 
-   
+
     module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
       integer, intent(in) :: &
         ipc, &                                                                                      !< component-ID of integration point
@@ -212,7 +212,7 @@ module constitutive
      real(pReal), dimension(3,3) :: &
        initialStrain
     end function kinematics_thermal_expansion_initialStrain
- 
+
     module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
       integer, intent(in) :: &
         instance, &
@@ -269,7 +269,7 @@ module constitutive
         Li                                                                                          !< thermal velocity gradient
       real(pReal),   intent(out), dimension(3,3,3,3) :: &
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
-    end subroutine kinematics_thermal_expansion_LiAndItsTangent 
+    end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
 
     module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
@@ -303,7 +303,7 @@ module constitutive
 
     module subroutine plastic_results
     end subroutine plastic_results
- 
+
     module subroutine damage_results
     end subroutine damage_results
 
@@ -339,7 +339,7 @@ module constitutive
       real(pReal),   intent(in), dimension(3,3) :: &
         F, &                                                                                        !< elastic deformation gradient
         Fp                                                                                          !< plastic deformation gradient
-    end subroutine constitutive_plastic_dependentState 
+    end subroutine constitutive_plastic_dependentState
 
   end interface constitutive_dependentState
 
@@ -356,7 +356,7 @@ module constitutive
   end type tDebugOptions
 
   type(tDebugOptions) :: debugConstitutive
-  
+
   public :: &
     constitutive_init, &
     constitutive_homogenizedC, &
@@ -379,7 +379,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialze constitutive models for individual physics 
+!> @brief Initialze constitutive models for individual physics
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init
 
@@ -394,17 +394,17 @@ subroutine constitutive_init
     elastic, &
     stiffDegradation
 
-  debug_constitutive => debug_root%get('constitutive', defaultVal=emptyList)
-  debugConstitutive%basic      =  debug_constitutive%contains('basic') 
-  debugConstitutive%extensive  =  debug_constitutive%contains('extensive') 
+  debug_constitutive => config_debug%get('constitutive', defaultVal=emptyList)
+  debugConstitutive%basic      =  debug_constitutive%contains('basic')
+  debugConstitutive%extensive  =  debug_constitutive%contains('extensive')
   debugConstitutive%selective  =  debug_constitutive%contains('selective')
-  debugConstitutive%element    =  debug_root%get_asInt('element',defaultVal = 1) 
-  debugConstitutive%ip         =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debugConstitutive%grain      =  debug_root%get_asInt('grain',defaultVal = 1)
+  debugConstitutive%element    =  config_debug%get_asInt('element',defaultVal = 1)
+  debugConstitutive%ip         =  config_debug%get_asInt('integrationpoint',defaultVal = 1)
+  debugConstitutive%grain      =  config_debug%get_asInt('grain',defaultVal = 1)
 
 !-------------------------------------------------------------------------------------------------
 ! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
   allocate(phase_elasticityInstance(phases%length), source = 0)
   allocate(phase_NstiffnessDegradations(phases%length),source=0)
@@ -472,7 +472,7 @@ end subroutine constitutive_init
 !--------------------------------------------------------------------------------------------------
 module function source_active(source_label,src_length)  result(active_source)
 
-  character(len=*), intent(in)         :: source_label                                              !< name of source mechanism 
+  character(len=*), intent(in)         :: source_label                                              !< name of source mechanism
   integer,          intent(in)         :: src_length                                                !< max. number of sources in system
   logical, dimension(:,:), allocatable :: active_source
 
@@ -480,10 +480,10 @@ module function source_active(source_label,src_length)  result(active_source)
     phases, &
     phase, &
     sources, &
-    src 
+    src
   integer :: p,s
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(active_source(src_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
@@ -512,10 +512,10 @@ module function kinematics_active(kinematics_label,kinematics_length)  result(ac
     phases, &
     phase, &
     kinematics, &
-    kinematics_type 
+    kinematics_type
   integer :: p,k
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(active_kinematics(kinematics_length,phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
@@ -528,7 +528,7 @@ module function kinematics_active(kinematics_label,kinematics_length)  result(ac
 
 
 end function kinematics_active
-  
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenize elasticity matrix

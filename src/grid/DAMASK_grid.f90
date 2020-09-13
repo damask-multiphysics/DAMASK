@@ -114,7 +114,7 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
-  num_grid => numerics_root%get('grid', defaultVal=emptyDict)
+  num_grid => config_numerics%get('grid', defaultVal=emptyDict)
   stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
@@ -124,7 +124,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
  
-  debug_grid => debug_root%get('grid',defaultVal=emptyList)
+  debug_grid => config_debug%get('grid',defaultVal=emptyList)
   select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic'))) 
     case ('Basic')
       mech_init         => grid_mech_spectral_basic_init

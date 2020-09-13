@@ -150,13 +150,13 @@ subroutine crystallite_init
 
   write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
 
-  debug_crystallite => debug_root%get('crystallite', defaultVal=emptyList)
+  debug_crystallite => config_debug%get('crystallite', defaultVal=emptyList)
   debugCrystallite%basic     = debug_crystallite%contains('basic')
   debugCrystallite%extensive = debug_crystallite%contains('extensive')
   debugCrystallite%selective = debug_crystallite%contains('selective')
-  debugCrystallite%element   = debug_root%get_asInt('element', defaultVal=1)
-  debugCrystallite%ip        = debug_root%get_asInt('integrationpoint', defaultVal=1)
-  debugCrystallite%grain     = debug_root%get_asInt('grain', defaultVal=1)
+  debugCrystallite%element   = config_debug%get_asInt('element', defaultVal=1)
+  debugCrystallite%ip        = config_debug%get_asInt('integrationpoint', defaultVal=1)
+  debugCrystallite%grain     = config_debug%get_asInt('grain', defaultVal=1)
 
   cMax = homogenization_maxNgrains
   iMax = discretization_nIP
@@ -189,7 +189,7 @@ subroutine crystallite_init
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
-  num_crystallite => numerics_root%get('crystallite',defaultVal=emptyDict)
+  num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
   num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
   num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
@@ -236,7 +236,7 @@ subroutine crystallite_init
      call IO_error(301,ext_msg='integrator')
   end select
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
 
   allocate(output_constituent(phases%length))
   do c = 1, phases%length

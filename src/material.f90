@@ -55,7 +55,7 @@ module material
   character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
- 
+
   integer(kind(THERMAL_isothermal_ID)),       dimension(:),   allocatable, public, protected :: &
     thermal_type                                                                                    !< thermal transport model
   integer(kind(DAMAGE_none_ID)),              dimension(:),   allocatable, public, protected :: &
@@ -164,24 +164,24 @@ subroutine material_init(restart)
     phases, &
     material_homogenization
   character(len=pStringLen) :: sectionName
-  
+
   write(6,'(/,a)') ' <<<+-  material init  -+>>>'; flush(6)
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(material_name_phase(phases%length))
   do ph = 1, phases%length
     write(sectionName,'(i0,a)') ph,'_'
-    material_name_phase(ph) = trim(adjustl(sectionName))//phases%getKey(ph)    !ToDO: No reason to do. Update damage tests 
+    material_name_phase(ph) = trim(adjustl(sectionName))//phases%getKey(ph)    !ToDO: No reason to do. Update damage tests
   enddo
-  
-  material_homogenization => material_root%get('homogenization')
+
+  material_homogenization => config_material%get('homogenization')
   allocate(material_name_homogenization(material_homogenization%length))
   do myHomog = 1, material_homogenization%length
-    write(sectionName,'(i0,a)') myHomog,'_' 
+    write(sectionName,'(i0,a)') myHomog,'_'
     material_name_homogenization(myHomog) = trim(adjustl(sectionName))//material_homogenization%getKey(myHomog)
   enddo
 
-  debug_material => debug_root%get('material',defaultVal=emptyList)
+  debug_material => config_debug%get('material',defaultVal=emptyList)
 
   call material_parseMicrostructure()
   if (debug_material%contains('basic')) write(6,'(a)') ' Microstructure parsed'; flush(6)
@@ -242,7 +242,7 @@ subroutine material_parseHomogenization
 
   integer :: h
 
-  material_homogenization => material_root%get('homogenization')
+  material_homogenization => config_material%get('homogenization')
   material_Nhomogenization = material_homogenization%length
 
   allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
@@ -325,18 +325,18 @@ subroutine material_parseMicrostructure
 
   class(tNode), pointer :: microstructure, &                                                        !> pointer to microstructure list
                            constituentsInMicrostructure, &                                          !> pointer to a microstructure list item
-                           constituents, &                                                          !> pointer to constituents list 
-                           constituent, &                                                           !> pointer to each constituent 
+                           constituents, &                                                          !> pointer to constituents list
+                           constituent, &                                                           !> pointer to each constituent
                            phases, &
                            homogenization
 
   integer, dimension(:), allocatable :: &
    CounterPhase, &
    CounterHomogenization
- 
- 
+
+
   real(pReal), dimension(:,:), allocatable :: &
-    microstructure_fraction                                                                         !< vol fraction of each constituent in microstrcuture 
+    microstructure_fraction                                                                         !< vol fraction of each constituent in microstrcuture
 
   integer :: &
     e, &
@@ -347,11 +347,11 @@ subroutine material_parseMicrostructure
 
   real(pReal), dimension(4) :: phase_orientation
 
-  homogenization => material_root%get('homogenization') 
-  phases         => material_root%get('phase')
-  microstructure => material_root%get('microstructure')
+  homogenization => config_material%get('homogenization')
+  phases         => config_material%get('phase')
+  microstructure => config_material%get('microstructure')
   allocate(microstructure_Nconstituents(microstructure%length), source = 0)
- 
+
   if(any(discretization_microstructureAt > microstructure%length)) &
    call IO_error(155,ext_msg='More microstructures in geometry than sections in material.yaml')
 
@@ -360,7 +360,7 @@ subroutine material_parseMicrostructure
     constituents => constituentsInMicrostructure%get('constituents')
     microstructure_Nconstituents(m) = constituents%length
   enddo
- 
+
   microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
   allocate(microstructure_fraction(microstructure_maxNconstituents,microstructure%length), source =0.0_pReal)
   allocate(material_phaseAt(microstructure_maxNconstituents,discretization_nElem), source =0)
@@ -379,7 +379,7 @@ subroutine material_parseMicrostructure
       constituent => constituents%get(c)
       microstructure_fraction(c,m) = constituent%get_asFloat('fraction')
     enddo
-   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg='constituent') 
+   if (dNeq(sum(microstructure_fraction(:,m)),1.0_pReal)) call IO_error(153,ext_msg='constituent')
   enddo
 
   do e = 1, discretization_nElem
@@ -394,11 +394,11 @@ subroutine material_parseMicrostructure
       enddo
     enddo
   enddo
- 
+
   do e = 1, discretization_nElem
     do i = 1, discretization_nIP
-      constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))  
-      material_homogenizationAt(e) = homogenization%getIndex(constituentsInMicrostructure%get_asString('homogenization'))  
+      constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
+      material_homogenizationAt(e) = homogenization%getIndex(constituentsInMicrostructure%get_asString('homogenization'))
       CounterHomogenization(material_homogenizationAt(e)) = CounterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e) = CounterHomogenization(material_homogenizationAt(e))
     enddo
@@ -419,5 +419,5 @@ subroutine material_parseMicrostructure
 
 end subroutine material_parseMicrostructure
 
- 
+
 end module material

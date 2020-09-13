@@ -81,7 +81,7 @@ subroutine grid_thermal_spectral_init
 
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameter and do sanity checks
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
   num%itmax            = num_grid%get_asInt   ('itmax',           defaultVal=250)
   num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
   num%eps_thermal_rtol = num_grid%get_asFloat ('eps_thermal_rtol',defaultVal=1.0e-6_pReal)

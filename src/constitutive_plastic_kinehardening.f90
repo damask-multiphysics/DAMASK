@@ -92,7 +92,7 @@ module function plastic_kinehardening_init()  result(myPlasticity)
   allocate(dotState(Ninstance))
   allocate(deltaState(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)

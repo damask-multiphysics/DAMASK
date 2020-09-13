@@ -97,7 +97,7 @@ subroutine math_init
  
   write(6,'(/,a)') ' <<<+-  math init  -+>>>'; flush(6)
 
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   randomSeed  = num_generic%get_asInt('random_seed', defaultVal = 0)
  
   call random_seed(size=randSize)

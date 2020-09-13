@@ -84,12 +84,12 @@ subroutine grid_damage_spectral_init
  
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
-  num_grid => numerics_root%get('grid',defaultVal=emptyDict)
+  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
   num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
   num%eps_damage_atol = num_grid%get_asFloat ('eps_damage_atol',defaultVal=1.0e-2_pReal)
   num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
  
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
  
   if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')

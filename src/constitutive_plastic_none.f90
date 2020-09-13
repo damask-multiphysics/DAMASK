@@ -26,7 +26,7 @@ module function plastic_none_init()  result(myPlasticity)
 
   write(6,'(/,a)') ' <<<+-  plastic_none init  -+>>>'
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(myPlasticity(phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)

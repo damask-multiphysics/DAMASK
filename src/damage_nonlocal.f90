@@ -57,13 +57,13 @@ subroutine damage_nonlocal_init
 
 !------------------------------------------------------------------------------------
 ! read numerics parameter
-  num_generic => numerics_root%get('generic',defaultVal= emptyDict)
+  num_generic => config_numerics%get('generic',defaultVal= emptyDict)
   num%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
   Ninstance = count(damage_type == DAMAGE_nonlocal_ID)
   allocate(param(Ninstance))
 
-  material_homogenization => material_root%get('homogenization')
+  material_homogenization => config_material%get('homogenization')
   do h = 1, material_homogenization%length
     if (damage_type(h) /= DAMAGE_NONLOCAL_ID) cycle
     homog => material_homogenization%get(h)

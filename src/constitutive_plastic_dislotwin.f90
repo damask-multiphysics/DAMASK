@@ -165,7 +165,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
   allocate(dotState(Ninstance))
   allocate(dependentState(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)

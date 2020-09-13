@@ -198,7 +198,7 @@ module subroutine plastic_init
   integer :: p
   class(tNode), pointer :: phases
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
 
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
@@ -235,7 +235,7 @@ module function plastic_active(plastic_label)  result(active_plastic)
     pl
   integer :: p
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(active_plastic(phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
