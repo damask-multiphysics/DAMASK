@@ -31,11 +31,11 @@ module config
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calls subroutines that reads material, numerics and debug configuration files
+!> @brief Real *.yaml configuration files.
 !--------------------------------------------------------------------------------------------------
 subroutine config_init
 
-  write(6,'(/,a)') ' <<<+-  config init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  config init  -+>>>'; flush(6)
 
   call parse_material
   call parse_numerics
@@ -45,7 +45,7 @@ end subroutine config_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads material.yaml
+!> @brief Read material.yaml or <jobname>.yaml.
 !--------------------------------------------------------------------------------------------------
 subroutine parse_material
 
@@ -66,8 +66,7 @@ end subroutine parse_material
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads in parameters from numerics.yaml and sets openMP related parameters. Also does
-! a sanity check
+!> @brief Read numerics.yaml.
 !--------------------------------------------------------------------------------------------------
 subroutine parse_numerics
 
@@ -84,7 +83,7 @@ end subroutine parse_numerics
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads in parameters from debug.yaml
+!> @brief Read debug.yaml.
 !--------------------------------------------------------------------------------------------------
 subroutine parse_debug
 
@@ -101,7 +100,7 @@ end subroutine parse_debug
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief deallocates material.yaml structure
+!> @brief Deallocate config_material.
 !ToDo: deallocation of numerics debug (optional)
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate

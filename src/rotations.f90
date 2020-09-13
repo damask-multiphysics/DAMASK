@@ -99,15 +99,15 @@ module rotations
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do self test
+!> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine rotations_init
 
   call quaternions_init
-  write(6,'(/,a)') ' <<<+-  rotations init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  rotations init  -+>>>'; flush(6)
 
-  write(6,'(/,a)') ' Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
-  write(6,'(a)')   ' https://doi.org/10.1088/0965-0393/23/8/083501'
+  print*, 'Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
+  print*, 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
   call selfTest
 

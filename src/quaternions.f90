@@ -108,11 +108,12 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do self test
+!> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine quaternions_init
 
-  write(6,'(/,a)') ' <<<+-  quaternions init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  quaternions init  -+>>>'; flush(6)
+
   call selfTest
 
 end subroutine quaternions_init
