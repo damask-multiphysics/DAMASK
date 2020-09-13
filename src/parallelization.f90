@@ -47,15 +47,15 @@ subroutine parallelization_init
   if (err /= 0)                        error stop 'MPI init failed'
   if (threadLevel<MPI_THREAD_FUNNELED) error stop 'MPI library does not support OpenMP'
 #endif
-  
+
   call PETScInitializeNoArguments(petsc_err)                                                        ! first line in the code according to PETSc manual
   CHKERRQ(petsc_err)
 
   call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
   if (err /= 0) error stop 'Could not determine worldrank'
-  
+
   if (worldrank == 0) write(6,'(/,a)') ' <<<+-  parallelization init  -+>>>'; flush(6)
-  
+
   call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,err)
   if (err /= 0) error stop 'Could not determine worldsize'
 
@@ -79,12 +79,12 @@ subroutine parallelization_init
 
 !$ call get_environment_variable(name='DAMASK_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if(got_env /= 0) then
-!$   write(6,*) 'Could not determine value of $DAMASK_NUM_THREADS'
+!$   print*, 'Could not determine value of $DAMASK_NUM_THREADS'
 !$   DAMASK_NUM_THREADS = 1_pI32
 !$ else
 !$   read(NumThreadsString,'(i6)') DAMASK_NUM_THREADS
 !$   if (DAMASK_NUM_THREADS < 1_pI32) then
-!$     write(6,*) 'Invalid DAMASK_NUM_THREADS: '//trim(NumThreadsString)
+!$     print*, 'Invalid DAMASK_NUM_THREADS: '//trim(NumThreadsString)
 !$     DAMASK_NUM_THREADS = 1_pI32
 !$   endif
 !$ endif
