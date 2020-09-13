@@ -26,9 +26,7 @@ module IO
     IO_init, &
     IO_read, &
     IO_readlines, &
-    IO_open_binary, &
     IO_isBlank, &
-    IO_getTag, &
     IO_stringPos, &
     IO_stringValue, &
     IO_intValue, &
@@ -140,39 +138,6 @@ end function IO_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens an existing file for reading or a new file for writing.
-!> @details replaces an existing file when writing
-!--------------------------------------------------------------------------------------------------
-integer function IO_open_binary(fileName,mode)
-
-  character(len=*), intent(in)           :: fileName
-  character,        intent(in), optional :: mode
-
-  character :: m
-  integer   :: ierr
-
-  if (present(mode)) then
-    m = mode
-  else
-    m = 'r'
-  endif
-
-  if    (m == 'w') then
-    open(newunit=IO_open_binary, file=trim(fileName),&
-         status='replace',access='stream',action='write',iostat=ierr)
-    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (w): '//trim(fileName))
-  elseif(m == 'r') then
-    open(newunit=IO_open_binary, file=trim(fileName),&
-         status='old',    access='stream',action='read', iostat=ierr)
-    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (r): '//trim(fileName))
-  else
-    call IO_error(100,ext_msg='unknown access mode: '//m)
-  endif
-
-end function IO_open_binary
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief identifies strings without content
 !--------------------------------------------------------------------------------------------------
 logical pure function IO_isBlank(string)
@@ -185,32 +150,6 @@ logical pure function IO_isBlank(string)
   IO_isBlank = posNonBlank == 0 .or. posNonBlank == scan(string,IO_COMMENT)
 
 end function IO_isBlank
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief get tagged content of string
-!--------------------------------------------------------------------------------------------------
-pure function IO_getTag(string,openChar,closeChar)
-
-  character(len=*), intent(in)  :: string                                                           !< string to check for tag
-  character,        intent(in)  :: openChar, &                                                      !< indicates beginning of tag
-                                   closeChar                                                        !< indicates end of tag
-  character(len=:), allocatable :: IO_getTag
-
-  integer :: left,right
-
-  left  = scan(string,openChar)
-  right = merge(scan(string,closeChar), &
-                left + merge(scan(string(left+1:),openChar),0,len(string) > left), &
-                openChar /= closeChar)
-
-  foundTag: if (left == verify(string,IO_WHITESPACE) .and. right > left) then
-    IO_getTag = string(left+1:right-1)
-  else foundTag
-    IO_getTag = ''
-  endif foundTag
-
-end function IO_getTag
 
 
 !--------------------------------------------------------------------------------------------------
