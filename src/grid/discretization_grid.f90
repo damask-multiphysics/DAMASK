@@ -67,7 +67,7 @@ subroutine discretization_grid_init(restart)
 
   write(6,'(/,a)') ' <<<+-  discretization_grid init  -+>>>'; flush(6)
 
-  if(index(geometryFile,'.vtr') /= 0) then
+  if(index(interface_geomFile,'.vtr') /= 0) then
     call readVTR(grid,geomSize,origin,microstructureAt)
   else
     call readGeom(grid,geomSize,origin,microstructureAt)
@@ -173,10 +173,10 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
 
 !--------------------------------------------------------------------------------------------------
 ! read raw data as stream
-  inquire(file = trim(geometryFile), size=fileLength)
-  open(newunit=fileUnit, file=trim(geometryFile), access='stream',&
+  inquire(file = trim(interface_geomFile), size=fileLength)
+  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(geometryFile))
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
   allocate(character(len=fileLength)::rawData)
   read(fileUnit) rawData
   close(fileUnit)
@@ -327,10 +327,10 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
 !--------------------------------------------------------------------------------------------------
 ! read raw data as stream
-  inquire(file = trim(geometryFile), size=fileLength)
-  open(newunit=fileUnit, file=trim(geometryFile), access='stream',&
+  inquire(file = trim(interface_geomFile), size=fileLength)
+  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(geometryFile))
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
   allocate(character(len=fileLength)::fileContent)
   read(fileUnit) fileContent
   close(fileUnit)

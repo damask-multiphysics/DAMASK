@@ -25,21 +25,21 @@ module DAMASK_interface
   implicit none
   private
   logical,          volatile,    public, protected :: &
-    SIGTERM, &                                                                                      !< termination signal
-    SIGUSR1, &                                                                                      !< 1. user-defined signal
-    SIGUSR2                                                                                         !< 2. user-defined signal
+    interface_SIGTERM, &                                                                            !< termination signal
+    interface_SIGUSR1, &                                                                            !< 1. user-defined signal
+    interface_SIGUSR2                                                                               !< 2. user-defined signal
   integer,                       public, protected :: &
     interface_restartInc = 0                                                                        !< Increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
-    geometryFile, &                                                                                 !< parameter given for geometry file
-    loadCaseFile                                                                                    !< parameter given for load case file
+    interface_geomFile, &                                                                           !< parameter given for geometry file
+    interface_loadFile                                                                              !< parameter given for load case file
 
   public :: &
     getSolverJobName, &
     DAMASK_interface_init, &
-    setSIGTERM, &
-    setSIGUSR1, &
-    setSIGUSR2
+    interface_setSIGTERM, &
+    interface_setSIGUSR1, &
+    interface_setSIGUSR2
 
 contains
 
@@ -186,8 +186,8 @@ subroutine DAMASK_interface_init
   endif
 
   if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
-  geometryFile = getGeometryFile(geometryArg)
-  loadCaseFile = getLoadCaseFile(loadCaseArg)
+  interface_geomFile = getGeometryFile(geometryArg)
+  interface_loadFile = getLoadCaseFile(loadCaseArg)
 
   call get_command(commandLine)
   call get_environment_variable('USER',userName)
@@ -202,8 +202,8 @@ subroutine DAMASK_interface_init
   write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
   write(6,'(a,a)')      ' Load case argument:     ', trim(loadcaseArg)
   write(6,'(a,a)')      ' Working directory:      ', getCWD()
-  write(6,'(a,a)')      ' Geometry file:          ', geometryFile
-  write(6,'(a,a)')      ' Loadcase file:          ', loadCaseFile
+  write(6,'(a,a)')      ' Geometry file:          ', interface_geomFile
+  write(6,'(a,a)')      ' Loadcase file:          ', interface_loadFile
   write(6,'(a,a)')      ' Solver job name:        ', getSolverJobName()
   if (interface_restartInc > 0) &
     write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
@@ -211,9 +211,9 @@ subroutine DAMASK_interface_init
   !call signalterm_c(c_funloc(catchSIGTERM))
   call signalusr1_c(c_funloc(catchSIGUSR1))
   call signalusr2_c(c_funloc(catchSIGUSR2))
-  call setSIGTERM(.false.)
-  call setSIGUSR1(.false.)
-  call setSIGUSR2(.false.)
+  call interface_setSIGTERM(.false.)
+  call interface_setSIGUSR1(.false.)
+  call interface_setSIGUSR2(.false.)
 
 end subroutine DAMASK_interface_init
 
@@ -254,15 +254,15 @@ function getSolverJobName()
   character(len=:), allocatable :: getSolverJobName
   integer :: posExt,posSep
 
-  posExt = scan(geometryFile,'.',back=.true.)
-  posSep = scan(geometryFile,'/',back=.true.)
+  posExt = scan(interface_geomFile,'.',back=.true.)
+  posSep = scan(interface_geomFile,'/',back=.true.)
 
-  getSolverJobName = geometryFile(posSep+1:posExt-1)
+  getSolverJobName = interface_geomFile(posSep+1:posExt-1)
 
-  posExt = scan(loadCaseFile,'.',back=.true.)
-  posSep = scan(loadCaseFile,'/',back=.true.)
+  posExt = scan(interface_loadFile,'.',back=.true.)
+  posSep = scan(interface_loadFile,'/',back=.true.)
 
-  getSolverJobName = getSolverJobName//'_'//loadCaseFile(posSep+1:posExt-1)
+  getSolverJobName = getSolverJobName//'_'//interface_loadFile(posSep+1:posExt-1)
 
 end function getSolverJobName
 
@@ -389,75 +389,78 @@ end function makeRelativePath
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGTERM to .true.
+!> @brief Set global variable interface_SIGTERM to .true.
+!> @details This function can be registered to catch signals send to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGTERM(signal) bind(C)
 
   integer(C_INT), value :: signal
-  SIGTERM = .true.
+  interface_SIGTERM = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGTERM'
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGTERM=TRUE'
 
 end subroutine catchSIGTERM
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGTERM
+!> @brief Set global variable interface_SIGTERM.
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGTERM(state)
+subroutine interface_setSIGTERM(state)
 
   logical, intent(in) :: state
-  SIGTERM = state
+  interface_SIGTERM = state
 
-end subroutine setSIGTERM
+end subroutine interface_setSIGTERM
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR1 to .true.
+!> @brief Set global variable interface_SIGUSR1 to .true.
+!> @details This function can be registered to catch signals send to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR1(signal) bind(C)
 
   integer(C_INT), value :: signal
-  SIGUSR1 = .true.
+  interface_SIGUSR1 = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR1'
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR1=TRUE'
 
 end subroutine catchSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR1
+!> @brief Set global variable interface_SIGUSR.
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGUSR1(state)
+subroutine interface_setSIGUSR1(state)
 
   logical, intent(in) :: state
-  SIGUSR1 = state
+  interface_SIGUSR1 = state
 
-end subroutine setSIGUSR1
+end subroutine interface_setSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR2 to .true. if program receives SIGUSR2
+!> @brief Set global variable interface_SIGUSR2 to .true.
+!> @details This function can be registered to catch signals send to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR2(signal) bind(C)
 
   integer(C_INT), value :: signal
-  SIGUSR2 = .true.
+  interface_SIGUSR2 = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2'
+  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2=TRUE'
 
 end subroutine catchSIGUSR2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR2
+!> @brief Set global variable interface_SIGUSR2.
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGUSR2(state)
+subroutine interface_setSIGUSR2(state)
 
   logical, intent(in) :: state
-  SIGUSR2 = state
+  interface_SIGUSR2 = state
 
-end subroutine setSIGUSR2
+end subroutine interface_setSIGUSR2
 
 
 end module

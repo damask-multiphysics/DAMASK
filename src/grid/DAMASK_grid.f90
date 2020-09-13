@@ -159,7 +159,7 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
-  fileContent = IO_readlines(trim(loadCaseFile))
+  fileContent = IO_readlines(trim(interface_loadFile))
   if(size(fileContent) == 0) call IO_error(307,ext_msg='No load case specified')
   
   allocate (loadCases(0))                                                                           ! array of load cases
@@ -179,7 +179,7 @@ program DAMASK_grid
       end select
     enddo
     if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
-      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(loadCaseFile))                   ! error message for incomplete loadcase
+      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(interface_loadFile))             ! error message for incomplete loadcase
   
     newLoadCase%stress%myType='stress'
     field = 1

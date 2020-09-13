@@ -96,7 +96,7 @@ subroutine discretization_mesh_init(restart)
   debug_ip      = debug_root%get_asInt('integrationpoint',defaultVal=1)
 
 
-  call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
+  call DMPlexCreateFromFile(PETSC_COMM_WORLD,interface_geomFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
   call DMGetDimension(globalMesh,dimPlex,ierr)
   CHKERRQ(ierr)
@@ -124,7 +124,7 @@ subroutine discretization_mesh_init(restart)
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
   if (worldrank == 0) then
-    fileContent = IO_readlines(geometryFile)
+    fileContent = IO_readlines(interface_geomFile)
     l = 0
     do
       l = l + 1

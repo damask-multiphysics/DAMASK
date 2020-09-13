@@ -96,7 +96,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
-  fileContent = IO_read_ASCII(trim(loadCaseFile))
+  fileContent = IO_readline(trim(interface_loadFile))
   do l = 1, size(fileContent)
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
