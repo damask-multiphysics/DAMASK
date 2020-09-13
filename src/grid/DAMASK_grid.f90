@@ -10,6 +10,7 @@ program DAMASK_grid
 #include <petsc/finclude/petscsys.h>
   use PETScsys
   use prec
+  use parallelization
   use DAMASK_interface
   use IO
   use config

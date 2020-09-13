@@ -48,7 +48,7 @@ module CPFEM
   end type tNumerics
 
   type(tNumerics), private :: num
- 
+
   type, private :: tDebugOptions
     logical :: &
       basic, &
@@ -58,9 +58,9 @@ module CPFEM
       element, &
       ip
   end type tDebugOptions
- 
+
   type(tDebugOptions), private :: debugCPFEM
- 
+
   public :: &
     CPFEM_general, &
     CPFEM_initAll, &
@@ -74,7 +74,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
+  call parallelization_init
   call DAMASK_interface_init
+  call prec_init
   call IO_init
   call config_init
   call math_init
@@ -112,13 +114,13 @@ subroutine CPFEM_init
   allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
 
 !------------------------------------------------------------------------------
-! read numerical parameters and do sanity check 
+! read numerical parameters and do sanity check
   num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
   num%iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
   if (num%iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
 
 !------------------------------------------------------------------------------
-! read debug options 
+! read debug options
 
   debug_CPFEM => debug_root%get('cpfem',defaultVal=emptyList)
   debugCPFEM%basic     = debug_CPFEM%contains('basic')

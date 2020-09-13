@@ -10,6 +10,7 @@
 
 module crystallite
   use prec
+  use parallelization
   use IO
   use HDF5_utilities
   use DAMASK_interface

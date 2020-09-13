@@ -11,12 +11,13 @@ module grid_damage_spectral
   use PETScsnes
 
   use prec
+  use parallelization
   use IO
   use spectral_utilities
   use discretization_grid
   use damage_nonlocal
-  use config
   use YAML_types
+  use config
  
   implicit none
   private

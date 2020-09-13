@@ -11,6 +11,7 @@ program DAMASK_mesh
   use PetscDM
   use prec
   use DAMASK_interface
+  use parallelization
   use IO
   use math
   use CPFEM2

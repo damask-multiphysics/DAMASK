@@ -11,6 +11,7 @@ module grid_thermal_spectral
   use PETScsnes
 
   use prec
+  use parallelization
   use IO
   use spectral_utilities
   use discretization_grid

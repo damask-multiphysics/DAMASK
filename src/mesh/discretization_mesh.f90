@@ -13,6 +13,7 @@ module discretization_mesh
   use PETScis
 
   use DAMASK_interface
+  use parallelization
   use IO
   use config
   use discretization

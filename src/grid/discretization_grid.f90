@@ -9,6 +9,7 @@ module discretization_grid
   use PETScsys
 
   use prec
+  use parallelization
   use system_routines
   use base64
   use zlib

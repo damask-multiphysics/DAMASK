@@ -11,6 +11,7 @@ module grid_mech_spectral_polarisation
   use PETScsnes
 
   use prec
+  use parallelization
   use DAMASK_interface
   use HDF5_utilities
   use math

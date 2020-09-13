@@ -10,11 +10,11 @@ module spectral_utilities
 
   use prec
   use DAMASK_interface
+  use parallelization
   use math
   use rotations
   use IO
   use discretization_grid
-  use config
   use discretization
   use homogenization
 

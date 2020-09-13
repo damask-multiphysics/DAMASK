@@ -73,13 +73,7 @@ subroutine DAMASK_interface_init
     userName                                                                                        !< name of user calling the executable
   integer :: &
     stat, &
-    i, &
-#ifdef _OPENMP
-    threadLevel, &
-#endif
-    worldrank = 0, &
-    worldsize = 0, &
-    typeSize
+    i
   integer, dimension(8) :: &
     dateAndTime
   integer        :: err
@@ -87,43 +81,9 @@ subroutine DAMASK_interface_init
   external :: &
     quit
 
-  open(6, encoding='UTF-8')                                                                         ! for special characters in output
-
-!--------------------------------------------------------------------------------------------------
-! PETSc Init
-#ifdef _OPENMP
-  ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
-  ! Otherwise, the first call to PETSc will do the initialization.
-  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err)
-  if (err /= 0) call quit(1)
-  if (threadLevel<MPI_THREAD_FUNNELED) then
-    write(6,'(/,a)') ' ERROR: MPI library does not support OpenMP'
-    call quit(1)
-  endif
-#endif
-  call PETScInitializeNoArguments(petsc_err)                                                        ! according to PETSc manual, that should be the first line in the code
-  CHKERRQ(petsc_err)                                                                                ! this is a macro definition, it is case sensitive
-
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
-  if (err /= 0) call quit(1)
-  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,err)
-  if (err /= 0) call quit(1)
-
-  mainProcess: if (worldrank == 0) then
-    if (output_unit /= 6) then
-      write(output_unit,'(/,a)') ' ERROR: STDOUT != 6'
-      call quit(1)
-    endif
-    if (error_unit /= 0) then
-      write(output_unit,'(/,a)') ' ERROR: STDERR != 0'
-      call quit(1)
-    endif
-  else mainProcess
-    close(6)                                                                                        ! disable output for non-master processes (open 6 to rank specific file for debug)
-    open(6,file='/dev/null',status='replace')                                                       ! close(6) alone will leave some temp files in cwd
-  endif mainProcess
-
   write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
+
+  open(6, encoding='UTF-8')                                                                         ! for special characters in output
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
@@ -161,20 +121,6 @@ subroutine DAMASK_interface_init
   call date_and_time(values = dateAndTime)
   write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
   write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
-
-  call MPI_Type_size(MPI_INTEGER,typeSize,err)
-  if (err /= 0) call quit(1)
-  if (typeSize*8 /= bit_size(0)) then
-    write(6,'(a)') ' Mismatch between MPI and DAMASK integer'
-    call quit(1)
-  endif
-
-  call MPI_Type_size(MPI_DOUBLE,typeSize,err)
-  if (err /= 0) call quit(1)
-  if (typeSize*8 /= storage_size(0.0_pReal)) then
-    write(6,'(a)') ' Mismatch between MPI and DAMASK real'
-    call quit(1)
-  endif
 
   do i = 1, command_argument_count()
     call get_command_argument(i,arg,status=err)
@@ -268,9 +214,6 @@ subroutine DAMASK_interface_init
   call setSIGTERM(.false.)
   call setSIGUSR1(.false.)
   call setSIGUSR2(.false.)
-
-  call prec_init
-  call parallelization_init
 
 end subroutine DAMASK_interface_init
 

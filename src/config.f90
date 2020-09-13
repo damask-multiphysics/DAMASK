@@ -2,7 +2,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Reads in the material, numerics & debug configuration from their respective file
 !> @details Reads the material configuration file, where solverJobName.yaml takes
-!! precedence over material.yaml. 
+!! precedence over material.yaml.
 !--------------------------------------------------------------------------------------------------
 module config
   use prec
@@ -24,10 +24,6 @@ module config
     numerics_root, &
     debug_root
 
-  integer, protected, public :: &
-    worldrank                  = 0, &                                                               !< MPI worldrank (/=0 for MPI simulations only)
-    worldsize                  = 1                                                                  !< MPI worldsize (/=1 for MPI simulations only)
-
   public :: &
     config_init, &
     config_deallocate
@@ -40,7 +36,7 @@ contains
 subroutine config_init
 
   write(6,'(/,a)') ' <<<+-  config init  -+>>>'; flush(6)
-  
+
   call parse_material
   call parse_numerics
   call parse_debug
@@ -76,12 +72,6 @@ end subroutine parse_material
 subroutine parse_numerics
 
   logical :: fexist
-  integer :: ierr
-
-#ifdef PETSc
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
-#endif
 
   numerics_root => emptyDict
   inquire(file='numerics.yaml', exist=fexist)
@@ -89,7 +79,6 @@ subroutine parse_numerics
     write(6,*) 'reading numerics.yaml'; flush(6)
     numerics_root =>  parse_flow(to_flow(IO_read('numerics.yaml')))
   endif
-
 
 end subroutine parse_numerics
 
@@ -99,7 +88,7 @@ end subroutine parse_numerics
 !--------------------------------------------------------------------------------------------------
 subroutine parse_debug
 
-  logical :: fexist 
+  logical :: fexist
 
   debug_root => emptyDict
   inquire(file='debug.yaml', exist=fexist)
@@ -113,10 +102,11 @@ end subroutine parse_debug
 
 !--------------------------------------------------------------------------------------------------
 !> @brief deallocates material.yaml structure
+!ToDo: deallocation of numerics debug (optional)
 !--------------------------------------------------------------------------------------------------
 subroutine config_deallocate
 
-  deallocate(material_root)                                                                         !ToDo: deallocation of numerics debug (optional)
+  deallocate(material_root)                            
 
 end subroutine config_deallocate
 

@@ -11,9 +11,9 @@ module HDF5_utilities
 #endif
 
   use prec
+  use parallelization
   use IO
   use rotations
-  use config
 
  implicit none
  public
