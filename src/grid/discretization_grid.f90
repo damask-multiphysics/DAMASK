@@ -458,13 +458,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
     select case(dataType)
       case('Int32')
-        as_Int = int(bytes_to_C_INT32_T(asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)))
       case('Int64')
-        as_Int = int(bytes_to_C_INT64_T(asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)))
       case('Float32')
-        as_Int = int(bytes_to_C_FLOAT  (asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)))
       case('Float64')
-        as_Int = int(bytes_to_C_DOUBLE (asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
       case default
         call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
     end select
@@ -486,13 +486,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
     select case(dataType)
       case('Int32')
-        as_pReal = real(bytes_to_C_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
       case('Int64')
-        as_pReal = real(bytes_to_C_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
       case('Float32')
-        as_pReal = real(bytes_to_C_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
       case('Float64')
-        as_pReal = real(bytes_to_C_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
       case default
         call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
     end select
@@ -539,15 +539,15 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     integer(pI64) :: headerLen, nBlock, b,s,e
 
     if    (headerType == 'UInt32') then
-      temp = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
+      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 4_pI64 * (3_pI64 + nBlock)
-      temp = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
     elseif(headerType == 'UInt64') then
-      temp = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
+      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 8_pI64 * (3_pI64 + nBlock)
-      temp = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
     endif
 
     allocate(size_inflated(nBlock),source=temp(2))
@@ -585,13 +585,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     s=0_pI64
     if    (headerType == 'UInt32') then
       do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
-        nByte = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
+        nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
         s = s + base64_nChar(4_pI64+nByte(1))
       enddo
     elseif(headerType == 'UInt64') then
       do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
-        nByte = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
+        nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
         s = s + base64_nChar(8_pI64+nByte(1))
       enddo
