@@ -74,12 +74,12 @@ subroutine discretization_marc_init
 
 !---------------------------------------------------------------------------------
 ! read debug parameters
-  debug_e = debug_root%get_asInt('element',defaultVal=1)
-  debug_i = debug_root%get_asInt('integrationpoint',defaultVal=1)
+  debug_e = config_debug%get_asInt('element',defaultVal=1)
+  debug_i = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
 !--------------------------------------------------------------------------------
 ! read numerics parameter and do sanity check
-  num_commercialFEM => numerics_root%get('commercialFEM',defaultVal = emptyDict)
+  num_commercialFEM => config_numerics%get('commercialFEM',defaultVal = emptyDict)
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
 
