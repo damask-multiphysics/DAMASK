@@ -226,9 +226,6 @@ subroutine spectral_utilities_init
   grid1Red = grid(1)/2 + 1
   wgt = 1.0/real(product(grid),pReal)
 
-  print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
-  print'(a,3(es12.5))',   ' size     x y z: ', geomSize
-
   num%memory_efficient      = num_grid%get_asInt('memory_efficient',      defaultVal=1) > 0         ! ToDo: should be logical in YAML file
   num%divergence_correction = num_grid%get_asInt('divergence_correction', defaultVal=2)
 

@@ -73,6 +73,10 @@ subroutine discretization_grid_init(restart)
     call readGeom(grid,geomSize,origin,microstructureAt)
   endif
 
+  print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
+  print'(a,3(es12.5))',   ' size     x y z: ', geomSize
+  print'(a,3(es12.5))',   ' origin   x y z: ', origin
+
 !--------------------------------------------------------------------------------------------------
 ! grid solver specific quantities
   if(worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')

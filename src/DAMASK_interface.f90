@@ -191,7 +191,6 @@ subroutine DAMASK_interface_init
   call get_command(commandLine)
   call get_environment_variable('USER',userName)
   ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
-  print'(/,a,i4.1)', ' MPI processes: ',worldsize
   print'(a)',        ' Host name: '//trim(getHostName())
   print'(a)',        ' User name: '//trim(userName)
 
