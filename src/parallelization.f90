@@ -54,7 +54,7 @@ subroutine parallelization_init
   call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
   if (err /= 0) error stop 'Could not determine worldrank'
   
-  if (worldrank == 1) write(6,'(/,a)') ' <<<+-  parallelization init  -+>>>'; flush(6)
+  if (worldrank == 0) write(6,'(/,a)') ' <<<+-  parallelization init  -+>>>'; flush(6)
   
   call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,err)
   if (err /= 0) error stop 'Could not determine worldsize'
@@ -88,7 +88,7 @@ subroutine parallelization_init
 !$     DAMASK_NUM_THREADS = 1_pI32
 !$   endif
 !$ endif
-!$ write(6,'(a,i8,/)')   ' DAMASK_NUM_THREADS: ',DAMASK_NUM_THREADS
+!$ write(6,'(a,i8)')   ' DAMASK_NUM_THREADS: ',DAMASK_NUM_THREADS
 !$ call omp_set_num_threads(DAMASK_NUM_THREADS)
 
 end subroutine parallelization_init
