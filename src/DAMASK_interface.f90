@@ -77,18 +77,17 @@ subroutine DAMASK_interface_init
   integer, dimension(8) :: &
     dateAndTime
   integer        :: err
-  PetscErrorCode :: petsc_err
   external :: &
     quit
 
-  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
+  print'(/,a)', ' <<<+-  DAMASK_interface init  -+>>>'
 
   open(6, encoding='UTF-8')                                                                         ! for special characters in output
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
   print*, achar(27)//'[31m'
-  write(6,'(a,/)') ' debug version - debug version - debug version - debug version - debug version'
+  print'(a,/)', ' debug version - debug version - debug version - debug version - debug version'
 #else
   print*, achar(27)//'[94m'
 #endif
@@ -98,70 +97,70 @@ subroutine DAMASK_interface_init
   print*, '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
   print*, ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
 #ifdef DEBUG
-  write(6,'(/,a)') ' debug version - debug version - debug version - debug version - debug version'
+  print'(/,a)', ' debug version - debug version - debug version - debug version - debug version'
 #endif
   print*, achar(27)//'[0m'
 
-  write(6,'(a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+  print'(a)', ' Roters et al., Computational Materials Science 158:420–478, 2019'
+  print'(a)',   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
 
-  write(6,'(/,a)') ' Version: '//DAMASKVERSION
+  print'(/,a)', ' Version: '//DAMASKVERSION
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if defined(__PGI)
-  write(6,'(/,a,i4.4,a,i8.8)')   ' Compiled with PGI fortran version :', __PGIC__,&
+  print'(/,a,i4.4,a,i8.8)',   ' Compiled with PGI fortran version :', __PGIC__,&
                                                                     '.', __PGIC_MINOR__
 #else
-  write(6,'(/,a)') ' Compiled with: '//compiler_version()
-  write(6,'(a)')   ' Compiler options: '//compiler_options()
+  print'(/,a)', ' Compiled with: '//compiler_version()
+  print'(a)',   ' Compiler options: '//compiler_options()
 #endif
 
-  write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
+  print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
 
   call date_and_time(values = dateAndTime)
-  write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
-  write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+  print'(/,a,2(i2.2,a),i4.4)', ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+  print'(a,2(i2.2,a),i2.2)',   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
 
   do i = 1, command_argument_count()
     call get_command_argument(i,arg,status=err)
     if (err /= 0) call quit(1)
     select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
-        write(6,'(a)')  ' #######################################################################'
-        write(6,'(a)')  ' DAMASK Command Line Interface:'
-        write(6,'(a)')  ' For PETSc-based solvers for the Düsseldorf Advanced Material Simulation Kit'
-        write(6,'(a,/)')' #######################################################################'
-        write(6,'(a,/)')' Valid command line switches:'
-        write(6,'(a)')  '    --geom         (-g, --geometry)'
-        write(6,'(a)')  '    --load         (-l, --loadcase)'
-        write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory)'
-        write(6,'(a)')  '    --restart      (-r, --rs)'
-        write(6,'(a)')  '    --help         (-h)'
-        write(6,'(/,a)')' -----------------------------------------------------------------------'
-        write(6,'(a)')  ' Mandatory arguments:'
-        write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom'
-        write(6,'(a)')  '        Specifies the location of the geometry definition file.'
-        write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile'
-        write(6,'(a)')  '        Specifies the location of the load case definition file.'
-        write(6,'(/,a)')' -----------------------------------------------------------------------'
-        write(6,'(a)')  ' Optional arguments:'
-        write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
-        write(6,'(a)')  '        Specifies the working directory and overwrites the default ./'
-        write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-        write(6,'(a)')  '            directory.'
-        write(6,'(a)')  '        For further configuration place "numerics.config"'
-        write(6,'(a)')'            and "debug.config" in that directory.'
-        write(6,'(/,a)')'   --restart N'
-        write(6,'(a)')  '        Reads in increment N and continues with calculating'
-        write(6,'(a)')  '            increment N+1 based on this.'
-        write(6,'(a)')  '        Appends to existing results file'
-        write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.hdf5".'
-        write(6,'(a)')  '        Works only if the restart information for increment N'
-        write(6,'(a)')  '            is available in the working directory.'
-        write(6,'(/,a)')' -----------------------------------------------------------------------'
-        write(6,'(a)')  ' Help:'
-        write(6,'(/,a)')'   --help'
-        write(6,'(a,/)')'        Prints this message and exits'
+        print'(a)',  ' #######################################################################'
+        print'(a)',  ' DAMASK Command Line Interface:'
+        print'(a)',  ' For PETSc-based solvers for the Düsseldorf Advanced Material Simulation Kit'
+        print'(a,/)',' #######################################################################'
+        print'(a,/)',' Valid command line switches:'
+        print'(a)',  '    --geom         (-g, --geometry)'
+        print'(a)',  '    --load         (-l, --loadcase)'
+        print'(a)',  '    --workingdir   (-w, --wd, --workingdirectory)'
+        print'(a)',  '    --restart      (-r, --rs)'
+        print'(a)',  '    --help         (-h)'
+        print'(/,a)',' -----------------------------------------------------------------------'
+        print'(a)',  ' Mandatory arguments:'
+        print'(/,a)','   --geom PathToGeomFile/NameOfGeom'
+        print'(a)',  '        Specifies the location of the geometry definition file.'
+        print'(/,a)','   --load PathToLoadFile/NameOfLoadFile'
+        print'(a)',  '        Specifies the location of the load case definition file.'
+        print'(/,a)',' -----------------------------------------------------------------------'
+        print'(a)',  ' Optional arguments:'
+        print'(/,a)','   --workingdirectory PathToWorkingDirectory'
+        print'(a)',  '        Specifies the working directory and overwrites the default ./'
+        print'(a)',  '        Make sure the file "material.config" exists in the working'
+        print'(a)',  '            directory.'
+        print'(a)',  '        For further configuration place "numerics.config"'
+        print'(a)','            and "debug.config" in that directory.'
+        print'(/,a)','   --restart N'
+        print'(a)',  '        Reads in increment N and continues with calculating'
+        print'(a)',  '            increment N+1 based on this.'
+        print'(a)',  '        Appends to existing results file'
+        print'(a)',  '            "NameOfGeom_NameOfLoadFile.hdf5".'
+        print'(a)',  '        Works only if the restart information for increment N'
+        print'(a)',  '            is available in the working directory.'
+        print'(/,a)',' -----------------------------------------------------------------------'
+        print'(a)',  ' Help:'
+        print'(/,a)','   --help'
+        print'(a,/)','        Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
         call get_command_argument(i+1,loadCaseArg,status=err)
@@ -173,7 +172,7 @@ subroutine DAMASK_interface_init
         call get_command_argument(i+1,arg,status=err)
         read(arg,*,iostat=stat) interface_restartInc
         if (interface_restartInc < 0 .or. stat /=0) then
-          write(6,'(/,a)') ' ERROR: Could not parse restart increment: '//trim(arg)
+          print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         endif
     end select
@@ -181,7 +180,7 @@ subroutine DAMASK_interface_init
   enddo
 
   if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
-    write(6,'(/,a)') ' ERROR: Please specify geometry AND load case (-h for help)'
+    print'(/,a)', ' ERROR: Please specify geometry AND load case (-h for help)'
     call quit(1)
   endif
 
@@ -192,21 +191,21 @@ subroutine DAMASK_interface_init
   call get_command(commandLine)
   call get_environment_variable('USER',userName)
   ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
-  write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
-  write(6,'(a)')        ' Host name: '//trim(getHostName())
-  write(6,'(a)')        ' User name: '//trim(userName)
+  print'(/,a,i4.1)', ' MPI processes: ',worldsize
+  print'(a)',        ' Host name: '//trim(getHostName())
+  print'(a)',        ' User name: '//trim(userName)
 
-  write(6,'(/a)')       ' Command line call:      '//trim(commandLine)
+  print'(/a)',       ' Command line call:      '//trim(commandLine)
   if (len_trim(workingDirArg) > 0) &
-    write(6,'(a)')      ' Working dir argument:   '//trim(workingDirArg)
-  write(6,'(a)')        ' Geometry argument:      '//trim(geometryArg)
-  write(6,'(a)')        ' Load case argument:     '//trim(loadcaseArg)
-  write(6,'(a)')        ' Working directory:      '//getCWD()
-  write(6,'(a)')        ' Geometry file:          '//interface_geomFile
-  write(6,'(a)')        ' Loadcase file:          '//interface_loadFile
-  write(6,'(a)')        ' Solver job name:        '//getSolverJobName()
+    print'(a)',      ' Working dir argument:   '//trim(workingDirArg)
+  print'(a)',        ' Geometry argument:      '//trim(geometryArg)
+  print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
+  print'(a)',        ' Working directory:      '//getCWD()
+  print'(a)',        ' Geometry file:          '//interface_geomFile
+  print'(a)',        ' Loadcase file:          '//interface_loadFile
+  print'(a)',        ' Solver job name:        '//getSolverJobName()
   if (interface_restartInc > 0) &
-    write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
+    print'(a,i6.6)', ' Restart from increment: ', interface_restartInc
 
   !call signalterm_c(c_funloc(catchSIGTERM))
   call signalusr1_c(c_funloc(catchSIGUSR1))
@@ -239,7 +238,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   workingDirectory = trim(rectifyPath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if(error) then
-    write(6,'(/,a)') ' ERROR: Invalid Working directory: '//trim(workingDirectory)
+    print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
   endif
 
@@ -283,7 +282,7 @@ function getGeometryFile(geometryParameter)
 
   inquire(file=getGeometryFile, exist=file_exists)
   if (.not. file_exists) then
-    write(6,'(/,a)') ' ERROR: Geometry file does not exists ('//trim(getGeometryFile)//')'
+    print*, 'ERROR: Geometry file does not exists: '//trim(getGeometryFile)
     call quit(1)
   endif
 
@@ -306,7 +305,7 @@ function getLoadCaseFile(loadCaseParameter)
 
   inquire(file=getLoadCaseFile, exist=file_exists)
   if (.not. file_exists) then
-    write(6,'(/,a)') ' ERROR: Load case file does not exists ('//trim(getLoadCaseFile)//')'
+    print*, 'ERROR: Load case file does not exists: '//trim(getLoadCaseFile)
     call quit(1)
   endif
 
@@ -397,7 +396,7 @@ subroutine catchSIGTERM(signal) bind(C)
   integer(C_INT), value :: signal
   interface_SIGTERM = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGTERM=TRUE'
+  print'(a,i2.2,a)', ' received signal ',signal, ', set SIGTERM=TRUE'
 
 end subroutine catchSIGTERM
 
@@ -422,7 +421,7 @@ subroutine catchSIGUSR1(signal) bind(C)
   integer(C_INT), value :: signal
   interface_SIGUSR1 = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR1=TRUE'
+  print'(a,i2.2,a)', ' received signal ',signal, ', set SIGUSR1=TRUE'
 
 end subroutine catchSIGUSR1
 
@@ -447,7 +446,7 @@ subroutine catchSIGUSR2(signal) bind(C)
   integer(C_INT), value :: signal
   interface_SIGUSR2 = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2=TRUE'
+  print'(a,i2.2,a)', ' received signal ',signal, ', set SIGUSR2=TRUE'
 
 end subroutine catchSIGUSR2
 

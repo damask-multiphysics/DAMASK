@@ -186,19 +186,19 @@ subroutine spectral_utilities_init
     num_grid, &
     debug_grid                                                                                      ! pointer to grid  debug options
 
-  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
+  print'(/,a)', ' <<<+-  spectral_utilities init  -+>>>'
 
-  write(6,'(/,a)') ' Diehl, Diploma Thesis TU München, 2010'
-  write(6,'(a)')   ' https://doi.org/10.13140/2.1.3234.3840'
+  print*, 'Diehl, Diploma Thesis TU München, 2010'
+  print*, 'https://doi.org/10.13140/2.1.3234.3840'//IO_EOL
 
-  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'
+  print*, 'Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
 
-  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'//IO_EOL
 
-  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -226,8 +226,8 @@ subroutine spectral_utilities_init
   grid1Red = grid(1)/2 + 1
   wgt = 1.0/real(product(grid),pReal)
 
-  write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
-  write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
+  print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
+  print'(a,3(es12.5))',   ' size     x y z: ', geomSize
 
   num%memory_efficient      = num_grid%get_asInt('memory_efficient',      defaultVal=1) > 0         ! ToDo: should be logical in YAML file
   num%divergence_correction = num_grid%get_asInt('divergence_correction', defaultVal=2)
