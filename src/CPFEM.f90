@@ -82,7 +82,7 @@ subroutine CPFEM_initAll
   call math_init
   call rotations_init
   call YAML_types_init
-  call YAML_init
+  call YAML_parse_init
   call HDF5_utilities_init
   call results_init(.false.)
   call discretization_marc_init

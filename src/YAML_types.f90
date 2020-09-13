@@ -185,7 +185,7 @@ module YAML_types
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do sanity checks
+!> @brief Do sanity checks.
 !--------------------------------------------------------------------------------------------------
 subroutine YAML_types_init
 
@@ -197,7 +197,7 @@ end subroutine YAML_types_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some type bound procedures
+!> @brief Check correctness of some type bound procedures.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 

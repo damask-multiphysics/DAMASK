@@ -60,7 +60,7 @@ subroutine parse_material
     if(.not. fileExists) call IO_error(100,ext_msg=fname)
   endif
   write(6,*) 'reading '//fname; flush(6)
-  config_material => parse_flow(to_flow(IO_read(fname)))
+  config_material => YAML_parse_file(fname)
 
 end subroutine parse_material
 
@@ -77,7 +77,7 @@ subroutine parse_numerics
   inquire(file='numerics.yaml', exist=fexist)
   if (fexist) then
     write(6,*) 'reading numerics.yaml'; flush(6)
-    config_numerics =>  parse_flow(to_flow(IO_read('numerics.yaml')))
+    config_numerics => YAML_parse_file('numerics.yaml')
   endif
 
 end subroutine parse_numerics
@@ -94,7 +94,7 @@ subroutine parse_debug
   inquire(file='debug.yaml', exist=fexist)
   fileExists: if (fexist) then
     write(6,*) 'reading debug.yaml'; flush(6)
-    config_debug  => parse_flow(to_flow(IO_read('debug.yaml')))
+    config_debug => YAML_parse_file('debug.yaml')
   endif fileExists
 
 end subroutine parse_debug

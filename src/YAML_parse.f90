@@ -13,25 +13,37 @@ module YAML_parse
   private
 
   public :: &
-    YAML_init, &
-    parse_flow, &
-    to_flow
+    YAML_parse_init, &
+    YAML_parse_file
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do sanity checks
+!> @brief Do sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_init
+subroutine YAML_parse_init
 
   call selfTest
 
-end subroutine YAML_init
+end subroutine YAML_parse_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Parse a YAML file into a a structure of nodes.
+!--------------------------------------------------------------------------------------------------
+function YAML_parse_file(fname) result(node)
+
+  character(len=*), intent(in) :: fname
+  class (tNode), pointer :: node
+
+  node => parse_flow(to_flow(IO_read(fname)))
+
+end function YAML_parse_file
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
-!> @details  A node type pointer can either point to a dictionary, list or scalar type entities.
+!> @details A node type pointer can either point to a dictionary, list or scalar type entities.
 !--------------------------------------------------------------------------------------------------
 recursive function parse_flow(YAML_flow) result(node)
 
