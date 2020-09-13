@@ -146,10 +146,10 @@ end subroutine discretization_grid_init
 subroutine readGeom(grid,geomSize,origin,microstructure)
 
   integer,     dimension(3), intent(out) :: &
-    grid                                                                                            ! grid (for all processes!)
+    grid                                                                                            ! grid   (across all processes!)
   real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! size (for all processes!)
-    origin                                                                                          ! origin (for all processes!)
+    geomSize, &                                                                                     ! size   (across all processes!)
+    origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
     microstructure
 
@@ -195,7 +195,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
   endif
 
 !--------------------------------------------------------------------------------------------------
-! read and interprete header
+! read and interpret header
   origin = 0.0_pReal
   l = 0
   do while (l < headerLength .and. startPos < len(rawData))
@@ -307,15 +307,15 @@ end subroutine readGeom
 subroutine readVTR(grid,geomSize,origin,microstructure)
 
   integer,     dimension(3), intent(out) :: &
-    grid                                                                                            ! grid (for all processes!)
+    grid                                                                                            ! grid   (across all processes!)
   real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! size (for all processes!)
-    origin                                                                                          ! origin (for all processes!)
+    geomSize, &                                                                                     ! size   (across all processes!)
+    origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
     microstructure
 
-  character(len=:), allocatable :: fileContent, data_type, header_type
-  logical :: inFile,inGrid,readCoordinates,readCellData,compressed
+  character(len=:), allocatable :: fileContent, dataType, headerType
+  logical :: inFile,inGrid,gotCoordinates,gotCellData,compressed
   integer :: fileUnit, myStat, coord
   integer(pI64) :: &
     fileLength, &                                                                                   !< length of the geom file (in characters)
@@ -335,13 +335,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   read(fileUnit) fileContent
   close(fileUnit)
 
-  inFile          = .false.
-  inGrid          = .false.
-  readCoordinates = .false.
-  readCelldata    = .false.
+  inFile         = .false.
+  inGrid         = .false.
+  gotCoordinates = .false.
+  gotCelldata    = .false.
 
 !--------------------------------------------------------------------------------------------------
-! interprete XML file
+! interpret XML file
   startPos = 1_pI64
   do while (startPos < len(fileContent,kind=pI64))
     endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
@@ -350,19 +350,16 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     if(.not. inFile) then
       if(index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
         inFile = .true.
-        if(.not. fileOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
-        header_type = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
+        if(.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
+        headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
         compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
       endif
     else
       if(.not. inGrid) then
-        if(index(fileContent(startPos:endPos),'<RectilinearGrid',kind=pI64) /= 0_pI64) then
-          inGrid = .true.
-          grid = getGrid(fileContent(startPos:endPos))
-        endif
+        if(index(fileContent(startPos:endPos),'<RectilinearGrid',kind=pI64) /= 0_pI64) inGrid = .true.
       else
         if(index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
-          readCellData = .true.
+          gotCellData = .true.
           startPos = endPos + 2_pI64
           do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
             endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
@@ -371,18 +368,18 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
               if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
                 call IO_error(error_ID = 844, ext_msg='format (materialpoint)')
-              data_type = getXMLValue(fileContent(startPos:endPos),'type')
+              dataType = getXMLValue(fileContent(startPos:endPos),'type')
 
               startPos = endPos + 2_pI64
               endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
               s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
-              microstructure = as_Int(fileContent(s:endPos),header_type,compressed,data_type)
+              microstructure = as_Int(fileContent(s:endPos),headerType,compressed,dataType)
               exit
             endif
             startPos = endPos + 2_pI64
           enddo
         elseif(index(fileContent(startPos:endPos),'<Coordinates>',kind=pI64) /= 0_pI64) then
-          readCoordinates = .true.
+          gotCoordinates = .true.
           startPos = endPos + 2_pI64
 
           coord = 0
@@ -392,7 +389,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
               if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
                 call IO_error(error_ID = 844, ext_msg='format (coordinates)')
-              data_type = getXMLValue(fileContent(startPos:endPos),'type')
+              dataType = getXMLValue(fileContent(startPos:endPos),'type')
 
               startPos = endPos + 2_pI64
               endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
@@ -400,7 +397,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
               coord = coord + 1
 
-              call origin_and_size(fileContent(s:endPos),header_type,compressed,data_type,coord)
+              call gridSizeOrigin(fileContent(s:endPos),headerType,compressed,dataType,coord)
             endif
             if(index(fileContent(startPos:endPos),'</Coordinates>',kind=pI64) /= 0_pI64) exit
             startPos = endPos + 2_pI64
@@ -409,7 +406,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
       endif
     endif
 
-    if(readCellData .and. readCoordinates) exit
+    if(gotCellData .and. gotCoordinates) exit
     startPos = endPos + 2_pI64
 
   end do
@@ -424,20 +421,24 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   !------------------------------------------------------------------------------------------------
   !> @brief determine size and origin from coordinates
   !------------------------------------------------------------------------------------------------
-  !ToDo: check for regular spacing
-  subroutine origin_and_size(base64_str,header_type,compressed,data_type,direction)
+  subroutine gridSizeOrigin(base64_str,headerType,compressed,dataType,direction)
 
     character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string of 1D coordinates
-                                    header_type, &                                                  ! header type (UInt32 or Uint64)
-                                    data_type                                                       ! data type (Int32, Int64, Float32, Float64)
+                                    headerType, &                                                   ! header type (UInt32 or Uint64)
+                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
     logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
     integer,          intent(in) :: direction                                                       ! direction (1=x,2=y,3=z)
 
-    real(pReal), dimension(:), allocatable :: coords
+    real(pReal), dimension(:), allocatable :: coords,delta
 
-    coords = as_pReal(base64_str,header_type,compressed,data_type)
+    coords = as_pReal(base64_str,headerType,compressed,dataType)
 
-    origin(direction) = coords(1)
+    delta = coords(2:) - coords(:size(coords)-1)
+    if(any(delta<0.0_pReal) .or. dNeq(maxval(delta),minval(delta))) &
+      call IO_error(error_ID = 844, ext_msg = 'grid spacing')
+
+    grid(direction)     = size(coords)-1
+    origin(direction)   = coords(1)
     geomSize(direction) = coords(size(coords)) - coords(1)
 
   end subroutine
@@ -446,26 +447,26 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   !------------------------------------------------------------------------------------------------
   !> @brief Interpret Base64 string in vtk XML file as integer of default kind
   !------------------------------------------------------------------------------------------------
-  function as_Int(base64_str,header_type,compressed,data_type)
+  function as_Int(base64_str,headerType,compressed,dataType)
 
     character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    header_type, &                                                  ! header type (UInt32 or Uint64)
-                                    data_type                                                       ! data type (Int32, Int64, Float32, Float64)
+                                    headerType, &                                                   ! header type (UInt32 or Uint64)
+                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
     logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
 
     integer, dimension(:), allocatable :: as_Int
 
-    select case(data_type)
+    select case(dataType)
       case('Int32')
-        as_Int = int(bytes_to_C_INT32_T(asBytes(base64_str,header_type,compressed)))
+        as_Int = int(bytes_to_C_INT32_T(asBytes(base64_str,headerType,compressed)))
       case('Int64')
-        as_Int = int(bytes_to_C_INT64_T(asBytes(base64_str,header_type,compressed)))
+        as_Int = int(bytes_to_C_INT64_T(asBytes(base64_str,headerType,compressed)))
       case('Float32')
-        as_Int = int(bytes_to_C_FLOAT  (asBytes(base64_str,header_type,compressed)))
+        as_Int = int(bytes_to_C_FLOAT  (asBytes(base64_str,headerType,compressed)))
       case('Float64')
-        as_Int = int(bytes_to_C_DOUBLE (asBytes(base64_str,header_type,compressed)))
+        as_Int = int(bytes_to_C_DOUBLE (asBytes(base64_str,headerType,compressed)))
       case default
-        allocate(as_Int(0))
+        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
     end select
 
   end function as_Int
@@ -474,26 +475,26 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   !------------------------------------------------------------------------------------------------
   !> @brief Interpret Base64 string in vtk XML file as integer of pReal kind
   !------------------------------------------------------------------------------------------------
-  function as_pReal(base64_str,header_type,compressed,data_type)
+  function as_pReal(base64_str,headerType,compressed,dataType)
 
     character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    header_type, &                                                  ! header type (UInt32 or Uint64)
-                                    data_type                                                       ! data type (Int32, Int64, Float32, Float64)
+                                    headerType, &                                                   ! header type (UInt32 or Uint64)
+                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
     logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
 
     real(pReal), dimension(:), allocatable :: as_pReal
 
-    select case(data_type)
+    select case(dataType)
       case('Int32')
-        as_pReal = real(bytes_to_C_INT32_T(asBytes(base64_str,header_type,compressed)),pReal)
+        as_pReal = real(bytes_to_C_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
       case('Int64')
-        as_pReal = real(bytes_to_C_INT64_T(asBytes(base64_str,header_type,compressed)),pReal)
+        as_pReal = real(bytes_to_C_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
       case('Float32')
-        as_pReal = real(bytes_to_C_FLOAT  (asBytes(base64_str,header_type,compressed)),pReal)
+        as_pReal = real(bytes_to_C_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
       case('Float64')
-        as_pReal = real(bytes_to_C_DOUBLE (asBytes(base64_str,header_type,compressed)),pReal)
+        as_pReal = real(bytes_to_C_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
       case default
-        allocate(as_pReal(0))
+        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
     end select
 
   end function as_pReal
@@ -502,18 +503,18 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   !------------------------------------------------------------------------------------------------
   !> @brief Interpret Base64 string in vtk XML file as bytes
   !------------------------------------------------------------------------------------------------
-  function asBytes(base64_str,header_type,compressed) result(bytes)
+  function asBytes(base64_str,headerType,compressed) result(bytes)
 
     character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    header_type                                                     ! header type (UInt32 or Uint64)
+                                    headerType                                                      ! header type (UInt32 or Uint64)
     logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
 
     integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
 
     if(compressed) then
-      bytes = asBytes_compressed(base64_str,header_type)
+      bytes = asBytes_compressed(base64_str,headerType)
     else
-      bytes = asBytes_uncompressed(base64_str,header_type)
+      bytes = asBytes_uncompressed(base64_str,headerType)
     endif
 
   end function asBytes
@@ -527,38 +528,39 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   ! #p-size = Size of last partial block (zero if it not needed)
   ! #c-size-i = Size in bytes of block i after compression
   !------------------------------------------------------------------------------------------------
-  function asBytes_compressed(base64_str,header_type) result(bytes)
+  function asBytes_compressed(base64_str,headerType) result(bytes)
 
     character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    header_type                                                     ! header type (UInt32 or Uint64)
+                                    headerType                                                      ! header type (UInt32 or Uint64)
 
-    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
+    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes, bytes_inflated
 
     integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
-    integer(pI64) :: header_len, N_blocks, b,s,e
+    integer(pI64) :: headerLen, nBlock, b,s,e
 
-    if    (header_type == 'UInt32') then
+    if    (headerType == 'UInt32') then
       temp = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
-      N_blocks = int(temp(1),pI64)
-      header_len = 4_pI64 * (3_pI64 + N_blocks)
-      temp = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(:base64_nChar(header_len)))),pI64)
-    elseif(header_type == 'UInt64') then
+      nBlock = int(temp(1),pI64)
+      headerLen = 4_pI64 * (3_pI64 + nBlock)
+      temp = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+    elseif(headerType == 'UInt64') then
       temp = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
-      N_blocks = int(temp(1),pI64)
-      header_len = 8_pI64 * (3_pI64 + N_blocks)
-      temp = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(:base64_nChar(header_len)))),pI64)
+      nBlock = int(temp(1),pI64)
+      headerLen = 8_pI64 * (3_pI64 + nBlock)
+      temp = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
     endif
 
-    allocate(size_inflated(N_blocks),source=temp(2))
-    size_inflated(N_blocks) = merge(temp(3),temp(2),temp(3)/=0_pI64)
+    allocate(size_inflated(nBlock),source=temp(2))
+    size_inflated(nBlock) = merge(temp(3),temp(2),temp(3)/=0_pI64)
     size_deflated = temp(4:)
-    allocate(bytes(0))
+    bytes_inflated = base64_to_bytes(base64_str(base64_nChar(headerLen)+1_pI64:))
 
+    allocate(bytes(0))
     e = 0_pI64
-    do b = 1, N_blocks
+    do b = 1, nBlock
       s = e + 1_pI64
       e = s + size_deflated(b) - 1_pI64
-      bytes = [bytes,zlib_inflate(base64_to_bytes(base64_str(base64_nChar(header_len)+1:),s,e),size_inflated(b))]
+      bytes = [bytes,zlib_inflate(bytes_inflated(s:e),size_inflated(b))]
     enddo
 
   end function asBytes_compressed
@@ -569,29 +571,29 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   !> @details An uncompressed Base64 string consists of N headers blocks and a N data blocks
   ![#bytes-1/DATA-1][#bytes-2/DATA-2]...
   !------------------------------------------------------------------------------------------------
-  function asBytes_uncompressed(base64_str,header_type) result(bytes)
+  function asBytes_uncompressed(base64_str,headerType) result(bytes)
 
     character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
-                                    header_type                                                     ! header type (UInt32 or Uint64)
+                                    headerType                                                      ! header type (UInt32 or Uint64)
 
     integer(pI64) :: s
-    integer(pI64), dimension(1) :: N_bytes
+    integer(pI64), dimension(1) :: nByte
 
     integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
     allocate(bytes(0))
 
     s=0_pI64
-    if    (header_type == 'UInt32') then
+    if    (headerType == 'UInt32') then
       do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
-        N_bytes = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
-        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+N_bytes(1))),5_pI64)]
-        s = s + base64_nChar(4_pI64+N_bytes(1))
+        nByte = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
+        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
+        s = s + base64_nChar(4_pI64+nByte(1))
       enddo
-    elseif(header_type == 'UInt64') then
+    elseif(headerType == 'UInt64') then
       do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
-        N_bytes = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
-        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+N_bytes(1))),9_pI64)]
-        s = s + base64_nChar(8_pI64+N_bytes(1))
+        nByte = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
+        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
+        s = s + base64_nChar(8_pI64+nByte(1))
       enddo
     endif
 
@@ -600,7 +602,6 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   !------------------------------------------------------------------------------------------------
   !> @brief Get XML string value for given key
   !------------------------------------------------------------------------------------------------
-  ! ToDo: check if "=" is between key and value
   pure function getXMLValue(line,key)
 
     character(len=*), intent(in)  :: line, key
@@ -616,52 +617,39 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     if(s==0) then
       getXMLValue = ''
     else
-      s = s + 1 + scan(line(s+1:),"'"//'"')
+      e = s + 1 + scan(line(s+1:),"'"//'"')
+      if(scan(line(s:e-2),'=') == 0) then
+        getXMLValue = ''
+      else
+        s = e
+! https://community.intel.com/t5/Intel-Fortran-Compiler/ICE-for-merge-with-strings/m-p/1207204#M151657
 #ifdef __INTEL_COMPILER
-      q = str(s-1:s-1)
-      e = s + index(line(s:),q) - 1
+        q = line(s-1:s-1)
+        e = s + index(line(s:),q) - 1
 #else
-      e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
+        e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
 #endif
-      getXMLValue = line(s:e-1)
+        getXMLValue = line(s:e-1)
+      endif
     endif
 
   end function
 
 
   !------------------------------------------------------------------------------------------------
-  !> @brief figure out if file format is understandable
+  !> @brief check for supported file format
   !------------------------------------------------------------------------------------------------
-  pure function fileOk(line)
+  pure function fileFormatOk(line)
 
     character(len=*),intent(in) :: line
-    logical :: fileOk
+    logical :: fileFormatOk
 
-    fileOk = getXMLValue(line,'type')       == 'RectilinearGrid' .and. &
-             getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
-             getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
-             getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
+    fileFormatOk = getXMLValue(line,'type')       == 'RectilinearGrid' .and. &
+                   getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
+                   getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
+                   getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
 
-  end function fileOk
-
-
-  !------------------------------------------------------------------------------------------------
-  !> @brief get grid information from '<RectilinearGrid WholeExtent="0 x 0 y 0 z">'
-  !------------------------------------------------------------------------------------------------
-  function getGrid(line)
-
-    character(len=*),intent(in) :: line
-
-    integer,dimension(3) :: getGrid
-
-    integer :: s,e,i
-
-    s=scan(line,'"'//"'",back=.False.)
-    e=scan(line,'"'//"'",back=.True.)
-
-    getGrid = [(IO_intValue(line(s+1:e-1),IO_stringPos(line(s+1:e-1)),i*2),i=1,3)]
-
-  end function getGrid
+  end function fileFormatOk
 
 end subroutine readVTR
 
