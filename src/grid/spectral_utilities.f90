@@ -109,15 +109,10 @@ module spectral_utilities
   end type tSolutionParams
 
   type, private :: tNumerics
-    real(pReal) :: &
-      FFTW_timelimit                                                                                !< timelimit for FFTW plan creation, see www.fftw.org
     integer :: &
       divergence_correction                                                                         !< scale divergence/curl calculation: [0: no correction, 1: size scaled to 1, 2: size scaled to Npoints]
     logical :: &
       memory_efficient                                                                              !< calculate gamma operator on the fly
-    character(len=:), allocatable :: &
-      spectral_derivative, &                                                                        !< approximation used for derivatives in Fourier space
-      FFTW_plan_mode                                                                                !< FFTW plan mode, see www.fftw.org
   end type tNumerics
 
   type(tNumerics), private :: num                                                                   ! numerics parameters. Better name?
@@ -234,16 +229,13 @@ subroutine spectral_utilities_init
   write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
   write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
 
-  num%memory_efficient      = num_grid%get_asInt   ('memory_efficient',       defaultVal=1) > 0
-  num%FFTW_timelimit        = num_grid%get_asFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
-  num%divergence_correction = num_grid%get_asInt   ('divergence_correction',  defaultVal=2)
-  num%spectral_derivative   = num_grid%get_asString('derivative',             defaultVal='continuous')
-  num%FFTW_plan_mode        = num_grid%get_asString('fftw_plan_mode',         defaultVal='FFTW_MEASURE')
+  num%memory_efficient      = num_grid%get_asInt('memory_efficient',      defaultVal=1) > 0         ! ToDo: should be logical in YAML file
+  num%divergence_correction = num_grid%get_asInt('divergence_correction', defaultVal=2)
 
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
 
-  select case (num%spectral_derivative)
+  select case (num_grid%get_asString('derivative',defaultVal='continuous'))
     case ('continuous')
       spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
     case ('central_difference')
@@ -251,7 +243,7 @@ subroutine spectral_utilities_init
     case ('FWBW_difference')
       spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
     case default
-      call IO_error(892,ext_msg=trim(num%spectral_derivative))
+      call IO_error(892,ext_msg=trim(num_grid%get_asString('derivative')))
   end select
 
 !--------------------------------------------------------------------------------------------------
@@ -272,7 +264,7 @@ subroutine spectral_utilities_init
     scaledGeomSize = geomSize
   endif
 
-  select case(IO_lc(num%FFTW_plan_mode))                                                            ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+  select case(IO_lc(num_grid%get_asString('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
     case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
     case('fftw_measure')
@@ -282,14 +274,14 @@ subroutine spectral_utilities_init
     case('fftw_exhaustive')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
-      call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
+      call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num_grid%get_asString('fftw_plan_mode'))))
       FFTW_planner_flag = FFTW_MEASURE
   end select
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
   if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
-  call fftw_set_timelimit(num%FFTW_timelimit)
+  call fftw_set_timelimit(num_grid%get_asFloat('fftw_timelimit',defaultVal=-1.0_pReal))
 
   if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
 
