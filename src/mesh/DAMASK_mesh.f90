@@ -82,7 +82,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------- 
 ! reading field information from numerics file and do sanity checks
-  num_mesh => numerics_root%get('mesh', defaultVal=emptyDict)
+  num_mesh => config_numerics%get('mesh', defaultVal=emptyDict)
   stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
