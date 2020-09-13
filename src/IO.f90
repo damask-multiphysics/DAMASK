@@ -43,7 +43,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do self test
+!> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
@@ -55,7 +55,7 @@ end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief read ASCII file and split at EOL
+!> @brief Read ASCII file and split at EOL.
 !--------------------------------------------------------------------------------------------------
 function IO_readlines(fileName) result(fileContent)
 
@@ -106,7 +106,7 @@ end function IO_readlines
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief read ASCII file into a string
+!> @brief Read whole file.
 !> @details ensures that the string ends with a new line (expected UNIX behavior)
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileName) result(fileContent)
@@ -138,7 +138,7 @@ end function IO_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief identifies strings without content
+!> @brief Identifiy strings without content.
 !--------------------------------------------------------------------------------------------------
 logical pure function IO_isBlank(string)
 
@@ -153,8 +153,8 @@ end function IO_isBlank
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief locates all whitespace-separated chunks in given string and returns array containing
-!! number them and the left/right position to be used by IO_xxxVal
+!> @brief Locate all whitespace-separated chunks in given string and returns array containing
+!! number them and the left/right position to be used by IO_xxxVal.
 !! Array size is dynamically adjusted to number of chunks found in string
 !! IMPORTANT: first element contains number of chunks!
 !--------------------------------------------------------------------------------------------------
@@ -184,7 +184,7 @@ end function IO_stringPos
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads string value at myChunk from string
+!> @brief Read string value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 function IO_stringValue(string,chunkPos,myChunk)
 
@@ -204,7 +204,7 @@ end function IO_stringValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer value at myChunk from string
+!> @brief Read integer value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 integer function IO_intValue(string,chunkPos,myChunk)
 
@@ -218,7 +218,7 @@ end function IO_intValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads float value at myChunk from string
+!> @brief Read float value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_floatValue(string,chunkPos,myChunk)
 
@@ -232,7 +232,7 @@ end function IO_floatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief changes characters in string to lower case
+!> @brief Convert characters in string to lower case.
 !--------------------------------------------------------------------------------------------------
 pure function IO_lc(string)
 
@@ -257,7 +257,7 @@ end function IO_lc
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief Remove comments (characters beyond '#') and trailing space
+! @brief Remove comments (characters beyond '#') and trailing space.
 ! ToDo: Discuss name (the trim aspect is not clear)
 !--------------------------------------------------------------------------------------------------
 function IO_rmComment(line)
@@ -278,7 +278,7 @@ end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified integer value in given string
+!> @brief Return integer value from given string.
 !--------------------------------------------------------------------------------------------------
 integer function IO_stringAsInt(string)
 
@@ -299,7 +299,7 @@ end function IO_stringAsInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified float value in given string
+!> @brief Return float value from given string.
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_stringAsFloat(string)
 
@@ -320,7 +320,7 @@ end function IO_stringAsFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified logical value in given string
+!> @brief Return logical value from given string.
 !--------------------------------------------------------------------------------------------------
 logical function IO_stringAsBool(string)
 
@@ -339,7 +339,7 @@ end function IO_stringAsBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
+!> @brief Write error statements to standard out and terminate the run with exit #9xxx
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
@@ -568,7 +568,7 @@ end subroutine IO_error
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes warning statement to standard out
+!> @brief Write warning statement to standard out.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 
@@ -650,7 +650,7 @@ end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some IO functions
+!> @brief Check correctness of some IO functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
