@@ -96,16 +96,15 @@ module function plastic_disloTungsten_init() result(myPlasticity)
     phase, &
     pl
 
-  write(6,'(/,a)') ' <<<+-  plastic_disloTungsten init  -+>>>'
-
-  write(6,'(/,a)') ' Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
-  write(6,'(a)')   ' https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
+  print'(/,a)', ' <<<+-  plastic_dislotungsten init  -+>>>'
 
   myPlasticity = plastic_active('disloTungsten')
-
   Ninstance = count(myPlasticity)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
+  
+  print*, 'Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
+  print*, 'https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -179,7 +178,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
       prm%Q_cl            = pl%get_asFloat('Q_cl')
       prm%atomicVolume    = pl%get_asFloat('f_at')       * prm%b_sl**3.0_pReal
       prm%D_a             = pl%get_asFloat('D_a')        * prm%b_sl
-      
+
       prm%dipoleformation = pl%get_asBool('dipole_formation_factor', defaultVal = .true.)
 
       ! expand: family => system
@@ -410,19 +409,19 @@ module subroutine plastic_disloTungsten_results(instance,group)
   associate(prm => param(instance), stt => state(instance), dst => dependentState(instance))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('rho_mob')                                                                          
+      case('rho_mob')
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_mob,trim(prm%output(o)), &
                                                      'mobile dislocation density','1/m²')
-      case('rho_dip')                                                                        
+      case('rho_dip')
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%rho_dip,trim(prm%output(o)), &
                                                      'dislocation dipole density''1/m²')
-      case('gamma_sl')                                                                       
+      case('gamma_sl')
         if(prm%sum_N_sl>0) call results_writeDataset(group,stt%gamma_sl,trim(prm%output(o)), &
                                                      'plastic shear','1')
-      case('Lambda_sl')                                                                              
+      case('Lambda_sl')
         if(prm%sum_N_sl>0) call results_writeDataset(group,dst%Lambda_sl,trim(prm%output(o)), &
                                                      'mean free path for slip','m')
-      case('tau_pass')                                                                 
+      case('tau_pass')
         if(prm%sum_N_sl>0) call results_writeDataset(group,dst%threshold_stress,trim(prm%output(o)), &
                                                      'threshold stress for slip','Pa')
     end select

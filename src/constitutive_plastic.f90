@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------------------------------------
-!> @brief internal microstructure state for all plasticity constitutive models  
+!> @brief internal microstructure state for all plasticity constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_plastic
 
@@ -198,6 +198,8 @@ module subroutine plastic_init
   integer :: p
   class(tNode), pointer :: phases
 
+  print'(/,a)', ' <<<+-  constitutive_plastic init  -+>>>'
+
   phases => config_material%get('phase')
 
   allocate(plasticState(phases%length))
@@ -215,7 +217,7 @@ module subroutine plastic_init
 
   do p = 1, phases%length
     phase_plasticityInstance(p) = count(phase_plasticity(1:p) == phase_plasticity(p))
-  enddo 
+  enddo
 
 
 end subroutine plastic_init
@@ -355,7 +357,7 @@ end subroutine constitutive_plastic_LpAndItsTangents
 
 !--------------------------------------------------------------------------------------------
 !> @brief writes plasticity constitutive results to HDF5 output file
-!-------------------------------------------------------------------------------------------- 
+!--------------------------------------------------------------------------------------------
 module subroutine plastic_results
 
   integer :: p
