@@ -657,49 +657,49 @@ subroutine selfTest
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
 
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
-  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     call IO_error(0,ext_msg='IO_stringAsFloat')
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
+  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     error stop 'IO_stringAsFloat'
 
-  if(3112019  /= IO_stringAsInt( '3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(3112019  /= IO_stringAsInt(' 3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(-3112019 /= IO_stringAsInt('-3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(3112019  /= IO_stringAsInt('+3112019 '))       call IO_error(0,ext_msg='IO_stringAsInt')
+  if(3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
+  if(-3112019 /= IO_stringAsInt('-3112019'))        error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt('+3112019 '))       error stop 'IO_stringAsInt'
 
-  if(.not. IO_stringAsBool(' true'))                call IO_error(0,ext_msg='IO_stringAsBool')
-  if(.not. IO_stringAsBool(' True '))               call IO_error(0,ext_msg='IO_stringAsBool')
-  if(      IO_stringAsBool(' false'))               call IO_error(0,ext_msg='IO_stringAsBool')
-  if(      IO_stringAsBool('False'))                call IO_error(0,ext_msg='IO_stringAsBool')
+  if(.not. IO_stringAsBool(' true'))                error stop 'IO_stringAsBool'
+  if(.not. IO_stringAsBool(' True '))               error stop 'IO_stringAsBool'
+  if(      IO_stringAsBool(' false'))               error stop 'IO_stringAsBool'
+  if(      IO_stringAsBool('False'))                error stop 'IO_stringAsBool'
 
-  if(any([1,1,1]     /= IO_stringPos('a')))         call IO_error(0,ext_msg='IO_stringPos')
-  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     call IO_error(0,ext_msg='IO_stringPos')
+  if(any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
+  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
 
   str=' 1.0 xxx'
   chunkPos = IO_stringPos(str)
-  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) call IO_error(0,ext_msg='IO_floatValue')
+  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
 
   str='M 3112019 F'
   chunkPos = IO_stringPos(str)
-  if(3112019 /= IO_intValue(str,chunkPos,2))        call IO_error(0,ext_msg='IO_intValue')
+  if(3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
 
-  if(.not. IO_isBlank('  '))                        call IO_error(0,ext_msg='IO_isBlank/1')
-  if(.not. IO_isBlank('  #isBlank'))                call IO_error(0,ext_msg='IO_isBlank/2')
-  if(      IO_isBlank('  i#s'))                     call IO_error(0,ext_msg='IO_isBlank/3')
+  if(.not. IO_isBlank('  '))                        error stop 'IO_isBlank/1'
+  if(.not. IO_isBlank('  #isBlank'))                error stop 'IO_isBlank/2'
+  if(      IO_isBlank('  i#s'))                     error stop 'IO_isBlank/3'
 
   str = IO_rmComment('#')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/1')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/1'
   str = IO_rmComment(' #')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/2')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/2'
   str = IO_rmComment(' # ')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/3')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/3'
   str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/4')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/4'
   str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/5')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/5'
   str = IO_rmComment(' a#')
-  if (str /= ' a' .or. len(str) /= 2)               call IO_error(0,ext_msg='IO_rmComment/6')
+  if (str /= ' a' .or. len(str) /= 2)               error stop 'IO_rmComment/6'
   str = IO_rmComment(' ab #')
-  if (str /= ' ab'.or. len(str) /= 3)               call IO_error(0,ext_msg='IO_rmComment/7')
+  if (str /= ' ab'.or. len(str) /= 3)               error stop 'IO_rmComment/7'
 
 end subroutine selfTest
 

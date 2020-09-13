@@ -207,11 +207,11 @@ subroutine selfTest
   select type(s1)
     class is(tScalar)
       s1 = '1'
-      if(s1%asInt() /= 1)              call IO_error(0,ext_msg='tScalar_asInt')
-      if(dNeq(s1%asFloat(),1.0_pReal)) call IO_error(0,ext_msg='tScalar_asFloat')
+      if(s1%asInt() /= 1)              error stop 'tScalar_asInt'
+      if(dNeq(s1%asFloat(),1.0_pReal)) error stop 'tScalar_asFloat'
       s1 = 'true'
-      if(.not. s1%asBool())            call IO_error(0,ext_msg='tScalar_asBool')
-      if(s1%asString() /= 'true')      call IO_error(0,ext_msg='tScalar_asString')
+      if(.not. s1%asBool())            error stop 'tScalar_asBool'
+      if(s1%asString() /= 'true')      error stop 'tScalar_asString'
   end select
 
   block
@@ -232,18 +232,18 @@ subroutine selfTest
         call l1%append(s1)
         call l1%append(s2)
         n => l1
-        if(any(l1%asInts() /= [2,3]))                      call IO_error(0,ext_msg='tList_asInts')
-        if(any(dNeq(l1%asFloats(),[2.0_pReal,3.0_pReal]))) call IO_error(0,ext_msg='tList_asFloats')
-        if(n%get_asInt(1) /= 2)                            call IO_error(0,ext_msg='byIndex_asInt')
-        if(dNeq(n%get_asFloat(2),3.0_pReal))               call IO_error(0,ext_msg='byIndex_asFloat')
+        if(any(l1%asInts() /= [2,3]))                      error stop 'tList_asInts'
+        if(any(dNeq(l1%asFloats(),[2.0_pReal,3.0_pReal]))) error stop 'tList_asFloats'
+        if(n%get_asInt(1) /= 2)                            error stop 'byIndex_asInt'
+        if(dNeq(n%get_asFloat(2),3.0_pReal))               error stop 'byIndex_asFloat'
     endselect
 
     allocate(tList::l2)
     select type(l2)
       class is(tList)
         call l2%append(l1)
-        if(any(l2%get_asInts(1) /= [2,3]))                      call IO_error(0,ext_msg='byIndex_asInts')
-        if(any(dNeq(l2%get_asFloats(1),[2.0_pReal,3.0_pReal]))) call IO_error(0,ext_msg='byIndex_asFloats')
+        if(any(l2%get_asInts(1) /= [2,3]))                      error stop 'byIndex_asInts'
+        if(any(dNeq(l2%get_asFloats(1),[2.0_pReal,3.0_pReal]))) error stop 'byIndex_asFloats'
         n => l2
     end select
     deallocate(n)
@@ -265,10 +265,10 @@ subroutine selfTest
      call l1%append(s2)
      n => l1
 
-     if(any(l1%asBools() .neqv. [.true., .false.])) call IO_error(0,ext_msg='tList_asBools')
-     if(any(l1%asStrings() /=   ['true ','False'])) call IO_error(0,ext_msg='tList_asStrings')
-     if(n%get_asBool(2))                            call IO_error(0,ext_msg='byIndex_asBool')
-     if(n%get_asString(1) /= 'true')                call IO_error(0,ext_msg='byIndex_asString')
+     if(any(l1%asBools() .neqv. [.true., .false.])) error stop 'tList_asBools'
+     if(any(l1%asStrings() /=   ['true ','False'])) error stop 'tList_asStrings'
+     if(n%get_asBool(2))                            error stop 'byIndex_asBool'
+     if(n%get_asString(1) /= 'true')                error stop 'byIndex_asString'
   end block
 
 end subroutine selfTest

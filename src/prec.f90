@@ -297,31 +297,29 @@ subroutine selfTest
   real(pReal),   dimension(1) :: f
   integer(pInt), dimension(1) :: i
   real(pReal),   dimension(2) :: r
-  external :: &
-    quit
 
   realloc_lhs_test = [1,2]
-  if (any(realloc_lhs_test/=[1,2])) call quit(9000)
+  if (any(realloc_lhs_test/=[1,2]))        error stop 'LHS allocation'
 
   call random_number(r)
   r = r/minval(r)
-  if(.not. all(dEq(r,r+PREAL_EPSILON)))    call quit(9000)
-  if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) call quit(9000)
-  if(.not. all(dEq0(r-(r+PREAL_MIN))))     call quit(9000)
+  if(.not. all(dEq(r,r+PREAL_EPSILON)))    error stop 'dEq'
+  if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) error stop 'dNeq'
+  if(.not. all(dEq0(r-(r+PREAL_MIN))))     error stop 'dEq0'
 
   ! https://www.binaryconvert.com
   ! https://www.rapidtables.com/convert/number/binary-to-decimal.html
   f = real(bytes_to_C_FLOAT(int([-65,+11,-102,+75],C_SIGNED_CHAR)),pReal)
-  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) call quit(9000)
+  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'bytes_to_C_FLOAT'
 
   f = real(bytes_to_C_DOUBLE(int([0,0,0,-32,+119,+65,+115,65],C_SIGNED_CHAR)),pReal)
-  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) call quit(9000)
+  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'bytes_to_C_DOUBLE'
 
   i = int(bytes_to_C_INT32_T(int([+126,+23,+52,+1],C_SIGNED_CHAR)),pInt)
-  if(i(1) /= 20191102_pInt)                 call quit(9000)
+  if(i(1) /= 20191102_pInt)                 error stop 'bytes_to_C_INT32_T'
 
   i = int(bytes_to_C_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pInt)
-  if(i(1) /= 20191102_pInt)                 call quit(9000)
+  if(i(1) /= 20191102_pInt)                 error stop 'bytes_to_C_INT64_T'
 
 end subroutine selfTest
 

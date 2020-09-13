@@ -2299,7 +2299,7 @@ end function equivalent_mu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some lattice functions
+!> @brief Check correctness of some lattice functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
@@ -2314,21 +2314,19 @@ subroutine selfTest
 
   system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
   CoSy   = buildCoordinateSystem([1],[1],system,'fcc',0.0_pReal)
-  if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) &
-    call IO_error(0)
+  if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) error stop 'buildCoordinateSystem'
 
   call random_number(C)
   C(1,1) = C(1,1) + 1.0_pReal
   C = applyLatticeSymmetryC66(C,'iso')
-  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_mu/voigt')
-  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_mu/reuss')
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
+  
   lambda = C(1,2)
   if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'voigt')),equivalent_nu(C,'voigt'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_nu/voigt')
+    error stop 'equivalent_nu/voigt'
   if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'reuss')),equivalent_nu(C,'reuss'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_nu/reuss')
+    error stop 'equivalent_nu/reuss'
 
 end subroutine selfTest
 
