@@ -272,7 +272,6 @@ subroutine spectral_utilities_init
     scaledGeomSize = geomSize
   endif
 
-
   select case(IO_lc(num%FFTW_plan_mode))                                                            ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
     case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
@@ -289,8 +288,8 @@ subroutine spectral_utilities_init
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
-  if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) call IO_error(0,ext_msg='Fortran to C')              ! check for correct precision in C
-  call fftw_set_timelimit(num%FFTW_timelimit)                                                       ! set timelimit for plan creation
+  if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
+  call fftw_set_timelimit(num%FFTW_timelimit)
 
   if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
 

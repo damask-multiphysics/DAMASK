@@ -738,7 +738,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   type(rotation)                                       :: R
   integer                                              :: i
 
-  if (abs(sense) /= 1) call IO_error(0,ext_msg='lattice_nonSchmidMatrix')
+  if (abs(sense) /= 1) error stop 'Sense in lattice_nonSchmidMatrix'
 
   coordinateSystem  = buildCoordinateSystem(Nslip,BCC_NSLIPSYSTEM,BCC_SYSTEMSLIP,&
                                             'bcc',0.0_pReal)
