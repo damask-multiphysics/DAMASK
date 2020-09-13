@@ -145,10 +145,10 @@ end subroutine discretization_grid_init
 subroutine readGeom(grid,geomSize,origin,microstructure)
 
   integer,     dimension(3), intent(out) :: &
-    grid                                                                                            ! grid (for all processes!)
+    grid                                                                                            ! grid   (across all processes!)
   real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! size (for all processes!)
-    origin                                                                                          ! origin (for all processes!)
+    geomSize, &                                                                                     ! size   (across all processes!)
+    origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
     microstructure
 
@@ -194,7 +194,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
   endif
 
 !--------------------------------------------------------------------------------------------------
-! read and interprete header
+! read and interpret header
   origin = 0.0_pReal
   l = 0
   do while (l < headerLength .and. startPos < len(rawData))
@@ -306,15 +306,15 @@ end subroutine readGeom
 subroutine readVTR(grid,geomSize,origin,microstructure)
 
   integer,     dimension(3), intent(out) :: &
-    grid                                                                                            ! grid (for all processes!)
+    grid                                                                                            ! grid   (across all processes!)
   real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! size (for all processes!)
-    origin                                                                                          ! origin (for all processes!)
+    geomSize, &                                                                                     ! size   (across all processes!)
+    origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
     microstructure
 
   character(len=:), allocatable :: fileContent, dataType, headerType
-  logical :: inFile,inGrid,readCoordinates,readCellData,compressed
+  logical :: inFile,inGrid,gotCoordinates,gotCellData,compressed
   integer :: fileUnit, myStat, coord
   integer(pI64) :: &
     fileLength, &                                                                                   !< length of the geom file (in characters)
@@ -334,13 +334,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
   read(fileUnit) fileContent
   close(fileUnit)
 
-  inFile          = .false.
-  inGrid          = .false.
-  readCoordinates = .false.
-  readCelldata    = .false.
+  inFile         = .false.
+  inGrid         = .false.
+  gotCoordinates = .false.
+  gotCelldata    = .false.
 
 !--------------------------------------------------------------------------------------------------
-! interprete XML file
+! interpret XML file
   startPos = 1_pI64
   do while (startPos < len(fileContent,kind=pI64))
     endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
@@ -349,7 +349,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     if(.not. inFile) then
       if(index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
         inFile = .true.
-        if(.not. fileOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
+        if(.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
         headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
         compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
       endif
@@ -358,7 +358,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
         if(index(fileContent(startPos:endPos),'<RectilinearGrid',kind=pI64) /= 0_pI64) inGrid = .true.
       else
         if(index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
-          readCellData = .true.
+          gotCellData = .true.
           startPos = endPos + 2_pI64
           do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
             endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
@@ -378,7 +378,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
             startPos = endPos + 2_pI64
           enddo
         elseif(index(fileContent(startPos:endPos),'<Coordinates>',kind=pI64) /= 0_pI64) then
-          readCoordinates = .true.
+          gotCoordinates = .true.
           startPos = endPos + 2_pI64
 
           coord = 0
@@ -405,7 +405,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
       endif
     endif
 
-    if(readCellData .and. readCoordinates) exit
+    if(gotCellData .and. gotCoordinates) exit
     startPos = endPos + 2_pI64
 
   end do
@@ -636,19 +636,19 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
 
   !------------------------------------------------------------------------------------------------
-  !> @brief figure out if file format is understandable
+  !> @brief check for supported file format
   !------------------------------------------------------------------------------------------------
-  pure function fileOk(line)
+  pure function fileFormatOk(line)
 
     character(len=*),intent(in) :: line
-    logical :: fileOk
+    logical :: fileFormatOk
 
-    fileOk = getXMLValue(line,'type')       == 'RectilinearGrid' .and. &
-             getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
-             getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
-             getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
+    fileFormatOk = getXMLValue(line,'type')       == 'RectilinearGrid' .and. &
+                   getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
+                   getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
+                   getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
 
-  end function fileOk
+  end function fileFormatOk
 
 end subroutine readVTR
 
