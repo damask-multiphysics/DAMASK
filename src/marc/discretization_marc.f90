@@ -197,7 +197,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
   integer, dimension(:,:), allocatable :: &
     mapElemSet                                                                                      !< list of elements in elementSet
 
-  inputFile = IO_read_ASCII(trim(getSolverJobName())//trim(InputFileExtension))
+  inputFile = IO_readlines(trim(getSolverJobName())//trim(InputFileExtension))
   call inputRead_fileFormat(fileFormatVersion, &
                             inputFile)
   call inputRead_tableStyles(initialcondTableStyle,hypoelasticTableStyle, &

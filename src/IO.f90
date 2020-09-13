@@ -22,16 +22,10 @@ module IO
                  '───────────────────'//&
                  '────────────'
 
-  ! Obsolete alias
-  interface IO_read_ASCII
-    module procedure IO_readlines
-  end interface IO_read_ASCII
-
   public :: &
     IO_init, &
     IO_read, &
     IO_readlines, &
-    IO_read_ASCII, &
     IO_open_binary, &
     IO_isBlank, &
     IO_getTag, &
