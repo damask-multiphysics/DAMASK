@@ -731,7 +731,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 !--------------------------------------------------------------------------------------------------
 ! check if inversion was successful
     sTimesC = matmul(c_reduced,s_reduced)
-    errmatinv = errmatinv .or. any(dNeq(sTimesC,math_identity2nd(size_reduced),1.0e-12_pReal))
+    errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pReal))
     if (debugGeneral .or. errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'

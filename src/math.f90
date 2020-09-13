@@ -72,10 +72,6 @@ module math
       3,3  &
       ],shape(MAPPLAIN))                                                                            !< arrangement in Plain notation
 
-  interface math_eye
-    module procedure math_identity2nd
-  end interface math_eye
-
 !---------------------------------------------------------------------------------------------------
  private :: &
    selfTest
@@ -239,18 +235,18 @@ end function math_range
 !--------------------------------------------------------------------------------------------------
 !> @brief second rank identity tensor of specified dimension
 !--------------------------------------------------------------------------------------------------
-pure function math_identity2nd(d)
+pure function math_eye(d)
 
   integer, intent(in) :: d                                                                          !< tensor dimension
   integer :: i
-  real(pReal), dimension(d,d) :: math_identity2nd
+  real(pReal), dimension(d,d) :: math_eye
 
-  math_identity2nd = 0.0_pReal
+  math_eye = 0.0_pReal
   do i=1,d
-    math_identity2nd(i,i) = 1.0_pReal
+    math_eye(i,i) = 1.0_pReal
   enddo
 
-end function math_identity2nd
+end function math_eye
 
 
 !--------------------------------------------------------------------------------------------------
@@ -264,7 +260,7 @@ pure function math_identity4th(d)
   real(pReal), dimension(d,d,d,d) :: math_identity4th
   real(pReal), dimension(d,d)     :: identity2nd
 
-  identity2nd = math_identity2nd(d)
+  identity2nd = math_eye(d)
   do i=1,d; do j=1,d; do k=1,d; do l=1,d
     math_identity4th(i,j,k,l) = 0.5_pReal &
                               *(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
@@ -1240,23 +1236,23 @@ subroutine selfTest
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
     call IO_error(0,ext_msg='math_det33/math_detSym33')
 
-  if(any(dNeq0(math_identity2nd(3),math_inv33(math_I3)))) &
+  if(any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
     call IO_error(0,ext_msg='math_inv33(math_I3)')
 
   do while(abs(math_det33(t33))<1.0e-9_pReal)
     call random_number(t33)
   enddo
-  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_identity2nd(3),tol=1.0e-9_pReal))) &
+  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-9_pReal))) &
     call IO_error(0,ext_msg='math_inv33')
 
   call math_invert33(t33_2,det,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
+  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert33: T:T^-1 != I')
   if(dNeq(det,math_det33(t33),tol=1.0e-12_pReal)) &
     call IO_error(0,ext_msg='math_invert33 (determinant)')
 
   call math_invert(t33_2,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
+  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert t33')
 
   do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
@@ -1269,14 +1265,14 @@ subroutine selfTest
 
   call random_number(r)
   d = int(r*5.0_pReal) + 1
-  txx = math_identity2nd(d)
+  txx = math_eye(d)
   allocate(txx_2(d,d))
   call math_invert(txx_2,e,txx)
   if(any(dNeq0(txx_2,txx) .or. e)) &
-    call IO_error(0,ext_msg='math_invert(txx)/math_identity2nd')
+    call IO_error(0,ext_msg='math_invert(txx)/math_eye')
 
   call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix
-  if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
+  if(any(dNeq0(matmul(t99_2,t99)-math_eye(9),tol=1.0e-9_pReal)) .or. e) &
     call IO_error(0,ext_msg='math_invert(t99)')
 
   if(any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &

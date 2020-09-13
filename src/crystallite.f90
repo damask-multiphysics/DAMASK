@@ -576,7 +576,7 @@ subroutine crystallite_stressTangent
         lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
                  + math_mul3333xx3333(dSdFi,dFidS)
 
-        call math_invert(temp_99,error,math_identity2nd(9)+math_3333to99(lhs_3333))
+        call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
         if (error) then
           call IO_warning(warning_ID=600,el=e,ip=i,g=c, &
                           ext_msg='inversion error in analytic tangent calculation')
@@ -947,7 +947,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
         do o=1,3; do p=1,3
           dFe_dLp(o,1:3,p,1:3) = - dt * A(o,p)*transpose(invFi_new)                                 ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
         enddo; enddo
-        dRLp_dLp = math_identity2nd(9) &
+        dRLp_dLp = math_eye(9) &
                  - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
         temp_9 = math_33to9(residuumLp)
         call dgesv(9,1,dRLp_dLp,9,devNull_9,temp_9,9,ierr)                                          ! solve dRLp/dLp * delta Lp = -res for delta Lp
@@ -992,7 +992,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
       do o=1,3; do p=1,3
         dFi_dLi(1:3,1:3,o,p) = matmul(matmul(Fi_new,dFi_dLi(1:3,1:3,o,p)),Fi_new)
       enddo; enddo
-      dRLi_dLi  = math_identity2nd(9) &
+      dRLi_dLi  = math_eye(9) &
                 - math_3333to99(math_mul3333xx3333(dLi_dS,  math_mul3333xx3333(dS_dFe, dFe_dLi) &
                                                           + math_mul3333xx3333(dS_dFi, dFi_dLi)))  &
                 - math_3333to99(math_mul3333xx3333(dLi_dFi, dFi_dLi))
