@@ -33,7 +33,7 @@ contains
 function zlib_inflate(deflated,size_inflated)
 
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: deflated
-  integer(pLongInt),                    intent(in) :: size_inflated
+  integer(pI64),                        intent(in) :: size_inflated
 
   integer(C_SIGNED_CHAR), dimension(size_inflated) :: zlib_inflate
 
