@@ -46,7 +46,7 @@ for filename in options.filenames:
         for label in options.con:
             x = results.get_dataset_location(label)
             if len(x) != 0:
-                table.add(label,results.read_dataset(x,0,plain=True).reshape(results.grid.prod(),-1))
+                table = table.add(label,results.read_dataset(x,0,plain=True).reshape(results.grid.prod(),-1))
 
         results.pick('constituents',  False)
         results.pick('materialpoints',True)
