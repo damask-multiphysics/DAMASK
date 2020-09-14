@@ -1,4 +1,5 @@
 import re
+import copy
 
 import pandas as pd
 import numpy as np
@@ -27,6 +28,15 @@ class Table:
         self.data = pd.DataFrame(data=data)
         self.shapes = { k:(v,) if isinstance(v,(np.int,int)) else v for k,v in shapes.items() }
         self._label_condensed()
+
+
+    def __copy__(self):
+        """Copy Table."""
+        return copy.deepcopy(self)
+
+    def copy(self):
+        """Copy Table."""
+        return self.__copy__()
 
 
     def _label_flat(self):
@@ -191,15 +201,16 @@ class Table:
             Human-readable information about the new data.
 
         """
-        self._add_comment(label,data.shape[1:],info)
+        dup = self.copy()
+        dup._add_comment(label,data.shape[1:],info)
 
         if re.match(r'[0-9]*?_',label):
             idx,key = label.split('_',1)
-            iloc = self.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
-            self.data.iloc[:,iloc] = data
+            iloc = dup.data.columns.get_loc(key).tolist().index(True) + int(idx) -1
+            dup.data.iloc[:,iloc] = data
         else:
-            self.data[label]       = data.reshape(self.data[label].shape)
-
+            dup.data[label]       = data.reshape(dup.data[label].shape)
+        return dup
 
     def add(self,label,data,info=None):
         """
@@ -215,15 +226,17 @@ class Table:
             Human-readable information about the modified data.
 
         """
-        self._add_comment(label,data.shape[1:],info)
+        dup = self.copy()
+        dup._add_comment(label,data.shape[1:],info)
 
-        self.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
+        dup.shapes[label] = data.shape[1:] if len(data.shape) > 1 else (1,)
         size = np.prod(data.shape[1:],dtype=int)
         new = pd.DataFrame(data=data.reshape(-1,size),
                            columns=[label]*size,
                           )
-        new.index = self.data.index
-        self.data = pd.concat([self.data,new],axis=1)
+        new.index = dup.data.index
+        dup.data = pd.concat([dup.data,new],axis=1)
+        return dup
 
 
     def delete(self,label):
@@ -236,25 +249,31 @@ class Table:
             Column label.
 
         """
-        self.data.drop(columns=label,inplace=True)
-        del self.shapes[label]
+        dup = self.copy()
+        dup.data.drop(columns=label,inplace=True)
+        del dup.shapes[label]
+        return dup
 
 
-    def rename(self,label_old,label_new,info=None):
+    def rename(self,old,new,info=None):
         """
         Rename column data.
 
         Parameters
         ----------
-        label_old : str
-            Old column label.
-        label_new : str
-            New column label.
+        label_old : str or iterable of str
+            Old column label(s).
+        label_new : str or iterable of str
+            New column label(s).
 
         """
-        self.data.rename(columns={label_old:label_new},inplace=True)
-        self.comments.append(f'{label_old} => {label_new}'+('' if info is None else f': {info}'))
-        self.shapes = {(label if label != label_old else label_new):self.shapes[label] for label in self.shapes}
+        dup = self.copy()
+        columns = dict(zip([old] if isinstance(old,str) else old,
+                           [new] if isinstance(new,str) else new))
+        dup.data.rename(columns=columns,inplace=True)
+        dup.comments.append(f'{old} => {new}'+('' if info is None else f': {info}'))
+        dup.shapes = {(label if label not in columns else columns[label]):dup.shapes[label] for label in dup.shapes}
+        return dup
 
 
     def sort_by(self,labels,ascending=True):
@@ -269,10 +288,12 @@ class Table:
             Set sort order.
 
         """
-        self._label_flat()
-        self.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
-        self._label_condensed()
-        self.comments.append(f'sorted by [{", ".join(labels)}]')
+        dup = self.copy()
+        dup._label_flat()
+        dup.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
+        dup._label_condensed()
+        dup.comments.append(f'sorted {"ascending" if ascending else "descending"} by {labels}')
+        return dup
 
 
     def append(self,other):
@@ -290,7 +311,9 @@ class Table:
         if self.shapes != other.shapes or not self.data.columns.equals(other.data.columns):
             raise KeyError('Labels or shapes or order do not match')
         else:
-            self.data = self.data.append(other.data,ignore_index=True)
+            dup = self.copy()
+            dup.data = dup.data.append(other.data,ignore_index=True)
+            return dup
 
 
     def join(self,other):
@@ -308,9 +331,11 @@ class Table:
         if set(self.shapes) & set(other.shapes) or self.data.shape[0] != other.data.shape[0]:
             raise KeyError('Dublicated keys or row count mismatch')
         else:
-            self.data = self.data.join(other.data)
+            dup = self.copy()
+            dup.data = dup.data.join(other.data)
             for key in other.shapes:
-                self.shapes[key] = other.shapes[key]
+                dup.shapes[key] = other.shapes[key]
+            return dup
 
 
     def to_file(self,fname,format='ASCII',new_style=False):

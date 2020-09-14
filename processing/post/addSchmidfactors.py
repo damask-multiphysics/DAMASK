@@ -187,6 +187,6 @@ for name in filenames:
                np.einsum('ijk,ik->ij',slip_normal,   (o@normal)))
 
     for i,label in enumerate(labels):
-        table.add(label,S[:,i],scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add(label,S[:,i],scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)

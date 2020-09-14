@@ -137,14 +137,14 @@ for name in filenames:
 
 
     if 'rodrigues' in options.output:
-        table.add('ro({})'.format(label),o.as_Rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('ro({})'.format(label),o.as_Rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
     if 'eulers' in options.output:
-        table.add('eu({})'.format(label),o.as_Eulers(options.degrees),    scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('eu({})'.format(label),o.as_Eulers(options.degrees),    scriptID+' '+' '.join(sys.argv[1:]))
     if 'quaternion' in options.output:
-        table.add('qu({})'.format(label),o.as_quaternion(),               scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('qu({})'.format(label),o.as_quaternion(),               scriptID+' '+' '.join(sys.argv[1:]))
     if 'matrix' in options.output:
-        table.add('om({})'.format(label),o.as_matrix(),                   scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('om({})'.format(label),o.as_matrix(),                   scriptID+' '+' '.join(sys.argv[1:]))
     if 'axisangle' in options.output:
-        table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)

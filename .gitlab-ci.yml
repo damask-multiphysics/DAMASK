@@ -141,13 +141,6 @@ Pre_General:
     - release
 
 ###################################################################################################
-Post_ASCIItable:
-  stage: postprocessing
-  script: ASCIItable/test.py
-  except:
-    - master
-    - release
-
 Post_General:
   stage: postprocessing
   script: PostProcessing/test.py
