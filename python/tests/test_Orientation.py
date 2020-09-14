@@ -105,7 +105,7 @@ class TestOrientation:
         if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
             table = Table(eu,{'Eulers':(3,)})
-            table.add('pos',coords)
+            table = table.add('pos',coords)
             table.to_ASCII(reference)
         assert np.allclose(eu,Table.from_ASCII(reference).get('Eulers'))
 
