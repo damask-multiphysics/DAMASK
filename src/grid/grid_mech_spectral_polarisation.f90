@@ -259,15 +259,12 @@ end subroutine grid_mech_spectral_polarisation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
+function grid_mech_spectral_polarisation_solution(incInfoIn,stress_BC,rotation_BC) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*), intent(in) :: &
     incInfoIn
-  real(pReal),                 intent(in) :: &
-    timeinc, &                                                                                      !< time increment of current solution
-    timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
   type(rotation),              intent(in) :: &
@@ -289,14 +286,6 @@ function grid_mech_spectral_polarisation_solution(incInfoIn,timeinc,timeinc_old,
     C_scale = C_minMaxAvg
     S_scale = math_invSym3333(C_minMaxAvg)
   endif
-
-!--------------------------------------------------------------------------------------------------
-! set module wide available data
-  params%stress_mask = stress_BC%maskFloat
-  params%stress_BC   = stress_BC%values
-  params%rotation_BC = rotation_BC
-  params%timeinc     = timeinc
-  params%timeincOld  = timeinc_old
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
@@ -338,6 +327,14 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
   PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
   integer :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
+
+!--------------------------------------------------------------------------------------------------
+! set module wide available data
+  params%stress_mask = stress_BC%maskFloat
+  params%stress_BC   = stress_BC%values
+  params%rotation_BC = rotation_BC
+  params%timeinc     = timeinc
+  params%timeincOld  = timeinc_old
 
   call DMDAVecGetArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)
   F     => FandF_tau(0: 8,:,:,:)

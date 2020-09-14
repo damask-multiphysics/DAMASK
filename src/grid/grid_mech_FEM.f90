@@ -268,15 +268,12 @@ end subroutine grid_mech_FEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the FEM scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
+function grid_mech_FEM_solution(incInfoIn,stress_BC,rotation_BC) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
     incInfoIn
-  real(pReal),                 intent(in) :: &
-    timeinc, &                                                                                      !< time increment of current solution
-    timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
   type(rotation),              intent(in) :: &
@@ -293,13 +290,6 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-!--------------------------------------------------------------------------------------------------
-! set module wide available data
-  params%stress_mask = stress_BC%maskFloat
-  params%stress_BC   = stress_BC%values
-  params%rotation_BC = rotation_BC
-  params%timeinc     = timeinc
-  params%timeincOld  = timeinc_old
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
@@ -340,6 +330,15 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     u_current,u_lastInc
+
+!--------------------------------------------------------------------------------------------------
+! set module wide available data
+  params%stress_mask = stress_BC%maskFloat
+  params%stress_BC   = stress_BC%values
+  params%rotation_BC = rotation_BC
+  params%timeinc     = timeinc
+  params%timeincOld  = timeinc_old
+
 
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)

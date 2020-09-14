@@ -232,15 +232,12 @@ end subroutine grid_mech_spectral_basic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
+function grid_mech_spectral_basic_solution(incInfoIn,stress_BC,rotation_BC) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
     incInfoIn
-  real(pReal),                 intent(in) :: &
-    timeinc, &                                                                                      !< time increment of current solution
-    timeinc_old                                                                                     !< time increment of last successful increment
   type(tBoundaryCondition),    intent(in) :: &
     stress_BC
   type(rotation),              intent(in) :: &
@@ -258,14 +255,6 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
   if(num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
-
-!--------------------------------------------------------------------------------------------------
-! set module wide available data
-  params%stress_mask = stress_BC%maskFloat
-  params%stress_BC   = stress_BC%values
-  params%rotation_BC = rotation_BC
-  params%timeinc     = timeinc
-  params%timeincOld  = timeinc_old
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
@@ -305,6 +294,14 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, dimension(:,:,:,:), pointer :: F
+
+!--------------------------------------------------------------------------------------------------
+! set module wide available data
+  params%stress_mask = stress_BC%maskFloat
+  params%stress_BC   = stress_BC%values
+  params%rotation_BC = rotation_BC
+  params%timeinc     = timeinc
+  params%timeincOld  = timeinc_old
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
