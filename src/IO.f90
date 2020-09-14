@@ -585,6 +585,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'incomplete information in grid mesh header'
     case (843)
       msg = 'microstructure count mismatch'
+    case (844)
+      msg = 'invalid VTR file'
     case (846)
       msg = 'rotation for load case rotation ill-defined (R:RT != I)'
     case (891)

@@ -168,7 +168,7 @@ class VTK:
     def _write(writer):
         """Wrapper for parallel writing."""
         writer.Write()
-    def to_file(self,fname,parallel=True):
+    def to_file(self,fname,parallel=True,compress=True):
         """
         Write to file.
 
@@ -192,7 +192,10 @@ class VTK:
         if ext and ext != '.'+default_ext:
             raise ValueError(f'Given extension {ext} does not match default .{default_ext}')
         writer.SetFileName(str(Path(fname).with_suffix('.'+default_ext)))
-        writer.SetCompressorTypeToZLib()
+        if compress:
+            writer.SetCompressorTypeToZLib()
+        else:
+            writer.SetCompressorTypeToNone()
         writer.SetDataModeToBinary()
         writer.SetInputData(self.vtk_data)
 

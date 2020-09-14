@@ -15,12 +15,13 @@ module prec
 
   ! https://software.intel.com/en-us/blogs/2017/03/27/doctor-fortran-in-it-takes-all-kinds
   integer,     parameter :: pReal      = IEEE_selected_real_kind(15,307)                            !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
+  integer,     parameter :: pI32       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
+  integer,     parameter :: pI64       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
 #if(INT==8)
-  integer,     parameter :: pInt       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
+  integer,     parameter :: pInt       = pI64
 #else
-  integer,     parameter :: pInt       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
+  integer,     parameter :: pInt       = pI32
 #endif
-  integer,     parameter :: pLongInt   = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
   integer,     parameter :: pStringLen = 256                                                        !< default string length
   integer,     parameter :: pPathLen   = 4096                                                       !< maximum length of a path name on linux
 
@@ -237,7 +238,7 @@ end function cNeq
 pure function bytes_to_C_FLOAT(bytes)
 
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_FLOAT array
-  real(C_FLOAT), dimension(size(bytes,kind=pLongInt)/(storage_size(0._C_FLOAT,pLongInt)/8_pLongInt)) :: &
+  real(C_FLOAT), dimension(size(bytes,kind=pI64)/(storage_size(0._C_FLOAT,pI64)/8_pI64)) :: &
     bytes_to_C_FLOAT
 
   bytes_to_C_FLOAT = transfer(bytes,bytes_to_C_FLOAT,size(bytes_to_C_FLOAT))
@@ -251,7 +252,7 @@ end function bytes_to_C_FLOAT
 pure function bytes_to_C_DOUBLE(bytes)
 
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_DOUBLE array
-  real(C_DOUBLE), dimension(size(bytes,kind=pLongInt)/(storage_size(0._C_DOUBLE,pLongInt)/8_pLongInt)) :: &
+  real(C_DOUBLE), dimension(size(bytes,kind=pI64)/(storage_size(0._C_DOUBLE,pI64)/8_pI64)) :: &
     bytes_to_C_DOUBLE
 
   bytes_to_C_DOUBLE = transfer(bytes,bytes_to_C_DOUBLE,size(bytes_to_C_DOUBLE))
@@ -265,7 +266,7 @@ end function bytes_to_C_DOUBLE
 pure function bytes_to_C_INT32_T(bytes)
 
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_INT32_T array
-  integer(C_INT32_T), dimension(size(bytes,kind=pLongInt)/(storage_size(0_C_INT32_T,pLongInt)/8_pLongInt)) :: &
+  integer(C_INT32_T), dimension(size(bytes,kind=pI64)/(storage_size(0_C_INT32_T,pI64)/8_pI64)) :: &
     bytes_to_C_INT32_T
 
   bytes_to_C_INT32_T = transfer(bytes,bytes_to_C_INT32_T,size(bytes_to_C_INT32_T))
@@ -279,7 +280,7 @@ end function bytes_to_C_INT32_T
 pure function bytes_to_C_INT64_T(bytes)
 
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_INT64_T array
-  integer(C_INT64_T), dimension(size(bytes,kind=pLongInt)/(storage_size(0_C_INT64_T,pLongInt)/8_pLongInt)) :: &
+  integer(C_INT64_T), dimension(size(bytes,kind=pI64)/(storage_size(0_C_INT64_T,pI64)/8_pI64)) :: &
      bytes_to_C_INT64_T
 
   bytes_to_C_INT64_T = transfer(bytes,bytes_to_C_INT64_T,size(bytes_to_C_INT64_T))
