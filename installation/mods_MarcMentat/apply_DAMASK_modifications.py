@@ -8,6 +8,8 @@ from pathlib import Path
 import damask
 
 marc_version = float(damask.environment.options['MARC_VERSION'])
+if int(marc_version) == marc_version:
+    marc_version = int(marc_version)
 msc_root     = Path(damask.environment.options['MSC_ROOT'])
 damask_root  = damask.environment.root_dir
 
