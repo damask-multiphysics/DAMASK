@@ -56,6 +56,6 @@ for name in filenames:
         data = table.get(label)
         uniques,inverse  = np.unique(data,return_inverse=True,axis=0) if options.unique else (data,np.arange(len(data)))
         rng.shuffle(uniques)
-        table.set(label,uniques[inverse], scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.set(label,uniques[inverse], scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)

@@ -51,8 +51,8 @@ for name in filenames:
         shape = (3,) if np.prod(field.shape)//np.prod(grid) == 3 else (3,3)                         # vector or tensor
         field = field.reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+shape)
         curl  = damask.grid_filters.curl(size,field)
-        table.add('curlFFT({})'.format(label),
-                  curl.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape),order='F'),
-                  scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('curlFFT({})'.format(label),
+                          curl.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape),order='F'),
+                          scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)
