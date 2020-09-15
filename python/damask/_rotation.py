@@ -665,12 +665,11 @@ class Rotation:
         """
         rng = np.random.default_rng(seed)
         sigma = np.radians(sigma) if degrees else sigma
-        u,Theta = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
-        omega = rng.normal(scale=sigma,size=N)
+        u,Theta  = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
+        omega = abs(rng.normal(scale=sigma,size=N))
         p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
                              np.sqrt(1-u**2)*np.sin(Theta),
                              u, omega])
-        p[p[:,3]<0] *= -1
         return  Rotation.from_axis_angle(p) @ center
 
 
@@ -704,16 +703,16 @@ class Rotation:
         d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])
         ax_align = np.append(np.cross(d_lab,d_cr), np.arccos(np.dot(d_lab,d_cr)))
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
-        R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True)          # rotation to align fiber axis in crystal and sample system
+        R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
 
-        u,Theta,b = (np.random.random((N,3)) * 2 * np.array([1,np.pi,np.pi]) - np.array([1,0,np.pi])).T
-        omega = abs(np.random.normal(scale=sigma_,size=N))
+        u,Theta,b = (rng.random((N,3)) * np.array([2,2*np.pi,np.pi]) - np.array([1,0,0])).T
+        omega  = abs(rng.normal(scale=sigma_,size=N))
         p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
                              np.sqrt(1-u**2)*np.sin(Theta),
                              u, omega])
         p[:,:3] = np.einsum('ij,...j->...i',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])
         f = np.column_stack((np.broadcast_to(d_lab,(N,3)),b))
-        f[f[:,3]<0] *= -1.
+        f[::2,:3] *= -1                                                                                  # flip half the rotation axes to negative sense
         return R_align.broadcast_to(N) \
              @ Rotation.from_axis_angle(p,normalize=True) \
              @ Rotation.from_axis_angle(f)
