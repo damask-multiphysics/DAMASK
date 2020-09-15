@@ -663,8 +663,8 @@ class Rotation:
 
         """
         rng = np.random.default_rng(seed)
-        _FWHM = np.radians(FWHM) if degrees else FWHM
-        if _FWHM > np.radians(0.1):
+        FWHM_ = np.radians(FWHM) if degrees else FWHM
+        if FWHM_ > np.radians(0.1):
             rotations = []
             for i in range(N_samples):
                 while True:
@@ -673,11 +673,10 @@ class Rotation:
                     ax = np.array([a,
                                    np.sqrt(1.0-a**2.0)*np.cos(rnd[1]*2.0*np.pi),                    # random axis
                                    np.sqrt(1.0-a**2.0)*np.sin(rnd[1]*2.0*np.pi),                    # random axis
-                                    (rnd[2]-0.5) * 4 *_FWHM])                                       # rotation by [0, +-2 FWHM]
-                    if ax[3] < 0.0: ax*=-1.0
-                    R = Rotation.from_axis_angle(ax,normalize=True)
+                                    (rnd[2]-0.5) * 4 *FWHM_])                                       # rotation by [0, +-2 FWHM]
+                    R = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0,normalize=True)
                     angle = R.misorientation(Rotation()).as_axis_angle()[3]                         # misorientation to unity
-                    if rnd[3] <= np.exp(-4.0*np.log(2.0)*(angle/_FWHM)**2):                         # rejection sampling (Gaussian)
+                    if rnd[3] <= np.exp(-4.0*np.log(2.0)*(angle/FWHM_)**2):                         # rejection sampling (Gaussian)
                          break
                 rotations.append((center @ R).as_quaternion())
         else:
@@ -714,21 +713,19 @@ class Rotation:
 
         """
         rng = np.random.default_rng(seed)
-        FWHM_,alpha_,beta_ = map(np.radians,(FWHM,alpha,beta)) if degrees else (FWHM,alpha,beta)
+        FWHM_,alpha_,beta_ = np.radians((FWHM,alpha,beta)) if degrees else (FWHM,alpha,beta)
 
         f_in_C = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
         f_in_S = np.array([np.sin(beta_[0] )*np.cos(beta_[1] ), np.sin(beta_[0] )*np.sin(beta_[1] ), np.cos(beta_[0] )])
+        ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
+        R_align = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)          # rotation to align fiber axis in crystal and sample system
 
         rotations = []
         for i in range(N_samples):
             rnd = rng.random(3)
-            ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
-            if ax[3] < 0.0: ax *= -1.0
-            R = Rotation.from_axis_angle(ax,normalize=True)                                         # rotation to align fiber axis in crystal and sample system
-
             ax = np.append(f_in_S,rnd[0]*np.pi*2.0)
             if ax[3] > np.pi: ax = np.append(ax[:3]*-1,np.pi*2-ax[3])
-            R = R @ Rotation.from_axis_angle(ax)                                                    # rotation (0..360deg) perpendicular to fiber axis
+            R = R_align @ Rotation.from_axis_angle(ax)                                              # rotation (0..360deg) perpendicular to fiber axis
 
             if FWHM_ > np.radians(0.1):
 
@@ -737,24 +734,21 @@ class Rotation:
 
                 s = f_in_S[i_smallest]
                 a = f_in_S[i_non_smallest]
-                x = sum([x**2 for x in a])
+                x = np.sum(a**2)
 
                 u = np.empty(3)
                 while True:                                                                         # rejection sampling
                     angle = (rnd[1] - 0.5)*4 *FWHM_
                     # solve cos(angle) = dot_product(fInS,u) for u. This is underdetermined, hence assume that
                     # they share the smallest component.
-
                     c = np.cos(angle) - s**2
-
                     u[i_non_smallest[1]] = -(2.0*c*a[1] + np.sqrt(4*((c*a[1])**2.0-x*(c**2.0-a[0]**2*(1.0-s**2)))))/(2*x)
                     u[i_non_smallest[0]] = np.sqrt(1.0-u[i_non_smallest[1]]**2.0-s**2.0)
                     u[i_smallest]        = s
 
                     if (rnd[2] <= np.exp(-4.0*np.log(2.0)*(angle/FWHM_)**2)):
                         ax = np.append(np.cross(u,f_in_S),angle)
-                        if ax[3]<0.0: ax *= -1.0
-                        R = R * Rotation.from_axis_angle(ax,normalize=True)                         # tilt around direction of smallest component
+                        R = R @ Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0,normalize=True) # tilt around direction of smallest component
                         break
                     else:
                         rnd = rng.random(3)

@@ -934,17 +934,23 @@ class TestRotation:
     @pytest.mark.parametrize('N_samples',[500,1000,2000])
     def test_from_fiber_component(self,N_samples,FWHM):
         """https://en.wikipedia.org/wiki/Full_width_at_half_maximum."""
-        alpha = np.array([15.0,4.6])
-        beta  = np.ones(2)
-        n = Rotation.from_quaternion([0.9914448613738086,-0.01046806021254377,0.13010575149028156,7.146345858741878e-08])
-        o = Rotation.from_fiber_component(alpha,beta,FWHM,N_samples,True)
+        alpha = np.random.random(2)*np.pi
+        beta  = np.zeros(2)
+
+        f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
+        f_in_S = np.array([np.sin(beta[0] )*np.cos(beta[1] ), np.sin(beta[0] )*np.sin(beta[1] ), np.cos(beta[0] )])
+        ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
+        n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)                # rotation to align fiber axis in crystal and sample system
+
+        o = Rotation.from_fiber_component(alpha,beta,np.radians(FWHM),N_samples,False)
         angles=[]
         for i in range(N_samples):
-            cos = np.dot(np.dot(n.as_matrix(),np.array([0.0,0.0,1.0])),
-                         np.dot(o[i].as_matrix(),np.array([0.0, 0.0, 1.0])))
+            cos = np.dot(n@np.array([0.0,0.0,1.0]),o[i]@np.array([0.0, 0.0, 1.0]))
             angles.append(np.arccos(np.clip(cos,-1,1)))
         dist = np.array(angles) * (np.random.randint(0,2,N_samples)*2-1)
 
+        p = stats.normaltest(dist)[1]
         FWHM_out = np.degrees(np.std(dist)) * (2*np.sqrt(2*np.log(2)))
-        print(f'\n FWHM ratio {FWHM/FWHM_out}')
-        assert .85 < FWHM/FWHM_out < 1.1
+        print(f'\np: {p}, FWHM ratio {FWHM/FWHM_out}')
+        assert (.85 < FWHM/FWHM_out < 1.15) and p > 0.001
+
