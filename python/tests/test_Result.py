@@ -339,7 +339,7 @@ class TestResult:
     @pytest.mark.parametrize('output',['F',[],['F','P']])
     def test_vtk(self,tmp_path,default,output):
         os.chdir(tmp_path)
-        default.to_vtk(output)
+        default.save_vtk(output)
 
     def test_XDMF(self,tmp_path,single_phase):
         os.chdir(tmp_path)

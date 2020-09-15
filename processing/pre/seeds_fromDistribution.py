@@ -78,7 +78,7 @@ class myThread (threading.Thread):
       perturbedSeedsVFile = StringIO()
       myBestSeedsVFile.seek(0)
 
-      perturbedSeedsTable = damask.Table.from_ASCII(myBestSeedsVFile)
+      perturbedSeedsTable = damask.Table.load_ASCII(myBestSeedsVFile)
       coords = perturbedSeedsTable.get('pos')
       i = 0
       for ms,coord in enumerate(coords):
@@ -89,8 +89,7 @@ class myThread (threading.Thread):
           coords[i]=newCoords
           direction[i]*=2.
           i+= 1
-      perturbedSeedsTable.set('pos',coords)
-      perturbedSeedsTable.to_file(perturbedSeedsVFile)
+      perturbedSeedsTable.set('pos',coords).save_ASCII(perturbedSeedsVFile)
 
 #--- do tesselation with perturbed seed file ------------------------------------------------------
       perturbedGeomVFile.close()
@@ -101,7 +100,7 @@ class myThread (threading.Thread):
       perturbedGeomVFile.seek(0)
 
 #--- evaluate current seeds file ------------------------------------------------------------------
-      perturbedGeom = damask.Geom.from_file(perturbedGeomVFile)
+      perturbedGeom = damask.Geom.load_ASCII(perturbedGeomVFile)
       myNmicrostructures = len(np.unique(perturbedGeom.microstructure))
       currentData=np.bincount(perturbedGeom.microstructure.ravel())[1:]/points
       currentError=[]
@@ -213,14 +212,14 @@ if options.randomSeed is None:
   options.randomSeed = int(os.urandom(4).hex(),16)
 damask.util.croak(options.randomSeed)
 delta = options.scale/np.array(options.grid)
-baseFile=os.path.splitext(os.path.basename(options.seedFile))[0]
+baseFile = os.path.splitext(os.path.basename(options.seedFile))[0]
 points = np.array(options.grid).prod().astype('float')
 
 # ----------- calculate target distribution and bin edges
-targetGeom = damask.Geom.from_file(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
+targetGeom = damask.Geom.load_ASCII(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
 nMicrostructures = len(np.unique(targetGeom.microstructure))
 targetVolFrac = np.bincount(targetGeom.microstructure.flatten())/targetGeom.grid.prod().astype(np.float)
-target=[]
+target = []
 for i in range(1,nMicrostructures+1):
   targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
   target.append({'histogram':targetHist,'bins':targetBins})
@@ -243,7 +242,7 @@ initialGeomVFile = StringIO()
 initialGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
                                ' -g '+' '.join(list(map(str, options.grid))),bestSeedsVFile)[0])
 initialGeomVFile.seek(0)
-initialGeom = damask.Geom.from_file(initialGeomVFile)
+initialGeom = damask.Geom.load_ASCII(initialGeomVFile)
 
 if len(np.unique(targetGeom.microstructure)) != nMicrostructures:
   damask.util.croak('error. Microstructure count mismatch')
@@ -273,8 +272,8 @@ sys.stdout.flush()
 initialGeomVFile.close()
 
 # start mulithreaded monte carlo simulation
-threads=[]
-s=threading.Semaphore(1)
+threads = []
+s = threading.Semaphore(1)
 
 for i in range(options.threads):
   threads.append(myThread(i))

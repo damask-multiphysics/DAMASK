@@ -42,11 +42,10 @@ rot_to_TSL = damask.Rotation.from_axis_angle([-1,0,0,.75*np.pi])
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    
+    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+
     coord      = - table.get(options.frame)
     coord[:,2] += table.get(options.depth)[:,0]
 
-    table.add('coord',rot_to_TSL.broadcast_to(coord.shape[0]) @ coord,scriptID+' '+' '.join(sys.argv[1:]))
-
-    table.to_file(sys.stdout if name is None else name)
+    table.add('coord',rot_to_TSL.broadcast_to(coord.shape[0]) @ coord,scriptID+' '+' '.join(sys.argv[1:]))\
+         .save_ASCII(sys.stdout if name is None else name)

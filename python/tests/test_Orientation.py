@@ -107,7 +107,7 @@ class TestOrientation:
             table = Table(eu,{'Eulers':(3,)})
             table = table.add('pos',coords)
             table.to_ASCII(reference)
-        assert np.allclose(eu,Table.from_ASCII(reference).get('Eulers'))
+        assert np.allclose(eu,Table.load_ASCII(reference).get('Eulers'))
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)
     def test_disorientation360(self,lattice):
@@ -129,4 +129,3 @@ class TestOrientation:
         eqs = [r for r in R_1.equivalent]
         R_2 = Orientation.from_average(eqs)
         assert np.allclose(R_1.rotation.quaternion,R_2.rotation.quaternion)
-

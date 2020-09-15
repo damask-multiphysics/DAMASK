@@ -62,7 +62,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
 
-  geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   grid_original = geom.get_grid()
   damask.util.croak(geom)
@@ -169,7 +169,7 @@ for name in filenames:
     # undo any changes involving immutable microstructures
     microstructure = np.where(immutable, microstructure_original,microstructure)
 
-  geom=geom.duplicate(microstructure[0:grid_original[0],0:grid_original[1],0:grid_original[2]])
+  geom = geom.duplicate(microstructure[0:grid_original[0],0:grid_original[1],0:grid_original[2]])
   geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
 
-  geom.to_file(sys.stdout if name is None else name,format='ASCII',pack=False)
+  geom.save_ASCII(sys.stdout if name is None else name,pack=False)

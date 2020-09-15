@@ -172,7 +172,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
 
-  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
   grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
   F = table.get(options.defgrad).reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+(3,3))
@@ -191,4 +191,4 @@ for name in filenames:
                       volumeMismatch.reshape(-1,1,order='F'),
                       scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.to_file(sys.stdout if name is None else name)
+  table.save_ASCII(sys.stdout if name is None else name)

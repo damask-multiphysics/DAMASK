@@ -1196,7 +1196,7 @@ class Result:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
-    def to_vtk(self,labels=[],mode='cell'):
+    def save_vtk(self,labels=[],mode='cell'):
         """
         Export to vtk cell/point data.
 
@@ -1268,4 +1268,4 @@ class Result:
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            v.to_file(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')
+            v.save(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')

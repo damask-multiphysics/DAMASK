@@ -142,7 +142,7 @@ for i,feature in enumerate(features):
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
     neighborhood = neighborhoods[options.neighborhood]
@@ -158,7 +158,7 @@ for name in filenames:
         diffToNeighbor[:,:,:,i] = ndimage.convolve(microstructure,stencil)                          # compare ID at each point...
                                                                                                     # ...to every one in the specified neighborhood
                                                                                                     # for same IDs at both locations ==> 0
-  
+
     diffToNeighbor = np.sort(diffToNeighbor)                                                        # sort diff such that number of changes in diff (steps)...
                                                                                                     # ...reflects number of unique neighbors
     uniques = np.where(diffToNeighbor[1:-1,1:-1,1:-1,0] != 0, 1,0)                                  # initialize unique value counter (exclude myself [= 0])
@@ -184,4 +184,4 @@ for name in filenames:
                           distance[i,:],
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_file(sys.stdout if name is None else name)
+    table.save_ASCII(sys.stdout if name is None else name)

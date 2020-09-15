@@ -228,7 +228,7 @@ class Test:
 
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
 
-    source=os.path.normpath(os.path.join(self.dirBase,'../../..',sourceDir))
+    source = os.path.normpath(os.path.join(self.dirBase,'../../..',sourceDir))
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,f in enumerate(sourcefiles):
       try:
@@ -287,30 +287,30 @@ class Test:
 
     import numpy as np
     logging.info('\n '.join(['comparing',File1,File2]))
-    table = damask.Table.from_ASCII(File1)
-    len1=len(table.comments)+2
-    table = damask.Table.from_ASCII(File2)
-    len2=len(table.comments)+2
+    table = damask.Table.load_ASCII(File1)
+    len1 = len(table.comments)+1
+    table = damask.Table.load_ASCII(File2)
+    len2 = len(table.comments)+1
 
     refArray = np.nan_to_num(np.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
     curArray = np.nan_to_num(np.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
 
     if len(curArray) == len(refArray):
       refArrayNonZero = refArray[refArray.nonzero()]
-      curArray = curArray[refArray.nonzero()]
-      max_err=np.max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
-      max_loc=np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      curArray        = curArray[refArray.nonzero()]
+      max_err = np.   max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      max_loc = np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
-      curArray = curArray[curArray.nonzero()]
+      curArray        = curArray[curArray.nonzero()]
       print(f' ********\n * maximum relative error {max_err} between {refArrayNonZero[max_loc]} and {curArray[max_loc]}\n ********')
       return max_err
     else:
-       raise Exception('mismatch in array size to compare')
+       raise Exception(f'mismatch in array sizes ({len(refArray)} and {len(curArray)}) to compare')
 
 
   def compare_ArrayRefCur(self,ref,cur=''):
 
-    if cur =='': cur = ref
+    if cur == '': cur = ref
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
     return self.compare_Array(refName,curName)
@@ -399,10 +399,8 @@ class Test:
       if any(norm[i]) == 0.0 or absTol[i]:
         norm[i] = [1.0 for j in range(line0-len(skipLines))]
         absTol[i] = True
-        if perLine:
-          logging.warning(f"At least one norm of \"{headings0[i]['label']}\" in first table is 0.0, using absolute tolerance")
-        else:
-          logging.warning(f"Maximum norm of \"{headings0[i]['label']}\" in first table is 0.0, using absolute tolerance")
+        logging.warning(f'''{"At least one" if perLine else "Maximum"} norm of
+                            "{headings0[i]['label']}" in first table is 0.0, using absolute tolerance''')
 
     line1 = 0
     while table1.data_read():                                                  # read next data line of ASCII table
@@ -418,20 +416,18 @@ class Test:
 
     logging.info(' ********')
     for i in range(dataLength):
-      if absTol[i]:
-        logging.info(f" * maximum absolute error {maxError[i]} between {headings0[i]['label']} and {headings1[i]['label']}")
-      else:
-        logging.info(f" * maximum relative error {maxError[i]} between {headings0[i]['label']} and {headings1[i]['label']}")
+      logging.info(f''' * maximum {'absolute' if absTol[i] else 'relative'} error {maxError[i]}
+                       between {headings0[i]['label']} and {headings1[i]['label']}''')
     logging.info(' ********')
     return maxError
 
 
   def compare_TablesStatistically(self,
-                     files = [None,None],                                      # list of file names
-                     columns = [None],                                         # list of list of column labels (per file)
-                     meanTol = 1.0e-4,
-                     stdTol = 1.0e-6,
-                     preFilter = 1.0e-9):
+                                  files = [None,None],                                      # list of file names
+                                  columns = [None],                                         # list of list of column labels (per file)
+                                  meanTol = 1.0e-4,
+                                  stdTol = 1.0e-6,
+                                  preFilter = 1.0e-9):
     """
     Calculate statistics of tables.
 
@@ -440,9 +436,9 @@ class Test:
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 
-    tables = [damask.Table.from_ASCII(filename) for filename in files]
+    tables = [damask.Table.load_ASCII(filename) for filename in files]
     for table in tables:
-      table._label_flat()
+      table._label_discrete()
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files
@@ -462,7 +458,7 @@ class Test:
 
     data = []
     for table,labels in zip(tables,columns):
-      table._label_condensed()
+      table._label_uniform()
       data.append(np.hstack(list(table.get(label) for label in labels)))
 
 
@@ -471,12 +467,11 @@ class Test:
       normBy = (np.abs(data[i]) + np.abs(data[i-1]))*0.5
       normedDelta = np.where(normBy>preFilter,delta/normBy,0.0)
       mean = np.amax(np.abs(np.mean(normedDelta,0)))
-      std = np.amax(np.std(normedDelta,0))
+      std  = np.amax(np.std(normedDelta,0))
       logging.info(f'mean: {mean:f}')
       logging.info(f'std:  {std:f}')
 
-    return (mean<meanTol) & (std < stdTol)
-
+    return (mean < meanTol) & (std < stdTol)
 
 
   def compare_Tables(self,
@@ -491,7 +486,7 @@ class Test:
 
     if len(files) < 2: return True                                             # single table is always close to itself...
 
-    tables = [damask.Table.from_ASCII(filename) for filename in files]
+    tables = [damask.Table.load_ASCII(filename) for filename in files]
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files
@@ -580,7 +575,7 @@ class Test:
 
     if culprit == 0:
       count = len(self.variants) if self.options.select is None else len(self.options.select)
-      msg = 'Test passed.' if count == 1 else f'All {count} tests passed.'
+      msg = ('Test passed.' if count == 1 else f'All {count} tests passed.') + '\a\a\a'
     elif culprit == -1:
       msg = 'Warning: could not start test...'
       ret = 0

@@ -43,7 +43,7 @@ if options.labels is None: parser.error('no data column specified.')
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
     for label in options.labels:
@@ -55,4 +55,4 @@ for name in filenames:
                           curl.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape),order='F'),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_file(sys.stdout if name is None else name)
+    table.save_ASCII(sys.stdout if name is None else name)

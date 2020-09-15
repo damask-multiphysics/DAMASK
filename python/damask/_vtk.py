@@ -118,7 +118,7 @@ class VTK:
 
 
     @staticmethod
-    def from_file(fname,dataset_type=None):
+    def load(fname,dataset_type=None):
         """
         Create VTK from file.
 
@@ -168,7 +168,7 @@ class VTK:
     def _write(writer):
         """Wrapper for parallel writing."""
         writer.Write()
-    def to_file(self,fname,parallel=True,compress=True):
+    def save(self,fname,parallel=True,compress=True):
         """
         Write to file.
 

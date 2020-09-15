@@ -47,25 +47,25 @@ parser.set_defaults(f   = 'f',
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
     F = table.get(options.f).reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+(3,3))
     if options.nodal:
-        table = damask.Table(damask.grid_filters.node_coord0(grid,size).reshape(-1,3,order='F'),
+        damask.Table(damask.grid_filters.node_coord0(grid,size).reshape(-1,3,order='F'),
                      {'pos':(3,)})\
               .add('avg({}).{}'.format(options.f,options.pos),
                    damask.grid_filters.node_displacement_avg(size,F).reshape(-1,3,order='F'),
                    scriptID+' '+' '.join(sys.argv[1:]))\
               .add('fluct({}).{}'.format(options.f,options.pos),
                    damask.grid_filters.node_displacement_fluct(size,F).reshape(-1,3,order='F'),
-                    scriptID+' '+' '.join(sys.argv[1:]))
-        table.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'_nodal.txt')
+                    scriptID+' '+' '.join(sys.argv[1:]))\
+               .save_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'_nodal.txt')
     else:
-        table = table.add('avg({}).{}'.format(options.f,options.pos),
+        table.add('avg({}).{}'.format(options.f,options.pos),
                   damask.grid_filters.cell_displacement_avg(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))\
              .add('fluct({}).{}'.format(options.f,options.pos),
                   damask.grid_filters.cell_displacement_fluct(size,F).reshape(-1,3,order='F'),
-                  scriptID+' '+' '.join(sys.argv[1:]))
-        table.to_file(sys.stdout if name is None else name)
+                  scriptID+' '+' '.join(sys.argv[1:]))\
+             .save_ASCII(sys.stdout if name is None else name)
