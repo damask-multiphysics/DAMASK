@@ -639,7 +639,7 @@ class Rotation:
 
 
     @staticmethod
-    def from_spherical_component(center,FWHM,N_samples=500,degrees=True,seed=None):
+    def from_spherical_component(center,sigma,N=500,degrees=True,seed=None):
         """
         Calculate set of rotations with Gaussian distribution around center.
 
@@ -652,25 +652,26 @@ class Rotation:
         ----------
         center : Rotation
             Central Rotation.
-        FWHM : float
-            Full width at half maximum of the Gaussian distribution.
-        N_samples : int, optional
+        sigma : float
+            Standard deviation of (Gaussian) misorientation distribution.
+        N : int, optional
             Number of samples, defaults to 500.
         degrees : boolean, optional
-            FWHM is given in degrees.
+            sigma is given in degrees.
         seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None.
-            If None, then fresh, unpredictable entropy will be pulled from the OS.
+            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
+            will be pulled from the OS.
 
         """
         rng = np.random.default_rng(seed)
-        sigma = (np.radians(FWHM) if degrees else FWHM)/np.sqrt(2*np.log(2))*.5
-        u = rng.random(N_samples) * 2.0 - 1.0
-        Theta = rng.random(N_samples) * 2.0 * np.pi
-        omega = rng.normal(scale=sigma,size=N_samples)
-        ax = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),np.sqrt(1-u**2)*np.sin(Theta),u,omega])
-        ax[ax[:,3]<0]*=-1
-        return  Rotation.from_axis_angle(ax) @ center.broadcast_to(N_samples)
+        sigma = np.radians(sigma) if degrees else sigma
+        u,Theta = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
+        omega = rng.normal(scale=sigma,size=N)
+        p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
+                             np.sqrt(1-u**2)*np.sin(Theta),
+                             u, omega])
+        p[p[:,3]<0] *= -1
+        return  Rotation.from_axis_angle(p) @ center
 
 
     @staticmethod
@@ -705,14 +706,13 @@ class Rotation:
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True)          # rotation to align fiber axis in crystal and sample system
 
-        u,v,b = (np.random.random((N,3)) * 2 * np.array([1,np.pi,np.pi]) - np.array([1,0,np.pi])).T
-        a = abs(np.random.normal(scale=sigma_,size=N))
-        p = np.vstack((np.sqrt(1-u**2)*np.cos(v),
-                       np.sqrt(1-u**2)*np.sin(v),
-                       u,
-                       a)).T
+        u,Theta,b = (np.random.random((N,3)) * 2 * np.array([1,np.pi,np.pi]) - np.array([1,0,np.pi])).T
+        omega = abs(np.random.normal(scale=sigma_,size=N))
+        p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
+                             np.sqrt(1-u**2)*np.sin(Theta),
+                             u, omega])
         p[:,:3] = np.einsum('ij,...j->...i',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])
-        f = np.hstack((np.broadcast_to(d_lab,(N,3)),b.reshape(N,1)))
+        f = np.column_stack((np.broadcast_to(d_lab,(N,3)),b))
         f[f[:,3]<0] *= -1.
         return R_align.broadcast_to(N) \
              @ Rotation.from_axis_angle(p,normalize=True) \
