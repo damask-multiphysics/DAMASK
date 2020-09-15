@@ -664,26 +664,13 @@ class Rotation:
 
         """
         rng = np.random.default_rng(seed)
-        FWHM_ = np.radians(FWHM) if degrees else FWHM
-        if FWHM_ > np.radians(0.1):
-            rotations = []
-            for i in range(N_samples):
-                while True:
-                    rnd = rng.random(4)
-                    a = rnd[0]*2.0 -1.0                             # uniform
-                    ax = np.array([a,
-                                   np.sqrt(1.0-a**2.0)*np.cos(rnd[1]*2.0*np.pi),                    # random axis
-                                   np.sqrt(1.0-a**2.0)*np.sin(rnd[1]*2.0*np.pi),                    # random axis
-                                    (rnd[2]-0.5) * 4 *FWHM_])                                       # rotation by [0, +-2 FWHM]
-                    R = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0,normalize=True)
-                    angle = R.misorientation(Rotation()).as_axis_angle()[3]                         # misorientation to unity
-                    if rnd[3] <= np.exp(-4.0*np.log(2.0)*(angle/FWHM_)**2):                         # rejection sampling (Gaussian)
-                         break
-                rotations.append((center @ R).as_quaternion())
-        else:
-            rotations = [center.as_quaternion() for i in range(N_samples)]
-
-        return Rotation.from_quaternion(rotations)
+        sigma = (np.radians(FWHM) if degrees else FWHM)/np.sqrt(2*np.log(2))*.5
+        u = rng.random(N_samples) * 2.0 - 1.0
+        Theta = rng.random(N_samples) * 2.0 * np.pi
+        omega = rng.normal(scale=sigma,size=N_samples)
+        ax = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),np.sqrt(1-u**2)*np.sin(Theta),u,omega])
+        ax[ax[:,3]<0]*=-1
+        return  Rotation.from_axis_angle(ax) @ center.broadcast_to(N_samples)
 
 
     @staticmethod
