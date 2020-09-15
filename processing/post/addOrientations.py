@@ -147,4 +147,4 @@ for name in filenames:
     if 'axisangle' in options.output:
         table = table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII(sys.stdout if name is None else name)
+    table.save_ASCII((sys.stdout if name is None else name), legacy=True)

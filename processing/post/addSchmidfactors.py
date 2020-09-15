@@ -189,4 +189,4 @@ for name in filenames:
     for i,label in enumerate(labels):
         table = table.add(label,S[:,i],scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII(sys.stdout if name is None else name)
+    table.save_ASCII((sys.stdout if name is None else name), legacy=True)

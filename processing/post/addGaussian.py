@@ -73,4 +73,4 @@ for name in filenames:
                                                           mode = 'wrap' if options.periodic else 'nearest'),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII(sys.stdout if name is None else name)
+    table.save_ASCII((sys.stdout if name is None else name), legacy=True)

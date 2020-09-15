@@ -58,4 +58,4 @@ for name in filenames:
         rng.shuffle(uniques)
         table = table.set(label,uniques[inverse], scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII(sys.stdout if name is None else name)
+    table.save_ASCII((sys.stdout if name is None else name), legacy=True)

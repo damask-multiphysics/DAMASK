@@ -71,4 +71,4 @@ for name in filenames:
                           derivative(table.get(options.coordinates),table.get(label)),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII(sys.stdout if name is None else name)
+    table.save_ASCII((sys.stdout if name is None else name), legacy=True)

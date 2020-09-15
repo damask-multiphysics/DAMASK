@@ -191,4 +191,4 @@ for name in filenames:
                       volumeMismatch.reshape(-1,1,order='F'),
                       scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.save_ASCII(sys.stdout if name is None else name)
+  table.save_ASCII((sys.stdout if name is None else name), legacy=True)
