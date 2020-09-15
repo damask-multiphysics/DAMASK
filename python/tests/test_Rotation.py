@@ -935,7 +935,7 @@ class TestRotation:
     def test_from_fiber_component(self,N_samples,FWHM):
         """https://en.wikipedia.org/wiki/Full_width_at_half_maximum."""
         alpha = np.random.random(2)*np.pi
-        beta  = np.zeros(2)
+        beta  = np.random.random(2)*np.pi
 
         f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
         f_in_S = np.array([np.sin(beta[0] )*np.cos(beta[1] ), np.sin(beta[0] )*np.sin(beta[1] ), np.cos(beta[0] )])
@@ -943,10 +943,7 @@ class TestRotation:
         n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)                # rotation to align fiber axis in crystal and sample system
 
         o = Rotation.from_fiber_component(alpha,beta,np.radians(FWHM),N_samples,False)
-        angles=[]
-        for i in range(N_samples):
-            cos = np.dot(n@np.array([0.0,0.0,1.0]),o[i]@np.array([0.0, 0.0, 1.0]))
-            angles.append(np.arccos(np.clip(cos,-1,1)))
+        angles=[np.arccos(np.clip(np.dot(n@f_in_S,o[i]@f_in_S),-1,1)) for i in range(N_samples)]
         dist = np.array(angles) * (np.random.randint(0,2,N_samples)*2-1)
 
         p = stats.normaltest(dist)[1]
