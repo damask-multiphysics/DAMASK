@@ -288,9 +288,9 @@ class Test:
     import numpy as np
     logging.info('\n '.join(['comparing',File1,File2]))
     table = damask.Table.load_ASCII(File1)
-    len1 = len(table.comments)+1
+    len1 = len(table.comments)+2
     table = damask.Table.load_ASCII(File2)
-    len2 = len(table.comments)+1
+    len2 = len(table.comments)+2
 
     refArray = np.nan_to_num(np.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
     curArray = np.nan_to_num(np.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
@@ -331,7 +331,7 @@ class Test:
     logging.info('\n '.join(['comparing ASCII Tables',file0,file1]))
     if normHeadings == '': normHeadings = headings0
 
-# check if comparison is possible and determine lenght of columns
+# check if comparison is possible and determine length of columns
     if len(headings0) == len(headings1) == len(normHeadings):
       dataLength = len(headings0)
       length       = [1   for i in range(dataLength)]
