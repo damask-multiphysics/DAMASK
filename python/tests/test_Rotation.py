@@ -2,6 +2,7 @@ import os
 
 import pytest
 import numpy as np
+from scipy import stats
 
 from damask import Rotation
 from damask import _rotation
@@ -911,3 +912,39 @@ class TestRotation:
         R_2 = Rotation.from_axis_angle([0,0,1,angle],degrees=True)
         avg_angle = R_1.average(R_2).as_axis_angle(degrees=True,pair=True)[1]
         assert np.isclose(avg_angle,10+(angle-10)/2.)
+
+
+    @pytest.mark.parametrize('FWHM',[5,10,15])
+    @pytest.mark.parametrize('N_samples',[600,1200,2400])
+    def test_spherical_component(self,N_samples,FWHM):
+        """https://en.wikipedia.org/wiki/Full_width_at_half_maximum."""
+        c = Rotation.from_random()
+        o = Rotation.from_spherical_component(c,FWHM,N_samples)
+        m = c.broadcast_to(N_samples).misorientation(o)
+        _, angles = m.as_axis_angle(pair=True,degrees=True)
+        dist = angles * (np.random.randint(0,2,N_samples)*2-1)
+
+        p = stats.normaltest(dist)[1]
+        FWHM_out = np.std(dist) * (2*np.sqrt(2*np.log(2)))
+        print(f'\np: {p}, FWHM ratio {FWHM/FWHM_out}')
+        assert (.9 < FWHM/FWHM_out < 1.1) and p > 0.001
+
+
+    @pytest.mark.parametrize('FWHM',[10,15,20])
+    @pytest.mark.parametrize('N_samples',[500,1000,2000])
+    def test_from_fiber_component(self,N_samples,FWHM):
+        """https://en.wikipedia.org/wiki/Full_width_at_half_maximum."""
+        alpha = np.array([15.0,4.6])
+        beta  = np.ones(2)
+        n = Rotation.from_quaternion([0.9914448613738086,-0.01046806021254377,0.13010575149028156,7.146345858741878e-08])
+        o = Rotation.from_fiber_component(alpha,beta,FWHM,N_samples,True)
+        angles=[]
+        for i in range(N_samples):
+            cos = np.dot(np.dot(n.as_matrix(),np.array([0.0,0.0,1.0])),
+                         np.dot(o[i].as_matrix(),np.array([0.0, 0.0, 1.0])))
+            angles.append(np.arccos(np.clip(cos,-1,1)))
+        dist = np.array(angles) * (np.random.randint(0,2,N_samples)*2-1)
+
+        FWHM_out = np.degrees(np.std(dist)) * (2*np.sqrt(2*np.log(2)))
+        print(f'\n FWHM ratio {FWHM/FWHM_out}')
+        assert .85 < FWHM/FWHM_out < 1.1

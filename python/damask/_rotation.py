@@ -636,6 +636,134 @@ class Rotation:
     asAxisAngle    = as_axis_angle
     __mul__        = __matmul__
 
+
+    @staticmethod
+    def from_spherical_component(center,FWHM,N_samples=500,degrees=True,seed=None):
+        """
+        Calculate set of rotations with Gaussian distribution around center.
+
+        References
+        ----------
+        K. Helming, Texturapproximation durch Modellkomponenten
+        Cuvillier Verlag, 1996
+
+        Parameters
+        ----------
+        center : Rotation
+            Central Rotation.
+        FWHM : float
+            Full width at half maximum of the Gaussian distribution.
+        N_samples : int, optional
+            Number of samples, defaults to 500.
+        degrees : boolean, optional
+            FWHM is given in degrees.
+        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None.
+            If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+        """
+        rng = np.random.default_rng(seed)
+        _FWHM = np.radians(FWHM) if degrees else FWHM
+        if _FWHM > np.radians(0.1):
+            rotations = []
+            for i in range(N_samples):
+                while True:
+                    rnd = rng.random(4)
+                    a = rnd[0]*2.0 -1.0                             # uniform
+                    ax = np.array([a,
+                                   np.sqrt(1.0-a**2.0)*np.cos(rnd[1]*2.0*np.pi),                    # random axis
+                                   np.sqrt(1.0-a**2.0)*np.sin(rnd[1]*2.0*np.pi),                    # random axis
+                                    (rnd[2]-0.5) * 4 *_FWHM])                                       # rotation by [0, +-2 FWHM]
+                    if ax[3] < 0.0: ax*=-1.0
+                    R = Rotation.from_axis_angle(ax,normalize=True)
+                    angle = R.misorientation(Rotation()).as_axis_angle()[3]                         # misorientation to unity
+                    if rnd[3] <= np.exp(-4.0*np.log(2.0)*(angle/_FWHM)**2):                         # rejection sampling (Gaussian)
+                         break
+                rotations.append((center @ R).as_quaternion())
+        else:
+            rotations = [center.as_quaternion() for i in range(N_samples)]
+
+        return Rotation.from_quaternion(rotations)
+
+
+    @staticmethod
+    def from_fiber_component(alpha,beta,FWHM,N_samples=500,degrees=True,seed=None):
+        """
+        Calculate set of rotations with Gaussian distribution around direction.
+
+        References
+        ----------
+        K. Helming, Texturapproximation durch Modellkomponenten
+        Cuvillier Verlag, 1996
+
+        Parameters
+        ----------
+        alpha : numpy.ndarray of size 2
+            tbd.
+        beta : numpy.ndarray of size 2
+            tbd.
+        FWHM : float
+            Full width at half maximum of the Gaussian distribution.
+        N_samples : int, optional
+            Number of samples, defaults to 500.
+        degrees : boolean, optional
+            FWHM, alpha, and beta are given in degrees.
+        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None.
+            If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+        """
+        rng = np.random.default_rng(seed)
+        FWHM_,alpha_,beta_ = map(np.radians,(FWHM,alpha,beta)) if degrees else (FWHM,alpha,beta)
+
+        f_in_C = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
+        f_in_S = np.array([np.sin(beta_[0] )*np.cos(beta_[1] ), np.sin(beta_[0] )*np.sin(beta_[1] ), np.cos(beta_[0] )])
+
+        rotations = []
+        for i in range(N_samples):
+            rnd = rng.random(3)
+            ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
+            if ax[3] < 0.0: ax *= -1.0
+            R = Rotation.from_axis_angle(ax,normalize=True)                                         # rotation to align fiber axis in crystal and sample system
+
+            ax = np.append(f_in_S,rnd[0]*np.pi*2.0)
+            if ax[3] > np.pi: ax = np.append(ax[:3]*-1,np.pi*2-ax[3])
+            R = R @ Rotation.from_axis_angle(ax)                                                    # rotation (0..360deg) perpendicular to fiber axis
+
+            if FWHM_ > np.radians(0.1):
+
+                i_smallest     = np.argmin(np.abs(f_in_S))
+                i_non_smallest = list(filter(lambda x: x!=i_smallest, [0,1,2]))
+
+                s = f_in_S[i_smallest]
+                a = f_in_S[i_non_smallest]
+                x = sum([x**2 for x in a])
+
+                u = np.empty(3)
+                while True:                                                                         # rejection sampling
+                    angle = (rnd[1] - 0.5)*4 *FWHM_
+                    # solve cos(angle) = dot_product(fInS,u) for u. This is underdetermined, hence assume that
+                    # they share the smallest component.
+
+                    c = np.cos(angle) - s**2
+
+                    u[i_non_smallest[1]] = -(2.0*c*a[1] + np.sqrt(4*((c*a[1])**2.0-x*(c**2.0-a[0]**2*(1.0-s**2)))))/(2*x)
+                    u[i_non_smallest[0]] = np.sqrt(1.0-u[i_non_smallest[1]]**2.0-s**2.0)
+                    u[i_smallest]        = s
+
+                    if (rnd[2] <= np.exp(-4.0*np.log(2.0)*(angle/FWHM_)**2)):
+                        ax = np.append(np.cross(u,f_in_S),angle)
+                        if ax[3]<0.0: ax *= -1.0
+                        R = R * Rotation.from_axis_angle(ax,normalize=True)                         # tilt around direction of smallest component
+                        break
+                    else:
+                        rnd = rng.random(3)
+            rotations.append(R.as_quaternion())
+
+        return Rotation.from_quaternion(rotations)
+
+
+
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations
 ####################################################################################################
