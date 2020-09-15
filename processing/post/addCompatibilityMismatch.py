@@ -181,14 +181,14 @@ for name in filenames:
   if options.shape:
     centers = damask.grid_filters.cell_coord(size,F)
     shapeMismatch = shapeMismatch(size,F,nodes,centers)
-    table.add('shapeMismatch(({}))'.format(options.defgrad),
-              shapeMismatch.reshape(-1,1,order='F'),
-              scriptID+' '+' '.join(sys.argv[1:]))
+    table = table.add('shapeMismatch(({}))'.format(options.defgrad),
+                      shapeMismatch.reshape(-1,1,order='F'),
+                      scriptID+' '+' '.join(sys.argv[1:]))
 
   if options.volume:
     volumeMismatch = volumeMismatch(size,F,nodes)
-    table.add('volMismatch(({}))'.format(options.defgrad),
-              volumeMismatch.reshape(-1,1,order='F'),
-              scriptID+' '+' '.join(sys.argv[1:]))
+    table = table.add('volMismatch(({}))'.format(options.defgrad),
+                      volumeMismatch.reshape(-1,1,order='F'),
+                      scriptID+' '+' '.join(sys.argv[1:]))
 
   table.to_file(sys.stdout if name is None else name)

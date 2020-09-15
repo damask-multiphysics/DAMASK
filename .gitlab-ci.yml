@@ -141,13 +141,6 @@ Pre_General:
     - release
 
 ###################################################################################################
-Post_ASCIItable:
-  stage: postprocessing
-  script: ASCIItable/test.py
-  except:
-    - master
-    - release
-
 Post_General:
   stage: postprocessing
   script: PostProcessing/test.py
@@ -499,7 +492,7 @@ mergeIntoMaster:
 removeData:
   stage: clean
   before_script:
-    - echo 'Do nothing'
+    - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
   script:
     - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
     - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue                                          # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
@@ -511,7 +504,7 @@ removeData:
 removeLock:
   stage: releaseLock
   before_script:
-    - echo 'Do nothing'
+    - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
   script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
   except:
