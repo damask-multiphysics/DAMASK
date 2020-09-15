@@ -155,11 +155,11 @@ for name in filenames:
                ]
 
     table = damask.Table(np.hstack((seeds,eulers)),{'pos':(3,),'euler':(3,)},comments)
-    table.add('microstructure',np.arange(options.microstructure,options.microstructure + options.N,dtype=int))
+    table = table.add('microstructure',np.arange(options.microstructure,options.microstructure + options.N,dtype=int))
 
     if options.weights:
         weights = np.random.uniform(low = 0, high = options.max, size = options.N) if options.max > 0.0 \
              else np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)
-        table.add('weight',weights)
+        table = table.add('weight',weights)
 
     table.to_file(sys.stdout if name is None else name)

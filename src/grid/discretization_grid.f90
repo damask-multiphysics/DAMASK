@@ -438,7 +438,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     coords = as_pReal(base64_str,headerType,compressed,dataType)
 
     delta = coords(2:) - coords(:size(coords)-1)
-    if(any(delta<0.0_pReal) .or. dNeq(maxval(delta),minval(delta))) &
+    if(any(delta<0.0_pReal) .or. dNeq(maxval(delta),minval(delta),1.0e-8_pReal*maxval(abs(coords)))) &
       call IO_error(error_ID = 844, ext_msg = 'grid spacing')
 
     grid(direction)     = size(coords)-1

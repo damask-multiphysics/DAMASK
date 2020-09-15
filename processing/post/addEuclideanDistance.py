@@ -180,8 +180,8 @@ for name in filenames:
 
 
     for i,feature in enumerate(feature_list):
-        table.add('ED_{}({})'.format(features[feature]['names'][0],options.id),
-                  distance[i,:],
-                  scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('ED_{}({})'.format(features[feature]['names'][0],options.id),
+                          distance[i,:],
+                          scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)

@@ -67,10 +67,10 @@ for name in filenames:
     damask.grid_filters.coord0_check(table.get(options.pos))
 
     for label in options.labels:
-        table.add('Gauss{}({})'.format(options.sigma,label),
-                  ndimage.filters.gaussian_filter(table.get(label).reshape(-1),
-                                                  options.sigma,options.order,
-                                                  mode = 'wrap' if options.periodic else 'nearest'),
-                  scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('Gauss{}({})'.format(options.sigma,label),
+                          ndimage.filters.gaussian_filter(table.get(label).reshape(-1),
+                                                          options.sigma,options.order,
+                                                          mode = 'wrap' if options.periodic else 'nearest'),
+                          scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)
