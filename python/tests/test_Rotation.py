@@ -925,14 +925,14 @@ class TestRotation:
         dist = angles * (np.random.randint(0,2,N_samples)*2-1)
 
         p = stats.normaltest(dist)[1]
-        FWHM_out = np.std(dist) * (2*np.sqrt(2*np.log(2)))
+        FWHM_out = np.std(dist) # * (2*np.sqrt(2*np.log(2)))
         print(f'\np: {p}, FWHM ratio {FWHM/FWHM_out}')
         assert (.9 < FWHM/FWHM_out < 1.1) and p > 0.001
 
 
-    @pytest.mark.parametrize('FWHM',[10,15,20])
-    @pytest.mark.parametrize('N_samples',[500,1000,2000])
-    def test_from_fiber_component(self,N_samples,FWHM):
+    @pytest.mark.parametrize('sigma',[5,10,15,20])
+    @pytest.mark.parametrize('N',[1000,10000,100000])
+    def test_from_fiber_component(self,N,sigma):
         """https://en.wikipedia.org/wiki/Full_width_at_half_maximum."""
         alpha = np.random.random(2)*np.pi
         beta  = np.random.random(2)*np.pi
@@ -942,12 +942,11 @@ class TestRotation:
         ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
         n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)                # rotation to align fiber axis in crystal and sample system
 
-        o = Rotation.from_fiber_component(alpha,beta,np.radians(FWHM),N_samples,False)
-        angles=[np.arccos(np.clip(np.dot(n@f_in_S,o[i]@f_in_S),-1,1)) for i in range(N_samples)]
-        dist = np.array(angles) * (np.random.randint(0,2,N_samples)*2-1)
+        o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),N,False)
+        angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,(N,3)),n@f_in_S),-1,1))
+        dist   = np.array(angles) * (np.random.randint(0,2,N)*2-1)
 
         p = stats.normaltest(dist)[1]
-        FWHM_out = np.degrees(np.std(dist)) * (2*np.sqrt(2*np.log(2)))
-        print(f'\np: {p}, FWHM ratio {FWHM/FWHM_out}')
-        assert (.85 < FWHM/FWHM_out < 1.15) and p > 0.001
-
+        sigma_out = np.degrees(np.std(dist))
+        print(f'\np: {p}, sigma ratio {sigma/sigma_out}')
+        assert (.85 < sigma/sigma_out < 1.15) and p > 0.001

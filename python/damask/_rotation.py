@@ -687,55 +687,49 @@ class Rotation:
 
 
     @staticmethod
-    def from_fiber_component(alpha,beta,FWHM=0.0,N=500,degrees=True,seed=None):
+    def from_fiber_component(alpha,beta,sigma=0.0,N=500,degrees=True,seed=None):
         """
         Calculate set of rotations with Gaussian distribution around direction.
-
-        References
-        ----------
-        K. Helming, Texturapproximation durch Modellkomponenten
-        Cuvillier Verlag, 1996
 
         Parameters
         ----------
         alpha : numpy.ndarray of size 2
-            tbd.
+            Polar coordinates (phi from x,theta from z) of fiber direction in crystal frame.
         beta : numpy.ndarray of size 2
-            tbd.
-        FWHM : float, optional
-            Full width at half maximum of the Gaussian distribution.
+            Polar coordinates (phi from x,theta from z) of fiber direction in sample frame.
+        sigma : float, optional
+            Standard deviation of (Gaussian) misorientation distribution.
             Defaults to 0.
-        N_samples : int, optional
+        N : int, optional
             Number of samples, defaults to 500.
         degrees : boolean, optional
-            FWHM, alpha, and beta are given in degrees.
+            sigma, alpha, and beta are given in degrees.
         seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
-            A seed to initialize the BitGenerator. Defaults to None.
-            If None, then fresh, unpredictable entropy will be pulled from the OS.
+            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
+            will be pulled from the OS.
 
         """
         rng = np.random.default_rng(seed)
-        FWHM_,alpha_,beta_ = map(np.radians,(FWHM,alpha,beta)) if degrees else (FWHM,alpha,beta)
+        sigma_,alpha_,beta_ = map(np.radians,(sigma,alpha,beta)) if degrees else (sigma,alpha,beta)
 
         d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
-        d_lab = np.array([np.sin(beta_[0] )*np.cos(beta_[1] ), np.sin(beta_[0] )*np.sin(beta_[1] ), np.cos(beta_[0] )])
+        d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])
         ax_align = np.append(np.cross(d_lab,d_cr), np.arccos(np.dot(d_lab,d_cr)))
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True)          # rotation to align fiber axis in crystal and sample system
 
         u,v,b = (np.random.random((N,3)) * 2 * np.array([1,np.pi,np.pi]) - np.array([1,0,np.pi])).T
-        a = abs(np.random.normal(scale=FWHM_,size=N))
+        a = abs(np.random.normal(scale=sigma_,size=N))
         p = np.vstack((np.sqrt(1-u**2)*np.cos(v),
                        np.sqrt(1-u**2)*np.sin(v),
                        u,
                        a)).T
-
-        f = np.hstack((np.broadcast_to(d_cr,(N,3)),b.reshape(N,1)))
+        p[:,:3] = np.einsum('ij,...j->...i',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])
+        f = np.hstack((np.broadcast_to(d_lab,(N,3)),b.reshape(N,1)))
         f[f[:,3]<0] *= -1.
-        return Rotation.from_axis_angle(p) \
-             * Rotation.from_axis_angle(f) \
-             * R_align
-
+        return R_align.broadcast_to(N) \
+             @ Rotation.from_axis_angle(p,normalize=True) \
+             @ Rotation.from_axis_angle(f)
 
 
 ####################################################################################################
