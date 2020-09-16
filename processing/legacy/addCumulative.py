@@ -45,4 +45,4 @@ for name in filenames:
                           np.cumprod(table.get(label),0) if options.product else np.cumsum(table.get(label),0),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII(sys.stdout if name is None else name)
+    table.save_ASCII((sys.stdout if name is None else name),legacy=True)

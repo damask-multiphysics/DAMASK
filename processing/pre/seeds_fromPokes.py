@@ -93,4 +93,4 @@ for name in filenames:
     table = damask.Table(seeds,{'pos':(3,),'microstructure':(1,)},comments)
     table.set('microstructure',table.get('microstructure').astype(np.int))\
          .save_ASCII(sys.stdout if name is None else \
-                     os.path.splitext(name)[0]+f'_poked_{options.N}.seeds')
+                     os.path.splitext(name)[0]+f'_poked_{options.N}.seeds',legacy=True)

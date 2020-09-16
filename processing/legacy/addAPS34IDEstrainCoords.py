@@ -48,4 +48,4 @@ for name in filenames:
     coord[:,2] += table.get(options.depth)[:,0]
 
     table.add('coord',rot_to_TSL.broadcast_to(coord.shape[0]) @ coord,scriptID+' '+' '.join(sys.argv[1:]))\
-         .save_ASCII(sys.stdout if name is None else name)
+         .save_ASCII((sys.stdout if name is None else name),legacy=True)
