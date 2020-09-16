@@ -67,8 +67,8 @@ for name in filenames:
 
     table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     for label in options.labels:
-        table.add('d({})/d({})'.format(label,options.coordinates),
-                  derivative(table.get(options.coordinates),table.get(label)),
-                  scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('d({})/d({})'.format(label,options.coordinates),
+                          derivative(table.get(options.coordinates),table.get(label)),
+                          scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)

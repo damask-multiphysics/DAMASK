@@ -104,8 +104,8 @@ input = [options.eulers     is not None,
 
 if np.sum(input) != 1: parser.error('needs exactly one input format.')
 
-r = damask.Rotation.from_axis_angle(np.array(options.crystalrotation),options.degrees,normalise=True)
-R = damask.Rotation.from_axis_angle(np.array(options.labrotation),options.degrees,normalise=True)
+r = damask.Rotation.from_axis_angle(np.array(options.crystalrotation),options.degrees,normalize=True)
+R = damask.Rotation.from_axis_angle(np.array(options.labrotation),options.degrees,normalize=True)
 
 for name in filenames:
     damask.util.report(scriptName,name)
@@ -137,14 +137,14 @@ for name in filenames:
 
 
     if 'rodrigues' in options.output:
-        table.add('ro({})'.format(label),o.as_Rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('ro({})'.format(label),o.as_Rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
     if 'eulers' in options.output:
-        table.add('eu({})'.format(label),o.as_Eulers(options.degrees),    scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('eu({})'.format(label),o.as_Eulers(options.degrees),    scriptID+' '+' '.join(sys.argv[1:]))
     if 'quaternion' in options.output:
-        table.add('qu({})'.format(label),o.as_quaternion(),               scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('qu({})'.format(label),o.as_quaternion(),               scriptID+' '+' '.join(sys.argv[1:]))
     if 'matrix' in options.output:
-        table.add('om({})'.format(label),o.as_matrix(),                   scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('om({})'.format(label),o.as_matrix(),                   scriptID+' '+' '.join(sys.argv[1:]))
     if 'axisangle' in options.output:
-        table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
 
     table.to_file(sys.stdout if name is None else name)

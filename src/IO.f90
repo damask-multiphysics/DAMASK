@@ -10,6 +10,7 @@ module IO
 
   implicit none
   private
+
   character(len=*), parameter, public :: &
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
   character, parameter, public :: &
@@ -50,7 +51,7 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief does nothing.
+!> @brief do self test
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
@@ -447,6 +448,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid character for float:'
     case (113)
       msg = 'invalid character for logical:'
+    case (114)
+      msg = 'cannot decode base64 string:'
+
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
     case (130)
@@ -484,8 +488,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'too many systems requested'
     case (146)
       msg = 'number of values does not match'
-    case (147)
-      msg = 'not supported anymore'
     case (148)
       msg = 'Nconstituents mismatch between homogenization and microstructure'
 
@@ -497,22 +499,10 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'microstructure has no constituents'
     case (153)
       msg = 'sum of phase fractions differs from 1'
-    case (154)
-      msg = 'homogenization index out of bounds'
     case (155)
       msg = 'microstructure index out of bounds'
-    case (157)
-      msg = 'invalid texture transformation specified'
-    case (160)
-      msg = 'no entries in config part'
-    case (161)
-      msg = 'config part found twice'
-    case (165)
-      msg = 'homogenization configuration'
-    case (170)
-      msg = 'no homogenization specified via State Variable 2'
     case (180)
-      msg = 'no microstructure specified via State Variable 3'
+      msg = 'missing/invalid microstructure definition via State Variable 2'
     case (190)
       msg = 'unknown element type:'
     case (191)
@@ -525,8 +515,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (201)
       msg = 'unknown plasticity specified:'
 
-    case (210)
-      msg = 'unknown material parameter:'
     case (211)
       msg = 'material parameter out of bounds:'
     case (212)
@@ -534,8 +522,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !--------------------------------------------------------------------------------------------------
 ! numerics error messages
-    case (300)
-      msg = 'unknown numerics parameter:'
     case (301)
       msg = 'numerics parameter out of bounds:'
 
@@ -555,10 +541,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !--------------------------------------------------------------------------------------------------
 ! user errors
-    case (600)
-      msg = 'Ping-Pong not possible when using non-DAMASK elements'
-    case (601)
-      msg = 'Ping-Pong needed when using non-local plasticity'
     case (602)
       msg = 'invalid selection for debug'
 
@@ -603,6 +585,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'incomplete information in grid mesh header'
     case (843)
       msg = 'microstructure count mismatch'
+    case (844)
+      msg = 'invalid VTR file'
     case (846)
       msg = 'rotation for load case rotation ill-defined (R:RT != I)'
     case (891)

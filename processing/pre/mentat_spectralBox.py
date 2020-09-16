@@ -130,7 +130,7 @@ def geometry():
   
 
 #-------------------------------------------------------------------------------------------------
-def initial_conditions(homogenization,microstructures):
+def initial_conditions(microstructures):
   elements = []
   element = 0
   for id in microstructures:
@@ -148,13 +148,6 @@ def initial_conditions(homogenization,microstructures):
     "*icond_dof_value var 300",
     "*add_icond_elements",
     "all_existing",
-    "*new_icond",
-    "*icond_name _homogenization",
-    "*icond_type state_variable",
-    "*icond_param_value state_var_id 2",
-    "*icond_dof_value var %i"%homogenization,
-    "*add_icond_elements",
-    "all_existing",
     ]
 
   for grain,elementList in enumerate(elements):
@@ -162,7 +155,7 @@ def initial_conditions(homogenization,microstructures):
             "*new_icond",
             "*icond_name microstructure_%i"%(grain+1),
             "*icond_type state_variable",
-            "*icond_param_value state_var_id 3",
+            "*icond_param_value state_var_id 2",
             "*icond_dof_value var %i"%(grain+1),
             "*add_icond_elements",
             elementList,
@@ -211,7 +204,7 @@ for name in filenames:
       mesh(geom.grid,geom.size),
       material(),
       geometry(),
-      initial_conditions(geom.homogenization,microstructure),
+      initial_conditions(microstructure),
       '*identify_sets',
       '*show_model',
       '*redraw',

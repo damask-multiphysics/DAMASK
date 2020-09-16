@@ -81,13 +81,11 @@ class TestTable:
             Table.from_ASCII(f)
 
     def test_set(self,default):
-        default.set('F',np.zeros((5,3,3)),'set to zero')
-        d=default.get('F')
+        d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')
         assert np.allclose(d,0.0) and d.shape[1:] == (3,3)
 
     def test_set_component(self,default):
-        default.set('1_F',np.zeros((5)),'set to zero')
-        d=default.get('F')
+        d = default.set('1_F',np.zeros((5)),'set to zero').get('F')
         assert np.allclose(d[...,0,0],0.0) and d.shape[1:] == (3,3)
 
     def test_labels(self,default):
@@ -95,36 +93,34 @@ class TestTable:
 
     def test_add(self,default):
         d = np.random.random((5,9))
-        default.add('nine',d,'random data')
-        assert np.allclose(d,default.get('nine'))
+        assert np.allclose(d,default.add('nine',d,'random data').get('nine'))
 
     def test_rename_equivalent(self):
         x = np.random.random((5,13))
         t = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
         s = t.get('s')
-        t.rename('s','u')
-        u = t.get('u')
+        u = t.rename('s','u').get('u')
         assert np.all(s == u)
 
     def test_rename_gone(self,default):
-        default.rename('v','V')
-        assert 'v' not in default.shapes and 'v' not in default.data.columns
+        gone = default.rename('v','V')
+        assert 'v' not in gone.shapes and 'v' not in gone.data.columns
         with pytest.raises(KeyError):
-            default.get('v')
+            gone.get('v')
 
     def test_delete(self,default):
-        default.delete('v')
-        assert 'v' not in default.shapes and 'v' not in default.data.columns
+        delete = default.delete('v')
+        assert 'v' not in delete.shapes and 'v' not in delete.data.columns
         with pytest.raises(KeyError):
-            default.get('v')
+            delete.get('v')
 
     def test_join(self):
         x = np.random.random((5,13))
         a = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
         y = np.random.random((5,3))
         b = Table(y,{'u':(3,)},['random test data'])
-        a.join(b)
-        assert np.array_equal(a.get('u'), b.get('u'))
+        c = a.join(b)
+        assert np.array_equal(c.get('u'), b.get('u'))
 
     def test_join_invalid(self):
         x = np.random.random((5,13))
@@ -135,8 +131,8 @@ class TestTable:
     def test_append(self):
         x = np.random.random((5,13))
         a = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
-        a.append(a)
-        assert np.array_equal(a.data[:5].to_numpy(),a.data[5:].to_numpy())
+        b = a.append(a)
+        assert np.array_equal(b.data[:5].to_numpy(),b.data[5:].to_numpy())
 
     def test_append_invalid(self):
         x = np.random.random((5,13))
@@ -163,29 +159,26 @@ class TestTable:
         x = np.random.random((5,13))
         t = Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['random test data'])
         unsort = t.get('s')
-        t.sort_by('s')
-        sort   = t.get('s')
+        sort   = t.sort_by('s').get('s')
         assert np.all(np.sort(unsort,0)==sort)
 
     def test_sort_component(self):
         x = np.random.random((5,12))
         t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
         unsort = t.get('4_F')
-        t.sort_by('4_F')
-        sort = t.get('4_F')
+        sort = t.sort_by('4_F').get('4_F')
         assert np.all(np.sort(unsort,0)==sort)
 
     def test_sort_revert(self):
         x = np.random.random((5,12))
         t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
-        t.sort_by('4_F',ascending=False)
-        sort = t.get('4_F')
+        sort = t.sort_by('4_F',ascending=False).get('4_F')
         assert np.all(np.sort(sort,0)==sort[::-1,:])
 
     def test_sort(self):
         t = Table(np.array([[0,1,],[2,1,]]),
                   {'v':(2,)},
-                  ['test data'])
-        t.add('s',np.array(['b','a']))
-        t.sort_by('s')
+                  ['test data'])\
+                  .add('s',np.array(['b','a']))\
+                  .sort_by('s')
         assert np.all(t.get('1_v') == np.array([2,0]).reshape(2,1))

@@ -53,19 +53,19 @@ for name in filenames:
     F = table.get(options.f).reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+(3,3))
     if options.nodal:
         table = damask.Table(damask.grid_filters.node_coord0(grid,size).reshape(-1,3,order='F'),
-                             {'pos':(3,)})
-        table.add('avg({}).{}'.format(options.f,options.pos),
-                  damask.grid_filters.node_displacement_avg(size,F).reshape(-1,3,order='F'),
-                  scriptID+' '+' '.join(sys.argv[1:]))
-        table.add('fluct({}).{}'.format(options.f,options.pos),
-                  damask.grid_filters.node_displacement_fluct(size,F).reshape(-1,3,order='F'),
-                  scriptID+' '+' '.join(sys.argv[1:]))
+                     {'pos':(3,)})\
+              .add('avg({}).{}'.format(options.f,options.pos),
+                   damask.grid_filters.node_displacement_avg(size,F).reshape(-1,3,order='F'),
+                   scriptID+' '+' '.join(sys.argv[1:]))\
+              .add('fluct({}).{}'.format(options.f,options.pos),
+                   damask.grid_filters.node_displacement_fluct(size,F).reshape(-1,3,order='F'),
+                    scriptID+' '+' '.join(sys.argv[1:]))
         table.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'_nodal.txt')
     else:
-        table.add('avg({}).{}'.format(options.f,options.pos),
+        table = table.add('avg({}).{}'.format(options.f,options.pos),
                   damask.grid_filters.cell_displacement_avg(size,F).reshape(-1,3,order='F'),
-                  scriptID+' '+' '.join(sys.argv[1:]))
-        table.add('fluct({}).{}'.format(options.f,options.pos),
+                  scriptID+' '+' '.join(sys.argv[1:]))\
+             .add('fluct({}).{}'.format(options.f,options.pos),
                   damask.grid_filters.cell_displacement_fluct(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
         table.to_file(sys.stdout if name is None else name)
