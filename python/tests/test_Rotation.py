@@ -687,6 +687,15 @@ class TestRotation:
             print(u,c)
             assert np.allclose(single(u),c) and np.allclose(single(u),vectorized(u))
 
+    @pytest.mark.parametrize('func',[Rotation.from_axis_angle])
+    def test_normalization_vectorization(self,func):
+        """Check vectorized implementation normalization."""
+        vec = np.random.rand(5,4)
+        ori = func(vec,normalize=True)
+        for v,o in zip(vec,ori):
+            assert np.allclose(func(v,normalize=True).as_quaternion(),o.as_quaternion())
+
+
     @pytest.mark.parametrize('degrees',[True,False])
     def test_Eulers(self,set_of_rotations,degrees):
         for rot in set_of_rotations:
