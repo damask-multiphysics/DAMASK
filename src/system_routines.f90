@@ -95,14 +95,8 @@ contains
 logical function isDirectory(path)
 
   character(len=*), intent(in) :: path
-  character(kind=C_CHAR), dimension(pPathLen) :: strFixedLength                                     ! C string as array
-  integer :: i
-
-  strFixedLength = repeat(C_NULL_CHAR,len(strFixedLength))
-  do i=1,len(path)                                                                                  ! copy array components
-    strFixedLength(i)=path(i:i)
-  enddo
-  isDirectory=merge(.True.,.False.,isDirectory_C(strFixedLength) /= 0_C_INT)
+  
+  isDirectory=merge(.True.,.False.,isDirectory_C(f_c_string(path)) /= 0_C_INT)
 
 end function isDirectory
 
@@ -112,25 +106,16 @@ end function isDirectory
 !--------------------------------------------------------------------------------------------------
 function getCWD()
 
-  character(kind=C_CHAR), dimension(pPathLen) :: charArray                                          ! C string is an array
+  character(kind=C_CHAR), dimension(pPathLen) :: getCWD_Cstring
   character(len=:),       allocatable         :: getCWD
   integer(C_INT) :: stat
-  integer :: i
 
-  call getCurrentWorkDir_C(charArray,stat)
+  call getCurrentWorkDir_C(getCWD_Cstring,stat)
 
-  if (stat /= 0_C_INT) then
-    getCWD = 'Error occured when getting currend working directory'
+  if(stat == 0) then
+    getCWD = c_f_string(getCWD_Cstring)
   else
-    allocate(character(len=pPathLen)::getCWD)
-    arrayToString: do i=1,len(getCWD)
-      if (charArray(i) /= C_NULL_CHAR) then
-        getCWD(i:i)=charArray(i)
-      else
-        getCWD = getCWD(:i-1)
-        exit
-      endif
-    enddo arrayToString
+    getCWD = 'Error occured when getting currend working directory'
   endif
 
 end function getCWD
@@ -141,25 +126,16 @@ end function getCWD
 !--------------------------------------------------------------------------------------------------
 function getHostName()
 
-  character(kind=C_CHAR), dimension(pPathLen) :: charArray                                          ! C string is an array
+  character(kind=C_CHAR), dimension(pPathLen) :: getHostName_Cstring
   character(len=:),       allocatable         :: getHostName
   integer(C_INT) :: stat
-  integer :: i
 
-  call getHostName_C(charArray,stat)
+  call getHostName_C(getHostName_Cstring,stat)
 
-  if (stat /= 0_C_INT) then
-    getHostName = 'Error occured when getting host name'
+  if(stat == 0) then
+    getHostName = c_f_string(getHostName_Cstring)
   else
-    allocate(character(len=pPathLen)::getHostName)
-    arrayToString: do i=1,len(getHostName)
-      if (charArray(i) /= C_NULL_CHAR) then
-        getHostName(i:i)=charArray(i)
-      else
-        getHostName = getHostName(:i-1)
-        exit
-      endif
-    enddo arrayToString
+    getHostName = 'Error occured when getting host name'
   endif
 
 end function getHostName
@@ -171,16 +147,52 @@ end function getHostName
 logical function setCWD(path)
 
   character(len=*), intent(in) :: path
-  character(kind=C_CHAR), dimension(pPathLen) :: strFixedLength                                     ! C string is an array
-  integer :: i
 
-  strFixedLength = repeat(C_NULL_CHAR,len(strFixedLength))
-  do i=1,len(path)                                                                                  ! copy array components
-    strFixedLength(i)=path(i:i)
-  enddo
-  setCWD=merge(.True.,.False.,chdir_C(strFixedLength) /= 0_C_INT)
+  setCWD=merge(.True.,.False.,chdir_C(f_c_string(path)) /= 0_C_INT)
 
 end function setCWD
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convert C string to Fortran string
+!> @details: C string is NULL terminated and, hence, longer by one than the Fortran string
+!--------------------------------------------------------------------------------------------------
+pure function c_f_string(c_string) result(f_string)
+
+  character(kind=C_CHAR), dimension(:), intent(in) :: c_string
+  character(len=:),       allocatable              :: f_string
+  integer :: i
+
+  allocate(character(len=size(c_string))::f_string)
+  arrayToString: do i=1,len(f_string)
+    if (c_string(i) /= C_NULL_CHAR) then
+      f_string(i:i)=c_string(i)
+    else
+      f_string = f_string(:i-1)
+      exit
+    endif
+  enddo arrayToString
+
+end function c_f_string
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convert Fortran string to C string
+!> @details: C string is NULL terminated and, hence, longer by one than the Fortran string
+!--------------------------------------------------------------------------------------------------
+pure function f_c_string(f_string) result(c_string)
+
+  character(len=*), intent(in)                       :: f_string
+  character(kind=C_CHAR), dimension(len(f_string)+1) :: c_string
+  integer :: i
+
+  do i=1,len(f_string)
+    c_string(i)=f_string(i:i)
+  enddo
+  c_string(i) = C_NULL_CHAR
+
+end function f_c_string
+
 
 end module system_routines
 

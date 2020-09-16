@@ -8,10 +8,8 @@ module homogenization
   use prec
   use IO
   use config
-  use debug
   use math
   use material
-  use numerics
   use constitutive
   use crystallite
   use FEsolving
@@ -152,12 +150,12 @@ subroutine homogenization_init
     debug_homogenization
 
   debug_homogenization => debug_root%get('homogenization', defaultVal=emptyList)
-  debugHomog%basic       =  debug_homogenization%contains('basic') 
-  debugHomog%extensive   =  debug_homogenization%contains('extensive') 
+  debugHomog%basic       =  debug_homogenization%contains('basic')
+  debugHomog%extensive   =  debug_homogenization%contains('extensive')
   debugHomog%selective   =  debug_homogenization%contains('selective')
-  debugHomog%element     =  debug_root%get_asInt('element',defaultVal = 1) 
-  debugHomog%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1) 
-  debugHomog%grain       =  debug_root%get_asInt('grain',defaultVal = 1) 
+  debugHomog%element     =  debug_root%get_asInt('element',defaultVal = 1)
+  debugHomog%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1)
+  debugHomog%grain       =  debug_root%get_asInt('grain',defaultVal = 1)
 
   if (debugHomog%grain < 1 &
     .or. debugHomog%grain > homogenization_Ngrains(material_homogenizationAt(debugHomog%element))) &
@@ -180,7 +178,6 @@ subroutine homogenization_init
   if (any(damage_type == DAMAGE_local_ID))     call damage_local_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
 
-  call config_deallocate('material.config/homogenization')
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
@@ -607,8 +604,8 @@ subroutine homogenization_results
 
   !real(pReal), dimension(:,:,:), allocatable :: temp
 
-  do p=1,size(config_name_homogenization)
-    group_base = 'current/materialpoint/'//trim(config_name_homogenization(p))
+  do p=1,size(material_name_homogenization)
+    group_base = 'current/materialpoint/'//trim(material_name_homogenization(p))
     call results_closeGroup(results_addGroup(group_base))
 
     group = trim(group_base)//'/generic'
@@ -618,7 +615,7 @@ subroutine homogenization_results
     !                          'deformation gradient','1')
     !temp = reshape(materialpoint_P,[3,3,discretization_nIP*discretization_nElem])
     !call results_writeDataset(group,temp,'P',&
-    !                          '1st Piola-Kirchoff stress','Pa')
+    !                          '1st Piola-Kirchhoff stress','Pa')
 
     group = trim(group_base)//'/mech'
     call results_closeGroup(results_addGroup(group))

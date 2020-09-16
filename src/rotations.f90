@@ -56,7 +56,7 @@ module rotations
   private
 
   type, public :: rotation
-    type(quaternion), private :: q
+    type(quaternion) :: q
     contains
       procedure, public :: asQuaternion
       procedure, public :: asEulers

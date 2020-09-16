@@ -8,7 +8,7 @@
 module math
   use prec
   use IO
-  use numerics
+  use config
   use YAML_types
   use LAPACK_interface
 
@@ -18,8 +18,7 @@ module math
   ! do not make use associated entities available to other modules
   private :: &
     prec, &
-    IO, &
-    numerics
+    IO
 #endif
 
   real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter

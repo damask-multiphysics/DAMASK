@@ -14,9 +14,8 @@ module discretization_mesh
 
   use DAMASK_interface
   use IO
-  use debug
+  use config
   use discretization
-  use numerics
   use FEsolving
   use FEM_quadrature
   use YAML_types
@@ -78,7 +77,6 @@ subroutine discretization_mesh_init(restart)
   IS :: faceSetIS
   PetscErrorCode :: ierr
   integer, dimension(:), allocatable :: &
-    homogenizationAt, &
     microstructureAt
   class(tNode), pointer :: &
     num_mesh
@@ -166,7 +164,6 @@ subroutine discretization_mesh_init(restart)
   call mesh_FEM_build_ipVolumes(dimPlex)
 
   allocate(microstructureAt(mesh_NcpElems))
-  allocate(homogenizationAt(mesh_NcpElems),source=1)
   do j = 1, mesh_NcpElems
     call DMGetLabelValue(geomMesh,'material',j-1,microstructureAt(j),ierr)
     CHKERRQ(ierr)
@@ -180,7 +177,7 @@ subroutine discretization_mesh_init(restart)
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 
-  call discretization_init(microstructureAt,homogenizationAt,&
+  call discretization_init(microstructureAt,&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
 

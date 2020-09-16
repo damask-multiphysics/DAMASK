@@ -162,4 +162,4 @@ for name in filenames:
              else np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)
         table.add('weight',weights)
 
-    table.to_ASCII(sys.stdout if name is None else name)
+    table.to_file(sys.stdout if name is None else name)

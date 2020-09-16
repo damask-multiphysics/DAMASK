@@ -1,6 +1,5 @@
 import multiprocessing as mp
 import re
-import inspect
 import glob
 import os
 import datetime
@@ -49,7 +48,7 @@ class Result:
                 self.version_major = f.attrs['DADF5-major']
                 self.version_minor = f.attrs['DADF5-minor']
 
-            if self.version_major != 0 or not 2 <= self.version_minor <= 6:
+            if self.version_major != 0 or not 2 <= self.version_minor <= 7:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -401,8 +400,9 @@ class Result:
                             if sets is True:
                                 groups.append(group)
                             else:
-                                match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-                                if len(set(match)) == len(sets): groups.append(group)
+                                if group in f.keys():
+                                    match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+                                    if len(set(match)) == len(sets): groups.append(group)
         return groups
 
 
@@ -466,6 +466,11 @@ class Result:
             return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
 
 
+    def enable_user_function(self,func):
+        globals()[func.__name__]=func
+        print(f'Function {func.__name__} enabled in add_calculation.')
+
+
     def read_dataset(self,path,c=0,plain=False):
         """
         Dataset for all points/cells.
@@ -504,7 +509,7 @@ class Result:
         else:
             return dataset
 
-
+    @property
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
@@ -513,6 +518,7 @@ class Result:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
+    @property
     def node_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
@@ -530,7 +536,7 @@ class Result:
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': f"Absolute value of {x['label']} ({x['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_absolute'
                           }
                  }
     def add_absolute(self,x):
@@ -558,10 +564,10 @@ class Result:
                 'meta':  {
                           'Unit':        kwargs['unit'],
                           'Description': f"{kwargs['description']} (formula: {kwargs['formula']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_calculation'
                           }
                  }
-    def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
+    def add_calculation(self,label,formula,unit='n/a',description=None):
         """
         Add result of a general formula.
 
@@ -575,13 +581,8 @@ class Result:
             Physical unit of the result.
         description : str, optional
             Human-readable description of the result.
-        vectorized : bool, optional
-            Indicate whether the formula can be used in vectorized form. Defaults to ‘True’.
 
         """
-        if not vectorized:
-            raise NotImplementedError
-
         dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
         args             = {'formula':formula,'label':label,'unit':unit,'description':description}
         self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
@@ -597,7 +598,7 @@ class Result:
                           'Description': "Cauchy stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_Cauchy'
                           }
                 }
     def add_Cauchy(self,P='P',F='F'):
@@ -623,7 +624,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': f"Determinant of tensor {T['label']} ({T['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_determinant'
                           }
                 }
     def add_determinant(self,T):
@@ -647,7 +648,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': f"Deviator of tensor {T['label']} ({T['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_deviator'
                           }
                  }
     def add_deviator(self,T):
@@ -678,7 +679,7 @@ class Result:
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
                           'Description': f"{label} eigenvalue of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_eigenvalue'
                          }
                 }
     def add_eigenvalue(self,T_sym,eigenvalue='max'):
@@ -711,7 +712,7 @@ class Result:
                           'Unit':        '1',
                           'Description': f"Eigenvector corresponding to {label} eigenvalue"
                                          f" of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_eigenvector'
                          }
                }
     def add_eigenvector(self,T_sym,eigenvalue='max'):
@@ -744,7 +745,7 @@ class Result:
                           'Unit':        '8-bit RGB',
                           'Lattice':     q['meta']['Lattice'],
                           'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_IPF_color'
                          }
                }
     def add_IPF_color(self,q,l):
@@ -770,7 +771,7 @@ class Result:
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
                           'Description': f"Maximum shear component of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_maximum_shear'
                           }
                  }
     def add_maximum_shear(self,T_sym):
@@ -797,7 +798,7 @@ class Result:
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
                           'Description': f"Mises equivalent {t} of {T_sym['label']} ({T_sym['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_Mises'
                           }
                 }
     def add_Mises(self,T_sym):
@@ -833,7 +834,7 @@ class Result:
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
                           'Description': f"{o}-norm of {t} {x['label']} ({x['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_norm'
                           }
                  }
     def add_norm(self,x,ord=None):
@@ -861,7 +862,7 @@ class Result:
                           'Description': "2. Piola-Kirchhoff stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_PK2'
                           }
                 }
     def add_PK2(self,P='P',F='F'):
@@ -897,7 +898,7 @@ class Result:
                           'Unit':        '1',
                           'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
                                          .format('Polar' if polar else 'Cartesian'),
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_pole'
                          }
                }
     def add_pole(self,q,p,polar=False):
@@ -925,7 +926,7 @@ class Result:
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Rotational part of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_rotational_part'
                           }
                  }
     def add_rotational_part(self,F):
@@ -949,7 +950,7 @@ class Result:
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
                           'Description': f"Spherical component of tensor {T['label']} ({T['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_spherical'
                           }
                  }
     def add_spherical(self,T):
@@ -973,7 +974,7 @@ class Result:
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Strain tensor of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_strain_tensor'
                           }
                  }
     def add_strain_tensor(self,F='F',t='V',m=0.0):
@@ -1005,7 +1006,7 @@ class Result:
                           'Unit':        F['meta']['Unit'],
                           'Description': '{} stretch tensor of {} ({})'.format('Left' if t.upper() == 'V' else 'Right',
                                                                                F['label'],F['meta']['Description']),
-                          'Creator':     inspect.stack()[0][3][1:]
+                          'Creator':     'add_stretch_tensor'
                           }
                  }
     def add_stretch_tensor(self,F='F',t='V'):
@@ -1064,6 +1065,10 @@ class Result:
         lock = mp.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
+        if len(groups) == 0:
+            print('No matching dataset found, no data was added.')
+            return
+
         default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
 
         for result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
@@ -1263,4 +1268,4 @@ class Result:
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            v.write(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')
+            v.to_file(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')

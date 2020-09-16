@@ -55,4 +55,4 @@ for name in filenames:
                   div.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape)//3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_ASCII(sys.stdout if name is None else name)
+    table.to_file(sys.stdout if name is None else name)

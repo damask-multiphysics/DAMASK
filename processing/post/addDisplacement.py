@@ -60,7 +60,7 @@ for name in filenames:
         table.add('fluct({}).{}'.format(options.f,options.pos),
                   damask.grid_filters.node_displacement_fluct(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
-        table.to_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'_nodal.txt')
+        table.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'_nodal.txt')
     else:
         table.add('avg({}).{}'.format(options.f,options.pos),
                   damask.grid_filters.cell_displacement_avg(size,F).reshape(-1,3,order='F'),
@@ -68,4 +68,4 @@ for name in filenames:
         table.add('fluct({}).{}'.format(options.f,options.pos),
                   damask.grid_filters.cell_displacement_fluct(size,F).reshape(-1,3,order='F'),
                   scriptID+' '+' '.join(sys.argv[1:]))
-        table.to_ASCII(sys.stdout if name is None else name)
+        table.to_file(sys.stdout if name is None else name)

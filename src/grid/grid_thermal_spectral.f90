@@ -16,7 +16,7 @@ module grid_thermal_spectral
   use discretization_grid
   use thermal_conduction
   use YAML_types
-  use numerics
+  use config
   use material
  
   implicit none

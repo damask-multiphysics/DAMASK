@@ -90,7 +90,7 @@ class myThread (threading.Thread):
           direction[i]*=2.
           i+= 1
       perturbedSeedsTable.set('pos',coords)
-      perturbedSeedsTable.to_ASCII(perturbedSeedsVFile)
+      perturbedSeedsTable.to_file(perturbedSeedsVFile)
 
 #--- do tesselation with perturbed seed file ------------------------------------------------------
       perturbedGeomVFile.close()

@@ -13,7 +13,7 @@ module HDF5_utilities
   use prec
   use IO
   use rotations
-  use numerics
+  use config
 
  implicit none
  public
@@ -246,7 +246,8 @@ end function HDF5_openGroup
 subroutine HDF5_closeGroup(group_id)
 
   integer(HID_T), intent(in) :: group_id
-  integer                    :: hdferr
+
+  integer :: hdferr
 
   call h5gclose_f(group_id, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg = 'HDF5_closeGroup: h5gclose_f (el is ID)', el = int(group_id))
@@ -262,8 +263,8 @@ logical function HDF5_objectExists(loc_id,path)
   integer(HID_T),   intent(in)            :: loc_id
   character(len=*), intent(in), optional  :: path
 
-  integer                   :: hdferr
-  character(len=pStringLen) :: p
+  integer :: hdferr
+  character(len=:), allocatable :: p
 
   if (present(path)) then
     p = trim(path)
@@ -291,10 +292,10 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   character(len=*), intent(in)           :: attrLabel, attrValue
   character(len=*), intent(in), optional :: path
 
-  integer                   :: hdferr
-  integer(HID_T)            :: attr_id, space_id, type_id
-  logical                   :: attrExists
-  character(len=pStringLen) :: p
+  integer(HID_T) :: attr_id, space_id, type_id
+  logical        :: attrExists
+  integer        :: hdferr
+  character(len=:), allocatable :: p
 
   if (present(path)) then
     p = trim(path)
@@ -333,15 +334,15 @@ end subroutine HDF5_addAttribute_str
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_addAttribute_int(loc_id,attrLabel,attrValue,path)
 
-  integer(HID_T),   intent(in)            :: loc_id
-  character(len=*), intent(in)            :: attrLabel
-  integer,          intent(in)            :: attrValue
-  character(len=*), intent(in), optional  :: path
+  integer(HID_T),   intent(in)           :: loc_id
+  character(len=*), intent(in)           :: attrLabel
+  integer,          intent(in)           :: attrValue
+  character(len=*), intent(in), optional :: path
 
-  integer                   :: hdferr
-  integer(HID_T)            :: attr_id, space_id
-  logical                   :: attrExists
-  character(len=pStringLen) :: p
+  integer(HID_T) :: attr_id, space_id
+  integer        :: hdferr
+  logical        :: attrExists
+  character(len=:), allocatable :: p
 
   if (present(path)) then
     p = trim(path)
@@ -379,10 +380,10 @@ subroutine HDF5_addAttribute_real(loc_id,attrLabel,attrValue,path)
   real(pReal),      intent(in)           :: attrValue
   character(len=*), intent(in), optional :: path
 
-  integer                   :: hdferr
-  integer(HID_T)            :: attr_id, space_id
-  logical                   :: attrExists
-  character(len=pStringLen) :: p
+  integer(HID_T) :: attr_id, space_id
+  integer        :: hdferr
+  logical        :: attrExists
+  character(len=:), allocatable :: p
 
   if (present(path)) then
     p = trim(path)
@@ -420,11 +421,11 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   integer,          intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
-  integer                       :: hdferr
-  integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
+  integer(HID_T)                :: attr_id, space_id
+  integer                       :: hdferr
   logical                       :: attrExists
-  character(len=pStringLen)     :: p
+  character(len=:), allocatable :: p
 
   if (present(path)) then
     p = trim(path)
@@ -464,11 +465,11 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   real(pReal),      intent(in), dimension(:) :: attrValue
   character(len=*), intent(in), optional     :: path
 
-  integer                       :: hdferr
-  integer(HID_T)                :: attr_id, space_id
   integer(HSIZE_T),dimension(1) :: array_size
+  integer(HID_T)                :: attr_id, space_id
+  integer                       :: hdferr
   logical                       :: attrExists
-  character(len=pStringLen)     :: p
+  character(len=:), allocatable :: p
 
   if (present(path)) then
     p = trim(path)

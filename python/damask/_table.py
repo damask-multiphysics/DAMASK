@@ -3,7 +3,6 @@ import re
 import pandas as pd
 import numpy as np
 
-from . import version
 from . import util
 
 class Table:
@@ -49,7 +48,9 @@ class Table:
 
     def _add_comment(self,label,shape,info):
         if info is not None:
-            self.comments.append(f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}')
+            specific = f'{label}{" "+str(shape) if np.prod(shape,dtype=int) > 1 else ""}: {info}'
+            general  = util.execution_stamp('Table')
+            self.comments.append(f'{specific} / {general}')
 
 
     @staticmethod
@@ -135,7 +136,7 @@ class Table:
 
         content = f.readlines()
 
-        comments = [f'table.py:from_ang v{version}']
+        comments = [util.execution_stamp('Table','from_ang')]
         for line in content:
             if line.startswith('#'):
                 comments.append(line.strip())
@@ -312,7 +313,7 @@ class Table:
                 self.shapes[key] = other.shapes[key]
 
 
-    def to_ASCII(self,fname,new_style=False):
+    def to_file(self,fname,format='ASCII',new_style=False):
         """
         Store as plain text file.
 
@@ -320,32 +321,51 @@ class Table:
         ----------
         fname : file, str, or pathlib.Path
             Filename or file for writing.
+        format : {ASCII'}, optional
+            File format, defaults to 'ASCII'. Available formats are:
+            - ASCII: Plain text file, extension '.txt'.
         new_style : Boolean, optional
             Write table in new style, indicating header lines by comment sign ('#') only.
 
         """
-        seen = set()
-        labels = []
-        for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
-            if self.shapes[l] == (1,):
-                labels.append(f'{l}')
-            elif len(self.shapes[l]) == 1:
-                labels += [f'{i+1}_{l}' \
-                          for i in range(self.shapes[l][0])]
-            else:
-                labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
-                          for i in range(np.prod(self.shapes[l]))]
+        def _to_ASCII(table,fname,new_style=False):
+            """
+            Store as plain text file.
 
-        if new_style:
-            header = [f'# {comment}' for comment in self.comments]
+            Parameters
+            ----------
+            table : Table object
+                Table to write.
+            fname : file, str, or pathlib.Path
+                Filename or file for writing.
+            new_style : Boolean, optional
+                Write table in new style, indicating header lines by comment sign ('#') only.
+
+            """
+            seen = set()
+            labels = []
+            for l in [x for x in table.data.columns if not (x in seen or seen.add(x))]:
+                if table.shapes[l] == (1,):
+                    labels.append(f'{l}')
+                elif len(table.shapes[l]) == 1:
+                    labels += [f'{i+1}_{l}' \
+                              for i in range(table.shapes[l][0])]
+                else:
+                    labels += [f'{util.srepr(table.shapes[l],"x")}:{i+1}_{l}' \
+                              for i in range(np.prod(table.shapes[l]))]
+
+            header = [f'# {comment}' for comment in table.comments] if new_style else \
+                     [f'{len(table.comments)+1} header'] + table.comments
+
+            try:
+                f = open(fname,'w')
+            except TypeError:
+                f = fname
+
+            for line in header + [' '.join(labels)]: f.write(line+'\n')
+            table.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)
+
+        if format.lower() == 'ascii':
+            return _to_ASCII(self,fname,new_style)
         else:
-            header = [f'{len(self.comments)+1} header'] \
-                   + self.comments \
-
-        try:
-            f = open(fname,'w')
-        except TypeError:
-            f = fname
-
-        for line in header + [' '.join(labels)]: f.write(line+'\n')
-        self.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)
+            raise TypeError(f'Unknown format {format}.')

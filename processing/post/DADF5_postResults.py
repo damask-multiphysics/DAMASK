@@ -60,4 +60,4 @@ for filename in options.filenames:
             os.mkdir(dirname,0o755)
         file_out = '{}_inc{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],
                                          inc[3:].zfill(N_digits))
-        table.to_ASCII(os.path.join(dirname,file_out))
+        table.to_file(os.path.join(dirname,file_out))

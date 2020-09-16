@@ -5,7 +5,6 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM
   use prec
-  use debug
   use FEsolving
   use math
   use rotations
@@ -19,7 +18,6 @@ module CPFEM
   use IO
   use discretization
   use DAMASK_interface
-  use numerics
   use HDF5_utilities
   use results
   use lattice
@@ -79,8 +77,6 @@ subroutine CPFEM_initAll
   call DAMASK_interface_init
   call prec_init
   call IO_init
-  call numerics_init
-  call debug_init
   call config_init
   call math_init
   call rotations_init
@@ -95,6 +91,7 @@ subroutine CPFEM_initAll
   call crystallite_init
   call homogenization_init
   call CPFEM_init
+  call config_deallocate
 
 end subroutine CPFEM_initAll
 

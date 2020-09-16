@@ -24,5 +24,4 @@ from .             import solver           # noqa
 Environment = _
 from ._asciitable  import ASCIItable       # noqa
 from ._test        import Test             # noqa
-from .config       import Material         # noqa
 from .util         import extendableOption # noqa
