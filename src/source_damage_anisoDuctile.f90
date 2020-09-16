@@ -52,7 +52,7 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
 
   if(Ninstance == 0) return
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(param(Ninstance))
   allocate(source_damage_anisoDuctile_offset  (phases%length), source=0)
   allocate(source_damage_anisoDuctile_instance(phases%length), source=0)

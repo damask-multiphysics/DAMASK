@@ -52,7 +52,7 @@ subroutine thermal_conduction_init
   Ninstance = count(thermal_type == THERMAL_conduction_ID)
   allocate(param(Ninstance))
 
-  material_homogenization => material_root%get('homogenization')
+  material_homogenization => config_material%get('homogenization')
   do h = 1, material_Nhomogenization
     if (thermal_type(h) /= THERMAL_conduction_ID) cycle
     homog => material_homogenization%get(h)

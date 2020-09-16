@@ -149,20 +149,20 @@ subroutine homogenization_init
     num_homogGeneric, &
     debug_homogenization
 
-  debug_homogenization => debug_root%get('homogenization', defaultVal=emptyList)
+  debug_homogenization => config_debug%get('homogenization', defaultVal=emptyList)
   debugHomog%basic       =  debug_homogenization%contains('basic')
   debugHomog%extensive   =  debug_homogenization%contains('extensive')
   debugHomog%selective   =  debug_homogenization%contains('selective')
-  debugHomog%element     =  debug_root%get_asInt('element',defaultVal = 1)
-  debugHomog%ip          =  debug_root%get_asInt('integrationpoint',defaultVal = 1)
-  debugHomog%grain       =  debug_root%get_asInt('grain',defaultVal = 1)
+  debugHomog%element     =  config_debug%get_asInt('element',defaultVal = 1)
+  debugHomog%ip          =  config_debug%get_asInt('integrationpoint',defaultVal = 1)
+  debugHomog%grain       =  config_debug%get_asInt('grain',defaultVal = 1)
 
   if (debugHomog%grain < 1 &
     .or. debugHomog%grain > homogenization_Ngrains(material_homogenizationAt(debugHomog%element))) &
     call IO_error(602,ext_msg='constituent', el=debugHomog%element, g=debugHomog%grain)
 
 
-  num_homog        => numerics_root%get('homogenization',defaultVal=emptyDict)
+  num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
   num_homogMech    => num_homog%get('mech',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
 

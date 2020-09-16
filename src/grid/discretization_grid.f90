@@ -9,6 +9,7 @@ module discretization_grid
   use PETScsys
 
   use prec
+  use parallelization
   use system_routines
   use base64
   use zlib
@@ -66,11 +67,15 @@ subroutine discretization_grid_init(restart)
 
   write(6,'(/,a)') ' <<<+-  discretization_grid init  -+>>>'; flush(6)
 
-  if(index(geometryFile,'.vtr') /= 0) then
+  if(index(interface_geomFile,'.vtr') /= 0) then
     call readVTR(grid,geomSize,origin,microstructureAt)
   else
     call readGeom(grid,geomSize,origin,microstructureAt)
   endif
+
+  print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
+  print'(a,3(es12.5))',   ' size     x y z: ', geomSize
+  print'(a,3(es12.5))',   ' origin   x y z: ', origin
 
 !--------------------------------------------------------------------------------------------------
 ! grid solver specific quantities
@@ -92,8 +97,8 @@ subroutine discretization_grid_init(restart)
 
 !-------------------------------------------------------------------------------------------------
 ! debug parameters
-  debug_element = debug_root%get_asInt('element',defaultVal=1)
-  debug_ip      = debug_root%get_asInt('integrationpoint',defaultVal=1)
+  debug_element = config_debug%get_asInt('element',defaultVal=1)
+  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
 !--------------------------------------------------------------------------------------------------
 ! general discretization
@@ -172,10 +177,10 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
 
 !--------------------------------------------------------------------------------------------------
 ! read raw data as stream
-  inquire(file = trim(geometryFile), size=fileLength)
-  open(newunit=fileUnit, file=trim(geometryFile), access='stream',&
+  inquire(file = trim(interface_geomFile), size=fileLength)
+  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(geometryFile))
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
   allocate(character(len=fileLength)::rawData)
   read(fileUnit) rawData
   close(fileUnit)
@@ -326,10 +331,10 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
 !--------------------------------------------------------------------------------------------------
 ! read raw data as stream
-  inquire(file = trim(geometryFile), size=fileLength)
-  open(newunit=fileUnit, file=trim(geometryFile), access='stream',&
+  inquire(file = trim(interface_geomFile), size=fileLength)
+  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(geometryFile))
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
   allocate(character(len=fileLength)::fileContent)
   read(fileUnit) fileContent
   close(fileUnit)
@@ -457,13 +462,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
     select case(dataType)
       case('Int32')
-        as_Int = int(bytes_to_C_INT32_T(asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)))
       case('Int64')
-        as_Int = int(bytes_to_C_INT64_T(asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)))
       case('Float32')
-        as_Int = int(bytes_to_C_FLOAT  (asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)))
       case('Float64')
-        as_Int = int(bytes_to_C_DOUBLE (asBytes(base64_str,headerType,compressed)))
+        as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
       case default
         call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
     end select
@@ -485,13 +490,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
     select case(dataType)
       case('Int32')
-        as_pReal = real(bytes_to_C_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
       case('Int64')
-        as_pReal = real(bytes_to_C_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
       case('Float32')
-        as_pReal = real(bytes_to_C_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
       case('Float64')
-        as_pReal = real(bytes_to_C_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
+        as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
       case default
         call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
     end select
@@ -538,15 +543,15 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     integer(pI64) :: headerLen, nBlock, b,s,e
 
     if    (headerType == 'UInt32') then
-      temp = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
+      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 4_pI64 * (3_pI64 + nBlock)
-      temp = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
     elseif(headerType == 'UInt64') then
-      temp = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
+      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
       nBlock = int(temp(1),pI64)
       headerLen = 8_pI64 * (3_pI64 + nBlock)
-      temp = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
     endif
 
     allocate(size_inflated(nBlock),source=temp(2))
@@ -584,13 +589,13 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     s=0_pI64
     if    (headerType == 'UInt32') then
       do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
-        nByte = int(bytes_to_C_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
+        nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
         s = s + base64_nChar(4_pI64+nByte(1))
       enddo
     elseif(headerType == 'UInt64') then
       do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
-        nByte = int(bytes_to_C_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
+        nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
         bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
         s = s + base64_nChar(8_pI64+nByte(1))
       enddo

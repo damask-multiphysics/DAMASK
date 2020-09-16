@@ -10,6 +10,7 @@ program DAMASK_grid
 #include <petsc/finclude/petscsys.h>
   use PETScsys
   use prec
+  use parallelization
   use DAMASK_interface
   use IO
   use config
@@ -113,7 +114,7 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
-  num_grid => numerics_root%get('grid', defaultVal=emptyDict)
+  num_grid => config_numerics%get('grid', defaultVal=emptyDict)
   stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
@@ -123,7 +124,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
  
-  debug_grid => debug_root%get('grid',defaultVal=emptyList)
+  debug_grid => config_debug%get('grid',defaultVal=emptyList)
   select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic'))) 
     case ('Basic')
       mech_init         => grid_mech_spectral_basic_init
@@ -158,7 +159,7 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
-  fileContent = IO_readlines(trim(loadCaseFile))
+  fileContent = IO_readlines(trim(interface_loadFile))
   if(size(fileContent) == 0) call IO_error(307,ext_msg='No load case specified')
   
   allocate (loadCases(0))                                                                           ! array of load cases
@@ -178,7 +179,7 @@ program DAMASK_grid
       end select
     enddo
     if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
-      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(loadCaseFile))                   ! error message for incomplete loadcase
+      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(interface_loadFile))             ! error message for incomplete loadcase
   
     newLoadCase%stress%myType='stress'
     field = 1

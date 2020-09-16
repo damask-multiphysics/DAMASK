@@ -167,59 +167,59 @@ subroutine selfTest
   character(len=*), parameter :: zero_to_three = 'AAECAw=='
 
   ! https://en.wikipedia.org/wiki/Base64#Output_padding
-  if(base64_nChar(20_pI64) /= 28_pI64) call IO_error(0,ext_msg='base64_nChar/20/28')
-  if(base64_nChar(19_pI64) /= 28_pI64) call IO_error(0,ext_msg='base64_nChar/19/28')
-  if(base64_nChar(18_pI64) /= 24_pI64) call IO_error(0,ext_msg='base64_nChar/18/24')
-  if(base64_nChar(17_pI64) /= 24_pI64) call IO_error(0,ext_msg='base64_nChar/17/24')
-  if(base64_nChar(16_pI64) /= 24_pI64) call IO_error(0,ext_msg='base64_nChar/16/24')
+  if(base64_nChar(20_pI64) /= 28_pI64) error stop 'base64_nChar/20/28'
+  if(base64_nChar(19_pI64) /= 28_pI64) error stop 'base64_nChar/19/28'
+  if(base64_nChar(18_pI64) /= 24_pI64) error stop 'base64_nChar/18/24'
+  if(base64_nChar(17_pI64) /= 24_pI64) error stop 'base64_nChar/17/24'
+  if(base64_nChar(16_pI64) /= 24_pI64) error stop 'base64_nChar/16/24'
 
-  if(base64_nByte(4_pI64)  /= 3_pI64)  call IO_error(0,ext_msg='base64_nByte/4/3')
-  if(base64_nByte(8_pI64)  /= 6_pI64)  call IO_error(0,ext_msg='base64_nByte/8/6')
+  if(base64_nByte(4_pI64)  /= 3_pI64)  error stop 'base64_nByte/4/3'
+  if(base64_nByte(8_pI64)  /= 6_pI64)  error stop 'base64_nByte/8/6'
 
   bytes = base64_to_bytes(zero_to_three)
-  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes//')
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) error stop 'base64_to_bytes//'
 
   bytes = base64_to_bytes(zero_to_three,e=1_pI64)
-  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes//1')
+  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) error stop 'base64_to_bytes//1'
   bytes = base64_to_bytes(zero_to_three,e=2_pI64)
-  if(any(bytes /= int([0,1],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes//2')
+  if(any(bytes /= int([0,1],C_SIGNED_CHAR))     .or. size(bytes) /= 2) error stop 'base64_to_bytes//2'
   bytes = base64_to_bytes(zero_to_three,e=3_pI64)
-  if(any(bytes /= int([0,1,2],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes//3')
+  if(any(bytes /= int([0,1,2],C_SIGNED_CHAR))   .or. size(bytes) /= 3) error stop 'base64_to_bytes//3'
   bytes = base64_to_bytes(zero_to_three,e=4_pI64)
-  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes//4')
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) error stop 'base64_to_bytes//4'
 
   bytes = base64_to_bytes(zero_to_three,s=1_pI64)
-  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes/1/')
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) error stop 'base64_to_bytes/1/'
   bytes = base64_to_bytes(zero_to_three,s=2_pI64)
-  if(any(bytes /= int([1,2,3],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes/2/')
+  if(any(bytes /= int([1,2,3],C_SIGNED_CHAR))   .or. size(bytes) /= 3) error stop 'base64_to_bytes/2/'
   bytes = base64_to_bytes(zero_to_three,s=3_pI64)
-  if(any(bytes /= int([2,3],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/3/')
+  if(any(bytes /= int([2,3],C_SIGNED_CHAR))     .or. size(bytes) /= 2) error stop 'base64_to_bytes/3/'
   bytes = base64_to_bytes(zero_to_three,s=4_pI64)
-  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/4/')
+  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) error stop 'base64_to_bytes/4/'
 
   bytes = base64_to_bytes(zero_to_three,s=1_pI64,e=1_pI64)
-  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/1/1')
+  if(any(bytes /= int([0],C_SIGNED_CHAR))       .or. size(bytes) /= 1) error stop 'base64_to_bytes/1/1'
   bytes = base64_to_bytes(zero_to_three,s=2_pI64,e=2_pI64)
-  if(any(bytes /= int([1],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/2/2')
+  if(any(bytes /= int([1],C_SIGNED_CHAR))       .or. size(bytes) /= 1) error stop 'base64_to_bytes/2/2'
   bytes = base64_to_bytes(zero_to_three,s=3_pI64,e=3_pI64)
-  if(any(bytes /= int([2],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/3/3')
+  if(any(bytes /= int([2],C_SIGNED_CHAR))       .or. size(bytes) /= 1) error stop 'base64_to_bytes/3/3'
   bytes = base64_to_bytes(zero_to_three,s=4_pI64,e=4_pI64)
-  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) call IO_error(0,ext_msg='base64_to_bytes/4/4')
+  if(any(bytes /= int([3],C_SIGNED_CHAR))       .or. size(bytes) /= 1) error stop 'base64_to_bytes/4/4'
 
   bytes = base64_to_bytes(zero_to_three,s=1_pI64,e=2_pI64)
-  if(any(bytes /= int([0,1],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/1/2')
+  if(any(bytes /= int([0,1],C_SIGNED_CHAR))     .or. size(bytes) /= 2) error stop 'base64_to_bytes/1/2'
   bytes = base64_to_bytes(zero_to_three,s=2_pI64,e=3_pI64)
-  if(any(bytes /= int([1,2],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/2/3')
+  if(any(bytes /= int([1,2],C_SIGNED_CHAR))     .or. size(bytes) /= 2) error stop 'base64_to_bytes/2/3'
   bytes = base64_to_bytes(zero_to_three,s=3_pI64,e=4_pI64)
-  if(any(bytes /= int([2,3],C_SIGNED_CHAR))     .or. size(bytes) /= 2) call IO_error(0,ext_msg='base64_to_bytes/3/4')
+  if(any(bytes /= int([2,3],C_SIGNED_CHAR))     .or. size(bytes) /= 2) error stop 'base64_to_bytes/3/4'
 
   bytes = base64_to_bytes(zero_to_three,s=1_pI64,e=3_pI64)
-  if(any(bytes /= int([0,1,2],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes/1/3')
+  if(any(bytes /= int([0,1,2],C_SIGNED_CHAR))   .or. size(bytes) /= 3) error stop 'base64_to_bytes/1/3'
   bytes = base64_to_bytes(zero_to_three,s=2_pI64,e=4_pI64)
-  if(any(bytes /= int([1,2,3],C_SIGNED_CHAR))   .or. size(bytes) /= 3) call IO_error(0,ext_msg='base64_to_bytes/2/4')
+  if(any(bytes /= int([1,2,3],C_SIGNED_CHAR))   .or. size(bytes) /= 3) error stop 'base64_to_bytes/2/4'
 
   bytes = base64_to_bytes(zero_to_three,s=1_pI64,e=4_pI64)
-  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) call IO_error(0,ext_msg='base64_to_bytes/1/4')
+  if(any(bytes /= int([0,1,2,3],C_SIGNED_CHAR)) .or. size(bytes) /= 4) error stop 'base64_to_bytes/1/4'
 
 end subroutine selfTest
 

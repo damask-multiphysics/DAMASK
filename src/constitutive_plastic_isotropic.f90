@@ -49,7 +49,7 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function plastic_isotropic_init()  result(myPlasticity)
+module function plastic_isotropic_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
@@ -67,23 +67,21 @@ module function plastic_isotropic_init()  result(myPlasticity)
     phase, &
     pl
 
-  write(6,'(/,a)') ' <<<+-  plastic_isotropic init  -+>>>'
-
-  write(6,'(/,a)') ' Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.scriptamat.2017.09.047'
-
+  print'(/,a)', ' <<<+-  plastic_isotropic init  -+>>>'
 
   myPlasticity = plastic_active('isotropic')
-
   Ninstance = count(myPlasticity)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
+
+  print*, 'Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
+  print*, 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
   allocate(dotState(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
@@ -96,7 +94,7 @@ module function plastic_isotropic_init()  result(myPlasticity)
     pl  => phase%get('plasticity')
 
 
-#if defined (__GFORTRAN__) 
+#if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
 #else
     prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
@@ -339,7 +337,7 @@ module subroutine plastic_isotropic_results(instance,group)
   associate(prm => param(instance), stt => state(instance))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case ('xi')                                                                           
+      case ('xi')
         call results_writeDataset(group,stt%xi,trim(prm%output(o)), &
                                     'resistance against plastic flow','Pa')
     end select

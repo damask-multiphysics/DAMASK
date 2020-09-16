@@ -40,6 +40,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
+  call parallelization_init
   call DAMASK_interface_init                                                                        ! Spectral and FEM interface to commandline
   call prec_init
   call IO_init
@@ -51,7 +52,7 @@ subroutine CPFEM_initAll
   call math_init
   call rotations_init
   call YAML_types_init
-  call YAML_init
+  call YAML_parse_init
   call lattice_init
   call HDF5_utilities_init
   call results_init(restart=interface_restartInc>0)

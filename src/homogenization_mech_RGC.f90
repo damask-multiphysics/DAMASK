@@ -139,7 +139,7 @@ module subroutine mech_RGC_init(num_homogMech)
   if (num%volDiscrPow <= 0.0_pReal)  call IO_error(301,ext_msg='volDiscrPw_RGC')
 
 
-  material_homogenization => material_root%get('homogenization')
+  material_homogenization => config_material%get('homogenization')
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
     homog => material_homogenization%get(h)
@@ -244,7 +244,7 @@ module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
       do i = 1,3
         write(6,'(1x,3(e15.8,1x))')(F(i,j,iGrain), j = 1,3)
       enddo
-      write(6,*)' '
+      print*,' '
       flush(6)
     endif
 #endif
@@ -307,7 +307,7 @@ module procedure mech_RGC_updateState
     do i = 1,size(stt%relaxationVector(:,of))
       write(6,'(1x,2(e15.8,1x))') stt%relaxationVector(i,of)
     enddo
-    write(6,*)' '
+    print*,' '
   endif
 #endif
 
@@ -330,7 +330,7 @@ module procedure mech_RGC_updateState
                                                                  (R(i,j,iGrain), j = 1,3), &
                                                                  (D(i,j,iGrain), j = 1,3)
       enddo
-      write(6,*)' '
+      print*,' '
     enddo
   endif
 #endif
@@ -371,7 +371,7 @@ module procedure mech_RGC_updateState
     if (debugHomog%extensive) then
       write(6,'(1x,a30,1x,i3)')'Traction at interface: ',iNum
       write(6,'(1x,3(e15.8,1x))')(tract(iNum,j), j = 1,3)
-      write(6,*)' '
+      print*,' '
     endif
 #endif
   enddo
@@ -513,7 +513,7 @@ module procedure mech_RGC_updateState
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
-    write(6,*)' '
+    print*,' '
     flush(6)
   endif
 #endif
@@ -573,7 +573,7 @@ module procedure mech_RGC_updateState
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
-    write(6,*)' '
+    print*,' '
     flush(6)
   endif
 #endif
@@ -592,7 +592,7 @@ module procedure mech_RGC_updateState
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(rmatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
-    write(6,*)' '
+    print*,' '
     flush(6)
   endif
 #endif
@@ -607,7 +607,7 @@ module procedure mech_RGC_updateState
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
-    write(6,*)' '
+    print*,' '
     flush(6)
   endif
 #endif
@@ -623,7 +623,7 @@ module procedure mech_RGC_updateState
     do i = 1,3*nIntFaceTot
       write(6,'(1x,100(e11.4,1x))')(jnverse(i,j), j = 1,3*nIntFaceTot)
     enddo
-    write(6,*)' '
+    print*,' '
     flush(6)
   endif
 #endif
@@ -650,7 +650,7 @@ module procedure mech_RGC_updateState
     do i = 1,size(stt%relaxationVector(:,of))
       write(6,'(1x,2(e15.8,1x))') stt%relaxationVector(i,of)
     enddo
-    write(6,*)' '
+    print*,' '
     flush(6)
   endif
 #endif
@@ -699,7 +699,7 @@ module procedure mech_RGC_updateState
 
     if (debugActive) then
       write(6,'(1x,a20,2(1x,i3))')'Correction factor: ',ip,el
-      write(6,*) surfCorr
+      print*, surfCorr
     endif
 #endif
 
@@ -740,7 +740,7 @@ module procedure mech_RGC_updateState
 #ifdef DEBUG
        if (debugActive) then
          write(6,'(1x,a20,i2,1x,a20,1x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
-         write(6,*) transpose(nDef)
+         print*, transpose(nDef)
          write(6,'(1x,a20,e11.4)')'with magnitude: ',nDefNorm
        endif
 #endif
@@ -758,7 +758,7 @@ module procedure mech_RGC_updateState
 #ifdef DEBUG
      if (debugActive) then
        write(6,'(1x,a20,i2)')'Penalty of grain: ',iGrain
-       write(6,*) transpose(rPen(1:3,1:3,iGrain))
+       print*, transpose(rPen(1:3,1:3,iGrain))
      endif
 #endif
 
@@ -808,7 +808,7 @@ module procedure mech_RGC_updateState
       if (debugHomog%extensive &
                   .and. param(instance)%of_debug == of) then
         write(6,'(1x,a30,i2)')'Volume penalty of grain: ',i
-        write(6,*) transpose(vPen(:,:,i))
+        print*, transpose(vPen(:,:,i))
       endif
 #endif
     enddo

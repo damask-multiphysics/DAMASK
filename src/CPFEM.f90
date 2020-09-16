@@ -48,7 +48,7 @@ module CPFEM
   end type tNumerics
 
   type(tNumerics), private :: num
- 
+
   type, private :: tDebugOptions
     logical :: &
       basic, &
@@ -58,9 +58,9 @@ module CPFEM
       element, &
       ip
   end type tDebugOptions
- 
+
   type(tDebugOptions), private :: debugCPFEM
- 
+
   public :: &
     CPFEM_general, &
     CPFEM_initAll, &
@@ -74,6 +74,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
+  call parallelization_init
   call DAMASK_interface_init
   call prec_init
   call IO_init
@@ -81,7 +82,7 @@ subroutine CPFEM_initAll
   call math_init
   call rotations_init
   call YAML_types_init
-  call YAML_init
+  call YAML_parse_init
   call HDF5_utilities_init
   call results_init(.false.)
   call discretization_marc_init
@@ -113,20 +114,20 @@ subroutine CPFEM_init
   allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
 
 !------------------------------------------------------------------------------
-! read numerical parameters and do sanity check 
-  num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
+! read numerical parameters and do sanity check
+  num_commercialFEM => config_numerics%get('commercialFEM',defaultVal=emptyDict)
   num%iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
   if (num%iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
 
 !------------------------------------------------------------------------------
-! read debug options 
+! read debug options
 
-  debug_CPFEM => debug_root%get('cpfem',defaultVal=emptyList)
+  debug_CPFEM => config_debug%get('cpfem',defaultVal=emptyList)
   debugCPFEM%basic     = debug_CPFEM%contains('basic')
   debugCPFEM%extensive = debug_CPFEM%contains('extensive')
   debugCPFEM%selective = debug_CPFEM%contains('selective')
-  debugCPFEM%element   = debug_root%get_asInt('element',defaultVal = 1)
-  debugCPFEM%ip        = debug_root%get_asInt('integrationpoint',defaultVal = 1)
+  debugCPFEM%element   = config_debug%get_asInt('element',defaultVal = 1)
+  debugCPFEM%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
 
   if(debugCPFEM%basic) then
     write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
@@ -201,7 +202,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       call random_number(rnd)
       if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
       CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
-      CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
+      CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
       updateJaco = mod(cycleCounter,num%iJacoStiffness) == 0
@@ -216,7 +217,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
         call random_number(rnd)
         if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
         CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
-        CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
+        CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
       else terminalIllness
 

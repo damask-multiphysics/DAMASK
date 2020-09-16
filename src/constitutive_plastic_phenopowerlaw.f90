@@ -66,7 +66,7 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function plastic_phenopowerlaw_init()  result(myPlasticity)
+module function plastic_phenopowerlaw_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
@@ -88,20 +88,18 @@ module function plastic_phenopowerlaw_init()  result(myPlasticity)
     phase, &
     pl
 
-  write(6,'(/,a)') ' <<<+-  plastic_phenopowerlaw init  -+>>>'
-
+  print'(/,a)', ' <<<+-  plastic_phenopowerlaw init  -+>>>'
 
   myPlasticity = plastic_active('phenopowerlaw')
-
   Ninstance = count(myPlasticity)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
- 
+
   allocate(param(Ninstance))
   allocate(state(Ninstance))
   allocate(dotState(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
@@ -231,7 +229,7 @@ module function plastic_phenopowerlaw_init()  result(myPlasticity)
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
 
-    
+
     call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------

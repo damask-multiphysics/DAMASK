@@ -58,7 +58,7 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function plastic_kinehardening_init()  result(myPlasticity)
+module function plastic_kinehardening_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
@@ -79,12 +79,11 @@ module function plastic_kinehardening_init()  result(myPlasticity)
     phase, &
     pl
 
-  write(6,'(/,a)') ' <<<+-  plastic_kinehardening init  -+>>>'
+  print'(/,a)', ' <<<+-  plastic_kinehardening init  -+>>>'
 
   myPlasticity = plastic_active('kinehardening')
-
   Ninstance = count(myPlasticity)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
 
   allocate(param(Ninstance))
@@ -92,7 +91,7 @@ module function plastic_kinehardening_init()  result(myPlasticity)
   allocate(dotState(Ninstance))
   allocate(deltaState(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
@@ -384,7 +383,7 @@ module subroutine plastic_kinehardening_results(instance,group)
      case('xi')
        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%crss,trim(prm%output(o)), &
                                                     'resistance against plastic slip','Pa')
-     case('tau_b')                                                                             
+     case('tau_b')
        if(prm%sum_N_sl>0) call results_writeDataset(group,stt%crss_back,trim(prm%output(o)), &
                                                     'back stress against plastic slip','Pa')
      case ('sgn(gamma)')

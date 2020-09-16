@@ -159,8 +159,9 @@ submodule(constitutive:constitutive_plastic) plastic_nonlocal
 
 contains
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief module initialization
+!> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 module function plastic_nonlocal_init() result(myPlasticity)
@@ -183,24 +184,22 @@ module function plastic_nonlocal_init() result(myPlasticity)
     phases, &
     phase, &
     pl
- 
-  write(6,'(/,a)') ' <<<+-  plastic_nonlocal init  -+>>>'
 
-  write(6,'(/,a)') ' Reuber et al., Acta Materialia 71:333–348, 2014'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2014.03.012'
-
-  write(6,'(/,a)') ' Kords, Dissertation RWTH Aachen, 2014'
-  write(6,'(a)')   ' http://publications.rwth-aachen.de/record/229993'
+  print'(/,a)', ' <<<+-  plastic_nonlocal init  -+>>>'
 
   myPlasticity = plastic_active('nonlocal')
-
   Ninstance = count(myPlasticity)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) then
     call geometry_plastic_nonlocal_disable
     return
   endif
+  
+  print*, 'Reuber et al., Acta Materialia 71:333–348, 2014'
+  print*, 'https://doi.org/10.1016/j.actamat.2014.03.012'//IO_EOL
 
+  print*, 'Kords, Dissertation RWTH Aachen, 2014'
+  print*, 'http://publications.rwth-aachen.de/record/229993'//IO_EOL
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
@@ -209,7 +208,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   allocate(deltaState(Ninstance))
   allocate(microstructure(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
@@ -224,14 +223,14 @@ module function plastic_nonlocal_init() result(myPlasticity)
               dst => microstructure(i))
     pl  => phase%get('plasticity')
 
-    phase_localPlasticity(p)    = .not. pl%contains('nonlocal')  
+    phase_localPlasticity(p)    = .not. pl%contains('nonlocal')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
 #else
     prm%output = pl%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
-    
+
     prm%atol_rho   = pl%get_asFloat('atol_rho',defaultVal=1.0e4_pReal)
 
     ! This data is read in already in lattice
@@ -519,7 +518,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
     if(.not. myPlasticity(p)) cycle
     i = i + 1
- 
+
     NipcMyPhase  = count(material_phaseAt==p) * discretization_nIP
     l = 0
     do t = 1,4
@@ -543,7 +542,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     enddo
     if (iD(param(i)%sum_N_sl,2,i) /= plasticState(p)%sizeState) &
       call IO_error(0, ext_msg = 'state indices not properly set (nonlocal)')
-  enddo 
+  enddo
 
 end function plastic_nonlocal_init
 

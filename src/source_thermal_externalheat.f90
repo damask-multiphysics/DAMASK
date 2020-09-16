@@ -49,7 +49,7 @@ module function source_thermal_externalheat_init(source_length) result(mySources
   write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
   if(Ninstance == 0) return
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(param(Ninstance))
   allocate(source_thermal_externalheat_offset  (phases%length), source=0)
   allocate(source_thermal_externalheat_instance(phases%length), source=0)

@@ -13,6 +13,7 @@ module discretization_mesh
   use PETScis
 
   use DAMASK_interface
+  use parallelization
   use IO
   use config
   use discretization
@@ -82,20 +83,20 @@ subroutine discretization_mesh_init(restart)
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
 
-  write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  discretization_mesh init  -+>>>'
 
 !--------------------------------------------------------------------------------
 ! read numerics parameter
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
   integrationOrder = num_mesh%get_asInt('integrationorder',defaultVal = 2)
 
 !---------------------------------------------------------------------------------
 ! read debug parameters
-  debug_element = debug_root%get_asInt('element',defaultVal=1)
-  debug_ip      = debug_root%get_asInt('integrationpoint',defaultVal=1)
+  debug_element = config_debug%get_asInt('element',defaultVal=1)
+  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
 
-  call DMPlexCreateFromFile(PETSC_COMM_WORLD,geometryFile,PETSC_TRUE,globalMesh,ierr)
+  call DMPlexCreateFromFile(PETSC_COMM_WORLD,interface_geomFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
   call DMGetDimension(globalMesh,dimPlex,ierr)
   CHKERRQ(ierr)
@@ -123,7 +124,7 @@ subroutine discretization_mesh_init(restart)
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
   if (worldrank == 0) then
-    fileContent = IO_readlines(geometryFile)
+    fileContent = IO_readlines(interface_geomFile)
     l = 0
     do
       l = l + 1

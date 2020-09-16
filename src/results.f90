@@ -6,8 +6,8 @@
 !--------------------------------------------------------------------------------------------------
 module results
   use DAMASK_interface
+  use parallelization
   use rotations
-  use config
   use HDF5_utilities
 #ifdef PETSc
   use PETSC
