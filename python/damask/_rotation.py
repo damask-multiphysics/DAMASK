@@ -613,13 +613,29 @@ class Rotation:
         return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),accept_homomorph = True)
 
     @staticmethod
-    def from_random(shape=None):
+    def from_random(shape=None,seed=None):
+        """
+        Draw random rotation.
+
+        Rotations are uniformly distributed.
+
+        Parameters
+        ----------
+        shape : tuple of ints, optional
+            Shape of the sample. Defaults to None which gives a
+            single rotation
+        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None.
+            If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+        """
+        rng = np.random.default_rng(seed)
         if shape is None:
-            r = np.random.random(3)
+            r = rng.random(3)
         elif hasattr(shape, '__iter__'):
-            r = np.random.random(tuple(shape)+(3,))
+            r = rng.random(tuple(shape)+(3,))
         else:
-            r = np.random.rand(shape,3)
+            r = rng.random((shape,3))
 
         A = np.sqrt(r[...,2])
         B = np.sqrt(1.0-r[...,2])
