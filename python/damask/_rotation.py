@@ -643,11 +643,6 @@ class Rotation:
         """
         Calculate set of rotations with Gaussian distribution around center.
 
-        References
-        ----------
-        K. Helming, Texturapproximation durch Modellkomponenten
-        Cuvillier Verlag, 1996
-
         Parameters
         ----------
         center : Rotation
@@ -670,6 +665,7 @@ class Rotation:
         p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
                              np.sqrt(1-u**2)*np.sin(Theta),
                              u, omega])
+
         return  Rotation.from_axis_angle(p) @ center
 
 
@@ -705,14 +701,15 @@ class Rotation:
         if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
         R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
 
-        u,Theta,b = (rng.random((N,3)) * np.array([2,2*np.pi,np.pi]) - np.array([1,0,0])).T
+        u,Theta  = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
         omega  = abs(rng.normal(scale=sigma_,size=N))
         p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
                              np.sqrt(1-u**2)*np.sin(Theta),
                              u, omega])
-        p[:,:3] = np.einsum('ij,...j->...i',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])
-        f = np.column_stack((np.broadcast_to(d_lab,(N,3)),b))
-        f[::2,:3] *= -1                                                                                  # flip half the rotation axes to negative sense
+        p[:,:3] = np.einsum('ij,...j',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])                      # remove component along fiber axis
+        f = np.column_stack((np.broadcast_to(d_lab,(N,3)),rng.random(N)*np.pi))
+        f[::2,:3] *= -1                                                                             # flip half the rotation axes to negative sense
+
         return R_align.broadcast_to(N) \
              @ Rotation.from_axis_angle(p,normalize=True) \
              @ Rotation.from_axis_angle(f)
