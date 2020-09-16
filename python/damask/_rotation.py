@@ -434,7 +434,7 @@ class Rotation:
 
         if P == 1:    ax[...,0:3] *= -1
         if degrees:   ax[...,  3]  = np.radians(ax[...,3])
-        if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1)
+        if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1,keepdims=True)
         if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
             raise ValueError('Axis angle rotation angle outside of [0..π].')
         if not np.all(np.isclose(np.linalg.norm(ax[...,0:3],axis=-1), 1.0)):
@@ -516,7 +516,7 @@ class Rotation:
             raise ValueError('P ∉ {-1,1}')
 
         if P == 1:    ro[...,0:3] *= -1
-        if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1)
+        if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True)
         if np.any(ro[...,3] < 0.0):
             raise ValueError('Rodrigues vector rotation angle not positive.')
         if not np.all(np.isclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0)):
