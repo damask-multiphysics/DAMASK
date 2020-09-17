@@ -922,7 +922,7 @@ subroutine tElement_init(self,elemType)
 
   self%nIPneighbors = size(self%IPneighbor,1)
 
-  write(6,'(/,a)') ' <<<+-  element_init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  element_init  -+>>>'; flush(6)
 
   print*, 'element type:      ',self%elemType
   print*, '  geom type:       ',self%geomType

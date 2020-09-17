@@ -88,7 +88,7 @@ subroutine HDF5_utilities_init
   integer         :: hdferr
   integer(SIZE_T) :: typeSize
 
-  write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
+  print'(/,a)', ' <<<+-  HDF5_Utilities init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
 !initialize HDF5 library and check if integer and float type size match

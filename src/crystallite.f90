@@ -1561,9 +1561,9 @@ subroutine crystallite_restartWrite
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName, datasetName
 
-  print'(a)', ' writing field and constitutive data required for restart to file';flush(6)
+  print*, ' writing field and constitutive data required for restart to file';flush(6)
 
-  write(fileName,'(a,i0,a)', trim(getSolverJobName())//'_',worldrank,'.hdf5'
+  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName,'a')
 
   call HDF5_write(fileHandle,crystallite_partionedF,'F')
@@ -1575,14 +1575,14 @@ subroutine crystallite_restartWrite
 
   groupHandle = HDF5_addGroup(fileHandle,'constituent')
   do i = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)', i,'_omega_plastic'
+    write(datasetName,'(i0,a)') i,'_omega_plastic'
     call HDF5_write(groupHandle,plasticState(i)%state,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
   groupHandle = HDF5_addGroup(fileHandle,'materialpoint')
   do i = 1, material_Nhomogenization
-    write(datasetName,'(i0,a)', i,'_omega_homogenization'
+    write(datasetName,'(i0,a)') i,'_omega_homogenization'
     call HDF5_write(groupHandle,homogState(i)%state,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
@@ -1604,7 +1604,7 @@ subroutine crystallite_restartRead
 
   print'(/,a,i0,a)', ' reading restart information of increment from file'
 
-  write(fileName,'(a,i0,a)', trim(getSolverJobName())//'_',worldrank,'.hdf5'
+  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName)
 
   call HDF5_read(fileHandle,crystallite_F0, 'F')
