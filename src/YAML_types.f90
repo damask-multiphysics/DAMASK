@@ -189,7 +189,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine YAML_types_init
 
-  write(6,'(/,a)') ' <<<+-  YAML_types init  -+>>>'
+  print'(/,a)', ' <<<+-  YAML_types init  -+>>>'
 
   call selfTest
 

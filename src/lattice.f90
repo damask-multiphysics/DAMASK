@@ -457,7 +457,7 @@ subroutine lattice_init
     phase, &
     elasticity
  
-  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(6)
 
   phases => config_material%get('phase')
   Nphases = phases%length

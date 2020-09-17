@@ -47,7 +47,7 @@ subroutine thermal_conduction_init
     homog, &
     homogThermal
  
-  write(6,'(/,a)') ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
 
   Ninstance = count(thermal_type == THERMAL_conduction_ID)
   allocate(param(Ninstance))

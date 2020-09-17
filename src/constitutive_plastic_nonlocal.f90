@@ -1274,7 +1274,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
                        .and.  prm%CFLfactor * abs(v0) * timestep &
                              > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
-      write(6,'(a)') '<< CONST >> enforcing cutback !!!'
+      print*, '<< CONST >> enforcing cutback !!!'
     endif
 #endif
       rhoDotFlux = IEEE_value(1.0_pReal,IEEE_quiet_NaN)                                             ! enforce cutback

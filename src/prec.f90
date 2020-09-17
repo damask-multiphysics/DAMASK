@@ -87,14 +87,14 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
 
-  write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
+  print'(/,a)', ' <<<+-  prec init  -+>>>'
 
-  write(6,'(a,i3)')    ' Size of integer in bit: ',bit_size(0)
-  write(6,'(a,i19)')   '   Maximum value:        ',huge(0)
-  write(6,'(/,a,i3)')  ' Size of float in bit:   ',storage_size(0.0_pReal)
-  write(6,'(a,e10.3)') '   Maximum value:        ',huge(0.0_pReal)
-  write(6,'(a,e10.3)') '   Minimum value:        ',tiny(0.0_pReal)
-  write(6,'(a,i3)')    '   Decimal precision:    ',precision(0.0_pReal)
+  print'(a,i3)',    ' Size of integer in bit: ',bit_size(0)
+  print'(a,i19)',   '   Maximum value:        ',huge(0)
+  print'(/,a,i3)',  ' Size of float in bit:   ',storage_size(0.0_pReal)
+  print'(a,e10.3)', '   Maximum value:        ',huge(0.0_pReal)
+  print'(a,e10.3)', '   Minimum value:        ',tiny(0.0_pReal)
+  print'(a,i3)',    '   Decimal precision:    ',precision(0.0_pReal)
 
   call selfTest
 

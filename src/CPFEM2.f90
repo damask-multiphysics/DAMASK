@@ -76,7 +76,7 @@ end subroutine CPFEM_initAll
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
 
-  write(6,'(/,a)') ' <<<+-  CPFEM init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(6)
 
   if (interface_restartInc > 0) call crystallite_restartRead
 

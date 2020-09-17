@@ -49,7 +49,7 @@ subroutine damage_local_init
     homog, &
     homogDamage
 
-  write(6,'(/,a)') ' <<<+-  damage_local init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  damage_local init  -+>>>'; flush(6)
 
 !----------------------------------------------------------------------------------------------
 ! read numerics parameter and do sanity check

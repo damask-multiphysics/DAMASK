@@ -106,8 +106,7 @@ subroutine CPFEM_init
     num_commercialFEM, &
     debug_CPFEM
 
-  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
-  flush(6)
+  print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(6)
 
   allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
@@ -130,9 +129,9 @@ subroutine CPFEM_init
   debugCPFEM%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
 
   if(debugCPFEM%basic) then
-    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
-    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
-    write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
+    print'(a32,1x,6(i8,1x))',   'CPFEM_cs:              ', shape(CPFEM_cs)
+    print'(a32,1x,6(i8,1x))',   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+    print'(a32,1x,6(i8,1x),/)', 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
     flush(6)
   endif
 
@@ -171,14 +170,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
   elCP = mesh_FEM2DAMASK_elem(elFE)
 
   if (debugCPFEM%basic .and. elCP == debugCPFEM%element .and. ip == debugCPFEM%ip) then
-    write(6,'(/,a)') '#############################################'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','element',        elCP,         '#'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','ip',             ip,           '#'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','cycleCounter',   cycleCounter, '#'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','computationMode',mode,         '#'
+    print'(/,a)', '#############################################'
+    print'(a1,a22,1x,i8,a13)',   '#','element',        elCP,         '#'
+    print'(a1,a22,1x,i8,a13)',   '#','ip',             ip,           '#'
+    print'(a1,a22,1x,i8,a13)',   '#','cycleCounter',   cycleCounter, '#'
+    print'(a1,a22,1x,i8,a13)',   '#','computationMode',mode,         '#'
     if (terminallyIll) &
-    write(6,'(a,/)') '#           --- terminallyIll ---           #'
-    write(6,'(a,/)') '#############################################'; flush (6)
+    print'(a,/)', '#           --- terminallyIll ---           #'
+    print'(a,/)', '#############################################'; flush (6)
   endif
 
   if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
@@ -209,7 +208,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       FEsolving_execElem = elCP
       FEsolving_execIP   = ip
       if (debugCPFEM%extensive) &
-        write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
+        print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
       call materialpoint_stressAndItsTangent(updateJaco, dt)
 
       terminalIllness: if (terminallyIll) then
@@ -247,9 +246,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
     if (debugCPFEM%extensive &
          .and. ((debugCPFEM%element == elCP .and. debugCPFEM%ip == ip) .or. .not. debugCPFEM%selective)) then
-        write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') &
+        print'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)', &
           '<< CPFEM >> stress/MPa at elFE ip ',   elFE, ip, CPFEM_cs(1:6,ip,elCP)*1.0e-6_pReal
-        write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') &
+        print'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))', &
           '<< CPFEM >> Jacobian/GPa at elFE ip ', elFE, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))*1.0e-9_pReal
         flush(6)
     endif

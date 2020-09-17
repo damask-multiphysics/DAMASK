@@ -27,7 +27,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine base64_init
 
-  write(6,'(/,a)') ' <<<+-  base64 init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  base64 init  -+>>>'; flush(6)
 
   call selfTest
 

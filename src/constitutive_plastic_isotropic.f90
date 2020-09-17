@@ -201,10 +201,10 @@ module subroutine plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
     Lp = dot_gamma/prm%M * Mp_dev/norm_Mp_dev
 #ifdef DEBUG
     if (debugConstitutive%extensive .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
-      write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CONST isotropic >> Tstar (dev) / MPa', &
+      print'(/,a,/,3(12x,3(f12.4,1x)/))', '<< CONST isotropic >> Tstar (dev) / MPa', &
                                        transpose(Mp_dev)*1.0e-6_pReal
-      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
-      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', dot_gamma
+      print'(/,a,/,f12.5)', '<< CONST isotropic >> norm Tstar / MPa', norm_Mp_dev*1.0e-6_pReal
+      print'(/,a,/,f12.5)', '<< CONST isotropic >> gdot', dot_gamma
     end if
 #endif
     forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -256,8 +256,8 @@ module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
 
 #ifdef DEBUG
     if (debugConstitutive%extensive .and. (of == prm%of_debug .or. .not. debugConstitutive%selective)) then
-      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> pressure / MPa', tr/3.0_pReal*1.0e-6_pReal
-      write(6,'(/,a,/,f12.5)') '<< CONST isotropic >> gdot', prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
+      print'(/,a,/,f12.5)', '<< CONST isotropic >> pressure / MPa', tr/3.0_pReal*1.0e-6_pReal
+      print'(/,a,/,f12.5)', '<< CONST isotropic >> gdot', prm%dot_gamma_0 * (3.0_pReal*prm%M*stt%xi(of))**(-prm%n) &
                                                            * tr * abs(tr)**(prm%n-1.0_pReal)
     end if
 #endif

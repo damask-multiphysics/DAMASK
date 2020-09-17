@@ -46,7 +46,7 @@ subroutine thermal_adiabatic_init
     homog, &
     homogThermal
 
-  write(6,'(/,a)') ' <<<+-  thermal_adiabatic init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  thermal_adiabatic init  -+>>>'; flush(6)
   
   maxNinstance = count(thermal_type == THERMAL_adiabatic_ID)
   if (maxNinstance == 0) return

@@ -160,12 +160,11 @@ subroutine material_init(restart)
 
   integer            :: ph, myHomog
   class(tNode), pointer :: &
-    debug_material, &                                                                               ! pointer to material debug options
     phases, &
     material_homogenization
   character(len=pStringLen) :: sectionName
 
-  write(6,'(/,a)') ' <<<+-  material init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  material init  -+>>>'; flush(6)
 
   phases => config_material%get('phase')
   allocate(material_name_phase(phases%length))
@@ -181,13 +180,11 @@ subroutine material_init(restart)
     material_name_homogenization(myHomog) = trim(adjustl(sectionName))//material_homogenization%getKey(myHomog)
   enddo
 
-  debug_material => config_debug%get('material',defaultVal=emptyList)
+  call material_parseMicrostructure
+  print*, ' Microstructure parsed'
 
-  call material_parseMicrostructure()
-  if (debug_material%contains('basic')) write(6,'(a)') ' Microstructure parsed'; flush(6)
-
-  call material_parseHomogenization()
-  if (debug_material%contains('basic')) write(6,'(a)') ' Homogenization parsed'; flush(6)
+  call material_parseHomogenization
+  print*, ' Homogenization parsed'
 
 
   if(homogenization_maxNgrains > size(material_phaseAt,1)) call IO_error(148)

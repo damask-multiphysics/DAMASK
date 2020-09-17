@@ -53,7 +53,7 @@ subroutine damage_nonlocal_init
     homog, &
     homogDamage
 
-  write(6,'(/,a)') ' <<<+-  damage_nonlocal init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  damage_nonlocal init  -+>>>'; flush(6)
 
 !------------------------------------------------------------------------------------
 ! read numerics parameter
