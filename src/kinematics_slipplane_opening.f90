@@ -48,12 +48,11 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
     kinematics, &
     kinematic_type 
  
-  write(6,'(/,a)') ' <<<+-  kinematics_slipplane init  -+>>>'
+  print'(/,a)', ' <<<+-  kinematics_slipplane init  -+>>>'
 
   myKinematics = kinematics_active('slipplane_opening',kinematics_length)
- 
   Ninstance = count(myKinematics)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
 
   phases => config_material%get('phase')

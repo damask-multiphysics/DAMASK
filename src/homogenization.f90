@@ -186,7 +186,7 @@ subroutine homogenization_init
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
 
-  write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(6)
 
   num%nMPstate          = num_homogGeneric%get_asInt  ('nMPstate',     defaultVal=10)
   num%subStepMinHomog   = num_homogGeneric%get_asFloat('subStepMin',   defaultVal=1.0e-3_pReal)
@@ -228,11 +228,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 #ifdef DEBUG
 
   if (debugHomog%basic) then
-    write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debugHomog%element, debugHomog%ip
+    print'(/a,i5,1x,i2)', ' << HOMOG >> Material Point start at el ip ', debugHomog%element, debugHomog%ip
 
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', ' << HOMOG >> F0', &
                                     transpose(materialpoint_F0(1:3,1:3,debugHomog%ip,debugHomog%element))
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', ' << HOMOG >> F', &
                                     transpose(materialpoint_F(1:3,1:3,debugHomog%ip,debugHomog%element))
   endif
 #endif
@@ -292,12 +292,11 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
         if (converged(i,e)) then
 #ifdef DEBUG
-          if (debugHomog%extensive &
-             .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
-                    .or. .not. debugHomog%selective)) then
-            write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
-              subFrac(i,e), 'to current subFrac', &
-              subFrac(i,e)+subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
+          if (debugHomog%extensive .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
+              .or. .not. debugHomog%selective)) then
+            print'(a,f12.8,a,f12.8,a,i8,1x,i2/)', ' << HOMOG >> winding forward from ', &
+              subFrac(i,e), ' to current subFrac ', &
+              subFrac(i,e)+subStep(i,e),' in materialpoint_stressAndItsTangent at el ip ',e,i
           endif
 #endif
 
@@ -342,20 +341,17 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                num%subStepSizeHomog * subStep(i,e) <=  num%subStepMinHomog ) then                   ! would require too small subStep
                                                                                                     ! cutback makes no sense
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
-              !$OMP CRITICAL (write2out)
-              write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
-              !$OMP END CRITICAL (write2out)
+              print*, ' Integration point ', i,' at element ', e, ' terminally ill'
             endif
             terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
             subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
 #ifdef DEBUG
-            if (debugHomog%extensive &
-               .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
-                     .or. .not. debugHomog%selective)) then
-              write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &
-                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new subStep:',&
+            if (debugHomog%extensive .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
+                .or. .not. debugHomog%selective)) then
+              print'(a,f12.8,a,i8,1x,i2/)', &
+                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new subStep: ',&
                 subStep(i,e),' at el ip',e,i
             endif
 #endif
@@ -469,7 +465,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
     enddo elementLooping4
     !$OMP END PARALLEL DO
   else
-    write(6,'(/,a,/)') '<< HOMOG >> Material Point terminally ill'
+    print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
   endif
 
 end subroutine materialpoint_stressAndItsTangent
