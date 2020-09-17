@@ -4,7 +4,8 @@
 # Normal exit status is 0.
 #
 
-DIR=/tmp/msc/marc2018
+DIR=%INSTALLDIR%/marc%VERSION%
+
 if test $MARCDIR1
 then
  DIR=$MARCDIR1
@@ -45,22 +46,25 @@ shift 9       # cannot use $10, $11, ...
 restart=$1
 postfile=$2
 viewfactorsfile=$3
-autorst=$4
-copy_datfile="-ci $5"
-copy_postfile="-cr $6"
-scr_dir=$7
-dcoup=$8
-assem_recov_nthread=$9
+copy_datfile="-ci $4"
+copy_postfile="-cr $5"
+scr_dir=$6
+dcoup=$7
+assem_recov_nthread=$8
+nthread=$9
 shift 9       # cannot use $10, $11, ...
-nthread=$1
-nsolver=$2
-mode=$3
-gpu=$4
+nsolver=$1
+mode=$2
+gpu=$3
 
-if [ "$slv" != "" -a "$slv" != "marc" ]; then
+if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
   slv="-iam sfm"
-else
+fi
+if [ "$slv" = "marc" ]; then
   slv=""
+fi
+if [ "$slv" = "datfit" ]; then
+  slv="-iam datfit"
 fi
 
 if [ "$ndom_fea_solver" != "" -a "$ndom_fea_solver" != "1" ]; then
@@ -84,6 +88,7 @@ if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
       srcfile="-u $srcfile -save y"
       ;;
     runsaved)
+      srcfile=${srcfile%.*}".marc"
       srcfile="-prog $srcfile"
       ;;
   esac
@@ -178,7 +183,7 @@ rm -f $job.log
 unset PYTHONHOME
 unset PYTHONPATH
 
-"${DIR}/tools/run_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
+"${DIR}/tools/run_damask_hmp" $slv -j $job -v n -b y $nprocds $nprocd \
                         $srcfile $restart $postfile $viewfactorsfile $hostfile \
                         $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
                         $assem_recov_nthread $nthread $nsolver $mode $gpu > /dev/null 2>&1

@@ -1,0 +1,443 @@
+! common block definition file taken from respective MSC.Marc release and reformated to free format
+!***********************************************************************
+!
+!        File: concom.cmn
+!
+!        MSC.Marc include file
+!
+integer &
+ iacous,     iasmbl,    iautth,     ibear,   icompl,     iconj,       icreep,    ideva,      idyn,    idynt,&
+ ielas,      ielcma,    ielect,     iform,   ifour,      iharm,       ihcps,     iheat,      iheatt,  ihresp,&
+ ijoule,     ilem,      ilnmom,     iloren,  inc,        incext,      incsub,    ipass,      iplres,  ipois,&
+ ipoist,     irpflo,    ismall,     ismalt,  isoil,      ispect,      ispnow,    istore,     iswep,   ithcrp,&
+ itherm,     iupblg,    iupdat,     jacflg,  jel,        jparks,      largst,    lfond,      loadup,  loaduq,&
+ lodcor,     lovl,      lsub,       magnet,  ncycle,     newtnt,      newton,    noshr,      linear,  ivscpl,&
+ icrpim,     iradrt,    ipshft,     itshr,   iangin,     iupmdr,      iconjf,    jincfl,     jpermg,  jhour,&
+ isolvr,     jritz,     jtable,     jshell,  jdoubl,     jform,       jcentr,    imini,      kautth,  iautof,&
+ ibukty,     iassum,    icnstd,     icnstt,  kmakmas,    imethvp,     iradrte,   iradrtp,    iupdate, iupdatp,&
+ ncycnt,     marmen ,   idynme,     ihavca,  ispf,       kmini,       imixex,    largtt,     kdoela,  iautofg,&
+ ipshftp,    idntrc,    ipore,      jtablm,  jtablc,     isnecma,     itrnspo,   imsdif,     jtrnspo, mcnear,&
+ imech,      imecht,    ielcmat,    ielectt, magnett,    imsdift,     noplas,    jtabls,     jactch,  jtablth,&
+ kgmsto ,    jpzo,      ifricsh,    iremkin, iremfor,    ishearp,     jspf,      machining,  jlshell, icompsol,&
+ iupblgfo,   jcondir,   nstcrp,     nactive, ipassref,   nstspnt,     ibeart,    icheckmpc,  noline,  icuring,&
+ ishrink,    ioffsflg,  isetoff,    ioffsetm,iharmt,     inc_incdat,  iautspc,   ibrake,     icbush,  istream_input,&
+ iprsinp,    ivlsinp,   ifirst_time,ipin_m,  jgnstr_glb, imarc_return,iqvcinp,   nqvceid,    istpnx,  imicro1,&
+ iaxisymm,   jbreakglue,iglstif,    jfastasm,iwear,      iwearcf,     imixmeth,  ielcmadyn,  idinout, igena_meth,&
+ magf_meth,  non_assumed, iredoboudry, ioffsz0,icomplt,  mesh_dual,   iactrp,    mgnewton,   iusedens,igsigd0,&
+ iaem,       icosim,    inodels,    nlharm,  iampini,    iphasetr,    inonlcl,   inonlct,    iforminp,ispecerror,&
+ icsprg,     imol,      imolt,      idatafit,iharmpar,   inclcase,    imultifreq,init_elas,  ifatig,  iftgmat
+dimension :: ideva(60)
+integer num_concom
+parameter(num_concom=260)
+common/marc_concom/&
+ iacous,      iasmbl,    iautth,     ibear,   icompl,     iconj,       icreep,    ideva,      idyn,    idynt,&
+ ielas,       ielcma,    ielect,     iform,   ifour,      iharm,       ihcps,     iheat,      iheatt,  ihresp,&
+ ijoule,      ilem,      ilnmom,     iloren,  inc,        incext,      incsub,    ipass,      iplres,  ipois,&
+ ipoist,      irpflo,    ismall,     ismalt,  isoil,      ispect,      ispnow,    istore,     iswep,   ithcrp,&
+ itherm,      iupblg,    iupdat,     jacflg,  jel,        jparks,      largst,    lfond,      loadup,  loaduq,&
+ lodcor,      lovl,      lsub,       magnet,  ncycle,     newtnt,      newton,    noshr,      linear,  ivscpl,&
+ icrpim,      iradrt,    ipshft,     itshr,   iangin,     iupmdr,      iconjf,    jincfl,     jpermg,  jhour,&
+ isolvr,      jritz,     jtable,     jshell,  jdoubl,     jform,       jcentr,    imini,      kautth,  iautof,&
+ ibukty,      iassum,    icnstd,     icnstt,  kmakmas,    imethvp,     iradrte,   iradrtp,    iupdate, iupdatp,&
+ ncycnt,      marmen,    idynme,     ihavca,  ispf,       kmini,       imixex,    largtt,     kdoela,  iautofg,&
+ ipshftp,     idntrc,    ipore,      jtablm,  jtablc,     isnecma,     itrnspo,   imsdif,     jtrnspo, mcnear,&
+ imech,       imecht,    ielcmat,    ielectt, magnett,    imsdift,     noplas,    jtabls,     jactch,  jtablth,&
+ kgmsto ,     jpzo,      ifricsh,    iremkin, iremfor,    ishearp,     jspf,      machining,  jlshell, icompsol,&
+ iupblgfo,    jcondir,   nstcrp,     nactive, ipassref,   nstspnt,     ibeart,    icheckmpc,  noline,  icuring,&
+ ishrink,     ioffsflg,  isetoff,    ioffsetm,iharmt,     inc_incdat,  iautspc,   ibrake,     icbush,  istream_input,&
+ iprsinp,     ivlsinp,   ifirst_time,ipin_m,  jgnstr_glb, imarc_return,iqvcinp,   nqvceid,    istpnx,  imicro1,&
+ iaxisymm,    jbreakglue,iglstif,    jfastasm,iwear,      iwearcf,     imixmeth,  ielcmadyn,  idinout, igena_meth,&
+ magf_meth,   non_assumed, iredoboudry, ioffsz0,icomplt,  mesh_dual,   iactrp,    mgnewton,   iusedens,igsigd0,&
+ iaem,        icosim,    inodels,    nlharm,  iampini,    iphasetr,    inonlcl,   inonlct,    iforminp,ispecerror,&
+ icsprg,      imol,      imolt,      idatafit,iharmpar,   inclcase,    imultifreq,init_elas,  ifatig,  iftgmat
+!
+! comments of variables:
+!
+! iacous        Control flag for acoustic analysis. Input data.
+!               iacous=1 modal acoustic analysis.
+!               iacous=2 harmonic acoustic-structural analysis.
+! iasmbl        Control flag to indicate that operator matrix should be
+!               recalculated. 
+! iautth        Control flag for AUTO THERM option.
+! ibear         Control flag for bearing analysis. Input data.
+! icompl        Control variable to indicate that a complex analysis is
+!               being performed. Either a Harmonic analysis with damping,
+!               or a harmonic electro-magnetic analysis. Input data.
+! iconj         Flag for EBE conjugate gradient solver (=solver 1, retired)
+!               Also used for VKI iterative solver.
+! icreep        Control flag for creep analysis. Input data.
+! ideva(60) -   debug print out flag
+!       1       print element stiffness matrices, mass matrix
+!       2       output matrices used in tying
+!       3       force the solution of a nonpositive definite matrix
+!       4       print info of connections to each node
+!       5       info of gap convergence, internal heat generated, contact
+!               touching and separation 
+!       6       nodal value array during rezoning
+!       7       tying info in CONRAD GAP option, fluid element numbers in
+!               CHANNEL option
+!       8       output incremental displacements in local coord. system
+!       9       latent heat output
+!       10      stress-strain in local coord. system
+!       11      additional info on  interlaminar stress 
+!       12      output right hand side and solution vector
+!       13      info of CPU resources used and memory available on NT
+!       14      info of mesh adaption process, 2D outline information
+!               info of penetration checking for remeshing
+!               save .fem files after afmesh3d meshing
+!       15      surface energy balance flag  
+!       16      print info regarding pyrolysis   
+!       17      print info of "streamline topology"  
+!       18      print mesh data changes after remeshing
+!       19      print material flow stress data read in from *.mat file
+!               if unit flag is on, print out flow stress after conversion
+!       20      print information on table input
+!       21      print out information regarding kinematic boundary conditions
+!       22      print out information regarding dist loads, point loads, film 
+!               and foundations
+!       23      print out information about automatic domain decomposition
+!       24      print out iteration information in SuperForm status report file
+!       25      print out information for ablation
+!       26      print out information for films - Table input
+!       27      print out the tying forces
+!       28      print out for CASI solver, convection, 
+!       29      DDM single file debug printout
+!       30      print out cavity debug info
+!       31      print out welding related info
+!       32      prints categorized DDM memory usage
+!       33      print out the cutting info regarding machining feature
+!       34      print out the list of quantities which can be defined via a table
+!               and for each quantity the supported independent variables
+!       35      print out detailed coupling region info
+!       36      print out solver debug info level 1 (Least  Detailed)
+!       37      print out solver debug info level 1 (Medium Detailed)
+!       38      print out solver debug info level 1 (Very   Detailed)
+!       39      print detailed memory allocation info
+!       40      print out marc-adams debug info
+!       41      output rezone mapping post file for debugging
+!       42      output post file after calling oprofos() for debugging
+!       43      debug printout for vcct
+!       44      debug printout for progressive failure
+!       45      print out automatically generated midside node coordinates (arecrd)
+!       46      print out message about routine and location, where the ibort is raised (ibort_inc)
+!       47      print out summary message of element variables on a 
+!               group-basis after all the automatic changes have been 
+!               made (em_ellibp)
+!       48      Automatically generate check results based on max and min vals.
+!                These vals are stored in the checkr file, which is inserted 
+!                into the *dat file by the generate_check_results script from /marc/tools
+!       49      Automatically generate check results based on the real calculated values 
+!                at the sppecified check result locations.
+!                These vals are stored in the checkr file, which is inserted 
+!                into the *dat file by the update_check_results script from /marc/tools
+!       50      generate a file containing the resistance or capacity matrix;
+!               this file can be used to compare results with a reference file
+!       51      print out detailed information for segment-to-segment contact
+!       52      print out detailed relative displacement information 
+!               for uniaxial sliding contact
+!       53      print out detailed sliding direction information for 
+!               uniaxial sliding contact
+!       54      print out detailed information for edges attached to a curve
+!       55      print information related to viscoelasticity calculations
+!       56      print out detailed information for element coloring for multithreading
+!       57      print out extra overheads due to multi-threading.
+!               These overhead includes (i) time and (ii) memory.
+!               The memory report will be summed over all the children.
+!
+!
+!       58      debug output for ELSTO usage
+!
+! idyn          Control flag for dynamics. Input data.
+!               1 = eigenvalue extraction and / or modal superposition
+!               2 = Newmark Beta and Single Step Houbolt (ssh with idynme=1)
+!               3 = Houbolt
+!               4 = Central difference
+!               5 = Newer central difference
+! idynt         Copy of idyn at begining of increment
+! ielas         Control flag for ELASTIC analysis. Input data.
+!               Set by user or automatically turned on by Fourier option.
+!               Implies that each load case is treated separately.
+!               In Adaptive meshing analysis , forces re-analysis until
+!               convergence obtained.
+!               Also seriously misused to indicate no convergence.
+!               = 1  elastic option with fourier analysis
+!               = 2  elastic option without fourier analysis
+!               =-1  no convergence in recycles or max # increments reached
+!               Set to 1 if ELASTIC or SUBSTRUC parameter cards are used,
+!               or if fourier option is used.
+!               Then set to 2 if not fourier analysis.
+! ielcma        Control flag for electromagnetic analysis. Input data.
+!               ielcma = 1 Harmonic formulation
+!               ielcma = 2 Transient formulation
+! ielect        Control flag for electrostatic option. Input data.
+! iform         Control flag indicating that contact will be performed.
+! ifour         Control flag for Fourier analysis.
+!               0 = Odd and even terms.
+!               1 = symmetric (cosine) terms
+!               2 = antisymmetric (sine) terms.
+! iharm         Control flag to indicate that a harmonic analysis will
+!               be performed. May change between passes.
+! ihcps         Control flag for coupled thermal - stress analysis.
+! iheat         Control flag for heat transfer analysis. Input data.
+! iheatt        Permanent control flag for heat transfer analysis.
+!               Note in coupled analysis iheatt will remain as one,
+!               but iheat will be zero in stress pass.
+! ihresp        Control flag to indicate to perform a harmonic subincrement. 
+! ijoule        Control flag for Joule heating.
+! ilem          Control flag to determin which vector is to be transformed.
+!               Control flag to see where one is:
+!               ilem = 1 - elem.f
+!               ilem = 2 - initst.f
+!               ilem = 3 - pressr.f
+!               ilem = 3 - fstif.f
+!               ilem = 4 - jflux.f
+!               ilem = 4 - strass.f
+!               ilem = 5 - mass.f
+!               ilem = 5 - osolty.f
+! ilnmom        Control flag for soil - pore pressure calculation. Input data.
+!               ilnmom = 0 - perform only pore pressure calculation.
+!                      = 1 - couples pore pressure - displacement analysis
+! iloren        Control flag for DeLorenzi J-Integral evaluation. Input data.
+! inc           Increment number. 
+! incext        Control flag indicating that currently working on a
+!               subincrement. 
+!               Could be due to harmonics , damping component (bearing),
+!               stiffness component (bearing), auto therm creep or
+!               old viscoplaticity
+! incsub        Sub-increment number. 
+! ipass         Control flag for which part of coupled analysis.
+!               ipass = -1  - reset to base values
+!               ipass =  0  - do nothing
+!               ipass =  1  - stress part
+!               ipass =  2  - heat transfer part
+! iplres        Flag indicating that either second matrix is stored.
+!               dynamic analysis  - mass matrix
+!               heat transfer     - specific heat matrix
+!               buckle            - initial stress stiffness
+! ipois         Control flag indicating Poisson type analysis
+!               ipois = 1 for heat transfer
+!                     = 1 for heat transfer part of coupled
+!                     = 1 for bearing
+!                     = 1 for electrostatic
+!                     = 1 for magnetostatic
+! ipoist        Permanent copy of ipois. In coupled analysis , ipois = 0
+!               in stress portion, yet ipoist will still =1.
+! irpflo        global flag for rigid plastic flow analysis
+!               = 1 eularian formulation
+!               = 2 regular formulation; rigid material present in the analysis
+
+! ismall        control flag to indicate small displacement analysis. input data.
+!               ismall = 0 - large disp included.
+!               ismall = 1 - small displacement.
+!               the flag is changing between passes.
+! ismalt        permanent copy of ismall . in heat transfer portion of
+!               coupled analysis ismall =0 , but ismalt remains the same.
+! isoil         control flag indicating that soil / pore pressure
+!               calculation . input data. 
+! ispect        control flag for response spectrum calculation. input data. 
+! ispnow        control flag to indicate to perform a spectrum response
+!               calculation now. 
+! istore        store stresses flag. 
+!               istore = 0 in elem.f and if first pass of creep
+!                          convergence checking in ogetst.f
+!                          or harmonic analysis or thruc.f if not
+!                          converged.
+! iswep         control flag for eigenvalue analysis.
+!               iswep=1 - go do extraction process
+! ithcrp        control flag for auto therm creep option. input data.
+! itherm        control flag for either temperature dependent material
+!               properties and/or thermal loads.
+! iupblg        control flag for follower force option. input data.
+! iupdat        control flag for update lagrange option for current element. 
+! jacflg        control flag for lanczos iteration method. input data.
+! jel           control flag indicating that total load applied in 
+!               increment, ignore previous solution.
+!               jel = 1 in increment 0 
+!                   = 1 if elastic or fourier
+!                   = 1 in subincrements with elastic and adaptive
+! jparks        control flag for j integral by parks method. input data.
+! largst        control flag for finite strain plasticity. input data.
+! lfond         control variable that indicates if doing elastic 
+!               foundation or film calculation. influences whether
+!               this is volumetric or surface integration.
+! loadup        control flag that indicates that nonlinearity occurred
+!               during previous increment. 
+! loaduq        control flag that indicates that nonlinearity occurred.
+! lodcor        control flag for switching on the residual load correction.
+!               notice in input stage lodcor=0 means no loadcor, 
+!               after omarc lodcor=1 means no loadcor
+! lovl          control flag for determining which "overlay" is to 
+!               be called from ellib.
+!               lovl =  1 omarc
+!                    =  2 oaread
+!                    =  3 opress
+!                    =  4 oasemb
+!                    =  5 osolty
+!                    =  6 ogetst
+!                    =  7 oscinc
+!                    =  8 odynam
+!                    =  9 opmesh
+!                    = 10 omesh2
+!                    = 11 osetz
+!                    = 12 oass
+!                    = 13 oincdt
+!                    = 14 oasmas
+!                    = 15 ofluas
+!                    = 16 ofluso
+!                    = 17 oshtra
+!                    = 18 ocass
+!                    = 19 osoltc
+!                    = 20 orezon
+!                    = 21 otest
+!                    = 22 oeigen
+! lsub          control variable to determine which part of element
+!               assembly function is being done. 
+!               lsub = 1 - no longer used
+!                    = 2 - beta*
+!                    = 3 - cons*
+!                    = 4 - ldef*
+!                    = 5 - posw*
+!                    = 6 - theta*
+!                    = 7 - tmarx*
+!                    = 8 - geom* 
+! magnet        control flag for magnetostatic analysis. input data.
+! ncycle        cycle number. accumulated in osolty.f
+!               note first time through oasemb.f , ncycle = 0.
+! newtnt        control flag for permanent copy of newton.
+! newton        iteration type. input data.
+!               newton : = 1 full newton raphson
+!                          2 modified newton raphson
+!                          3 newton raphson with strain correct.
+!                          4 direct substitution
+!                          5 direct substitution followed by n.r.
+!                          6 direct substitution with line search
+!                          7 full newton raphson with secant initial stress
+!                          8 secant method
+!                          9 full newton raphson with line search
+! noshr         control flag for calculation interlaminar shears for
+!               elements 22,45, and 75. input data.
+!ees
+!
+! jactch        = 1 or 2 if elements are activated or deactivated
+!               = 3 if elements are adaptively remeshed or rezoned
+!               = 0 normally / reset to 0 when assembly is done
+! ifricsh       = 0 call to fricsh in otest not needed
+!               = 1 call to fricsh (nodal friction) in otest needed
+! iremkin       = 0  remove deactivated kinematic boundary conditions 
+!                    immediately - only in new input format (this is default)
+!               = 1  remove deactivated kinematic boundary conditions 
+!                    gradually - only in new input format 
+! iremfor       = 0  remove force boundary conditions immediately - 
+!                    only in new input format (this is default)
+!               = 1  remove force boundary conditions gradually - 
+!                    only in new input format (this is default)
+! ishearp       set to 1 if shear panel elements are present in the model
+!
+! jspf          = 0  not in spf loadcase
+!               > 0 in spf loadcase (jspf=1 during first increment)
+! machining     = 1  if the metal cutting feature is used, for memory allocation purpose
+!               = 0  (default) if no metal cutting feature required
+!
+! jlshell       = 1 if there is a shell element in the mesh
+! icompsol      = 1 if there is a composite solid element in the mesh
+! iupblgfo      = 1 if follower force for point loads 
+! jcondir       = 1 if contact priority option is used
+! nstcrp        = 0 (default) steady state creep flag (undocumented feature. 
+!                    if not 0, turns off special ncycle = 0 code in radial.f)
+! nactive       = number of active passes, if =1 then it's not a coupled analysis
+! ipassref      = reference ipass, if not in a multiphysics pass ipass=ipassref
+! icheckmpc     = value of mpc-check parameter option
+! noline        = set to 1 in osolty if no line seacrh should be done in ogetst
+! icuring       = set to 1 if the curing is included for the heat transfer analysis.
+! ishrink       = set to 1 if shrinkage strain is included for mechancial analysis.
+! ioffsflg      =  1 for small displacement beam/shell offsets
+!               =  2 for large displacement beam/shell offsets
+! isetoff       =  0 - do not apply beam/shell offsets
+!               =  1 -  apply beam/shell offsets
+! ioffsetm      = min. value of offset flag
+! iharmt        = 1 global flag if a coupled analysis contains an harmonic pass
+! inc_incdat    = flag to record increment number of a new loadcase in incdat.f
+! iautspc       = flag for AutoSPC option
+! ibrake        = brake squeal in this increment
+! icbush        = set to 1 if cbush elements present in model
+! istream_input = set to 1 for streaming input calling Marc as library
+! iprsinp       = set to 1 if pressure input, introduced so other variables 
+!                 such as h could be a function of pressure
+! ivlsinp       = set to 1 if velocity input, introduced so other variables 
+!                 such as h could be a function of velocity
+! ipin_m        = # of beam element with PIN flag
+! jgnstr_glb    = global control over pre or fast integrated composite shells
+! imarc_return  = Marc return flag for streaming input control
+! iqvcimp       = if non-zero, then the number of QVECT boundary conditions
+! nqvceid       = number of QVECT boundary conditions, where emisivity/absorbtion id entered
+! istpnx        = 1 if to stop at end of increment
+! imicro1       = 1 if micro1 interface is used
+! iaxisymm      = set to 1 if axisymmetric analysis
+! jbreakglue    = set to 1 if breaking glued option is used
+! iglstif       = 1 if ddm and global stiffness matrix formed (sgi solver 6 or solver9)
+! jfastasm      = 1 do fast assembly using SuperForm code
+! iwear         = set to 1 if wear model, set to 2 if wear model and coordinates updated
+! iwearcf       = set to 1 to store nodal coefficient of friction for wear calculation
+! imixmeth      = set=1 then use nonlinear mixture material - allocate memory
+! ielcmadyn     = flag for magnetodynamics
+!                 0 - electromagnetics using newmark beta
+!                 1 - transient magnetics using backward euler
+! idinout       = flag to control if inside out elements should be deactivated
+! igena_meth    = 0  - generalized alpha parameters depend on whether or not contact
+!                      is flagged (dynamic,7) 
+!                 10 - generalized alpha parameters are optimized for a contact
+!                      analysis (dynamic,8)
+!                 11 - generalized alpha parameters are optimized for an analysis
+!                      without contact (dynamic,8)
+! magf_meth     =    - Method to compute force in magnetostatic - structural
+!               = 1  - Virtual work method based on finite difference for the force computation
+!               = 2  - Maxwell stress tensor
+!               = 3  - Virtual work method based on local derivative for the force computation
+! non_assumed   = 1  no assumed strain formulation (forced)
+! iredoboudry   set to 1 if contact boundary needs to be recalculated
+! ioffsz0       = 1 if composite are used with reference position.ne.0
+! icomplt       = 1 global flag if a coupled analysis contains an complex pass
+! mesh_dual     = 1 two independent meshes are used in magnetodynamic/thermal/structural
+!                   one for magnetodynamic and the other for the remaining passes
+! iactrp        = 1 in an analysis with global remeshing, include inactive
+!                   rigid bodies on post file
+! mgnewton      = 1 Use full Newton Raphson iteration for magnetostatic pass
+!
+! iusedens      > 0 if mass density is used in the analysis (dynamics, mass dependent loading)
+! igsigd0       = 1 set varselem(igsigd) to zero in next oasemb
+! iaem          = 1 if marc is called from aem (0 - off - default)
+! icosim        = 1 if marc is used in co-simulation software (ADAMS-MARC)
+! inodels       = 1 nodal integration elements 239/240/241 present
+! nlharm        = 0 harmonic subincrements are    linear
+!               = 1 harmonic subincrements are nonlinear
+! iampini       = 0 amplitude of previous harmonic subinc is initial estimate (default)
+!               = 1 zero amplitude is initial estimate
+! iphasetr      = 1 phase transformation material model is used
+! iforminp      flag indicating that contact is switched on via the CONTACT
+!               option in the input file (as opposed to the case that contact
+!               is switched on internally due to cyclic symmetry or model
+!               section creation) 
+! ispecerror    = a+10*b  (only for spectrum response analysis with missing mass option)
+!                 a=0 or a=1 (modal shape with non-zero shift)
+!                 b=0 or b=1 (recover with new assembly of stiffness matrix)
+! icsprg        = set to 1 if spring elements present in model
+! imol          Control flag for molecualr diffusion pass
+! imolt         Permanent control flag for molecualr diffusion pass
+!               Note in coupled analysis imolt will remain as one,
+!               but imol will be zero in stress pass or thermal pass.
+! idatafit      = run Marc to fit parameters
+! iharmpar      = 1 if harmonic parameter option is used
+! inclcase      load case increment use for cyclic plasticity data fitting
+! imultifreq    flag to indicate how many harmonic magnetodynamic passes are computed in coupled
+!               magnetodynamic/thermal(/structural) analyses.
+!               0 or 1 one pass 2 two passes 3 or more is not supported
+! init_elas     use elastic stress-strain law as the material tangent for
+!               the first cycle of an increment
+! ifatig        = 1 stress-life fatigue
+!               = 2 strain-life fatigue
+! iftgmat       = 0 no fatigue material properties in the dat file
+!               = 1 fatigue material properties in the dat file
+!
+!***********************************************************************
+!$omp threadprivate(/marc_concom/)
+!! 
