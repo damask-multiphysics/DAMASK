@@ -29,6 +29,9 @@ class Table:
         self.shapes = { k:(v,) if isinstance(v,(np.int,int)) else v for k,v in shapes.items() }
         self._label_uniform()
 
+    def __repr__(self):
+        """Brief overview."""
+        return util.srepr(self.comments)+'\n'+self.data.__repr__()
 
     def __copy__(self):
         """Copy Table."""
