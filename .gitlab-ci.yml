@@ -87,6 +87,7 @@ checkout:
     - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
     - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
         do sleep 5m;
+        echo 'next pipeline $(head -n 1 $TESTROOT/GitLabCI.queue)';
       done
   script:
     - mkdir -p $DAMASKROOT
