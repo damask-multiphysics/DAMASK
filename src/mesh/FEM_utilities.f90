@@ -110,15 +110,13 @@ subroutine FEM_utilities_init
 
   PetscErrorCode            :: ierr
 
-  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
+  write(6,'(/,a)')   ' <<<+-  FEM_utilities init  -+>>>'
  
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
-  structOrder = num_mesh%get_asInt('structOrder', defaultVal = 2)
+  num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
+  structOrder =  num_mesh%get_asInt('structOrder', defaultVal = 2)
 
-!--------------------------------------------------------------------------------------------------
-! set debugging parameters
-  debug_mesh      => debug_root%get('mesh',defaultVal=emptyList)
-  debugPETSc      =  debug_mesh%contains('petsc')
+  debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
+  debugPETSc  =  debug_mesh%contains('petsc')
 
   if(debugPETSc) write(6,'(3(/,a),/)') &
                  ' Initializing PETSc with debug options: ', &

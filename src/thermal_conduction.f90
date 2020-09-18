@@ -47,12 +47,12 @@ subroutine thermal_conduction_init
     homog, &
     homogThermal
  
-  write(6,'(/,a)') ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
 
   Ninstance = count(thermal_type == THERMAL_conduction_ID)
   allocate(param(Ninstance))
 
-  material_homogenization => material_root%get('homogenization')
+  material_homogenization => config_material%get('homogenization')
   do h = 1, material_Nhomogenization
     if (thermal_type(h) /= THERMAL_conduction_ID) cycle
     homog => material_homogenization%get(h)

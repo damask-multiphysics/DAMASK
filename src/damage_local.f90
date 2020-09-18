@@ -49,18 +49,18 @@ subroutine damage_local_init
     homog, &
     homogDamage
 
-  write(6,'(/,a)') ' <<<+-  damage_local init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  damage_local init  -+>>>'; flush(6)
 
 !----------------------------------------------------------------------------------------------
 ! read numerics parameter and do sanity check
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
   if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
 
   Ninstance = count(damage_type == DAMAGE_local_ID)
   allocate(param(Ninstance))
 
-  material_homogenization => material_root%get('homogenization')
+  material_homogenization => config_material%get('homogenization')
   do h = 1, material_homogenization%length
     if (damage_type(h) /= DAMAGE_LOCAL_ID) cycle
     homog => material_homogenization%get(h)

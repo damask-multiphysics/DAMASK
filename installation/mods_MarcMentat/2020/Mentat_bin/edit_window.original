@@ -1,0 +1,18 @@
+#!/bin/sh
+# This script opens a window running an editor. The default window is an
+# xterm, and the default editor is vi. These may be customized.
+
+dir=
+for d in /usr/bin /usr/bin/X11; do
+  if test -x "$d/xterm"; then
+    dir="$d"
+    break
+  fi
+done
+
+if test -z "$dir"; then
+  echo "$0: Could not find xterm"
+  exit 1
+fi
+
+"$dir/xterm" -T "vi $*" -n "vi $*" -e vi $*

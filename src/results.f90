@@ -6,8 +6,8 @@
 !--------------------------------------------------------------------------------------------------
 module results
   use DAMASK_interface
+  use parallelization
   use rotations
-  use config
   use HDF5_utilities
 #ifdef PETSc
   use PETSC
@@ -65,10 +65,10 @@ subroutine results_init(restart)
 
   character(len=pStringLen) :: commandLine
 
-  write(6,'(/,a)') ' <<<+-  results init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  results init  -+>>>'; flush(6)
 
-  write(6,'(/,a)') ' Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
-  write(6,'(a)')   ' https://doi.org/10.1007/s40192-017-0084-5'
+  print*, 'Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
+  print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL
 
   if(.not. restart) then
     resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)

@@ -10,6 +10,7 @@
 
 module crystallite
   use prec
+  use parallelization
   use IO
   use HDF5_utilities
   use DAMASK_interface
@@ -81,8 +82,6 @@ module crystallite
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
       nState, &                                                                                     !< state loop limit
       nStress                                                                                       !< stress loop limit
-    character(len=:), allocatable :: &
-      integrator                                                                                    !< integration scheme
     real(pReal) :: &
       subStepMinCryst, &                                                                            !< minimum (relative) size of sub-step allowed during cutback
       subStepSizeCryst, &                                                                           !< size of first substep when cutback
@@ -147,15 +146,15 @@ subroutine crystallite_init
     phase, &
     generic_param
 
-  write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
+  print'(/,a)', ' <<<+-  crystallite init  -+>>>'
 
-  debug_crystallite => debug_root%get('crystallite', defaultVal=emptyList)
+  debug_crystallite => config_debug%get('crystallite', defaultVal=emptyList)
   debugCrystallite%basic     = debug_crystallite%contains('basic')
   debugCrystallite%extensive = debug_crystallite%contains('extensive')
   debugCrystallite%selective = debug_crystallite%contains('selective')
-  debugCrystallite%element   = debug_root%get_asInt('element', defaultVal=1)
-  debugCrystallite%ip        = debug_root%get_asInt('integrationpoint', defaultVal=1)
-  debugCrystallite%grain     = debug_root%get_asInt('grain', defaultVal=1)
+  debugCrystallite%element   = config_debug%get_asInt('element', defaultVal=1)
+  debugCrystallite%ip        = config_debug%get_asInt('integrationpoint', defaultVal=1)
+  debugCrystallite%grain     = config_debug%get_asInt('grain', defaultVal=1)
 
   cMax = homogenization_maxNgrains
   iMax = discretization_nIP
@@ -188,7 +187,7 @@ subroutine crystallite_init
   allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
-  num_crystallite => numerics_root%get('crystallite',defaultVal=emptyDict)
+  num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
   num%subStepMinCryst        = num_crystallite%get_asFloat ('subStepMin',       defaultVal=1.0e-3_pReal)
   num%subStepSizeCryst       = num_crystallite%get_asFloat ('subStepSize',      defaultVal=0.25_pReal)
@@ -199,7 +198,6 @@ subroutine crystallite_init
   num%rtol_crystalliteStress = num_crystallite%get_asFloat ('rtol_Stress',      defaultVal=1.0e-6_pReal)
   num%atol_crystalliteStress = num_crystallite%get_asFloat ('atol_Stress',      defaultVal=1.0e-8_pReal)
   num%iJacoLpresiduum        = num_crystallite%get_asInt   ('iJacoLpresiduum',  defaultVal=1)
-  num%integrator             = num_crystallite%get_asString('integrator',       defaultVal='FPI')
   num%nState                 = num_crystallite%get_asInt   ('nState',           defaultVal=20)
   num%nStress                = num_crystallite%get_asInt   ('nStress',          defaultVal=40)
 
@@ -219,8 +217,7 @@ subroutine crystallite_init
   if(num%nState < 1)                          call IO_error(301,ext_msg='nState')
   if(num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
 
-
-  select case(num%integrator)
+  select case(num_crystallite%get_asString('integrator',defaultVal='FPI'))
     case('FPI')
       integrateState => integrateStateFPI
     case('Euler')
@@ -235,7 +232,7 @@ subroutine crystallite_init
      call IO_error(301,ext_msg='integrator')
   end select
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
 
   allocate(output_constituent(phases%length))
   do c = 1, phases%length
@@ -294,9 +291,9 @@ subroutine crystallite_init
 
 #ifdef DEBUG
   if (debugCrystallite%basic) then
-    write(6,'(a42,1x,i10)') '    # of elements:                       ', eMax
-    write(6,'(a42,1x,i10)') '    # of integration points/element:     ', iMax
-    write(6,'(a42,1x,i10)') 'max # of constituents/integration point: ', cMax
+    print'(a42,1x,i10)', '    # of elements:                       ', eMax
+    print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
+    print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
     flush(6)
   endif
 
@@ -327,24 +324,24 @@ function crystallite_stress()
   if (debugCrystallite%selective &
       .and. FEsolving_execElem(1) <= debugCrystallite%element &
       .and.                          debugCrystallite%element <= FEsolving_execElem(2)) then
-      write(6,'(/,a,i8,1x,i2,1x,i3)')    '<< CRYST stress >> boundary and initial values at el ip ipc ', &
+      print'(/,a,i8,1x,i2,1x,i3)',    '<< CRYST stress >> boundary and initial values at el ip ipc ', &
         debugCrystallite%element,debugCrystallite%ip, debugCrystallite%grain
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> F  ', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> F  ', &
                                           transpose(crystallite_partionedF(1:3,1:3,debugCrystallite%grain, &
                                                       debugCrystallite%ip,debugCrystallite%element))
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> F0 ', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> F0 ', &
                                           transpose(crystallite_partionedF0(1:3,1:3,debugCrystallite%grain, &
                                                       debugCrystallite%ip,debugCrystallite%element))
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Fp0', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Fp0', &
                                           transpose(crystallite_partionedFp0(1:3,1:3,debugCrystallite%grain, &
                                                       debugCrystallite%ip,debugCrystallite%element))
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Fi0', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Fi0', &
                                           transpose(crystallite_partionedFi0(1:3,1:3,debugCrystallite%grain, &
                                                       debugCrystallite%ip,debugCrystallite%element))
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Lp0', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Lp0', &
                                           transpose(crystallite_partionedLp0(1:3,1:3,debugCrystallite%grain, &
                                                       debugCrystallite%ip,debugCrystallite%element))
-    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST stress >> Li0', &
+    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Li0', &
                                           transpose(crystallite_partionedLi0(1:3,1:3,debugCrystallite%grain, &
                                                       debugCrystallite%ip,debugCrystallite%element))
   endif
@@ -393,7 +390,7 @@ function crystallite_stress()
 
 #ifdef DEBUG
     if (debugCrystallite%extensive) &
-      write(6,'(a,i6)') '<< CRYST stress >> crystallite iteration ',NiterationCrystallite
+      print'(a,i6)', '<< CRYST stress >> crystallite iteration ',NiterationCrystallite
 #endif
     !$OMP PARALLEL DO PRIVATE(formerSubStep)
     elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -575,7 +572,7 @@ subroutine crystallite_stressTangent
         lhs_3333 = crystallite_subdt(c,i,e)*math_mul3333xx3333(dSdFe,temp_3333) &
                  + math_mul3333xx3333(dSdFi,dFidS)
 
-        call math_invert(temp_99,error,math_identity2nd(9)+math_3333to99(lhs_3333))
+        call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
         if (error) then
           call IO_warning(warning_ID=600,el=e,ip=i,g=c, &
                           ext_msg='inversion error in analytic tangent calculation')
@@ -946,7 +943,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
         do o=1,3; do p=1,3
           dFe_dLp(o,1:3,p,1:3) = - dt * A(o,p)*transpose(invFi_new)                                 ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
         enddo; enddo
-        dRLp_dLp = math_identity2nd(9) &
+        dRLp_dLp = math_eye(9) &
                  - math_3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dS,dS_dFe),dFe_dLp))
         temp_9 = math_33to9(residuumLp)
         call dgesv(9,1,dRLp_dLp,9,devNull_9,temp_9,9,ierr)                                          ! solve dRLp/dLp * delta Lp = -res for delta Lp
@@ -991,7 +988,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
       do o=1,3; do p=1,3
         dFi_dLi(1:3,1:3,o,p) = matmul(matmul(Fi_new,dFi_dLi(1:3,1:3,o,p)),Fi_new)
       enddo; enddo
-      dRLi_dLi  = math_identity2nd(9) &
+      dRLi_dLi  = math_eye(9) &
                 - math_3333to99(math_mul3333xx3333(dLi_dS,  math_mul3333xx3333(dS_dFe, dFe_dLi) &
                                                           + math_mul3333xx3333(dS_dFi, dFi_dLi)))  &
                 - math_3333to99(math_mul3333xx3333(dLi_dFi, dFi_dLi))
@@ -1564,7 +1561,7 @@ subroutine crystallite_restartWrite
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName, datasetName
 
-  write(6,'(a)') ' writing field and constitutive data required for restart to file';flush(6)
+  print*, ' writing field and constitutive data required for restart to file';flush(6)
 
   write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName,'a')
@@ -1605,7 +1602,7 @@ subroutine crystallite_restartRead
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName, datasetName
 
-  write(6,'(/,a,i0,a)') ' reading restart information of increment from file'
+  print'(/,a,i0,a)', ' reading restart information of increment from file'
 
   write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName)

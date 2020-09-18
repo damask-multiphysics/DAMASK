@@ -48,7 +48,7 @@ module CPFEM
   end type tNumerics
 
   type(tNumerics), private :: num
- 
+
   type, private :: tDebugOptions
     logical :: &
       basic, &
@@ -58,9 +58,9 @@ module CPFEM
       element, &
       ip
   end type tDebugOptions
- 
+
   type(tDebugOptions), private :: debugCPFEM
- 
+
   public :: &
     CPFEM_general, &
     CPFEM_initAll, &
@@ -74,6 +74,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll
 
+  call parallelization_init
   call DAMASK_interface_init
   call prec_init
   call IO_init
@@ -81,7 +82,7 @@ subroutine CPFEM_initAll
   call math_init
   call rotations_init
   call YAML_types_init
-  call YAML_init
+  call YAML_parse_init
   call HDF5_utilities_init
   call results_init(.false.)
   call discretization_marc_init
@@ -105,33 +106,32 @@ subroutine CPFEM_init
     num_commercialFEM, &
     debug_CPFEM
 
-  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
-  flush(6)
+  print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(6)
 
   allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
 
 !------------------------------------------------------------------------------
-! read numerical parameters and do sanity check 
-  num_commercialFEM => numerics_root%get('commercialFEM',defaultVal=emptyDict)
+! read numerical parameters and do sanity check
+  num_commercialFEM => config_numerics%get('commercialFEM',defaultVal=emptyDict)
   num%iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
   if (num%iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
 
 !------------------------------------------------------------------------------
-! read debug options 
+! read debug options
 
-  debug_CPFEM => debug_root%get('cpfem',defaultVal=emptyList)
+  debug_CPFEM => config_debug%get('cpfem',defaultVal=emptyList)
   debugCPFEM%basic     = debug_CPFEM%contains('basic')
   debugCPFEM%extensive = debug_CPFEM%contains('extensive')
   debugCPFEM%selective = debug_CPFEM%contains('selective')
-  debugCPFEM%element   = debug_root%get_asInt('element',defaultVal = 1)
-  debugCPFEM%ip        = debug_root%get_asInt('integrationpoint',defaultVal = 1)
+  debugCPFEM%element   = config_debug%get_asInt('element',defaultVal = 1)
+  debugCPFEM%ip        = config_debug%get_asInt('integrationpoint',defaultVal = 1)
 
   if(debugCPFEM%basic) then
-    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
-    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
-    write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
+    print'(a32,1x,6(i8,1x))',   'CPFEM_cs:              ', shape(CPFEM_cs)
+    print'(a32,1x,6(i8,1x))',   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+    print'(a32,1x,6(i8,1x),/)', 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
     flush(6)
   endif
 
@@ -170,14 +170,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
   elCP = mesh_FEM2DAMASK_elem(elFE)
 
   if (debugCPFEM%basic .and. elCP == debugCPFEM%element .and. ip == debugCPFEM%ip) then
-    write(6,'(/,a)') '#############################################'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','element',        elCP,         '#'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','ip',             ip,           '#'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','cycleCounter',   cycleCounter, '#'
-    write(6,'(a1,a22,1x,i8,a13)')   '#','computationMode',mode,         '#'
+    print'(/,a)', '#############################################'
+    print'(a1,a22,1x,i8,a13)',   '#','element',        elCP,         '#'
+    print'(a1,a22,1x,i8,a13)',   '#','ip',             ip,           '#'
+    print'(a1,a22,1x,i8,a13)',   '#','cycleCounter',   cycleCounter, '#'
+    print'(a1,a22,1x,i8,a13)',   '#','computationMode',mode,         '#'
     if (terminallyIll) &
-    write(6,'(a,/)') '#           --- terminallyIll ---           #'
-    write(6,'(a,/)') '#############################################'; flush (6)
+    print'(a,/)', '#           --- terminallyIll ---           #'
+    print'(a,/)', '#############################################'; flush (6)
   endif
 
   if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
@@ -201,14 +201,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       call random_number(rnd)
       if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
       CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
-      CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
+      CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
       updateJaco = mod(cycleCounter,num%iJacoStiffness) == 0
       FEsolving_execElem = elCP
       FEsolving_execIP   = ip
       if (debugCPFEM%extensive) &
-        write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
+        print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
       call materialpoint_stressAndItsTangent(updateJaco, dt)
 
       terminalIllness: if (terminallyIll) then
@@ -216,7 +216,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
         call random_number(rnd)
         if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
         CPFEM_cs(1:6,ip,elCP)        = ODD_STRESS * rnd
-        CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_identity2nd(6)
+        CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
       else terminalIllness
 
@@ -246,9 +246,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
     if (debugCPFEM%extensive &
          .and. ((debugCPFEM%element == elCP .and. debugCPFEM%ip == ip) .or. .not. debugCPFEM%selective)) then
-        write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') &
+        print'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)', &
           '<< CPFEM >> stress/MPa at elFE ip ',   elFE, ip, CPFEM_cs(1:6,ip,elCP)*1.0e-6_pReal
-        write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') &
+        print'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))', &
           '<< CPFEM >> Jacobian/GPa at elFE ip ', elFE, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))*1.0e-9_pReal
         flush(6)
     endif

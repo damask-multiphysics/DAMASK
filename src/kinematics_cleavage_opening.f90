@@ -45,15 +45,14 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
     kinematics, &
     kinematic_type 
        
-  write(6,'(/,a)') ' <<<+-  kinematics_cleavage_opening init  -+>>>'
+  print'(/,a)', ' <<<+-  kinematics_cleavage_opening init  -+>>>'
 
   myKinematics = kinematics_active('cleavage_opening',kinematics_length)
-  
   Ninstance = count(myKinematics)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(param(Ninstance))
   allocate(kinematics_cleavage_opening_instance(phases%length), source=0)
 

@@ -11,6 +11,7 @@ program DAMASK_mesh
   use PetscDM
   use prec
   use DAMASK_interface
+  use parallelization
   use IO
   use math
   use CPFEM2
@@ -81,7 +82,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------- 
 ! reading field information from numerics file and do sanity checks
-  num_mesh => numerics_root%get('mesh', defaultVal=emptyDict)
+  num_mesh => config_numerics%get('mesh', defaultVal=emptyDict)
   stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_mesh%get_asInt('maxCutBack',defaultVal=3)
 
@@ -95,7 +96,7 @@ program DAMASK_mesh
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
-  fileContent = IO_read_ASCII(trim(loadCaseFile))
+  fileContent = IO_readlines(trim(interface_loadFile))
   do l = 1, size(fileContent)
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines

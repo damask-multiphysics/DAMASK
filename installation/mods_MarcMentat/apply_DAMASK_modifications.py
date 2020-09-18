@@ -8,6 +8,8 @@ from pathlib import Path
 import damask
 
 marc_version = float(damask.environment.options['MARC_VERSION'])
+if int(marc_version) == marc_version:
+    marc_version = int(marc_version)
 msc_root     = Path(damask.environment.options['MSC_ROOT'])
 damask_root  = damask.environment.root_dir
 
@@ -21,8 +23,8 @@ parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
 def copy_and_replace(in_file,dst):
     with open(in_file) as f:
         content = f.read()
-    content = content.replace('%INSTALLDIR%',str(damask_root/'bin'))
-    content = content.replace('%VERSION%',str(marc_version).replace('.0',''))
+    content = content.replace('%INSTALLDIR%',msc_root)
+    content = content.replace('%VERSION%',str(marc_version))
     content = content.replace('%EDITOR%', parser.parse_args().editor)
     with open(dst/Path(in_file).name,'w') as f:
         f.write(content)

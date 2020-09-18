@@ -114,7 +114,7 @@ subroutine FEM_mech_init(fieldBC)
 
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
-  num_mesh => numerics_root%get('mesh',defaultVal=emptyDict)
+  num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
   num%integrationOrder  = num_mesh%get_asInt('integrationorder',defaultVal = 2)
   num%itmax             = num_mesh%get_asInt('itmax',defaultVal=250)
   num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
@@ -574,7 +574,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
     else
       K_e = K_eA
     endif
-    K_e = (K_e + eps*math_identity2nd(cellDof)) * abs(detJ)
+    K_e = (K_e + eps*math_eye(cellDof)) * abs(detJ)
 #ifndef __INTEL_COMPILER
     pK_e(1:cellDOF**2) => K_e
 #else

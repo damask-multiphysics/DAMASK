@@ -1,0 +1,4208 @@
+#!/bin/ksh
+##############################################################################
+#                                                                            #
+#         run_marc - run a marc job                                          #
+#         -------------------------                                          #
+#                                                                            #
+#  usage: run_marc -j jid { options }                                        #
+#                                                                            #
+#  where standard options are:                        required:   defaults:  #
+#  --------------------------                                                #
+#                                                                            #
+#  -j*   jid         job id number.                   ** YES **    .         #
+#  -pr*  prog        program name.                        .        marc      #
+#  -v*   y|n         do or do not verify inputs.          .        yes       #
+#  -q*   s|l|v|b|f   batch queue name or background,      .        short     #
+#                    foreground.                                             #
+#  -b*               as alternative to option -q*                            #
+#                                                                            #
+# ( batch queues only :                                                      #
+#  -pq*              intra queue priority.                .        .         #
+#  -at   DATE/TIME   delay start of job.                  .        .         #
+#                    format : January,1,1990,12:31                           #
+#                    or     : today,5pm                                      #
+#  -cpu* secs        job CPU limit                        .        .       ) #
+#                                                                            #
+#  -r*   rid         restart file job id.                 .        .         #
+#  -si*  sid         substructure file id.                .        .         #
+#  -pi*  post        post file job id.                    .        .         #
+#  -de*  did         defaults file                        .        no        #
+#  -vf   vid         viewfactor                           .        no        #
+#                                                                            #
+#  -u*   user        user subroutine.                     .        .         #
+#  -obj  obj         user objects or libraries.           .        .         #
+#  -sa*  y|n         do or do not save load module.       .        no        #
+#  -me               manual remeshing control             .        no        #
+#  -ml               memory limit in Mbyte                                   #
+#  -mo               This option is deprecated. As of Marc 2015, only        #
+#                    the integer*8 version is available.                     #
+#  -mpi              selects MPI version                                     #
+#                    each platform has a default MPI version and some        #
+#                    have an alternative version. see the include file       #
+#                    for the respective platform                             #
+#                    MPI_DEFAULT defines the default MPI version             #
+#                    MPI_OTHER   defines versions one can switch to          #
+#  -dcoup            for contact decoupling                                  #
+#                    currently not supported                                 #
+#  -dir              directory where the job i/o should take place.          #
+#                    defaults to current directory.                          #
+#  -sdir             directory where scratch files are created               #
+#                    defaults to current directory.                          #
+#                                                                            #
+#  -alloc            only perform memory allocation test, no analysis        #
+#  -list y           only list options in the input file, no analysis        #
+#  -fe num           set feature number "num" for the run. only one allowed  #
+#  -dytran           flag to switch from Dytran to Marc                      #
+#                    dytran = 0, program will run w/o Marc-Dytran Switch     #
+#                           = 1, program will restart Marc after Dytran run  #
+#                          >= 2, Not supported yet.                          #
+#                    currently not supported                                 #
+#  -ou               force analysis to use out-of-core control               #
+#                           =0,  not used                                    #
+#                           =1,  element storage out-of-core                 #
+#  -dll              run marc using shared library libmarc.so and exe_marc   #
+#                           =1, used                                         #
+#                           =2, do not free streaming input memory           # 
+#                           =3, run with marc input deck                     #
+#  -trk              run marc for post-tracking                              #
+#  -gpuid            run marc using GPGPU capability                         #
+#                    specify gpuid on to be used in the analysis. Multiple   #
+#                    IDs may be assigned for DDM runs.                       #
+#                    Separate a list of IDs with a colon. Each DMP           #
+#                    process will be assigned a GPU ID in round robin fastion#
+#                           = 0                                              #
+#                           = 0:1 etc...                                     #
+#                                                                            #
+#  where parallel options are:                                               #
+#  --------------------------                                                #
+#                                                                            #
+#  itree, host, and comp options are available for the domain                #
+#  decomposition only.                                                       #
+#  MARC_NUMBER_OF_THREADS, nthread, and dir options always available.        #
+#                                                                            #
+#                                                                            #
+#  -nprocd           number of domains.                                      #
+#                    defaults to single domain solution.                     #
+#  -nprocds          number of domains if single input file.                 #
+#                    defaults to single domain solution.                     #
+#  -nps              same as -nprocds.                                       #
+#  -nsolver          number of solver  tasks for solver types 12 and 13      #
+#                    these are distributed tasks operating via MPI           #
+#  -nthread_elem     number of threads for element assembly and recovery     #
+#                    = 0: use defaults.                                      #
+#                         defaults to 1 for single domain solution.          #
+#                         defaults to number of domains for multi-domain     #
+#                         solution.                                          #
+#                    > 1: number of threads to be used by element assembly   #
+#                         recovery.                                          #
+#                    Also can be set through MARC_NUMBER_OF_THREADS          #
+#                    environment variable.                                   #
+#                    if both specified, -nthread_elem option will be used.   #
+#                    defaults if neither MARC_NUMBER_OF_THREADS environment  #
+#                    variable set nor -nthread_elem specified.               #
+#  -nthread_solver   number of threads for solver types 6, 8, and 11         #
+#                    = 0: use defaults.                                      #
+#                         defaults to 1 for single domain solution.          #
+#                         defaults to number of domains for multi-domain     #
+#                         solution.                                          #
+#                    > 1: number of threads to be used by 6, 8, and 11       #
+#                    Also can be set through MARC_NUMBER_OF_THREADS          #
+#                    environment variable.                                   #
+#                    if both specified, -nthread_solver option will be used. #
+#                    defaults if neither MARC_NUMBER_OF_THREADS environment  #
+#                    variable set nor -nthread_solver specified.             #
+#  -nthread          Same as -nthread_solver.                                #
+#  -itree            message passing tree type for domain decomposition.     #
+#                    for debugging purposes; should not normally be used.    #
+#  -host             hostfile name for distributed execution on network.     #
+#                    defaults to no hostfile, unless jobid.defhost exists.   #
+#                    if jobid.defhost exists, only -np(s) necessary          #
+#  -comp* y|n        to be used with user routines on a network of           #
+#                    incompatible machines.                                  #
+#                    if set to no, a separate executable will be created     #
+#                    for each machine on the network.                        #
+#                    if set to yes, the executable located on the machine    #
+#                    from which marc is started will be used on all machines.#
+#                    defaults to no if O/S versions different on machines.   #
+#                                                                            #
+#  -ci y|n           copy input files to remote hosts (default: yes)         #
+#                    if "yes", input files are automatically copied to       #
+#                    remote hosts for a network run if necessary.            #
+#  -cr y|n           copy post files from remote hosts (default: yes)        #
+#                    if "yes", post files are automatically copied back from #
+#                    remote hosts for a network run if necessary.            #
+##############################################################################
+# set DIR to the directory in which this script is
+REALCOM="`/bin/ls -l $0 |awk '{ print $NF; }'`"
+DIR=`dirname $REALCOM`
+# make sure DIR has an absolute path
+case $DIR in
+  \/*)
+    ;;
+  *)
+    DIR=`pwd`/$DIR
+    ;;
+esac
+DIRSCRIPT=$DIR
+AWK=awk
+ARCH=`uname -a | cut -f 1 -d " "`
+# Sun has a bad awk, use nawk instead
+if test $ARCH = "SunOS"
+then
+ AWK=nawk
+fi
+BASENAME=basename
+# Sun has an incorrect /bin/basename, check if /usr/ucb/basename exists
+if test $ARCH = "SunOS"
+then
+ if test -x /usr/ucb/basename
+ then
+  BASENAME=/usr/ucb/basename
+ fi
+fi
+
+# echo command line in the case of ECHO_COMMAND is true
+if test "$ECHO_COMMAND" = true ; then
+ echo command "$0" "$@"
+fi
+
+#
+#  "mode" selects version, i4 or i8
+#    default is i4
+#    this can be changed by a file run_marc_defaults
+#    located in the tools directory of the Marc installation
+#    or in the user's home directory
+#      format:
+#         MARC_MODE i8
+#    it can also be set by the environmental variable MARC_INTEGER_SIZE
+#    and by the command line option "-mo"
+#    
+mode=
+modeerror=
+modeoption=
+if test -f $DIRSCRIPT/run_marc_defaults; then
+ line=`$AWK '{if ($1 == "MARC_MODE") {print $1}}' $DIRSCRIPT/run_marc_defaults`
+ if test "$line" = "MARC_MODE"; then
+  echo 
+  echo warning: the option MARC_MODE is deprecated, as of Marc 2015, only the integer*8 version is available
+  echo 
+  line=
+ fi
+ line=`$AWK '{if ($1 == "MARC_MODE") {print $2}}' $DIRSCRIPT/run_marc_defaults`
+ line=`echo $line | $AWK '{print $NF}'`
+ if test "$line" = "i4"; then
+  modeerror="defaults file $DIRSCRIPT/run_marc_defaults used mode $line ; this must be i8"
+  modeoption=error
+  echo $modeerror
+ fi
+ if test "$line" = "i8"; then
+  mode=i8
+ fi
+fi
+if test -f $HOME/run_marc_defaults; then
+ line=`$AWK '{if ($1 == "MARC_MODE") {print $1}}' $HOME/run_marc_defaults`
+ if test "$line" = "MARC_MODE"; then
+  echo 
+  echo warning: the option MARC_MODE is deprecated, as of Marc 2015, only the integer*8 version is available
+  echo
+  line=
+ fi
+ line=`$AWK '{if ($1 == "MARC_MODE") {print $2}}' $HOME/run_marc_defaults`
+ line=`echo $line | $AWK '{print $NF}'`
+ if test "$line" = "i4"; then
+  modeerror="defaults file $HOME/run_marc_defaults used mode $line ; this must be i8"
+  modeoption=error
+  echo $modeerror
+ fi
+ if test "$line" = "i8"; then
+  mode=i8
+ fi
+fi
+if test -n "$MARC_INTEGER_SIZE" ; then
+ mode=$MARC_INTEGER_SIZE
+fi
+if test -z "$mode" ; then
+ mode=i8
+fi
+case $mode in
+    i4) 
+    modeerror="bad value for MARC_INTEGER_SIZE variable; only i8 is supported."
+    modeoption=error
+    echo $modeerror
+    ;;
+    i8)
+    MARC_INTEGER_SIZE=i8
+    export MARC_INTEGER_SIZE
+    ;;
+    *)
+    echo "bad value for MARC_INTEGER_SIZE variable; only i8 is supported."
+    exit
+    ;;
+esac
+
+setmode=false
+for arg in $* ; do
+ if $setmode ; then
+     mode=$arg
+     case $mode in
+	 i4) 
+     modeerror="bad value for mode option; only i8 is supported."
+     modeoption=error
+     echo
+     echo $modeerror
+     echo
+	 ;;
+	 i8)
+	 MARC_INTEGER_SIZE=i8
+	 export MARC_INTEGER_SIZE
+	 ;;
+	 *)
+	 echo " "
+	 echo "error, version mode must be i8"
+	 echo " "
+	 echo "       use  -mo i8 "
+	 echo " "
+	 exit
+	 ;;
+     esac
+     setmode=false
+ fi
+ if [ ${arg}X = -moX -o ${arg}X = -MOX ] ; then
+  echo  
+  echo warning: the option -mo is deprecated, as of Marc 2015, only the integer*8 version is available
+  echo
+  setmode=true
+ fi
+ if [ ${arg}X = -i8X -o ${arg}X = -I8X ] ; then
+  MARC_INTEGER_SIZE=i8
+  export MARC_INTEGER_SIZE
+ fi
+ if [ ${arg}X = -i4X -o ${arg}X = -I4X ] ; then
+  modeerror="bad value for mode option; only i8 is supported."
+  modeoption=error
+  echo
+  echo $modeerror
+  echo
+ fi
+done
+
+# set to i4 version for 32 bit Linux
+if test "`uname -s`" = "Linux"; then
+ if test "`uname -m`" = "i686"; then
+  mode=i4
+  MARC_INTEGER_SIZE=i4
+  export MARC_INTEGER_SIZE
+ fi
+fi
+
+
+. "$DIR/getarch"
+
+. $MARC_INCLUDE
+#
+
+#
+#  Dynamically determine the echo syntax
+#
+
+case "`echo '\c'`" in
+   '\c')
+      ECHO='echo -n'
+      ECHOTXT=' '
+      ;;
+   *)
+      ECHO='echo'
+      ECHOTXT=' \c'
+      ;;
+esac
+
+#  
+#  Variables for the MARC environment
+#
+
+PRODUCT="Marc"
+EXITMSG=$MARC_TOOLS/MESSAGES
+export EXITMSG
+FLEXDIR=$DIR/../flexlm/licenses
+export FLEXDIR
+TIMCHK=3600
+export TIMCHK
+BINDIR=$MARC_BIN
+export BINDIR
+AFMATDAT=$MARC_RUNTIME/AF_flowmat/
+export AFMATDAT
+export MESHERDIR
+MSC_LICENSE_FINPROC=0
+export MSC_LICENSE_FINPROC
+#
+# define directory path to global unified material database
+#
+MATFILE=
+export MATFILE
+
+#
+# define memory limit
+#  first set to MEMLIMIT from include
+#  -ml option overrules if specified
+memlimit=$MEMLIMIT
+#
+# Define share library path based on platforms
+# This is required for using the Patran Mesher
+#
+if test $MACHINENAME = "HP"
+then
+  SHLIB_PATH=$MARC_LIB:$MARC_LIB_SHARED:$SHLIB_PATH
+  export SHLIB_PATH
+fi
+# the one for IBM is defined futher down
+
+LD_LIBRARY_PATH=$MARC_LIB_SHARED:$LD_LIBRARY_PATH:$SFMATDIR
+if test -f "/etc/redhat-release"; then
+  ver=`cat /etc/redhat-release | sed 's/.* release \([0-9]\).\([0-9]\+\) .*/\1\2/'`
+  case "$ver" in
+    6*) LD_LIBRARY_PATH="${MARC_LIB_SHARED}rh67:$LD_LIBRARY_PATH" ;;
+  esac
+fi
+LD_LIBRARY_PATH=$MARC_LIB:$LD_LIBRARY_PATH
+LD_LIBRARY_PATH=$MESHERDIR:$LD_LIBRARY_PATH
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+LD_LIBRARY64_PATH=$MARC_LIB:$LD_LIBRARY64_PATH
+LD_LIBRARYN32_PATH=$MARC_LIB:$LD_LIBRARYN32_PATH
+export LD_LIBRARY_PATH
+export LD_LIBRARY64_PATH
+export LD_LIBRARYN32_PATH
+ 
+atexit() {
+kill -15 $$
+#
+if test $MPITYPE = "myrinet"
+then
+ if test -f "$host_filt"
+ then
+  /bin/rm $host_filt
+ fi
+fi
+}
+
+trap "atexit" 2
+
+#
+# defaults
+#
+
+prog=marc
+exefile=marc
+jid=
+rid=
+pid=
+sid=
+did=
+vid=
+user=
+usersubname=
+objs=
+qid=background
+cpu=
+priority=
+att=
+trk=
+verify=yes
+prgsav=no
+rmdll=no
+cpdll=no
+progdll=
+pathdll=
+error=
+nprocd=0
+nprocdddm=1
+nprocdddmprint=
+icreated=0
+nprocdarg=
+nsolver=0
+nsolverarg=-ns
+if test $nprocds
+then
+ if test $nprocds -gt 1
+ then
+  nprocdddm=$nprocds
+  nprocdddmprint=$nprocds
+  icreated=1
+  nprocdarg=-nprocds
+ fi
+fi
+ntprint=0
+nt=-1
+nte=-1
+nts=-1
+ntarg=-nt
+ntearg=-nte
+ntsarg=-nts
+nteprint=
+ntsprint=
+oversubscribe=false
+gpuids=
+nauto=
+ndcoup=0
+ndytran=0
+noutcore=0
+dllrun=0
+mesh=0
+itree=0
+iam=
+ddm_arc=0
+link=
+trkrun=0
+DIRJOB=`pwd`
+DIRSCR=$DIRJOB
+DIRSCRSET=
+autoforge=0
+dotdat=.dat
+dotdefhost=.defhost
+host=
+numhost=
+mfile=
+userhost=
+makebdf=
+cpinput=yes
+cpresults=yes
+marcdll=libmarc.$EXT_DLL
+# define hostname and strip off extensions (alpha.aaa.com)
+thishost=`hostname`
+thishost=${thishost%%.*}
+compatible=unknown
+numfield=1
+justlist=
+feature=
+mpioption=false
+iprintsimufact=
+SRCLIB=$MARC_LIB/srclib.a
+MDSRCLIB=$MARC_LIB/mdsrc.a
+#
+# check run_marc_defaults file for default MPI setting
+#    located in the tools directory of the Marc installation
+#    or in the user's home directory
+#      format:
+#         MARC_MPI <mpiversion>
+#    
+value=
+file=
+if test -f $DIRSCRIPT/run_marc_defaults; then
+ value=`$AWK '{if ($1 == "MARC_MPI") {print $2}}' $DIRSCRIPT/run_marc_defaults`
+ value=`echo $value | $AWK '{print $NF}'`
+ if test -n "$value"; then
+  file=$DIRSCRIPT/run_marc_defaults
+ fi
+fi
+if test -f $HOME/run_marc_defaults; then
+ value=`$AWK '{if ($1 == "MARC_MPI") {print $2}}' $HOME/run_marc_defaults`
+ value=`echo $value | $AWK '{print $NF}'`
+ if test -n "$value"; then
+  file=$HOME/run_marc_defaults
+ fi
+fi
+if test -n "$value"; then
+  MARC_MPITYPE=$value
+  notok=true
+  for i in "$MPI_OTHER"; do
+   if test "$MARC_MPITYPE" = "$i"; then
+     notok=false
+   fi
+  done
+  if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then 
+   notok=false
+  fi
+  if $notok; then
+   echo " "
+   echo "  error, incorrect option for MARC_MPI"
+   echo "    defined in $file: $MARC_MPITYPE"
+   echo "    valid options: $MPI_OTHER $MPI_DEFAULT"
+   echo " "
+   exit
+  fi
+  if test "$value" != "$MPI_DEFAULT"; then
+    exefile=marc_$value
+    . $MARC_INCLUDE
+    MDSRCLIB=$MARC_LIB/mdsrc.a_$value
+    if test "$MUMPSSOLVER" = MUMPS; then
+     MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps_$value.a"
+    fi
+  fi
+fi
+# 
+#
+# allow scratch directory to be specified with environmental variable
+# MARCSCRATCH
+if test $MARCSCRATCH
+then
+ if test -d $MARCSCRATCH
+ then
+  DIRSCR=$MARCSCRATCH
+ else
+  echo "error, scratch directory '$MARCSCRATCH'"
+  echo "       specified via environmental variable MARCSCRATCH does not exist"
+  exit
+ fi
+fi
+#
+##############################################################################
+#           parse input - arguments always come in pairs                     #
+##############################################################################
+
+arg=$1
+if [ ${arg}X = -i8X -o ${arg}X = -I8X ] ; then
+ shift
+ arg=$1
+fi
+while [ -n "$arg" ]
+do
+	shift
+	value=$1
+	case $arg in
+                -al* | -AL*)
+                    LD_LIBRARY_PATH=$CUDALIB1:$LD_LIBRARY_PATH
+                    export LD_LIBRARY_PATH
+                    $MARC_BIN/marc -alloc 1
+                    exit
+                ;;
+                -li* | -LI*)
+		    justlist=yes
+		;;
+                -fe* | -FE*)
+                    feature=$value
+
+		;;
+		-pr* | -PR*)
+                        if test `dirname $value` = '.'
+                        then
+                          prog=`$BASENAME $value .marc`
+                          progdll=`$BASENAME $value`
+                        else
+                          prog=`dirname $value`/`$BASENAME $value .marc`
+                          progdll=`dirname $value`/`$BASENAME $value`
+                        fi
+                        prdir=`dirname $value`
+                        case $prdir in
+                            \/*)
+                              ;;
+                            *)
+                              prog=`pwd`/$prdir/$prog
+                              ;;
+                        esac
+		;;
+		-j* | -J*)
+                        jid=`$BASENAME $value $dotdat`
+                        DIRJID=`dirname $value`
+                        case $DIRJID in
+                           \/*)
+                             ;;
+                           *)
+                            DIRJID=`pwd`/$DIRJID
+                             ;;
+                        esac        
+		;;
+		-r* | -R*)
+			rid=`$BASENAME $value .t08`
+                        DIRRID=`dirname $value`
+                        case $DIRRID in
+                           \/*)
+                             ;;
+                           *)
+                            DIRRID=`pwd`/$DIRRID
+                             ;;
+                        esac        
+		;;
+		-si* | -SI*)
+			sid=$value
+                        DIRSID=`dirname $value`
+                        case $DIRSID in
+                           \/*)
+                             ;;
+                           *)
+                            DIRSID=`pwd`/$DIRSID
+                             ;;
+                        esac        
+		;;
+		-pi* | -PI*)
+                        if test -f $value.t19
+                        then
+                         pid=`$BASENAME $value .t19`
+                        else
+                         pid=`$BASENAME $value .t16`
+                        fi
+                        DIRPID=`dirname $value`
+                        case $DIRPID in
+                           \/*)
+                             ;;
+                           *)
+                            DIRPID=`pwd`/$DIRPID
+                             ;;
+                        esac        
+		;;
+                -bdf | -BDF)
+                        makebdf=1
+                ;;
+                -de* | -DE*)
+                        did=`$BASENAME $value $dotdat`
+                        DIRDID=`dirname $value`
+                        case $DIRDID in
+                           \/*)
+                             ;;
+                           *)
+                            DIRDID=`pwd`/$DIRDID
+                             ;;
+                        esac        
+                ;;
+                -vf  | -VF)
+                        vid=`$BASENAME $value .vfs`
+                        DIRVID=`dirname $value`
+                        case $DIRVID in
+                           \/*)
+                             ;;
+                           *)
+                            DIRVID=`pwd`/$DIRVID
+                             ;;
+                        esac        
+                ;;
+		-u* | -U*)
+                        user=`dirname $value`/`$BASENAME $value .f`
+                        usersubname=$user
+                        basefile=`$BASENAME $value`
+                        if test ${basefile##*.} = f
+                        then
+                         user=`dirname $value`/`$BASENAME $value .f`
+                         usersubname=$user.f
+                        elif test ${basefile##*.} = F
+                        then
+                         user=`dirname $value`/`$BASENAME $value .F`
+                         usersubname=$user.F
+                        elif test ${basefile##*.} = f90
+                        then
+                         user=`dirname $value`/`$BASENAME $value .f90`
+                         usersubname=$user.f90
+                        elif test ${basefile##*.} = F90
+                        then
+                         user=`dirname $value`/`$BASENAME $value .F90`
+                         usersubname=$user.F90
+                        fi
+                        case $user in
+                           \/*)
+                             ;;
+                           *)
+                            user=`pwd`/$user
+                            usersubname=`pwd`/$usersubname
+                             ;;
+                        esac
+                        if test ! -f $usersubname
+                        then
+                         if test -f $usersubname.f 
+                         then
+                          usersubname=$usersubname.f 
+                         elif test -f $usersubname.F 
+                         then
+                          usersubname=$usersubname.F
+                         elif test -f $usersubname.f90
+                         then
+                          usersubname=$usersubname.f90
+                         elif test -f $usersubname.F90
+                         then
+                          usersubname=$usersubname.F90
+                         fi
+                        fi
+		;;
+		-obj | -OBJ)
+			objs="$value"
+		;;
+		-q* | -Q*)
+			qid=$value
+		;;
+		-b* | -B*)
+			case $value in
+				y* | Y*)
+				qid=background
+				;;
+				n* | N*)
+				qid=foreground
+				;;
+				*)
+				;;
+			esac
+		;;
+		-at | -AT)
+			att=$value
+		;;
+		-cpu* | -CPU*)
+			cpu=$value
+		;;
+		-pq | -PQ*)
+			priority=$value
+		;;
+		-v* | -V*)
+			verify=$value
+		;;
+		-sa* | -SA*)
+			prgsav=$value
+		;;
+		-np* | -NP*)
+			nprocdddm=$value
+			nprocdddmprint=$value
+			case $arg in
+				-nps* | -NPS* | -nprocds* | -NPROCDS*)
+				icreated=1
+				nprocdarg=-nprocds
+				;;
+			esac
+			case $arg in
+				-np | -NP | -nprocd | -NPROCD)
+				icreated=0
+				nprocdarg=-nprocd
+				;;
+			esac
+		;;
+		-ns* | -NS*)
+			nsolver=$value
+		;;
+		-nt* | -NT*)
+			case $arg in
+				-nte | -NTE | -nthread_e* | -NTHREAD_E*)
+				nte=$value
+				;;
+			esac
+			case $arg in
+				-nts | -NTS | -nthread_s* | -NTHREAD_S*)
+				nts=$value
+				;;
+			esac
+			case $arg in
+				-nt | -NT | -nth* | -NTH* | -nthread* | -NTHREAD*)
+				nt=$value
+				;;
+			esac
+		;;
+		-gp* | -GP*)
+			gpuids=$value
+		;;
+		-it* | -IT*)
+			itree=$value
+		;;
+		-iam | -IAM)
+			iam=$value
+			case $value in
+				sfg | sfm | sim)
+				iprintsimufact=true
+				;;
+			esac
+		;;
+                -au* | -AU*)
+                        nauto=$value
+                        echo  
+                        echo warning: the option -au is no longer supported and will be ignored
+                        echo
+                ;;
+                -dc* | -DC*)
+                        ndcoup=$value
+                ;;
+                -dy* | -DY*)
+                        ndytran=$value
+                ;;
+                -ou* | -OU*)
+                        noutcore=$value
+                ;;
+                -dll | -DLL)
+                        dllrun=$value
+                ;;
+                -trk | -TRK)
+                        trkrun=$value
+                ;;
+                -ddm | -DDM)
+                        ddm_arc=$value
+                ;;
+                -me | -ME  )
+                        mesh=$value
+                ;;
+                -ml | -ML  )
+                        memlimit=$value
+                ;;
+                -mo | -MO  )
+                ;;
+                -mpi | -MPI  )
+                        mpioption=true
+                        MARC_MPITYPE=$value
+                        if test "$value" != "$MPI_DEFAULT"; then
+                         exefile=marc_$value
+                         . $MARC_INCLUDE
+                         MDSRCLIB=$MARC_LIB/mdsrc.a_$value
+                         if test "$MUMPSSOLVER" = MUMPS; then
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps_$value.a"
+                         fi
+                        else
+                         exefile=marc
+                         . $MARC_INCLUDE
+                         MDSRCLIB=$MARC_LIB/mdsrc.a
+                         if test "$MUMPSSOLVER" = MUMPS; then
+                          MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps_intelmpi.a"
+                         fi
+                        fi
+                ;;
+                -dir* | -DIR*)
+                        DIRJOB=$value
+                        case $DIRJOB in
+                           \/*)
+                             ;;
+                           *)
+                            DIRJOB=`pwd`/$DIRJOB
+                             ;;
+                        esac
+                        if test -z "$DIRSCRSET"
+                        then
+                         DIRSCR=$DIRJOB
+                        fi
+                ;;
+                -sd* | -SD*)
+                        DIRSCR=$value
+                        DIRSCRSET=yes
+                        case $DIRSCR in
+                           \/*)
+                             ;;
+                           *)
+                            DIRSCR=`pwd`/$DIRSCR
+                             ;;
+                        esac        
+                ;;
+		-ho*  | -HO*)
+			host=$value
+		;;
+		-co* | -CO*)
+			compatible=$value
+		;;
+		-ci* | -CI*)
+			cpinput=$value
+		;;
+		-cr* | -CR*)
+			cpresults=$value
+		;;
+		*)
+			error="$error
+$arg: invalid option"
+                        break
+		;;
+	esac
+	case $value in
+		-*)
+			error="$error
+$arg: invalid name $value"
+			break
+		;;
+	esac
+	shift
+	arg=$1
+        if [ ${arg}X = -i8X -o ${arg}X = -I8X -o ${arg}X = -i4X -o ${arg}X = -I4X ] ; then
+         shift
+         arg=$1
+        fi
+done
+argc=`expr $# % 2`
+if test $argc -eq 1
+then
+#
+# odd number of arguments
+#
+	error="$error
+argument list incomplete"
+fi
+
+if test $nprocdddm -gt 0
+then
+nprocd=$nprocdddm
+fi
+
+if test $nsolver -gt 0
+then
+  if test $nsolver -gt $nprocd 
+  then
+  nprocd=$nsolver
+  fi
+fi
+
+# oversubscribe case
+if test $nprocd -gt $(/usr/bin/nproc); then
+  if test "$ALLOWMPIOVERSUBSCRIBE" != "true"; then
+   error="$error
+   The requested number of domains ($nprocd) is larger than the number
+   of processors ($(/usr/bin/nproc)). As such an oversubscription may result in
+   very poor performance, the analysis will not be started.
+   Running an analysis in case of oversubscription can be forced
+   by defining an environment variable \"ALLOWMPIOVERSUBSCRIBE\" 
+   with the value \"true\"."
+   oversubscribe=true
+  fi
+fi
+
+# Set defaults
+if test $nt -eq -1
+then
+nt=${MARC_NUMBER_OF_THREADS:-0}
+fi
+if test $nt -lt 0
+then
+nt=0
+fi
+if test $nte -eq -1
+then
+nte=${MARC_NUMBER_OF_THREADS:-0}
+fi
+if test $nte -lt 0
+then
+nte=0
+fi
+if test $nts -eq -1
+then
+nts=${MARC_NUMBER_OF_THREADS:-0}
+fi
+if test $nts -lt 0
+then
+nts=0
+fi
+#
+# set number of element loop threads
+#
+ntprint=$nt
+nteprint=$nte
+# copy from -nprocd[s]
+if test $nprocdddm -gt 1 
+then
+  nteprint=$nprocdddm
+fi
+# override with -nthread_elem option
+if test $nte -ne 0
+then
+nteprint=$nte
+fi
+# check for minimum 1 threads per processes for DDM 
+if test $nprocdddm -gt 1
+then
+  if test $nteprint -lt $nprocdddm
+  then
+  nteprint=$nprocdddm
+  fi
+fi
+nte=$nteprint
+#
+# set number of Solver threads
+#
+ntsprint=$nts
+# copy from -nthread or -nprocd[s]
+if test $ntprint -ne 0
+then
+  ntsprint=$ntprint
+else
+  if test $nprocdddm -gt 1
+  then
+  ntsprint=$nprocdddm
+  fi
+fi
+# override with -nthread_solver option
+if test $nts -ne 0
+then
+  ntsprint=$nts
+fi
+# check for minimum 1 threads per solver process.
+if test $nsolver -lt $nprocdddm
+then
+  if test $ntsprint -lt $nsolver
+  then
+  ntsprint=$nsolver
+  fi
+else
+  if test $ntsprint -lt $nprocdddm
+  then
+  ntsprint=$nprocdddm
+  fi
+fi
+if test $ntsprint -eq 1
+then
+  set ntsprint=0
+fi
+nts=$ntsprint
+
+# set stack size for multi-threading.
+export KMP_MONITOR_STACKSIZE=7M
+export OMP_STACKSIZE=7M
+
+#
+# deprecate  -nthread option at arugment of marc
+nt=0
+# Reset nprocdddmm, nsolver and threads if not given.
+if test $nprocdddm -eq 0 
+then 
+  nprocdarg=
+fi  
+if test $nprocdddm -eq 0 
+then 
+  nprocdddmprint=
+fi  
+if test $nprocdddm -eq 0 
+then 
+  nprocdddm=
+fi  
+
+nsolverprint=$nsolver
+if test $nsolver -eq 0 
+then 
+  nsolverprint=
+fi  
+# end of threads setting.
+gpuoption=
+if test "$gpuids" = "" ; then
+  gpuoption=
+else
+  gpuoption="-gp $gpuids"
+fi
+
+if test "$gpuids" = "" ; then
+ export LD_LIBRARY_PATH=$CUDALIB1:$LD_LIBRARY_PATH
+else
+ MARCCUDALIBS=$MARCCUDALIBS2
+ export LD_LIBRARY_PATH=$CUDALIB2:$LD_LIBRARY_PATH
+fi
+# Linux 64 + HPMPI, Below code is taken from include_linux64 
+if test $MPITYPE = hpmpi -a "$ARCHITECTURE" = "linux_amd64"
+then
+ export MPIHPSPECIAL="$MPIHPSPECIAL -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+fi
+if test "$iam" = sim ; then
+  SFLIB="-L$SFMATDIR -lMBA_Grain"
+fi
+
+if test $nprocd -gt 1; then
+  if test -f $jid$dotdefhost; then
+    if test "$host" = ""; then
+      host=$jid$dotdefhost
+    fi
+  fi
+  if test -f hostfile_qa_$nprocd; then
+    if test "$host" = ""; then
+      host=hostfile_qa_$nprocd
+    fi
+  fi
+fi
+
+if test "$dllrun" -gt 0; then
+  exefile=exe_marc
+  prog=exe_marc
+  program=$exefile
+  bd=$MARC_BIN/
+  if test "$dllrun" -eq 1 || test "$dllrun" -eq 2; then
+    dotdat=.inp
+  fi
+
+  if test "$progdll"; then
+    /bin/cp ${progdll}_$marcdll $DIRJOB/$marcdll 
+    rmdll=yes
+    pathdll=yes
+    progdll=${progdll}_$marcdll
+  else
+    progdll=$marcdll
+  fi
+
+  if test "$user"; then
+   . $MARC_TOOLS/make_marc_user_dll $DIRJOB $user
+     user=
+     if test $prgsav = no; then
+       rmdll=yes
+     fi
+     if test $prgsav = yes; then
+       cpdll=yes
+       rmdll=yes
+     fi
+     pathdll=yes
+  fi
+fi
+
+##############################################################################
+#         check parameter validity                                           #
+##############################################################################
+
+while test forever; do
+
+#
+# check for input file existence
+#
+if test $nprocdddm -gt 1 -a $icreated -eq 0; then
+ if test ! -f $DIRJID/1$jid$dotdat; then
+  if test "$jid" != "" ; then
+    error="$error 
+input file $DIRJID/1$jid$dotdat not accessible"
+  fi
+ fi
+else
+ if test ! -f $DIRJID/$jid$dotdat; then
+  if test "$jid" != "" ; then
+    error="$error 
+input file $DIRJID/$jid$dotdat not accessible"
+  fi
+ fi
+fi
+          if test $nprocd -gt 1; then
+            if test "$host" ; then
+              if test ! -f $host; then
+                error="$error 
+host name file $host not accessible"
+              fi
+            fi
+          fi
+
+#
+# check if the job is already running in the background
+#
+if test -f $DIRJOB/$jid.pid; then
+  error="$error
+job is already running (the file $jid.pid exists)"
+fi
+
+#
+# if the program name is other than marc, then
+# assume that this is a program in the users local directory
+#
+
+bd=$MARC_BIN/
+
+case $prog in
+        marc | MARC | $exefile)
+                program=$exefile
+                if test "$rid"
+                then
+                  if test ! -f $DIRRID/$rid.t08
+		  then
+                    error="$error
+restart file $DIRRID/$rid.t08 not accessible"
+                   fi
+                fi
+		if test "$pid"
+		then
+			if test ! -f $DIRPID/$pid.t16
+			then
+				if test ! -f $DIRPID/$pid.t19
+				then
+					error="$error
+post file $DIRPID/$pid.t16 or $DIRPID/$pid.t19 not accessible"
+				fi
+			fi
+		fi
+		if test "$usersubname"
+		then
+			if test ! -f $usersubname
+			then
+		   		error="$error
+user subroutine file $usersubname not accessible"
+			fi
+		fi
+		if test "$objs"
+		then
+			missingobjs=
+			for o in $objs
+			do
+				if test ! -f "$o"
+				then
+					if test -z "$missingobjs"
+					then
+						missingobjs="$o"
+					else
+						missingobjs="$missingobjs $o"
+					fi
+				fi
+			done
+			if test -n "$missingobjs"
+			then
+		   		error="$error
+user object/library file(s) $missingobjs not accessible"
+			fi
+		fi
+                if test "$did"
+                then
+                        if test $nprocdddm -gt 1 -a $icreated -eq 0
+                        then
+                            if test ! -f $DIRDID/1$did$dotdat
+                            then
+                                    error="$error
+defaults file $DIRDID/1$did$dotdat not accessible"
+                            fi
+                        else
+                            if test ! -f $DIRDID/$did$dotdat
+                            then
+                                    error="$error
+defaults file $DIRDID/$did$dotdat not accessible"
+                            fi
+                        fi
+                fi
+                if test "$vid"
+                then
+                        if test $nprocdddm -gt 1 -a $icreated -eq 0
+                        then
+                            if test ! -f $DIRVID/1$vid.vfs
+                            then
+                                    error="$error
+view factor file $DIRVID/1$vid.vfs not accessible"
+                            fi
+                        else
+                            if test ! -f $DIRVID/$vid.vfs
+                            then
+                                    error="$error
+view factor file $DIRVID/$vid.vfs not accessible"
+                            fi
+                        fi
+                fi
+                if $mpioption
+                then
+                    notok=true
+                    for i in "$MPI_OTHER"; do
+                      if test "$MARC_MPITYPE" = "$i"; then
+                        notok=false
+                      fi
+                    done
+                    if test "$MARC_MPITYPE" = "$MPI_DEFAULT"; then 
+                      notok=false
+                    fi
+                    if $notok; then
+                        error="$error 
+incorrect option for -mpi option: $MARC_MPITYPE  (valid: $MPI_OTHER $MPI_DEFAULT)"
+                    fi
+                fi
+        ;;
+	*)
+		program=$prog.marc
+                case $prog in
+                  \/* | \.\/*)
+ 		    bd=
+                  ;;
+                  *)
+ 		    bd=`pwd`/
+                  ;;
+                esac
+		if test "$rid"
+		then
+                  if test ! -f $DIRRID/$rid.t08
+                  then
+                    error="$error
+restart file $DIRRID/$rid.t08 not accessible"
+                  fi
+                fi
+		if test "$pid"
+		then
+			if test ! -f $DIRPID/$pid.t16
+			then
+				if test ! -f $DIRPID/$pid.t19
+				then
+					error="$error
+post file $DIRPID/$pid.t16 and $DIRPID/$pid.t19 not accessible"
+				fi
+			fi
+		fi
+		if test "$user"
+		then
+	error="$error
+program option may not be used with user subroutine"
+		fi
+		if test "$objs"
+		then
+	error="$error
+program option may not be used with user objects or libraries"
+		fi
+                if test "$did"
+                then
+                        if test $nprocdddm -gt 1 -a $icreated -eq 0
+                        then
+                            if test ! -f $DIRDID/1$did$dotdat
+                            then
+                                    error="$error
+defaults file $DIRDID/1$did$dotdat not accessible"
+                            fi
+                        else
+                            if test ! -f $DIRDID/$did$dotdat
+                            then
+                                    error="$error
+defaults file $DIRDID/$did$dotdat not accessible"
+                            fi
+                        fi
+                fi
+                if test "$ndcoup"
+                then
+                    if test $ndcoup -gt 3
+                    then
+                        error="$error 
+incorrect option for contact decoupling "
+                    fi
+                fi
+                if test "$ndytran"
+                then
+                    if test $ndytran -gt 1
+                    then
+                        error="$error 
+incorrect option for Marc-Dytran Switch  "
+                    fi
+                fi
+                if $mpioption
+                then
+                    if test ! -x $MARC_BIN/$exefile
+                    then
+                        error="$error 
+incorrect option for -mpi option: $MARC_MPITYPE  "
+                    fi
+                fi
+	;;
+esac
+
+##############################################################################
+#          check argument integrity                                          #
+##############################################################################
+
+if test "$jid"
+then
+	:
+else
+    if test "$user"
+    then
+#     allow user sub without giving job id
+	qid=foreground
+	verify=no
+    else
+	error="$error
+job id required"
+    fi
+fi
+
+case $qid in
+	S* | s*)
+		qid=short
+	;;
+	L* | l*)
+		qid=long
+	;;
+	V* | v*)
+		qid=verylong
+	;;
+	B* | b*)
+		qid=background
+	;;
+	F* | f*)
+		qid=foreground
+	;;
+	A* | a*)
+		qid=at
+	;;
+	*)
+		error="$error
+bad value for queue_id option"
+	;;
+esac
+
+case $prgsav in
+	N* | n*)
+		prgsav=no
+	;;
+	Y* | y*)
+		prgsav=yes
+	;;
+	*)
+		error="$error
+bad value for save option"
+	;;
+esac
+
+case $verify in
+	N* | n*)
+		verify=no
+	;;
+	Y* | y*)
+		verify=yes
+	;;
+	*)
+		error="$error
+bad value for verify option"
+	;;
+esac
+
+case $nprocdddm in
+	-* )
+		error="$error
+bad value for nprocd option"
+	;;
+esac
+
+case $nt in
+	-* )
+		error="$error
+bad value for nt option"
+	;;
+esac
+
+case $itree in
+	-* )
+		error="$error
+bad value for itree option"
+	;;
+esac
+case $iam in
+	-* )
+		error="$error
+bad value for iam option"
+	;;
+esac
+case $compatible in
+	N* | n*)
+		compatible=no
+	;;
+	Y* | y*)
+		compatible=yes
+	;;
+	unknown)
+	;;
+	*)
+		error="$error
+bad value for comp option"
+	;;
+esac
+case $cpinput in
+	N* | n*)
+		cpinput=no
+	;;
+	Y* | y*)
+		cpinput=yes
+	;;
+	*)
+		error="$error
+bad value for copy input option"
+	;;
+esac
+case $cpresults in
+	N* | n*)
+		cpresults=no
+	;;
+	Y* | y*)
+		cpresults=yes
+	;;
+	*)
+		error="$error
+bad value for copy results option"
+	;;
+esac
+
+#
+# check for external file to run
+#
+if test -f $MARC_TOOLS/run_marc_check
+then
+ . $MARC_TOOLS/run_marc_check
+fi
+
+##############################################################################
+# interact with the user to get the required information to run marc or      #
+# other marc system program                                                  #
+##############################################################################
+
+deletelog=yes
+if test $qid = background -a $verify = no
+then
+echo \
+"
+Program name         : $prog
+Marc shared lib      : $progdll
+Version type         : $mode
+Job ID               : $DIRJID/$jid
+User subroutine name : $usersubname
+User objects/libs    : $objs
+Restart file job ID  : $rid
+Substructure file ID : $sid
+Post file job ID     : $pid
+Defaults file ID     : $did
+View Factor file ID  : $vid
+Save generated module: $prgsav
+MPI library          : $MPITYPE
+DDM processes        : $nprocdddmprint
+Element loop threads : $nteprint
+Solver processes     : $nsolverprint
+Solver threads       : $ntsprint
+GPGPU option         : $gpuids
+Host file name       : $host" > $jid.log
+if test "$iprintsimufact" = true ; then
+ echo "DDM with ARC Mapper  : $ddm_arc" >> $jid.log
+fi
+echo \
+"Message passing type : $itree
+Run job in queue     : $qid
+Run directory        : $DIRJOB
+Scratch directory    : $DIRSCR
+Memory limit in Mbyte: $memlimit" >> $jid.log
+deletelog=no
+fi
+echo \
+"
+Program name         : $prog
+Marc shared lib      : $progdll
+Version type         : $mode
+Job ID               : $DIRJID/$jid
+User subroutine name : $usersubname
+User objects/libs    : $objs
+Restart file job ID  : $rid
+Substructure file ID : $sid
+Post file job ID     : $pid
+Defaults file ID     : $did
+View Factor file ID  : $vid
+Save generated module: $prgsav
+MPI library          : $MPITYPE
+DDM processes        : $nprocdddmprint
+Element loop threads : $nteprint
+Solver processes     : $nsolverprint
+Solver threads       : $ntsprint"
+if test "$iprintsimufact" = true ; then
+ echo "DDM with ARC Mapper  : $ddm_arc"
+fi
+echo \
+"GPGPU option         : $gpuids
+Host file name       : $host
+Message passing type : $itree
+Run job in queue     : $qid
+Run directory        : $DIRJOB
+Scratch directory    : $DIRSCR
+Memory limit in Mbyte: $memlimit"
+
+
+case $qid in
+	s* | S* | l* | L* | v* | V* )
+	echo \
+"Queue priority       : $priority
+Queue CPU limit      : $cpu
+Queue start time     : $att"
+	;;
+#	* )
+#	echo \
+#" "
+#	;;
+esac
+
+if test "$modeoption"
+then
+ error=$modeerror
+fi
+
+if test "$error"
+then
+	if test $verify = yes
+	then
+	$ECHO "$error
+
+Please correct or quit(correct,quit,<correct>): $ECHOTXT"
+		error=
+		read answer
+		case $answer in
+			q* | Q*)
+				answer=quit
+			;;
+			*)
+				answer=correct
+			;;
+		esac
+	else
+         $ECHO "$error
+         $ECHOTXT"
+         echo " "
+         if test "$deletelog" = no
+         then
+          $ECHO "$error
+          $ECHOTXT"  >> $jid.log
+          echo " "  >> $jid.log
+         fi
+         answer=quit
+	fi
+else
+	if test $verify = yes
+	then
+		$ECHO "
+Are these parameters correct (yes,no,quit,<no>)? $ECHOTXT"
+		read answer
+		case $answer in
+			q* | Q*)
+				answer=quit
+			;;
+			y* | Y*)
+				answer=yes
+			;;
+			*)
+				answer=no
+			;;
+		esac
+	else
+		answer=yes
+	fi
+fi
+
+case $answer in
+	no | correct)
+
+##############################################################################
+#        prompt for each value                                               #
+##############################################################################
+
+		$ECHO "
+Program name ($prog)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			prog=$value
+		fi
+		$ECHO "Job ID ($jid)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+                  jid=`$BASENAME $value $dotdat`
+                  DIRJID=`dirname $value`
+                  case $DIRJID in
+                    \/*)
+                    ;;
+                    *)
+                      DIRJID=`pwd`/$DIRJID
+                    ;;
+                  esac        
+                fi
+		$ECHO "User subroutine name ($usersubname)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+                  case $value in
+                    -*)
+                      user=
+                    ;;
+                    *)
+                      user=`dirname $value`/`$BASENAME $value .f`
+                      usersubname=$user
+                      basefile=`$BASENAME $value`
+                      if test ${basefile##*.} = f
+                      then
+                       user=`dirname $value`/`$BASENAME $value .f`
+                       usersubname=$user.f
+                      elif test ${basefile##*.} = F
+                      then
+                       user=`dirname $value`/`$BASENAME $value .F`
+                       usersubname=$user.F
+                      elif test ${basefile##*.} = f90
+                      then
+                       user=`dirname $value`/`$BASENAME $value .f90`
+                       usersubname=$user.f90
+                      elif test ${basefile##*.} = F90
+                      then
+                       user=`dirname $value`/`$BASENAME $value .F90`
+                       usersubname=$user.F90
+                      fi
+                      case $user in
+                         \/*)
+                           ;;
+                         *)
+                          user=`pwd`/$user
+                          usersubname=`pwd`/$usersubname
+                           ;;
+                      esac
+                      if test ! -f $usersubname
+                      then
+                       if test -f $usersubname.f 
+                       then
+                        usersubname=$usersubname.f 
+                       elif test -f $usersubname.F 
+                       then
+                        usersubname=$usersubname.F
+                       elif test -f $usersubname.f90
+                       then
+                        usersubname=$usersubname.f90
+                       elif test -f $usersubname.F90
+                       then
+                        usersubname=$usersubname.F90
+                       fi
+                      fi
+                    ;;
+                  esac
+		fi
+		$ECHO "User objects or libraries ($objs)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+                  case $value in
+                    -*)
+                      objs=
+                    ;;
+                    *)
+                      objs="$value"
+                    ;;
+                  esac
+		fi
+		$ECHO "Restart File Job ID ($rid)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+                  case $value in
+                    -*)
+                      rid=
+                    ;;
+                    *)
+                      rid=`$BASENAME $value .t08`
+                      DIRRID=`dirname $value`
+                      case $DIRRID in
+                         \/*)
+                         ;;
+                         *)
+                           DIRRID=`pwd`/$DIRRID
+                         ;;
+                      esac
+                    ;;
+                  esac
+		fi
+		$ECHO "Substructure File ID ($sid)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+                  case $value in
+                    -*)
+                      sid=
+                    ;;
+                    *)
+                      sid=$value
+                      DIRSID=`dirname $value`
+                      case $DIRSID in
+                        \/*)
+                        ;;
+                        *)
+                          DIRSID=`pwd`/$DIRSID
+                        ;;
+                      esac
+                    ;;
+                  esac
+		fi
+		$ECHO "Post File Job ID ($pid)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+                  case $value in
+                    -*)
+                      pid=
+                    ;;
+                    *)
+                      pid=$value
+                      DIRPID=`dirname $value`
+                      case $DIRPID in
+                        \/*)
+                        ;;
+                        *)
+                          DIRPID=`pwd`/$DIRPID
+                        ;;
+                      esac
+                    ;;
+                  esac
+		fi
+                $ECHO "Defaults File ID ($did)? $ECHOTXT"
+                read value
+                if test "$value"
+                then
+                  case $value in
+                    -*)
+                      did=
+                    ;;
+                    *)
+                      did=`$BASENAME $value $dotdat`
+                      DIRDID=`dirname $value`
+                      case $DIRDID in
+                        \/*)
+                        ;;
+                        *)
+                          DIRDID=`pwd`/$DIRDID
+                        ;;
+                      esac
+                    ;;
+                  esac
+                fi
+                $ECHO "View Factor File ID ($vid)? $ECHOTXT"
+                read value
+                if test "$value"
+                then
+                  case $value in
+                    -*)
+                      vid=
+                    ;;
+                    *)
+                      vid=`$BASENAME $value .vfs`
+                      DIRVID=`dirname $value`
+                      case $DIRVID in
+                        \/*)
+                        ;;
+                        *)
+                          DIRVID=`pwd`/$DIRVID
+                        ;;
+                      esac        
+                    ;;
+                  esac
+                fi
+		$ECHO "Save generated module ($prgsav)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			prgsav=$value
+		fi
+		$ECHO "Run on tasks ($nprocdddm) tasks? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			nprocdddm=$value
+			nprocdddmprint=$value
+		fi
+		$ECHO "Run on ($nte) Element loop threads ? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			nte=$value
+		fi
+		$ECHO "Run on ($nsolver) solvers ? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			nsolver=$value
+		fi
+		$ECHO "Run on ($nts) Solver threads ? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			nts=$value
+		fi
+#
+		if test $nprocdddm -gt 0
+		then
+		nprocd=$nprocdddm
+		fi
+		if test $nsolver -gt 0
+		then
+		  if test $nsolver -gt $nprocd 
+		  then
+		  nprocd=$nsolver
+		  fi
+		fi
+# Element loop threads.
+		if test $nte -eq -1
+		then
+		  nte=${MARC_NUMBER_OF_THREADS:-0}
+		fi
+		if test $nte -lt 0
+		then
+		  nte=0
+		fi
+		nteprint=$nte
+#       Copy from ddm
+        if test $nprocdddm -gt 1
+		  then
+		    nteprint=$nprocdddm
+        fi
+#       override with -nthread_elem option
+        if test $nte -ne 0
+        then
+          nteprint=$nte
+        fi
+#       check for minimum 1 threads per processes for DDM
+        if test $nprocdddm -ne 0
+        then
+          if test $nteprint -lt $nprocdddm
+          then
+          nteprint=$nprocdddm
+          fi
+        fi
+        nte=$nteprint
+# Solver threads.
+		if test $nts -eq -1
+		then
+		  nts=${MARC_NUMBER_OF_THREADS:-0}
+		fi
+		if test $nts -lt 0
+		then
+		  nts=0
+		fi
+		ntsprint=$nts
+#       Copy from ddm
+        if test $nprocdddm -gt 1
+		  then
+		    ntsprint=$nprocdddm
+        fi
+#       override with -nthread_solver option
+        if test $nts -ne 0
+        then
+          ntsprint=$nts
+        fi
+#       check for minimum 1 threads per solver process.
+        if test $nsolver -lt $nprocdddm
+        then
+          if test $ntsprint -lt $nsolver
+          then
+            ntsprint=$nsolver
+          fi
+        else
+          if test $ntsprint -lt $nprocdddm
+          then
+            ntsprint=$nprocdddm
+          fi
+        fi
+        if test $ntsprint -eq 1
+        then
+          set ntsprint=0
+        fi
+        nts=$ntsprint
+#       Update print variable for -nsolver option
+        nsolverprint=$nsolver
+        if test $nsolver -eq 0
+        then
+          nsolverprint=
+        fi
+		$ECHO "GPGPU id option ($gpuids)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			gpuids=$value
+		fi
+                if test "$gpuids" = "" ; then
+                  gpuoption=
+                else
+                  gpuoption="-gp $gpuids"
+                fi
+                if test "$gpuids" = "" ; then
+                 export LD_LIBRARY_PATH=$CUDALIB1:$LD_LIBRARY_PATH
+                else
+                 MARCCUDALIBS=$MARCCUDALIBS2
+                 export LD_LIBRARY_PATH=$CUDALIB2:$LD_LIBRARY_PATH
+                fi
+                if test $MPITYPE = hpmpi -a "$ARCHITECTURE" = "linux_amd64"
+                then
+                 export MPIHPSPECIAL="$MPIHPSPECIAL -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+                fi
+#
+		if test $nprocd -gt 1
+		then
+		  $ECHO "Message passing type ($itree)? $ECHOTXT"
+		  read value
+		  if test "$value"
+		  then
+			  itree=$value
+		  fi
+		  $ECHO "Host file name ($host)? $ECHOTXT"
+		  read value
+		  if test "$value"
+		  then
+			  host=$value
+		  fi
+		  if test $nprocdddm -gt 1
+		  then
+		  $ECHO "Single input file? $ECHOTXT"
+		  read value
+		  case $value in
+			y* | Y*)
+			  icreated=1
+			  nprocdarg=-nprocds
+			;;
+	          esac
+		  $ECHO "Compatible machines for DDM ($compatible)? $ECHOTXT"
+		  read value
+		  if test "$value"
+		  then
+			  compatible=$value
+		  fi
+		  $ECHO "Copy input files to remote hosts ($cpinput)? $ECHOTXT"
+		  read value
+		  if test "$value"
+		  then
+			  cpinput=$value
+		  fi
+		  $ECHO "Copy post files from remote hosts ($cpresults)? $ECHOTXT"
+		  read value
+		  if test "$value"
+		  then
+			  cpresults=$value
+		  fi
+		  fi
+		fi
+		$ECHO "Run the job in the queue ($qid)? $ECHOTXT"
+		read value
+		if test "$value"
+		then
+			qid=$value
+		fi
+		case $qid in 
+			s* | S* | l* | L* | v* | V* )
+			$ECHO "Queue priority ($priority)? $ECHOTXT"
+			read value
+			if test "$value"
+			then
+				priority=$value
+			fi
+			$ECHO "Job starts at ($att)? $ECHOTXT"
+			read value
+			if test "$value"
+			then
+				att=$value
+			fi
+			$ECHO "Queue CPU limit ($cpu)? $ECHOTXT"
+			read value
+			if test "$value"
+			then
+				cpu=$value
+			fi
+			;;
+			* )
+			;;
+		esac
+                $ECHO "Run directory ($DIRJOB)? $ECHOTXT"
+                read value
+                if test "$value"
+                then
+                    DIRJOB=$value
+                    DIRSCR=$DIRJOB
+                fi
+                $ECHO "Scratch directory ($DIRSCR)? $ECHOTXT"
+                read value
+                if test "$value"
+                then
+                    DIRSCR=$value
+                fi
+	;;
+	quit)
+                if test "$deletelog" = no -a $oversubscribe = true
+                then
+                 echo " "  >> $jid.log
+                 echo "        Exit number 8" >> $jid.log
+                 echo " "  >> $jid.log
+                fi
+		exit 1
+	;;
+	*)
+		break
+	;;
+
+esac
+
+  if test $nt -eq -1
+  then
+  nt=${MARC_NUMBER_OF_THREADS:-0}
+  fi
+  if test $nt -lt 0
+  then
+  nt=0
+  fi
+
+done
+#
+if test $nt -eq 0 
+then 
+  ntarg=
+fi  
+if test $nt -eq 0 
+then 
+  ntprint=
+fi  
+if test $nt -eq 0 
+then 
+  nt=
+fi
+
+if test $nte -eq 0 
+then 
+  ntearg=
+fi  
+if test $nte -eq 0 
+then 
+  nteprint=
+fi  
+if test $nte -eq 0 
+then 
+  nte=
+fi
+
+if test $nts -eq 0 
+then 
+  ntsarg=
+fi  
+if test $nts -eq 0 
+then 
+  ntsprint=
+fi  
+if test $nts -eq 0 
+then 
+  nts=
+fi
+#
+if test "$dllrun" -gt 0; then
+  exefile=exe_marc
+  prog=exe_marc
+  program=$exefile
+  bd=$MARC_BIN/
+  if test "$user"; then
+   . $MARC_TOOLS/make_marc_user_dll $DIRJOB $user
+     user=
+     pathdll=yes
+     if test $prgsav = no; then
+       rmdll=yes
+     fi
+     if test $prgsav = yes; then
+       cpdll=yes
+       rmdll=yes
+     fi
+  fi
+
+  if test "$pathdll"; then
+#
+# reset share lib path
+#
+    if test $MACHINENAME = "HP"
+    then
+      SHLIB_PATH=$DIRJOB:$SHLIB_PATH
+      export SHLIB_PATH
+    fi
+    if test $MACHINENAME = "IBM"
+    then
+      LIBPATH=$DIRJOB:$LIBPATH
+      export LIBPATH
+    fi
+#
+    LD_LIBRARY_PATH=$DIRJOB:$LD_LIBRARY_PATH
+    LD_LIBRARY64_PATH=$DIRJOB:$LD_LIBRARY64_PATH
+    LD_LIBRARYN32_PATH=$DIRJOB:$LD_LIBRARYN32_PATH
+    export LD_LIBRARY_PATH
+    export LD_LIBRARY64_PATH
+    export LD_LIBRARYN32_PATH
+  fi
+fi
+# end of dllrun>0
+
+
+if test $program = $exefile -o $program = $prog.marc
+then
+
+# delete the old .log file unless we run in the background
+if test "$deletelog" = yes
+then
+ if test "$jid"
+ then
+ /bin/rm $jid.log 2>/dev/null
+ fi
+else
+ echo
+ echo running the job in the background, see $jid.log
+ echo
+fi
+
+#
+# check if this is an autoforge or rezoning or radiation job
+#
+if test $nprocd -eq 1 -a "$jid"
+
+then
+  line=`$AWK '/^[eE][nN][dD]/ {exit} ; {print}' $DIRJID/${jid}$dotdat | grep -i "^autoforge"`
+  if test "$line"
+  then
+   autoforge=1
+  fi
+  line=`$AWK '/^[eE][nN][dD]/ {exit} ; {print}' $DIRJID/${jid}$dotdat | grep -i "^rezoning"`
+  if test "$line"
+  then
+   autoforge=1
+  fi
+  line=`$AWK '/^[eE][nN][dD]/ {exit} ; {print}' $DIRJID/${jid}$dotdat | grep -i "^radiation"`
+  if test "$line"
+  then
+   autoforge=1
+  fi
+fi
+#
+# check that jobname for restarted run is not the same
+# as restart file basename
+#
+if test "$rid"
+then
+ if test "$jid" = "$rid"
+ then
+  echo " "
+  echo "ERROR: job name of current run is the same as job name"
+  echo "       of the restarted job"
+  echo " "
+  if test "$deletelog" = no
+  then
+   echo " "  >> $jid.log
+   echo "ERROR: job name of current run is the same as job name" >> $jid.log
+   echo "       of the restarted job" >> $jid.log
+   echo " " >> $jid.log
+   echo "        Exit number 8" >> $jid.log
+   echo " " >> $jid.log
+  fi
+  exit 1
+ fi
+fi
+
+#
+# user objects/libraries used
+#
+
+  if test "$objs"
+  then
+    program="$DIRJOB/$jid.marc"
+    case $program in
+      \/* | \.\/*)
+        bd=
+        ;;
+      *)
+        bd=`pwd`/
+        ;;
+    esac
+    link=yes
+  fi
+
+#
+# user subroutine used
+#
+
+  if test "$user"
+  then
+#    program=$user.marc
+    program=$DIRJOB/`$BASENAME $user .f`.marc
+    case $program in
+      \/* | \.\/*)
+        bd=
+        ;;
+      *)
+        bd=`pwd`/
+        ;;
+    esac
+    link=yes
+  fi
+
+#
+# Special case for IBM using POE but not an SP machine
+#  in this case we always need a host file, also for serial jobs.
+#
+if test $MACHINENAME = IBM -a $MPITYPE = hardware -a "$MACHINETYPE" = NONSP
+then
+ MP_HOSTFILE=${jid}.host
+ if test -f $jid.host
+ then
+  /bin/rm $jid.host 2> /dev/null
+ fi
+ if test $nprocd -gt 1
+ then
+  numdom=$nprocd
+  while test $numdom -gt 0
+  do
+   hostname -s >> $MP_HOSTFILE
+   numdom=`echo $numdom | $AWK  '{sum=$1-1}; {print sum}'`
+  done
+ else
+  hostname -s > $MP_HOSTFILE
+ fi
+fi
+#
+# check ssh for all hosts in host file
+#
+if test $nprocd -gt 1
+then
+if test $MPITYPE = "intelmpi" -a "$INTELMPI_VERSION" = "HYDRA"
+  then
+# get host list
+  if test "$host"
+  then
+    line=`grep -v '^#' $host | $AWK '{host=$1;num=$2;for (i=1;i<=num;i++) print host}' | uniq`
+#   count failing hosts
+    counter=0
+    for i in $line
+    do
+      $RSH -o  BatchMode=yes -o ConnectTimeout=10 $i uname -n
+      status=$?
+      if [[ $status != 0 ]] ; then
+        counter=$((counter+1))
+        if [ "$counter" = "1" ]; then
+          echo " "
+          echo " error - connection test failed... "
+          echo " "
+        fi
+        echo " "
+        echo " connection test with ssh failed on host $i"
+        echo " check the following command: ssh $i uname -n "
+        echo " "
+      fi
+    done
+#   echo error message and quit
+    if test $counter -ne 0
+    then
+      echo " "
+      echo " A parallel job using IntelMPI cannot be started.   "
+      echo " The ssh command must be working correctly between  "
+      echo " the computers used in the analysis. Furthermore,   "
+      echo " it must be set up such that it does not prompt the "
+      echo " user for a password.                               "
+      echo " "
+      if test "$deletelog" = no
+      then
+        echo " " >> $jid.log
+        echo " A parallel job using IntelMPI cannot be started.   ">> $jid.log
+        echo " The ssh command must be working correctly between  ">> $jid.log
+        echo " the computers used in the analysis. Furthermore,   ">> $jid.log
+        echo " it must be set up such that it does not prompt the ">> $jid.log
+        echo " user for a password.                               ">> $jid.log
+        echo " " >> $jid.log
+        echo "        Exit number 8" >> $jid.log
+        echo " " >> $jid.log
+      fi
+      exit 1
+    fi
+  fi
+fi
+fi
+#
+# check correctness of host file; fix for user sub
+#
+  if test $nprocd -gt 1
+  then
+
+# construct the path name to the executable (execpath)
+    execpath=$MARC_BIN/$exefile
+    usersub=0
+    if test $program = $prog.marc
+    then
+     execpath=$prog.marc
+     usersub=1
+    fi
+    if test "$objs"
+    then
+     execpath="$DIRJOB/$jid.marc"
+     usersub=1
+    fi
+    if test "$user"
+    then
+     execpath=$DIRJOB/`$BASENAME $user .f`.marc
+     usersub=1
+    fi
+    export execpath      
+    execname=`$BASENAME $execpath`
+
+    if test "$host"
+    then
+      userhost=$host
+      case $userhost in
+        \/* | \.\/*)
+          ;;
+        *)
+          userhost=`pwd`/$userhost
+          ;;
+      esac
+
+# check that the number of processes specified in the hostfile is
+# equal to nprocd specified by -nprocd.
+      numproc=`grep -v '^#' $host | $AWK -v sum=0 '{sum=sum+$2}; END {print sum}'`
+      if test $nprocd -ne $numproc
+      then
+        echo " "
+        echo "error, the number of processes specified in the host file"
+        echo "must be equal to the number of processes given by -nprocd/-nsolver"
+        echo " "
+        if test "$deletelog" = no
+        then
+        echo " " >> $jid.log
+        echo "error, the number of processes specified in the host file" >> $jid.log
+        echo "must be equal to the number of processes given by -nprocd/-nsolver" >> $jid.log
+        echo " " >> $jid.log
+        fi
+        exit 1
+      fi
+
+# check for Myrinet that the number of processes per host is 
+# less than number of available user ports, 5
+# .gmpi directory must exist in user's home directory
+# and must have write permission from remote hosts
+      if test $MPITYPE = "myrinet"
+      then
+        numproc=`grep -v '^#' $host | $AWK -v sum=1 '{if( $2 > 5) sum=6}; END {print sum}'`
+        if test $numproc -gt 5
+        then
+          echo " "
+          echo "error, for Myrinet the number of processes specified "
+          echo "in the hostfile must not exceed 5 for a hostname"
+          echo " "
+          if test "$deletelog" = no
+          then
+          echo " " >> $jid.log
+          echo "error, for Myrinet the number of processes specified " >> $jid.log
+          echo "in the hostfile must not exceed 5 for a hostname" >> $jid.log
+          echo " " >> $jid.log
+          fi
+          exit 1
+        fi
+        if test $MPIVERSION = "MPICH-GM1.2.1..7"
+        then
+          if test ! -d ~/.gmpi
+          then
+            echo " "
+            echo "error, for Myrinet a .gmpi directory must exist "
+            echo "under the user's home directory"
+            echo " "
+            if test "$deletelog" = no
+            then
+            echo " " >> $jid.log
+            echo "error, for Myrinet a .gmpi directory must exist " >> $jid.log
+            echo "under the user's home directory" >> $jid.log
+            echo " " >> $jid.log
+            fi
+            exit 1
+          fi
+        fi
+        if test $MPIVERSION = "MPICH-GM1.2.1..7"
+        then
+          homedir=`echo ~`
+          for i in `grep -v '^#' $host | $AWK '{if (NF > 0) print $1}'`
+          do
+            ibase=${i%%.*}
+            if test $ibase != $thishost
+            then
+              $RSH $i /bin/touch $homedir/.gmpi/$jid.$$ 2> tmp.$$
+              if test -s tmp.$$
+              then
+                echo " "
+                echo "error, for Myrinet a shared .gmpi directory must exist "
+                echo "under the user's home directory "
+                echo "with remote write permission"
+                echo " "
+                if test "$deletelog" = no
+                then
+                echo " " >> $jid.log
+                echo "error, for Myrinet a shared .gmpi directory must exist " >> $jid.log
+                echo "under the user's home directory " >> $jid.log
+                echo "with remote write permission" >> $jid.log
+                echo " " >> $jid.log
+                fi
+                exit 1
+              else
+                /bin/rm tmp.$$
+                if test -f $jid.$$
+                then
+                 /bin/rm $jid.$$
+                fi
+              fi
+            fi
+          done
+        fi
+      fi
+
+# construct the host file $jid.host which is used by mpirun
+# skip lines starting with # and only consider lines with more than
+# one word in them. Note that the hostfile given to this script
+# has two columns: the host name and the number of shared processes
+# to run on this host. mpirun wants the number of _other_
+# processes to run in addition to the one being run on the machine
+# on which the job is started. hence the $2-1 for fnr == 1.
+      if test -f $jid.host
+      then
+        /bin/rm $jid.host 2> /dev/null
+      fi
+      if test $MPITYPE = hpmpi -o $MACHINENAME = HP -a $MPITYPE = hardware
+      then
+#     HPMPI or HP hardware MPI
+        grep -v '^#' $host | $AWK -v path=$execpath -v en=$execname -v us=$usersub \
+                                  -v mpihpspecial="$MPIHPSPECIAL" \
+'{if ( NF > 0) {\
+   fnr++ ; \
+   printf("-h %s -np %s",$1,$2); \
+   printf(" %s",mpihpspecial); \
+   if ( NF == 2 ) printf(" %s\n",path);\
+        if ( NF >= 3 ) printf(" -e MPI_WORKDIR=%s", $3);\
+   if ( NF >= 3 ) if (us) printf(" %s/%s\n",$3,en); else printf(" %s\n",path) \
+  }\
+ }' > $jid.host
+#     end HPMPI or HP hardware MPI
+      elif test $MACHINENAME = IBM -a $MPITYPE = hardware -a "$MACHINETYPE" = NONSP
+      then
+#   IBM using hardware MPI (POE)
+        MP_HOSTFILE=$jid.host
+        grep -v '^#' $host | $AWK '{host=$1;num=$2;for (i=1;i<=num;i++) print host}' > $jid.host
+#   end IBM using hardware MPI (POE)
+# for Intel MPI, need to create a machinefile for DMP
+      elif test $MACHINENAME = "LINUX" -a  $MPITYPE = "intelmpi"
+      then
+#   Intel MPI
+        if test -f $jid.mfile
+        then 
+          /bin/rm $jid.mfile 2> /dev/null
+        fi 
+	/bin/cp $host $jid.host
+        grep -v '^#' $host | $AWK '{host=$1;num=$2;for (i=1;i<=num;i++) print host}' > $jid.mfile
+#   end Intel MPI for DMP
+# for Solaris HPC 7.1, need to create a machinefile for DMP
+      elif test $MACHINENAME = "SUN" -a  $MPITYPE = "hardware"
+      then
+#   Solaris HPC 7.1
+        if test -f $jid.mfile
+        then
+          /bin/rm $jid.mfile 2> /dev/null
+        fi
+        grep -v '^#' $host | $AWK '{host=$1;num=$2;for (i=1;i<=num;i++) print host}' > $jid.mfile
+#   end Solaris HPC 7.1 for DMP
+# for Myrinet, construct a configuration file in ~/.gmpi
+# this must be readable by each process
+# format is (hostname) (port number) for each process
+      elif test $MPITYPE = "myrinet"
+      then
+        if test $MPIVERSION = "MPICH-GM1.2.1..7"
+        then
+          echo $nprocd > ~/.gmpi/$jid.host
+          grep -v '^#' $host | $AWK \
+'BEGIN {iport[0] = 2; \
+          iport[1] = 4; \
+          iport[2] = 5; \
+          iport[3] = 6; \
+          iport[4] = 7 \
+       } \
+{if ( NF > 0 ) \
+   for(iproc = 0; iproc < $2; iproc++) printf("%s %d\n",$1,iport[iproc]); \
+}' >> ~/.gmpi/$jid.host
+        else
+# this is for mpich-1.2.5 and later, using the -pg option
+# format: host nproc executable user arguments
+# the arguments are added later
+        grep -v '^#' $host | $AWK -v path=$execpath -v en=$execname -v us=$usersub -v user=`whoami` \
+'{if ( NF > 0) {\
+   fnr++ ; \
+   if ( fnr == 1 ) printf("%s %d",$1,$2-1); \
+   else printf("%s %s",$1,$2); \
+   if ( NF == 2 ) printf(" %s %s\n",path,user);\
+   if ( NF == 3 ) if (us) printf(" %s/%s %s\n",$3,en,user); else printf(" %s %s\n",path,user) ;\
+   if ( NF == 4 ) if (us) printf(" %s/%s %s\n",$3,en,user); else printf(" %s/bin/%s %s\n",$4,en,user)  \
+  }\
+ }' > $jid.host
+        fi
+#   end Myrinet
+      elif test $MACHINENAME = DEC -a $MPITYPE = hardware
+      then
+#   Compaq MPI via Memory Channel
+        grep -v '^#' $host | $AWK '{if (NF > 0) print $1}' > $jid.host
+#   end Compaq MPI
+      else
+#   MPICH
+        grep -v '^#' $host | $AWK -v path=$execpath -v en=$execname -v us=$usersub \
+'{if ( NF > 0) {\
+   fnr++ ; \
+   if ( fnr == 1 ) printf("%s %d",$1,$2-1); \
+   else printf("%s %s",$1,$2); \
+   if ( NF == 2 ) printf(" %s\n",path);\
+   if ( NF == 3 ) if (us) printf(" %s/%s\n",$3,en); else printf(" %s\n",path) ;\
+   if ( NF == 4 ) if (us) printf(" %s/%s\n",$3,en); else printf(" %s/bin/%s\n",$4,en)  \
+  }\
+ }' > $jid.host
+      fi
+# define the variable host and host_filt
+# host_filt is used for loops over hosts
+#  for Myrinet we need to use a filtered variant of userhost
+#  for others we can use $host
+      if test $MPITYPE = "myrinet"
+      then
+        if test $MPIVERSION = "MPICH-GM1.2.1..7"
+        then
+          host=~/.gmpi/$jid.host
+	  host_filt=$jid.host_tMp
+          grep -v '^#' $userhost | $AWK  '{if (NF > 0) print $1}' > $host_filt
+        else
+          host=$jid.host
+          host_filt=$host
+        fi
+      else
+        host=$jid.host
+        host_filt=$host
+        if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi" 
+        then
+          host_filt=$jid.mfile
+        fi
+      fi
+# figure out if the machines in the hostfile are nfs mounted
+# or distributed and set the variable "dirstatus" accordingly.
+# only perform the check if user subroutine is used
+# or a user subroutine executable is used
+ 
+      numfield=1
+      if test $MPITYPE = hpmpi -o $MACHINENAME = HP -a $MPITYPE = hardware
+      then
+       numfield=2
+      fi
+      DIR1=$DIRJOB
+      if test $program = $prog.marc -o -n "$user" -o -n "$objs"
+      then
+        counter=0
+        echo " "
+        echo "checking if local or shared directories for host"
+        if test "$deletelog" = no
+        then
+        echo "checking if local or shared directories for host" >> $jid.log
+        fi
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            dirstatus[$counter]="shared"
+            $ECHO " $i $ECHOTXT"
+            if test "$deletelog" = no
+            then
+            $ECHO " $i $ECHOTXT" >> $jid.log
+            fi
+            DIR1=$DIRJOB
+            line=`grep -v '^#' $userhost | grep "^$ibase "`
+            workdir=`echo $line | $AWK '{print $3}'`
+            if test -n "$workdir"
+            then
+              DIR1=$workdir
+            fi
+            if test -f $jid.$$
+            then
+              /bin/rm $jid.$$
+            fi
+            $RSH $i /bin/touch $DIR1/$jid.$$ 2> tmp.$$
+            if test -s tmp.$$
+            then
+              dirstatus[$counter]="local"
+              /bin/rm tmp.$$
+            else
+              if test ! -f $jid.$$
+              then
+                dirstatus[$counter]="local"
+                $RSH $i /bin/rm $DIR1/$jid.$$
+              else
+                /bin/rm $jid.$$
+              fi
+            fi
+            if test -f tmp.$$
+            then
+              /bin/rm tmp.$$
+            fi
+            if test -f $jid.$$
+            then
+              /bin/rm $jid.$$
+            fi
+            echo "  ${dirstatus[$counter]}"
+            if test "$deletelog" = no
+            then
+            echo "  ${dirstatus[$counter]}" >> $jid.log
+            fi
+          fi
+        done
+        echo " "
+        if test "$deletelog" = no
+        then
+        echo " " >> $jid.log
+        fi
+      fi
+
+# figure out if this is a compatible set of machines
+# unless explicitly specified with flag -comp
+# only perform the check if user subroutine is used
+# or a user subroutine executable is used
+# Myrinet does not support heterogeneous
+      if test $program = $prog.marc -o -n "$user" -o -n "$objs"
+      then
+      if test $compatible = "unknown"
+      then
+        thisname=$ARCH
+        compatible=yes
+        counter=0
+        echo "checking if machines are compatible for host"
+        if test "$deletelog" = no
+        then
+        echo "checking if machines are compatible for host" >> $jid.log
+        fi
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            compstatus[$counter]="yes"
+            $ECHO  " $i $ECHOTXT"
+            if test "$deletelog" = no
+            then
+            $ECHO  " $i $ECHOTXT" >> $jid.log
+            fi
+            othername=`$RSH $i uname -a | cut -f 1 -d " "`
+            if test $thisname != $othername
+            then
+              compatible=no
+              compstatus[$counter]="no"
+            fi
+          fi
+          echo "  ${compstatus[$counter]}"
+          if test "$deletelog" = no
+          then
+          echo "  ${compstatus[$counter]}" >> $jid.log
+          fi
+        done
+        echo " "
+        if test "$deletelog" = no
+        then
+         echo " " >> $jid.log
+        fi
+      else
+        counter=0
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            compstatus[$counter]=$compatible
+          fi
+        done
+        if test $compatible = "no"
+        then
+          echo "all machines assumed incompatible"
+          if test "$deletelog" = no
+          then
+          echo "all machines assumed incompatible" >> $jid.log
+          fi
+        else
+          echo "all machines compatible"
+          if test "$deletelog" = no
+          then
+          echo "all machines compatible" >> $jid.log
+          fi
+        fi
+      fi
+# error out if user objects or libraries are used on incompatible machines
+      if test "$compatible" = "no" -a -n "$objs"
+      then
+        echo "User object/libraries cannot be used in a parallel job on incompatible machines"
+        if test "$deletelog" = no
+        then
+          echo "User object/libraries cannot be used in a parallel job on incompatible machines" >> $jid.log
+        fi
+        exit 1
+      fi
+# modify new host file if NFS mounted heterogeneous machine
+      doit=
+      if test $program = $prog.marc 
+      then
+        doit=yes
+      fi
+      if test "$user"
+      then
+        doit=yes
+      fi
+      if test "$doit"
+      then
+        counter=0
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
+            then
+              $AWK -v hst=$i '{fnr++ ; \
+if ($1 ~ hst) {if ( fnr == 1 ) printf("%s\n",$0); else \
+printf("%s %s %s_%s\n",$1,$2,$3,$1) } else print}' $jid.host > $jid.host{$$}
+        /bin/mv $jid.host{$$} $jid.host
+              host=$jid.host
+            fi            
+          fi
+        done        
+      fi
+      fi  #   if test $program = $prog.marc -o $user -o $obj
+ 
+    else   # if test $host
+      # assume shared memory machine if no hostfile given and
+      # MPITYPE is set to mpich or Myrinet
+      # check for Myrinet that the total number of processes is 
+      # less than number of available user ports, 5
+      if test $MPITYPE = "mpich" -o $MPITYPE = "scali"
+      then
+        numproc=`echo $nprocd | $AWK '{sum=$1-1}; {print sum}'`
+        echo `hostname` $numproc $execpath > $jid.host
+        host=$jid.host
+      elif test $MPITYPE = "myrinet" 
+      then
+        if test $nprocd -gt 5
+        then
+          echo " "
+          echo "error, for Myrinet the number of processes "
+          echo "must not exceed 5 for a hostname"
+          echo " "
+          if test "$deletelog" = no
+          then
+          echo " " >> $jid.log
+          echo "error, for Myrinet the number of processes " >> $jid.log
+          echo "must not exceed 5 for a hostname" >> $jid.log
+          echo " " >> $jid.log
+          fi
+          exit 1
+        fi
+        if test $MPIVERSION = "MPICH-GM1.2.1..7"
+        then
+        echo $nprocd > ~/.gmpi/$jid.host
+        echo `hostname` $nprocd | $AWK \
+'BEGIN {iport[0] = 2; \
+        iport[1] = 4; \
+        iport[2] = 5; \
+        iport[3] = 6; \
+        iport[4] = 7 \
+       } \
+   {for(iproc = 0; iproc < $2; iproc++) printf("%s %d\n",$1,iport[iproc])} \
+' >> ~/.gmpi/$jid.host
+        host=~/.gmpi/$jid.host
+        else
+        numproc=`echo $nprocd | $AWK '{sum=$1-1}; {print sum}'`
+        echo `hostname` $numproc $execpath > $jid.host
+
+      fi
+      fi  # if test myrinet
+
+    fi     # if test $host
+
+  fi  # if test $nprocd -gt 1
+ 
+fi    # if test $program = $exefile -o $program = $prog.marc
+
+##############################################################################
+#         construct run stream (Marc only)                                   #
+##############################################################################
+
+# set maximum message length for ddm to a large number
+# for vendor provided mpi
+if test $itree -eq 0 -a $MPITYPE = hardware
+then
+ itree=100000000
+ if test $MACHINENAME = SGI
+  then
+   itree=100000001
+  fi
+fi
+if test $itree -eq 0 -a $MPITYPE = hpmpi
+then
+ itree=100000000
+fi
+if test $itree -eq 0 -a $MPITYPE = myrinet
+then
+ itree=100000000
+fi
+if test $itree -eq 0 -a $MPITYPE = nec
+then
+ itree=100000000
+fi
+if test $itree -eq 0 -a $MPITYPE = scali
+then
+ itree=100000000
+fi
+if test $itree -eq 0 -a $MPITYPE = intelmpi
+then
+ itree=100000000
+fi
+if test $nprocdddm -lt 2
+then
+ nprocdarg=
+else
+ nprocdarg="$nprocdarg $nprocdddm"
+fi
+if test $nsolver -eq 0
+then
+ nsolverarg=
+else
+ nsolverarg="$nsolverarg $nsolver"
+fi
+if test $nprocdddm -lt 2 -a $nsolver -eq 0
+then 
+nprocd=0
+fi
+if test $nprocd -gt 0
+then
+ if test "$host"
+ then
+   if test -z "$RUN_JOB2"
+   then
+    echo " "
+    echo "error: parallel job attempted on non-parallel version,"
+    echo "       or, if parallel version is installed, the include " 
+    echo "       file is probably corrupted"
+    echo " "
+    if test "$deletelog" = no
+    then
+    echo " " >> $jid.log
+    echo "error: parallel job attempted on non-parallel version," >> $jid.log
+    echo "       or, if parallel version is installed, the include "  >> $jid.log
+    echo "       file is probably corrupted" >> $jid.log
+    echo " " >> $jid.log
+    fi
+    exit
+   fi
+   if test $MPITYPE = hpmpi -o $MACHINENAME = HP -a $MPITYPE = hardware
+   then
+    RUN_JOB="$RUN_JOB2 $host -- -jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   elif test $MACHINENAME = IBM -a $MPITYPE = hardware -a "$MACHINETYPE" = NONSP
+   then
+    RUN_JOB="$RUN_JOB2 $bd$program -jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   elif test $MPITYPE = "myrinet"
+   then
+    if test $MPIVERSION = "MPICH-GM1.2.1..7"
+    then
+     RUN_JOB="$RUN_JOB2 $host $bd$program -jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+    else
+     RUN_JOB_TMP="$RUN_JOB2 $host $bd$program"
+     RUN_JOB=" -jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+    fi
+   elif test $MACHINENAME = DEC -a $MPITYPE = hardware
+   then
+    RUN_JOB="$RUN_JOB2 $nprocd -hf $host $bd$program -jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   elif test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi"
+   then
+    numhost=`uniq $jid.mfile | wc -l`
+    if test "$INTELMPI_VERSION" = "HYDRA"
+    then
+      RUN_JOB_TMP="$RUN_JOB2 -configfile $jid.cfile"
+    else
+      export I_MPI_JOB_CONTEXT=$$
+      mpdboot -n $numhost -r $RSH -f $jid.mfile
+      RUN_JOB_TMP="$RUN_JOB2 $jid.cfile"
+    fi
+
+# intelmpi uses configfile. format:
+#    -host host1 -n n1 executable marcargs
+# one such line per host
+# collect the marcargs in RUN_JOB and construct the config file later
+# collect the run stream in RUN_JOB_TMP
+    RUN_JOB="-jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+
+
+   elif test $MACHINENAME = "SUN" -a $MPITYPE = "hardware"
+   then
+    RUN_JOB="$RUN_JOB2 $jid.mfile -n $nprocd $bd$program -jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   else
+    RUN_JOB="$RUN_JOB2 $host $bd$program -jid $jid -dirjid $DIRJID \
+$nprocdarg \
+$nsolverarg \
+-maxnum $MAXNUM -itree $itree \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   fi
+   if test "$userhost"
+   then
+    RUN_JOB="$RUN_JOB -mhost $userhost"
+   fi
+   if test $MPITYPE = "scali"
+   then
+# set default working directory to /tmp to allow
+# different directory names
+    SCAMPI_WORKING_DIRECTORY=/tmp
+    export SCAMPI_WORKING_DIRECTORY
+   fi
+ else
+   if test -z "$RUN_JOB1"
+   then
+    echo " "
+    echo "error: parallel job attempted on non-parallel version,"
+    echo "       or, if parallel version is installed, the include " 
+    echo "       file is probably corrupted"
+    echo " "
+    if test "$deletelog" = no
+    then
+    echo " " >> $jid.log
+    echo "error: parallel job attempted on non-parallel version," >> $jid.log
+    echo "       or, if parallel version is installed, the include "  >> $jid.log
+    echo "       file is probably corrupted" >> $jid.log
+    echo " " >> $jid.log
+    fi
+    exit
+   fi
+   RUNNPROCD=$nprocd
+   if test $MACHINENAME = "IBM" -a $MPITYPE = "hardware"
+   then
+     RUNNPROCD=
+     MP_PROCS=$nprocd
+     export MP_PROCS
+   fi
+   if test $MPITYPE = "myrinet"
+   then
+     RUN_JOB="$RUN_JOB1 $RUNNPROCD  $bd$program -jid $jid -dirjid $DIRJID \
+     $nprocdarg \
+     $nsolverarg \
+     -maxnum $MAXNUM -itree $itree \
+     $ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   else
+     RUN_JOB="$RUN_JOB1 $RUNNPROCD $bd$program -jid $jid -dirjid $DIRJID \
+     $nprocdarg \
+     $nsolverarg \
+     -maxnum $MAXNUM -itree $itree \
+     $ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   fi
+   if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi"
+   then
+    if test "$INTELMPI_VERSION" = "HYDRA"
+    then
+      echo " " > /dev/null
+    else
+      export I_MPI_JOB_CONTEXT=$$
+      mpdboot -n 1 -f $jid.hosts
+    fi
+    RUN_JOB="$RUN_JOB1 $RUNNPROCD $bd$program -jid $jid -dirjid $DIRJID \
+     $nprocdarg \
+     $nsolverarg \
+     -maxnum $MAXNUM -itree $itree \
+     $ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+   fi
+ fi
+else
+ if test $ndcoup -gt 0
+ then
+   RUN_JOB="$RUN_JOB0 $BINDIR/exe_auto $bd$program -jid $jid -dirjid $DIRJID \
+-maxnum $MAXNUM \
+ $ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+ else
+# this is for a serial job without auto restart:
+   RUN_JOB="$RUN_JOB0 $bd$program -jid $jid -dirjid $DIRJID \
+-maxnum $MAXNUM \
+$ntearg $nte $ntsarg $nts $gpuoption -dirjob $DIRJOB "
+ fi
+fi
+if test "$rid"
+then
+ RUN_JOB="$RUN_JOB -rid $rid -dirrid $DIRRID"
+fi
+if test "$pid"
+then
+ RUN_JOB="$RUN_JOB -pid $pid -dirpid $DIRPID"
+fi
+if test "$sid"
+then
+ RUN_JOB="$RUN_JOB -sid $sid -dirsid $DIRSID"
+fi
+if test "$did"
+then
+ RUN_JOB="$RUN_JOB -def $did -dirdid $DIRDID"
+fi
+if test "$vid"
+then
+ RUN_JOB="$RUN_JOB -vf $vid -dirvid $DIRVID"
+fi
+if test $ndcoup -gt 0
+then
+ RUN_JOB="$RUN_JOB -dcoup $ndcoup "
+fi
+if test $ndytran -gt 0
+then
+ RUN_JOB="$RUN_JOB -dytran $ndytran "
+fi
+if test $mesh -gt 0
+then
+ RUN_JOB="$RUN_JOB -me $mesh "
+fi
+if test $noutcore -gt 0
+then
+ RUN_JOB="$RUN_JOB -outcore $noutcore "
+fi
+if test "$dllrun" -gt 0
+then
+ RUN_JOB="$RUN_JOB -dll $dllrun "
+fi
+if test "$trkrun" -gt 0
+then
+ RUN_JOB="$RUN_JOB -trk $trkrun "
+fi
+if test "$iam"
+then
+ RUN_JOB="$RUN_JOB -iam $iam "
+fi
+if test "$justlist"
+then
+ RUN_JOB="$RUN_JOB -list 1 "
+fi
+if test "$feature"
+then
+ RUN_JOB="$RUN_JOB -feature $feature "
+fi
+if test "$memlimit" -ne 0
+then
+ RUN_JOB="$RUN_JOB -ml $memlimit "
+fi
+if test "$cpinput"
+then
+ RUN_JOB="$RUN_JOB -ci $cpinput "
+fi
+if test "$cpresults"
+then
+ RUN_JOB="$RUN_JOB -cr $cpresults "
+fi
+if test "$DIRSCR" != "$DIRJOB"
+then
+ RUN_JOB="$RUN_JOB -dirscr $DIRSCR"
+else
+ DIRSCR=$DIRJOB
+fi
+if test "$makebdf"
+then
+ RUN_JOB="$RUN_JOB -bdf $makebdf "
+fi
+if test $MPITYPE = "myrinet" -a "$host" -a "$MPIVERSION" != "MPICH-GM1.2.1..7"
+then
+ # append $RUN_JOB to all lines of the host file
+ # and set RUN_JOB
+ $AWK  -v args="$RUN_JOB" '{print $0,args}' $host > $host.$$
+ /bin/mv $host.$$ $host
+ RUN_JOB=$RUN_JOB_TMP
+fi
+if test $MPITYPE = "intelmpi" -a "$host"
+then
+  # construct config file, append $RUN_JOB to all lines of the config file
+  # and set RUN_JOB
+  if test "$INTELMPI_VERSION" = "HYDRA"
+  then
+    grep -v '^#' $host | $AWK -v args="$RUN_JOB" -v path=$execpath -v en=$execname -v us=$usersub \
+    '{if ( NF > 0) {\
+    printf(" -host %s",$1); \
+    printf(" -n %s",$2); \
+    if ( NF == 2 ) printf(" %s",path);\
+    if ( NF >= 3 ) printf(" -wdir %s ",$3); \
+    if ( NF >= 3 ) if (us) printf(" %s/%s",$3,en); else printf(" %s",path); \
+    printf(" %s\n",args); \
+    }\
+    }' > $jid.cfile
+  else
+    grep -v '^#' $host | $AWK -v args="$RUN_JOB" -v path=$execpath -v en=$execname -v us=$usersub \
+    '{if ( NF > 0) {\
+    printf("-host %s -n %s",$1,$2); \
+    if ( NF == 2 ) printf(" %s",path);\
+    if ( NF >= 3 ) printf(" -wdir %s ",$3); \
+    if ( NF >= 3 ) if (us) printf(" %s/%s",$3,en); else printf(" %s",path); \
+    printf(" %s\n",args); \
+    }\
+    }' > $jid.cfile
+  fi
+  RUN_JOB=$RUN_JOB_TMP
+fi
+echo " "
+echo "Final run stream value"
+echo " RUNJOB="$RUN_JOB
+if test "$deletelog" = no
+then
+echo " " >> $jid.log
+echo "Final run stream value" >> $jid.log
+echo " RUNJOB="$RUN_JOB >> $jid.log
+fi
+
+
+#
+# check for external file to run using valgrind
+#
+if test -f $MARC_TOOLS/run_marc_valgrind
+then
+ . $MARC_TOOLS/run_marc_valgrind
+fi
+
+
+##############################################################################
+#         run the requested program in a queue                               #
+##############################################################################
+
+if test "$deletelog" = yes
+then
+ echo
+ date
+else
+ echo >> $jid.log
+ date >> $jid.log
+fi
+if [ $qid = short -o $qid = long -o $qid = verylong -o $qid = at ]
+then
+
+/bin/rm -f $jid.runmarcscript
+
+
+#
+# compile user subroutine if present
+#
+if test "$link"
+then
+    if test -z "$FCOMPROOT"; then
+        echo "$0: No compiler available"
+        echo
+        echo "         $PRODUCT Exit number 3"
+        exit 1
+    fi
+    echo
+    echo "Using compiler from: $FCOMPROOT"
+    echo
+    if test "$user"
+    then
+        userobj=$DIRJOB/`$BASENAME $user .f`.o
+        basefile=`$BASENAME $usersubname`
+        if test ${basefile##*.} = f 
+        then
+         usersub=$DIRJOB/`$BASENAME $user .f`.F
+         ln -sf "$user.f" "$usersub"
+        else
+         usersub=$usersubname
+        fi
+
+    fi
+    cat > $jid.runmarcscript << END4
+    if test "$user"
+    then
+        if test ${basefile##*.} = f 
+        then
+         ln -sf "$user.f" "$usersub"
+        fi
+        if test $MACHINENAME = "CRAY"
+        then
+            $FORTRAN $usersub || \
+                {
+                echo "$0: compile failed for $user.f"
+                exit 1
+                }
+            /bin/rm $program 2>/dev/null
+        else
+            $FORTRAN $usersub -o $userobj || \
+                {
+                echo "$0: compile failed for $user.f"
+                exit 1
+                }
+            /bin/rm $program 2>/dev/null
+        fi
+         if test ${basefile##*.} = f 
+         then
+          /bin/rm -f "$usersub"
+         fi
+    fi
+
+
+    $LOAD $bd${program} $MARC_LIB/main.o \
+    $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
+    ${userobj-} \
+    $objs \
+    $SRCLIB \
+    $MNFLIBS \
+    $MDUSER  \
+    ${MUMPSSOLVERLIBS} \
+    $MDSRCLIB \
+    $MARC_LIB/mcvfit.a \
+    $STUBS \
+    $SOLVERLIBS  \
+    $MARCCUDALIBS  \
+    $TKLIBS  \
+    $MRCLIBS     \
+    $METISLIBS \
+    $SFLIB \
+    $OPENSSL_LIB \
+    $SYSLIBS  \
+    $SECLIBS      || \
+    {
+    echo "$0: link failed for ${user:+$userobj }$objs"
+    exit 1
+    }
+END4
+else
+	prgsav=yes
+fi
+/bin/rm $userobj 2>/dev/null
+
+#
+# run marc
+#
+
+cat >> $jid.runmarcscript << END5
+
+# Define share library path based on platforms
+# This is required for using the Patran Mesher
+if test $MACHINENAME = "IBM"
+then
+  LIBPATH=$MARC_LIB:$MARC_LIB_SHARED:$LIBPATH
+  export LIBPATH
+fi
+
+# first remove all .out files and incremental restart files
+#  the ones for ddm are removed in the code
+if test $nprocdddm -gt 1
+then
+  numdom=$nprocdddm
+  while test \$numdom -gt 0
+  do
+  /bin/rm $DIRJOB/$numdom$jid.out 2>/dev/null
+  /bin/rm $DIRJOB/$numdom$jid.log 2>/dev/null
+  /bin/rm $DIRJOB/$numdom${jid}_i_*.t08 2>/dev/null
+  numdom=\`echo \$numdom | $AWK   '{sum=\$1-1}; {print sum}'\`
+  done
+else
+  /bin/rm $DIRJOB/$jid.out 2>/dev/null
+  /bin/rm $DIRJOB/${jid}_i_*.t08 2>/dev/null
+fi
+
+if test $nprocdddm -gt 1
+then
+    $RUN_JOB   2>>$jid.log
+else
+    $RUN_JOB 2>>$jid.log
+fi
+
+if test $dllrun -eq 0; then
+  if test $prgsav = no
+  then
+      /bin/rm -f $bd$program 2>/dev/null	
+  fi
+else
+  if test $cpdll = yes; then
+     filename=`basename $usersubname .f`
+     /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
+  fi
+  if test $rmdll = yes
+  then
+     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
+  fi
+fi
+ 
+if test $nprocdddm -gt 1
+then
+  numdom=$nprocdddm
+  while test \$numdom -gt 0
+  do
+  /bin/rm $DIRSCR/$numdom$jid.t02 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t03 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t11 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t12 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t13 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t14 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t15 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t22 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t23 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t32 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t33 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t74 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t75 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t76 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t77 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t78 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t79 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t81* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t82* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t83* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t84 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t85 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t86 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t87 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t88 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t90 2>/dev/null
+  numdom=\`echo \$numdom | $AWK   '{sum=\$1-1}; {print sum}'\`
+  done
+  /bin/rm $DIRJOB/$jid.pid 2>/dev/null
+else
+  /bin/rm $DIRSCR/$jid.t02 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t03 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t11 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t12 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t13 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t14 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t15 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t22 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t23 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t32 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t33 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t81* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t82* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t83* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t84 2>/dev/null
+  /bin/rm $DIRJOB/$jid.pid 2>/dev/null
+fi
+END5
+
+
+# Submit to marc batch  queue
+#
+if [ $qid = at ]
+then
+QUENAME=at
+SUBMCMD=
+else
+#
+# Submit to qsub queue
+#
+QUENAME=qsub
+SUBMCMD="-q $qid -o /dev/null -e $jid.batch_err_log -x -r $jid"
+if test "$priority" 
+then
+	SUBMCMD=$SUBMCMD" -p $priority"
+fi
+if test "$att" 
+then
+	SUBMCMD=$SUBMCMD" -a $att"
+fi
+if test "$cpu" 
+then
+	SUBMCMD=$SUBMCMD" -lt $cpu"
+fi
+
+fi
+echo $QUENAME $SUBMCMD
+#cat $jid.runmarcscript
+$QUENAME $SUBMCMD < $jid.runmarcscript
+
+/bin/rm -f $jid.runmarcscript
+
+##############################################################################
+#         run the requested program in the background                        #
+##############################################################################
+
+else
+if test $qid = background
+then
+
+#
+# first remove all old .out files
+#  the ones for ddm are removed in the code
+if test $nprocdddm -gt 1
+then
+  numdom=$nprocdddm
+  while test $numdom -gt 0
+  do
+  /bin/rm $DIRJOB/$numdom$jid.out 2>/dev/null
+  /bin/rm $DIRJOB/$numdom$jid.log 2>/dev/null
+  numdom=`echo $numdom | $AWK   '{sum=$1-1}; {print sum}'`
+  done
+else
+  /bin/rm $DIRJOB/$jid.out 2>/dev/null
+fi
+#
+# compile user subroutine if present
+#
+(
+if test "$link"
+then
+  if test -z "$FCOMPROOT"; then
+      echo "$0: No compiler available"
+      echo
+      echo "         $PRODUCT Exit number 3"
+      exit 1
+  fi
+  echo
+  echo "Using compiler from: $FCOMPROOT"
+  echo
+  if test "$user"
+  then
+    # compile and link on other hosts in $host if compstatus=no
+    if test $nprocd -gt 1
+    then
+      if test "$userhost"
+      then
+        counter=0
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            if test ${compstatus[$counter]} = "no"
+            then
+              DIR1=$DIRJOB
+              DIR2=$DIR
+              line=`grep -v '^#' $userhost | grep "^$ibase "`
+              workdir=`echo $line | $AWK '{print $3}'`
+              marcdir=`echo $line | $AWK '{print $4}'`
+              if test -n "$workdir"
+              then
+                DIR1=$workdir
+              fi
+              if test -n "$marcdir"
+              then
+                DIR2=$marcdir
+              fi
+              # first copy over the user sub if local directories
+              if test ${dirstatus[$counter]} = "local"
+              then
+               $RCP $user.f $i:$DIR1/
+              fi
+              # do the compilation on the other machine
+              if test ${dirstatus[$counter]} = "shared"
+              then
+                hname=_$ibase
+              else
+                hname=
+              fi
+              remoteprog=$DIR1/${execname}$hname
+              remoteuser=$DIR1/`$BASENAME $user`
+              $RSH $i /bin/rm $remoteprog 2> /dev/null
+              echo
+              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
+              # check if successful, the new executable should be there
+              line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
+              if test "$line"
+              then
+                echo compilation and linking successful on host $i
+              else
+                echo "$0: compile failed for $user.f on host $i"
+                echo "         $PRODUCT Exit number 3"
+                exit 1
+              fi
+              # remove the user subroutine on remote machine
+              if test ${dirstatus[$counter]} = "local"
+              then
+               $RSH $i /bin/rm $remoteuser.f 2> /dev/null
+              fi
+            fi
+          fi
+        done
+      fi
+    fi
+    if test "$userhost"
+    then
+      echo
+      echo "Compiling and linking user subroutine $user.f on host `hostname`"
+    fi
+    userobj=$DIRJOB/`$BASENAME $user .f`.o
+    basefile=`$BASENAME $usersubname`
+    if test ${basefile##*.} = f 
+    then
+     usersub=$DIRJOB/`$BASENAME $user .f`.F
+     ln -sf "$user.f" "$usersub"
+    else
+     usersub=$usersubname
+    fi
+        if test $MACHINENAME = "CRAY"
+        then
+            $FORTRAN $usersub || \
+                {
+                echo "$0: compile failed for $user.f"
+                echo "         $PRODUCT Exit number 3"
+                exit 1
+                }
+            /bin/rm $program 2>/dev/null
+        else
+            $FORTRAN $usersub -o $userobj || \
+                {
+                echo "$0: compile failed for $user.f"
+                echo "         $PRODUCT Exit number 3"
+                exit 1
+                }
+            /bin/rm $program 2>/dev/null
+        fi
+    if test ${basefile##*.} = f 
+    then
+     /bin/rm -f "$usersub"
+    fi
+  fi # if test $user
+
+
+  $LOAD $bd${program} $MARC_LIB/main.o \
+  $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
+  ${userobj-} \
+  $objs \
+  $SRCLIB \
+  $MNFLIBS \
+  $MDUSER  \
+  ${MUMPSSOLVERLIBS} \
+  $MDSRCLIB \
+  $MARC_LIB/mcvfit.a \
+  $STUBS \
+  ${SOLVERLIBS}  \
+  ${MARCCUDALIBS}  \
+  $TKLIBS  \
+  $MRCLIBS     \
+  $METISLIBS \
+  $SFLIB \
+  $OPENSSL_LIB \
+  $SYSLIBS  \
+  $SECLIBS    || \
+  {
+    echo "$0: link failed for ${user:+$userobj }$objs"
+    echo "         $PRODUCT Exit number 3"
+    exit 1
+  }
+  # copy user subroutine executable for hosts using local working dir
+  if test $nprocd -gt 1
+  then
+    if test "$userhost"
+    then
+        counter=0
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            if test ${dirstatus[$counter]} = "local" -a ${compstatus[$counter]} = "yes"
+            then            
+              DIR1=$DIRJOB
+              line=`grep -v '^#' $userhost | grep "^$ibase "`
+              workdir=`echo $line | $AWK '{print $3}'`
+              if test -n "$workdir"
+              then
+                DIR1=$workdir
+              fi
+              echo "Copying executable to host ${i}"
+              $RCP $program ${i}:${DIR1}/
+            fi
+          fi
+        done
+    fi
+  fi
+else # if test $link
+	prgsav=yes
+fi   # if test $link
+/bin/rm $userobj 2>/dev/null
+
+#
+# run marc
+
+#
+
+# Define share library path based on platforms
+# This is required for using the Patran Mesher
+if test $MACHINENAME = "IBM"
+then
+  LIBPATH=$MARC_LIB:$MARC_LIB_SHARED:$LIBPATH
+  export LIBPATH
+fi
+
+# for DDM with ARC support
+
+if test $ddm_arc -gt 0; then
+  RUN_JOB="$BINDIR/exeddm $RUN_JOB -ddm $ddm_arc "
+fi
+
+
+$RUN_JOB &
+
+marcpid=$!
+echo $marcpid > $DIRJOB/$jid.pid
+wait $marcpid
+
+if test $nprocd -gt 1
+then
+  if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi"
+  then
+    if test "$INTELMPI_VERSION" = "HYDRA"
+    then
+      if test "$host"
+      then
+        /bin/rm $jid.mfile  2> /dev/null
+        /bin/rm $jid.hosts  2> /dev/null
+        /bin/rm $jid.host   2> /dev/null
+        /bin/rm $jid.cfile  2> /dev/null
+      fi
+    fi
+  fi
+fi
+
+
+if test $dllrun -eq 0; then
+if test $prgsav = no
+then
+  /bin/rm -f $bd$program 2>/dev/null	
+  # for network run, remove executable on remote machines
+  # and executables with modified name
+  if test $nprocd -gt 1
+  then
+    if test "$userhost"
+    then
+      counter=0
+      if test -f "$host_filt"
+      then
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            DIR1=$DIRJOB
+            line=`grep -v '^#' $userhost | grep "^$ibase "`
+            workdir=`echo $line | $AWK '{print $3}'`
+            if test -n "$workdir"
+            then
+              DIR1=$workdir
+            fi
+            #  if an incompatible host uses shared directory,
+            #  then the root machine deletes the executable
+            if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
+            then
+              hname=_$ibase
+              /bin/rm ${execname}$hname
+            fi
+            # if local directory used, the remote machine
+            # deletes the executable
+            if test ${dirstatus[$counter]} = "local"
+            then
+              $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
+            fi
+          fi
+        done
+      fi
+    fi
+  fi
+fi
+else
+#dllrun >0
+  if test $cpdll = yes; then
+     filename=`basename $usersubname .f`
+     /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
+  fi
+  if test $rmdll = yes;then
+     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
+  fi
+fi
+if test $nprocdddm -gt 1
+then
+  numdom=$nprocdddm
+  while test $numdom -gt 0
+  do
+  /bin/rm $DIRSCR/$numdom$jid.t02 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t03 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t11 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t12 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t13 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t14 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t15 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t22 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t23 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t32 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t33 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t74 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t75 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t76 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t77 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t78 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t79 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t81* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t82* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t83* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t84 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t85 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t86 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t87 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t88 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t90 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.sle 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.sin 2>/dev/null
+  numdom=`echo $numdom | $AWK   '{sum=$1-1}; {print sum}'`
+  done
+  /bin/rm $DIRJOB/$jid.pid 2>/dev/null
+  if test $MPITYPE = "myrinet"
+  then
+   if test -f "$host_filt"
+   then
+    /bin/rm $host_filt
+   fi
+  fi
+else
+  /bin/rm $DIRSCR/$jid.t02 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t03 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t11 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t12 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t13 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t14 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t15 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t22 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t23 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t32 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t33 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t81* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t82* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t83* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t84 2>/dev/null
+  /bin/rm $DIRJOB/$jid.pid 2>/dev/null
+  /bin/rm $DIRJOB/$jid.sle 2>/dev/null
+  /bin/rm $DIRJOB/$jid.sin 2>/dev/null
+fi
+) 1>>$jid.log 2>&1 &
+
+
+##############################################################################
+#        run the requested program in the foreground                         #
+##############################################################################
+
+else
+
+#
+# compile user subroutine if present
+#
+if test "$link"
+then
+  if test -z "$FCOMPROOT"; then
+      echo "$0: No compiler available"
+      echo
+      echo "         $PRODUCT Exit number 3"
+      exit 1
+  fi
+  echo
+  echo "Using compiler from: $FCOMPROOT"
+  echo
+  if test "$user"
+  then
+    # compile and link on other hosts in $host if compstatus=no
+    if test $nprocd -gt 1
+    then
+      if test "$userhost"
+      then
+        counter=0
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            if test ${compstatus[$counter]} = "no"
+            then
+              DIR1=$DIRJOB
+              DIR2=$DIR
+              line=`grep -v '^#' $userhost | grep "^$ibase "`
+              workdir=`echo $line | $AWK '{print $3}'`
+              marcdir=`echo $line | $AWK '{print $4}'`
+              if test -n "$workdir"
+              then
+                DIR1=$workdir
+              fi
+              if test -n "$marcdir"
+              then
+                DIR2=$marcdir
+              fi
+              # first copy over the user sub if local directories
+              if test ${dirstatus[$counter]} = "local"
+              then
+               $RCP $user.f $i:$DIR1/
+              fi
+              # do the compilation on the other machine
+              if test ${dirstatus[$counter]} = "shared"
+              then
+                hname=_$ibase
+              else
+                hname=
+              fi
+              remoteprog=$DIR1/${execname}$hname
+              remoteuser=$DIR1/`$BASENAME $user`
+              $RSH $i /bin/rm $remoteprog 2> /dev/null
+              echo
+              $RSH $i $DIR2/tools/comp_user $DIR2 $DIR1 $remoteuser $remoteprog
+              # check if successful, the new executable should be there
+              line=`$RSH $i /bin/ls $remoteprog 2> /dev/null`
+              if test "$line"
+              then
+                echo compilation and linking successful on host $i
+              else
+                echo "$0: compile failed for $user.f on host $i"
+                exit 1
+              fi
+              # remove the user subroutine on remote machine
+              if test ${dirstatus[$counter]} = "local"
+              then
+               $RSH $i /bin/rm $remoteuser.f 2> /dev/null
+              fi
+            fi
+          fi
+        done
+      fi
+    fi
+    if test "$userhost"
+    then
+      echo
+      echo "Compiling and linking user subroutine $user.f on host `hostname`"
+    fi
+    userobj=$DIRJOB/`$BASENAME $user .f`.o
+    basefile=`$BASENAME $usersubname`
+    if test ${basefile##*.} = f 
+    then
+     usersub=$DIRJOB/`$BASENAME $user .f`.F
+     ln -sf "$user.f" "$usersub"
+    else
+     usersub=$usersubname
+    fi
+        if test $MACHINENAME = "CRAY"
+        then
+            $FORTRAN $usersub || \
+                {
+                echo "$0: compile failed for $user.f"
+                exit 1
+                }
+            /bin/rm $program 2>/dev/null
+        else
+            $FORTRAN $usersub -o $userobj || \
+                {
+                echo "$0: compile failed for $user.f"
+                exit 1
+                }
+            /bin/rm $program 2>/dev/null
+        fi
+    if test ${basefile##*.} = f 
+    then
+     /bin/rm -f "$usersub"
+    fi
+  fi # if test $user
+
+
+  $LOAD $bd${program} $MARC_LIB/main.o \
+  $MARC_LIB/blkdta.o $MARC_LIB/comm?.o \
+  ${userobj-} \
+  $objs \
+  $SRCLIB \
+  $MNFLIBS \
+  $MDUSER  \
+  ${MUMPSSOLVERLIBS} \
+  $MDSRCLIB \
+  $MARC_LIB/mcvfit.a \
+  $STUBS \
+  ${SOLVERLIBS}  \
+  ${MARCCUDALIBS}  \
+  $TKLIBS  \
+  $MRCLIBS     \
+  $METISLIBS \
+  $SFLIB \
+  $OPENSSL_LIB \
+  $SYSLIBS \
+  $SECLIBS         || \
+  {
+    echo "$0: link failed for ${user:+$userobj }$objs"
+    exit 1
+  }
+  # copy user subroutine executable for hosts using local working dir
+  if test $nprocd -gt 1
+  then
+    if test "$userhost"
+    then
+        counter=0
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            if test ${dirstatus[$counter]} = "local" -a ${compstatus[$counter]} = "yes"
+            then            
+              DIR1=$DIRJOB
+              line=`grep -v '^#' $userhost | grep "^$ibase "`
+              workdir=`echo $line | $AWK '{print $3}'`
+              if test -n "$workdir"
+              then
+                DIR1=$workdir
+              fi
+              echo "Copying executable to host ${i}"
+              $RCP $program ${i}:${DIR1}/
+            fi
+          fi
+        done
+    fi
+  fi
+else # if test $link
+	prgsav=yes
+fi   # if test $link
+/bin/rm $userobj 2>/dev/null
+
+# done if no job id given
+if test -z "$jid"
+then
+ echo
+ echo only compilation requested
+ echo
+ exit
+fi
+#
+# run marc
+#
+# Define share library path based on platforms
+# This is required for using the Patran Mesher
+if test $MACHINENAME = "IBM"
+then
+  LIBPATH=$MARC_LIB:$MARC_LIB_SHARED:$LIBPATH
+  export LIBPATH
+fi
+# first remove all .out files
+#  the ones for ddm are removed in the code
+if test $nprocdddm -gt 1
+then
+  numdom=$nprocdddm
+  while test $numdom -gt 0
+  do
+  /bin/rm $DIRJOB/$numdom$jid.out 2>/dev/null
+  /bin/rm $DIRJOB/$numdom$jid.log 2>/dev/null
+  numdom=`echo $numdom | $AWK   '{sum=$1-1}; {print sum}'`
+  done
+else
+  /bin/rm $DIRJOB/$jid.out 2>/dev/null
+fi
+
+# for DDM with ARC support
+
+if test $ddm_arc -gt 0; then
+  RUN_JOB="$BINDIR/exeddm $RUN_JOB -ddm $ddm_arc "
+fi
+
+$RUN_JOB 
+
+if test $nprocd -gt 1
+then
+  if test $MACHINENAME = "LINUX" -a $MPITYPE = "intelmpi"
+  then
+    if test "$INTELMPI_VERSION" = "HYDRA"
+    then
+      if test "$host"
+      then
+        /bin/rm $jid.mfile  2> /dev/null
+        /bin/rm $jid.hosts  2> /dev/null
+        /bin/rm $jid.host   2> /dev/null
+        /bin/rm $jid.cfile  2> /dev/null
+      else
+        echo " " > /dev/null
+      fi
+    else
+      if test "$host"
+      then
+        mpdcleanup -a -f $jid.mfile
+        /bin/rm $jid.host  2> /dev/null
+        /bin/rm $jid.mfile  2> /dev/null
+      else
+        mpdcleanup -a -f $jid.hosts
+        /bin/rm $jid.hosts 2> /dev/null
+      fi
+    fi
+  fi
+fi
+
+if test $dllrun -eq 0; then
+if test $prgsav = no
+then
+  /bin/rm -f $bd$program 2>/dev/null
+  # for network run, remove executable on remote machines
+  # and executables with modified name
+  if test $nprocd -gt 1
+  then
+    if test "$userhost"
+    then
+      counter=0
+      if test -f "$host_filt"
+      then
+        for i in `$AWK -v n=$numfield '{print $n}' $host_filt`
+        do
+          ibase=${i%%.*}
+          if test $ibase != $thishost
+          then
+            counter=$((counter+1))
+            DIR1=$DIRJOB
+            line=`grep -v '^#' $userhost | grep "^$ibase "`
+            workdir=`echo $line | $AWK '{print $3}'`
+            if test -n "$workdir"
+            then
+              DIR1=$workdir
+            fi
+            #  if an incompatible host uses shared directory,
+            #  then the root machine deletes the executable
+            if test ${dirstatus[$counter]} = "shared" -a  ${compstatus[$counter]} = "no"
+            then
+              hname=_$ibase
+              /bin/rm ${execname}$hname
+            fi
+            # if local directory used, the remote machine
+            # deletes the executable
+            if test ${dirstatus[$counter]} = "local"
+            then
+              $RSH $i /bin/rm $DIR1/${execname} 2>/dev/null
+            fi
+          fi
+        done
+      fi
+    fi
+  fi
+fi
+else
+#dllrun >0
+  if test $cpdll = yes; then
+     filename=`basename $usersubname .f`
+     /bin/cp $DIRJOB/$marcdll $DIRJOB/${filename}_$marcdll 2>/dev/null
+  fi
+  if test $rmdll = yes;then
+     /bin/rm -f $DIRJOB/$marcdll 2>/dev/null	
+  fi
+fi
+
+if test $nprocdddm -gt 1
+then
+  numdom=$nprocdddm
+  while test $numdom -gt 0
+  do
+  /bin/rm $DIRSCR/$numdom$jid.t02 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t03 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t11 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t12 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t13 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t14 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t15 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t22 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t23 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t32 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t33 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t74 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t75 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t76 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t77 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t78 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t79 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t81* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t82* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.*.t83* 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t84 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t85 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t86 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t87 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t88 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.t90 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.sle 2>/dev/null
+  /bin/rm $DIRSCR/$numdom$jid.sin 2>/dev/null
+  numdom=`echo $numdom | $AWK  '{sum=$1-1}; {print sum}'`
+  done
+  /bin/rm $DIRJOB/$jid.pid 2>/dev/null
+  if test $MPITYPE = "myrinet"
+  then
+   if test -f "$host_filt"
+   then
+    /bin/rm $host_filt
+   fi
+  fi
+else
+  /bin/rm $DIRSCR/$jid.t02 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t03 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t11 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t12 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t13 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t14 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t15 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t22 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t23 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t32 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t33 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t81* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t82* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.*.t83* 2>/dev/null
+  /bin/rm $DIRSCR/$jid.t84 2>/dev/null
+  /bin/rm $DIRJOB/$jid.pid 2>/dev/null
+  /bin/rm $DIRJOB/$jid.sle 2>/dev/null
+  /bin/rm $DIRJOB/$jid.sin 2>/dev/null
+fi
+
+
+fi
+fi
