@@ -106,7 +106,7 @@ class TestOrientation:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
             table = Table(eu,{'Eulers':(3,)})
             table = table.add('pos',coords)
-            table.to_ASCII(reference)
+            table.write(reference)
         assert np.allclose(eu,Table.load_ASCII(reference).get('Eulers'))
 
     @pytest.mark.parametrize('lattice',Lattice.lattices)
