@@ -66,7 +66,7 @@ class Table:
     @staticmethod
     def load_ASCII(fname):
         """
-        Create table from ASCII file.
+        Load ASCII table file.
 
         In legacy style, the first line indicates the number of
         subsequent header lines as "N header", with the last header line being
@@ -124,7 +124,7 @@ class Table:
     @staticmethod
     def load_ang(fname):
         """
-        Create table from TSL ang file.
+        Load ang file.
 
         A valid TSL ang file needs to contains the following columns:
         * Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
@@ -341,14 +341,12 @@ class Table:
             return dup
 
 
-    def save_ASCII(table,fname,legacy=False):
+    def save_ASCII(self,fname,legacy=False):
         """
-        Store as plain text file.
+        Save as plain text file.
 
         Parameters
         ----------
-        table : Table object
-            Table to write.
         fname : file, str, or pathlib.Path
             Filename or file for writing.
         legacy : Boolean, optional
@@ -358,23 +356,23 @@ class Table:
         """
         seen = set()
         labels = []
-        for l in [x for x in table.data.columns if not (x in seen or seen.add(x))]:
-            if table.shapes[l] == (1,):
+        for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
+            if self.shapes[l] == (1,):
                 labels.append(f'{l}')
-            elif len(table.shapes[l]) == 1:
+            elif len(self.shapes[l]) == 1:
                 labels += [f'{i+1}_{l}' \
-                          for i in range(table.shapes[l][0])]
+                          for i in range(self.shapes[l][0])]
             else:
-                labels += [f'{util.srepr(table.shapes[l],"x")}:{i+1}_{l}' \
-                          for i in range(np.prod(table.shapes[l]))]
+                labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
+                          for i in range(np.prod(self.shapes[l]))]
 
-        header = ([f'{len(table.comments)+1} header'] + table.comments) if legacy else \
-                  [f'# {comment}' for comment in table.comments]
+        header = ([f'{len(self.comments)+1} header'] + self.comments) if legacy else \
+                  [f'# {comment}' for comment in self.comments]
 
         try:
-            f = open(fname,'w')
+            fhandle = open(fname,'w')
         except TypeError:
-            f = fname
+            fhandle = fname
 
-        for line in header + [' '.join(labels)]: f.write(line+'\n')
-        table.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)
+        for line in header + [' '.join(labels)]: fhandle.write(line+'\n')
+        self.data.to_csv(fhandle,sep=' ',na_rep='nan',index=False,header=False)

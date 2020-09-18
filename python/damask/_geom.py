@@ -453,8 +453,6 @@ class Geom:
 
         Parameters
         ----------
-        geom : Geom object
-            Geometry to write.
         fname : str or file handle
             Geometry file to write with extension '.geom'.
         pack : bool, optional
@@ -526,8 +524,6 @@ class Geom:
 
         Parameters
         ----------
-        geom : Geom object
-            Geometry to write with extension '.vtr'.
         fname : str, optional
             Filename to write. If no file is given, a string is returned.
             Valid extension is .vtr, it will be appended if not given.
