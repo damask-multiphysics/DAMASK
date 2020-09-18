@@ -2,6 +2,7 @@ import os
 
 import pytest
 import numpy as np
+from scipy import stats
 
 from damask import Rotation
 from damask import _rotation
@@ -920,3 +921,39 @@ class TestRotation:
         R_2 = Rotation.from_axis_angle([0,0,1,angle],degrees=True)
         avg_angle = R_1.average(R_2).as_axis_angle(degrees=True,pair=True)[1]
         assert np.isclose(avg_angle,10+(angle-10)/2.)
+
+
+    @pytest.mark.parametrize('sigma',[5,10,15,20])
+    @pytest.mark.parametrize('N',[1000,10000,100000])
+    def test_spherical_component(self,N,sigma):
+        c = Rotation.from_random()
+        o = Rotation.from_spherical_component(c,sigma,N)
+        _, angles = c.misorientation(o).as_axis_angle(pair=True,degrees=True)
+        angles[::2] *= -1                                                                           # flip angle for every second to symmetrize distribution
+
+        p = stats.normaltest(angles)[1]
+        sigma_out = np.std(angles)
+        print(f'\np: {p}, sigma ratio {sigma/sigma_out}')
+        assert (.9 < sigma/sigma_out < 1.1) and p > 0.001
+
+
+    @pytest.mark.parametrize('sigma',[5,10,15,20])
+    @pytest.mark.parametrize('N',[1000,10000,100000])
+    def test_from_fiber_component(self,N,sigma):
+        """https://en.wikipedia.org/wiki/Full_width_at_half_maximum."""
+        alpha = np.random.random(2)*np.pi
+        beta  = np.random.random(2)*np.pi
+
+        f_in_C = np.array([np.sin(alpha[0])*np.cos(alpha[1]), np.sin(alpha[0])*np.sin(alpha[1]), np.cos(alpha[0])])
+        f_in_S = np.array([np.sin(beta[0] )*np.cos(beta[1] ), np.sin(beta[0] )*np.sin(beta[1] ), np.cos(beta[0] )])
+        ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
+        n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)                # rotation to align fiber axis in crystal and sample system
+
+        o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),N,False)
+        angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,(N,3)),n@f_in_S),-1,1))
+        dist   = np.array(angles) * (np.random.randint(0,2,N)*2-1)
+
+        p = stats.normaltest(dist)[1]
+        sigma_out = np.degrees(np.std(dist))
+        print(f'\np: {p}, sigma ratio {sigma/sigma_out}')
+        assert (.9 < sigma/sigma_out < 1.1) and p > 0.001
