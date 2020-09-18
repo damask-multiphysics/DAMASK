@@ -1,7 +1,5 @@
-import sys
 import copy
-import multiprocessing
-from io import StringIO
+import multiprocessing as mp
 from functools import partial
 
 import numpy as np
@@ -404,7 +402,7 @@ class Geom:
             seeds_p   = seeds
             coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
-        pool = multiprocessing.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
+        pool = mp.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
@@ -447,7 +445,7 @@ class Geom:
                    )
 
 
-    def save_ASCII(self,fname,pack=None):
+    def save_ASCII(self,fname,compress=None):
         """
         Writes a geom file.
 
@@ -455,7 +453,7 @@ class Geom:
         ----------
         fname : str or file handle
             Geometry file to write with extension '.geom'.
-        pack : bool, optional
+        compress : bool, optional
             Compress geometry with 'x of y' and 'a to b'.
 
         """
@@ -467,10 +465,10 @@ class Geom:
 
         grid = self.get_grid()
 
-        if pack is None:
+        if compress is None:
             plain = grid.prod()/self.N_microstructure < 250
         else:
-            plain = not pack
+            plain = not compress
 
         if plain:
             format_string = '%g' if self.microstructure.dtype in np.sctypes['float'] else \
@@ -518,7 +516,7 @@ class Geom:
                 f.write(f'{reps} of {former}\n')
 
 
-    def save_vtr(self,fname=None):
+    def save_vtr(self,fname,compress=True):
         """
         Generates vtk rectilinear grid.
 
@@ -527,24 +525,21 @@ class Geom:
         fname : str, optional
             Filename to write. If no file is given, a string is returned.
             Valid extension is .vtr, it will be appended if not given.
+        compress : bool, optional
+            Compress with zlib algorithm. Defaults to True.
 
         """
         v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
         v.add(self.microstructure.flatten(order='F'),'materialpoint')
         v.add_comments(self.comments)
 
-        if fname:
-            v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
-        else:
-            sys.stdout.write(v.__repr__())
+        v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr',parallel=False,compress=compress)
 
 
-    def as_ASCII(self,pack=False):
-        """Format geometry as human-readable ASCII."""
-        f = StringIO()
-        self.save_ASCII(f,pack)
-        f.seek(0)
-        return ''.join(f.readlines())
+    def show(self):
+        """Show on screen."""
+        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+        v.show()
 
 
     def add_primitive(self,dimension,center,exponent,

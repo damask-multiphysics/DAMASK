@@ -69,15 +69,8 @@ class TestGeom:
 
     def test_write_read_file(self,default,tmpdir):
         with open(tmpdir/'default.geom','w') as f:
-            default.save_ASCII(f,pack=True)
+            default.save_ASCII(f,compress=True)
         with open(tmpdir/'default.geom') as f:
-            new = Geom.load_ASCII(f)
-        assert geom_equal(default,new)
-
-    def test_write_as_ASCII(self,default,tmpdir):
-        with open(tmpdir/'str.geom','w') as f:
-            f.write(default.as_ASCII())
-        with open(tmpdir/'str.geom') as f:
             new = Geom.load_ASCII(f)
         assert geom_equal(default,new)
 
@@ -107,9 +100,9 @@ class TestGeom:
             Geom.load_vtr(tmpdir/'no_materialpoint.vtr')
 
 
-    @pytest.mark.parametrize('pack',[True,False])
-    def test_pack(self,default,tmpdir,pack):
-        default.save_ASCII(tmpdir/'default.geom',pack=pack)
+    @pytest.mark.parametrize('compress',[True,False])
+    def test_compress(self,default,tmpdir,compress):
+        default.save_ASCII(tmpdir/'default.geom',compress=compress)
         new = Geom.load_ASCII(tmpdir/'default.geom')
         assert geom_equal(new,default)
 

@@ -178,6 +178,8 @@ class VTK:
             Filename for writing.
         parallel : boolean, optional
             Write data in parallel background process. Defaults to True.
+        compress : bool, optional
+            Compress with zlib algorithm. Defaults to True.
 
         """
         if   isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
