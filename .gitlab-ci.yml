@@ -25,6 +25,7 @@ before_script:
     fi
   - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
       do sleep 5m;
+      echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
     done
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
@@ -87,6 +88,7 @@ checkout:
     - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
     - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
         do sleep 5m;
+        echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
       done
   script:
     - mkdir -p $DAMASKROOT
