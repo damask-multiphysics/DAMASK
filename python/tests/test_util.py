@@ -25,7 +25,6 @@ class TestUtil:
                             ])
 
     def test_scale2coprime(self,input,output):
-        print(util.scale_to_coprime(np.array(input)))
         assert np.allclose(util.scale_to_coprime(np.array(input)),
                                                  np.array(output).astype(int))
 
