@@ -269,16 +269,12 @@ end subroutine grid_mech_FEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the FEM scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mech_FEM_solution(incInfoIn,stress_BC,rotation_BC) result(solution)
+function grid_mech_FEM_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
     incInfoIn
-  type(tBoundaryCondition),    intent(in) :: &
-    stress_BC
-  type(rotation),              intent(in) :: &
-    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -290,7 +286,7 @@ function grid_mech_FEM_solution(incInfoIn,stress_BC,rotation_BC) result(solution
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
+  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask>.5_pReal,C_volAvg)
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP

@@ -433,17 +433,11 @@ program DAMASK_grid
             do field = 1, nActiveFields
               select case(loadCases(currentLoadCase)%ID(field))
                 case(FIELD_MECH_ID)
-                  solres(field) = mech_solution (&
-                                         incInfo, &
-                                         stress_BC   = loadCases(currentLoadCase)%stress, &
-                                         rotation_BC = loadCases(currentLoadCase)%rot)
-  
+                  solres(field) = mech_solution(incInfo)
                 case(FIELD_THERMAL_ID)
                   solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld)
-  
                 case(FIELD_DAMAGE_ID)
                   solres(field) = grid_damage_spectral_solution(timeinc,timeIncOld)
-  
               end select
   
               if (.not. solres(field)%converged) exit                                               ! no solution found
