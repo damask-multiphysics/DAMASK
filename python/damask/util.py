@@ -173,7 +173,7 @@ def scale_to_coprime(v):
     m = m//reduce(np.gcd,m)
 
     with np.errstate(divide='ignore'):
-        if not np.allclose(v/m,v[0]/m[0]):
+        if not np.allclose(np.ma.masked_invalid(v/m),v[np.argmax(abs(v))]/m[np.argmax(abs(v))]):
             raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
 
     return m
