@@ -1032,7 +1032,7 @@ pure function IPareaNormal(elem,nElem,connectivity,node)
           case (4)                                                                                  ! 3D 8node
             ! Get the normal of the quadrilateral face as the average of four normals of triangular
             ! subfaces. Since the face consists only of two triangles, the sum has to be divided
-            ! by two. This procedure tries to compensate forprobable non-planar cell surfaces
+            ! by two. This procedure tries to compensate for probable non-planar cell surfaces
             IPareaNormal(1:3,f,i,e) = 0.0_pReal
             do n = 1, m
               IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &
