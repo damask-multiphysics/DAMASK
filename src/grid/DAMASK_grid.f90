@@ -341,8 +341,7 @@ program DAMASK_grid
     writeHeader: if (interface_restartInc < 1) then
       open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
       write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
-      if (debug_grid%contains('basic')) &
-        write(6,'(/,a)') ' header of statistics file written out'
+      if (debug_grid%contains('basic')) print'(/,a)', ' header of statistics file written out'
       flush(6)
     else writeHeader
       open(newunit=statUnit,file=trim(getSolverJobName())//&
@@ -351,7 +350,7 @@ program DAMASK_grid
   endif
   
   writeUndeformed: if (interface_restartInc < 1) then
-    write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
+    print'(/,a)', ' ... writing initial configuration to file ........................'
     call CPFEM_results(0,0.0_pReal)
   endif writeUndeformed
   

@@ -700,7 +700,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     temp99_real = math_3333to99(rot_BC%rotate(C))
 
     if(debugGeneral) then
-      write(6,'(/,a)') ' ... updating masked compliance ............................................'
+      print'(/,a)', ' ... updating masked compliance ............................................'
       write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
                                                    transpose(temp99_Real)*1.0e-9_pReal
       flush(6)
