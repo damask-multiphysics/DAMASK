@@ -378,9 +378,9 @@ subroutine material_parseMicrostructure
   enddo
 
   do e = 1, discretization_nElem
+    constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
+    constituents => constituentsInMicrostructure%get('constituents')
     do i = 1, discretization_nIP
-      constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
-      constituents => constituentsInMicrostructure%get('constituents')
       do c = 1, constituents%length
         constituent => constituents%get(c)
         material_phaseAt(c,e) = phases%getIndex(constituent%get_asString('phase'))
@@ -390,24 +390,26 @@ subroutine material_parseMicrostructure
   enddo
 
   do e = 1, discretization_nElem
+    constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
+    material_homogenizationAt(e) = homogenization%getIndex(constituentsInMicrostructure%get_asString('homogenization'))
     do i = 1, discretization_nIP
-      constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
-      material_homogenizationAt(e) = homogenization%getIndex(constituentsInMicrostructure%get_asString('homogenization'))
       CounterHomogenization(material_homogenizationAt(e)) = CounterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e) = CounterHomogenization(material_homogenizationAt(e))
     enddo
   enddo
 
   do e = 1, discretization_nElem
+    constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
+    constituents => constituentsInMicrostructure%get('constituents')
+    
     do i = 1, discretization_nIP
-      constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
-      constituents => constituentsInMicrostructure%get('constituents')
       do c = 1, constituents%length
         CounterPhase(material_phaseAt(c,e)) = &
         CounterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e) = CounterPhase(material_phaseAt(c,e))
       enddo
     enddo
+  
   enddo
 
 end subroutine material_parseMicrostructure
