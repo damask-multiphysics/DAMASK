@@ -227,6 +227,7 @@ end subroutine material_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part from the material configuration
+! ToDo: This should be done in homogenization
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseHomogenization
 
@@ -320,10 +321,10 @@ end subroutine material_parseHomogenization
 !--------------------------------------------------------------------------------------------------
 subroutine material_parseMicrostructure
 
-  class(tNode), pointer :: microstructure, &                                                        !> pointer to microstructure list
-                           constituentsInMicrostructure, &                                          !> pointer to a microstructure list item
-                           constituents, &                                                          !> pointer to constituents list
-                           constituent, &                                                           !> pointer to each constituent
+  class(tNode), pointer :: microstructures, &                                                       !> list of microstructures
+                           microstructure, &                                                        !> microstructure definition
+                           constituents, &                                                          !> list of constituents
+                           constituent, &                                                           !> constituent definition
                            phases, &
                            homogenization
 
@@ -340,34 +341,35 @@ subroutine material_parseMicrostructure
     c, &
     maxNconstituents
 
-  microstructure => config_material%get('microstructure')
-  if(any(discretization_microstructureAt > microstructure%length)) &
+  microstructures => config_material%get('microstructure')
+  if(any(discretization_microstructureAt > microstructures%length)) &
     call IO_error(155,ext_msg='More microstructures requested than found in material.yaml')
 
-  allocate(microstructure_Nconstituents(microstructure%length),source=0)
-  do m = 1, microstructure%length
-    constituentsInMicrostructure => microstructure%get(m)
-    constituents => constituentsInMicrostructure%get('constituents')
+  allocate(microstructure_Nconstituents(microstructures%length),source=0)
+  do m = 1, microstructures%length
+    microstructure => microstructures%get(m)
+    constituents   => microstructure%get('constituents')
     microstructure_Nconstituents(m) = constituents%length
   enddo
   maxNconstituents = maxval(microstructure_Nconstituents)
   
-  allocate(material_orientation0(maxNconstituents,discretization_nIP,discretization_nElem))
   allocate(material_homogenizationAt(discretization_nElem),source=0)
   allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
   allocate(material_phaseAt(maxNconstituents,discretization_nElem),source=0)
   allocate(material_phaseMemberAt(maxNconstituents,discretization_nIP,discretization_nElem),source=0)
 
+  allocate(material_orientation0(maxNconstituents,discretization_nIP,discretization_nElem))
+  
   phases => config_material%get('phase')
   allocate(counterPhase(phases%length),source=0)
   homogenization => config_material%get('homogenization')
   allocate(counterHomogenization(homogenization%length),source=0)
 
   do e = 1, discretization_nElem
-    constituentsInMicrostructure => microstructure%get(discretization_microstructureAt(e))
-    constituents                 => constituentsInMicrostructure%get('constituents')
+    microstructure => microstructures%get(discretization_microstructureAt(e))
+    constituents   => microstructure%get('constituents')
     
-    material_homogenizationAt(e) = homogenization%getIndex(constituentsInMicrostructure%get_asString('homogenization'))
+    material_homogenizationAt(e) = homogenization%getIndex(microstructure%get_asString('homogenization'))
     do i = 1, discretization_nIP
       counterHomogenization(material_homogenizationAt(e)) = counterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e)                = counterHomogenization(material_homogenizationAt(e))
@@ -379,7 +381,6 @@ subroutine material_parseMicrostructure
       frac = frac + constituent%get_asFloat('fraction')
       
       material_phaseAt(c,e) = phases%getIndex(constituent%get_asString('phase'))
-      
       do i = 1, discretization_nIP
         counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
