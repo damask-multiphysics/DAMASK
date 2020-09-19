@@ -3,14 +3,16 @@
 !> @brief Inquires variables related to parallelization (openMP, MPI)
 !--------------------------------------------------------------------------------------------------
 module parallelization
-  use prec
-  use, intrinsic :: iso_fortran_env
+  use, intrinsic :: ISO_fortran_env, only: &
+    OUTPUT_UNIT
 
 #ifdef PETSc
 #include <petsc/finclude/petscsys.h>
    use petscsys
 #endif
 !$ use OMP_LIB
+
+  use prec
 
   implicit none
   private
@@ -29,14 +31,14 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine parallelization_init
 
-  integer        :: err, typeSize
+  integer :: err, typeSize
 !$ integer :: got_env, DAMASK_NUM_THREADS, threadLevel
 !$ character(len=6) NumThreadsString
 #ifdef PETSc
   PetscErrorCode :: petsc_err
 
 #else
-  print'(/,a)', ' <<<+-  parallelization init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  parallelization init  -+>>>'; flush(OUTPUT_UNIT)
 #endif
 
 #ifdef PETSc
@@ -69,14 +71,10 @@ subroutine parallelization_init
   if (typeSize*8 /= storage_size(0.0_pReal)) error stop 'Mismatch between MPI and DAMASK real'
 #endif
 
-  mainProcess: if (worldrank == 0) then
-    if (output_unit /= 6) error stop 'STDOUT != 6'
-    if (error_unit /= 0)  error stop 'STDERR != 0'
-  else mainProcess
-    close(6)                                                                                        ! disable output for non-master processes (open 6 to rank specific file for debug)
-    open(6,file='/dev/null',status='replace')                                                       ! close(6) alone will leave some temp files in cwd
-  endif mainProcess
-
+  if (worldrank /= 0) then
+    close(OUTPUT_UNIT)                                                                              ! disable output
+    open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
+  endif
 
 !$ call get_environment_variable(name='DAMASK_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if(got_env /= 0) then
