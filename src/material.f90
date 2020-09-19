@@ -181,10 +181,10 @@ subroutine material_init(restart)
   enddo
 
   call material_parseMicrostructure
-  print*, ' Microstructure parsed'
+  print*, 'Microstructure parsed'
 
   call material_parseHomogenization
-  print*, ' Homogenization parsed'
+  print*, 'Homogenization parsed'
 
 
   if(homogenization_maxNgrains > size(material_phaseAt,1)) call IO_error(148)
@@ -331,7 +331,6 @@ subroutine material_parseMicrostructure
    CounterPhase, &
    CounterHomogenization
 
-
   real(pReal), dimension(:,:), allocatable :: &
     microstructure_fraction                                                                         !< vol fraction of each constituent in microstrcuture
 
@@ -342,15 +341,13 @@ subroutine material_parseMicrostructure
     c, &
     microstructure_maxNconstituents
 
-  real(pReal), dimension(4) :: phase_orientation
-
   homogenization => config_material%get('homogenization')
   phases         => config_material%get('phase')
   microstructure => config_material%get('microstructure')
-  allocate(microstructure_Nconstituents(microstructure%length), source = 0)
+  allocate(microstructure_Nconstituents(microstructure%length),source=0)
 
   if(any(discretization_microstructureAt > microstructure%length)) &
-   call IO_error(155,ext_msg='More microstructures in geometry than sections in material.yaml')
+    call IO_error(155,ext_msg='More microstructures requested than found in material.yaml')
 
   do m = 1, microstructure%length
     constituentsInMicrostructure => microstructure%get(m)
@@ -360,10 +357,11 @@ subroutine material_parseMicrostructure
 
   microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
   allocate(microstructure_fraction(microstructure_maxNconstituents,microstructure%length), source =0.0_pReal)
-  allocate(material_phaseAt(microstructure_maxNconstituents,discretization_nElem), source =0)
   allocate(material_orientation0(microstructure_maxNconstituents,discretization_nIP,discretization_nElem))
-  allocate(material_homogenizationAt(discretization_nElem))
+
+  allocate(material_homogenizationAt(discretization_nElem),source=0)
   allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
+  allocate(material_phaseAt(microstructure_maxNconstituents,discretization_nElem),source=0)
   allocate(material_phaseMemberAt(microstructure_maxNconstituents,discretization_nIP,discretization_nElem),source=0)
 
   allocate(CounterPhase(phases%length),source=0)
@@ -386,8 +384,7 @@ subroutine material_parseMicrostructure
       do c = 1, constituents%length
         constituent => constituents%get(c)
         material_phaseAt(c,e) = phases%getIndex(constituent%get_asString('phase'))
-        phase_orientation = constituent%get_asFloats('orientation')
-        call material_orientation0(c,i,e)%fromQuaternion(phase_orientation)
+        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('orientation',requiredSize=4))
       enddo
     enddo
   enddo
@@ -412,7 +409,6 @@ subroutine material_parseMicrostructure
       enddo
     enddo
   enddo
-
 
 end subroutine material_parseMicrostructure
 
