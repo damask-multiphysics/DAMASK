@@ -99,15 +99,15 @@ module rotations
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do self test
+!> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine rotations_init
 
   call quaternions_init
-  write(6,'(/,a)') ' <<<+-  rotations init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  rotations init  -+>>>'; flush(6)
 
-  write(6,'(/,a)') ' Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
-  write(6,'(a)')   ' https://doi.org/10.1088/0965-0393/23/8/083501'
+  print*, 'Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
+  print*, 'https://doi.org/10.1088/0965-0393/23/8/083501'
 
   call selfTest
 
@@ -1371,13 +1371,10 @@ subroutine selfTest
   real(pReal), dimension(3)       :: x, eu, ho, v3
   real(pReal), dimension(3,3)     :: om, t33
   real(pReal), dimension(3,3,3,3) :: t3333
-  character(len=pStringLen)       :: msg
   real    :: A,B
   integer :: i
 
   do i=1,10
-
-    msg = ''
 
 #if defined(__GFORTRAN__) && __GNUC__<9
     if(i<7) cycle
@@ -1405,55 +1402,54 @@ subroutine selfTest
             sin(2.0_pReal*PI*x(1))*A]
       if(qu(1)<0.0_pReal) qu = qu * (-1.0_pReal)
     endif
-    if(.not. quaternion_equal(om2qu(qu2om(qu)),qu)) msg = trim(msg)//'om2qu/qu2om,'
-    if(.not. quaternion_equal(eu2qu(qu2eu(qu)),qu)) msg = trim(msg)//'eu2qu/qu2eu,'
-    if(.not. quaternion_equal(ax2qu(qu2ax(qu)),qu)) msg = trim(msg)//'ax2qu/qu2ax,'
-    if(.not. quaternion_equal(ro2qu(qu2ro(qu)),qu)) msg = trim(msg)//'ro2qu/qu2ro,'
-    if(.not. quaternion_equal(ho2qu(qu2ho(qu)),qu)) msg = trim(msg)//'ho2qu/qu2ho,'
-    if(.not. quaternion_equal(cu2qu(qu2cu(qu)),qu)) msg = trim(msg)//'cu2qu/qu2cu,'
+    if(.not. quaternion_equal(om2qu(qu2om(qu)),qu)) error stop 'om2qu/qu2om'
+    if(.not. quaternion_equal(eu2qu(qu2eu(qu)),qu)) error stop 'eu2qu/qu2eu'
+    if(.not. quaternion_equal(ax2qu(qu2ax(qu)),qu)) error stop 'ax2qu/qu2ax'
+    if(.not. quaternion_equal(ro2qu(qu2ro(qu)),qu)) error stop 'ro2qu/qu2ro'
+    if(.not. quaternion_equal(ho2qu(qu2ho(qu)),qu)) error stop 'ho2qu/qu2ho'
+    if(.not. quaternion_equal(cu2qu(qu2cu(qu)),qu)) error stop 'cu2qu/qu2cu'
 
     om = qu2om(qu)
-    if(.not. quaternion_equal(om2qu(eu2om(om2eu(om))),qu)) msg = trim(msg)//'eu2om/om2eu,'
-    if(.not. quaternion_equal(om2qu(ax2om(om2ax(om))),qu)) msg = trim(msg)//'ax2om/om2ax,'
-    if(.not. quaternion_equal(om2qu(ro2om(om2ro(om))),qu)) msg = trim(msg)//'ro2om/om2ro,'
-    if(.not. quaternion_equal(om2qu(ho2om(om2ho(om))),qu)) msg = trim(msg)//'ho2om/om2ho,'
-    if(.not. quaternion_equal(om2qu(cu2om(om2cu(om))),qu)) msg = trim(msg)//'cu2om/om2cu,'
+    if(.not. quaternion_equal(om2qu(eu2om(om2eu(om))),qu)) error stop 'eu2om/om2eu'
+    if(.not. quaternion_equal(om2qu(ax2om(om2ax(om))),qu)) error stop 'ax2om/om2ax'
+    if(.not. quaternion_equal(om2qu(ro2om(om2ro(om))),qu)) error stop 'ro2om/om2ro'
+    if(.not. quaternion_equal(om2qu(ho2om(om2ho(om))),qu)) error stop 'ho2om/om2ho'
+    if(.not. quaternion_equal(om2qu(cu2om(om2cu(om))),qu)) error stop 'cu2om/om2cu'
 
     eu = qu2eu(qu)
-    if(.not. quaternion_equal(eu2qu(ax2eu(eu2ax(eu))),qu)) msg = trim(msg)//'ax2eu/eu2ax,'
-    if(.not. quaternion_equal(eu2qu(ro2eu(eu2ro(eu))),qu)) msg = trim(msg)//'ro2eu/eu2ro,'
-    if(.not. quaternion_equal(eu2qu(ho2eu(eu2ho(eu))),qu)) msg = trim(msg)//'ho2eu/eu2ho,'
-    if(.not. quaternion_equal(eu2qu(cu2eu(eu2cu(eu))),qu)) msg = trim(msg)//'cu2eu/eu2cu,'
+    if(.not. quaternion_equal(eu2qu(ax2eu(eu2ax(eu))),qu)) error stop 'ax2eu/eu2ax'
+    if(.not. quaternion_equal(eu2qu(ro2eu(eu2ro(eu))),qu)) error stop 'ro2eu/eu2ro'
+    if(.not. quaternion_equal(eu2qu(ho2eu(eu2ho(eu))),qu)) error stop 'ho2eu/eu2ho'
+    if(.not. quaternion_equal(eu2qu(cu2eu(eu2cu(eu))),qu)) error stop 'cu2eu/eu2cu'
 
     ax = qu2ax(qu)
-    if(.not. quaternion_equal(ax2qu(ro2ax(ax2ro(ax))),qu)) msg = trim(msg)//'ro2ax/ax2ro,'
-    if(.not. quaternion_equal(ax2qu(ho2ax(ax2ho(ax))),qu)) msg = trim(msg)//'ho2ax/ax2ho,'
-    if(.not. quaternion_equal(ax2qu(cu2ax(ax2cu(ax))),qu)) msg = trim(msg)//'cu2ax/ax2cu,'
+    if(.not. quaternion_equal(ax2qu(ro2ax(ax2ro(ax))),qu)) error stop 'ro2ax/ax2ro'
+    if(.not. quaternion_equal(ax2qu(ho2ax(ax2ho(ax))),qu)) error stop 'ho2ax/ax2ho'
+    if(.not. quaternion_equal(ax2qu(cu2ax(ax2cu(ax))),qu)) error stop 'cu2ax/ax2cu'
 
     ro = qu2ro(qu)
-    if(.not. quaternion_equal(ro2qu(ho2ro(ro2ho(ro))),qu)) msg = trim(msg)//'ho2ro/ro2ho,'
-    if(.not. quaternion_equal(ro2qu(cu2ro(ro2cu(ro))),qu)) msg = trim(msg)//'cu2ro/ro2cu,'
+    if(.not. quaternion_equal(ro2qu(ho2ro(ro2ho(ro))),qu)) error stop 'ho2ro/ro2ho'
+    if(.not. quaternion_equal(ro2qu(cu2ro(ro2cu(ro))),qu)) error stop 'cu2ro/ro2cu'
 
     ho = qu2ho(qu)
-    if(.not. quaternion_equal(ho2qu(cu2ho(ho2cu(ho))),qu)) msg = trim(msg)//'cu2ho/ho2cu,'
+    if(.not. quaternion_equal(ho2qu(cu2ho(ho2cu(ho))),qu)) error stop 'cu2ho/ho2cu'
 
     call R%fromMatrix(om)
 
     call random_number(v3)
     if(all(dNeq(R%rotVector(R%rotVector(v3),active=.true.),v3,1.0e-12_pReal))) &
-      msg = trim(msg)//'rotVector,'
+      error stop 'rotVector'
 
     call random_number(t33)
     if(all(dNeq(R%rotTensor2(R%rotTensor2(t33),active=.true.),t33,1.0e-12_pReal))) &
-      msg = trim(msg)//'rotTensor2,'
+      error stop 'rotTensor2'
 
     call random_number(t3333)
     if(all(dNeq(R%rotTensor4(R%rotTensor4(t3333),active=.true.),t3333,1.0e-12_pReal))) &
-      msg = trim(msg)//'rotTensor4,'
-
-    if(len_trim(msg) /= 0) call IO_error(0,ext_msg=msg)
+      error stop 'rotTensor4'
 
   enddo
+
   contains
 
   function quaternion_equal(qu1,qu2) result(ok)

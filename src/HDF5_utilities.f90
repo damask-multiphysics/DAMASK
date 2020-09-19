@@ -11,9 +11,9 @@ module HDF5_utilities
 #endif
 
   use prec
+  use parallelization
   use IO
   use rotations
-  use config
 
  implicit none
  public
@@ -88,7 +88,7 @@ subroutine HDF5_utilities_init
   integer         :: hdferr
   integer(SIZE_T) :: typeSize
 
-  write(6,'(/,a)') ' <<<+-  HDF5_Utilities init  -+>>>'
+  print'(/,a)', ' <<<+-  HDF5_Utilities init  -+>>>'
 
 !--------------------------------------------------------------------------------------------------
 !initialize HDF5 library and check if integer and float type size match
@@ -98,12 +98,12 @@ subroutine HDF5_utilities_init
   call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5tget_size_f (int)')
   if (int(bit_size(0),SIZE_T)/=typeSize*8) &
-    call IO_error(0,ext_msg='Default integer size does not match H5T_NATIVE_INTEGER')
+    error stop 'Default integer size does not match H5T_NATIVE_INTEGER'
 
   call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_Utilities_init: h5tget_size_f (double)')
   if (int(storage_size(0.0_pReal),SIZE_T)/=typeSize*8) &
-    call IO_error(0,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
+    error stop 'pReal does not match H5T_NATIVE_DOUBLE'
 
 end subroutine HDF5_utilities_init
 

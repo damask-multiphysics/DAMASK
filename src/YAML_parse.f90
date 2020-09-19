@@ -11,27 +11,39 @@ module YAML_parse
 
   implicit none
   private
- 
+
   public :: &
-    YAML_init, &
-    parse_flow, &
-    to_flow
+    YAML_parse_init, &
+    YAML_parse_file
 
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do sanity checks
+!> @brief Do sanity checks.
 !--------------------------------------------------------------------------------------------------
-subroutine YAML_init
+subroutine YAML_parse_init
 
   call selfTest
 
-end subroutine YAML_init
+end subroutine YAML_parse_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Parse a YAML file into a a structure of nodes.
+!--------------------------------------------------------------------------------------------------
+function YAML_parse_file(fname) result(node)
+
+  character(len=*), intent(in) :: fname
+  class (tNode), pointer :: node
+
+  node => parse_flow(to_flow(IO_read(fname)))
+
+end function YAML_parse_file
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief reads the flow style string and stores it in the form of dictionaries, lists and scalars.
-!> @details  A node type pointer can either point to a dictionary, list or scalar type entities.
+!> @details A node type pointer can either point to a dictionary, list or scalar type entities.
 !--------------------------------------------------------------------------------------------------
 recursive function parse_flow(YAML_flow) result(node)
 
@@ -47,7 +59,7 @@ recursive function parse_flow(YAML_flow) result(node)
     e, &                                                                                            ! end position of dictionary or list
     s, &                                                                                            ! start position of dictionary or list
     d                                                                                               ! position of key: value separator (':')
-  
+
   flow_string = trim(adjustl(YAML_flow(:)))
   if (len_trim(flow_string) == 0) then
     node => emptyDict
@@ -57,12 +69,12 @@ recursive function parse_flow(YAML_flow) result(node)
     allocate(tDict::node)
     do while (e < len_trim(flow_string))
       s = e
-      d = s + scan(flow_string(s+1:),':')                                
-      e = d + find_end(flow_string(d+1:),'}')                            
+      d = s + scan(flow_string(s+1:),':')
+      e = d + find_end(flow_string(d+1:),'}')
 
       key = trim(adjustl(flow_string(s+1:d-1)))
       myVal => parse_flow(flow_string(d+1:e-1))                                                     ! parse items (recursively)
-                                                                         
+
       select type (node)
         class is (tDict)
           call node%set(key,myVal)
@@ -208,7 +220,7 @@ logical function isKey(line)
   if(len(IO_rmComment(line)) == 0) then
     isKey = .false.
   else
-    isKey = IO_rmComment(line(len(IO_rmComment(line)):len(IO_rmComment(line)))) == ':' & 
+    isKey = IO_rmComment(line(len(IO_rmComment(line)):len(IO_rmComment(line)))) == ':' &
                                                                 .and. .not. isFlow(line)
   endif
 
@@ -224,19 +236,19 @@ recursive subroutine line_isFlow(flow,s_flow,line)
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
   integer,          intent(inout) :: s_flow                                                         !< start position in flow
   character(len=*), intent(in)    :: line
- 
+
   integer :: &
     s, &
     list_chunk, &
     dict_chunk
-  
+
   if(index(adjustl(line),'[') == 1) then
     s = index(line,'[')
     flow(s_flow:s_flow) = '['
     s_flow = s_flow +1
     do while(s < len_trim(line))
       list_chunk = s + find_end(line(s+1:),']')
-      if(iskeyValue(line(s+1:list_chunk-1))) then                                       
+      if(iskeyValue(line(s+1:list_chunk-1))) then
         flow(s_flow:s_flow) = '{'
         s_flow = s_flow +1
         call keyValue_toFlow(flow,s_flow,line(s+1:list_chunk-1))
@@ -252,10 +264,10 @@ recursive subroutine line_isFlow(flow,s_flow,line)
       s = s + find_end(line(s+1:),']')
     enddo
     s_flow = s_flow - 1
-    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1 
+    if (flow(s_flow-1:s_flow-1) == ',') s_flow = s_flow - 1
     flow(s_flow:s_flow) = ']'
     s_flow = s_flow+1
-  
+
   elseif(index(adjustl(line),'{') == 1) then
     s = index(line,'{')
     flow(s_flow:s_flow) = '{'
@@ -275,21 +287,21 @@ recursive subroutine line_isFlow(flow,s_flow,line)
   else
     call line_toFlow(flow,s_flow,line)
   endif
- 
+
 end subroutine line_isFlow
 
 
 !-------------------------------------------------------------------------------------------------
 ! @brief reads a line of YAML block of type <key>: <value> and places it in the YAML flow style structure
-! @details Makes sure that the <value> is consistent with the input required in DAMASK YAML parser 
+! @details Makes sure that the <value> is consistent with the input required in DAMASK YAML parser
 !-------------------------------------------------------------------------------------------------
 recursive subroutine keyValue_toFlow(flow,s_flow,line)
- 
+
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
   integer,          intent(inout) :: s_flow                                                         !< start position in flow
   character(len=*), intent(in)    :: line
-  
-  character(len=:), allocatable   :: line_asStandard                                                ! standard form of <key>: <value> 
+
+  character(len=:), allocatable   :: line_asStandard                                                ! standard form of <key>: <value>
   integer :: &
     d_flow, &
     col_pos, &
@@ -318,7 +330,7 @@ subroutine line_toFlow(flow,s_flow,line)
   character(len=*), intent(inout) :: flow                                                           !< YAML in flow style only
   integer,          intent(inout) :: s_flow                                                         !< start position in flow
   character(len=*), intent(in)    :: line
-  
+
   integer :: &
     d_flow
 
@@ -398,7 +410,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
 
     if(isScalar(line) .or. isFlow(line)) then
       flow(s_flow:s_flow+1) = ', '
-      s_flow = s_flow +2 
+      s_flow = s_flow + 2
     endif
 
   end do
@@ -441,7 +453,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
     elseif(indentDepth(line,offset) < indent) then
       if(isScalar(line) .or. isFlow(line) .and. previous_isKey) &
         call IO_error(701,ext_msg=line)
-      offset = 0                                                                                    
+      offset = 0
       exit                                                                                          ! job done (lower level)
     elseif(indentDepth(line,offset) > indent .or. isListItem(line)) then
       offset = 0
@@ -455,20 +467,20 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
         flow(s_flow-1:s_flow) = ', '
         s_flow = s_flow + 1
       endif
-    
+
       if(isKeyValue(line)) then
         call keyValue_toFlow(flow,s_flow,line)
       else
         call line_toFlow(flow,s_flow,line)
       endif
-      
+
       s_blck = e_blck +2
     end if
 
     if(isScalar(line) .or. isKeyValue(line)) then
       flow(s_flow:s_flow) = ','
       s_flow = s_flow + 1
-      previous_isKey = .false.                                                
+      previous_isKey = .false.
     else
       previous_isKey = .true.
     endif
@@ -540,7 +552,7 @@ function to_flow(blck)
                                    s_flow, &                                                        !< start position in flow
                                    offset, &                                                        !< counts leading '- ' in nested lists
                                    end_line
-  if(isFlow(blck)) then                                                                       
+  if(isFlow(blck)) then
     to_flow = trim(adjustl(blck))
   else
     allocate(character(len=len(blck)*2)::to_flow)
@@ -552,43 +564,45 @@ function to_flow(blck)
     to_flow = trim(to_flow(:s_flow-1))
   endif
     end_line = index(to_flow,IO_EOL)
-    if(end_line > 0) to_flow = to_flow(:end_line-1) 
+    if(end_line > 0) to_flow = to_flow(:end_line-1)
 
 end function to_flow
 
 
 !--------------------------------------------------------------------------------------------------
-subroutine selfTest()
+!> @brief Check correctness of some YAML functions.
+!--------------------------------------------------------------------------------------------------
+subroutine selfTest
 
-  if (indentDepth(' a') /= 1)     call IO_error(0,ext_msg='indentDepth')
-  if (indentDepth('a')  /= 0)     call IO_error(0,ext_msg='indentDepth')
-  if (indentDepth('x ') /= 0)     call IO_error(0,ext_msg='indentDepth')
+  if (indentDepth(' a') /= 1)     error stop 'indentDepth'
+  if (indentDepth('a')  /= 0)     error stop 'indentDepth'
+  if (indentDepth('x ') /= 0)     error stop 'indentDepth'
 
-  if (      isFlow(' a'))         call IO_error(0,ext_msg='isFLow')
-  if (.not. isFlow('{'))          call IO_error(0,ext_msg='isFlow')
-  if (.not. isFlow(' ['))         call IO_error(0,ext_msg='isFlow')
+  if (      isFlow(' a'))         error stop 'isFLow'
+  if (.not. isFlow('{'))          error stop 'isFlow'
+  if (.not. isFlow(' ['))         error stop 'isFlow'
 
-  if (      isListItem(' a'))     call IO_error(0,ext_msg='isListItem')
-  if (      isListItem(' -b'))    call IO_error(0,ext_msg='isListItem')
-  if (.not. isListItem('- a '))   call IO_error(0,ext_msg='isListItem')
-  if (.not. isListItem('- -a '))  call IO_error(0,ext_msg='isListItem')
+  if (      isListItem(' a'))     error stop 'isListItem'
+  if (      isListItem(' -b'))    error stop 'isListItem'
+  if (.not. isListItem('- a '))   error stop 'isListItem'
+  if (.not. isListItem('- -a '))  error stop 'isListItem'
 
-  if (      isKeyValue(' a'))     call IO_error(0,ext_msg='isKeyValue')
-  if (      isKeyValue(' a: '))   call IO_error(0,ext_msg='isKeyValue')
-  if (.not. isKeyValue(' a: b'))  call IO_error(0,ext_msg='isKeyValue')
+  if (      isKeyValue(' a'))     error stop 'isKeyValue'
+  if (      isKeyValue(' a: '))   error stop 'isKeyValue'
+  if (.not. isKeyValue(' a: b'))  error stop 'isKeyValue'
 
-  if (      isKey(' a'))          call IO_error(0,ext_msg='isKey')
-  if (      isKey('{a:b}'))       call IO_error(0,ext_msg='isKey') 
-  if (      isKey(' a:b'))        call IO_error(0,ext_msg='isKey')
-  if (.not. isKey(' a: '))        call IO_error(0,ext_msg='isKey')
-  if (.not. isKey(' a:'))         call IO_error(0,ext_msg='isKey')
-  if (.not. isKey(' a: #'))       call IO_error(0,ext_msg='isKey')
+  if (      isKey(' a'))          error stop 'isKey'
+  if (      isKey('{a:b}'))       error stop 'isKey'
+  if (      isKey(' a:b'))        error stop 'isKey'
+  if (.not. isKey(' a: '))        error stop 'isKey'
+  if (.not. isKey(' a:'))         error stop 'isKey'
+  if (.not. isKey(' a: #'))       error stop 'isKey'
 
-  if(       isScalar('a:  '))     call IO_error(0,ext_msg='isScalar')
-  if(       isScalar('a: b'))     call IO_error(0,ext_msg='isScalar')
-  if(       isScalar('{a:b}'))    call IO_error(0,ext_msg='isScalar')
-  if(       isScalar('- a:'))     call IO_error(0,ext_msg='isScalar')
-  if(.not.  isScalar('   a'))     call IO_error(0,ext_msg='isScalar')
+  if(       isScalar('a:  '))     error stop 'isScalar'
+  if(       isScalar('a: b'))     error stop 'isScalar'
+  if(       isScalar('{a:b}'))    error stop 'isScalar'
+  if(       isScalar('- a:'))     error stop 'isScalar'
+  if(.not.  isScalar('   a'))     error stop 'isScalar'
 
   basic_list: block
   character(len=*), parameter :: block_list = &
@@ -602,8 +616,8 @@ subroutine selfTest()
   character(len=*), parameter :: flow_list = &
     "[Casablanca, North by Northwest]"
 
-  if (.not. to_flow(block_list)         == flow_list)     call IO_error(0,ext_msg='to_flow')
-  if (.not. to_flow(block_list_newline) == flow_list)     call IO_error(0,ext_msg='to_flow')
+  if (.not. to_flow(block_list)         == flow_list) error stop 'to_flow'
+  if (.not. to_flow(block_list_newline) == flow_list) error stop 'to_flow'
   end block basic_list
 
   basic_dict: block
@@ -618,10 +632,10 @@ subroutine selfTest()
   character(len=*), parameter :: flow_dict = &
     "{aa: Casablanca, bb: North by Northwest}"
 
-  if (.not. to_flow(block_dict)         == flow_dict)     call IO_error(0,ext_msg='to_flow')
-  if (.not. to_flow(block_dict_newline) == flow_dict)     call IO_error(0,ext_msg='to_flow')
+  if (.not. to_flow(block_dict)         == flow_dict) error stop 'to_flow'
+  if (.not. to_flow(block_dict_newline) == flow_dict) error stop 'to_flow'
   end block basic_dict
-  
+
   basic_flow: block
   character(len=*), parameter :: flow_braces = &
     " source: [{param: 1}, {param: 2}, {param: 3}, {param: 4}]"//IO_EOL
@@ -629,9 +643,9 @@ subroutine selfTest()
     " source: [param: 1, {param: 2}, param: 3, {param: 4}]"//IO_EOL
   character(len=*), parameter :: flow = &
     "{source: [{param: 1}, {param: 2}, {param: 3}, {param: 4}]}"
- 
-  if (.not. to_flow(flow_braces)        == flow)           call IO_error(0,ext_msg='to_flow')
-  if (.not. to_flow(flow_mixed_braces)  == flow)           call IO_error(0,ext_msg='to_flow')
+
+  if (.not. to_flow(flow_braces)        == flow) error stop 'to_flow'
+  if (.not. to_flow(flow_mixed_braces)  == flow) error stop 'to_flow'
   end block basic_flow
 
   basic_mixed: block
@@ -644,8 +658,8 @@ subroutine selfTest()
     "  - {param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}"//IO_EOL
   character(len=*), parameter :: mixed_flow = &
     "{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, {c: d}], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}"
- 
-  if(.not. to_flow(block_flow)           == mixed_flow)     call IO_error(0,ext_msg='to_flow')
+
+  if(.not. to_flow(block_flow) == mixed_flow)    error stop 'to_flow'
   end block basic_mixed
 
 end subroutine selfTest

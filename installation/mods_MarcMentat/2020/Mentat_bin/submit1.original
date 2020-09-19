@@ -1,0 +1,189 @@
+#!/bin/sh
+#
+# The exit status of this script is read by Mentat.
+# Normal exit status is 0.
+#
+
+DIR=/tmp/msc/marc2020
+if test $MARCDIR1
+then
+ DIR=$MARCDIR1
+fi
+
+if test -z "$DIR"; then
+  REALCOM="`ls -l $0 |awk '{ print $NF; }'`"
+  DIRSCRIPT=`dirname $REALCOM`
+  case $DIRSCRIPT in
+    \/*)
+    ;;
+    *)
+      DIRSCRIPT=`pwd`/$DIRSCRIPT
+      ;;
+  esac
+  . $DIRSCRIPT/getarch
+
+  DIR="$MENTAT_MARCDIR"
+fi
+
+SRCEXT=.f
+SRCEXTC=.F
+RSTEXT=.t08
+PSTEXT=.t19
+PSTEXTB=.t16
+VWFCEXT=.vfs
+
+slv=$1
+version=$2
+ndom_fea_solver=$3
+ndom_preprocessor=$4
+hostfile=$5
+compat=$6
+job=$7
+srcfile=$8
+srcmeth=$9
+shift 9       # cannot use $10, $11, ...
+restart=$1
+postfile=$2
+viewfactorsfile=$3
+copy_datfile="-ci $4"
+copy_postfile="-cr $5"
+scr_dir=$6
+dcoup=$7
+assem_recov_nthread=$8
+nthread=$9
+shift 9       # cannot use $10, $11, ...
+nsolver=$1
+mode=$2
+gpu=$3
+
+if [ "$slv" != "" -a "$slv" != "marc" -a "$slv" != "datfit" ]; then
+  slv="-iam sfm"
+fi
+if [ "$slv" == "marc" ]; then
+  slv=""
+fi
+if [ "$slv" == "datfit" ]; then
+  slv="-iam datfit"
+fi
+
+if [ "$ndom_fea_solver" != "" -a "$ndom_fea_solver" != "1" ]; then
+  nprocds="-nprocds $ndom_fea_solver"
+else
+  nprocd=""
+  if [ "$ndom_preprocessor" != "" -a "$ndom_preprocessor" != "1" ]; then
+    nprocd="-nprocd $ndom_preprocessor"
+  else
+    nprocd=""
+  fi
+fi
+
+if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
+  srcfile=`echo $srcfile | sed "s/$SRCEXT$//" | sed "s/$SRCEXTC$//"`
+  case "$srcmeth" in
+    -)
+      srcfile="-u $srcfile"
+      ;;
+    compsave)
+      srcfile="-u $srcfile -save y"
+      ;;
+    runsaved)
+      srcfile="-prog $srcfile"
+      ;;
+  esac
+else
+  srcfile=""
+fi
+
+if [ "$restart" != "" -a "$restart" != "-" ]; then
+  restart=`echo $restart | sed "s/$RSTEXT$//"`
+  restart="-r $restart"
+else
+  restart=""
+fi
+
+if [ "$postfile" != "" -a "$postfile" != "-" ]; then
+  postfile=`echo $postfile | sed "s/$PSTEXT$//"`
+  postfile=`echo $postfile | sed "s/$PSTEXTB$//"`
+  postfile="-pid $postfile"
+else
+  postfile=""
+fi
+
+if [ "$viewfactorsfile" != "" -a "$viewfactorsfile" != "-" ]; then
+  viewfactorsfile=`echo $viewfactorsfile | sed "s/$VWFCEXT$//"`
+  viewfactorsfile="-vf $viewfactorsfile"
+else
+  viewfactorsfile=""
+fi
+
+if [ "$hostfile" != "" -a "$hostfile" != "-" ]; then
+  hostfile="-ho $hostfile"
+else
+  hostfile=""
+fi
+
+if [ "$compat" != "" -a "$compat" != "-" ]; then
+  compat="-co $compat"
+else
+  compat=""
+fi
+
+if [ "$scr_dir" != "" -a "$scr_dir" != "-" ]; then
+  scr_dir="-sd $scr_dir"
+else
+  scr_dir=""
+fi
+
+if [ "$dcoup" != "" -a "$dcoup" != "0" ]; then
+  dcoup="-dcoup $dcoup"
+else
+  dcoup=""
+fi
+
+if [ "$assem_recov_nthread" != "" -a "$assem_recov_nthread" != "1" ]; then
+  assem_recov_nthread="-nthread_elem $assem_recov_nthread"
+else
+  assem_recov_nthread=""
+fi
+
+if [ "$nthread" != "" -a "$nthread" != "0" -a "$nthread" != "1" ]; then
+  nthread="-nthread $nthread"
+else
+  nthread=""
+fi
+
+if [ "$nsolver" != "" -a "$nsolver" != "0" ]; then
+  nsolver="-nsolver $nsolver"
+else
+  nsolver=""
+fi
+
+case "$mode" in
+ 4) mode="-mo i4" ;;
+ 8) mode="-mo i8" ;;
+ *) mode= ;;
+esac
+
+if [ "$gpu" != "" -a "$gpu" != "-" ]; then
+ gpu="-gpu $gpu"
+else
+ gpu=""
+fi
+
+rm -f $job.cnt
+rm -f $job.sts
+rm -f $job.out
+rm -f $job.log
+
+# To prevent a mismatch with the python version used by the solver
+#  do *not* prepend $MENTAT_INSTALL_DIR/python/bin to environment variable PATH
+#  unset environment variables PYTHONHOME and PYTHONPATH
+unset PYTHONHOME
+unset PYTHONPATH
+
+"${DIR}/tools/run_marc" $slv -j $job -v n -b y $nprocds $nprocd \
+                        $srcfile $restart $postfile $viewfactorsfile $hostfile \
+                        $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
+                        $assem_recov_nthread $nthread $nsolver $mode $gpu > /dev/null 2>&1
+sleep 1
+exit 0

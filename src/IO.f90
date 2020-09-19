@@ -22,19 +22,11 @@ module IO
                  '───────────────────'//&
                  '────────────'
 
-  ! Obsolete alias
-  interface IO_read_ASCII
-    module procedure IO_readlines
-  end interface IO_read_ASCII
-
   public :: &
     IO_init, &
     IO_read, &
     IO_readlines, &
-    IO_read_ASCII, &
-    IO_open_binary, &
     IO_isBlank, &
-    IO_getTag, &
     IO_stringPos, &
     IO_stringValue, &
     IO_intValue, &
@@ -51,11 +43,11 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief do self test
+!> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
-  write(6,'(/,a)') ' <<<+-  IO init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  IO init  -+>>>'; flush(6)
 
   call selfTest
 
@@ -63,7 +55,7 @@ end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief read ASCII file and split at EOL
+!> @brief Read ASCII file and split at EOL.
 !--------------------------------------------------------------------------------------------------
 function IO_readlines(fileName) result(fileContent)
 
@@ -114,7 +106,7 @@ end function IO_readlines
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief read ASCII file into a string
+!> @brief Read whole file.
 !> @details ensures that the string ends with a new line (expected UNIX behavior)
 !--------------------------------------------------------------------------------------------------
 function IO_read(fileName) result(fileContent)
@@ -146,40 +138,7 @@ end function IO_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens an existing file for reading or a new file for writing.
-!> @details replaces an existing file when writing
-!--------------------------------------------------------------------------------------------------
-integer function IO_open_binary(fileName,mode)
-
-  character(len=*), intent(in)           :: fileName
-  character,        intent(in), optional :: mode
-
-  character :: m
-  integer   :: ierr
-
-  if (present(mode)) then
-    m = mode
-  else
-    m = 'r'
-  endif
-
-  if    (m == 'w') then
-    open(newunit=IO_open_binary, file=trim(fileName),&
-         status='replace',access='stream',action='write',iostat=ierr)
-    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (w): '//trim(fileName))
-  elseif(m == 'r') then
-    open(newunit=IO_open_binary, file=trim(fileName),&
-         status='old',    access='stream',action='read', iostat=ierr)
-    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (r): '//trim(fileName))
-  else
-    call IO_error(100,ext_msg='unknown access mode: '//m)
-  endif
-
-end function IO_open_binary
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief identifies strings without content
+!> @brief Identifiy strings without content.
 !--------------------------------------------------------------------------------------------------
 logical pure function IO_isBlank(string)
 
@@ -194,34 +153,8 @@ end function IO_isBlank
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief get tagged content of string
-!--------------------------------------------------------------------------------------------------
-pure function IO_getTag(string,openChar,closeChar)
-
-  character(len=*), intent(in)  :: string                                                           !< string to check for tag
-  character,        intent(in)  :: openChar, &                                                      !< indicates beginning of tag
-                                   closeChar                                                        !< indicates end of tag
-  character(len=:), allocatable :: IO_getTag
-
-  integer :: left,right
-
-  left  = scan(string,openChar)
-  right = merge(scan(string,closeChar), &
-                left + merge(scan(string(left+1:),openChar),0,len(string) > left), &
-                openChar /= closeChar)
-
-  foundTag: if (left == verify(string,IO_WHITESPACE) .and. right > left) then
-    IO_getTag = string(left+1:right-1)
-  else foundTag
-    IO_getTag = ''
-  endif foundTag
-
-end function IO_getTag
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief locates all whitespace-separated chunks in given string and returns array containing
-!! number them and the left/right position to be used by IO_xxxVal
+!> @brief Locate all whitespace-separated chunks in given string and returns array containing
+!! number them and the left/right position to be used by IO_xxxVal.
 !! Array size is dynamically adjusted to number of chunks found in string
 !! IMPORTANT: first element contains number of chunks!
 !--------------------------------------------------------------------------------------------------
@@ -251,7 +184,7 @@ end function IO_stringPos
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads string value at myChunk from string
+!> @brief Read string value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 function IO_stringValue(string,chunkPos,myChunk)
 
@@ -271,7 +204,7 @@ end function IO_stringValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer value at myChunk from string
+!> @brief Read integer value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 integer function IO_intValue(string,chunkPos,myChunk)
 
@@ -285,7 +218,7 @@ end function IO_intValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads float value at myChunk from string
+!> @brief Read float value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_floatValue(string,chunkPos,myChunk)
 
@@ -299,7 +232,7 @@ end function IO_floatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief changes characters in string to lower case
+!> @brief Convert characters in string to lower case.
 !--------------------------------------------------------------------------------------------------
 pure function IO_lc(string)
 
@@ -324,7 +257,7 @@ end function IO_lc
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief Remove comments (characters beyond '#') and trailing space
+! @brief Remove comments (characters beyond '#') and trailing space.
 ! ToDo: Discuss name (the trim aspect is not clear)
 !--------------------------------------------------------------------------------------------------
 function IO_rmComment(line)
@@ -345,7 +278,7 @@ end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified integer value in given string
+!> @brief Return integer value from given string.
 !--------------------------------------------------------------------------------------------------
 integer function IO_stringAsInt(string)
 
@@ -366,7 +299,7 @@ end function IO_stringAsInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified float value in given string
+!> @brief Return float value from given string.
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_stringAsFloat(string)
 
@@ -387,7 +320,7 @@ end function IO_stringAsFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified logical value in given string
+!> @brief Return logical value from given string.
 !--------------------------------------------------------------------------------------------------
 logical function IO_stringAsBool(string)
 
@@ -406,7 +339,7 @@ end function IO_stringAsBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
+!> @brief Write error statements to standard out and terminate the run with exit #9xxx
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
@@ -635,7 +568,7 @@ end subroutine IO_error
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes warning statement to standard out
+!> @brief Write warning statement to standard out.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 
@@ -717,56 +650,56 @@ end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some IO functions
+!> @brief Check correctness of some IO functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
 
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
-  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     call IO_error(0,ext_msg='IO_stringAsFloat')
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
+  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     error stop 'IO_stringAsFloat'
 
-  if(3112019  /= IO_stringAsInt( '3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(3112019  /= IO_stringAsInt(' 3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(-3112019 /= IO_stringAsInt('-3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(3112019  /= IO_stringAsInt('+3112019 '))       call IO_error(0,ext_msg='IO_stringAsInt')
+  if(3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
+  if(-3112019 /= IO_stringAsInt('-3112019'))        error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt('+3112019 '))       error stop 'IO_stringAsInt'
 
-  if(.not. IO_stringAsBool(' true'))                call IO_error(0,ext_msg='IO_stringAsBool')
-  if(.not. IO_stringAsBool(' True '))               call IO_error(0,ext_msg='IO_stringAsBool')
-  if(      IO_stringAsBool(' false'))               call IO_error(0,ext_msg='IO_stringAsBool')
-  if(      IO_stringAsBool('False'))                call IO_error(0,ext_msg='IO_stringAsBool')
+  if(.not. IO_stringAsBool(' true'))                error stop 'IO_stringAsBool'
+  if(.not. IO_stringAsBool(' True '))               error stop 'IO_stringAsBool'
+  if(      IO_stringAsBool(' false'))               error stop 'IO_stringAsBool'
+  if(      IO_stringAsBool('False'))                error stop 'IO_stringAsBool'
 
-  if(any([1,1,1]     /= IO_stringPos('a')))         call IO_error(0,ext_msg='IO_stringPos')
-  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     call IO_error(0,ext_msg='IO_stringPos')
+  if(any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
+  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
 
   str=' 1.0 xxx'
   chunkPos = IO_stringPos(str)
-  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) call IO_error(0,ext_msg='IO_floatValue')
+  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
 
   str='M 3112019 F'
   chunkPos = IO_stringPos(str)
-  if(3112019 /= IO_intValue(str,chunkPos,2))        call IO_error(0,ext_msg='IO_intValue')
+  if(3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
 
-  if(.not. IO_isBlank('  '))                        call IO_error(0,ext_msg='IO_isBlank/1')
-  if(.not. IO_isBlank('  #isBlank'))                call IO_error(0,ext_msg='IO_isBlank/2')
-  if(      IO_isBlank('  i#s'))                     call IO_error(0,ext_msg='IO_isBlank/3')
+  if(.not. IO_isBlank('  '))                        error stop 'IO_isBlank/1'
+  if(.not. IO_isBlank('  #isBlank'))                error stop 'IO_isBlank/2'
+  if(      IO_isBlank('  i#s'))                     error stop 'IO_isBlank/3'
 
   str = IO_rmComment('#')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/1')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/1'
   str = IO_rmComment(' #')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/2')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/2'
   str = IO_rmComment(' # ')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/3')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/3'
   str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/4')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/4'
   str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/5')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/5'
   str = IO_rmComment(' a#')
-  if (str /= ' a' .or. len(str) /= 2)               call IO_error(0,ext_msg='IO_rmComment/6')
+  if (str /= ' a' .or. len(str) /= 2)               error stop 'IO_rmComment/6'
   str = IO_rmComment(' ab #')
-  if (str /= ' ab'.or. len(str) /= 3)               call IO_error(0,ext_msg='IO_rmComment/7')
+  if (str /= ' ab'.or. len(str) /= 3)               error stop 'IO_rmComment/7'
 
 end subroutine selfTest
 

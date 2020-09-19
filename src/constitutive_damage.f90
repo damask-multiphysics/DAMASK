@@ -117,7 +117,7 @@ module subroutine damage_init
    sources, &
    kinematics
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
 
   allocate(sourceState (phases%length))
   allocate(phase_Nsources(phases%length),source = 0)           ! same for kinematics

@@ -42,7 +42,6 @@ module DAMASK_interface
 
   logical,          protected, public :: symmetricSolver
   character(len=*), parameter, public :: INPUTFILEEXTENSION = '.dat'
-  
 
   public :: &
     DAMASK_interface_init, &
@@ -59,33 +58,33 @@ subroutine DAMASK_interface_init
   integer                 :: ierr
   character(len=pPathLen) :: wd
 
-  write(6,'(/,a)') ' <<<+-  DAMASK_marc init -+>>>'
+  print'(/,a)', ' <<<+-  DAMASK_marc init -+>>>'
 
-  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+  print*, 'Roters et al., Computational Materials Science 158:420–478, 2019'
+  print*, 'https://doi.org/10.1016/j.commatsci.2018.04.030'
 
-  write(6,'(/,a)') ' Version: '//DAMASKVERSION
+  print'(/,a)', ' Version: '//DAMASKVERSION
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
 #if __INTEL_COMPILER >= 1800
-   write(6,'(/,a)') ' Compiled with: '//compiler_version()
-   write(6,'(a)')   ' Compiler options: '//compiler_options()
+   print'(/,a)', ' Compiled with: '//compiler_version()
+   print'(a)',   ' Compiler options: '//compiler_options()
 #else
-   write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
+   print'(/,a,i4.4,a,i8.8)', ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
                                                         ', build date :', __INTEL_COMPILER_BUILD_DATE
 #endif
 
-  write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
+  print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
 
   call date_and_time(values = dateAndTime)
-  write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
-  write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
+  print'(/,a,2(i2.2,a),i4.4)', ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+  print'(a,2(i2.2,a),i2.2)',   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
 
   inquire(5, name=wd)
   wd = wd(1:scan(wd,'/',back=.true.))
   ierr = CHDIR(wd)
   if (ierr /= 0) then
-    write(6,'(a20,a,a16)') ' working directory "',trim(wd),'" does not exist'
+    print*, 'working directory "'//trim(wd)//'" does not exist'
     call quit(1)
   endif
   symmetricSolver = solverIsSymmetric()
@@ -258,14 +257,14 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     debug_Marc                                                                                      ! pointer to Marc debug options
 
   if(debug_basic) then
-    write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
-    write(6,'(a,2(i1))')      ' Jacobian:                      ', ngens,ngens
-    write(6,'(a,i1)')         ' Direct stress:                 ', ndi
-    write(6,'(a,i1)')         ' Shear stress:                  ', nshear
-    write(6,'(a,i2)')         ' DoF:                           ', ndeg
-    write(6,'(a,i2)')         ' Coordinates:                   ', ncrd
-    write(6,'(a,i12)')        ' Nodes:                         ', nnode
-    write(6,'(a,i1)')         ' Deformation gradient:          ', itel
+    print'(a,/,i8,i8,i2)', ' MSC.MARC information on shape of element(2), IP:', m, nn
+    print'(a,2(i1))',      ' Jacobian:                      ', ngens,ngens
+    print'(a,i1)',         ' Direct stress:                 ', ndi
+    print'(a,i1)',         ' Shear stress:                  ', nshear
+    print'(a,i2)',         ' DoF:                           ', ndeg
+    print'(a,i2)',         ' Coordinates:                   ', ncrd
+    print'(a,i12)',        ' Nodes:                         ', nnode
+    print'(a,i1)',         ' Deformation gradient:          ', itel
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n:', &
                                   transpose(ffn)
     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
@@ -278,7 +277,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
   if (.not. CPFEM_init_done) then
     CPFEM_init_done = .true.
     call CPFEM_initAll
-    debug_Marc => debug_root%get('marc',defaultVal=emptyList)
+    debug_Marc => config_debug%get('marc',defaultVal=emptyList)
     debug_basic = debug_Marc%contains('basic')
   endif
 
@@ -296,22 +295,22 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
         lastIncConverged = .false.
         outdatedByNewInc = .false.
         lastLovl = lovl                                                                             ! pretend that this is NOT the first after a lovl change
-        write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',m(1),nn
+        print'(a,i6,1x,i2)', '<< HYPELA2 >> start of analysis..! ',m(1),nn
       else if (inc - theInc > 1) then                                                               ! >> restart of broken analysis <<
         lastIncConverged = .false.
         outdatedByNewInc = .false.
-        write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',m(1),nn
+        print'(a,i6,1x,i2)', '<< HYPELA2 >> restart of analysis..! ',m(1),nn
       else                                                                                          ! >> just the next inc <<
         lastIncConverged = .true.
         outdatedByNewInc = .true.
-        write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',m(1),nn
+        print'(a,i6,1x,i2)', '<< HYPELA2 >> new increment..! ',m(1),nn
       endif
     else if ( timinc < theDelta ) then                                                              ! >> cutBack <<
       lastIncConverged = .false.
       outdatedByNewInc = .false.
       terminallyIll = .false.
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
-      write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> cutback detected..! ',m(1),nn
+      print'(a,i6,1x,i2)', '<< HYPELA2 >> cutback detected..! ',m(1),nn
     endif                                                                                           ! convergence treatment end
     flush(6)
 

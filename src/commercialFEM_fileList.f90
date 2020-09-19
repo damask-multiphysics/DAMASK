@@ -3,6 +3,7 @@
 !> @brief all DAMASK files without solver
 !> @details List of files needed by MSC.Marc
 !--------------------------------------------------------------------------------------------------
+#include "parallelization.f90"
 #include "IO.f90"
 #include "YAML_types.f90"
 #include "YAML_parse.f90"

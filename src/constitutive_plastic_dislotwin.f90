@@ -143,29 +143,28 @@ module function plastic_dislotwin_init() result(myPlasticity)
     phase, &
     pl
 
-  write(6,'(/,a)') ' <<<+-  constitutive_dislotwin init  -+>>>'
-
-  write(6,'(/,a)') ' Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.actamat.2004.04.012'
-
-  write(6,'(/,a)') ' Roters et al., Computational Materials Science 39:91–95, 2007'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2006.04.014'
-
-  write(6,'(/,a)') ' Wong et al., Acta Materialia 118:140–151, 2016'
-  write(6,'(a,/)') ' https://doi.org/10.1016/j.actamat.2016.07.032'
+  print'(/,a)', ' <<<+-  plastic_dislotwin init  -+>>>'
 
   myPlasticity = plastic_active('dislotwin')
-
   Ninstance = count(myPlasticity)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
+  
+  print*, 'Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
+  print*, 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL
+
+  print*, 'Roters et al., Computational Materials Science 39:91–95, 2007'
+  print*, 'https://doi.org/10.1016/j.commatsci.2006.04.014'//IO_EOL
+
+  print*, 'Wong et al., Acta Materialia 118:140–151, 2016'
+  print*, 'https://doi.org/10.1016/j.actamat.2016.07.032'
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))
   allocate(dotState(Ninstance))
   allocate(dependentState(Ninstance))
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
@@ -414,7 +413,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
                  + size(['f_tr'])                           * prm%sum_N_tr
     sizeState = sizeDotState
 
-    
+
     call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------

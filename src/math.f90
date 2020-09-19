@@ -72,10 +72,6 @@ module math
       3,3  &
       ],shape(MAPPLAIN))                                                                            !< arrangement in Plain notation
 
-  interface math_eye
-    module procedure math_identity2nd
-  end interface math_eye
-
 !---------------------------------------------------------------------------------------------------
  private :: &
    selfTest
@@ -95,9 +91,9 @@ subroutine math_init
   class(tNode), pointer :: &
     num_generic
  
-  write(6,'(/,a)') ' <<<+-  math init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  math init  -+>>>'; flush(6)
 
-  num_generic => numerics_root%get('generic',defaultVal=emptyDict)
+  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
   randomSeed  = num_generic%get_asInt('random_seed', defaultVal = 0)
  
   call random_seed(size=randSize)
@@ -113,9 +109,9 @@ subroutine math_init
   call random_seed(put = randInit)
   call random_number(randTest)
 
-  write(6,'(a,i2)')                ' size  of random seed:     ', randSize
-  write(6,'(a,i0)')                ' value of random seed:     ', randInit(1)
-  write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
+  print'(a,i2)',                ' size  of random seed:     ', randSize
+  print'(a,i0)',                ' value of random seed:     ', randInit(1)
+  print'(a,4(/,26x,f17.14),/)', ' start of random sequence: ', randTest
 
   call random_seed(put = randInit)
 
@@ -239,18 +235,18 @@ end function math_range
 !--------------------------------------------------------------------------------------------------
 !> @brief second rank identity tensor of specified dimension
 !--------------------------------------------------------------------------------------------------
-pure function math_identity2nd(d)
+pure function math_eye(d)
 
   integer, intent(in) :: d                                                                          !< tensor dimension
   integer :: i
-  real(pReal), dimension(d,d) :: math_identity2nd
+  real(pReal), dimension(d,d) :: math_eye
 
-  math_identity2nd = 0.0_pReal
+  math_eye = 0.0_pReal
   do i=1,d
-    math_identity2nd(i,i) = 1.0_pReal
+    math_eye(i,i) = 1.0_pReal
   enddo
 
-end function math_identity2nd
+end function math_eye
 
 
 !--------------------------------------------------------------------------------------------------
@@ -264,7 +260,7 @@ pure function math_identity4th(d)
   real(pReal), dimension(d,d,d,d) :: math_identity4th
   real(pReal), dimension(d,d)     :: identity2nd
 
-  identity2nd = math_identity2nd(d)
+  identity2nd = math_eye(d)
   do i=1,d; do j=1,d; do k=1,d; do l=1,d
     math_identity4th(i,j,k,l) = 0.5_pReal &
                               *(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
@@ -1158,7 +1154,7 @@ end function math_clip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some math functions
+!> @brief Check correctness of some math functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
@@ -1185,47 +1181,47 @@ subroutine selfTest
 
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) &
-    call IO_error(0,ext_msg='math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]')
+    error stop 'math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]'
 
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2])) > tol_math_check)) &
-    call IO_error(0,ext_msg='math_expand [1,2,3] by [1,2] => [1,2,2]')
+    error stop 'math_expand [1,2,3] by [1,2] => [1,2,2]'
 
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal],[1,2,3])) > tol_math_check)) &
-    call IO_error(0,ext_msg='math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]')
+    error stop 'math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]'
 
   call math_sort(sort_in_,1,3,2)
   if(any(sort_in_ /= sort_out_)) &
-    call IO_error(0,ext_msg='math_sort')
+    error stop 'math_sort'
 
   if(any(math_range(5) /= range_out_)) &
-    call IO_error(0,ext_msg='math_range')
+    error stop 'math_range'
 
-   if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
-    call IO_error(0,ext_msg='math_exp33(math_I3,1)')
+  if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
+    error stop 'math_exp33(math_I3,1)'
   if(any(dNeq(math_exp33(math_I3,256),exp(1.0_pReal)*math_I3))) &
-    call IO_error(0,ext_msg='math_exp33(math_I3,256)')
+    error stop 'math_exp33(math_I3,256)'
 
   call random_number(v9)
   if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
-    call IO_error(0,ext_msg='math_33to9/math_9to33')
+    error stop 'math_33to9/math_9to33'
 
   call random_number(t99)
   if(any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
-    call IO_error(0,ext_msg='math_3333to99/math_99to3333')
+    error stop 'math_3333to99/math_99to3333'
 
   call random_number(v6)
   if(any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &
-    call IO_error(0,ext_msg='math_sym33to6/math_6toSym33')
+    error stop 'math_sym33to6/math_6toSym33'
 
   call random_number(t66)
   if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66))) &
-    call IO_error(0,ext_msg='math_sym3333to66/math_66toSym3333')
+    error stop 'math_sym3333to66/math_66toSym3333'
 
   call random_number(v6)
   if(any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
-    call IO_error(0,ext_msg='math_symmetric33')
+    error stop 'math_symmetric33'
 
   call random_number(v3_1)
   call random_number(v3_2)
@@ -1234,30 +1230,30 @@ subroutine selfTest
 
   if(dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
           math_volTetrahedron(v3_1,v3_2,v3_3,v3_4),tol=1.0e-12_pReal)) &
-  call IO_error(0,ext_msg='math_volTetrahedron')
+    error stop 'math_volTetrahedron'
 
   call random_number(t33)
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='math_det33/math_detSym33')
+    error stop 'math_det33/math_detSym33'
 
-  if(any(dNeq0(math_identity2nd(3),math_inv33(math_I3)))) &
-    call IO_error(0,ext_msg='math_inv33(math_I3)')
+  if(any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
+    error stop 'math_inv33(math_I3)'
 
   do while(abs(math_det33(t33))<1.0e-9_pReal)
     call random_number(t33)
   enddo
-  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_identity2nd(3),tol=1.0e-9_pReal))) &
-    call IO_error(0,ext_msg='math_inv33')
+  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-9_pReal))) &
+    error stop 'math_inv33'
 
   call math_invert33(t33_2,det,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
-    call IO_error(0,ext_msg='math_invert33: T:T^-1 != I')
+  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
+    error stop 'math_invert33: T:T^-1 != I'
   if(dNeq(det,math_det33(t33),tol=1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='math_invert33 (determinant)')
+    error stop 'math_invert33 (determinant)'
 
   call math_invert(t33_2,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
-    call IO_error(0,ext_msg='math_invert t33')
+  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
+    error stop 'math_invert t33'
 
   do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
     call random_number(t33)
@@ -1265,38 +1261,38 @@ subroutine selfTest
   t33_2 = math_rotationalPart(transpose(t33))
   t33   = math_rotationalPart(t33)
   if(any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
-    call IO_error(0,ext_msg='math_rotationalPart')
+    error stop 'math_rotationalPart'
 
   call random_number(r)
   d = int(r*5.0_pReal) + 1
-  txx = math_identity2nd(d)
+  txx = math_eye(d)
   allocate(txx_2(d,d))
   call math_invert(txx_2,e,txx)
   if(any(dNeq0(txx_2,txx) .or. e)) &
-    call IO_error(0,ext_msg='math_invert(txx)/math_identity2nd')
+    error stop 'math_invert(txx)/math_eye'
 
   call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix
-  if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
-    call IO_error(0,ext_msg='math_invert(t99)')
+  if(any(dNeq0(matmul(t99_2,t99)-math_eye(9),tol=1.0e-9_pReal)) .or. e) &
+    error stop 'math_invert(t99)'
 
   if(any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &
-    call IO_error(0,ext_msg='math_clip')
+    error stop 'math_clip'
 
   if(math_factorial(10) /= 3628800) &
-    call IO_error(0,ext_msg='math_factorial')
+    error stop 'math_factorial'
 
   if(math_binomial(49,6) /= 13983816) &
-    call IO_error(0,ext_msg='math_binomial')
+    error stop 'math_binomial'
 
   ijk = cshift([1,2,3],int(r*1.0e2_pReal))
   if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),+1.0_pReal)) &
-    call IO_error(0,ext_msg='math_LeviCivita(even)')
+    error stop 'math_LeviCivita(even)'
   ijk = cshift([3,2,1],int(r*2.0e2_pReal))
   if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),-1.0_pReal)) &
-    call IO_error(0,ext_msg='math_LeviCivita(odd)')
+    error stop 'math_LeviCivita(odd)'
   ijk = cshift([2,2,1],int(r*2.0e2_pReal))
-  if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3))))&
-    call IO_error(0,ext_msg='math_LeviCivita')
+  if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3)))) &
+    error stop 'math_LeviCivita'
 
 end subroutine selfTest
 

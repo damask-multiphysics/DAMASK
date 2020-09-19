@@ -434,10 +434,11 @@ class Rotation:
 
         if P == 1:    ax[...,0:3] *= -1
         if degrees:   ax[...,  3]  = np.radians(ax[...,3])
-        if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1)
+        if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1,keepdims=True)
         if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
             raise ValueError('Axis angle rotation angle outside of [0..π].')
         if not np.all(np.isclose(np.linalg.norm(ax[...,0:3],axis=-1), 1.0)):
+            print(np.linalg.norm(ax[...,0:3],axis=-1))
             raise ValueError('Axis angle rotation axis is not of unit length.')
 
         return Rotation(Rotation._ax2qu(ax))
@@ -516,7 +517,7 @@ class Rotation:
             raise ValueError('P ∉ {-1,1}')
 
         if P == 1:    ro[...,0:3] *= -1
-        if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1)
+        if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True)
         if np.any(ro[...,3] < 0.0):
             raise ValueError('Rodrigues vector rotation angle not positive.')
         if not np.all(np.isclose(np.linalg.norm(ro[...,0:3],axis=-1), 1.0)):
@@ -613,13 +614,29 @@ class Rotation:
         return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),accept_homomorph = True)
 
     @staticmethod
-    def from_random(shape=None):
+    def from_random(shape=None,seed=None):
+        """
+        Draw random rotation.
+
+        Rotations are uniformly distributed.
+
+        Parameters
+        ----------
+        shape : tuple of ints, optional
+            Shape of the sample. Defaults to None which gives a
+            single rotation
+        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None.
+            If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+        """
+        rng = np.random.default_rng(seed)
         if shape is None:
-            r = np.random.random(3)
+            r = rng.random(3)
         elif hasattr(shape, '__iter__'):
-            r = np.random.random(tuple(shape)+(3,))
+            r = rng.random(tuple(shape)+(3,))
         else:
-            r = np.random.rand(shape,3)
+            r = rng.random((shape,3))
 
         A = np.sqrt(r[...,2])
         B = np.sqrt(1.0-r[...,2])
@@ -635,6 +652,84 @@ class Rotation:
     fromQuaternion = from_quaternion
     asAxisAngle    = as_axis_angle
     __mul__        = __matmul__
+
+
+    @staticmethod
+    def from_spherical_component(center,sigma,N=500,degrees=True,seed=None):
+        """
+        Calculate set of rotations with Gaussian distribution around center.
+
+        Parameters
+        ----------
+        center : Rotation
+            Central Rotation.
+        sigma : float
+            Standard deviation of (Gaussian) misorientation distribution.
+        N : int, optional
+            Number of samples, defaults to 500.
+        degrees : boolean, optional
+            sigma is given in degrees.
+        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
+            will be pulled from the OS.
+
+        """
+        rng = np.random.default_rng(seed)
+        sigma = np.radians(sigma) if degrees else sigma
+        u,Theta  = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
+        omega = abs(rng.normal(scale=sigma,size=N))
+        p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
+                             np.sqrt(1-u**2)*np.sin(Theta),
+                             u, omega])
+
+        return  Rotation.from_axis_angle(p) @ center
+
+
+    @staticmethod
+    def from_fiber_component(alpha,beta,sigma=0.0,N=500,degrees=True,seed=None):
+        """
+        Calculate set of rotations with Gaussian distribution around direction.
+
+        Parameters
+        ----------
+        alpha : numpy.ndarray of size 2
+            Polar coordinates (phi from x,theta from z) of fiber direction in crystal frame.
+        beta : numpy.ndarray of size 2
+            Polar coordinates (phi from x,theta from z) of fiber direction in sample frame.
+        sigma : float, optional
+            Standard deviation of (Gaussian) misorientation distribution.
+            Defaults to 0.
+        N : int, optional
+            Number of samples, defaults to 500.
+        degrees : boolean, optional
+            sigma, alpha, and beta are given in degrees.
+        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
+            will be pulled from the OS.
+
+        """
+        rng = np.random.default_rng(seed)
+        sigma_,alpha_,beta_ = map(np.radians,(sigma,alpha,beta)) if degrees else (sigma,alpha,beta)
+
+        d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])
+        d_lab = np.array([np.sin( beta_[0])*np.cos( beta_[1]), np.sin( beta_[0])*np.sin( beta_[1]), np.cos( beta_[0])])
+        ax_align = np.append(np.cross(d_lab,d_cr), np.arccos(np.dot(d_lab,d_cr)))
+        if np.isclose(ax_align[3],0.0): ax_align[:3] = np.array([1,0,0])
+        R_align  = Rotation.from_axis_angle(ax_align if ax_align[3] > 0.0 else -ax_align,normalize=True) # rotate fiber axis from sample to crystal frame
+
+        u,Theta  = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
+        omega  = abs(rng.normal(scale=sigma_,size=N))
+        p = np.column_stack([np.sqrt(1-u**2)*np.cos(Theta),
+                             np.sqrt(1-u**2)*np.sin(Theta),
+                             u, omega])
+        p[:,:3] = np.einsum('ij,...j',np.eye(3)-np.outer(d_lab,d_lab),p[:,:3])                      # remove component along fiber axis
+        f = np.column_stack((np.broadcast_to(d_lab,(N,3)),rng.random(N)*np.pi))
+        f[::2,:3] *= -1                                                                             # flip half the rotation axes to negative sense
+
+        return R_align.broadcast_to(N) \
+             @ Rotation.from_axis_angle(p,normalize=True) \
+             @ Rotation.from_axis_angle(f)
+
 
 ####################################################################################################
 # Code below available according to the following conditions on https://github.com/MarDiehl/3Drotations

@@ -43,16 +43,14 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_damage_anisoDuctile init  -+>>>'
+  print'(/,a)', ' <<<+-  source_damage_anisoDuctile init  -+>>>'
 
   mySources = source_active('damage_anisoDuctile',source_length)
-  
   Ninstance = count(mySources)
-  write(6,'(a16,1x,i5,/)') '# instances:',Ninstance; flush(6)
-
+  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
   if(Ninstance == 0) return
 
-  phases => material_root%get('phase')
+  phases => config_material%get('phase')
   allocate(param(Ninstance))
   allocate(source_damage_anisoDuctile_offset  (phases%length), source=0)
   allocate(source_damage_anisoDuctile_instance(phases%length), source=0)

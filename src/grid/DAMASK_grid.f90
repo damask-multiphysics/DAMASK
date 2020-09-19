@@ -10,6 +10,7 @@ program DAMASK_grid
 #include <petsc/finclude/petscsys.h>
   use PETScsys
   use prec
+  use parallelization
   use DAMASK_interface
   use IO
   use config
@@ -23,7 +24,7 @@ program DAMASK_grid
   use grid_damage_spectral
   use grid_thermal_spectral
   use results
-
+  
   implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -87,7 +88,7 @@ program DAMASK_grid
     mech_updateCoords
   procedure(grid_mech_spectral_basic_restartWrite), pointer :: &
     mech_restartWrite
-
+  
   external :: &
     quit
   class (tNode), pointer :: &
@@ -96,10 +97,10 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
-
-  call CPFEM_initAll
+ 
+  call CPFEM_initAll 
   write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(6)
-
+  
   write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
 
@@ -113,7 +114,7 @@ program DAMASK_grid
 
 !-------------------------------------------------------------------------------------------------
 ! reading field paramters from numerics file and do sanity checks
-  num_grid => numerics_root%get('grid', defaultVal=emptyDict)
+  num_grid => config_numerics%get('grid', defaultVal=emptyDict)
   stagItMax  = num_grid%get_asInt('maxStaggeredIter',defaultVal=10)
   maxCutBack = num_grid%get_asInt('maxCutBack',defaultVal=3)
 
@@ -122,16 +123,16 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! assign mechanics solver depending on selected type
-
-  debug_grid => debug_root%get('grid',defaultVal=emptyList)
-  select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic')))
+ 
+  debug_grid => config_debug%get('grid',defaultVal=emptyList)
+  select case (trim(num_grid%get_asString('solver', defaultVal = 'Basic'))) 
     case ('Basic')
       mech_init         => grid_mech_spectral_basic_init
       mech_forward      => grid_mech_spectral_basic_forward
       mech_solution     => grid_mech_spectral_basic_solution
       mech_updateCoords => grid_mech_spectral_basic_updateCoords
       mech_restartWrite => grid_mech_spectral_basic_restartWrite
-
+  
     case ('Polarisation')
      if(debug_grid%contains('basic')) &
         call IO_warning(42, ext_msg='debug Divergence')
@@ -140,7 +141,7 @@ program DAMASK_grid
       mech_solution     => grid_mech_spectral_polarisation_solution
       mech_updateCoords => grid_mech_spectral_polarisation_updateCoords
       mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
-
+  
     case ('FEM')
      if(debug_grid%contains('basic')) &
         call IO_warning(42, ext_msg='debug Divergence')
@@ -149,24 +150,24 @@ program DAMASK_grid
       mech_solution     => grid_mech_FEM_solution
       mech_updateCoords => grid_mech_FEM_updateCoords
       mech_restartWrite => grid_mech_FEM_restartWrite
-
+  
     case default
       call IO_error(error_ID = 891, ext_msg = trim(num_grid%get_asString('solver')))
-
+  
   end select
-
+  
 
 !--------------------------------------------------------------------------------------------------
-! reading information from load case file and to sanity checks
-  fileContent = IO_readlines(trim(loadCaseFile))
+! reading information from load case file and to sanity checks 
+  fileContent = IO_readlines(trim(interface_loadFile))
   if(size(fileContent) == 0) call IO_error(307,ext_msg='No load case specified')
-
+  
   allocate (loadCases(0))                                                                           ! array of load cases
   do currentLoadCase = 1, size(fileContent)
     line = fileContent(currentLoadCase)
     if (IO_isBlank(line)) cycle
     chunkPos = IO_stringPos(line)
-
+  
     do i = 1, chunkPos(1)                                                                           ! reading compulsory parameters for loadcase
       select case (IO_lc(IO_stringValue(line,chunkPos,i)))
         case('l','fdot','dotf','f')
@@ -178,8 +179,8 @@ program DAMASK_grid
       end select
     enddo
     if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
-      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(loadCaseFile))                   ! error message for incomplete loadcase
-
+      call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(interface_loadFile))             ! error message for incomplete loadcase
+  
     newLoadCase%stress%myType='stress'
     field = 1
     newLoadCase%ID(field) = FIELD_MECH_ID                                                           ! mechanical active by default
@@ -191,7 +192,7 @@ program DAMASK_grid
       field = field + 1
       newLoadCase%ID(field) = FIELD_DAMAGE_ID
     endif damageActive
-
+  
     call newLoadCase%rot%fromEulers(real([0.0,0.0,0.0],pReal))
     readIn: do i = 1, chunkPos(1)
       select case (IO_lc(IO_stringValue(line,chunkPos,i)))
@@ -257,9 +258,9 @@ program DAMASK_grid
           call newLoadCase%rot%fromMatrix(math_9to33(temp_valueVector))
       end select
     enddo readIn
-
+  
     newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1)                  ! by default, guess from previous load case
-
+  
     reportAndCheck: if (worldrank == 0) then
       write (loadcase_string, '(i0)' ) currentLoadCase
       write(6,'(/,1x,a,i0)') 'load case: ', currentLoadCase
@@ -324,13 +325,13 @@ program DAMASK_grid
     select case (loadCases(1)%ID(field))
       case(FIELD_MECH_ID)
         call mech_init
-
+      
       case(FIELD_THERMAL_ID)
         call grid_thermal_spectral_init
-
+  
       case(FIELD_DAMAGE_ID)
         call grid_damage_spectral_init
-
+  
     end select
   enddo
 
@@ -348,16 +349,16 @@ program DAMASK_grid
                                   '.sta',form='FORMATTED', position='APPEND', status='OLD')
     endif writeHeader
   endif
-
+  
   writeUndeformed: if (interface_restartInc < 1) then
     write(6,'(1/,a)') ' ... writing initial configuration to file ........................'
     call CPFEM_results(0,0.0_pReal)
   endif writeUndeformed
-
+  
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
     guess = loadCases(currentLoadCase)%followFormerTrajectory                                       ! change of load case? homogeneous guess for the first inc
-
+  
     incLooping: do inc = 1, loadCases(currentLoadCase)%incs
       totalIncsCounter = totalIncsCounter + 1
 
@@ -382,13 +383,13 @@ program DAMASK_grid
         endif
       endif
       timeinc = timeinc * real(subStepFactor,pReal)**real(-cutBackLevel,pReal)                      ! depending on cut back level, decrease time step
-
+  
       skipping: if (totalIncsCounter <= interface_restartInc) then                                  ! not yet at restart inc?
         time = time + timeinc                                                                       ! just advance time, skip already performed calculation
         guess = .true.                                                                              ! QUESTION:why forced guessing instead of inheriting loadcase preference
       else skipping
         stepFraction = 0                                                                            ! fraction scaled by stepFactor**cutLevel
-
+  
         subStepLooping: do while (stepFraction < subStepFactor**cutBackLevel)
           remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
           time = time + timeinc                                                                     ! forward target time
@@ -417,7 +418,7 @@ program DAMASK_grid
                         deformation_BC     = loadCases(currentLoadCase)%deformation, &
                         stress_BC          = loadCases(currentLoadCase)%stress, &
                         rotation_BC        = loadCases(currentLoadCase)%rot)
-
+  
               case(FIELD_THERMAL_ID); call grid_thermal_spectral_forward(cutBack)
               case(FIELD_DAMAGE_ID);  call grid_damage_spectral_forward(cutBack)
             end select
@@ -432,21 +433,21 @@ program DAMASK_grid
             do field = 1, nActiveFields
               select case(loadCases(currentLoadCase)%ID(field))
                 case(FIELD_MECH_ID)
-                  solres(field) = mech_solution(&
+                  solres(field) = mech_solution (&
                                          incInfo, &
                                          stress_BC   = loadCases(currentLoadCase)%stress, &
                                          rotation_BC = loadCases(currentLoadCase)%rot)
-
+  
                 case(FIELD_THERMAL_ID)
                   solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld)
-
+  
                 case(FIELD_DAMAGE_ID)
                   solres(field) = grid_damage_spectral_solution(timeinc,timeIncOld)
-
+  
               end select
-
+  
               if (.not. solres(field)%converged) exit                                               ! no solution found
-
+  
             enddo
             stagIter = stagIter + 1
             stagIterate =            stagIter < stagItMax &
@@ -480,17 +481,17 @@ program DAMASK_grid
             if (worldrank == 0) close(statUnit)
             call quit(0)                                                                            ! quit
           endif
-
+  
         enddo subStepLooping
-
+  
         cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
-
+  
         if (all(solres(:)%converged)) then
           write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' converged'
         else
           write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' NOT converged'
         endif; flush(6)
-
+  
         if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                          ! at output frequency
           write(6,'(1/,a)') ' ... writing results to file ......................................'
           flush(6)
@@ -501,17 +502,17 @@ program DAMASK_grid
           call CPFEM_restartWrite
         endif
       endif skipping
-
+  
      enddo incLooping
-
+  
   enddo loadCaseLooping
-
-
+ 
+ 
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
   write(6,'(/,a)') ' ###########################################################################'
   if (worldrank == 0) close(statUnit)
-
+  
   call quit(0)                                                                                      ! no complains ;)
-
+  
 end program DAMASK_grid
