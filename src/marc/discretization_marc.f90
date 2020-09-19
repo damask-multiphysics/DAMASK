@@ -70,7 +70,7 @@ subroutine discretization_marc_init
   class(tNode), pointer :: &
     num_commercialFEM
 
-  write(6,'(/,a)') ' <<<+-  discretization_marc init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  discretization_marc init  -+>>>'; flush(6)
 
 !---------------------------------------------------------------------------------
 ! read debug parameters

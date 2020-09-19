@@ -199,7 +199,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print*, 'https://doi.org/10.1016/j.actamat.2014.03.012'//IO_EOL
 
   print*, 'Kords, Dissertation RWTH Aachen, 2014'
-  print*, 'http://publications.rwth-aachen.de/record/229993'//IO_EOL
+  print*, 'http://publications.rwth-aachen.de/record/229993'
 
   allocate(param(Ninstance))
   allocate(state(Ninstance))

@@ -110,7 +110,7 @@ subroutine FEM_utilities_init
 
   PetscErrorCode            :: ierr
 
-  write(6,'(/,a)')   ' <<<+-  FEM_utilities init  -+>>>'
+  print'(/,a)',   ' <<<+-  FEM_utilities init  -+>>>'
  
   num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
   structOrder =  num_mesh%get_asInt('structOrder', defaultVal = 2)
@@ -118,7 +118,7 @@ subroutine FEM_utilities_init
   debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
   debugPETSc  =  debug_mesh%contains('petsc')
 
-  if(debugPETSc) write(6,'(3(/,a),/)') &
+  if(debugPETSc) print'(3(/,a),/)', &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
                  ' add more using the PETSc_Options keyword in numerics.yaml '
@@ -158,7 +158,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
   
   PetscErrorCode :: ierr
 
-  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
+  print'(/,a)', ' ... evaluating constitutive response ......................................'
 
   call materialpoint_stressAndItsTangent(.true.,timeinc)                                            ! calculate P field
 

@@ -42,8 +42,7 @@ module grid_mech_spectral_basic
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  logical, private:: &
-    debugRotation 
+  logical, private :: debugRotation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -110,13 +109,13 @@ subroutine grid_mech_spectral_basic_init
   character(len=pStringLen) :: &
     fileName
 
-  write(6,'(/,a)') ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(6)
 
-  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'
+  print*, 'Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
 
-  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
@@ -132,7 +131,6 @@ subroutine grid_mech_spectral_basic_init
   num%eps_div_rtol    = num_grid%get_asFloat  ('eps_div_rtol',   defaultVal=5.0e-4_pReal)
   num%eps_stress_atol = num_grid%get_asFloat  ('eps_stress_atol',defaultVal=1.0e3_pReal)
   num%eps_stress_rtol = num_grid%get_asFloat  ('eps_stress_rtol',defaultVal=0.01_pReal)
-
   num%itmin           = num_grid%get_asInt    ('itmin',defaultVal=1)
   num%itmax           = num_grid%get_asInt    ('itmax',defaultVal=250)
 
@@ -186,7 +184,7 @@ subroutine grid_mech_spectral_basic_init
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                   ! places pointer on PETSc data
 
   restartRead: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading restart data of increment ', interface_restartInc, ' from file'
+    print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
 
     write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
     fileHandle  = HDF5_openFile(fileName)
@@ -211,7 +209,7 @@ subroutine grid_mech_spectral_basic_init
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
 
   restartRead2: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading more restart data of increment ', interface_restartInc, ' from file'
+    print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
@@ -377,7 +375,7 @@ subroutine grid_mech_spectral_basic_restartWrite
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-  write(6,'(a)') ' writing solver data required for restart to file'; flush(6)
+  print'(a)', ' writing solver data required for restart to file'; flush(6)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -437,12 +435,12 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
 
 !--------------------------------------------------------------------------------------------------
 ! report
-  write(6,'(1/,a)') ' ... reporting .............................................................'
-  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+  print'(1/,a)', ' ... reporting .............................................................'
+  print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
+  print'(a,f12.2,a,es8.2,a,es9.2,a)',    ' error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
-  write(6,'(/,a)') ' ==========================================================================='
+  print'(/,a)', ' ==========================================================================='
   flush(6)
 
 end subroutine converged
@@ -475,7 +473,7 @@ subroutine formResidual(in, F, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
+    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
     if (debugRotation) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))

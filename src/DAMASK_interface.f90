@@ -101,8 +101,8 @@ subroutine DAMASK_interface_init
 #endif
   print*, achar(27)//'[0m'
 
-  print'(a)', ' Roters et al., Computational Materials Science 158:420–478, 2019'
-  print'(a)',   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
+  print*, 'Roters et al., Computational Materials Science 158:420–478, 2019'
+  print*, 'https://doi.org/10.1016/j.commatsci.2018.04.030'
 
   print'(/,a)', ' Version: '//DAMASKVERSION
 

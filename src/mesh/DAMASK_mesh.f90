@@ -78,7 +78,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
   call CPFEM_initAll
-  write(6,'(/,a)') ' <<<+-  DAMASK_FEM init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  DAMASK_mesh init  -+>>>'; flush(6)
 
 !--------------------------------------------------------------------- 
 ! reading field information from numerics file and do sanity checks
@@ -208,30 +208,30 @@ program DAMASK_mesh
   errorID = 0
   checkLoadcases: do currentLoadCase = 1, size(loadCases)
     write (loadcase_string, '(i0)' ) currentLoadCase
-    write(6,'(1x,a,i6)') 'load case: ', currentLoadCase
+    print'(a,i0)', ' load case: ', currentLoadCase
     if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
-      write(6,'(2x,a)') 'drop guessing along trajectory'
+      print'(a)', '  drop guessing along trajectory'
     do field = 1, nActiveFields
       select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
         case(FIELD_MECH_ID)
-          write(6,'(2x,a)') 'Field '//trim(FIELD_MECH_label)
+          print'(a)', '  Field '//trim(FIELD_MECH_label)
       
       end select
       do faceSet = 1, mesh_Nboundaries
          do component = 1, loadCases(currentLoadCase)%fieldBC(field)%nComponents
            if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask(faceSet)) &
-             write(6,'(4x,a,i2,a,i2,a,f12.7)') 'Face  ', mesh_boundaries(faceSet), &
+             print'(a,i2,a,i2,a,f12.7)', '    Face  ', mesh_boundaries(faceSet), &
                                                ' Component ', component, & 
                                                ' Value ', loadCases(currentLoadCase)%fieldBC(field)% &
                                                             componentBC(component)%Value(faceSet)
          enddo
        enddo       
     enddo
-    write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
+    print'(a,f12.6)', '  time:       ', loadCases(currentLoadCase)%time
     if (loadCases(currentLoadCase)%incs < 1)             errorID = 835                            ! non-positive incs count
-    write(6,'(2x,a,i5)')    'increments: ', loadCases(currentLoadCase)%incs
+    print'(a,i5)',    '  increments: ', loadCases(currentLoadCase)%incs
     if (loadCases(currentLoadCase)%outputfrequency < 1)  errorID = 836                            ! non-positive result frequency
-    write(6,'(2x,a,i5)')    'output  frequency:  ', &
+    print'(a,i5)',    '  output  frequency:  ', &
                loadCases(currentLoadCase)%outputfrequency
     if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
   enddo checkLoadcases
@@ -290,8 +290,8 @@ program DAMASK_mesh
          
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
-        write(6,'(/,a)') ' ###########################################################################'
-        write(6,'(1x,a,es12.5,6(a,i0))')&
+        print'(/,a)', ' ###########################################################################'
+        print'(1x,a,es12.5,6(a,i0))',&
                 'Time', time, &
                 's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
@@ -338,7 +338,7 @@ program DAMASK_mesh
         cutBack = .False.                                                                   
         if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
           if (cutBackLevel < maxCutBack) then                                                       ! do cut back
-            write(6,'(/,a)') ' cut back detected'
+            print'(/,a)', ' cut back detected'
             cutBack = .True.
             stepFraction = (stepFraction - 1) * subStepFactor                                       ! adjust to new denominator
             cutBackLevel = cutBackLevel + 1
@@ -360,13 +360,13 @@ program DAMASK_mesh
       cutBackLevel = max(0, cutBackLevel - 1)                                                       ! try half number of subincs next inc
 
       if (all(solres(:)%converged)) then
-        write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' converged'
+        print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' converged'
       else
-        write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' NOT converged'
+        print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
       endif; flush(6)
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
-        write(6,'(1/,a)') ' ... writing results to file ......................................'
+        print'(/,a)', ' ... writing results to file ......................................'
         call CPFEM_results(totalIncsCounter,time)
       endif
 
@@ -378,7 +378,7 @@ program DAMASK_mesh
  
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
-  write(6,'(/,a)') ' ###########################################################################'
+  print'(/,a)', ' ###########################################################################'
   if (worldrank == 0) close(statUnit)
 
   call quit(0)                                                                                      ! no complains ;)

@@ -99,10 +99,10 @@ program DAMASK_grid
 ! init DAMASK (all modules)
  
   call CPFEM_initAll 
-  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(6)
+  print'(/,a)',   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(6)
   
-  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
@@ -263,19 +263,19 @@ program DAMASK_grid
   
     reportAndCheck: if (worldrank == 0) then
       write (loadcase_string, '(i0)' ) currentLoadCase
-      write(6,'(/,1x,a,i0)') 'load case: ', currentLoadCase
+      print'(/,a,i0)', ' load case: ', currentLoadCase
       if (.not. newLoadCase%followFormerTrajectory) &
-        write(6,'(2x,a)') 'drop guessing along trajectory'
+        print*, ' drop guessing along trajectory'
       if (newLoadCase%deformation%myType == 'l') then
         do j = 1, 3
           if (any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .true.) .and. &
               any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .false.)) errorID = 832          ! each row should be either fully or not at all defined
         enddo
-        write(6,'(2x,a)') 'velocity gradient:'
+        print*, ' velocity gradient:'
       else if (newLoadCase%deformation%myType == 'f') then
-        write(6,'(2x,a)') 'deformation gradient at end of load case:'
+        print*, ' deformation gradient at end of load case:'
       else
-        write(6,'(2x,a)') 'deformation gradient rate:'
+        print*, ' deformation gradient rate:'
       endif
       do i = 1, 3; do j = 1, 3
         if(newLoadCase%deformation%maskLogical(i,j)) then
@@ -289,7 +289,7 @@ program DAMASK_grid
               newLoadCase%deformation%maskLogical)) errorID = 831                                   ! exclusive or masking only
       if (any(newLoadCase%stress%maskLogical .and. transpose(newLoadCase%stress%maskLogical) &
           .and. (math_I3<1))) errorID = 838                                                         ! no rotation is allowed by stress BC
-      write(6,'(2x,a)') 'stress / GPa:'
+      print*, ' stress / GPa:'
       do i = 1, 3; do j = 1, 3
         if(newLoadCase%stress%maskLogical(i,j)) then
           write(6,'(2x,f12.7)',advance='no') newLoadCase%stress%values(i,j)*1e-9_pReal
@@ -305,14 +305,14 @@ program DAMASK_grid
         write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                  transpose(newLoadCase%rot%asMatrix())
       if (newLoadCase%time < 0.0_pReal) errorID = 834                                               ! negative time increment
-      write(6,'(2x,a,f0.3)') 'time: ', newLoadCase%time
+      print'(a,f0.3)', ' time: ', newLoadCase%time
       if (newLoadCase%incs < 1)    errorID = 835                                                    ! non-positive incs count
-      write(6,'(2x,a,i0)')  'increments: ', newLoadCase%incs
+      print'(a,i0)',  ' increments: ', newLoadCase%incs
       if (newLoadCase%outputfrequency < 1)  errorID = 836                                           ! non-positive result frequency
-      write(6,'(2x,a,i0)')  'output frequency: ', newLoadCase%outputfrequency
+      print'(a,i0)',  ' output frequency: ', newLoadCase%outputfrequency
       if (newLoadCase%restartfrequency < 1)  errorID = 839                                          ! non-positive restart frequency
       if (newLoadCase%restartfrequency < huge(0)) &
-        write(6,'(2x,a,i0)')  'restart frequency: ', newLoadCase%restartfrequency
+        print'(a,i0)',  ' restart frequency: ', newLoadCase%restartfrequency
       if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
     endif reportAndCheck
     loadCases = [loadCases,newLoadCase]                                                             ! load case is ok, append it
@@ -397,8 +397,8 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
-          write(6,'(/,a)') ' ###########################################################################'
-          write(6,'(1x,a,es12.5,6(a,i0))') &
+          print'(/,a)', ' ###########################################################################'
+          print'(1x,a,es12.5,6(a,i0))', &
                   'Time', time, &
                   's: Increment ', inc,'/',loadCases(currentLoadCase)%incs,&
                   '-', stepFraction,'/',subStepFactor**cutBackLevel,&
@@ -475,7 +475,7 @@ program DAMASK_grid
             cutBackLevel = cutBackLevel + 1
             time    = time - timeinc                                                                ! rewind time
             timeinc = timeinc/real(subStepFactor,pReal)                                             ! cut timestep
-            write(6,'(/,a)') ' cutting back '
+            print'(/,a)', ' cutting back '
           else                                                                                      ! no more options to continue
             call IO_warning(850)
             if (worldrank == 0) close(statUnit)
@@ -487,13 +487,13 @@ program DAMASK_grid
         cutBackLevel = max(0, cutBackLevel - 1)                                                     ! try half number of subincs next inc
   
         if (all(solres(:)%converged)) then
-          write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' converged'
+          print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' converged'
         else
-          write(6,'(/,a,i0,a)') ' increment ', totalIncsCounter, ' NOT converged'
+          print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
         endif; flush(6)
   
         if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                          ! at output frequency
-          write(6,'(1/,a)') ' ... writing results to file ......................................'
+          print'(1/,a)', ' ... writing results to file ......................................'
           flush(6)
           call CPFEM_results(totalIncsCounter,time)
         endif
@@ -510,7 +510,7 @@ program DAMASK_grid
  
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
-  write(6,'(/,a)') ' ###########################################################################'
+  print'(/,a)', ' ###########################################################################'
   if (worldrank == 0) close(statUnit)
   
   call quit(0)                                                                                      ! no complains ;)
