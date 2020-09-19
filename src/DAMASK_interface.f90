@@ -82,7 +82,7 @@ subroutine DAMASK_interface_init
 
   print'(/,a)', ' <<<+-  DAMASK_interface init  -+>>>'
 
-  open(6, encoding='UTF-8')                                                                         ! for special characters in output
+  open(OUTPUT_unit, encoding='UTF-8')                                                               ! for special characters in output
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
@@ -373,7 +373,7 @@ function makeRelativePath(a,b)
   a_cleaned = rectifyPath(trim(a)//'/')
   b_cleaned = rectifyPath(b)
 
-  do i = 1, min(1024,len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
+  do i = 1, min(len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
     if (a_cleaned(i:i) /= b_cleaned(i:i)) exit
     if (a_cleaned(i:i) == '/') posLastCommonSlash = i
   enddo
@@ -395,7 +395,7 @@ subroutine catchSIGTERM(signal) bind(C)
   integer(C_INT), value :: signal
   interface_SIGTERM = .true.
 
-  print'(a,i2.2,a)', ' received signal ',signal, ', set SIGTERM=TRUE'
+  print'(a,i0,a)', ' received signal ',signal, ', set SIGTERM=TRUE'
 
 end subroutine catchSIGTERM
 
@@ -420,7 +420,7 @@ subroutine catchSIGUSR1(signal) bind(C)
   integer(C_INT), value :: signal
   interface_SIGUSR1 = .true.
 
-  print'(a,i2.2,a)', ' received signal ',signal, ', set SIGUSR1=TRUE'
+  print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR1=TRUE'
 
 end subroutine catchSIGUSR1
 
@@ -445,7 +445,7 @@ subroutine catchSIGUSR2(signal) bind(C)
   integer(C_INT), value :: signal
   interface_SIGUSR2 = .true.
 
-  print'(a,i2.2,a)', ' received signal ',signal, ', set SIGUSR2=TRUE'
+  print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR2=TRUE'
 
 end subroutine catchSIGUSR2
 
