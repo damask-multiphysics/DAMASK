@@ -1100,7 +1100,7 @@ class Result:
         pool.join()
 
 
-    def write_XDMF(self):
+    def save_XDMF(self):
         """
         Write XDMF file to directly visualize data in DADF5 file.
 

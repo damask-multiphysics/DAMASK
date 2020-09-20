@@ -348,7 +348,7 @@ class Geom:
 
 
     @staticmethod
-    def load_vtr(fname):
+    def load(fname):
         """
         Read a VTK rectilinear grid.
 
@@ -516,7 +516,7 @@ class Geom:
                 f.write(f'{reps} of {former}\n')
 
 
-    def save_vtr(self,fname,compress=True):
+    def save(self,fname,compress=True):
         """
         Generates vtk rectilinear grid.
 

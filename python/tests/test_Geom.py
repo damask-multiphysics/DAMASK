@@ -75,12 +75,12 @@ class TestGeom:
         assert geom_equal(default,new)
 
     def test_read_write_vtr(self,default,tmpdir):
-        default.save_vtr(tmpdir/'default')
+        default.save(tmpdir/'default')
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'default.vtr'): break
 
-        new = Geom.load_vtr(tmpdir/'default.vtr')
+        new = Geom.load(tmpdir/'default.vtr')
         assert geom_equal(new,default)
 
     def test_invalid_geom(self,tmpdir):
@@ -97,7 +97,7 @@ class TestGeom:
             time.sleep(.2)
             if os.path.exists(tmpdir/'no_materialpoint.vtr'): break
         with pytest.raises(ValueError):
-            Geom.load_vtr(tmpdir/'no_materialpoint.vtr')
+            Geom.load(tmpdir/'no_materialpoint.vtr')
 
 
     @pytest.mark.parametrize('compress',[True,False])
@@ -188,11 +188,11 @@ class TestGeom:
         current = default.clean(stencil,selection,periodic)
         reference = reference_dir/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
         if update and stencil > 1:
-            current.save_vtr(reference)
+            current.save(reference)
             for _ in range(10):
                 time.sleep(.2)
                 if os.path.exists(reference.with_suffix('.vtr')): break
-        assert geom_equal(Geom.load_vtr(reference) if stencil > 1 else default,
+        assert geom_equal(Geom.load(reference) if stencil > 1 else default,
                           current
                          )
 
