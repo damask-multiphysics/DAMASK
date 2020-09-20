@@ -107,8 +107,8 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! initialize field solver information
   nActiveFields = 1
-  if (any(thermal_type  == THERMAL_conduction_ID  )) nActiveFields = nActiveFields + 1
-  if (any(damage_type   == DAMAGE_nonlocal_ID     )) nActiveFields = nActiveFields + 1
+  if(any(thermal_type == THERMAL_conduction_ID)) nActiveFields = nActiveFields + 1
+  if(any(damage_type  == DAMAGE_nonlocal_ID   )) nActiveFields = nActiveFields + 1
   allocate(solres(nActiveFields))
   allocate(newLoadCase%ID(nActiveFields))
 
@@ -181,7 +181,7 @@ program DAMASK_grid
     if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
       call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(interface_loadFile))             ! error message for incomplete loadcase
   
-    newLoadCase%stress%myType='stress'
+    newLoadCase%stress%myType='p'
     field = 1
     newLoadCase%ID(field) = FIELD_MECH_ID                                                           ! mechanical active by default
     thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then

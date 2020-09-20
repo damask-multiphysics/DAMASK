@@ -70,8 +70,8 @@ module grid_mech_spectral_polarisation
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
     F_av = 0.0_pReal, &                                                                             !< average incompatible def grad field
-    P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
-
+    P_av = 0.0_pReal, &                                                                             !< average 1st Piola--Kirchhoff stress
+    P_aim = 0.0_pReal
   character(len=:), allocatable :: incInfo                                                          !< time and increment information
   real(pReal), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
@@ -326,7 +326,6 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data
   params%stress_mask = stress_BC%maskFloat
-  params%stress_BC   = stress_BC%values
   params%rotation_BC = rotation_BC
   params%timeinc     = timeinc
   params%timeincOld  = timeinc_old
@@ -373,6 +372,12 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
+  if     (stress_BC%myType=='p') then
+    P_aim = P_aim + stress_BC%maskFloat*(stress_BC%values - P_aim)/loadCaseTime*timeinc
+  elseif (stress_BC%myType=='pdot') then !UNTESTED
+    P_aim = P_aim + stress_BC%maskFloat*stress_BC%values*timeinc
+  endif
+
   F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! estimate of F at end of time+timeinc that matches rotated F_aim on average
                                      rotation_BC%rotate(F_aim,active=.true.)),&
               [9,grid(1),grid(2),grid3])
@@ -587,10 +592,10 @@ subroutine formResidual(in, FandF_tau, &
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-  F_aim = F_aim - math_mul3333xx33(S, P_av - params%stress_BC)                                     ! S = 0.0 for no bc
+  F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
   err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim &
                                                  -params%rotation_BC%rotate(F_av)) + &
-                                 params%stress_mask  * (P_av-params%stress_BC)))                    ! mask = 0.0 for no bc
+                                 params%stress_mask  * (P_av-P_aim)))                               ! mask = 0.0 for no bc
 ! calculate divergence
   tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F                                !< stress field in disguise

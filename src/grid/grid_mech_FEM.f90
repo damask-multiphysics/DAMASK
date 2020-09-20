@@ -66,8 +66,8 @@ module grid_mech_FEM
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastIter = math_I3, &
     F_aim_lastInc  = math_I3, &                                                                     !< previous average deformation gradient
-    P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
-
+    P_av = 0.0_pReal, &                                                                             !< average 1st Piola--Kirchhoff stress
+    P_aim = 0.0_pReal
   character(len=:), allocatable :: incInfo                                                          !< time and increment information
   real(pReal), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
@@ -327,7 +327,6 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data
   params%stress_mask = stress_BC%maskFloat
-  params%stress_BC   = stress_BC%values
   params%rotation_BC = rotation_BC
   params%timeinc     = timeinc
   params%timeincOld  = timeinc_old
@@ -374,6 +373,12 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
+  if     (stress_BC%myType=='p') then
+    P_aim = P_aim + stress_BC%maskFloat*(stress_BC%values - P_aim)/loadCaseTime*timeinc
+  elseif (stress_BC%myType=='pdot') then !UNTESTED
+    P_aim = P_aim + stress_BC%maskFloat*stress_BC%values*timeinc
+  endif
+
   call VecAXPY(solution_current,timeinc,solution_rate,ierr); CHKERRQ(ierr)
 
   call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
@@ -489,8 +494,6 @@ subroutine formResidual(da_local,x_local, &
   PetscScalar, pointer,dimension(:,:,:,:) :: x_scal, f_scal
   PetscScalar, dimension(8,3) :: x_elem,  f_elem
   PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
-  real(pReal), dimension(3,3) :: &
-    deltaF_aim
   PetscInt :: &
     PETScIter, &
     nfuncs
@@ -539,10 +542,8 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-  F_aim_lastIter = F_aim
-  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)
-  F_aim = F_aim - deltaF_aim
-  err_BC = maxval(abs(params%stress_mask * (P_av - params%stress_BC)))                              ! mask = 0.0 when no stress bc
+  F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
+  err_BC = maxval(abs(params%stress_mask * (P_av - P_aim)))                                         ! mask = 0.0 when no stress bc
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
