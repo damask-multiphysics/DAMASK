@@ -208,7 +208,7 @@ subroutine spectral_utilities_init
   debugPETSc      =  debug_grid%contains('petsc')
 
 
-  if(debugPETSc) write(6,'(3(/,a),/)') &
+  if(debugPETSc) print'(3(/,a),/)', &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
                  ' add more using the PETSc_Options keyword in numerics.yaml '; flush(6)
@@ -280,7 +280,7 @@ subroutine spectral_utilities_init
   if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
   call fftw_set_timelimit(num_grid%get_asFloat('fftw_timelimit',defaultVal=-1.0_pReal))
 
-  if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
+  print*, 'FFTW initialized'; flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
@@ -506,7 +506,7 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   logical :: err
 
 
-  write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
+  print'(/,a)', ' ... doing gamma convolution ...............................................'
   flush(6)
 
 !--------------------------------------------------------------------------------------------------
@@ -576,7 +576,7 @@ real(pReal) function utilities_divergenceRMS()
   integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  write(6,'(/,a)') ' ... calculating divergence ................................................'
+  print'(/,a)', ' ... calculating divergence ................................................'
   flush(6)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
@@ -620,7 +620,7 @@ real(pReal) function utilities_curlRMS()
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  write(6,'(/,a)') ' ... calculating curl ......................................................'
+  print'(/,a)', ' ... calculating curl ......................................................'
   flush(6)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
@@ -700,7 +700,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     temp99_real = math_3333to99(rot_BC%rotate(C))
 
     if(debugGeneral) then
-      write(6,'(/,a)') ' ... updating masked compliance ............................................'
+      print'(/,a)', ' ... updating masked compliance ............................................'
       write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
                                                    transpose(temp99_Real)*1.0e-9_pReal
       flush(6)
@@ -822,7 +822,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   real(pReal)                     :: dPdF_norm_max, dPdF_norm_min
   real(pReal), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
 
-  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
+  print'(/,a)', ' ... evaluating constitutive response ......................................'
   flush(6)
 
   materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
@@ -1095,7 +1095,7 @@ subroutine utilities_saveReferenceStiffness
     fileUnit,ierr
 
   if (worldrank == 0) then
-    write(6,'(a)') ' writing reference stiffness data required for restart to file'; flush(6)
+    print'(a)', ' writing reference stiffness data required for restart to file'; flush(6)
     open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
          status='replace',access='stream',action='write',iostat=ierr)
     if(ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')

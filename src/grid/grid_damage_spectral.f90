@@ -22,42 +22,38 @@ module grid_damage_spectral
   implicit none
   private
 
-  type, private :: tNumerics
+  type :: tNumerics
     integer :: &
-      itmax                                                                                         !< max number of iterations
+      itmax                                                                                         !< maximum number of iterations
     real(pReal) :: &
       residualStiffness, &                                                                          !< non-zero residual damage
       eps_damage_atol, &                                                                            !< absolute tolerance for damage evolution
       eps_damage_rtol                                                                               !< relative tolerance for damage evolution
   end type tNumerics
 
-  type(tNumerics), private :: num
-!--------------------------------------------------------------------------------------------------
-! derived types
-  type(tSolutionParams), private :: params
+  type(tNumerics) :: num
 
+  type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  SNES, private :: damage_snes
-  Vec,  private :: solution_vec
-  PetscInt, private :: xstart, xend, ystart, yend, zstart, zend
-  real(pReal), private, dimension(:,:,:), allocatable :: &
+  SNES :: damage_snes
+  Vec  :: solution_vec
+  PetscInt :: xstart, xend, ystart, yend, zstart, zend
+  real(pReal), dimension(:,:,:), allocatable :: &
     phi_current, &                                                                                  !< field of current damage
     phi_lastInc, &                                                                                  !< field of previous damage
     phi_stagInc                                                                                     !< field of staggered damage
  
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc. 
-  integer,                     private :: totalIter = 0                                             !< total iteration in current increment
-  real(pReal), dimension(3,3), private :: K_ref
-  real(pReal), private                 :: mu_ref
+  integer                     :: totalIter = 0                                                      !< total iteration in current increment
+  real(pReal), dimension(3,3) :: K_ref
+  real(pReal)                 :: mu_ref
   
   public :: &
     grid_damage_spectral_init, &
     grid_damage_spectral_solution, &
     grid_damage_spectral_forward
-  private :: &
-    formResidual
 
 contains
 
@@ -77,10 +73,10 @@ subroutine grid_damage_spectral_init
   character(len=pStringLen) :: &
     snes_type
  
-  write(6,'(/,a)') ' <<<+-  grid_spectral_damage init  -+>>>'
+  print'(/,a)', ' <<<+-  grid_spectral_damage init  -+>>>'
 
-  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
  
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
@@ -152,8 +148,6 @@ subroutine grid_damage_spectral_init
   allocate(phi_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
   call VecSet(solution_vec,1.0_pReal,ierr); CHKERRQ(ierr)
 
-!--------------------------------------------------------------------------------------------------
-! damage reference diffusion update
   call updateReference
 
 end subroutine grid_damage_spectral_init
@@ -210,10 +204,10 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
   call VecMax(solution_vec,devNull,phi_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
-    write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
+    print'(/,a)', ' ... nonlocal damage converged .....................................'
   write(6,'(/,a,f8.6,2x,f8.6,2x,e11.4,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
                                                           phi_min, phi_max, stagNorm
-  write(6,'(/,a)') ' ==========================================================================='
+  print'(/,a)', ' ==========================================================================='
   flush(6) 
 
 end function grid_damage_spectral_solution

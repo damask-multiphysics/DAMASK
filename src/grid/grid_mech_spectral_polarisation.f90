@@ -123,10 +123,10 @@ subroutine grid_mech_spectral_polarisation_init
   character(len=pStringLen) :: &
     fileName
 
-  write(6,'(/,a)') ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'; flush(6)
 
-  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
 !------------------------------------------------------------------------------------------------
 ! debugging options
@@ -134,9 +134,8 @@ subroutine grid_mech_spectral_polarisation_init
   debugRotation = debug_grid%contains('rotation')
 
 !-------------------------------------------------------------------------------------------------
-! read numerical parameters
+! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
-
   num%update_gamma       = num_grid%get_asBool  ('update_gamma',    defaultVal=.false.)
   num%eps_div_atol       = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
   num%eps_div_rtol       = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
@@ -207,7 +206,7 @@ subroutine grid_mech_spectral_polarisation_init
   F_tau => FandF_tau(9:17,:,:,:)
 
   restartRead: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading restart data of increment ', interface_restartInc, ' from file'
+    print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
 
     write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
     fileHandle  = HDF5_openFile(fileName)
@@ -236,7 +235,7 @@ subroutine grid_mech_spectral_polarisation_init
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
 
   restartRead2: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading more restart data of increment ', interface_restartInc, ' from file'
+    print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
@@ -427,7 +426,7 @@ subroutine grid_mech_spectral_polarisation_restartWrite
   F     => FandF_tau(0: 8,:,:,:)
   F_tau => FandF_tau(9:17,:,:,:)
 
-  write(6,'(a)') ' writing solver data required for restart to file'; flush(6)
+  print*, 'writing solver data required for restart to file'; flush(6)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -491,14 +490,14 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
 
 !--------------------------------------------------------------------------------------------------
 ! report
-  write(6,'(1/,a)') ' ... reporting .............................................................'
-  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+  print'(1/,a)', ' ... reporting .............................................................'
+  print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
-  write(6,  '(a,f12.2,a,es8.2,a,es9.2,a)') ' error curl       = ', &
+  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  write(6,  '(a,f12.2,a,es8.2,a,es9.2,a)') ' error BC         = ', &
+  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error stress BC         = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
-  write(6,'(/,a)') ' ==========================================================================='
+  print'(/,a)', ' ==========================================================================='
   flush(6)
 
 end subroutine converged
@@ -551,7 +550,7 @@ subroutine formResidual(in, FandF_tau, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
+    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
     if(debugRotation) &
       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))

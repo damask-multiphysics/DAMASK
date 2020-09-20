@@ -23,20 +23,17 @@ module grid_thermal_spectral
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-! derived types
-  type(tSolutionParams) :: params
-
   type :: tNumerics
     integer :: &
-      itmax                                                                                          !< maximum number of iterations
+      itmax                                                                                         !< maximum number of iterations
     real(pReal) :: &
-      eps_thermal_atol, &                                                                            !< absolute tolerance for thermal equilibrium
-      eps_thermal_rtol                                                                               !< relative tolerance for thermal equilibrium
+      eps_thermal_atol, &                                                                           !< absolute tolerance for thermal equilibrium
+      eps_thermal_rtol                                                                              !< relative tolerance for thermal equilibrium
   end type tNumerics
 
   type(tNumerics) :: num
 
+  type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES     :: thermal_snes
@@ -74,13 +71,13 @@ subroutine grid_thermal_spectral_init
   class(tNode), pointer :: &
     num_grid
 
-  write(6,'(/,a)') ' <<<+-  grid_thermal_spectral init  -+>>>'
+  print'(/,a)', ' <<<+-  grid_thermal_spectral init  -+>>>'
 
-  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !-------------------------------------------------------------------------------------------------
-! read numerical parameter and do sanity checks
+! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
   num%itmax            = num_grid%get_asInt   ('itmax',           defaultVal=250)
   num%eps_thermal_atol = num_grid%get_asFloat ('eps_thermal_atol',defaultVal=1.0e-2_pReal)
@@ -94,8 +91,7 @@ subroutine grid_thermal_spectral_init
 ! set default and user defined options for PETSc
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-thermal_snes_type ngmres',ierr)
  CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,&
-                               num_grid%get_asString('petsc_options',defaultVal=''),ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
  CHKERRQ(ierr)
  
 !--------------------------------------------------------------------------------------------------
@@ -110,7 +106,7 @@ subroutine grid_thermal_spectral_init
          DMDA_STENCIL_BOX, &                                                                        ! Moore (26) neighborhood around central point
          grid(1),grid(2),grid(3), &                                                                 ! global grid
          1, 1, worldsize, &
-         1, 0, &                                                                                    ! #dof (thermal phase field), ghost boundary width (domain overlap)
+         1, 0, &                                                                                    ! #dof (T field), ghost boundary width (domain overlap)
          [grid(1)],[grid(2)],localK, &                                                              ! local grid
          thermal_grid,ierr)                                                                         ! handle, error
   CHKERRQ(ierr)
@@ -159,8 +155,6 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
     timeinc_old                                                                                     !< increment in time of last increment
   integer :: i, j, k, cell
   type(tSolutionState) :: solution
-  class(tNode), pointer :: &
-    num_grid
   PetscInt  :: devNull
   PetscReal :: T_min, T_max, stagNorm, solnNorm
 
@@ -204,10 +198,10 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
   call VecMin(solution_vec,devNull,T_min,ierr); CHKERRQ(ierr)
   call VecMax(solution_vec,devNull,T_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
-    write(6,'(/,a)') ' ... thermal conduction converged ..................................'
+    print'(/,a)', ' ... thermal conduction converged ..................................'
   write(6,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
                                                         T_min, T_max, stagNorm
-  write(6,'(/,a)') ' ==========================================================================='
+  print'(/,a)', ' ==========================================================================='
   flush(6) 
 
 end function grid_thermal_spectral_solution

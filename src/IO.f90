@@ -6,6 +6,10 @@
 !> @brief  input/output functions
 !--------------------------------------------------------------------------------------------------
 module IO
+  use, intrinsic :: ISO_fortran_env, only: &
+    OUTPUT_UNIT, &
+    ERROR_UNIT
+
   use prec
 
   implicit none
@@ -37,7 +41,8 @@ module IO
     IO_stringAsFloat, &
     IO_stringAsBool, &
     IO_error, &
-    IO_warning
+    IO_warning, &
+    OUTPUT_UNIT
 
 contains
 
@@ -538,29 +543,29 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   end select
 
   !$OMP CRITICAL (write2out)
-  write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
-  write(0,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
-  write(0,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(ERROR_UNIT,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(ERROR_UNIT,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
+  write(ERROR_UNIT,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
+  write(ERROR_UNIT,'(a)')                  ' ├'//IO_DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
-  write(0,formatString)            '│ ',trim(msg),                                          '│'
+  write(ERROR_UNIT,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
     write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(0,formatString)          '│ ',trim(ext_msg),                                      '│'
+    write(ERROR_UNIT,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+    write(ERROR_UNIT,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+    write(ERROR_UNIT,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
   if (present(g)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+    write(ERROR_UNIT,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
   if (present(instance)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
-  write(0,'(a,69x,a)')            ' │',                                                     '│'
-  write(0,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(0)
+    write(ERROR_UNIT,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
+  write(ERROR_UNIT,'(a,69x,a)')            ' │',                                                     '│'
+  write(ERROR_UNIT,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(ERROR_UNIT)
   call quit(9000+error_ID)
   !$OMP END CRITICAL (write2out)
 
@@ -623,27 +628,27 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
     end select
 
   !$OMP CRITICAL (write2out)
-  write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
-  write(6,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
-  write(6,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(ERROR_UNIT,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(ERROR_UNIT,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
+  write(ERROR_UNIT,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
+  write(ERROR_UNIT,'(a)')                  ' ├'//IO_DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
-  write(6,formatString)            '│ ',trim(msg),                                          '│'
+  write(ERROR_UNIT,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
     write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(6,formatString)          '│ ',trim(ext_msg),                                      '│'
+    write(ERROR_UNIT,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+    write(ERROR_UNIT,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+    write(ERROR_UNIT,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
   if (present(g)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
-  write(6,'(a,69x,a)')            ' │',                                                     '│'
-  write(6,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(6)
+    write(ERROR_UNIT,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+  write(ERROR_UNIT,'(a,69x,a)')            ' │',                                                     '│'
+  write(ERROR_UNIT,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(ERROR_UNIT)
   !$OMP END CRITICAL (write2out)
 
 end subroutine IO_warning
