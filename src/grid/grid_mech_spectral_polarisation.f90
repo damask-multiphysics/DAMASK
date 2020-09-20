@@ -48,7 +48,7 @@ module grid_mech_spectral_polarisation
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  logical, private :: debugRotation
+  logical :: debugRotation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data

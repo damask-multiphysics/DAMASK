@@ -27,9 +27,9 @@ module grid_mech_FEM
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
-  type(tSolutionParams), private :: params
+  type(tSolutionParams) :: params
 
-  type, private :: tNumerics
+  type :: tNumerics
     integer :: &
       itmin, &                                                                                        !< minimum number of iterations
       itmax                                                                                           !< maximum number of iterations
@@ -43,45 +43,45 @@ module grid_mech_FEM
       eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
   end type tNumerics
 
-  type(tNumerics), private :: num
-  logical, private:: &
+  type(tNumerics) :: num
+  logical :: &
     debugRotation 
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  DM,   private :: mech_grid
-  SNES, private :: mech_snes
-  Vec,  private :: solution_current, solution_lastInc, solution_rate
+  DM   :: mech_grid
+  SNES :: mech_snes
+  Vec  :: solution_current, solution_lastInc, solution_rate
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F, P_current, F_lastInc
-  real(pReal), private :: detJ
-  real(pReal), private, dimension(3)   :: delta
-  real(pReal), private, dimension(3,8) :: BMat
-  real(pReal), private, dimension(8,8) :: HGMat
-  PetscInt,    private :: xstart,ystart,zstart,xend,yend,zend
+  real(pReal), dimension(:,:,:,:,:), allocatable :: F, P_current, F_lastInc
+  real(pReal) :: detJ
+  real(pReal), dimension(3)   :: delta
+  real(pReal), dimension(3,8) :: BMat
+  real(pReal), dimension(8,8) :: HGMat
+  PetscInt :: xstart,ystart,zstart,xend,yend,zend
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
-  real(pReal), private, dimension(3,3) :: &
+  real(pReal), dimension(3,3) :: &
     F_aimDot = 0.0_pReal, &                                                                         !< assumed rate of average deformation gradient
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastIter = math_I3, &
     F_aim_lastInc  = math_I3, &                                                                     !< previous average deformation gradient
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
 
-  character(len=:), allocatable, private :: incInfo                                                 !< time and increment information
+  character(len=:), allocatable :: incInfo                                                          !< time and increment information
 
-  real(pReal), private, dimension(3,3,3,3) :: &
+  real(pReal), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
     S = 0.0_pReal                                                                                   !< current compliance (filled up with zeros)
 
-  real(pReal), private :: &
+  real(pReal) :: &
     err_BC                                                                                          !< deviation from stress BC
 
-  integer, private :: &
+  integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
 
   public :: &
