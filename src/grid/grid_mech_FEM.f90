@@ -126,12 +126,12 @@ subroutine grid_mech_FEM_init
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
-  num%eps_div_atol    = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
-  num%eps_div_rtol    = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
-  num%eps_stress_atol = num_grid%get_asFloat ('eps_stress_atol', defaultVal=1.0e3_pReal)
-  num%eps_stress_rtol = num_grid%get_asFloat ('eps_stress_rtol', defaultVal=0.01_pReal)
-  num%itmin           = num_grid%get_asInt   ('itmin',defaultVal=1)
-  num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
+  num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid%get_asFloat('eps_div_rtol',   defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=1.0e-3_pReal)
+  num%itmin           = num_grid%get_asInt  ('itmin',          defaultVal=1)
+  num%itmax           = num_grid%get_asInt  ('itmax',          defaultVal=250)
 
   if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
   if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
