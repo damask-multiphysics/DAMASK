@@ -67,7 +67,7 @@ class Table:
 
 
     @staticmethod
-    def load_ASCII(fname):
+    def load(fname):
         """
         Load ASCII table file.
 
@@ -344,7 +344,7 @@ class Table:
             return dup
 
 
-    def save_ASCII(self,fname,legacy=False):
+    def save(self,fname,legacy=False):
         """
         Save as plain text file.
 

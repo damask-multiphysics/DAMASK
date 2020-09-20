@@ -65,4 +65,4 @@ for name in filenames:
 
     damask.Table(seeds[mask],{'pos':(3,)},comments)\
           .add('microstructure',microstructure[mask].astype(int))\
-          .save_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds',legacy=True)
+          .save(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds',legacy=True)

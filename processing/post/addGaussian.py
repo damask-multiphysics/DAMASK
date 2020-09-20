@@ -63,7 +63,7 @@ if options.labels is None: parser.error('no data column specified.')
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     damask.grid_filters.coord0_check(table.get(options.pos))
 
     for label in options.labels:
@@ -73,4 +73,4 @@ for name in filenames:
                                                           mode = 'wrap' if options.periodic else 'nearest'),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII((sys.stdout if name is None else name), legacy=True)
+    table.save((sys.stdout if name is None else name), legacy=True)

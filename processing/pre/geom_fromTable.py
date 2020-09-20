@@ -68,7 +68,7 @@ if options.axes is not None and not set(options.axes).issubset(set(['x','+x','-x
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     table.sort_by(['{}_{}'.format(i,options.pos) for i in range(3,0,-1)])                           # x fast, y slow
     grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 

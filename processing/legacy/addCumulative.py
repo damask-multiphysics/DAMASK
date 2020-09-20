@@ -39,10 +39,10 @@ if options.labels is None:
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     for label in options.labels:
         table = table.add('cum_{}({})'.format('prod'     if options.product else 'sum',label),
                           np.cumprod(table.get(label),0) if options.product else np.cumsum(table.get(label),0),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII((sys.stdout if name is None else name),legacy=True)
+    table.save((sys.stdout if name is None else name),legacy=True)

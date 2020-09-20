@@ -142,7 +142,7 @@ for i,feature in enumerate(features):
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
     neighborhood = neighborhoods[options.neighborhood]
@@ -184,4 +184,4 @@ for name in filenames:
                           distance[i,:],
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII((sys.stdout if name is None else name), legacy=True)
+    table.save((sys.stdout if name is None else name), legacy=True)

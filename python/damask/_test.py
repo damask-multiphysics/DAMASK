@@ -287,9 +287,9 @@ class Test:
 
     import numpy as np
     logging.info('\n '.join(['comparing',File1,File2]))
-    table = damask.Table.load_ASCII(File1)
+    table = damask.Table.load(File1)
     len1 = len(table.comments)+2
-    table = damask.Table.load_ASCII(File2)
+    table = damask.Table.load(File2)
     len2 = len(table.comments)+2
 
     refArray = np.nan_to_num(np.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
@@ -436,7 +436,7 @@ class Test:
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 
-    tables = [damask.Table.load_ASCII(filename) for filename in files]
+    tables = [damask.Table.load(filename) for filename in files]
     for table in tables:
       table._label_discrete()
 
@@ -486,7 +486,7 @@ class Test:
 
     if len(files) < 2: return True                                             # single table is always close to itself...
 
-    tables = [damask.Table.load_ASCII(filename) for filename in files]
+    tables = [damask.Table.load(filename) for filename in files]
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files

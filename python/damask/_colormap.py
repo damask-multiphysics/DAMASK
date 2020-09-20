@@ -297,9 +297,9 @@ class Colormap(mpl.colors.ListedColormap):
 
         if fhandle is None:
             with open(self.name.replace(' ','_')+'.txt', 'w') as f:
-                t.save_ASCII(f)
+                t.save(f)
         else:
-            t.save_ASCII(fhandle)
+            t.save(fhandle)
 
 
     def save_GOM(self,fname=None):

@@ -78,7 +78,7 @@ class myThread (threading.Thread):
       perturbedSeedsVFile = StringIO()
       myBestSeedsVFile.seek(0)
 
-      perturbedSeedsTable = damask.Table.load_ASCII(myBestSeedsVFile)
+      perturbedSeedsTable = damask.Table.load(myBestSeedsVFile)
       coords = perturbedSeedsTable.get('pos')
       i = 0
       for ms,coord in enumerate(coords):
@@ -89,7 +89,7 @@ class myThread (threading.Thread):
           coords[i]=newCoords
           direction[i]*=2.
           i+= 1
-      perturbedSeedsTable.set('pos',coords).save_ASCII(perturbedSeedsVFile,legacy=True)
+      perturbedSeedsTable.set('pos',coords).save(perturbedSeedsVFile,legacy=True)
 
 #--- do tesselation with perturbed seed file ------------------------------------------------------
       perturbedGeomVFile.close()

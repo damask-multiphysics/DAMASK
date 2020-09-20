@@ -234,7 +234,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
 
-  table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   randomSeed = int(os.urandom(4).hex(),16)  if options.randomSeed is None else options.randomSeed  # random seed per file
   random.seed(randomSeed)

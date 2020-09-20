@@ -35,30 +35,30 @@ class TestTable:
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_write_read(self,default,tmpdir,mode):
-        default.save_ASCII(tmpdir/'default.txt')
+        default.save(tmpdir/'default.txt')
         if   mode == 'path':
-            new = Table.load_ASCII(tmpdir/'default.txt')
+            new = Table.load(tmpdir/'default.txt')
         elif mode == 'str':
-            new = Table.load_ASCII(str(tmpdir/'default.txt'))
+            new = Table.load(str(tmpdir/'default.txt'))
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmpdir):
         with open(tmpdir/'default.txt','w') as f:
-            default.save_ASCII(f)
+            default.save(f)
         with open(tmpdir/'default.txt') as f:
-            new = Table.load_ASCII(f)
+            new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_read_legacy_style(self,default,tmpdir):
         with open(tmpdir/'legacy.txt','w') as f:
-            default.save_ASCII(f,legacy=True)
+            default.save(f,legacy=True)
         with open(tmpdir/'legacy.txt') as f:
-            new = Table.load_ASCII(f)
+            new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_invalid_format(self,default,tmpdir):
         with pytest.raises(TypeError):
-            default.save_ASCII(tmpdir/'shouldnotbethere.txt',format='invalid')
+            default.save(tmpdir/'shouldnotbethere.txt',format='invalid')
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_read_ang(self,reference_dir,mode):
@@ -78,7 +78,7 @@ class TestTable:
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
     def test_read_strange(self,reference_dir,fname):
         with open(reference_dir/fname) as f:
-            Table.load_ASCII(f)
+            Table.load(f)
 
     def test_set(self,default):
         d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')

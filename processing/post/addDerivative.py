@@ -65,10 +65,10 @@ if options.labels is None:
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     for label in options.labels:
         table = table.add('d({})/d({})'.format(label,options.coordinates),
                           derivative(table.get(options.coordinates),table.get(label)),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save_ASCII((sys.stdout if name is None else name), legacy=True)
+    table.save((sys.stdout if name is None else name), legacy=True)
