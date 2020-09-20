@@ -82,10 +82,9 @@ module spectral_utilities
   end type tSolutionState
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
-    real(pReal), dimension(3,3) :: values      = 0.0_pReal, &
-                                   maskFloat   = 0.0_pReal
-    logical,     dimension(3,3) :: maskLogical = .false.
-    character(len=pStringLen)   :: myType      = 'None'
+    real(pReal), dimension(3,3) :: values = 0.0_pReal
+    logical,     dimension(3,3) :: mask   = .false.
+    character(len=pStringLen)   :: myType = 'None'
   end type tBoundaryCondition
 
   type, public :: tLoadCase
@@ -101,11 +100,11 @@ module spectral_utilities
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
-  type, public :: tSolutionParams                                                                   !< @todo use here the type definition for a full loadcase
-    real(pReal), dimension(3,3) :: stress_mask, stress_BC
+  type, public :: tSolutionParams
+    real(pReal), dimension(3,3) :: stress_BC
+    logical, dimension(3,3)     :: stress_mask
     type(rotation)              :: rotation_BC
-    real(pReal) :: timeinc
-    real(pReal) :: timeincOld
+    real(pReal) :: timeinc, timeincOld
   end type tSolutionParams
 
   type :: tNumerics

@@ -25,8 +25,6 @@ module grid_mech_FEM
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-! derived types
   type(tSolutionParams) :: params
 
   type :: tNumerics
@@ -282,7 +280,7 @@ function grid_mech_FEM_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask>.5_pReal,C_volAvg)
+  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
@@ -326,7 +324,7 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data
-  params%stress_mask = stress_BC%maskFloat
+  params%stress_mask = stress_BC%mask
   params%rotation_BC = rotation_BC
   params%timeinc     = timeinc
   params%timeincOld  = timeinc_old
@@ -340,20 +338,20 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
   else
     C_volAvgLastInc    = C_volAvg
 
-    F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
+    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/timeinc_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                        ! calculate F_aimDot from given L and current F
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
+      F_aimDot = F_aimDot &
+               + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
     elseif(deformation_BC%myType=='fdot') then                                                      ! F_aimDot is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * deformation_BC%values
+      F_aimDot = F_aimDot & 
+               + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
     elseif (deformation_BC%myType=='f') then                                                        ! aim at end of load case is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
+      F_aimDot = F_aimDot &
+               + merge((deformation_BC%values - F_aim_lastInc)/loadCaseTime,.0_pReal,deformation_BC%mask)
     endif
 
     if (guess) then
@@ -374,9 +372,9 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   if     (stress_BC%myType=='p') then
-    P_aim = P_aim + stress_BC%maskFloat*(stress_BC%values - P_aim)/loadCaseTime*timeinc
+    P_aim = P_aim + merge((stress_BC%values - P_aim)/loadCaseTime*timeinc,.0_pReal,stress_BC%mask)
   elseif (stress_BC%myType=='pdot') then !UNTESTED
-    P_aim = P_aim + stress_BC%maskFloat*stress_BC%values*timeinc
+    P_aim = P_aim + merge(stress_BC%values*timeinc,.0_pReal,stress_BC%mask)
   endif
 
   call VecAXPY(solution_current,timeinc,solution_rate,ierr); CHKERRQ(ierr)
@@ -543,7 +541,7 @@ subroutine formResidual(da_local,x_local, &
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
   F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
-  err_BC = maxval(abs(params%stress_mask * (P_av - P_aim)))                                         ! mask = 0.0 when no stress bc
+  err_BC = maxval(abs(merge(P_av - P_aim,.0_pReal,params%stress_mask)))
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
