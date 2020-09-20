@@ -15,7 +15,6 @@ module grid_mech_spectral_polarisation
   use DAMASK_interface
   use HDF5_utilities
   use math
-  use rotations
   use spectral_utilities
   use FEsolving
   use config
@@ -108,10 +107,6 @@ subroutine grid_mech_spectral_polarisation_init
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
-  class (tNode), pointer :: &
-    num_grid, &
-    debug_grid
-
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     FandF_tau, &                                                                                    ! overall pointer to solution data
@@ -122,13 +117,16 @@ subroutine grid_mech_spectral_polarisation_init
   integer        :: fileUnit
   character(len=pStringLen) :: &
     fileName
+  class (tNode), pointer :: &
+    num_grid, &
+    debug_grid
 
   print'(/,a)', ' <<<+-  grid_mech_spectral_polarisation init  -+>>>'; flush(6)
 
   print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
   print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'
 
-!------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
 ! debugging options
   debug_grid => config_debug%get('grid',defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
@@ -136,6 +134,7 @@ subroutine grid_mech_spectral_polarisation_init
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+
   num%update_gamma       = num_grid%get_asBool  ('update_gamma',    defaultVal=.false.)
   num%eps_div_atol       = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
   num%eps_div_rtol       = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
@@ -228,8 +227,8 @@ subroutine grid_mech_spectral_polarisation_init
   endif restartRead
 
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
-  call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_updateCoords(reshape(F,shape(F_lastInc)))
+  call utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,FandF_tau,ierr); CHKERRQ(ierr)                        ! deassociate pointer
@@ -277,7 +276,7 @@ function grid_mech_spectral_polarisation_solution(incInfoIn) result(solution)
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
   S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask>.5_pReal,C_volAvg)
-  if (num%update_gamma) then
+  if(num%update_gamma) then
     call utilities_updateGamma(C_minMaxAvg)
     C_scale = C_minMaxAvg
     S_scale = math_invSym3333(C_minMaxAvg)
@@ -320,7 +319,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
   type(rotation), intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
-  PetscScalar, dimension(:,:,:,:), pointer :: FandF_tau, F, F_tau
+  PetscScalar, pointer, dimension(:,:,:,:) :: FandF_tau, F, F_tau
   integer :: i, j, k
   real(pReal), dimension(3,3) :: F_lambda33
 
@@ -588,7 +587,7 @@ subroutine formResidual(in, FandF_tau, &
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%stress_BC)))                                  ! S = 0.0 for no bc
+  F_aim = F_aim - math_mul3333xx33(S, P_av - params%stress_BC)                                     ! S = 0.0 for no bc
   err_BC = maxval(abs((1.0_pReal-params%stress_mask) * math_mul3333xx33(C_scale,F_aim &
                                                  -params%rotation_BC%rotate(F_av)) + &
                                  params%stress_mask  * (P_av-params%stress_BC)))                    ! mask = 0.0 for no bc
@@ -596,7 +595,7 @@ subroutine formResidual(in, FandF_tau, &
   tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residual_F                                !< stress field in disguise
   call utilities_FFTtensorForward
-  err_div = Utilities_divergenceRMS()                                                               !< root mean squared error in divergence of stress
+  err_div = utilities_divergenceRMS()                                                               !< root mean squared error in divergence of stress
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
@@ -615,7 +614,7 @@ subroutine formResidual(in, FandF_tau, &
   tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = F
   call utilities_FFTtensorForward
-  err_curl = Utilities_curlRMS()
+  err_curl = utilities_curlRMS()
 
 end subroutine formResidual
 

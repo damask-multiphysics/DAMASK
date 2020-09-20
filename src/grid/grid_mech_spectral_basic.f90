@@ -96,18 +96,17 @@ subroutine grid_mech_spectral_basic_init
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
-  class (tNode), pointer :: &
-    num_grid, &
-    debug_grid
- 
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
-  PetscInt, dimension(worldsize) :: localK
+  PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   integer        :: fileUnit
   character(len=pStringLen) :: &
     fileName
+  class (tNode), pointer :: &
+    num_grid, &
+    debug_grid
 
   print'(/,a)', ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(6)
 
@@ -121,7 +120,7 @@ subroutine grid_mech_spectral_basic_init
 ! debugging options
   debug_grid => config_debug%get('grid', defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
-  
+
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
@@ -140,7 +139,7 @@ subroutine grid_mech_spectral_basic_init
   if (num%eps_stress_rtol < 0.0_pReal)           call IO_error(301,ext_msg='eps_stress_rtol')
   if (num%itmax <= 1)                            call IO_error(301,ext_msg='itmax')
   if (num%itmin > num%itmax .or. num%itmin < 1)  call IO_error(301,ext_msg='itmin')
-   
+
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
@@ -157,8 +156,8 @@ subroutine grid_mech_spectral_basic_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr)
-  localK              = 0
-  localK(worldrank+1) = grid3
+  localK            = 0
+  localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
@@ -202,8 +201,8 @@ subroutine grid_mech_spectral_basic_init
   endif restartRead
 
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
-  call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_updateCoords(reshape(F,shape(F_lastInc)))
+  call utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
@@ -288,7 +287,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
   type(rotation),              intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
-  PetscScalar, dimension(:,:,:,:), pointer :: F
+  PetscScalar, pointer, dimension(:,:,:,:) :: F
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide available data
@@ -334,7 +333,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
-  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
+  F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
@@ -368,7 +367,7 @@ subroutine grid_mech_spectral_basic_restartWrite
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-  print'(a)', ' writing solver data required for restart to file'; flush(6)
+  print*, 'writing solver data required for restart to file'; flush(6)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -462,6 +461,7 @@ subroutine formResidual(in, F, &
   call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
+
 !--------------------------------------------------------------------------------------------------
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
@@ -484,8 +484,8 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)
-  F_aim = F_aim - deltaF_aim
+  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)                                         ! S = 0.0 for no bc
+  F_aim = F_aim -deltaF_aim
   err_BC = maxval(abs(params%stress_mask * (P_av - params%stress_BC)))                              ! mask = 0.0 when no stress bc
 
 !--------------------------------------------------------------------------------------------------
@@ -493,7 +493,7 @@ subroutine formResidual(in, F, &
   tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                  ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
-  err_div = Utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
+  err_div = utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
   call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
   call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
 

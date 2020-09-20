@@ -34,18 +34,15 @@ module grid_mech_FEM
       itmin, &                                                                                        !< minimum number of iterations
       itmax                                                                                           !< maximum number of iterations
     real(pReal) :: &
-      err_div, &
-      divTol, &
-      BCTol, &
       eps_div_atol, &                                                                                 !< absolute tolerance for equilibrium
       eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
       eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
       eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
   end type tNumerics
 
-  type(tNumerics) :: num
-  logical :: &
-    debugRotation 
+  type(tNumerics) :: num                                                                              ! numerics parameters. Better name?
+
+  logical :: debugRotation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -72,7 +69,6 @@ module grid_mech_FEM
     P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
 
   character(len=:), allocatable :: incInfo                                                          !< time and increment information
-
   real(pReal), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
@@ -99,7 +95,6 @@ contains
 subroutine grid_mech_FEM_init
 
   real(pReal) :: HGCoeff = 0.0e-2_pReal
-  PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   real(pReal), dimension(4,8) :: &
@@ -111,24 +106,25 @@ subroutine grid_mech_FEM_init
                       -1.0_pReal, 1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
+  real(pReal), dimension(3,3,3,3) :: devNull
   PetscErrorCode :: ierr
+  PetscScalar, pointer, dimension(:,:,:,:) :: &
+    u_current,u_lastInc
+  PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: &
     fileName
   class(tNode), pointer :: &
     num_grid, &
     debug_grid
-  real(pReal), dimension(3,3,3,3) :: devNull
-  PetscScalar, pointer, dimension(:,:,:,:) :: &
-  u_current,u_lastInc
 
   print'(/,a)', ' <<<+-  grid_mech_FEM init  -+>>>'; flush(6)
 
-!-----------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
 ! debugging options
   debug_grid => config_debug%get('grid', defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
- 
+
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
@@ -242,6 +238,7 @@ subroutine grid_mech_FEM_init
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
   endif restartRead
+
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
