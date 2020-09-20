@@ -908,13 +908,13 @@ class TestRotation:
     @pytest.mark.parametrize('N',[1000,10000,100000])
     def test_spherical_component(self,N,sigma):
         c = Rotation.from_random()
-        o = Rotation.from_spherical_component(c,sigma,N,seed=N+sigma)
+        o = Rotation.from_spherical_component(c,sigma,N)
         _, angles = c.misorientation(o).as_axis_angle(pair=True,degrees=True)
         angles[::2] *= -1                                                                           # flip angle for every second to symmetrize distribution
 
         p = stats.normaltest(angles)[1]
         sigma_out = np.std(angles)
-        assert (.9 < sigma/sigma_out < 1.1) and p > 1, f'{sigma/sigma_out},{p}'
+        assert (.9 < sigma/sigma_out < 1.1) and p > 1e-4, f'{sigma/sigma_out},{p}'
 
 
     @pytest.mark.parametrize('sigma',[5,10,15,20])
@@ -929,10 +929,10 @@ class TestRotation:
         ax = np.append(np.cross(f_in_C,f_in_S), - np.arccos(np.dot(f_in_C,f_in_S)))
         n = Rotation.from_axis_angle(ax if ax[3] > 0.0 else ax*-1.0 ,normalize=True)                # rotation to align fiber axis in crystal and sample system
 
-        o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),N,False,seed=N+sigma)
+        o = Rotation.from_fiber_component(alpha,beta,np.radians(sigma),N,False)
         angles = np.arccos(np.clip(np.dot(o@np.broadcast_to(f_in_S,(N,3)),n@f_in_S),-1,1))
         dist   = np.array(angles) * (np.random.randint(0,2,N)*2-1)
 
         p = stats.normaltest(dist)[1]
         sigma_out = np.degrees(np.std(dist))
-        assert (.9 < sigma/sigma_out < 1.1) and p > 0.001, f'{sigma/sigma_out},{p}'
+        assert (.9 < sigma/sigma_out < 1.1) and p > 1.e-4, f'{sigma/sigma_out},{p}'
