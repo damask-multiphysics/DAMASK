@@ -2,7 +2,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Parses material config file, either solverJobName.materialConfig or material.config
+!> @brief Defines phase and homogenization
 !--------------------------------------------------------------------------------------------------
 module material
   use prec
@@ -83,7 +83,7 @@ module material
     material_homogenizationAt                                                                       !< homogenization ID of each element
   integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
-  integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
+  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
@@ -326,7 +326,7 @@ subroutine material_parseMicrostructure
                            constituents, &                                                          !> list of constituents
                            constituent, &                                                           !> constituent definition
                            phases, &
-                           homogenization
+                           homogenizations
 
   integer, dimension(:), allocatable :: &
     counterPhase, &
@@ -362,8 +362,8 @@ subroutine material_parseMicrostructure
   
   phases => config_material%get('phase')
   allocate(counterPhase(phases%length),source=0)
-  homogenization => config_material%get('homogenization')
-  allocate(counterHomogenization(homogenization%length),source=0)
+  homogenizations => config_material%get('homogenization')
+  allocate(counterHomogenization(homogenizations%length),source=0)
 
   do e = 1, discretization_nElem
     microstructure => microstructures%get(discretization_microstructureAt(e))
