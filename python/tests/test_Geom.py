@@ -11,9 +11,9 @@ from damask import util
 
 
 def geom_equal(a,b):
-    return np.all(a.get_microstructure() == b.get_microstructure()) and \
-           np.all(a.get_grid()           == b.get_grid()) and \
-           np.allclose(a.get_size(), b.get_size()) and \
+    return np.all(a.microstructure == b.microstructure) and \
+           np.all(a.grid           == b.grid) and \
+           np.allclose(a.size, b.size) and \
            str(a.diff(b)) == str(b.diff(a))
 
 @pytest.fixture
@@ -39,9 +39,9 @@ class TestGeom:
             modified = default.duplicate()
         elif flavor == 'explicit':
             modified = default.duplicate(
-                            default.get_microstructure(),
-                            default.get_size(),
-                            default.get_origin()
+                            default.microstructure,
+                            default.size,
+                            default.origin
                            )
         print(modified)
         assert geom_equal(default,modified)
@@ -57,7 +57,7 @@ class TestGeom:
     def test_set_inplace_outofplace_homogenization(self,default):
         default.set_homogenization(123,inplace=True)
         outofplace = default.set_homogenization(321,inplace=False)
-        assert default.get_homogenization() == 123 and outofplace.get_homogenization() == 321
+        assert default.homogenization == 123 and outofplace.homogenization == 321
 
 
     def test_set_inplace_outofplace_microstructure(self,default):
@@ -69,18 +69,18 @@ class TestGeom:
     def test_set_inplace_outofplace_size(self,default):
         default.set_size(np.array([1,2,3]),inplace=True)
         outofplace = default.set_size(np.array([3,2,1]),inplace=False)
-        assert np.array_equal(default.get_size(),[1,2,3]) and np.array_equal(outofplace.get_size(),[3,2,1])
+        assert np.array_equal(default.size,[1,2,3]) and np.array_equal(outofplace.size,[3,2,1])
 
 
     def test_set_inplace_outofplace_comments(self,default):
         default.set_comments(['a','and','b'],inplace=True)
         outofplace = default.set_comments(['b','or','a'],inplace=False)
-        assert default.get_comments() == ['a','and','b'] and outofplace.get_comments() == ['b','or','a']
+        assert default.comments == ['a','and','b'] and outofplace.comments == ['b','or','a']
 
 
     @pytest.mark.parametrize('masked',[True,False])
     def test_set_microstructure(self,default,masked):
-        old = default.get_microstructure()
+        old = default.microstructure
         new = np.random.randint(200,size=default.grid)
         default.set_microstructure(np.ma.MaskedArray(new,np.full_like(new,masked)),inplace=True)
         assert np.all(default.microstructure==(old if masked else new))
@@ -249,7 +249,7 @@ class TestGeom:
                           modified)
 
     def test_renumber(self,default):
-        microstructure = default.get_microstructure()
+        microstructure = default.microstructure.copy()
         for m in np.unique(microstructure):
             microstructure[microstructure==m] = microstructure.max() + np.random.randint(1,30)
         modified = default.duplicate(microstructure)
@@ -259,7 +259,7 @@ class TestGeom:
 
     def test_substitute(self,default):
         offset = np.random.randint(1,500)
-        modified = default.duplicate(default.get_microstructure() + offset)
+        modified = default.duplicate(default.microstructure + offset)
         assert not geom_equal(modified,default)
         assert geom_equal(default,
                           modified.substitute(np.arange(default.microstructure.max())+1+offset,
@@ -345,9 +345,9 @@ class TestGeom:
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_vicinity_offset_invariant(self,default,periodic):
-        old = default.get_microstructure()
-        default.vicinity_offset(trigger=[old.max()+1,old.min()-1])
-        assert np.all(old==default.microstructure)
+        offset = default.vicinity_offset(trigger=[default.microstructure.max()+1,
+                                                  default.microstructure.min()-1])
+        assert np.all(offset.microstructure==default.microstructure)
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_tessellation_approaches(self,periodic):

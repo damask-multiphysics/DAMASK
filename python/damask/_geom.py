@@ -45,9 +45,9 @@ class Geom:
     def __repr__(self):
         """Basic information on geometry definition."""
         return util.srepr([
-               f'grid     a b c:     {util.srepr(self.get_grid  ()," x ")}',
-               f'size     x y z:     {util.srepr(self.get_size  ()," x ")}',
-               f'origin   x y z:     {util.srepr(self.get_origin(),"   ")}',
+               f'grid     a b c:     {util.srepr(self.grid,  " x ")}',
+               f'size     x y z:     {util.srepr(self.size,  " x ")}',
+               f'origin   x y z:     {util.srepr(self.origin,"   ")}',
                f'# materialpoints:   {self.N_microstructure}',
                f'max materialpoint:  {np.nanmax(self.microstructure)}',
               ])
@@ -84,7 +84,7 @@ class Geom:
         if size is not None and autosize:
             raise ValueError('Auto-sizing conflicts with explicit size parameter.')
 
-        grid_old = self.get_grid()
+        grid_old = self.grid
         dup = self.set_microstructure(microstructure)\
                   .set_origin(origin)
 
@@ -94,7 +94,7 @@ class Geom:
         if size is not None:
             dup.set_size(size,inplace=True)
         elif autosize:
-            dup.set_size(dup.get_grid()/grid_old*self.get_size(),inplace=True)
+            dup.set_size(dup.grid/grid_old*self.size,inplace=True)
 
         return dup
 
@@ -110,17 +110,17 @@ class Geom:
 
         """
         message = []
-        if np.any(other.get_grid() != self.get_grid()):
-            message.append(util.delete(f'grid     a b c:     {util.srepr(other.get_grid()," x ")}'))
-            message.append(util.emph(  f'grid     a b c:     {util.srepr( self.get_grid()," x ")}'))
+        if np.any(other.grid != self.grid):
+            message.append(util.delete(f'grid     a b c:     {util.srepr(other.grid," x ")}'))
+            message.append(util.emph(  f'grid     a b c:     {util.srepr( self.grid," x ")}'))
 
-        if np.any(other.get_size() != self.get_size()):
-            message.append(util.delete(f'size     x y z:     {util.srepr(other.get_size()," x ")}'))
-            message.append(util.emph(  f'size     x y z:     {util.srepr( self.get_size()," x ")}'))
+        if np.any(other.size != self.size):
+            message.append(util.delete(f'size     x y z:     {util.srepr(other.size," x ")}'))
+            message.append(util.emph(  f'size     x y z:     {util.srepr( self.size," x ")}'))
 
-        if np.any(other.get_origin() != self.get_origin()):
-            message.append(util.delete(f'origin   x y z:     {util.srepr(other.get_origin(),"   ")}'))
-            message.append(util.emph(  f'origin   x y z:     {util.srepr( self.get_origin(),"   ")}'))
+        if np.any(other.origin != self.origin):
+            message.append(util.delete(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
+            message.append(util.emph(  f'origin   x y z:     {util.srepr( self.origin,"   ")}'))
 
         if other.N_microstructure != self.N_microstructure:
             message.append(util.delete(f'# materialpoints:   {other.N_microstructure}'))
@@ -256,42 +256,12 @@ class Geom:
 
     @property
     def grid(self):
-        return self.get_grid()
+        return np.asarray(self.microstructure.shape)
 
 
     @property
     def N_microstructure(self):
         return np.unique(self.microstructure).size
-
-
-    def get_microstructure(self):
-        """Return the microstructure representation."""
-        return np.copy(self.microstructure)
-
-
-    def get_size(self):
-        """Return the physical size in meter."""
-        return np.copy(self.size)
-
-
-    def get_origin(self):
-        """Return the origin in meter."""
-        return np.copy(self.origin)
-
-
-    def get_grid(self):
-        """Return the grid discretization."""
-        return np.asarray(self.microstructure.shape)
-
-
-    def get_homogenization(self):
-        """Return the homogenization index."""
-        return self.homogenization
-
-
-    def get_comments(self):
-        """Return the comments."""
-        return self.comments[:]
 
 
     @staticmethod
@@ -488,13 +458,14 @@ class Geom:
                 Compress geometry with 'x of y' and 'a to b'.
 
             """
-            header =  [f'{len(geom.comments)+4} header'] + geom.comments
-            header.append('grid   a {} b {} c {}'.format(*geom.get_grid()))
-            header.append('size   x {} y {} z {}'.format(*geom.get_size()))
-            header.append('origin x {} y {} z {}'.format(*geom.get_origin()))
-            header.append(f'homogenization {geom.get_homogenization()}')
+            header =  [f'{len(geom.comments)+4} header'] + geom.comments \
+                     +[ 'grid   a {} b {} c {}'.format(*geom.grid),
+                        'size   x {} y {} z {}'.format(*geom.size),
+                        'origin x {} y {} z {}'.format(*geom.origin),
+                       f'homogenization {geom.homogenization}',
+                       ]
 
-            grid = geom.get_grid()
+            grid = geom.grid
 
             if pack is None:
                 plain = grid.prod()/geom.N_microstructure < 250
@@ -634,7 +605,7 @@ class Geom:
         ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
 
         return self.duplicate(ms,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','add_primitive')],
+                              comments=self.comments+[util.execution_stamp('Geom','add_primitive')],
                              )
 
 
@@ -656,7 +627,7 @@ class Geom:
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
         limits = [None,None] if reflect else [-2,0]
-        ms = self.get_microstructure()
+        ms = self.microstructure.copy()
 
         if 'z' in directions:
             ms = np.concatenate([ms,ms[:,:,limits[0]:limits[1]:-1]],2)
@@ -666,7 +637,7 @@ class Geom:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
 
         return self.duplicate(ms,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','mirror')],
+                              comments=self.comments+[util.execution_stamp('Geom','mirror')],
                               autosize=True)
 
 
@@ -688,7 +659,7 @@ class Geom:
         ms = np.flip(self.microstructure, (valid.index(d) for d in directions if d in valid))
 
         return self.duplicate(ms,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','flip')],
+                              comments=self.comments+[util.execution_stamp('Geom','flip')],
                              )
 
 
@@ -706,13 +677,13 @@ class Geom:
         """
         return self.duplicate(ndimage.interpolation.zoom(
                                                          self.microstructure,
-                                                         grid/self.get_grid(),
+                                                         grid/self.grid,
                                                          output=self.microstructure.dtype,
                                                          order=0,
                                                          mode=('wrap' if periodic else 'nearest'),
                                                          prefilter=False
                                                         ),
-                              comments=self.get_comments()+[util.execution_stamp('Geom','scale')],
+                              comments=self.comments+[util.execution_stamp('Geom','scale')],
                              )
 
 
@@ -745,18 +716,18 @@ class Geom:
                                                              mode=('wrap' if periodic else 'nearest'),
                                                              extra_keywords=dict(selection=selection),
                                                             ).astype(self.microstructure.dtype),
-                              comments=self.get_comments()+[util.execution_stamp('Geom','clean')],
+                              comments=self.comments+[util.execution_stamp('Geom','clean')],
                              )
 
 
     def renumber(self):
         """Renumber sorted microstructure indices to 1,...,N."""
-        renumbered = np.empty(self.get_grid(),dtype=self.microstructure.dtype)
+        renumbered = np.empty(self.grid,dtype=self.microstructure.dtype)
         for i, oldID in enumerate(np.unique(self.microstructure)):
             renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
 
         return self.duplicate(renumbered,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','renumber')],
+                              comments=self.comments+[util.execution_stamp('Geom','renumber')],
                              )
 
 
@@ -776,7 +747,7 @@ class Geom:
         dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
 
         Eulers = R.as_Eulers(degrees=True)
-        microstructure_in = self.get_microstructure()
+        microstructure_in = self.microstructure.copy()
 
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
         # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
@@ -793,7 +764,7 @@ class Geom:
 
         return self.duplicate(microstructure_in,
                               origin=origin,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','rotate')],
+                              comments=self.comments+[util.execution_stamp('Geom','rotate')],
                               autosize=True,
                              )
 
@@ -827,7 +798,7 @@ class Geom:
 
         return self.duplicate(canvas,
                               origin=self.origin+offset*self.size/self.grid,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','canvas')],
+                              comments=self.comments+[util.execution_stamp('Geom','canvas')],
                               autosize=True,
                              )
 
@@ -844,12 +815,12 @@ class Geom:
             New microstructure indices.
 
         """
-        substituted = self.get_microstructure()
+        substituted = self.microstructure.copy()
         for from_ms,to_ms in zip(from_microstructure,to_microstructure):
             substituted[self.microstructure==from_ms] = to_ms
 
         return self.duplicate(substituted,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','substitute')],
+                              comments=self.comments+[util.execution_stamp('Geom','substitute')],
                              )
 
 
@@ -896,5 +867,5 @@ class Geom:
         microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
         return self.duplicate(microstructure,
-                              comments=self.get_comments()+[util.execution_stamp('Geom','vicinity_offset')],
+                              comments=self.comments+[util.execution_stamp('Geom','vicinity_offset')],
                              )

@@ -47,7 +47,7 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    microstructure = geom.get_microstructure().reshape((-1,1),order='F')
+    microstructure = geom.microstructure.reshape((-1,1),order='F')
 
     mask = np.logical_and(np.in1d(microstructure,options.whitelist,invert=False) if options.whitelist else \
                           np.full(geom.grid.prod(),True,dtype=bool),
