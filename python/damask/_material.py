@@ -59,18 +59,55 @@ class Material(dict):
     @property
     def is_complete(self):
         """Check for completeness."""
-        try:
-           ok = len(self['microstructure']) > 0
-           for m in self['microstructure']:
-               ok &= m['homogenization'] in self['homogenization']
-               for c in m['constituents']:
-                   c['orientation']
-                   ok &= c['phase'] in self['phase']
-           for p in self['phase'].values():
-               ok &= 'lattice' in p
-           return ok
-        except KeyError:
-            return False
+        ok = True
+        for top_level in ['homogenization','phase','microstructure']:
+            # ToDo: With python 3.8 as prerequisite we can shorten with :=
+            ok &= top_level in self
+            if top_level not in self: print(f'{top_level} entry missing')
+
+        if ok:
+           ok &= len(self['microstructure']) > 0
+           if len(self['microstructure']) < 1: print('Incomplete microstructure definition')
+
+        if ok:
+            homogenization = set()
+            phase          = set()
+            for i,v in enumerate(self['microstructure']):
+                if 'homogenization' in v:
+                    homogenization.add(v['homogenization'])
+                else:
+                    print(f'No homogenization specified in microstructure {i}')
+                    ok = False
+
+                if 'constituents' in v:
+                    for ii,vv in enumerate(v['constituents']):
+                        if 'orientation' not in vv:
+                            print('No orientation specified in constituent {ii} of microstructure {i}')
+                            ok = False
+                        if 'phase' in vv:
+                            phase.add(vv['phase'])
+                        else:
+                            print(f'No phase specified in constituent {ii} of microstructure {i}')
+                            ok = False
+
+            for k,v in self['phase'].items():
+                if 'lattice' not in v:
+                    print(f'No lattice specified in phase {k}')
+                    ok = False
+
+            #for k,v in self['homogenization'].items():
+            #    if 'N_constituents' not in v:
+            #        print(f'No. of constituents not specified in homogenization {k}'}
+            #        ok = False
+
+            if phase - set(self['phase']):
+                print(f'Phase(s) {phase-set(self["phase"])} missing')
+                ok = False
+            if homogenization - set(self['homogenization']):
+                print(f'Homogenization(s) {homogenization-set(self["homogenization"])} missing')
+                ok = False
+
+        return ok
 
 
     @property
@@ -79,7 +116,7 @@ class Material(dict):
         ok = True
 
         if 'phase' in self:
-            for k,v in zip(self['phase'].keys(),self['phase'].values()):
+            for k,v in self['phase'].items():
                 if 'lattice' in v:
                     try:
                         Lattice(v['lattice'])
