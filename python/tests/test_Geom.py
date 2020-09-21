@@ -54,11 +54,35 @@ class TestGeom:
         assert str(default.diff(new)) != ''
 
 
+    def test_set_inplace_outofplace_homogenization(self,default):
+        default.set_homogenization(123,inplace=True)
+        outofplace = default.set_homogenization(321,inplace=False)
+        assert default.get_homogenization() == 123 and outofplace.get_homogenization() == 321
+
+
+    def test_set_inplace_outofplace_microstructure(self,default):
+        default.set_microstructure(np.arange(72).reshape((2,4,9)),inplace=True)
+        outofplace = default.set_microstructure(np.arange(72).reshape((8,3,3)),inplace=False)
+        assert np.array_equal(default.grid,[2,4,9]) and np.array_equal(outofplace.grid,[8,3,3])
+
+
+    def test_set_inplace_outofplace_size(self,default):
+        default.set_size(np.array([1,2,3]),inplace=True)
+        outofplace = default.set_size(np.array([3,2,1]),inplace=False)
+        assert np.array_equal(default.get_size(),[1,2,3]) and np.array_equal(outofplace.get_size(),[3,2,1])
+
+
+    def test_set_inplace_outofplace_comments(self,default):
+        default.set_comments(['a','and','b'],inplace=True)
+        outofplace = default.set_comments(['b','or','a'],inplace=False)
+        assert default.get_comments() == ['a','and','b'] and outofplace.get_comments() == ['b','or','a']
+
+
     @pytest.mark.parametrize('masked',[True,False])
     def test_set_microstructure(self,default,masked):
         old = default.get_microstructure()
         new = np.random.randint(200,size=default.grid)
-        default.set_microstructure(np.ma.MaskedArray(new,np.full_like(new,masked)))
+        default.set_microstructure(np.ma.MaskedArray(new,np.full_like(new,masked)),inplace=True)
         assert np.all(default.microstructure==(old if masked else new))
 
 

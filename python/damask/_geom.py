@@ -35,11 +35,11 @@ class Geom:
             Comment lines.
 
         """
-        self.set_microstructure(microstructure)
-        self.set_size(size)
-        self.set_origin(origin)
-        self.set_homogenization(homogenization)
-        self.set_comments(comments)
+        self.set_microstructure(microstructure,inplace=True)
+        self.set_size(size,inplace=True)
+        self.set_origin(origin,inplace=True)
+        self.set_homogenization(homogenization,inplace=True)
+        self.set_comments(comments,inplace=True)
 
 
     def __repr__(self):
@@ -85,17 +85,16 @@ class Geom:
             raise ValueError('Auto-sizing conflicts with explicit size parameter.')
 
         grid_old = self.get_grid()
-        dup = self.copy()
-        dup.set_microstructure(microstructure)
-        dup.set_origin(origin)
+        dup = self.set_microstructure(microstructure)\
+                  .set_origin(origin)
 
         if comments is not None:
-            dup.set_comments(comments)
+            dup.set_comments(comments,inplace=True)
 
         if size is not None:
-            dup.set_size(size)
+            dup.set_size(size,inplace=True)
         elif autosize:
-            dup.set_size(dup.get_grid()/grid_old*self.get_size())
+            dup.set_size(dup.get_grid()/grid_old*self.get_size(),inplace=True)
 
         return dup
 
@@ -134,7 +133,7 @@ class Geom:
         return util.return_message(message)
 
 
-    def set_comments(self,comments):
+    def set_comments(self,comments,inplace=False):
         """
         Replace all existing comments.
 
@@ -144,11 +143,13 @@ class Geom:
             All comments.
 
         """
-        self.comments = []
-        self.add_comments(comments)
+        target = self if inplace else self.copy()
+        target.comments = []
+        target.add_comments(comments,inplace=True)
+        if not inplace: return target
 
 
-    def add_comments(self,comments):
+    def add_comments(self,comments,inplace=False):
         """
         Append comments to existing comments.
 
@@ -158,10 +159,12 @@ class Geom:
             New comments.
 
         """
-        self.comments += [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
+        target = self if inplace else self.copy()
+        target.comments += [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
+        if not inplace: return target
 
 
-    def set_microstructure(self,microstructure):
+    def set_microstructure(self,microstructure,inplace=False):
         """
         Replace the existing microstructure representation.
 
@@ -175,24 +178,26 @@ class Geom:
             Microstructure indices.
 
         """
+        target = self if inplace else self.copy()
         if microstructure is not None:
             if isinstance(microstructure,np.ma.core.MaskedArray):
-                self.microstructure = np.where(microstructure.mask,
-                                               self.microstructure,microstructure.data)
+                target.microstructure = np.where(microstructure.mask,
+                                                 target.microstructure,microstructure.data)
             else:
-                self.microstructure = np.copy(microstructure)
+                target.microstructure = np.copy(microstructure)
 
-        if         self.microstructure.dtype in np.sctypes['float'] and \
-            np.all(self.microstructure == self.microstructure.astype(int).astype(float)):
-            self.microstructure = self.microstructure.astype(int)
+        if         target.microstructure.dtype in np.sctypes['float'] and \
+            np.all(target.microstructure == target.microstructure.astype(int).astype(float)):
+            target.microstructure = target.microstructure.astype(int)
 
-        if len(self.microstructure.shape) != 3:
+        if len(target.microstructure.shape) != 3:
             raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
-        elif self.microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
+        elif target.microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
             raise TypeError(f'Invalid microstructure data type {microstructure.dtype}')
+        if not inplace: return target
 
 
-    def set_size(self,size):
+    def set_size(self,size,inplace=False):
         """
         Replace the existing size information.
 
@@ -202,14 +207,16 @@ class Geom:
             Physical size of the microstructure in meter.
 
         """
+        target = self if inplace else self.copy()
         if size is not None:
             if len(size) != 3 or any(np.array(size) <= 0):
                 raise ValueError(f'Invalid size {size}')
             else:
-                self.size = np.array(size)
+                target.size = np.array(size)
+        if not inplace: return target
 
 
-    def set_origin(self,origin):
+    def set_origin(self,origin,inplace=False):
         """
         Replace the existing origin information.
 
@@ -219,14 +226,16 @@ class Geom:
             Physical origin of the microstructure in meter.
 
         """
+        target = self if inplace else self.copy()
         if origin is not None:
             if len(origin) != 3:
                 raise ValueError(f'Invalid origin {origin}')
             else:
-                self.origin = np.array(origin)
+                target.origin = np.array(origin)
+        if not inplace: return target
 
 
-    def set_homogenization(self,homogenization):
+    def set_homogenization(self,homogenization,inplace=False):
         """
         Replace the existing homogenization index.
 
@@ -236,11 +245,13 @@ class Geom:
             Homogenization index.
 
         """
+        target = self if inplace else self.copy()
         if homogenization is not None:
             if not isinstance(homogenization,int) or homogenization < 1:
                 raise TypeError(f'Invalid homogenization {homogenization}.')
             else:
-                self.homogenization = homogenization
+                target.homogenization = homogenization
+        if not inplace: return target
 
 
     @property
