@@ -40,7 +40,7 @@ module subroutine mech_isostrain_init
   print'(/,a)',   ' <<<+-  homogenization_mech_isostrain init  -+>>>'
 
   Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
 
   allocate(param(Ninstance))                                                                        ! one container of parameters per instance
 

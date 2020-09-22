@@ -35,7 +35,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine config_init
 
-  print'(/,a)', ' <<<+-  config init  -+>>>'; flush(OUTPUT_UNIT)
+  print'(/,a)', ' <<<+-  config init  -+>>>'; flush(IO_STDOUT)
 
   call parse_material
   call parse_numerics
@@ -59,7 +59,7 @@ subroutine parse_material
     inquire(file=fname,exist=fileExists)
     if(.not. fileExists) call IO_error(100,ext_msg=fname)
   endif
-  print*, 'reading '//fname; flush(OUTPUT_UNIT)
+  print*, 'reading '//fname; flush(IO_STDOUT)
   config_material => YAML_parse_file(fname)
 
 end subroutine parse_material
@@ -75,7 +75,7 @@ subroutine parse_numerics
   config_numerics => emptyDict
   inquire(file='numerics.yaml', exist=fexist)
   if (fexist) then
-    print*, 'reading numerics.yaml'; flush(OUTPUT_UNIT)
+    print*, 'reading numerics.yaml'; flush(IO_STDOUT)
     config_numerics => YAML_parse_file('numerics.yaml')
   endif
 
@@ -92,7 +92,7 @@ subroutine parse_debug
   config_debug => emptyDict
   inquire(file='debug.yaml', exist=fexist)
   fileExists: if (fexist) then
-    print*, 'reading debug.yaml'; flush(OUTPUT_UNIT)
+    print*, 'reading debug.yaml'; flush(IO_STDOUT)
     config_debug => YAML_parse_file('debug.yaml')
   endif fileExists
 

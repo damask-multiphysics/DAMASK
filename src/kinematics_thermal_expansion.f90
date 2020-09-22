@@ -42,7 +42,7 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
 
   myKinematics = kinematics_active('thermal_expansion',kinematics_length)
   Ninstance = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
   if(Ninstance == 0) return
 
   phases => config_material%get('phase')

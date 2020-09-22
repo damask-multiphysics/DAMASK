@@ -47,7 +47,7 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
 
   mySources = source_active('damage_anisoDuctile',source_length)
   Ninstance = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
   if(Ninstance == 0) return
 
   phases => config_material%get('phase')

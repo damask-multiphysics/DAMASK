@@ -21,7 +21,7 @@ module subroutine mech_none_init
   print'(/,a)', ' <<<+-  homogenization_mech_none init  -+>>>'
 
   Ninstance = count(homogenization_type == HOMOGENIZATION_NONE_ID)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
 
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle

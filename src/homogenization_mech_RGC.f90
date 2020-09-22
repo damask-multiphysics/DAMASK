@@ -95,7 +95,7 @@ module subroutine mech_RGC_init(num_homogMech)
   print'(/,a)', ' <<<+-  homogenization_mech_rgc init  -+>>>'
 
   Ninstance = count(homogenization_type == HOMOGENIZATION_RGC_ID)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
 
   print*, 'Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
   print*, 'https://doi.org/10.1007/s12289-009-0619-1'//IO_EOL
@@ -247,7 +247,7 @@ module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
         print'(1x,3(e15.8,1x))',(F(i,j,iGrain), j = 1,3)
       enddo
       print*,' '
-      flush(OUTPUT_UNIT)
+      flush(IO_STDOUT)
     endif
 #endif
   enddo
@@ -376,7 +376,7 @@ module procedure mech_RGC_updateState
                '@ grain ',stresLoc(3),' in component ',stresLoc(1),stresLoc(2)
     print'(a,e15.8,a,i3,a,i2)',' Max residual: ',residMax, &
                ' @ iface ',residLoc(1),' in direction ',residLoc(2)
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 #endif
 
@@ -388,7 +388,7 @@ module procedure mech_RGC_updateState
     mech_RGC_updateState = .true.
 #ifdef DEBUG
     if (debugHomog%extensive .and. prm%of_debug == of) &
-      print*, '... done and happy'; flush(OUTPUT_UNIT)
+      print*, '... done and happy'; flush(IO_STDOUT)
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -416,7 +416,7 @@ module procedure mech_RGC_updateState
       print'(a,e15.8,/)', ' Volume discrepancy: ',      dst%volumeDiscrepancy(of)
       print'(a,e15.8)',   ' Maximum relaxation rate: ', dst%relaxationRate_max(of)
       print'(a,e15.8,/)', ' Average relaxation rate: ', dst%relaxationRate_avg(of)
-      flush(OUTPUT_UNIT)
+      flush(IO_STDOUT)
     endif
 #endif
 
@@ -429,7 +429,7 @@ module procedure mech_RGC_updateState
 
 #ifdef DEBUG
     if (debugHomog%extensive .and. prm%of_debug == of) &
-      print'(a,/)', ' ... broken'; flush(OUTPUT_UNIT)
+      print'(a,/)', ' ... broken'; flush(IO_STDOUT)
 #endif
 
    return
@@ -437,7 +437,7 @@ module procedure mech_RGC_updateState
  else                                                                                               ! proceed with computing the Jacobian and state update
 #ifdef DEBUG
    if (debugHomog%extensive .and. prm%of_debug == of) &
-     print'(a,/)', ' ... not yet done'; flush(OUTPUT_UNIT)
+     print'(a,/)', ' ... not yet done'; flush(IO_STDOUT)
 #endif
 
  endif
@@ -499,7 +499,7 @@ module procedure mech_RGC_updateState
       print'(1x,100(e11.4,1x))',(smatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
     print*,' '
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 #endif
 
@@ -559,7 +559,7 @@ module procedure mech_RGC_updateState
       print'(1x,100(e11.4,1x))',(pmatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
     print*,' '
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 #endif
 
@@ -578,7 +578,7 @@ module procedure mech_RGC_updateState
       print'(1x,100(e11.4,1x))',(rmatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
     print*,' '
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 #endif
 
@@ -593,7 +593,7 @@ module procedure mech_RGC_updateState
       print'(1x,100(e11.4,1x))',(jmatrix(i,j), j = 1,3*nIntFaceTot)
     enddo
     print*,' '
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 #endif
 
@@ -609,7 +609,7 @@ module procedure mech_RGC_updateState
       print'(1x,100(e11.4,1x))',(jnverse(i,j), j = 1,3*nIntFaceTot)
     enddo
     print*,' '
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 #endif
 
@@ -625,7 +625,7 @@ module procedure mech_RGC_updateState
     !$OMP CRITICAL (write2out)
     print'(a,i3,a,i3,a)',' RGC_updateState: ip ',ip,' | el ',el,' enforces cutback'
     print'(a,e15.8)',' due to large relaxation change = ',maxval(abs(drelax))
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
     !$OMP END CRITICAL (write2out)
   endif
 
@@ -636,7 +636,7 @@ module procedure mech_RGC_updateState
       print'(1x,2(e15.8,1x))', stt%relaxationVector(i,of)
     enddo
     print*,' '
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 #endif
 

@@ -65,7 +65,7 @@ subroutine results_init(restart)
 
   character(len=pStringLen) :: commandLine
 
-  print'(/,a)', ' <<<+-  results init  -+>>>'; flush(OUTPUT_UNIT)
+  print'(/,a)', ' <<<+-  results init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
   print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL

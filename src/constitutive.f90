@@ -446,7 +446,7 @@ subroutine constitutive_init
   call damage_init
   call thermal_init
 
-  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(OUTPUT_UNIT)
+  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
 
   constitutive_source_maxSizeDotState = 0
   PhaseLoop2:do p = 1,phases%length

@@ -164,7 +164,7 @@ subroutine material_init(restart)
     material_homogenization
   character(len=pStringLen) :: sectionName
 
-  print'(/,a)', ' <<<+-  material init  -+>>>'; flush(OUTPUT_UNIT)
+  print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
   phases => config_material%get('phase')
   allocate(material_name_phase(phases%length))

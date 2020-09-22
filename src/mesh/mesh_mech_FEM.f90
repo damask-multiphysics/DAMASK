@@ -110,7 +110,7 @@ subroutine FEM_mech_init(fieldBC)
   class(tNode), pointer :: &
     num_mesh
    
-  print'(/,a)', ' <<<+-  FEM_mech init  -+>>>'; flush(OUTPUT_UNIT)
+  print'(/,a)', ' <<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
 
 !-----------------------------------------------------------------------------
 ! read numerical parametes and do sanity checks
@@ -319,7 +319,7 @@ type(tSolutionState) function FEM_mech_solution( &
   endif
 
   print'(/,a)', ' ==========================================================================='
-  flush(OUTPUT_UNIT)
+  flush(IO_STDOUT)
 
 end function FEM_mech_solution
 
@@ -682,9 +682,9 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
   print'(/,1x,a,a,i0,a,i0,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
                                                   int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
-  write(OUTPUT_UNIT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
+  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
                                                         transpose(P_av)*1.e-6_pReal
-  flush(OUTPUT_UNIT)
+  flush(IO_STDOUT)
 
 end subroutine FEM_mech_converged
 

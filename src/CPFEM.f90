@@ -106,7 +106,7 @@ subroutine CPFEM_init
     num_commercialFEM, &
     debug_CPFEM
 
-  print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(OUTPUT_UNIT)
+  print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
 
   allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
@@ -132,7 +132,7 @@ subroutine CPFEM_init
     print'(a32,1x,6(i8,1x))',   'CPFEM_cs:              ', shape(CPFEM_cs)
     print'(a32,1x,6(i8,1x))',   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
     print'(a32,1x,6(i8,1x),/)', 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
-    flush(OUTPUT_UNIT)
+    flush(IO_STDOUT)
   endif
 
 end subroutine CPFEM_init
@@ -250,7 +250,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
           '<< CPFEM >> stress/MPa at elFE ip ',   elFE, ip, CPFEM_cs(1:6,ip,elCP)*1.0e-6_pReal
         print'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))', &
           '<< CPFEM >> Jacobian/GPa at elFE ip ', elFE, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))*1.0e-9_pReal
-        flush(OUTPUT_UNIT)
+        flush(IO_STDOUT)
     endif
 
   endif
