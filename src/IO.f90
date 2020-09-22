@@ -52,7 +52,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
-  print'(/,a)', ' <<<+-  IO init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  IO init  -+>>>'; flush(OUTPUT_UNIT)
 
   call selfTest
 

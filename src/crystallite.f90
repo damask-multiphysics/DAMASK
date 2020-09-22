@@ -294,7 +294,7 @@ subroutine crystallite_init
     print'(a42,1x,i10)', '    # of elements:                       ', eMax
     print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
     print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
-    flush(6)
+    flush(OUTPUT_UNIT)
   endif
 
 #endif
@@ -1561,7 +1561,7 @@ subroutine crystallite_restartWrite
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName, datasetName
 
-  print*, ' writing field and constitutive data required for restart to file';flush(6)
+  print*, ' writing field and constitutive data required for restart to file';flush(OUTPUT_UNIT)
 
   write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName,'a')

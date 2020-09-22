@@ -147,7 +147,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
   myPlasticity = plastic_active('dislotwin')
   Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
   if(Ninstance == 0) return
   
   print*, 'Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'

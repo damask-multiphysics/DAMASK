@@ -100,7 +100,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
 
   myPlasticity = plastic_active('disloTungsten')
   Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
   if(Ninstance == 0) return
   
   print*, 'Cereceda et al., International Journal of Plasticity 78:242–256, 2016'

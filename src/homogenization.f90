@@ -186,7 +186,7 @@ subroutine homogenization_init
   materialpoint_F = materialpoint_F0                                                                ! initialize to identity
   allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
 
-  print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(OUTPUT_UNIT)
 
   num%nMPstate          = num_homogGeneric%get_asInt  ('nMPstate',     defaultVal=10)
   num%subStepMinHomog   = num_homogGeneric%get_asFloat('subStepMin',   defaultVal=1.0e-3_pReal)

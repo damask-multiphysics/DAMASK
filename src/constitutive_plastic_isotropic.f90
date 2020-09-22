@@ -71,7 +71,7 @@ module function plastic_isotropic_init() result(myPlasticity)
 
   myPlasticity = plastic_active('isotropic')
   Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(OUTPUT_UNIT)
   if(Ninstance == 0) return
 
   print*, 'Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
