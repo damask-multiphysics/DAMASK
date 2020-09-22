@@ -17,29 +17,44 @@ from . import grid_filters
 class Geom:
     """Geometry definition for grid solvers."""
 
-    def __init__(self,microstructure,size,origin=[0.0,0.0,0.0],homogenization=1,comments=[]):
+    def __init__(self,materials,size,origin=[0.0,0.0,0.0],comments=[]):
         """
-        New geometry definition from array of microstructures and size.
+        New geometry definition from array of materials, size, and origin.
 
         Parameters
         ----------
-        microstructure : numpy.ndarray
-            Microstructure array (3D)
+        materials : numpy.ndarray
+            Material index array (3D).
         size : list or numpy.ndarray
-            Physical size of the microstructure in meter.
+            Physical size of the geometry in meter.
         origin : list or numpy.ndarray, optional
-            Physical origin of the microstructure in meter.
-        homogenization : int, optional
-            Homogenization index.
+            Physical origin of the geometry in meter.
         comments : list of str, optional
             Comment lines.
 
         """
-        self.set_microstructure(microstructure,inplace=True)
-        self.set_size(size,inplace=True)
-        self.set_origin(origin,inplace=True)
-        self.set_homogenization(homogenization,inplace=True)
-        self.set_comments(comments,inplace=True)
+        if len(materials.shape) != 3:
+            raise ValueError(f'Invalid materials shape {materials.shape}.')
+        elif materials.dtype not in np.sctypes['float'] + np.sctypes['int']:
+            raise TypeError(f'Invalid materials data type {materials.dtype}.')
+        else:
+            self.materials = np.copy(materials)
+
+            if self.materials.dtype in np.sctypes['float'] and \
+               np.all(self.materials == self.materials.astype(int).astype(float)):
+                self.materials = self.materials.astype(int)
+
+        if len(size) != 3 or any(np.array(size) <= 0):
+            raise ValueError(f'Invalid size {size}.')
+        else:
+            self.size = np.array(size)
+
+        if len(origin) != 3:
+            raise ValueError(f'Invalid origin {origin}.')
+        else:
+            self.origin = np.array(origin)
+
+        self.comments = [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
 
 
     def __repr__(self):
@@ -48,8 +63,8 @@ class Geom:
                f'grid     a b c:     {util.srepr(self.grid,  " x ")}',
                f'size     x y z:     {util.srepr(self.size,  " x ")}',
                f'origin   x y z:     {util.srepr(self.origin,"   ")}',
-               f'# materialpoints:   {self.N_microstructure}',
-               f'max materialpoint:  {np.nanmax(self.microstructure)}',
+               f'# materialpoints:   {self.N_materials}',
+               f'max materialpoint:  {np.nanmax(self.materials)}',
               ])
 
 
@@ -61,42 +76,6 @@ class Geom:
     def copy(self):
         """Copy geometry."""
         return self.__copy__()
-
-
-    def duplicate(self,microstructure=None,size=None,origin=None,comments=None,autosize=False):
-        """
-        Create a duplicate having updated microstructure, size, and origin.
-
-        Parameters
-        ----------
-        microstructure : numpy.ndarray, optional
-            Microstructure array (3D).
-        size : list or numpy.ndarray, optional
-            Physical size of the microstructure in meter.
-        origin : list or numpy.ndarray, optional
-            Physical origin of the microstructure in meter.
-        comments : list of str, optional
-            Comment lines.
-        autosize : bool, optional
-            Ignore size parameter and rescale according to change of grid points.
-
-        """
-        if size is not None and autosize:
-            raise ValueError('Auto-sizing conflicts with explicit size parameter.')
-
-        grid_old = self.grid
-        dup = self.set_microstructure(microstructure)\
-                  .set_origin(origin)
-
-        if comments is not None:
-            dup.set_comments(comments,inplace=True)
-
-        if size is not None:
-            dup.set_size(size,inplace=True)
-        elif autosize:
-            dup.set_size(dup.grid/grid_old*self.size,inplace=True)
-
-        return dup
 
 
     def diff(self,other):
@@ -114,154 +93,33 @@ class Geom:
             message.append(util.delete(f'grid     a b c:     {util.srepr(other.grid," x ")}'))
             message.append(util.emph(  f'grid     a b c:     {util.srepr( self.grid," x ")}'))
 
-        if np.any(other.size != self.size):
+        if not np.allclose(other.size,self.size):
             message.append(util.delete(f'size     x y z:     {util.srepr(other.size," x ")}'))
             message.append(util.emph(  f'size     x y z:     {util.srepr( self.size," x ")}'))
 
-        if np.any(other.origin != self.origin):
+        if not np.allclose(other.origin,self.origin):
             message.append(util.delete(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
             message.append(util.emph(  f'origin   x y z:     {util.srepr( self.origin,"   ")}'))
 
-        if other.N_microstructure != self.N_microstructure:
-            message.append(util.delete(f'# materialpoints:   {other.N_microstructure}'))
-            message.append(util.emph(  f'# materialpoints:   { self.N_microstructure}'))
+        if other.N_materials != self.N_materials:
+            message.append(util.delete(f'# materialpoints:   {other.N_materials}'))
+            message.append(util.emph(  f'# materialpoints:   { self.N_materials}'))
 
-        if np.nanmax(other.microstructure) != np.nanmax(self.microstructure):
-            message.append(util.delete(f'max materialpoint:  {np.nanmax(other.microstructure)}'))
-            message.append(util.emph(  f'max materialpoint:  {np.nanmax( self.microstructure)}'))
+        if np.nanmax(other.materials) != np.nanmax(self.materials):
+            message.append(util.delete(f'max materialpoint:  {np.nanmax(other.materials)}'))
+            message.append(util.emph(  f'max materialpoint:  {np.nanmax( self.materials)}'))
 
         return util.return_message(message)
 
 
-    def set_comments(self,comments,inplace=False):
-        """
-        Replace all existing comments.
-
-        Parameters
-        ----------
-        comments : list of str
-            All comments.
-
-        """
-        target = self if inplace else self.copy()
-        target.comments = []
-        target.add_comments(comments,inplace=True)
-        if not inplace: return target
-
-
-    def add_comments(self,comments,inplace=False):
-        """
-        Append comments to existing comments.
-
-        Parameters
-        ----------
-        comments : list of str
-            New comments.
-
-        """
-        target = self if inplace else self.copy()
-        target.comments += [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
-        if not inplace: return target
-
-
-    def set_microstructure(self,microstructure,inplace=False):
-        """
-        Replace the existing microstructure representation.
-
-        The complete microstructure is replaced (indcluding grid definition),
-        unless a masked array is provided in which case the grid dimensions
-        need to match and masked entries are not replaced.
-
-        Parameters
-        ----------
-        microstructure : numpy.ndarray or numpy.ma.core.MaskedArray of shape (:,:,:)
-            Microstructure indices.
-
-        """
-        target = self if inplace else self.copy()
-        if microstructure is not None:
-            if isinstance(microstructure,np.ma.core.MaskedArray):
-                target.microstructure = np.where(microstructure.mask,
-                                                 target.microstructure,microstructure.data)
-            else:
-                target.microstructure = np.copy(microstructure)
-
-        if         target.microstructure.dtype in np.sctypes['float'] and \
-            np.all(target.microstructure == target.microstructure.astype(int).astype(float)):
-            target.microstructure = target.microstructure.astype(int)
-
-        if len(target.microstructure.shape) != 3:
-            raise ValueError(f'Invalid microstructure shape {microstructure.shape}')
-        elif target.microstructure.dtype not in np.sctypes['float'] + np.sctypes['int']:
-            raise TypeError(f'Invalid microstructure data type {microstructure.dtype}')
-        if not inplace: return target
-
-
-    def set_size(self,size,inplace=False):
-        """
-        Replace the existing size information.
-
-        Parameters
-        ----------
-        size : list or numpy.ndarray
-            Physical size of the microstructure in meter.
-
-        """
-        target = self if inplace else self.copy()
-        if size is not None:
-            if len(size) != 3 or any(np.array(size) <= 0):
-                raise ValueError(f'Invalid size {size}')
-            else:
-                target.size = np.array(size)
-        if not inplace: return target
-
-
-    def set_origin(self,origin,inplace=False):
-        """
-        Replace the existing origin information.
-
-        Parameters
-        ----------
-        origin : list or numpy.ndarray
-            Physical origin of the microstructure in meter.
-
-        """
-        target = self if inplace else self.copy()
-        if origin is not None:
-            if len(origin) != 3:
-                raise ValueError(f'Invalid origin {origin}')
-            else:
-                target.origin = np.array(origin)
-        if not inplace: return target
-
-
-    def set_homogenization(self,homogenization,inplace=False):
-        """
-        Replace the existing homogenization index.
-
-        Parameters
-        ----------
-        homogenization : int
-            Homogenization index.
-
-        """
-        target = self if inplace else self.copy()
-        if homogenization is not None:
-            if not isinstance(homogenization,int) or homogenization < 1:
-                raise TypeError(f'Invalid homogenization {homogenization}.')
-            else:
-                target.homogenization = homogenization
-        if not inplace: return target
-
-
     @property
     def grid(self):
-        return np.asarray(self.microstructure.shape)
+        return np.asarray(self.materials.shape)
 
 
     @property
-    def N_microstructure(self):
-        return np.unique(self.microstructure).size
+    def N_materials(self):
+        return np.unique(self.materials).size
 
 
     @staticmethod
@@ -301,12 +159,10 @@ class Geom:
                 size   = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
             elif key == 'origin':
                 origin = np.array([float(dict(zip(items[1::2],items[2::2]))[i]) for i in ['x','y','z']])
-            elif key == 'homogenization':
-                homogenization = int(items[1])
             else:
                 comments.append(line.strip())
 
-        microstructure = np.empty(grid.prod())                                                      # initialize as flat array
+        materials = np.empty(grid.prod())                                                      # initialize as flat array
         i = 0
         for line in content[header_length:]:
             items = line.split('#')[0].split()
@@ -318,16 +174,16 @@ class Geom:
                                         abs(int(items[2])-int(items[0]))+1,dtype=float)
                 else:                        items = list(map(float,items))
             else:                            items = list(map(float,items))
-            microstructure[i:i+len(items)] = items
+            materials[i:i+len(items)] = items
             i += len(items)
 
         if i != grid.prod():
             raise TypeError(f'Invalid file: expected {grid.prod()} entries, found {i}')
 
-        if not np.any(np.mod(microstructure,1) != 0.0):                                             # no float present
-            microstructure = microstructure.astype('int')
+        if not np.any(np.mod(materials,1) != 0.0):                                             # no float present
+            materials = materials.astype('int')
 
-        return Geom(microstructure.reshape(grid,order='F'),size,origin,homogenization,comments)
+        return Geom(materials.reshape(grid,order='F'),size,origin,comments)
 
 
     @staticmethod
@@ -365,7 +221,7 @@ class Geom:
         grid : int numpy.ndarray of shape (3)
             Number of grid points in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
-            Physical size of the microstructure in meter.
+            Physical size of the geometry in meter.
         seeds : numpy.ndarray of shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         weights : numpy.ndarray of shape (seeds.shape[0])
@@ -389,16 +245,17 @@ class Geom:
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
-        microstructure = np.array(result.get())
+        materials = np.array(result.get())
 
         if periodic:
-            microstructure = microstructure.reshape(grid*3)
-            microstructure = microstructure[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
+            materials = materials.reshape(grid*3)
+            materials = materials[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
         else:
-            microstructure = microstructure.reshape(grid)
+            materials = materials.reshape(grid)
 
-        return Geom(microstructure+1,size,homogenization=1,
-                    comments=util.execution_stamp('Geom','from_Laguerre_tessellation'),
+        return Geom(materials = materials+1,
+                    size      = size,
+                    comments  = util.execution_stamp('Geom','from_Laguerre_tessellation'),
                    )
 
 
@@ -412,7 +269,7 @@ class Geom:
         grid : int numpy.ndarray of shape (3)
             Number of grid points in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
-            Physical size of the microstructure in meter.
+            Physical size of the geometry in meter.
         seeds : numpy.ndarray of shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         periodic : Boolean, optional
@@ -421,10 +278,11 @@ class Geom:
         """
         coords = grid_filters.cell_coord0(grid,size).reshape(-1,3)
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
-        devNull,microstructure = KDTree.query(coords)
+        devNull,materials = KDTree.query(coords)
 
-        return Geom(microstructure.reshape(grid)+1,size,homogenization=1,
-                    comments=util.execution_stamp('Geom','from_Voronoi_tessellation'),
+        return Geom(materials = materials.reshape(grid)+1,
+                    size      = size,
+                    comments  = util.execution_stamp('Geom','from_Voronoi_tessellation'),
                    )
 
 
@@ -462,21 +320,21 @@ class Geom:
                      +[ 'grid   a {} b {} c {}'.format(*geom.grid),
                         'size   x {} y {} z {}'.format(*geom.size),
                         'origin x {} y {} z {}'.format(*geom.origin),
-                       f'homogenization {geom.homogenization}',
+                        'homogenization 1',
                        ]
 
             grid = geom.grid
 
             if pack is None:
-                plain = grid.prod()/geom.N_microstructure < 250
+                plain = grid.prod()/geom.N_materials < 250
             else:
                 plain = not pack
 
             if plain:
-                format_string = '%g' if geom.microstructure.dtype in np.sctypes['float'] else \
-                                '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(geom.microstructure)))))
+                format_string = '%g' if geom.materials.dtype in np.sctypes['float'] else \
+                                '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(geom.materials)))))
                 np.savetxt(fname,
-                           geom.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
+                           geom.materials.reshape([grid[0],np.prod(grid[1:])],order='F').T,
                            header='\n'.join(header), fmt=format_string, comments='')
             else:
                 try:
@@ -487,7 +345,7 @@ class Geom:
                 compressType = None
                 former = start = -1
                 reps = 0
-                for current in geom.microstructure.flatten('F'):
+                for current in geom.materials.flatten('F'):
                     if abs(current - former) == 1 and (start - current) == reps*(former - current):
                         compressType = 'to'
                         reps += 1
@@ -532,7 +390,7 @@ class Geom:
 
             """
             v = VTK.from_rectilinearGrid(geom.grid,geom.size,geom.origin)
-            v.add(geom.microstructure.flatten(order='F'),'materialpoint')
+            v.add(geom.materials.flatten(order='F'),'materialpoint')
             v.add_comments(geom.comments)
 
             if fname:
@@ -575,11 +433,11 @@ class Geom:
             0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1)
             1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1)
         fill : int, optional
-            Fill value for primitive. Defaults to microstructure.max() + 1.
+            Fill value for primitive. Defaults to materials.max() + 1.
         R : damask.Rotation, optional
             Rotation of primitive. Defaults to no rotation.
         inverse : Boolean, optional
-            Retain original microstructure within primitive and fill outside.
+            Retain original materials within primitive and fill outside.
             Defaults to False.
         periodic : Boolean, optional
             Repeat primitive over boundaries. Defaults to True.
@@ -601,22 +459,23 @@ class Geom:
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
 
-        fill_ = np.full_like(self.microstructure,np.nanmax(self.microstructure)+1 if fill is None else fill)
-        ms = np.ma.MaskedArray(fill_,np.logical_not(mask) if inverse else mask)
+        fill_ = np.full_like(self.materials,np.nanmax(self.materials)+1 if fill is None else fill)
 
-        return self.duplicate(ms,
-                              comments=self.comments+[util.execution_stamp('Geom','add_primitive')],
-                             )
+        return Geom(materials = np.where(np.logical_not(mask) if inverse else mask, self.materials,fill_),
+                    size      = self.size,
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','add_primitive')],
+                   )
 
 
     def mirror(self,directions,reflect=False):
         """
-        Mirror microstructure along given directions.
+        Mirror geometry along given directions.
 
         Parameters
         ----------
         directions : iterable containing str
-            Direction(s) along which the microstructure is mirrored.
+            Direction(s) along which the geometry is mirrored.
             Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
             Reflect (include) outermost layers. Defaults to False.
@@ -627,28 +486,30 @@ class Geom:
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
         limits = [None,None] if reflect else [-2,0]
-        ms = self.microstructure.copy()
+        ms = self.materials.copy()
 
-        if 'z' in directions:
-            ms = np.concatenate([ms,ms[:,:,limits[0]:limits[1]:-1]],2)
-        if 'y' in directions:
-            ms = np.concatenate([ms,ms[:,limits[0]:limits[1]:-1,:]],1)
         if 'x' in directions:
             ms = np.concatenate([ms,ms[limits[0]:limits[1]:-1,:,:]],0)
+        if 'y' in directions:
+            ms = np.concatenate([ms,ms[:,limits[0]:limits[1]:-1,:]],1)
+        if 'z' in directions:
+            ms = np.concatenate([ms,ms[:,:,limits[0]:limits[1]:-1]],2)
 
-        return self.duplicate(ms,
-                              comments=self.comments+[util.execution_stamp('Geom','mirror')],
-                              autosize=True)
+        return Geom(materials = ms,
+                    size      = self.size/self.grid*np.asarray(ms.shape),
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','mirror')],
+                   )
 
 
     def flip(self,directions):
         """
-        Flip microstructure along given directions.
+        Flip geometry along given directions.
 
         Parameters
         ----------
         directions : iterable containing str
-            Direction(s) along which the microstructure is flipped.
+            Direction(s) along which the geometry is flipped.
             Valid entries are 'x', 'y', 'z'.
 
         """
@@ -656,16 +517,18 @@ class Geom:
         if not set(directions).issubset(valid):
             raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
 
-        ms = np.flip(self.microstructure, (valid.index(d) for d in directions if d in valid))
+        ms = np.flip(self.materials, (valid.index(d) for d in directions if d in valid))
 
-        return self.duplicate(ms,
-                              comments=self.comments+[util.execution_stamp('Geom','flip')],
-                             )
+        return Geom(materials = ms,
+                    size      = self.size,
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','flip')],
+                   )
 
 
     def scale(self,grid,periodic=True):
         """
-        Scale microstructure to new grid.
+        Scale geometry to new grid.
 
         Parameters
         ----------
@@ -675,21 +538,23 @@ class Geom:
             Assume geometry to be periodic. Defaults to True.
 
         """
-        return self.duplicate(ndimage.interpolation.zoom(
-                                                         self.microstructure,
-                                                         grid/self.grid,
-                                                         output=self.microstructure.dtype,
-                                                         order=0,
-                                                         mode=('wrap' if periodic else 'nearest'),
-                                                         prefilter=False
-                                                        ),
-                              comments=self.comments+[util.execution_stamp('Geom','scale')],
-                             )
+        return Geom(materials = ndimage.interpolation.zoom(
+                                                           self.materials,
+                                                           grid/self.grid,
+                                                           output=self.materials.dtype,
+                                                           order=0,
+                                                           mode=('wrap' if periodic else 'nearest'),
+                                                           prefilter=False
+                                                          ),
+                    size      = self.size,
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','scale')],
+                   )
 
 
     def clean(self,stencil=3,selection=None,periodic=True):
         """
-        Smooth microstructure by selecting most frequent index within given stencil at each location.
+        Smooth geometry by selecting most frequent material index within given stencil at each location.
 
         Parameters
         ----------
@@ -709,83 +574,87 @@ class Geom:
             else:
                 return me
 
-        return self.duplicate(ndimage.filters.generic_filter(
-                                                             self.microstructure,
-                                                             mostFrequent,
-                                                             size=(stencil if selection is None else stencil//2*2+1,)*3,
-                                                             mode=('wrap' if periodic else 'nearest'),
-                                                             extra_keywords=dict(selection=selection),
-                                                            ).astype(self.microstructure.dtype),
-                              comments=self.comments+[util.execution_stamp('Geom','clean')],
-                             )
+        return Geom(materials = ndimage.filters.generic_filter(
+                                                               self.materials,
+                                                               mostFrequent,
+                                                               size=(stencil if selection is None else stencil//2*2+1,)*3,
+                                                               mode=('wrap' if periodic else 'nearest'),
+                                                               extra_keywords=dict(selection=selection),
+                                                              ).astype(self.materials.dtype),
+                    size      = self.size,
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','clean')],
+                   )
 
 
     def renumber(self):
-        """Renumber sorted microstructure indices to 1,...,N."""
-        renumbered = np.empty(self.grid,dtype=self.microstructure.dtype)
-        for i, oldID in enumerate(np.unique(self.microstructure)):
-            renumbered = np.where(self.microstructure == oldID, i+1, renumbered)
+        """Renumber sorted material indices to 1,...,N."""
+        renumbered = np.empty(self.grid,dtype=self.materials.dtype)
+        for i, oldID in enumerate(np.unique(self.materials)):
+            renumbered = np.where(self.materials == oldID, i+1, renumbered)
 
-        return self.duplicate(renumbered,
-                              comments=self.comments+[util.execution_stamp('Geom','renumber')],
-                             )
+        return Geom(materials = renumbered,
+                    size      = self.size,
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','renumber')],
+                   )
 
 
     def rotate(self,R,fill=None):
         """
-        Rotate microstructure (pad if required).
+        Rotate geometry (pad if required).
 
         Parameters
         ----------
         R : damask.Rotation
-            Rotation to apply to the microstructure.
+            Rotation to apply to the geometry.
         fill : int or float, optional
-            Microstructure index to fill the corners. Defaults to microstructure.max() + 1.
+            Material index to fill the corners. Defaults to materials.max() + 1.
 
         """
-        if fill is None: fill = np.nanmax(self.microstructure) + 1
-        dtype = float if np.isnan(fill) or int(fill) != fill or self.microstructure.dtype==np.float else int
+        if fill is None: fill = np.nanmax(self.materials) + 1
+        dtype = float if np.isnan(fill) or int(fill) != fill or self.materials.dtype==np.float else int
 
         Eulers = R.as_Eulers(degrees=True)
-        microstructure_in = self.microstructure.copy()
+        materials_in = self.materials.copy()
 
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
         # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
         for angle,axes in zip(Eulers[::-1], [(0,1),(1,2),(0,1)]):
-            microstructure_out = ndimage.rotate(microstructure_in,angle,axes,order=0,
+            materials_out = ndimage.rotate(materials_in,angle,axes,order=0,
                                                 prefilter=False,output=dtype,cval=fill)
-            if np.prod(microstructure_in.shape) == np.prod(microstructure_out.shape):
+            if np.prod(materials_in.shape) == np.prod(materials_out.shape):
                 # avoid scipy interpolation errors for rotations close to multiples of 90°
-                microstructure_in = np.rot90(microstructure_in,k=np.rint(angle/90.).astype(int),axes=axes)
+                materials_in = np.rot90(materials_in,k=np.rint(angle/90.).astype(int),axes=axes)
             else:
-                microstructure_in = microstructure_out
+                materials_in = materials_out
 
-        origin = self.origin-(np.asarray(microstructure_in.shape)-self.grid)*.5 * self.size/self.grid
+        origin = self.origin-(np.asarray(materials_in.shape)-self.grid)*.5 * self.size/self.grid
 
-        return self.duplicate(microstructure_in,
-                              origin=origin,
-                              comments=self.comments+[util.execution_stamp('Geom','rotate')],
-                              autosize=True,
-                             )
+        return Geom(materials = materials_in,
+                    size      = self.size/self.grid*np.asarray(materials_in.shape),
+                    origin    = origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','rotate')],
+                   )
 
 
     def canvas(self,grid=None,offset=None,fill=None):
         """
-        Crop or enlarge/pad microstructure.
+        Crop or enlarge/pad geometry.
 
         Parameters
         ----------
         grid : numpy.ndarray of shape (3)
             Number of grid points in x,y,z direction.
         offset : numpy.ndarray of shape (3)
-            Offset (measured in grid points) from old to new microstructure[0,0,0].
+            Offset (measured in grid points) from old to new geometry [0,0,0].
         fill : int or float, optional
-            Microstructure index to fill the background. Defaults to microstructure.max() + 1.
+            Material index to fill the background. Defaults to materials.max() + 1.
 
         """
         if offset is None: offset = 0
-        if fill is None: fill = np.nanmax(self.microstructure) + 1
-        dtype = float if int(fill) != fill or self.microstructure.dtype in np.sctypes['float'] else int
+        if fill is None: fill = np.nanmax(self.materials) + 1
+        dtype = float if int(fill) != fill or self.materials.dtype in np.sctypes['float'] else int
 
         canvas = np.full(self.grid if grid is None else grid,fill,dtype)
 
@@ -794,39 +663,41 @@ class Geom:
         ll = np.clip(-offset,          0,np.minimum(     grid,self.grid-offset))
         ur = np.clip(-offset+self.grid,0,np.minimum(     grid,self.grid-offset))
 
-        canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.microstructure[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
+        canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.materials[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        return self.duplicate(canvas,
-                              origin=self.origin+offset*self.size/self.grid,
-                              comments=self.comments+[util.execution_stamp('Geom','canvas')],
-                              autosize=True,
-                             )
+        return Geom(materials = canvas,
+                    size      = self.size/self.grid*np.asarray(canvas.shape),
+                    origin    = self.origin+offset*self.size/self.grid,
+                    comments  = self.comments+[util.execution_stamp('Geom','canvas')],
+                   )
 
 
-    def substitute(self,from_microstructure,to_microstructure):
+    def substitute(self,from_materials,to_materials):
         """
-        Substitute microstructure indices.
+        Substitute material indices.
 
         Parameters
         ----------
-        from_microstructure : iterable of ints
-            Microstructure indices to be substituted.
-        to_microstructure : iterable of ints
-            New microstructure indices.
+        from_materials : iterable of ints
+            Material indices to be substituted.
+        to_materials : iterable of ints
+            New material indices.
 
         """
-        substituted = self.microstructure.copy()
-        for from_ms,to_ms in zip(from_microstructure,to_microstructure):
-            substituted[self.microstructure==from_ms] = to_ms
+        substituted = self.materials.copy()
+        for from_ms,to_ms in zip(from_materials,to_materials):
+            substituted[self.materials==from_ms] = to_ms
 
-        return self.duplicate(substituted,
-                              comments=self.comments+[util.execution_stamp('Geom','substitute')],
-                             )
+        return Geom(materials = substituted,
+                    size      = self.size,
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','substitute')],
+                   )
 
 
     def vicinity_offset(self,vicinity=1,offset=None,trigger=[],periodic=True):
         """
-        Offset microstructure index of points in the vicinity of xxx.
+        Offset material index of points in the vicinity of xxx.
 
         Different from themselves (or listed as triggers) within a given (cubic) vicinity,
         i.e. within the region close to a grain/phase boundary.
@@ -835,14 +706,14 @@ class Geom:
         Parameters
         ----------
         vicinity : int, optional
-            Voxel distance checked for presence of other microstructure.
+            Voxel distance checked for presence of other materials.
             Defaults to 1.
         offset : int, optional
-            Offset (positive or negative) to tag microstructure indices,
-            defaults to microstructure.max() + 1.
+            Offset (positive or negative) to tag material indices,
+            defaults to materials.max() + 1.
         trigger : list of ints, optional
-            List of microstructure indices triggering a change.
-            Defaults to [], meaning that different neigboors trigger a change.
+            List of material indices that trigger a change.
+            Defaults to [], meaning that any different neighbor triggers a change.
         periodic : Boolean, optional
             Assume geometry to be periodic. Defaults to True.
 
@@ -858,14 +729,15 @@ class Geom:
                 trigger = list(trigger)
             return np.any(np.in1d(stencil,np.array(trigger)))
 
-        offset_ = np.nanmax(self.microstructure) if offset is None else offset
-        mask = ndimage.filters.generic_filter(self.microstructure,
+        offset_ = np.nanmax(self.materials) if offset is None else offset
+        mask = ndimage.filters.generic_filter(self.materials,
                                               tainted_neighborhood,
                                               size=1+2*vicinity,
                                               mode='wrap' if periodic else 'nearest',
                                               extra_keywords={'trigger':trigger})
-        microstructure = np.ma.MaskedArray(self.microstructure + offset_, np.logical_not(mask))
 
-        return self.duplicate(microstructure,
-                              comments=self.comments+[util.execution_stamp('Geom','vicinity_offset')],
-                             )
+        return Geom(materials = np.where(mask, self.materials + offset_,self.materials),
+                    size      = self.size,
+                    origin    = self.origin,
+                    comments  = self.comments+[util.execution_stamp('Geom','vicinity_offset')],
+                   )
