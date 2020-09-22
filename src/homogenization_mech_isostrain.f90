@@ -13,7 +13,7 @@ submodule(homogenization) homogenization_mech_isostrain
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
-      Nconstituents
+      N_constituents
     integer(kind(average_ID)) :: &
       mapping
   end type
@@ -51,7 +51,7 @@ module subroutine mech_isostrain_init
     homogMech => homog%get('mech')
     associate(prm => param(homogenization_typeInstance(h)))
 
-    prm%Nconstituents = homogMech%get_asInt('N_constituents')
+    prm%N_constituents = homogMech%get_asInt('N_constituents')
     select case(homogMech%get_asString('mapping',defaultVal = 'sum'))
       case ('sum')
         prm%mapping = parallel_ID
@@ -107,8 +107,8 @@ module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dP
       avgP       = sum(P,3)
       dAvgPdAvgF = sum(dPdF,5)
     case (average_ID)
-      avgP       = sum(P,3)   /real(prm%Nconstituents,pReal)
-      dAvgPdAvgF = sum(dPdF,5)/real(prm%Nconstituents,pReal)
+      avgP       = sum(P,3)   /real(prm%N_constituents,pReal)
+      dAvgPdAvgF = sum(dPdF,5)/real(prm%N_constituents,pReal)
   end select
 
   end associate
