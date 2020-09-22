@@ -18,6 +18,7 @@ from ._lattice     import Symmetry, Lattice# noqa
 from ._orientation import Orientation      # noqa
 from ._result      import Result           # noqa
 from ._geom        import Geom             # noqa
+from ._material    import Material         # noqa
 from .             import solver           # noqa
 
 # deprecated
