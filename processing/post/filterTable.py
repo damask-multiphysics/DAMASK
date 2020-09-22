@@ -27,7 +27,7 @@ def sortingList(labels,whitelistitems):
     else:
       indices.append(0)
       names.append(label)
-      
+
   return [indices,names,whitelistitems]
 
 
@@ -72,11 +72,11 @@ for name in filenames:
     continue
   damask.util.report(scriptName,name)
 
-# ------------------------------------------ assemble info ---------------------------------------  
+# ------------------------------------------ assemble info ---------------------------------------
 
   table.head_read()
 
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ---------------------------------------
 
   specials = { \
                '_row_': 0,
@@ -103,12 +103,12 @@ for name in filenames:
             else np.lexsort(sortingList(labels,whitelistitem))                                      # reorder if unique, i.e. no "-1" in whitelistitem
   else:
     order = range(len(labels))                                                                      # maintain original order of labels
-  
+
 # --------------------------------------- evaluate condition ---------------------------------------
   if options.condition is not None:
     condition = options.condition                                                                   # copy per file, since might be altered inline
     breaker = False
-  
+
     for position,(all,marker,column) in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):              # find three groups
       idx = table.label_index(column)
       dim = table.label_dimension(column)
@@ -123,11 +123,11 @@ for name in filenames:
                                                         's#':'str'}[marker],idx)                      # take float or string value of data column
         elif dim > 1:                                                                                 # multidimensional input (vector, tensor, etc.)
           replacement = 'np.array(table.data[{}:{}],dtype=float)'.format(idx,idx+dim)                 # use (flat) array representation
-       
+
         condition = condition.replace('#'+all+'#',replacement)
-    
+
     if breaker: continue                                                                              # found mistake in condition evaluation --> next file
-  
+
 # ------------------------------------------ assemble header ---------------------------------------
 
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
@@ -138,7 +138,7 @@ for name in filenames:
 # ------------------------------------------ process and output data ------------------------------------------
 
   positions = np.array(positions)[order]
-  
+
   atOnce = options.condition is None
   if atOnce:                                                                                          # read full array and filter columns
     try:

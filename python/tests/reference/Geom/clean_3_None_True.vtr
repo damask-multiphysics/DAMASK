@@ -1,11 +1,16 @@
 <?xml version="1.0"?>
 <VTKFile type="RectilinearGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
   <RectilinearGrid WholeExtent="0 8 0 5 0 4">
+    <FieldData>
+      <Array type="String" Name="comments" NumberOfTuples="1" format="binary">
+        AQAAAACAAABJAAAATwAAAA==eF4FwVEKgCAQBcCO4md97PJcE9MLdI6ltCCtIOj8zuza9Lt4zU/jrWa9ze8YDNL6nkoSPB1hgS1eQjGjQECIJGKsT2KTi4QZmIYOHg4SwA==
+      </Array>
+    </FieldData>
   <Piece Extent="0 8 0 5 0 4">
     <PointData>
     </PointData>
     <CellData>
-      <DataArray type="Int64" Name="materialpoint" format="binary" RangeMin="1" RangeMax="2">
+      <DataArray type="Int64" Name="material" format="binary" RangeMin="1" RangeMax="2">
         AQAAAACAAAAABQAALwAAAA==eF5jZIAAxlGaLJoJjSakHpc+cvUTUkdrmlL3j9KU0dROF5TqH2iaVPcDAALOANU=
       </DataArray>
     </CellData>

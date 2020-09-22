@@ -52,7 +52,7 @@ options.box = np.array(options.box).reshape(3,2)
 
 for name in filenames:
     damask.util.report(scriptName,name)
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     offset =(np.amin(options.box, axis=1)*geom.grid/geom.size).astype(int)
     box    = np.amax(options.box, axis=1) \
@@ -91,6 +91,6 @@ for name in filenames:
                 'homogenization\t{}'.format(geom.homogenization)]
 
     table = damask.Table(seeds,{'pos':(3,),'microstructure':(1,)},comments)
-    table.set('microstructure',table.get('microstructure').astype(np.int))
-    table.to_file(sys.stdout if name is None else \
-                  os.path.splitext(name)[0]+f'_poked_{options.N}.seeds')
+    table.set('microstructure',table.get('microstructure').astype(np.int))\
+         .save(sys.stdout if name is None else \
+                     os.path.splitext(name)[0]+f'_poked_{options.N}.seeds',legacy=True)

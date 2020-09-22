@@ -75,40 +75,35 @@ class TestColormap:
             assert np.allclose(Colormap._xyz2msh(xyz),msh,atol=1.e-6,rtol=0)
 
 
-    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','Gmsh'])
+    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','xyz','lab','msh'])
     def test_from_range(self,model,format,tmpdir):
         N = np.random.randint(2,256)
-        c = Colormap.from_range(np.random.rand(3),np.random.rand(3),model=model,N=N)
-        c.to_file(tmpdir/'color_out',format=format)
+        c = Colormap.from_range(np.random.rand(3),np.random.rand(3),model=model,N=N)    # noqa
+        eval(f'c.save_{format}(tmpdir/"color_out")')
 
-    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','Gmsh'])
+    @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
     @pytest.mark.parametrize('name',['strain','gnuplot','Greys','PRGn','viridis'])
     def test_from_predefined(self,name,format,tmpdir):
         N = np.random.randint(2,256)
-        c = Colormap.from_predefined(name,N)
+        c = Colormap.from_predefined(name,N)                                            # noqa
         os.chdir(tmpdir)
-        c.to_file(format=format)
+        eval(f'c.save_{format}()')
 
     @pytest.mark.parametrize('format,name',[('ASCII','test.txt'),
                                             ('paraview','test.json'),
                                             ('GOM','test.legend'),
-                                            ('Gmsh','test.msh')
+                                            ('gmsh','test.msh')
                                            ])
     def test_write_filehandle(self,format,name,tmpdir):
-        c = Colormap.from_predefined('Dark2')
+        c = Colormap.from_predefined('Dark2')                                           # noqa
         fname = tmpdir/name
-        with open(fname,'w') as f:
-            c.to_file(f,format=format)
+        with open(fname,'w') as f:                                                      # noqa
+            eval(f'c.save_{format}(f)')
         for i in range(10):
             if fname.exists(): return
             time.sleep(.5)
         assert False
-
-    def test_write_invalid_format(self):
-        c = Colormap.from_predefined('Dark2')
-        with pytest.raises(ValueError):
-            c.to_file(format='invalid')
 
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','lab','invalid'])
     def test_invalid_color(self,model):
@@ -119,13 +114,13 @@ class TestColormap:
         c_1 = Colormap.from_predefined('stress')
         c_2 = c_1.reversed()
         assert (not np.allclose(c_1.colors,c_2.colors)) and \
-                np.allclose(c_1.colors,c_2.reversed().colors)
+                    np.allclose(c_1.colors,c_2.reversed().colors)
 
     def test_invert(self):
         c_1 = Colormap.from_predefined('strain')
         c_2 = ~c_1
-        assert (not np.allclose(c_1.colors,c_2.colors)) and \
-                np.allclose(c_1.colors,(~c_2).colors)
+        assert (not np.allclose(c_1.colors,  c_2.colors)) and \
+                    np.allclose(c_1.colors,(~c_2).colors)
 
     def test_add(self):
         c = Colormap.from_predefined('jet')
@@ -149,16 +144,16 @@ class TestColormap:
     @pytest.mark.parametrize('format,ext',[('ASCII','.txt'),
                                            ('paraview','.json'),
                                            ('GOM','.legend'),
-                                           ('Gmsh','.msh')
+                                           ('gmsh','.msh')
                                           ])
     def test_compare_reference(self,format,ext,tmpdir,reference_dir,update):
         name = 'binary'
-        c = Colormap.from_predefined(name)
+        c = Colormap.from_predefined(name)                                              # noqa
         if update:
             os.chdir(reference_dir)
-            c.to_file(format=format)
+            eval(f'c.save_{format}()')
         else:
             os.chdir(tmpdir)
-            c.to_file(format=format)
+            eval(f'c.save_{format}()')
             time.sleep(.5)
             assert filecmp.cmp(tmpdir/(name+ext),reference_dir/(name+ext))

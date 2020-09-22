@@ -130,10 +130,10 @@ def geometry():
 
 
 #-------------------------------------------------------------------------------------------------
-def initial_conditions(microstructures):
+def initial_conditions(materials):
   elements = []
   element = 0
-  for id in microstructures:
+  for id in materials:
     element += 1
     if len(elements) < id:
       for i in range(id-len(elements)):
@@ -153,7 +153,7 @@ def initial_conditions(microstructures):
   for grain,elementList in enumerate(elements):
     cmds.append([\
             "*new_icond",
-            "*icond_name microstructure_%i"%(grain+1),
+            "*icond_name material_%i"%(grain+1),
             "*icond_type state_variable",
             "*icond_param_value state_var_id 2",
             "*icond_dof_value var %i"%(grain+1),
@@ -196,15 +196,15 @@ if filenames == []: filenames = [None]
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    microstructure = geom.microstructure.flatten(order='F')
+    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    materials = geom.materials.flatten(order='F')
 
     cmds = [\
       init(),
       mesh(geom.grid,geom.size),
       material(),
       geometry(),
-      initial_conditions(microstructure),
+      initial_conditions(materials),
       '*identify_sets',
       '*show_model',
       '*redraw',

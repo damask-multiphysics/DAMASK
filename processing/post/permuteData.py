@@ -47,7 +47,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     randomSeed = int(os.urandom(4).hex(), 16) if options.randomSeed is None else options.randomSeed # random seed per file
     rng = np.random.default_rng(randomSeed)
@@ -58,4 +58,4 @@ for name in filenames:
         rng.shuffle(uniques)
         table = table.set(label,uniques[inverse], scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_file(sys.stdout if name is None else name)
+    table.save((sys.stdout if name is None else name), legacy=True)
