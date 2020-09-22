@@ -14,7 +14,7 @@ submodule(constitutive:constitutive_plastic) plastic_isotropic
       M, &                                                                                          !< Taylor factor
       dot_gamma_0, &                                                                                !< reference strain rate
       n, &                                                                                          !< stress exponent
-      h0, &
+      h_0, &
       h_ln, &
       xi_inf, &                                                                                     !< maximum critical stress
       a, &
@@ -109,7 +109,7 @@ module function plastic_isotropic_init() result(myPlasticity)
     prm%xi_inf      = pl%get_asFloat('xi_inf')
     prm%dot_gamma_0 = pl%get_asFloat('dot_gamma_0')
     prm%n           = pl%get_asFloat('n')
-    prm%h0          = pl%get_asFloat('h_0')
+    prm%h_0         = pl%get_asFloat('h_0')
     prm%M           = pl%get_asFloat('M')
     prm%h_ln        = pl%get_asFloat('h_ln', defaultVal=0.0_pReal)
     prm%c_1         = pl%get_asFloat('c_1',  defaultVal=0.0_pReal)
@@ -310,7 +310,7 @@ module subroutine plastic_isotropic_dotState(Mp,instance,of)
                   / prm%c_4 * (dot_gamma / prm%dot_gamma_0)**(1.0_pReal / prm%n)
     endif
     dot%xi(of) = dot_gamma &
-               * ( prm%h0 + prm%h_ln * log(dot_gamma) ) &
+               * ( prm%h_0 + prm%h_ln * log(dot_gamma) ) &
                * abs( 1.0_pReal - stt%xi(of)/xi_inf_star )**prm%a &
                * sign(1.0_pReal, 1.0_pReal - stt%xi(of)/xi_inf_star)
   else
