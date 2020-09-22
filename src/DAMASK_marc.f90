@@ -265,9 +265,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
     print'(a,i2)',         ' Coordinates:                   ', ncrd
     print'(a,i12)',        ' Nodes:                         ', nnode
     print'(a,i1)',         ' Deformation gradient:          ', itel
-    write(OUTPUT_UNIT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n:', &
+    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n:', &
                                   transpose(ffn)
-    write(OUTPUT_UNIT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
+    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
                                   transpose(ffn1)
   endif
 
@@ -312,7 +312,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
       cycleCounter = -1                                                                             ! first calc step increments this to cycle = 0
       print'(a,i6,1x,i2)', '<< HYPELA2 >> cutback detected..! ',m(1),nn
     endif                                                                                           ! convergence treatment end
-    flush(OUTPUT_UNIT)
+    flush(6)
 
     if (lastLovl /= lovl) then
       cycleCounter  = cycleCounter + 1
