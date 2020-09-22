@@ -552,19 +552,17 @@ function to_flow(blck)
                                    s_flow, &                                                        !< start position in flow
                                    offset, &                                                        !< counts leading '- ' in nested lists
                                    end_line
-  if(isFlow(blck)) then
-    to_flow = trim(adjustl(blck))
-  else
-    allocate(character(len=len(blck)*2)::to_flow)
-    ! move forward here (skip empty lines) and remove '----' if found
-    s_flow = 1
-    s_blck = 1
-    offset = 0
-    call decide(blck,to_flow,s_blck,s_flow,offset)
-    to_flow = trim(to_flow(:s_flow-1))
-  endif
-    end_line = index(to_flow,IO_EOL)
-    if(end_line > 0) to_flow = to_flow(:end_line-1)
+
+  allocate(character(len=len(blck)*2)::to_flow)
+  ! move forward here (skip empty lines) and remove '----' if found
+  s_flow = 1
+  s_blck = 1
+  offset = 0
+  call decide(blck,to_flow,s_blck,s_flow,offset)
+  to_flow = trim(to_flow(:s_flow-1))
+
+  end_line = index(to_flow,IO_EOL)
+  if(end_line > 0) to_flow = to_flow(:end_line-1)
 
 end function to_flow
 
@@ -635,6 +633,20 @@ subroutine selfTest
   if (.not. to_flow(block_dict)         == flow_dict) error stop 'to_flow'
   if (.not. to_flow(block_dict_newline) == flow_dict) error stop 'to_flow'
   end block basic_dict
+
+  only_flow: block
+  character(len=*), parameter :: flow_dict = &
+    " {a: [b,c: {d: e}, f: g, e]}"//IO_EOL
+  character(len=*), parameter :: flow_list = &
+    " [a,b: c,    d,e: {f: g}]"//IO_EOL
+  character(len=*), parameter :: flow_1 = &
+    "{a: [b, {c: {d: e}}, {f: g}, e]}"
+  character(len=*), parameter :: flow_2 = &
+    "[a, {b: c}, d, {e: {f: g}}]"
+
+  if (.not. to_flow(flow_dict)        == flow_1) error stop 'to_flow'
+  if (.not. to_flow(flow_list)        == flow_2) error stop 'to_flow'
+  end block only_flow
 
   basic_flow: block
   character(len=*), parameter :: flow_braces = &
