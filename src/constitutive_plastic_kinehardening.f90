@@ -442,14 +442,14 @@ pure subroutine kinetics(Mp,instance,of, &
   enddo
 
   where(dNeq0(tau_pos))
-    gdot_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                         ! 1/2 if non-Schmid active
+    gdot_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                  ! 1/2 if non-Schmid active
              * sign(abs(tau_pos/stt%crss(:,of))**prm%n,  tau_pos)
   else where
     gdot_pos = 0.0_pReal
   end where
 
   where(dNeq0(tau_neg))
-    gdot_neg = prm%dot_gamma_0 * 0.5_pReal &                                                              ! only used if non-Schmid active, always 1/2
+    gdot_neg = prm%dot_gamma_0 * 0.5_pReal &                                                        ! only used if non-Schmid active, always 1/2
              * sign(abs(tau_neg/stt%crss(:,of))**prm%n,  tau_neg)
   else where
     gdot_neg = 0.0_pReal

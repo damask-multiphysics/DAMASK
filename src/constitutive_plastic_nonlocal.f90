@@ -313,8 +313,8 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%f_c                   = pl%get_asFloat('f_c',defaultVal=2.0_pReal)
 
       prm%V_at                  = pl%get_asFloat('V_at')
-      prm%D_0                   = pl%get_asFloat('D_0')  !,'dsd0'
-      prm%Q_cl                  = pl%get_asFloat('Q_cl') !,'qsd'
+      prm%D_0                   = pl%get_asFloat('D_0')
+      prm%Q_cl                  = pl%get_asFloat('Q_cl')
       prm%f_F                   = pl%get_asFloat('f_F')
       prm%f_ed                  = pl%get_asFloat('f_ed') !,'edgejogs'
       prm%w                     = pl%get_asFloat('w')
@@ -343,30 +343,30 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-      if (any(prm%b_sl             <  0.0_pReal))  extmsg = trim(extmsg)//' b_sl'
-      if (any(prm%i_sl             <= 0.0_pReal))  extmsg = trim(extmsg)//' i_sl'
+      if (any(prm%b_sl             <  0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
+      if (any(prm%i_sl             <= 0.0_pReal)) extmsg = trim(extmsg)//' i_sl'
 
-      if (any(ini%rho_u_ed_pos_0   <  0.0_pReal))  extmsg = trim(extmsg)//' rho_u_ed_pos_0'
-      if (any(ini%rho_u_ed_neg_0   <  0.0_pReal))  extmsg = trim(extmsg)//' rho_u_ed_neg_0'
-      if (any(ini%rho_u_sc_pos_0   <  0.0_pReal))  extmsg = trim(extmsg)//' rho_u_sc_pos_0'
-      if (any(ini%rho_u_sc_neg_0   <  0.0_pReal))  extmsg = trim(extmsg)//' rho_u_sc_neg_0'
-      if (any(ini%rho_d_ed_0       <  0.0_pReal))  extmsg = trim(extmsg)//' rho_d_ed_0'
-      if (any(ini%rho_d_sc_0       <  0.0_pReal))  extmsg = trim(extmsg)//' rho_d_sc_0'
+      if (any(ini%rho_u_ed_pos_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_ed_pos_0'
+      if (any(ini%rho_u_ed_neg_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_ed_neg_0'
+      if (any(ini%rho_u_sc_pos_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_sc_pos_0'
+      if (any(ini%rho_u_sc_neg_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_sc_neg_0'
+      if (any(ini%rho_d_ed_0       <  0.0_pReal)) extmsg = trim(extmsg)//' rho_d_ed_0'
+      if (any(ini%rho_d_sc_0       <  0.0_pReal)) extmsg = trim(extmsg)//' rho_d_sc_0'
 
-      if (any(prm%peierlsstress    <  0.0_pReal))  extmsg = trim(extmsg)//' tau_peierls'
-      if (any(prm%minDipoleHeight  <  0.0_pReal))  extmsg = trim(extmsg)//' d_ed or d_sc'
+      if (any(prm%peierlsstress    <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
+      if (any(prm%minDipoleHeight  <  0.0_pReal)) extmsg = trim(extmsg)//' d_ed or d_sc'
 
-      if (prm%eta                 <=  0.0_pReal)   extmsg = trim(extmsg)//' eta'
-      if (prm%Q_cl                <=  0.0_pReal)   extmsg = trim(extmsg)//' Q_cl'
-      if (prm%nu_a                <=  0.0_pReal)   extmsg = trim(extmsg)//' nu_a'
-      if (prm%w                   <=  0.0_pReal)   extmsg = trim(extmsg)//' w'
-      if (prm%D_0                 <   0.0_pReal)   extmsg = trim(extmsg)//' D_0'
-      if (prm%V_at                <=  0.0_pReal)   extmsg = trim(extmsg)//' V_at'                   ! ToDo: in disloTungsten, the atomic volume is given as a factor
+      if (prm%eta                 <=  0.0_pReal)  extmsg = trim(extmsg)//' eta'
+      if (prm%Q_cl                <=  0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
+      if (prm%nu_a                <=  0.0_pReal)  extmsg = trim(extmsg)//' nu_a'
+      if (prm%w                   <=  0.0_pReal)  extmsg = trim(extmsg)//' w'
+      if (prm%D_0                 <   0.0_pReal)  extmsg = trim(extmsg)//' D_0'
+      if (prm%V_at                <=  0.0_pReal)  extmsg = trim(extmsg)//' V_at'                   ! ToDo: in disloTungsten, the atomic volume is given as a factor
 
-      if (prm%rho_num_significant <   0.0_pReal)   extmsg = trim(extmsg)//' rho_num_significant'
-      if (prm%rho_significant     <   0.0_pReal)   extmsg = trim(extmsg)//' rho_significant'
-      if (prm%atol_rho            <   0.0_pReal)   extmsg = trim(extmsg)//' atol_rho'
-      if (prm%f_c                 <   0.0_pReal)   extmsg = trim(extmsg)//' f_c'
+      if (prm%rho_num_significant <   0.0_pReal)  extmsg = trim(extmsg)//' rho_num_significant'
+      if (prm%rho_significant     <   0.0_pReal)  extmsg = trim(extmsg)//' rho_significant'
+      if (prm%atol_rho            <   0.0_pReal)  extmsg = trim(extmsg)//' atol_rho'
+      if (prm%f_c                 <   0.0_pReal)  extmsg = trim(extmsg)//' f_c'
 
       if (prm%p    <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p_sl'
       if (prm%q    <  1.0_pReal .or. prm%q > 2.0_pReal) extmsg = trim(extmsg)//' q_sl'

@@ -8,19 +8,19 @@ submodule(constitutive:constitutive_plastic) plastic_phenopowerlaw
 
   type :: tParameters
     real(pReal) :: &
-      dot_gamma_0_sl  = 1.0_pReal, &                                                                !< reference shear strain rate for slip
-      dot_gamma_0_tw  = 1.0_pReal, &                                                                !< reference shear strain rate for twin
-      n_sl            = 1.0_pReal, &                                                                !< stress exponent for slip
-      n_tw            = 1.0_pReal, &                                                                !< stress exponent for twin
-      f_sl_sat_tw     = 1.0_pReal, &                                                                !< push-up factor for slip saturation due to twinning
-      c_1             = 1.0_pReal, &
-      c_2             = 1.0_pReal, &
-      c_3             = 1.0_pReal, &
-      c_4             = 1.0_pReal, &
-      h_0_sl_sl       = 1.0_pReal, &                                                                !< reference hardening slip - slip
-      h_0_tw_sl       = 1.0_pReal, &                                                                !< reference hardening twin - slip
-      h_0_tw_tw       = 1.0_pReal, &                                                                !< reference hardening twin - twin
-      a_sl            = 1.0_pReal
+      dot_gamma_0_sl = 1.0_pReal, &                                                                 !< reference shear strain rate for slip
+      dot_gamma_0_tw = 1.0_pReal, &                                                                 !< reference shear strain rate for twin
+      n_sl           = 1.0_pReal, &                                                                 !< stress exponent for slip
+      n_tw           = 1.0_pReal, &                                                                 !< stress exponent for twin
+      f_sl_sat_tw    = 1.0_pReal, &                                                                 !< push-up factor for slip saturation due to twinning
+      c_1            = 1.0_pReal, &
+      c_2            = 1.0_pReal, &
+      c_3            = 1.0_pReal, &
+      c_4            = 1.0_pReal, &
+      h_0_sl_sl      = 1.0_pReal, &                                                                 !< reference hardening slip - slip
+      h_0_tw_sl      = 1.0_pReal, &                                                                 !< reference hardening twin - slip
+      h_0_tw_tw      = 1.0_pReal, &                                                                 !< reference hardening twin - twin
+      a_sl           = 1.0_pReal
     real(pReal),               allocatable, dimension(:) :: &
       xi_inf_sl, &                                                                                  !< maximum critical shear stress for slip
       h_int, &                                                                                      !< per family hardening activity (optional)
