@@ -65,7 +65,7 @@ subroutine discretization_grid_init(restart)
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
-  print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(OUTPUT_UNIT)
 
   if(index(interface_geomFile,'.vtr') /= 0) then
     call readVTR(grid,geomSize,origin,microstructureAt)

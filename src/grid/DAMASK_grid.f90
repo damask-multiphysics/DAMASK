@@ -99,7 +99,7 @@ program DAMASK_grid
 ! init DAMASK (all modules)
  
   call CPFEM_initAll 
-  print'(/,a)',   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(6)
+  print'(/,a)',   ' <<<+-  DAMASK_spectral init  -+>>>'; flush(OUTPUT_UNIT)
   
   print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
   print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
@@ -279,11 +279,11 @@ program DAMASK_grid
       endif
       do i = 1, 3; do j = 1, 3
         if(newLoadCase%deformation%maskLogical(i,j)) then
-          write(6,'(2x,f12.7)',advance='no') newLoadCase%deformation%values(i,j)
+          write(OUTPUT_UNIT,'(2x,f12.7)',advance='no') newLoadCase%deformation%values(i,j)
         else
-          write(6,'(2x,12a)',advance='no') '     *      '
+          write(OUTPUT_UNIT,'(2x,12a)',advance='no') '     *      '
           endif
-        enddo; write(6,'(/)',advance='no')
+        enddo; write(OUTPUT_UNIT,'(/)',advance='no')
       enddo
       if (any(newLoadCase%stress%maskLogical .eqv. &
               newLoadCase%deformation%maskLogical)) errorID = 831                                   ! exclusive or masking only
@@ -292,17 +292,17 @@ program DAMASK_grid
       print*, ' stress / GPa:'
       do i = 1, 3; do j = 1, 3
         if(newLoadCase%stress%maskLogical(i,j)) then
-          write(6,'(2x,f12.7)',advance='no') newLoadCase%stress%values(i,j)*1e-9_pReal
+          write(OUTPUT_UNIT,'(2x,f12.7)',advance='no') newLoadCase%stress%values(i,j)*1e-9_pReal
         else
-          write(6,'(2x,12a)',advance='no') '     *      '
+          write(OUTPUT_UNIT,'(2x,12a)',advance='no') '     *      '
         endif
-        enddo; write(6,'(/)',advance='no')
+        enddo; write(OUTPUT_UNIT,'(/)',advance='no')
       enddo
       if (any(abs(matmul(newLoadCase%rot%asMatrix(), &
                          transpose(newLoadCase%rot%asMatrix()))-math_I3) > &
                  reshape(spread(tol_math_check,1,9),[ 3,3]))) errorID = 846                         ! given rotation matrix contains strain
       if (any(dNeq(newLoadCase%rot%asMatrix(), math_I3))) &
-        write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
+        write(OUTPUT_UNIT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
                  transpose(newLoadCase%rot%asMatrix())
       if (newLoadCase%time < 0.0_pReal) errorID = 834                                               ! negative time increment
       print'(a,f0.3)', ' time: ', newLoadCase%time
@@ -342,7 +342,7 @@ program DAMASK_grid
       open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
       write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
       if (debug_grid%contains('basic')) print'(/,a)', ' header of statistics file written out'
-      flush(6)
+      flush(OUTPUT_UNIT)
     else writeHeader
       open(newunit=statUnit,file=trim(getSolverJobName())//&
                                   '.sta',form='FORMATTED', position='APPEND', status='OLD')
@@ -405,7 +405,7 @@ program DAMASK_grid
           write(incInfo,'(4(a,i0))') &
                   'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                   '-', stepFraction,'/',subStepFactor**cutBackLevel
-          flush(6)
+          flush(OUTPUT_UNIT)
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
@@ -489,11 +489,11 @@ program DAMASK_grid
           print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' converged'
         else
           print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
-        endif; flush(6)
+        endif; flush(OUTPUT_UNIT)
   
         if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                          ! at output frequency
           print'(1/,a)', ' ... writing results to file ......................................'
-          flush(6)
+          flush(OUTPUT_UNIT)
           call CPFEM_results(totalIncsCounter,time)
         endif
         if (mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0) then
