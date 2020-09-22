@@ -394,13 +394,13 @@ module lattice
 ! SHOULD NOT BE PART OF LATTICE BEGIN
   real(pReal),                        dimension(:),     allocatable, public, protected :: &
     lattice_mu, lattice_nu, &
-    lattice_damageMobility, &
-    lattice_massDensity, &
-    lattice_specificHeat
+    lattice_M, &
+    lattice_rho, &
+    lattice_c_p
    real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
     lattice_C66, &
-    lattice_thermalConductivity, &
-    lattice_damageDiffusion
+    lattice_K, &
+    lattice_D
  integer(kind(lattice_UNDEFINED_ID)), dimension(:),     allocatable, public, protected :: &
     lattice_structure
 ! SHOULD NOT BE PART OF LATTICE END
@@ -465,11 +465,11 @@ subroutine lattice_init
   allocate(lattice_structure(Nphases),source = lattice_UNDEFINED_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
 
-  allocate(lattice_thermalConductivity  (3,3,Nphases), source=0.0_pReal)
-  allocate(lattice_damageDiffusion      (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_K  (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_D  (3,3,Nphases), source=0.0_pReal)
 
-  allocate(lattice_damageMobility,&
-           lattice_massDensity,lattice_specificHeat, &
+  allocate(lattice_M,&
+           lattice_rho,lattice_c_p, &
            lattice_mu, lattice_nu,&
            source=[(0.0_pReal,i=1,Nphases)])
 
@@ -517,22 +517,22 @@ subroutine lattice_init
 
 
     ! SHOULD NOT BE PART OF LATTICE BEGIN
-    lattice_thermalConductivity(1,1,p) = phase%get_asFloat('K_11',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(2,2,p) = phase%get_asFloat('K_22',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(3,3,p) = phase%get_asFloat('K_33',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_thermalConductivity(1:3,1:3,p), &
-                                                                                 phase%get_asString('lattice'))
+    lattice_K(1,1,p) = phase%get_asFloat('K_11',defaultVal=0.0_pReal)
+    lattice_K(2,2,p) = phase%get_asFloat('K_22',defaultVal=0.0_pReal)
+    lattice_K(3,3,p) = phase%get_asFloat('K_33',defaultVal=0.0_pReal)
+    lattice_K(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_K(1:3,1:3,p), &
+                                                          phase%get_asString('lattice'))
 
-    lattice_specificHeat(p) = phase%get_asFloat('c_p',defaultVal=0.0_pReal)
-    lattice_massDensity(p)  = phase%get_asFloat('rho', defaultVal=0.0_pReal)
+    lattice_c_p(p) = phase%get_asFloat('c_p', defaultVal=0.0_pReal)
+    lattice_rho(p) = phase%get_asFloat('rho', defaultVal=0.0_pReal)
 
-    lattice_DamageDiffusion(1,1,p) = phase%get_asFloat('D_11',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(2,2,p) = phase%get_asFloat('D_22',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(3,3,p) = phase%get_asFloat('D_33',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_DamageDiffusion(1:3,1:3,p), &
-                                                                     phase%get_asString('lattice'))
+    lattice_D(1,1,p) = phase%get_asFloat('D_11',defaultVal=0.0_pReal)
+    lattice_D(2,2,p) = phase%get_asFloat('D_22',defaultVal=0.0_pReal)
+    lattice_D(3,3,p) = phase%get_asFloat('D_33',defaultVal=0.0_pReal)
+    lattice_D(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_D(1:3,1:3,p), &
+                                                          phase%get_asString('lattice'))
 
-    lattice_DamageMobility(p) = phase%get_asFloat('M',defaultVal=0.0_pReal)
+    lattice_M(p) = phase%get_asFloat('M',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
 
     call selfTest
