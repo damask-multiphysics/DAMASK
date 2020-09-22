@@ -1,7 +1,5 @@
-import sys
 import copy
-import multiprocessing
-from io import StringIO
+import multiprocessing as mp
 from functools import partial
 
 import numpy as np
@@ -284,7 +282,7 @@ class Geom:
 
 
     @staticmethod
-    def from_file(fname):
+    def load_ASCII(fname):
         """
         Read a geom file.
 
@@ -350,7 +348,7 @@ class Geom:
 
 
     @staticmethod
-    def from_vtr(fname):
+    def load(fname):
         """
         Read a VTK rectilinear grid.
 
@@ -361,7 +359,7 @@ class Geom:
             Valid extension is .vtr, it will be appended if not given.
 
         """
-        v = VTK.from_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+        v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
         comments = v.get_comments()
         grid = np.array(v.vtk_data.GetDimensions())-1
         bbox = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
@@ -404,7 +402,7 @@ class Geom:
             seeds_p   = seeds
             coords    = grid_filters.cell_coord0(grid,size).reshape(-1,3)
 
-        pool = multiprocessing.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
+        pool = mp.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
@@ -447,130 +445,101 @@ class Geom:
                    )
 
 
-    def to_file(self,fname,format='vtr',pack=None):
+    def save_ASCII(self,fname,compress=None):
         """
         Writes a geom file.
 
         Parameters
         ----------
         fname : str or file handle
-            Geometry file to write.
-        format : {'vtr', 'ASCII'}, optional
-            File format, defaults to 'vtr'. Available formats are:
-            - vtr: VTK rectilinear grid file, extension '.vtr'.
-            - ASCII: Plain text file, extension '.geom'.
-        pack : bool, optional
-            Compress ASCII geometry with 'x of y' and 'a to b'.
+            Geometry file to write with extension '.geom'.
+        compress : bool, optional
+            Compress geometry with 'x of y' and 'a to b'.
 
         """
-        def _to_ASCII(geom,fname,pack=None):
-            """
-            Writes a geom file.
+        header =  [f'{len(self.comments)+4} header'] + self.comments
+        header.append('grid   a {} b {} c {}'.format(*self.get_grid()))
+        header.append('size   x {} y {} z {}'.format(*self.get_size()))
+        header.append('origin x {} y {} z {}'.format(*self.get_origin()))
+        header.append(f'homogenization {self.get_homogenization()}')
 
-            Parameters
-            ----------
-            geom : Geom object
-                Geometry to write.
-            fname : str or file handle
-                Geometry file to write.
-            pack : bool, optional
-                Compress geometry with 'x of y' and 'a to b'.
+        grid = self.get_grid()
 
-            """
-            header =  [f'{len(geom.comments)+4} header'] + geom.comments
-            header.append('grid   a {} b {} c {}'.format(*geom.get_grid()))
-            header.append('size   x {} y {} z {}'.format(*geom.get_size()))
-            header.append('origin x {} y {} z {}'.format(*geom.get_origin()))
-            header.append(f'homogenization {geom.get_homogenization()}')
-
-            grid = geom.get_grid()
-
-            if pack is None:
-                plain = grid.prod()/geom.N_microstructure < 250
-            else:
-                plain = not pack
-
-            if plain:
-                format_string = '%g' if geom.microstructure.dtype in np.sctypes['float'] else \
-                                '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(geom.microstructure)))))
-                np.savetxt(fname,
-                           geom.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
-                           header='\n'.join(header), fmt=format_string, comments='')
-            else:
-                try:
-                    f = open(fname,'w')
-                except TypeError:
-                    f = fname
-
-                compressType = None
-                former = start = -1
-                reps = 0
-                for current in geom.microstructure.flatten('F'):
-                    if abs(current - former) == 1 and (start - current) == reps*(former - current):
-                        compressType = 'to'
-                        reps += 1
-                    elif current == former and start == former:
-                        compressType = 'of'
-                        reps += 1
-                    else:
-                        if   compressType is None:
-                            f.write('\n'.join(header)+'\n')
-                        elif compressType == '.':
-                            f.write(f'{former}\n')
-                        elif compressType == 'to':
-                            f.write(f'{start} to {former}\n')
-                        elif compressType == 'of':
-                            f.write(f'{reps} of {former}\n')
-
-                        compressType = '.'
-                        start = current
-                        reps = 1
-
-                    former = current
-
-                if compressType == '.':
-                    f.write(f'{former}\n')
-                elif compressType == 'to':
-                    f.write(f'{start} to {former}\n')
-                elif compressType == 'of':
-                    f.write(f'{reps} of {former}\n')
-
-
-        def _to_vtr(geom,fname=None):
-            """
-            Generates vtk rectilinear grid.
-
-            Parameters
-            ----------
-            geom : Geom object
-                Geometry to write.
-            fname : str, optional
-                Filename to write. If no file is given, a string is returned.
-                Valid extension is .vtr, it will be appended if not given.
-
-            """
-            v = VTK.from_rectilinearGrid(geom.grid,geom.size,geom.origin)
-            v.add(geom.microstructure.flatten(order='F'),'materialpoint')
-            v.add_comments(geom.comments)
-
-            if fname:
-                v.to_file(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
-            else:
-                sys.stdout.write(v.__repr__())
-
-        if format.lower() == 'ascii':
-            return _to_ASCII(self,fname,pack)
-        elif format.lower() == 'vtr':
-            return _to_vtr(self,fname)
+        if compress is None:
+            plain = grid.prod()/self.N_microstructure < 250
         else:
-            raise TypeError(f'Unknown format {format}.')
+            plain = not compress
 
-    def as_ASCII(self,pack=False):
-        """Format geometry as human-readable ASCII."""
-        f = StringIO()
-        self.to_file(f,'ASCII',pack)
-        f.seek(0)
-        return ''.join(f.readlines())
+        if plain:
+            format_string = '%g' if self.microstructure.dtype in np.sctypes['float'] else \
+                            '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.microstructure)))))
+            np.savetxt(fname,
+                       self.microstructure.reshape([grid[0],np.prod(grid[1:])],order='F').T,
+                       header='\n'.join(header), fmt=format_string, comments='')
+        else:
+            try:
+                f = open(fname,'w')
+            except TypeError:
+                f = fname
+
+            compressType = None
+            former = start = -1
+            reps = 0
+            for current in self.microstructure.flatten('F'):
+                if abs(current - former) == 1 and (start - current) == reps*(former - current):
+                    compressType = 'to'
+                    reps += 1
+                elif current == former and start == former:
+                    compressType = 'of'
+                    reps += 1
+                else:
+                    if   compressType is None:
+                        f.write('\n'.join(header)+'\n')
+                    elif compressType == '.':
+                        f.write(f'{former}\n')
+                    elif compressType == 'to':
+                        f.write(f'{start} to {former}\n')
+                    elif compressType == 'of':
+                        f.write(f'{reps} of {former}\n')
+
+                    compressType = '.'
+                    start = current
+                    reps = 1
+
+                former = current
+
+            if compressType == '.':
+                f.write(f'{former}\n')
+            elif compressType == 'to':
+                f.write(f'{start} to {former}\n')
+            elif compressType == 'of':
+                f.write(f'{reps} of {former}\n')
+
+
+    def save(self,fname,compress=True):
+        """
+        Generates vtk rectilinear grid.
+
+        Parameters
+        ----------
+        fname : str, optional
+            Filename to write. If no file is given, a string is returned.
+            Valid extension is .vtr, it will be appended if not given.
+        compress : bool, optional
+            Compress with zlib algorithm. Defaults to True.
+
+        """
+        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+        v.add(self.microstructure.flatten(order='F'),'materialpoint')
+        v.add_comments(self.comments)
+
+        v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr',parallel=False,compress=compress)
+
+
+    def show(self):
+        """Show on screen."""
+        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+        v.show()
 
 
     def add_primitive(self,dimension,center,exponent,

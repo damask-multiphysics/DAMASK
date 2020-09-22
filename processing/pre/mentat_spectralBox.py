@@ -42,7 +42,7 @@ def output(cmds,locals,dest):
       else:
         outFile(str(cmd),locals,dest)
 
-  
+
 #-------------------------------------------------------------------------------------------------
 def init():
   return [
@@ -114,7 +114,7 @@ def material():
   "*add_geometry_elements",
   "all_existing",
   ]
-  
+
 
 #-------------------------------------------------------------------------------------------------
 def geometry():
@@ -127,14 +127,14 @@ def geometry():
   "*element_type 7",
   "all_existing",
   ]
-  
+
 
 #-------------------------------------------------------------------------------------------------
 def initial_conditions(microstructures):
   elements = []
   element = 0
   for id in microstructures:
-    element += 1 
+    element += 1
     if len(elements) < id:
       for i in range(id-len(elements)):
         elements.append([])
@@ -195,8 +195,8 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
     damask.util.report(scriptName,name)
-    
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+
+    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     microstructure = geom.get_microstructure().flatten(order='F')
 
     cmds = [\
@@ -210,7 +210,7 @@ for name in filenames:
       '*redraw',
       '*draw_automatic',
     ]
-    
+
     outputLocals = {}
     if options.port:
         py_mentat.py_connect('',options.port)

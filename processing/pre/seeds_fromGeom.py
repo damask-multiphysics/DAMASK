@@ -46,7 +46,7 @@ options.blacklist = [int(i) for i in options.blacklist]
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
     microstructure = geom.get_microstructure().reshape((-1,1),order='F')
 
     mask = np.logical_and(np.in1d(microstructure,options.whitelist,invert=False) if options.whitelist else \
@@ -63,6 +63,6 @@ for name in filenames:
                 'origin\tx {}\ty {}\tz {}'.format(*geom.origin),
                 'homogenization\t{}'.format(geom.homogenization)]
 
-    table = damask.Table(seeds[mask],{'pos':(3,)},comments)
-    table = table.add('microstructure',microstructure[mask])
-    table.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds')
+    damask.Table(seeds[mask],{'pos':(3,)},comments)\
+          .add('microstructure',microstructure[mask].astype(int))\
+          .save(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds',legacy=True)

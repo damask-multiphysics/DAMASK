@@ -31,7 +31,7 @@ def binAsBins(bin,intervals):
   bins[1] = (bin//intervals[2]) % intervals[1]
   bins[2] = bin % intervals[2]
   return bins
-  
+
 def binsAsBin(bins,intervals):
   """Implode 3D bins into compound bin."""
   return (bins[0]*intervals[1] + bins[1])*intervals[2] + bins[2]
@@ -95,7 +95,7 @@ def directInversion (ODF,nSamples):
                                                                                         float(nInvSamples)/nOptSamples-1.0,
                                                                                         scale,nSamples))
   repetition = [None]*ODF['nBins']                                                                  # preallocate and clear
-    
+
   for bin in range(ODF['nBins']):                                                                   # loop over bins
     repetition[bin] = int(round(ODF['dV_V'][bin]*scale))                                            # calc repetition
 
@@ -105,7 +105,7 @@ def directInversion (ODF,nSamples):
   for bin in range(ODF['nBins']):
     set[i:i+repetition[bin]] = [bin]*repetition[bin]                                                # fill set with bin, i.e. orientation
     i += repetition[bin]                                                                            # advance set counter
-  
+
   orientations     = np.zeros((nSamples,3),'f')
   reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
@@ -117,7 +117,7 @@ def directInversion (ODF,nSamples):
     orientations[j] = np.degrees(Eulers)
     reconstructedODF[bin] += unitInc
     set[ex] = set[j]                                                                                # exchange orientations
-  
+
   return orientations, reconstructedODF
 
 
@@ -130,7 +130,7 @@ def MonteCarloEulers (ODF,nSamples):
   orientations     = np.zeros((nSamples,3),'f')
   reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
-  
+
   for j in range(nSamples):
     MC = maxdV_V*2.0
     bin = 0
@@ -153,7 +153,7 @@ def MonteCarloBins (ODF,nSamples):
   orientations     = np.zeros((nSamples,3),'f')
   reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
-  
+
   for j in range(nSamples):
     MC = maxdV_V*2.0
     bin = 0
@@ -173,14 +173,14 @@ def TothVanHoutteSTAT (ODF,nSamples):
   orientations     = np.zeros((nSamples,3),'f')
   reconstructedODF = np.zeros(ODF['nBins'],'f')
   unitInc = 1.0/nSamples
-  
+
   selectors = [random.random() for i in range(nSamples)]
   selectors.sort()
   indexSelector = 0
-  
+
   cumdV_V = 0.0
   countSamples = 0
-  
+
   for bin in range(ODF['nBins']) :
     cumdV_V += ODF['dV_V'][bin]
     while indexSelector < nSamples and selectors[indexSelector] < cumdV_V:
@@ -191,7 +191,7 @@ def TothVanHoutteSTAT (ODF,nSamples):
       indexSelector += 1
 
   damask.util.croak('created set of %i when asked to deliver %i'%(countSamples,nSamples))
-  
+
   return orientations, reconstructedODF
 
 
@@ -233,8 +233,8 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   damask.util.report(scriptName,name)
-  
-  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+
+  table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   randomSeed = int(os.urandom(4).hex(),16)  if options.randomSeed is None else options.randomSeed  # random seed per file
   random.seed(randomSeed)
@@ -253,7 +253,7 @@ for name in filenames:
   if eulers.shape[0] != ODF['nBins']:
     damask.util.croak('expecting %i values but got %i'%(ODF['nBins'],eulers.shape[0]))
     continue
-  
+
 # ----- build binnedODF array and normalize ------------------------------------------------------
   sumdV_V = 0.0
   ODF['dV_V'] = [None]*ODF['nBins']
@@ -267,7 +267,7 @@ for name in filenames:
     if ODF['dV_V'][b] > 0.0:
       sumdV_V += ODF['dV_V'][b]
       ODF['nNonZero'] += 1
-  
+
   for b in range(ODF['nBins']):
     ODF['dV_V'][b] /= sumdV_V                                                            # normalize dV/V
 
@@ -277,19 +277,19 @@ for name in filenames:
                'Volume integral of ODF: %12.11f\n'%sumdV_V,
                'Reference Integral: %12.11f\n'%(ODF['limit'][0]*ODF['limit'][2]*(1-math.cos(ODF['limit'][1]))),
                ])
-                                                     
+
   Functions = {'IA': 'directInversion', 'STAT': 'TothVanHoutteSTAT', 'MC': 'MonteCarloBins'}
   method = Functions[options.algorithm]
 
   Orientations, ReconstructedODF = (globals()[method])(ODF,options.number)
-  
+
 # calculate accuracy of sample
   squaredDiff     = {'orig':0.0,method:0.0}
   squaredRelDiff  = {'orig':0.0,method:0.0}
   mutualProd      = {'orig':0.0,method:0.0}
   indivSum        = {'orig':0.0,method:0.0}
   indivSquaredSum = {'orig':0.0,method:0.0}
-  
+
   for bin in range(ODF['nBins']):
     squaredDiff[method] += (ODF['dV_V'][bin] - ReconstructedODF[bin])**2
     if ODF['dV_V'][bin] > 0.0:
@@ -299,7 +299,7 @@ for name in filenames:
     indivSquaredSum[method] += ReconstructedODF[bin]**2
   indivSum['orig'] += ODF['dV_V'][bin]
   indivSquaredSum['orig'] += ODF['dV_V'][bin]**2
-  
+
   damask.util.croak(['sqrt(N*)RMSD of ODFs:\t %12.11f'% math.sqrt(options.number*squaredDiff[method]),
                'RMSrD of ODFs:\t %12.11f'%math.sqrt(squaredRelDiff[method]),
                'rMSD of ODFs:\t %12.11f'%(squaredDiff[method]/indivSquaredSum['orig']),
@@ -311,10 +311,10 @@ for name in filenames:
                         (ODF['nNonZero']*math.sqrt((indivSquaredSum['orig']/ODF['nNonZero']-(indivSum['orig']/ODF['nNonZero'])**2)*\
                         (indivSquaredSum[method]/ODF['nNonZero']-(indivSum[method]/ODF['nNonZero'])**2)))),
               ])
-  
+
   if method == 'IA' and options.number < ODF['nNonZero']:
     strOpt = '(%i)'%ODF['nNonZero']
-  
+
   formatwidth = 1+int(math.log10(options.number))
 
   materialConfig = [
@@ -324,12 +324,12 @@ for name in filenames:
       '<microstructure>',
       '#-------------------#',
       ]
-  
+
   for i,ID in enumerate(range(options.number)):
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
                       '(constituent)   phase %i   texture %s   fraction 1.0'%(options.phase,str(ID+1).rjust(formatwidth)),
                      ]
-  
+
   materialConfig += [
       '#-------------------#',
       '<texture>',
@@ -338,12 +338,12 @@ for name in filenames:
 
   for ID in range(options.number):
     eulers = Orientations[ID]
-  
+
     materialConfig += ['[Grain%s]'%(str(ID+1).zfill(formatwidth)),
                      '(gauss)   phi1 {}   Phi {}   phi2 {}   scatter 0.0   fraction 1.0'.format(*eulers),
                      ]
 
-#--- output finalization -------------------------------------------------------------------------- 
+#--- output finalization --------------------------------------------------------------------------
 
   with (open(os.path.splitext(name)[0]+'_'+method+'_'+str(options.number)+'_material.config','w')) as outfile:
     outfile.write('\n'.join(materialConfig)+'\n')
