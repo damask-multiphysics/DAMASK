@@ -63,31 +63,24 @@ class TestGeom:
 
 
     def test_write_read_str(self,default,tmpdir):
-        default.to_file(str(tmpdir/'default.geom'),format='ASCII')
-        new = Geom.from_file(str(tmpdir/'default.geom'))
+        default.save_ASCII(str(tmpdir/'default.geom'))
+        new = Geom.load_ASCII(str(tmpdir/'default.geom'))
         assert geom_equal(default,new)
 
     def test_write_read_file(self,default,tmpdir):
         with open(tmpdir/'default.geom','w') as f:
-            default.to_file(f,format='ASCII',pack=True)
+            default.save_ASCII(f,compress=True)
         with open(tmpdir/'default.geom') as f:
-            new = Geom.from_file(f)
-        assert geom_equal(default,new)
-
-    def test_write_as_ASCII(self,default,tmpdir):
-        with open(tmpdir/'str.geom','w') as f:
-            f.write(default.as_ASCII())
-        with open(tmpdir/'str.geom') as f:
-            new = Geom.from_file(f)
+            new = Geom.load_ASCII(f)
         assert geom_equal(default,new)
 
     def test_read_write_vtr(self,default,tmpdir):
-        default.to_file(tmpdir/'default',format='vtr')
+        default.save(tmpdir/'default')
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'default.vtr'): break
 
-        new = Geom.from_vtr(tmpdir/'default.vtr')
+        new = Geom.load(tmpdir/'default.vtr')
         assert geom_equal(new,default)
 
     def test_invalid_geom(self,tmpdir):
@@ -95,22 +88,22 @@ class TestGeom:
             f.write('this is not a valid header')
         with open('invalid_file','r') as f:
             with pytest.raises(TypeError):
-                Geom.from_file(f)
+                Geom.load_ASCII(f)
 
     def test_invalid_vtr(self,tmpdir):
         v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
-        v.to_file(tmpdir/'no_materialpoint.vtr')
+        v.save(tmpdir/'no_materialpoint.vtr')
         for _ in range(10):
             time.sleep(.2)
             if os.path.exists(tmpdir/'no_materialpoint.vtr'): break
         with pytest.raises(ValueError):
-            Geom.from_vtr(tmpdir/'no_materialpoint.vtr')
+            Geom.load(tmpdir/'no_materialpoint.vtr')
 
 
-    @pytest.mark.parametrize('pack',[True,False])
-    def test_pack(self,default,tmpdir,pack):
-        default.to_file(tmpdir/'default.geom',format='ASCII',pack=pack)
-        new = Geom.from_file(tmpdir/'default.geom')
+    @pytest.mark.parametrize('compress',[True,False])
+    def test_compress(self,default,tmpdir,compress):
+        default.save_ASCII(tmpdir/'default.geom',compress=compress)
+        new = Geom.load_ASCII(tmpdir/'default.geom')
         assert geom_equal(new,default)
 
     def test_invalid_combination(self,default):
@@ -139,10 +132,6 @@ class TestGeom:
         with pytest.raises(TypeError):
             default.set_homogenization(homogenization=0)
 
-    def test_invalid_write_format(self,default):
-        with pytest.raises(TypeError):
-            default.to_file(format='invalid')
-
     @pytest.mark.parametrize('directions,reflect',[
                                                    (['x'],        False),
                                                    (['x','y','z'],True),
@@ -154,8 +143,8 @@ class TestGeom:
         modified = default.mirror(directions,reflect)
         tag = f'directions={"-".join(directions)}_reflect={reflect}'
         reference = reference_dir/f'mirror_{tag}.geom'
-        if update: modified.to_file(reference)
-        assert geom_equal(Geom.from_file(reference),
+        if update: modified.save_ASCII(reference)
+        assert geom_equal(Geom.load_ASCII(reference),
                           modified)
 
     @pytest.mark.parametrize('directions',[(1,2,'y'),('a','b','x'),[1]])
@@ -175,8 +164,8 @@ class TestGeom:
         modified = default.flip(directions)
         tag = f'directions={"-".join(directions)}'
         reference = reference_dir/f'flip_{tag}.geom'
-        if update: modified.to_file(reference)
-        assert geom_equal(Geom.from_file(reference),
+        if update: modified.save_ASCII(reference)
+        assert geom_equal(Geom.load_ASCII(reference),
                           modified)
 
     def test_flip_invariant(self,default):
@@ -199,11 +188,11 @@ class TestGeom:
         current = default.clean(stencil,selection,periodic)
         reference = reference_dir/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
         if update and stencil > 1:
-            current.to_file(reference,format='vtr')
+            current.save(reference)
             for _ in range(10):
                 time.sleep(.2)
                 if os.path.exists(reference.with_suffix('.vtr')): break
-        assert geom_equal(Geom.from_vtr(reference) if stencil > 1 else default,
+        assert geom_equal(Geom.load(reference) if stencil > 1 else default,
                           current
                          )
 
@@ -220,8 +209,8 @@ class TestGeom:
         modified = default.scale(grid)
         tag = f'grid={util.srepr(grid,"-")}'
         reference = reference_dir/f'scale_{tag}.geom'
-        if update: modified.to_file(reference)
-        assert geom_equal(Geom.from_file(reference),
+        if update: modified.save_ASCII(reference)
+        assert geom_equal(Geom.load_ASCII(reference),
                           modified)
 
     def test_renumber(self,default):
@@ -255,8 +244,8 @@ class TestGeom:
         modified = default.rotate(Rotation.from_Eulers(Eulers,degrees=True))
         tag = f'Eulers={util.srepr(Eulers,"-")}'
         reference = reference_dir/f'rotate_{tag}.geom'
-        if update: modified.to_file(reference)
-        assert geom_equal(Geom.from_file(reference),
+        if update: modified.save_ASCII(reference)
+        assert geom_equal(Geom.load_ASCII(reference),
                           modified)
 
     def test_canvas(self,default):

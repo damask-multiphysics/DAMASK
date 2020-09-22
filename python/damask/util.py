@@ -173,8 +173,9 @@ def scale_to_coprime(v):
     m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
     m = m//reduce(np.gcd,m)
 
-    if not np.allclose(v[v.nonzero()]/m[v.nonzero()],v[v.nonzero()][0]/m[m.nonzero()][0]):
-        raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
+    with np.errstate(divide='ignore'):
+        if not np.allclose(np.ma.masked_invalid(v/m),v[np.argmax(abs(v))]/m[np.argmax(abs(v))]):
+            raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
 
     return m
 

@@ -27,8 +27,11 @@ class Table:
         self.comments = [] if comments_ is None else [c for c in comments_]
         self.data = pd.DataFrame(data=data)
         self.shapes = { k:(v,) if isinstance(v,(np.int,int)) else v for k,v in shapes.items() }
-        self._label_condensed()
+        self._label_uniform()
 
+    def __repr__(self):
+        """Brief overview."""
+        return util.srepr(self.comments)+'\n'+self.data.__repr__()
 
     def __copy__(self):
         """Copy Table."""
@@ -39,7 +42,7 @@ class Table:
         return self.__copy__()
 
 
-    def _label_flat(self):
+    def _label_discrete(self):
         """Label data individually, e.g. v v v ==> 1_v 2_v 3_v."""
         labels = []
         for label,shape in self.shapes.items():
@@ -48,8 +51,8 @@ class Table:
         self.data.columns = labels
 
 
-    def _label_condensed(self):
-        """Label data condensed, e.g. 1_v 2_v 3_v ==> v v v."""
+    def _label_uniform(self):
+        """Label data uniformly, e.g. 1_v 2_v 3_v ==> v v v."""
         labels = []
         for label,shape in self.shapes.items():
             labels += [label] * int(np.prod(shape))
@@ -64,12 +67,15 @@ class Table:
 
 
     @staticmethod
-    def from_ASCII(fname):
+    def load(fname):
         """
-        Create table from ASCII file.
+        Load ASCII table file.
 
-        The first line can indicate the number of subsequent header lines as 'n header',
-        alternatively first line is the header and comments are marked by '#' ('new style').
+        In legacy style, the first line indicates the number of
+        subsequent header lines as "N header", with the last header line being
+        interpreted as column labels.
+        Alternatively, initial comments are marked by '#', with the first non-comment line
+        containing the column labels.
         Vector data column labels are indicated by '1_v, 2_v, ..., n_v'.
         Tensor data column labels are indicated by '3x3:1_T, 3x3:2_T, ..., 3x3:9_T'.
 
@@ -119,9 +125,9 @@ class Table:
         return Table(data,shapes,comments)
 
     @staticmethod
-    def from_ang(fname):
+    def load_ang(fname):
         """
-        Create table from TSL ang file.
+        Load ang file.
 
         A valid TSL ang file needs to contains the following columns:
         * Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.
@@ -289,9 +295,9 @@ class Table:
 
         """
         dup = self.copy()
-        dup._label_flat()
+        dup._label_discrete()
         dup.data.sort_values(labels,axis=0,inplace=True,ascending=ascending)
-        dup._label_condensed()
+        dup._label_uniform()
         dup.comments.append(f'sorted {"ascending" if ascending else "descending"} by {labels}')
         return dup
 
@@ -338,59 +344,38 @@ class Table:
             return dup
 
 
-    def to_file(self,fname,format='ASCII',new_style=False):
+    def save(self,fname,legacy=False):
         """
-        Store as plain text file.
+        Save as plain text file.
 
         Parameters
         ----------
         fname : file, str, or pathlib.Path
             Filename or file for writing.
-        format : {ASCII'}, optional
-            File format, defaults to 'ASCII'. Available formats are:
-            - ASCII: Plain text file, extension '.txt'.
-        new_style : Boolean, optional
-            Write table in new style, indicating header lines by comment sign ('#') only.
+        legacy : Boolean, optional
+            Write table in legacy style, indicating header lines by "N header"
+            in contrast to using comment sign ('#') at beginning of lines.
 
         """
-        def _to_ASCII(table,fname,new_style=False):
-            """
-            Store as plain text file.
+        seen = set()
+        labels = []
+        for l in [x for x in self.data.columns if not (x in seen or seen.add(x))]:
+            if self.shapes[l] == (1,):
+                labels.append(f'{l}')
+            elif len(self.shapes[l]) == 1:
+                labels += [f'{i+1}_{l}' \
+                          for i in range(self.shapes[l][0])]
+            else:
+                labels += [f'{util.srepr(self.shapes[l],"x")}:{i+1}_{l}' \
+                          for i in range(np.prod(self.shapes[l]))]
 
-            Parameters
-            ----------
-            table : Table object
-                Table to write.
-            fname : file, str, or pathlib.Path
-                Filename or file for writing.
-            new_style : Boolean, optional
-                Write table in new style, indicating header lines by comment sign ('#') only.
+        header = ([f'{len(self.comments)+1} header'] + self.comments) if legacy else \
+                  [f'# {comment}' for comment in self.comments]
 
-            """
-            seen = set()
-            labels = []
-            for l in [x for x in table.data.columns if not (x in seen or seen.add(x))]:
-                if table.shapes[l] == (1,):
-                    labels.append(f'{l}')
-                elif len(table.shapes[l]) == 1:
-                    labels += [f'{i+1}_{l}' \
-                              for i in range(table.shapes[l][0])]
-                else:
-                    labels += [f'{util.srepr(table.shapes[l],"x")}:{i+1}_{l}' \
-                              for i in range(np.prod(table.shapes[l]))]
+        try:
+            fhandle = open(fname,'w')
+        except TypeError:
+            fhandle = fname
 
-            header = [f'# {comment}' for comment in table.comments] if new_style else \
-                     [f'{len(table.comments)+1} header'] + table.comments
-
-            try:
-                f = open(fname,'w')
-            except TypeError:
-                f = fname
-
-            for line in header + [' '.join(labels)]: f.write(line+'\n')
-            table.data.to_csv(f,sep=' ',na_rep='nan',index=False,header=False)
-
-        if format.lower() == 'ascii':
-            return _to_ASCII(self,fname,new_style)
-        else:
-            raise TypeError(f'Unknown format {format}.')
+        for line in header + [' '.join(labels)]: fhandle.write(line+'\n')
+        self.data.to_csv(fhandle,sep=' ',na_rep='nan',index=False,header=False)

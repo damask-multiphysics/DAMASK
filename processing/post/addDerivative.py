@@ -14,9 +14,9 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 def derivative(coordinates,what):
-  
+
   result = np.empty_like(what)
-  
+
   # use differentiation by interpolation
   # as described in http://www2.math.umd.edu/~dlevy/classes/amsc466/lecture-notes/differentiation-chap.pdf
 
@@ -31,7 +31,7 @@ def derivative(coordinates,what):
                    (coordinates[0] - coordinates[1])
   result[-1,:]   = (what[-1,:] - what[-2,:]) / \
                    (coordinates[-1] - coordinates[-2])
-  
+
   return result
 
 
@@ -65,10 +65,10 @@ if options.labels is None:
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     for label in options.labels:
         table = table.add('d({})/d({})'.format(label,options.coordinates),
                           derivative(table.get(options.coordinates),table.get(label)),
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_file(sys.stdout if name is None else name)
+    table.save((sys.stdout if name is None else name), legacy=True)

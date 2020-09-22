@@ -32,22 +32,22 @@ class TestVTK:
         origin = np.random.random(3)
         v = VTK.from_rectilinearGrid(grid,size,origin)
         string = v.__repr__()
-        v.to_file(tmp_path/'rectilinearGrid',False)
-        vtr = VTK.from_file(tmp_path/'rectilinearGrid.vtr')
+        v.save(tmp_path/'rectilinearGrid',False)
+        vtr = VTK.load(tmp_path/'rectilinearGrid.vtr')
         with open(tmp_path/'rectilinearGrid.vtk','w') as f:
             f.write(string)
-        vtk = VTK.from_file(tmp_path/'rectilinearGrid.vtk','VTK_rectilinearGrid')
+        vtk = VTK.load(tmp_path/'rectilinearGrid.vtk','VTK_rectilinearGrid')
         assert(string == vtr.__repr__() == vtk.__repr__())
 
     def test_polyData(self,tmp_path):
         points = np.random.rand(100,3)
         v = VTK.from_polyData(points)
         string = v.__repr__()
-        v.to_file(tmp_path/'polyData',False)
-        vtp = VTK.from_file(tmp_path/'polyData.vtp')
+        v.save(tmp_path/'polyData',False)
+        vtp = VTK.load(tmp_path/'polyData.vtp')
         with open(tmp_path/'polyData.vtk','w') as f:
             f.write(string)
-        vtk = VTK.from_file(tmp_path/'polyData.vtk','polyData')
+        vtk = VTK.load(tmp_path/'polyData.vtk','polyData')
         assert(string == vtp.__repr__() == vtk.__repr__())
 
     @pytest.mark.parametrize('cell_type,n',[
@@ -62,11 +62,11 @@ class TestVTK:
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
         v = VTK.from_unstructuredGrid(nodes,connectivity,cell_type)
         string = v.__repr__()
-        v.to_file(tmp_path/'unstructuredGrid',False)
-        vtu = VTK.from_file(tmp_path/'unstructuredGrid.vtu')
+        v.save(tmp_path/'unstructuredGrid',False)
+        vtu = VTK.load(tmp_path/'unstructuredGrid.vtu')
         with open(tmp_path/'unstructuredGrid.vtk','w') as f:
             f.write(string)
-        vtk = VTK.from_file(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
+        vtk = VTK.load(tmp_path/'unstructuredGrid.vtk','unstructuredgrid')
         assert(string == vtu.__repr__() == vtk.__repr__())
 
 
@@ -75,8 +75,8 @@ class TestVTK:
         v = VTK.from_polyData(points)
         fname_s = tmp_path/'single.vtp'
         fname_p = tmp_path/'parallel.vtp'
-        v.to_file(fname_s,False)
-        v.to_file(fname_p,True)
+        v.save(fname_s,False)
+        v.save(fname_p,True)
         for i in range(10):
             if os.path.isfile(fname_p) and filecmp.cmp(fname_s,fname_p):
                 assert(True)
@@ -90,11 +90,11 @@ class TestVTK:
                                                   ('this_file_does_not_exist.vtx', None)])
     def test_invalid_dataset_type(self,name,dataset_type):
         with pytest.raises(TypeError):
-            VTK.from_file(name,dataset_type)
+            VTK.load(name,dataset_type)
 
     def test_invalid_extension_write(self,default):
         with pytest.raises(ValueError):
-            default.to_file('default.txt')
+            default.save('default.txt')
 
     def test_invalid_get(self,default):
         with pytest.raises(ValueError):
@@ -115,8 +115,8 @@ class TestVTK:
 
     def test_comments(self,tmp_path,default):
         default.add_comments(['this is a comment'])
-        default.to_file(tmp_path/'with_comments',parallel=False)
-        new = VTK.from_file(tmp_path/'with_comments.vtr')
+        default.save(tmp_path/'with_comments',parallel=False)
+        new = VTK.load(tmp_path/'with_comments.vtr')
         assert new.get_comments() == ['this is a comment']
 
     def test_compare_reference_polyData(self,update,reference_dir,tmp_path):
@@ -124,9 +124,9 @@ class TestVTK:
         polyData = VTK.from_polyData(points)
         polyData.add(points,'coordinates')
         if update:
-             polyData.to_file(reference_dir/'polyData')
+             polyData.save(reference_dir/'polyData')
         else:
-             reference = VTK.from_file(reference_dir/'polyData.vtp')
+             reference = VTK.load(reference_dir/'polyData.vtp')
              assert polyData.__repr__() == reference.__repr__() and \
                     np.allclose(polyData.get('coordinates'),points)
 
@@ -139,8 +139,8 @@ class TestVTK:
         rectilinearGrid.add(c,'cell')
         rectilinearGrid.add(n,'node')
         if update:
-             rectilinearGrid.to_file(reference_dir/'rectilinearGrid')
+             rectilinearGrid.save(reference_dir/'rectilinearGrid')
         else:
-             reference = VTK.from_file(reference_dir/'rectilinearGrid.vtr')
+             reference = VTK.load(reference_dir/'rectilinearGrid.vtr')
              assert rectilinearGrid.__repr__() == reference.__repr__() and \
                     np.allclose(rectilinearGrid.get('cell'),c)
