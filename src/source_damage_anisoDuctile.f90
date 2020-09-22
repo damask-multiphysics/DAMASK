@@ -12,9 +12,9 @@ submodule(constitutive:constitutive_damage)  source_damage_anisoDuctile
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      n                                                                                             !< damage rate sensitivity
+      q                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:), allocatable :: &
-      critPlasticStrain                                                                             !< critical plastic strain per slip system
+      gamma_crit                                                                                    !< critical plastic strain per slip system
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -67,12 +67,12 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
         associate(prm  => param(source_damage_anisoDuctile_instance(p)))
         src => sources%get(sourceOffset) 
 
-        N_sl = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
-        prm%n                 = src%get_asFloat('q')
-        prm%critPlasticStrain = src%get_asFloats('gamma_crit',requiredSize=size(N_sl))
+        N_sl           = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+        prm%q          = src%get_asFloat('q')
+        prm%gamma_crit = src%get_asFloats('gamma_crit',requiredSize=size(N_sl))
 
         ! expand: family => system
-        prm%critPlasticStrain = math_expand(prm%critPlasticStrain,N_sl)
+        prm%gamma_crit = math_expand(prm%gamma_crit,N_sl)
 
 #if defined (__GFORTRAN__)
         prm%output = output_asStrings(src)
@@ -81,8 +81,8 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
 #endif
  
         ! sanity checks
-        if (prm%n                     <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
-        if (any(prm%critPlasticStrain <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
+        if (prm%q              <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
+        if (any(prm%gamma_crit <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
 
         NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
@@ -127,7 +127,7 @@ module subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
 
   associate(prm => param(source_damage_anisoDuctile_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    = sum(plasticState(phase)%slipRate(:,constituent)/(damage(homog)%p(damageOffset)**prm%n)/prm%critPlasticStrain)
+    = sum(plasticState(phase)%slipRate(:,constituent)/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit)
   end associate
 
 end subroutine source_damage_anisoDuctile_dotState

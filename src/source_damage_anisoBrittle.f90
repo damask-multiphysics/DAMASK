@@ -12,11 +12,11 @@ submodule (constitutive:constitutive_damage) source_damage_anisoBrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      sdot_0, &                                                                                     !< opening rate of cleavage planes
-      n                                                                                             !< damage rate sensitivity
+      dot_o, &                                                                                      !< opening rate of cleavage planes
+      q                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:), allocatable :: &
-      critDisp, &                                                                                   !< critical displacement 
-      critLoad                                                                                      !< critical load
+      s_crit, &                                                                                     !< critical displacement 
+      g_crit                                                                                        !< critical load
     real(pReal), dimension(:,:,:,:), allocatable :: &
       cleavage_systems
     integer :: &
@@ -75,18 +75,18 @@ module function source_damage_anisoBrittle_init(source_length) result(mySources)
         N_cl = src%get_asInts('N_cl',defaultVal=emptyIntArray)
         prm%sum_N_cl = sum(abs(N_cl))
   
-        prm%n         = src%get_asFloat('q')
-        prm%sdot_0    = src%get_asFloat('dot_o')
+        prm%q       = src%get_asFloat('q')
+        prm%dot_o   = src%get_asFloat('dot_o')
   
-        prm%critDisp  = src%get_asFloats('s_crit',  requiredSize=size(N_cl))
-        prm%critLoad  = src%get_asFloats('g_crit',  requiredSize=size(N_cl))
+        prm%s_crit  = src%get_asFloats('s_crit',  requiredSize=size(N_cl))
+        prm%g_crit  = src%get_asFloats('g_crit',  requiredSize=size(N_cl))
   
         prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
                                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
   
         ! expand: family => system
-        prm%critDisp = math_expand(prm%critDisp,N_cl)
-        prm%critLoad = math_expand(prm%critLoad,N_cl)
+        prm%s_crit = math_expand(prm%s_crit,N_cl)
+        prm%g_crit = math_expand(prm%g_crit,N_cl)
 
 #if defined (__GFORTRAN__)
         prm%output = output_asStrings(src)
@@ -95,10 +95,10 @@ module function source_damage_anisoBrittle_init(source_length) result(mySources)
 #endif
  
           ! sanity checks
-        if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
-        if (prm%sdot_0       <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
-        if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
-        if (any(prm%critDisp <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
+        if (prm%q          <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
+        if (prm%dot_o      <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
+        if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
+        if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
         NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
@@ -152,14 +152,14 @@ module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
     traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
     traction_n    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-    traction_crit = prm%critLoad(i)*damage(homog)%p(damageOffset)**2.0_pReal
+    traction_crit = prm%g_crit(i)*damage(homog)%p(damageOffset)**2.0_pReal
 
     sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
     = sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    + prm%sdot_0 / prm%critDisp(i) &
-      * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%n + &
-         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%n + &
-         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%n)
+    + prm%dot_o / prm%s_crit(i) &
+      * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
+         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
+         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%q)
   enddo
   end associate
 

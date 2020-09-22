@@ -13,8 +13,8 @@ submodule(constitutive:constitutive_thermal) source_thermal_externalheat
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal), dimension(:), allocatable :: &
-      time, & 
-      heat_rate
+      t_n, & 
+      f_T
     integer :: &
      nIntervals
   end type tParameters
@@ -64,10 +64,10 @@ module function source_thermal_externalheat_init(source_length) result(mySources
         associate(prm  => param(source_thermal_externalheat_instance(p)))
         src => sources%get(sourceOffset) 
 
-        prm%time       = src%get_asFloats('t_n')
-        prm%nIntervals = size(prm%time) - 1
+        prm%t_n = src%get_asFloats('t_n')
+        prm%nIntervals = size(prm%t_n) - 1
 
-        prm%heat_rate = src%get_asFloats('f_T',requiredSize = size(prm%time))
+        prm%f_T = src%get_asFloats('f_T',requiredSize = size(prm%t_n))
 
         NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
@@ -121,13 +121,13 @@ module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_d
 
   associate(prm => param(source_thermal_externalheat_instance(phase)))
   do interval = 1, prm%nIntervals                                                                   ! scan through all rate segments
-    frac_time = (sourceState(phase)%p(sourceOffset)%state(1,of) - prm%time(interval)) &
-              / (prm%time(interval+1) - prm%time(interval))                                         ! fractional time within segment
+    frac_time = (sourceState(phase)%p(sourceOffset)%state(1,of) - prm%t_n(interval)) &
+              / (prm%t_n(interval+1) - prm%t_n(interval))                                           ! fractional time within segment
     if (     (frac_time <  0.0_pReal .and. interval == 1) &
         .or. (frac_time >= 1.0_pReal .and. interval == prm%nIntervals) &
         .or. (frac_time >= 0.0_pReal .and. frac_time < 1.0_pReal) ) &
-      TDot = prm%heat_rate(interval  ) * (1.0_pReal - frac_time) + &
-             prm%heat_rate(interval+1) * frac_time                                                  ! interpolate heat rate between segment boundaries...
+      TDot = prm%f_T(interval  ) * (1.0_pReal - frac_time) + &
+             prm%f_T(interval+1) * frac_time                                                        ! interpolate heat rate between segment boundaries...
                                                                                                     ! ...or extrapolate if outside of bounds
   enddo
   dTDot_dT = 0.0
