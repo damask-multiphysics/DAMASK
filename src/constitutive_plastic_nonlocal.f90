@@ -67,8 +67,8 @@ submodule(constitutive:constitutive_plastic) plastic_nonlocal
       Q_cl, &                                                                                       !< activation enthalpy for diffusion
       atol_rho, &                                                                                   !< absolute tolerance for dislocation density in state integration
       rho_significant, &                                                                            !< density considered significant
-      rho_num_significant, &                                                                        !< number of dislocations considered significant
-      w, &                                                                                          !< width of a doubkle kink in multiples of the burgers vector length b
+      rho_min, &                                                                                    !< number of dislocations considered significant
+      w, &                                                                                          !< width of a doubkle kink in multiples of the Burgers vector length b
       Q_sol, &                                                                                      !< activation energy for solid solution in J
       f_sol, &                                                                                      !< solid solution obstacle size in multiples of the burgers vector length
       c_sol, &                                                                                      !< concentration of solid solution in atomic parts
@@ -87,8 +87,8 @@ submodule(constitutive:constitutive_plastic) plastic_nonlocal
     real(pReal), dimension(:),      allocatable :: &
       d_ed, &                                                                                       !< minimum stable edge dipole height
       d_sc, &                                                                                       !< minimum stable screw dipole height
-      tau_peierls_ed, &
-      tau_peierls_sc, &
+      tau_Peierls_ed, &
+      tau_Peierls_sc, &
       i_sl, &                                                                                       !< mean free path prefactor for each
       b_sl                                                                                          !< absolute length of burgers vector [m]
     real(pReal), dimension(:,:),   allocatable :: &
@@ -244,7 +244,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(phase%get_asString('lattice')) == 'bcc') then
-        a = pl%get_asFloats('nonSchmid_coefficients',defaultVal = emptyRealArray)
+        a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
         prm%nonSchmid_neg  = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
@@ -300,16 +300,16 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%minDipoleHeight(:,1)  = prm%d_ed
       prm%minDipoleHeight(:,2)  = prm%d_sc
 
-      prm%tau_peierls_ed    = pl%get_asFloats('tau_peierls_ed', requiredSize=size(ini%N_sl))
-      prm%tau_peierls_sc    = pl%get_asFloats('tau_peierls_sc', requiredSize=size(ini%N_sl))
-      prm%tau_peierls_ed    = math_expand(prm%tau_peierls_ed,ini%N_sl)
-      prm%tau_peierls_sc    = math_expand(prm%tau_peierls_sc,ini%N_sl)
+      prm%tau_Peierls_ed    = pl%get_asFloats('tau_Peierls_ed', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_sc    = pl%get_asFloats('tau_Peierls_sc', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_ed    = math_expand(prm%tau_Peierls_ed,ini%N_sl)
+      prm%tau_Peierls_sc    = math_expand(prm%tau_Peierls_sc,ini%N_sl)
       allocate(prm%peierlsstress(prm%sum_N_sl,2))
-      prm%peierlsstress(:,1)    = prm%tau_peierls_ed
-      prm%peierlsstress(:,2)    = prm%tau_peierls_sc
+      prm%peierlsstress(:,1)    = prm%tau_Peierls_ed
+      prm%peierlsstress(:,2)    = prm%tau_Peierls_sc
 
       prm%rho_significant       = pl%get_asFloat('rho_significant')
-      prm%rho_num_significant   = pl%get_asFloat('rho_num_significant', 0.0_pReal)
+      prm%rho_min               = pl%get_asFloat('rho_min', 0.0_pReal)
       prm%f_c                   = pl%get_asFloat('f_c',defaultVal=2.0_pReal)
 
       prm%V_at                  = pl%get_asFloat('V_at')
@@ -363,7 +363,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (prm%D_0                 <   0.0_pReal)  extmsg = trim(extmsg)//' D_0'
       if (prm%V_at                <=  0.0_pReal)  extmsg = trim(extmsg)//' V_at'                   ! ToDo: in disloTungsten, the atomic volume is given as a factor
 
-      if (prm%rho_num_significant <   0.0_pReal)  extmsg = trim(extmsg)//' rho_num_significant'
+      if (prm%rho_min             <   0.0_pReal)  extmsg = trim(extmsg)//' rho_min'
       if (prm%rho_significant     <   0.0_pReal)  extmsg = trim(extmsg)//' rho_significant'
       if (prm%atol_rho            <   0.0_pReal)  extmsg = trim(extmsg)//' atol_rho'
       if (prm%f_c                 <   0.0_pReal)  extmsg = trim(extmsg)//' f_c'
@@ -1334,7 +1334,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
           neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,neighbor_instance),no),0.0_pReal)
         endforall
 
-        where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%rho_num_significant &
+        where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%rho_min &
           .or. neighbor_rhoSgl0 < prm%rho_significant) &
           neighbor_rhoSgl0 = 0.0_pReal
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
@@ -1805,7 +1805,7 @@ pure function getRho(instance,of,ip,el)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
 
-  where(abs(getRho) < max(prm%rho_num_significant/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
+  where(abs(getRho) < max(prm%rho_min/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
     getRho = 0.0_pReal
 
   end associate
@@ -1830,7 +1830,7 @@ pure function getRho0(instance,of,ip,el)
   getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
   getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
 
-  where(abs(getRho0) < max(prm%rho_num_significant/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
+  where(abs(getRho0) < max(prm%rho_min/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
     getRho0 = 0.0_pReal
 
   end associate

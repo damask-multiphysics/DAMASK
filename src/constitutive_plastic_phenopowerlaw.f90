@@ -120,7 +120,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(phase%get_asString('lattice') == 'bcc') then
-        a = pl%get_asFloats('nonSchmid_coefficients',defaultVal=emptyRealArray)
+        a = pl%get_asFloats('a_nonSchmid',defaultVal=emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,a,-1)
