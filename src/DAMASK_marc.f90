@@ -30,7 +30,7 @@
 module DAMASK_interface
   use prec
 #if __INTEL_COMPILER >= 1800
-  use, intrinsic :: iso_fortran_env, only: &
+  use, intrinsic :: ISO_fortran_env, only: &
     compiler_version, &
     compiler_options
 #endif
