@@ -70,7 +70,7 @@ submodule(constitutive:constitutive_plastic) plastic_nonlocal
       rho_min, &                                                                                    !< number of dislocations considered significant
       w, &                                                                                          !< width of a doubkle kink in multiples of the Burgers vector length b
       Q_sol, &                                                                                      !< activation energy for solid solution in J
-      f_sol, &                                                                                      !< solid solution obstacle size in multiples of the burgers vector length
+      f_sol, &                                                                                      !< solid solution obstacle size in multiples of the Burgers vector length
       c_sol, &                                                                                      !< concentration of solid solution in atomic parts
       p, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
       q, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
@@ -90,7 +90,7 @@ submodule(constitutive:constitutive_plastic) plastic_nonlocal
       tau_Peierls_ed, &
       tau_Peierls_sc, &
       i_sl, &                                                                                       !< mean free path prefactor for each
-      b_sl                                                                                          !< absolute length of burgers vector [m]
+      b_sl                                                                                          !< absolute length of Burgers vector [m]
     real(pReal), dimension(:,:),   allocatable :: &
       slip_normal, &
       slip_direction, &

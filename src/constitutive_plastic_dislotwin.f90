@@ -39,9 +39,9 @@ submodule(constitutive:constitutive_plastic) plastic_dislotwin
       i_tr                = 1.0_pReal, &                                                            !< adjustment parameter to calculate MFP for transformation
       h                   = 1.0_pReal                                                               !< Stack height of hex nucleus
     real(pReal),               allocatable, dimension(:) :: &
-      b_sl, &                                                                                       !< absolute length of burgers vector [m] for each slip system
-      b_tw, &                                                                                       !< absolute length of burgers vector [m] for each twin system
-      b_tr, &                                                                                       !< absolute length of burgers vector [m] for each transformation system
+      b_sl, &                                                                                       !< absolute length of Burgers vector [m] for each slip system
+      b_tw, &                                                                                       !< absolute length of Burgers vector [m] for each twin system
+      b_tr, &                                                                                       !< absolute length of Burgers vector [m] for each transformation system
       Q_s,&                                                                                         !< activation energy for glide [J] for each slip system
       v_0, &                                                                                        !< dislocation velocity prefactor [m/s] for each slip system
       dot_N_0_tw, &                                                                                 !< twin nucleation rate [1/m³s] for each twin system
@@ -654,7 +654,7 @@ module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
     Gamma, &                                                                                        !< stacking fault energy
     tau, &
     sigma_cl, &                                                                                     !< climb stress
-    b_d                                                                                             !< ratio of burgers vector to stacking fault width
+    b_d                                                                                             !< ratio of Burgers vector to stacking fault width
   real(pReal), dimension(param(instance)%sum_N_sl) :: &
     dot_rho_dip_formation, &
     dot_rho_dip_climb, &
@@ -805,20 +805,20 @@ module subroutine plastic_dislotwin_dependentState(T,instance,of)
   !* threshold stress for growing twin/martensite
   if(prm%sum_N_tw == prm%sum_N_sl) &
     dst%tau_hat_tw(:,of) = Gamma/(3.0_pReal*prm%b_tw) &
-                         + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip burgers here correct?
+                         + 3.0_pReal*prm%b_tw*prm%mu/(prm%L_tw*prm%b_sl) ! slip Burgers here correct?
   if(prm%sum_N_tr == prm%sum_N_sl) &
     dst%tau_hat_tr(:,of) = Gamma/(3.0_pReal*prm%b_tr) &
-                         + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip burgers here correct?
+                         + 3.0_pReal*prm%b_tr*prm%mu/(prm%L_tr*prm%b_sl) & ! slip Burgers here correct?
                          + prm%h*prm%delta_G/ (3.0_pReal*prm%b_tr)
 
   dst%V_tw(:,of) = (PI/4.0_pReal)*prm%t_tw*dst%Lambda_tw(:,of)**2.0_pReal
   dst%V_tr(:,of) = (PI/4.0_pReal)*prm%t_tr*dst%Lambda_tr(:,of)**2.0_pReal
 
 
-  x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the burgers vector for slip and is the same for twin and trans
+  x0 = prm%mu*prm%b_tw**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the Burgers vector for slip and is the same for twin and trans
   dst%tau_r_tw(:,of) = prm%mu*prm%b_tw/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tw)+cos(pi/3.0_pReal)/x0)
 
-  x0 = prm%mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the burgers vector for slip
+  x0 = prm%mu*prm%b_tr**2.0_pReal/(Gamma*8.0_pReal*PI)*(2.0_pReal+prm%nu)/(1.0_pReal-prm%nu)        ! ToDo: In the paper, this is the Burgers vector for slip
   dst%tau_r_tr(:,of) = prm%mu*prm%b_tr/(2.0_pReal*PI)*(1.0_pReal/(x0+prm%x_c_tr)+cos(pi/3.0_pReal)/x0)
 
   end associate
