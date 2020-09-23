@@ -11,8 +11,8 @@ from damask import util
 
 
 def geom_equal(a,b):
-    return np.all(a.materials == b.materials) and \
-           np.all(a.grid      == b.grid) and \
+    return np.all(a.material == b.material) and \
+           np.all(a.grid     == b.grid) and \
            np.allclose(a.size, b.size) and \
            str(a.diff(b)) == str(b.diff(a))
 
@@ -38,7 +38,7 @@ class TestGeom:
 
 
     def test_diff_not_equal(self,default):
-        new = Geom(default.materials[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
+        new = Geom(default.material[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
         assert str(default.diff(new)) != ''
 
 
@@ -93,28 +93,28 @@ class TestGeom:
 
     def test_invalid_size(self,default):
         with pytest.raises(ValueError):
-            Geom(default.materials[1:,1:,1:],
+            Geom(default.material[1:,1:,1:],
                  size=np.ones(2))
 
 
     def test_invalid_origin(self,default):
         with pytest.raises(ValueError):
-            Geom(default.materials[1:,1:,1:],
+            Geom(default.material[1:,1:,1:],
                  size=np.ones(3),
                  origin=np.ones(4))
 
 
     def test_invalid_materials_shape(self,default):
-        materials = np.ones((3,3))
+        material = np.ones((3,3))
         with pytest.raises(ValueError):
-            Geom(materials,
+            Geom(material,
                  size=np.ones(3))
 
 
     def test_invalid_materials_type(self,default):
-        materials = np.random.randint(1,300,(3,4,5))==1
+        material = np.random.randint(1,300,(3,4,5))==1
         with pytest.raises(TypeError):
-            Geom(materials)
+            Geom(material)
 
 
     @pytest.mark.parametrize('directions,reflect',[
@@ -205,10 +205,10 @@ class TestGeom:
 
 
     def test_renumber(self,default):
-        materials = default.materials.copy()
-        for m in np.unique(materials):
-            materials[materials==m] = materials.max() + np.random.randint(1,30)
-        modified = Geom(materials,
+        material = default.material.copy()
+        for m in np.unique(material):
+            material[material==m] = material.max() + np.random.randint(1,30)
+        modified = Geom(material,
                         default.size,
                         default.origin)
         assert not geom_equal(modified,default)
@@ -218,13 +218,13 @@ class TestGeom:
 
     def test_substitute(self,default):
         offset = np.random.randint(1,500)
-        modified = Geom(default.materials + offset,
+        modified = Geom(default.material + offset,
                         default.size,
                         default.origin)
         assert not geom_equal(modified,default)
         assert geom_equal(default,
-                          modified.substitute(np.arange(default.materials.max())+1+offset,
-                                              np.arange(default.materials.max())+1))
+                          modified.substitute(np.arange(default.material.max())+1+offset,
+                                              np.arange(default.material.max())+1))
 
 
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
@@ -251,7 +251,7 @@ class TestGeom:
         grid = default.grid
         grid_add = np.random.randint(0,30,(3))
         modified = default.canvas(grid + grid_add)
-        assert np.all(modified.materials[:grid[0],:grid[1],:grid[2]] == default.materials)
+        assert np.all(modified.material[:grid[0],:grid[1],:grid[2]] == default.material)
 
 
     @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random()*8),
@@ -271,7 +271,7 @@ class TestGeom:
         s = np.random.random(3)+.5
         G_1 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center1,exponent)
         G_2 = Geom(np.ones(g,'i'),s,o).add_primitive(diameter,center2,exponent)
-        assert np.count_nonzero(G_1.materials!=2) == np.count_nonzero(G_2.materials!=2)
+        assert np.count_nonzero(G_1.material!=2) == np.count_nonzero(G_2.material!=2)
 
 
     @pytest.mark.parametrize('center',[np.random.randint(4,10,(3)),
@@ -308,14 +308,14 @@ class TestGeom:
 
         geom = Geom(m,np.random.rand(3)).vicinity_offset(vicinity,offset,trigger=trigger)
 
-        assert np.all(m2==geom.materials)
+        assert np.all(m2==geom.material)
 
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_vicinity_offset_invariant(self,default,periodic):
-        offset = default.vicinity_offset(trigger=[default.materials.max()+1,
-                                                  default.materials.min()-1])
-        assert np.all(offset.materials==default.materials)
+        offset = default.vicinity_offset(trigger=[default.material.max()+1,
+                                                  default.material.min()-1])
+        assert np.all(offset.material==default.material)
 
 
     @pytest.mark.parametrize('periodic',[True,False])
@@ -338,7 +338,7 @@ class TestGeom:
         ms     = np.random.randint(1, N_seeds+1)
         weights[ms-1] = np.random.random()
         Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,np.random.random()>0.5)
-        assert np.all(Laguerre.materials == ms)
+        assert np.all(Laguerre.material == ms)
 
 
     @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
@@ -346,10 +346,10 @@ class TestGeom:
         grid  = np.random.randint(5,10,3)*2
         size  = grid.astype(np.float)
         seeds = np.vstack((size*np.array([0.5,0.25,0.5]),size*np.array([0.5,0.75,0.5])))
-        materials = np.ones(grid)
-        materials[:,grid[1]//2:,:] = 2
+        material = np.ones(grid)
+        material[:,grid[1]//2:,:] = 2
         if   approach == 'Laguerre':
             geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),np.random.random()>0.5)
         elif approach == 'Voronoi':
             geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            np.random.random()>0.5)
-        assert np.all(geom.materials == materials)
+        assert np.all(geom.material == material)

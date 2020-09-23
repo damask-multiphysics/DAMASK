@@ -76,7 +76,7 @@ for name in filenames:
                 g[2] = k + offset[2]
                 g %= geom.grid
                 seeds[n,0:3] = (g+0.5)/geom.grid                                                    # normalize coordinates to box
-                seeds[n,  3] = geom.materials[g[0],g[1],g[2]]
+                seeds[n,  3] = geom.material[g[0],g[1],g[2]]
                 if options.x: g[0] += 1
                 if options.y: g[1] += 1
                 n += 1

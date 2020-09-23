@@ -66,13 +66,13 @@ for name in filenames:
 
   grid_original = geom.grid
   damask.util.croak(geom)
-  materials = np.tile(geom.materials,np.where(grid_original == 1, 2,1))                   # make one copy along dimensions with grid == 1
-  grid = np.array(materials.shape)
+  material = np.tile(geom.material,np.where(grid_original == 1, 2,1))                   # make one copy along dimensions with grid == 1
+  grid = np.array(material.shape)
 
 # --- initialize support data ---------------------------------------------------------------------
 
 # store a copy of the initial material indices to find locations of immutable indices
-  materials_original = np.copy(materials)
+  material_original = np.copy(material)
 
   if not options.ndimage:
     X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
@@ -88,14 +88,14 @@ for name in filenames:
 
   for smoothIter in range(options.N):
 
-    interfaceEnergy = np.zeros(materials.shape,dtype=np.float32)
+    interfaceEnergy = np.zeros(material.shape,dtype=np.float32)
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
           # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
           interfaceEnergy = np.maximum(interfaceEnergy,
-                                       getInterfaceEnergy(materials,np.roll(np.roll(np.roll(
-                                                          materials,i,axis=0), j,axis=1), k,axis=2)))
+                                       getInterfaceEnergy(material,np.roll(np.roll(np.roll(
+                                                          material,i,axis=0), j,axis=1), k,axis=2)))
 
     # periodically extend interfacial energy array by half a grid size in positive and negative directions
     periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]//2:-grid[0]//2,
@@ -143,33 +143,33 @@ for name in filenames:
                                                       return_distances = False,
                                                       return_indices = True)                        # want index of closest bulk grain
 
-    periodic_materials = np.tile(materials,(3,3,3))[grid[0]//2:-grid[0]//2,
-                                                    grid[1]//2:-grid[1]//2,
-                                                    grid[2]//2:-grid[2]//2]                         # periodically extend the geometry
+    periodic_material = np.tile(material,(3,3,3))[grid[0]//2:-grid[0]//2,
+                                                  grid[1]//2:-grid[1]//2,
+                                                  grid[2]//2:-grid[2]//2]                           # periodically extend the geometry
 
-    materials = periodic_materials[index[0],
-                                   index[1],
-                                   index[2]].reshape(2*grid)[grid[0]//2:-grid[0]//2,
-                                                             grid[1]//2:-grid[1]//2,
-                                                             grid[2]//2:-grid[2]//2]                # extent grains into interface region
+    material = periodic_material[index[0],
+                                index[1],
+                                index[2]].reshape(2*grid)[grid[0]//2:-grid[0]//2,
+                                                          grid[1]//2:-grid[1]//2,
+                                                          grid[2]//2:-grid[2]//2]                   # extent grains into interface region
 
     # replace immutable materials with closest mutable ones
-    index = ndimage.morphology.distance_transform_edt(np.in1d(materials,options.immutable).reshape(grid),
+    index = ndimage.morphology.distance_transform_edt(np.in1d(material,options.immutable).reshape(grid),
                                                       return_distances = False,
                                                       return_indices = True)
-    materials = materials[index[0],
+    material = material[index[0],
                           index[1],
                           index[2]]
 
-    immutable = np.zeros(materials.shape, dtype=np.bool)
+    immutable = np.zeros(material.shape, dtype=np.bool)
     # find locations where immutable materials have been in original structure
     for micro in options.immutable:
-      immutable += materials_original == micro
+      immutable += material_original == micro
 
     # undo any changes involving immutable materials
-    materials = np.where(immutable, materials_original,materials)
+    material = np.where(immutable, material_original,material)
 
-  damask.Geom(materials = materials[0:grid_original[0],0:grid_original[1],0:grid_original[2]],
+  damask.Geom(material = material[0:grid_original[0],0:grid_original[1],0:grid_original[2]],
               size      = geom.size,
               origin    = geom.origin,
               comments  = geom.comments + [scriptID + ' ' + ' '.join(sys.argv[1:])],

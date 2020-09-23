@@ -101,8 +101,8 @@ class myThread (threading.Thread):
 
 #--- evaluate current seeds file ------------------------------------------------------------------
       perturbedGeom = damask.Geom.load_ASCII(perturbedGeomVFile)
-      myNmaterials = len(np.unique(perturbedGeom.materials))
-      currentData=np.bincount(perturbedGeom.materials.ravel())[1:]/points
+      myNmaterials = len(np.unique(perturbedGeom.material))
+      currentData = np.bincount(perturbedGeom.material.ravel())[1:]/points
       currentError=[]
       currentHist=[]
       for i in range(nMaterials):                                                             # calculate the deviation in all bins per histogram
@@ -217,8 +217,8 @@ points = np.array(options.grid).prod().astype('float')
 
 # ----------- calculate target distribution and bin edges
 targetGeom = damask.Geom.load_ASCII(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
-nMaterials = len(np.unique(targetGeom.materials))
-targetVolFrac = np.bincount(targetGeom.materials.flatten())/targetGeom.grid.prod().astype(np.float)
+nMaterials = len(np.unique(targetGeom.material))
+targetVolFrac = np.bincount(targetGeom.material.flatten())/targetGeom.grid.prod().astype(np.float)
 target = []
 for i in range(1,nMaterials+1):
   targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
@@ -244,10 +244,10 @@ initialGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
 initialGeomVFile.seek(0)
 initialGeom = damask.Geom.load_ASCII(initialGeomVFile)
 
-if len(np.unique(targetGeom.materials)) != nMaterials:
+if len(np.unique(targetGeom.material)) != nMaterials:
   damask.util.croak('error. Material count mismatch')
 
-initialData = np.bincount(initialGeom.materials.flatten())/points
+initialData = np.bincount(initialGeom.material.flatten())/points
 for i in range(nMaterials):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
@@ -263,7 +263,7 @@ for i in range(nMaterials):
 
 
 if options.maxseeds < 1:
-  maxSeeds = len(np.unique(initialGeom.materials))
+  maxSeeds = len(np.unique(initialGeom.material))
 else:
   maxSeeds = options.maxseeds
 
