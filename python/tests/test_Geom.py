@@ -324,8 +324,8 @@ class TestGeom:
         size   = np.random.random(3) + 1.0
         N_seeds= np.random.randint(10,30)
         seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
-        Voronoi  = Geom.from_Voronoi_tessellation( grid,size,seeds,                 periodic)
-        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),periodic)
+        Voronoi  = Geom.from_Voronoi_tessellation( grid,size,seeds,                 periodic=periodic)
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),periodic=periodic)
         assert geom_equal(Laguerre,Voronoi)
 
 
@@ -337,7 +337,7 @@ class TestGeom:
         weights= np.full((N_seeds),-np.inf)
         ms     = np.random.randint(1, N_seeds+1)
         weights[ms-1] = np.random.random()
-        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,np.random.random()>0.5)
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,periodic=np.random.random()>0.5)
         assert np.all(Laguerre.materials == ms)
 
 
@@ -349,7 +349,7 @@ class TestGeom:
         materials = np.ones(grid)
         materials[:,grid[1]//2:,:] = 2
         if   approach == 'Laguerre':
-            geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),np.random.random()>0.5)
+            geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),periodic=np.random.random()>0.5)
         elif approach == 'Voronoi':
-            geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            np.random.random()>0.5)
+            geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(geom.materials == materials)

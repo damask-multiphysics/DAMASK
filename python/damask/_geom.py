@@ -210,7 +210,7 @@ class Geom:
         return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
 
     @staticmethod
-    def from_Laguerre_tessellation(grid,size,seeds,weights,periodic=True):
+    def from_Laguerre_tessellation(grid,size,seeds,weights,materials=None,periodic=True):
         """
         Generate geometry from Laguerre tessellation.
 
@@ -224,6 +224,9 @@ class Geom:
             Position of the seed points in meter. All points need to lay within the box.
         weights : numpy.ndarray of shape (seeds.shape[0])
             Weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
+        materials : numpy.ndarray of shape (seeds.shape[0]), optional
+            Material ID of the seeds. Defaults to None, in which case materials are
+            consecutively numbered.
         periodic : Boolean, optional
             Perform a periodic tessellation. Defaults to True.
 
@@ -243,22 +246,27 @@ class Geom:
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
-        materials = np.array(result.get())
+        materials_ = np.array(result.get())
 
         if periodic:
-            materials = materials.reshape(grid*3)
-            materials = materials[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
+            materials_ = materials_.reshape(grid*3)
+            materials_ = materials_[grid[0]:grid[0]*2,grid[1]:grid[1]*2,grid[2]:grid[2]*2]%seeds.shape[0]
         else:
-            materials = materials.reshape(grid)
+            materials_ = materials_.reshape(grid)
 
-        return Geom(materials = materials+1,
+        geom = Geom(materials = materials_+1,
                     size      = size,
                     comments  = util.execution_stamp('Geom','from_Laguerre_tessellation'),
                    )
+        if materials is not None:
+            geom = geom.substitute(np.arange(seeds.shape[0])+1,materials)
+            geom.comments = geom.comments[:-1]
+
+        return geom
 
 
     @staticmethod
-    def from_Voronoi_tessellation(grid,size,seeds,periodic=True):
+    def from_Voronoi_tessellation(grid,size,seeds,materials=None,periodic=True):
         """
         Generate geometry from Voronoi tessellation.
 
@@ -270,18 +278,26 @@ class Geom:
             Physical size of the geometry in meter.
         seeds : numpy.ndarray of shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
+        materials : numpy.ndarray of shape (seeds.shape[0]), optional
+            Material ID of the seeds. Defaults to None, in which case materials are
+            consecutively numbered.
         periodic : Boolean, optional
             Perform a periodic tessellation. Defaults to True.
 
         """
         coords = grid_filters.cell_coord0(grid,size).reshape(-1,3)
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
-        devNull,materials = KDTree.query(coords)
+        devNull,materials_ = KDTree.query(coords)
 
-        return Geom(materials = materials.reshape(grid)+1,
+        geom = Geom(materials = materials_.reshape(grid)+1,
                     size      = size,
                     comments  = util.execution_stamp('Geom','from_Voronoi_tessellation'),
                    )
+        if materials is not None:
+            geom = geom.substitute(np.arange(seeds.shape[0])+1,materials)
+            geom.comments = geom.comments[:-1]
+
+        return geom
 
 
     def save_ASCII(self,fname,compress=None):
