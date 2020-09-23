@@ -76,7 +76,7 @@ for name in filenames:
                 g[2] = k + offset[2]
                 g %= geom.grid
                 seeds[n,0:3] = (g+0.5)/geom.grid                                                    # normalize coordinates to box
-                seeds[n,  3] = geom.microstructure[g[0],g[1],g[2]]
+                seeds[n,  3] = geom.materials[g[0],g[1],g[2]]
                 if options.x: g[0] += 1
                 if options.y: g[1] += 1
                 n += 1
@@ -88,9 +88,9 @@ for name in filenames:
                 'grid\ta {}\tb {}\tc {}'.format(*geom.grid),
                 'size\tx {}\ty {}\tz {}'.format(*geom.size),
                 'origin\tx {}\ty {}\tz {}'.format(*geom.origin),
-                'homogenization\t{}'.format(geom.homogenization)]
+               ]
 
-    table = damask.Table(seeds,{'pos':(3,),'microstructure':(1,)},comments)
-    table.set('microstructure',table.get('microstructure').astype(np.int))\
+    table = damask.Table(seeds,{'pos':(3,),'material':(1,)},comments)
+    table.set('material',table.get('material').astype(np.int))\
          .save(sys.stdout if name is None else \
                      os.path.splitext(name)[0]+f'_poked_{options.N}.seeds',legacy=True)

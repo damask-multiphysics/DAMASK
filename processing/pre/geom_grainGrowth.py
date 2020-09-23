@@ -41,7 +41,7 @@ parser.add_option('-N', '--iterations',
                   help = 'curvature flow iterations [%default]')
 parser.add_option('-i', '--immutable',
                   action = 'extend', dest = 'immutable', metavar = '<int LIST>',
-                  help = 'list of immutable microstructure indices')
+                  help = 'list of immutable material indices')
 parser.add_option('--ndimage',
                   dest = 'ndimage', action='store_true',
                   help = 'use ndimage.gaussian_filter in lieu of explicit FFT')
@@ -66,13 +66,13 @@ for name in filenames:
 
   grid_original = geom.grid
   damask.util.croak(geom)
-  microstructure = np.tile(geom.microstructure,np.where(grid_original == 1, 2,1))                   # make one copy along dimensions with grid == 1
-  grid = np.array(microstructure.shape)
+  materials = np.tile(geom.materials,np.where(grid_original == 1, 2,1))                   # make one copy along dimensions with grid == 1
+  grid = np.array(materials.shape)
 
 # --- initialize support data ---------------------------------------------------------------------
 
-# store a copy the initial microstructure to find locations of immutable indices
-  microstructure_original = np.copy(microstructure)
+# store a copy of the initial material indices to find locations of immutable indices
+  materials_original = np.copy(materials)
 
   if not options.ndimage:
     X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
@@ -88,14 +88,14 @@ for name in filenames:
 
   for smoothIter in range(options.N):
 
-    interfaceEnergy = np.zeros(microstructure.shape,dtype=np.float32)
+    interfaceEnergy = np.zeros(materials.shape,dtype=np.float32)
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
           # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
           interfaceEnergy = np.maximum(interfaceEnergy,
-                                       getInterfaceEnergy(microstructure,np.roll(np.roll(np.roll(
-                                                          microstructure,i,axis=0), j,axis=1), k,axis=2)))
+                                       getInterfaceEnergy(materials,np.roll(np.roll(np.roll(
+                                                          materials,i,axis=0), j,axis=1), k,axis=2)))
 
     # periodically extend interfacial energy array by half a grid size in positive and negative directions
     periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]//2:-grid[0]//2,
@@ -129,13 +129,13 @@ for name in filenames:
                                                             iterations = int(round(options.d*2.))-1),# fat boundary
                          periodic_bulkEnergy[grid[0]//2:-grid[0]//2,                                 # retain filled energy on fat boundary...
                                              grid[1]//2:-grid[1]//2,
-                                             grid[2]//2:-grid[2]//2],                                # ...and zero everywhere else
+                                             grid[2]//2:-grid[2]//2],                               # ...and zero everywhere else
                          0.)).astype(np.complex64) *
                          gauss).astype(np.float32)
 
       periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]//2:-grid[0]//2,
                                                                 grid[1]//2:-grid[1]//2,
-                                                                grid[2]//2:-grid[2]//2]              # periodically extend the smoothed bulk energy
+                                                                grid[2]//2:-grid[2]//2]             # periodically extend the smoothed bulk energy
 
 
     # transform voxels close to interface region
@@ -143,33 +143,35 @@ for name in filenames:
                                                       return_distances = False,
                                                       return_indices = True)                        # want index of closest bulk grain
 
-    periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]//2:-grid[0]//2,
-                                                              grid[1]//2:-grid[1]//2,
-                                                              grid[2]//2:-grid[2]//2]                # periodically extend the microstructure
+    periodic_materials = np.tile(materials,(3,3,3))[grid[0]//2:-grid[0]//2,
+                                                    grid[1]//2:-grid[1]//2,
+                                                    grid[2]//2:-grid[2]//2]                         # periodically extend the geometry
 
-    microstructure = periodic_microstructure[index[0],
-                                             index[1],
-                                             index[2]].reshape(2*grid)[grid[0]//2:-grid[0]//2,
-                                                                       grid[1]//2:-grid[1]//2,
-                                                                       grid[2]//2:-grid[2]//2]       # extent grains into interface region
+    materials = periodic_materials[index[0],
+                                   index[1],
+                                   index[2]].reshape(2*grid)[grid[0]//2:-grid[0]//2,
+                                                             grid[1]//2:-grid[1]//2,
+                                                             grid[2]//2:-grid[2]//2]                # extent grains into interface region
 
-    # replace immutable microstructures with closest mutable ones
-    index = ndimage.morphology.distance_transform_edt(np.in1d(microstructure,options.immutable).reshape(grid),
+    # replace immutable materials with closest mutable ones
+    index = ndimage.morphology.distance_transform_edt(np.in1d(materials,options.immutable).reshape(grid),
                                                       return_distances = False,
                                                       return_indices = True)
-    microstructure = microstructure[index[0],
-                                    index[1],
-                                    index[2]]
+    materials = materials[index[0],
+                          index[1],
+                          index[2]]
 
-    immutable = np.zeros(microstructure.shape, dtype=np.bool)
-    # find locations where immutable microstructures have been in original structure
+    immutable = np.zeros(materials.shape, dtype=np.bool)
+    # find locations where immutable materials have been in original structure
     for micro in options.immutable:
-      immutable += microstructure_original == micro
+      immutable += materials_original == micro
 
-    # undo any changes involving immutable microstructures
-    microstructure = np.where(immutable, microstructure_original,microstructure)
+    # undo any changes involving immutable materials
+    materials = np.where(immutable, materials_original,materials)
 
-  geom = geom.duplicate(microstructure[0:grid_original[0],0:grid_original[1],0:grid_original[2]])
-  geom.add_comments(scriptID + ' ' + ' '.join(sys.argv[1:]))
-
-  geom.save_ASCII(sys.stdout if name is None else name,compress=False)
+  damask.Geom(materials = materials[0:grid_original[0],0:grid_original[1],0:grid_original[2]],
+              size      = geom.size,
+              origin    = geom.origin,
+              comments  = geom.comments + [scriptID + ' ' + ' '.join(sys.argv[1:])],
+             )\
+        .save_ASCII(sys.stdout if name is None else name,compress=False)

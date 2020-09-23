@@ -61,7 +61,7 @@ for name in filenames:
                 'grid\ta {}\tb {}\tc {}'.format(*geom.grid),
                 'size\tx {}\ty {}\tz {}'.format(*geom.size),
                 'origin\tx {}\ty {}\tz {}'.format(*geom.origin),
-                'homogenization\t{}'.format(geom.homogenization)]
+                ]
 
     damask.Table(seeds[mask],{'pos':(3,)},comments)\
           .add('material',materials[mask].astype(int))\
