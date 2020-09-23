@@ -122,7 +122,7 @@ subroutine grid_mech_FEM_init
   PetscScalar, pointer, dimension(:,:,:,:) :: &
   u_current,u_lastInc
 
-  write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  grid_mech_FEM init  -+>>>'; flush(IO_STDOUT)
 
 !-----------------------------------------------------------------------------------------------
 ! debugging options
@@ -130,13 +130,12 @@ subroutine grid_mech_FEM_init
   debugRotation = debug_grid%contains('rotation')
  
 !-------------------------------------------------------------------------------------------------
-! read numerical parameter and do sanity checks
+! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
   num%eps_div_atol    = num_grid%get_asFloat ('eps_div_atol',    defaultVal=1.0e-4_pReal)
   num%eps_div_rtol    = num_grid%get_asFloat ('eps_div_rtol',    defaultVal=5.0e-4_pReal)
   num%eps_stress_atol = num_grid%get_asFloat ('eps_stress_atol', defaultVal=1.0e3_pReal)
   num%eps_stress_rtol = num_grid%get_asFloat ('eps_stress_rtol', defaultVal=0.01_pReal)
-
   num%itmin           = num_grid%get_asInt   ('itmin',defaultVal=1)
   num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
 
@@ -225,7 +224,7 @@ subroutine grid_mech_FEM_init
 !--------------------------------------------------------------------------------------------------
 ! init fields
   restartRead: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading restart data of increment ', interface_restartInc, ' from file'
+    print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
 
     write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
     fileHandle  = HDF5_openFile(fileName)
@@ -254,7 +253,7 @@ subroutine grid_mech_FEM_init
   CHKERRQ(ierr)
 
   restartRead2: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading more restart data of increment ', interface_restartInc, ' from file'
+    print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
@@ -304,11 +303,11 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
-  call SNESsolve(mech_snes,PETSC_NULL_VEC,solution_current,ierr);CHKERRQ(ierr)
+  call SNESsolve(mech_snes,PETSC_NULL_VEC,solution_current,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! check convergence
-  call SNESGetConvergedReason(mech_snes,reason,ierr);CHKERRQ(ierr)
+  call SNESGetConvergedReason(mech_snes,reason,ierr); CHKERRQ(ierr)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
@@ -353,7 +352,7 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
     F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
-    !--------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = &
@@ -414,7 +413,7 @@ subroutine grid_mech_FEM_restartWrite
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
-  write(6,'(a)') ' writing solver data required for restart to file'; flush(6)
+  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -476,13 +475,13 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
 
 !--------------------------------------------------------------------------------------------------
 ! report
-  write(6,'(1/,a)') ' ... reporting .............................................................'
-  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+  print'(1/,a)', ' ... reporting .............................................................'
+  print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
+  print'(a,f12.2,a,es8.2,a,es9.2,a)',    ' error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
-  write(6,'(/,a)') ' ==========================================================================='
-  flush(6)
+  print'(/,a)', ' ==========================================================================='
+  flush(IO_STDOUT)
 
 end subroutine converged
 
@@ -516,13 +515,13 @@ subroutine formResidual(da_local,x_local, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
+    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
     if (debugRotation) &
-      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+      write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+    write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
-    flush(6)
+    flush(IO_STDOUT)
   endif newIteration
 
 !--------------------------------------------------------------------------------------------------
@@ -541,7 +540,7 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call Utilities_constitutiveResponse(P_current,&
+  call utilities_constitutiveResponse(P_current,&
                                       P_av,C_volAvg,devNull, &
                                       F,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)

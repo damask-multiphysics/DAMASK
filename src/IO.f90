@@ -6,6 +6,10 @@
 !> @brief  input/output functions
 !--------------------------------------------------------------------------------------------------
 module IO
+  use, intrinsic :: ISO_fortran_env, only: &
+    IO_STDOUT => OUTPUT_UNIT, &
+    IO_STDERR => ERROR_UNIT
+
   use prec
 
   implicit none
@@ -16,7 +20,7 @@ module IO
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
     IO_COMMENT = '#'
-  character(len=*), parameter, private :: &
+  character(len=*), parameter :: &
     IO_DIVIDER = '───────────────────'//&
                  '───────────────────'//&
                  '───────────────────'//&
@@ -37,7 +41,8 @@ module IO
     IO_stringAsFloat, &
     IO_stringAsBool, &
     IO_error, &
-    IO_warning
+    IO_warning, &
+    IO_STDOUT
 
 contains
 
@@ -47,7 +52,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
-  print'(/,a)', ' <<<+-  IO init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  IO init  -+>>>'; flush(IO_STDOUT)
 
   call selfTest
 
@@ -538,29 +543,29 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   end select
 
   !$OMP CRITICAL (write2out)
-  write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
-  write(0,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
-  write(0,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(IO_STDERR,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
+  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
+  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
-  write(0,formatString)            '│ ',trim(msg),                                          '│'
+  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
     write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(0,formatString)          '│ ',trim(ext_msg),                                      '│'
+    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
   if (present(g)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
   if (present(instance)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
-  write(0,'(a,69x,a)')            ' │',                                                     '│'
-  write(0,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(0)
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
+  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
+  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(IO_STDERR)
   call quit(9000+error_ID)
   !$OMP END CRITICAL (write2out)
 
@@ -623,27 +628,27 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
     end select
 
   !$OMP CRITICAL (write2out)
-  write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
-  write(6,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
-  write(6,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(IO_STDERR,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
+  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
+  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
-  write(6,formatString)            '│ ',trim(msg),                                          '│'
+  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
     write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(6,formatString)          '│ ',trim(ext_msg),                                      '│'
+    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
   if (present(g)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
-  write(6,'(a,69x,a)')            ' │',                                                     '│'
-  write(6,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(6)
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
+  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(IO_STDERR)
   !$OMP END CRITICAL (write2out)
 
 end subroutine IO_warning

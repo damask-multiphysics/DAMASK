@@ -70,7 +70,7 @@ subroutine discretization_marc_init
   class(tNode), pointer :: &
     num_commercialFEM
 
-  write(6,'(/,a)') ' <<<+-  discretization_marc init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  discretization_marc init  -+>>>'; flush(6)
 
 !---------------------------------------------------------------------------------
 ! read debug parameters
@@ -1030,10 +1030,9 @@ pure function IPareaNormal(elem,nElem,connectivity,node)
             IPareaNormal(1:3,f,i,e) = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                                  nodePos(1:3,3) - nodePos(1:3,1))
           case (4)                                                                                  ! 3D 8node
-            ! for this cell type we get the normal of the quadrilateral face as an average of
-            ! four normals of triangular subfaces; since the face consists only of two triangles,
-            ! the sum has to be divided by two; this whole prcedure tries to compensate for
-            ! probable non-planar cell surfaces
+            ! Get the normal of the quadrilateral face as the average of four normals of triangular
+            ! subfaces. Since the face consists only of two triangles, the sum has to be divided
+            ! by two. This procedure tries to compensate for probable non-planar cell surfaces
             IPareaNormal(1:3,f,i,e) = 0.0_pReal
             do n = 1, m
               IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &

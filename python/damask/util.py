@@ -117,6 +117,7 @@ def execute(cmd,
     initialPath = os.getcwd()
     myEnv = os.environ if env is None else env
     os.chdir(wd)
+    print(f"executing '{cmd}' in '{wd}'")
     process = subprocess.Popen(shlex.split(cmd),
                                stdout = subprocess.PIPE,
                                stderr = subprocess.PIPE,
@@ -128,7 +129,7 @@ def execute(cmd,
     stdout = stdout.decode('utf-8').replace('\x08','')
     stderr = stderr.decode('utf-8').replace('\x08','')
     if process.returncode != 0:
-        raise RuntimeError(f'{cmd} failed with returncode {process.returncode}')
+        raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
     return stdout, stderr
 
 
