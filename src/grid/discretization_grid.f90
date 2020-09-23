@@ -366,9 +366,8 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
           gotCellData = .true.
           startPos = endPos + 2_pI64
           do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
-            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
             if(index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
-                 getXMLValue(fileContent(startPos:endPos),'Name') == 'materialpoint' ) then
+                 getXMLValue(fileContent(startPos:endPos),'Name') == 'material' ) then
 
               if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
                 call IO_error(error_ID = 844, ext_msg='format (materialpoint)')
@@ -381,6 +380,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
               exit
             endif
             startPos = endPos + 2_pI64
+            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
           enddo
         elseif(index(fileContent(startPos:endPos),'<Coordinates>',kind=pI64) /= 0_pI64) then
           gotCoordinates = .true.
