@@ -35,7 +35,7 @@ module function plastic_none_init() result(myPlasticity)
   enddo
 
   Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
   if(Ninstance == 0) return
 
   do p = 1, phases%length

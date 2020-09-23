@@ -208,10 +208,10 @@ subroutine spectral_utilities_init
   debugPETSc      =  debug_grid%contains('petsc')
 
 
-  if(debugPETSc) write(6,'(3(/,a),/)') &
+  if(debugPETSc) print'(3(/,a),/)', &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the PETSc_Options keyword in numerics.yaml '; flush(6)
+                 ' add more using the PETSc_Options keyword in numerics.yaml '; flush(IO_STDOUT)
 
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
@@ -280,7 +280,7 @@ subroutine spectral_utilities_init
   if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
   call fftw_set_timelimit(num_grid%get_asFloat('fftw_timelimit',defaultVal=-1.0_pReal))
 
-  if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
+  print*, 'FFTW initialized'; flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
@@ -506,8 +506,8 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   logical :: err
 
 
-  write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
-  flush(6)
+  print'(/,a)', ' ... doing gamma convolution ...............................................'
+  flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
@@ -576,8 +576,8 @@ real(pReal) function utilities_divergenceRMS()
   integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  write(6,'(/,a)') ' ... calculating divergence ................................................'
-  flush(6)
+  print'(/,a)', ' ... calculating divergence ................................................'
+  flush(IO_STDOUT)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
 
@@ -620,8 +620,8 @@ real(pReal) function utilities_curlRMS()
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  write(6,'(/,a)') ' ... calculating curl ......................................................'
-  flush(6)
+  print'(/,a)', ' ... calculating curl ......................................................'
+  flush(IO_STDOUT)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
 
@@ -700,10 +700,10 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     temp99_real = math_3333to99(rot_BC%rotate(C))
 
     if(debugGeneral) then
-      write(6,'(/,a)') ' ... updating masked compliance ............................................'
-      write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
+      print'(/,a)', ' ... updating masked compliance ............................................'
+      write(IO_STDOUT,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
                                                    transpose(temp99_Real)*1.0e-9_pReal
-      flush(6)
+      flush(IO_STDOUT)
     endif
 
     do i = 1,9; do j = 1,9
@@ -723,9 +723,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     if (debugGeneral .or. errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-      write(6,trim(formatString),advance='no') ' C * S (load) ', &
+      write(IO_STDOUT,trim(formatString),advance='no') ' C * S (load) ', &
                                                              transpose(matmul(c_reduced,s_reduced))
-      write(6,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
+      write(IO_STDOUT,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
       if(errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
     endif
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
@@ -736,9 +736,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   utilities_maskedCompliance = math_99to3333(temp99_Real)
 
   if(debugGeneral) then
-    write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
+    write(IO_STDOUT,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
       ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
-    flush(6)
+    flush(IO_STDOUT)
   endif
 
 end function utilities_maskedCompliance
@@ -822,8 +822,8 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   real(pReal)                     :: dPdF_norm_max, dPdF_norm_min
   real(pReal), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
 
-  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
-  flush(6)
+  print'(/,a)', ' ... evaluating constitutive response ......................................'
+  flush(IO_STDOUT)
 
   materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
 
@@ -833,13 +833,13 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                   ! average of P
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   if (debugRotation) &
-  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
+  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
   if(present(rotation_BC)) &
     P_av = rotation_BC%rotate(P_av)
-  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
+  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
-  flush(6)
+  flush(IO_STDOUT)
 
   dPdF_max = 0.0_pReal
   dPdF_norm_max = 0.0_pReal
@@ -1095,7 +1095,7 @@ subroutine utilities_saveReferenceStiffness
     fileUnit,ierr
 
   if (worldrank == 0) then
-    write(6,'(a)') ' writing reference stiffness data required for restart to file'; flush(6)
+    print'(a)', ' writing reference stiffness data required for restart to file'; flush(IO_STDOUT)
     open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
          status='replace',access='stream',action='write',iostat=ierr)
     if(ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
