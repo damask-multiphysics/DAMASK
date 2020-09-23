@@ -31,10 +31,10 @@ def from_random(size,N_seeds,grid=None,seed=None):
         coords = grid_coords[rng.choice(_np.prod(grid),N_seeds, replace=False)] \
                + _np.broadcast_to(size/grid,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)           # wobble without leaving grid
 
-    return (coords,_np.arange(N_seeds,dtype='i'))
+    coords
 
 
-def from_poisson_disc(size,N_seeds,N_candidates,distance,seed=None):
+def from_Poisson_disc(size,N_seeds,N_candidates,distance,seed=None):
     """
     Seeding in space according to a Poisson disc distribution.
     
@@ -69,7 +69,7 @@ def from_poisson_disc(size,N_seeds,N_candidates,distance,seed=None):
             i += 1
             progress.update(i)
 
-    return (coords,_np.arange(N_seeds,dtype='i'))
+    return coords
 
 
 def from_geom(geom,selection=None,invert=False):
@@ -82,9 +82,9 @@ def from_geom(geom,selection=None,invert=False):
         ...
     
     """
-    materials = geom.materials.reshape((-1,1),order='F')
-    mask = _np.isin(materials,selection,invert=invert) if selection is not None else \
-           _np.full(geom.grid.prod(),True,dtype=bool)
+    material = geom.materials.reshape((-1,1),order='F')
+    mask = _np.full(geom.grid.prod(),True,dtype=bool) if selection is None else \
+           _np.isin(material,selection,invert=invert)
     coords = grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
 
-    return (coords[mask],materials[mask])
+    return (coords[mask],material[mask])
