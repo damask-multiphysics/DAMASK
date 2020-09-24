@@ -415,8 +415,8 @@ subroutine readVTR(grid,geomSize,origin,material)
 
   if(.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
   if(size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
-  if(any(geomSize<=0))                      call IO_error(error_ID = 844, ext_msg='size')
-  if(any(grid<1))                           call IO_error(error_ID = 844, ext_msg='grid')
+  if(any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
+  if(any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
 
   contains
 
