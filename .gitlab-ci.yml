@@ -344,6 +344,7 @@ Phenopowerlaw_singleSlip:
 Pytest_grid:
   stage: grid
   script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
     - pytest
   except:
