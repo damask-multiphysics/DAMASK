@@ -82,10 +82,14 @@ def from_geom(geom,selection=None,invert=False):
     Parameters
     ----------
     geom : damask.Geom
-        ...
+        Geometry, from which the material IDs are used as seeds
+    selection : iterable of integers, optional
+        Material IDs to consider
+    invert : boolean, false
+        Do not consider the material IDs given in selection. Defaults to False.
 
     """
-    material = geom.materials.reshape((-1,1),order='F')
+    material = geom.material.reshape((-1,1),order='F')
     mask = _np.full(geom.grid.prod(),True,dtype=bool) if selection is None else \
            _np.isin(material,selection,invert=invert)
     coords = grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
