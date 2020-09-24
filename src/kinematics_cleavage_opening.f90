@@ -49,7 +49,7 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
 
   myKinematics = kinematics_active('cleavage_opening',kinematics_length)
   Ninstance = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
   if(Ninstance == 0) return
 
   phases => config_material%get('phase')

@@ -100,7 +100,7 @@ def mesh(r,d):
 
 
 #-------------------------------------------------------------------------------------------------
-def material():
+def materials():
   return [\
   "*new_mater standard",
   "*mater_option general:state:solid",
@@ -130,10 +130,10 @@ def geometry():
 
 
 #-------------------------------------------------------------------------------------------------
-def initial_conditions(materials):
+def initial_conditions(material):
   elements = []
   element = 0
-  for id in materials:
+  for id in material:
     element += 1
     if len(elements) < id:
       for i in range(id-len(elements)):
@@ -197,14 +197,14 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    materials = geom.materials.flatten(order='F')
+    material = geom.material.flatten(order='F')
 
     cmds = [\
       init(),
       mesh(geom.grid,geom.size),
-      material(),
+      materials(),
       geometry(),
-      initial_conditions(materials),
+      initial_conditions(material),
       '*identify_sets',
       '*show_model',
       '*redraw',

@@ -47,11 +47,11 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    materials = geom.materials.reshape((-1,1),order='F')
+    material = geom.material.reshape((-1,1),order='F')
 
-    mask = np.logical_and(np.in1d(materials,options.whitelist,invert=False) if options.whitelist else \
+    mask = np.logical_and(np.in1d(material,options.whitelist,invert=False) if options.whitelist else \
                           np.full(geom.grid.prod(),True,dtype=bool),
-                          np.in1d(materials,options.blacklist,invert=True)  if options.blacklist else \
+                          np.in1d(material,options.blacklist,invert=True)  if options.blacklist else \
                           np.full(geom.grid.prod(),True,dtype=bool))
 
     seeds = damask.grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
@@ -64,5 +64,5 @@ for name in filenames:
                 ]
 
     damask.Table(seeds[mask],{'pos':(3,)},comments)\
-          .add('material',materials[mask].astype(int))\
+          .add('material',material[mask].astype(int))\
           .save(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds',legacy=True)

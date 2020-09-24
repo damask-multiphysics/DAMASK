@@ -117,6 +117,7 @@ def execute(cmd,
     initialPath = os.getcwd()
     myEnv = os.environ if env is None else env
     os.chdir(wd)
+    print(f"executing '{cmd}' in '{wd}'")
     process = subprocess.Popen(shlex.split(cmd),
                                stdout = subprocess.PIPE,
                                stderr = subprocess.PIPE,
@@ -128,7 +129,7 @@ def execute(cmd,
     stdout = stdout.decode('utf-8').replace('\x08','')
     stderr = stderr.decode('utf-8').replace('\x08','')
     if process.returncode != 0:
-        raise RuntimeError(f'{cmd} failed with returncode {process.returncode}')
+        raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
     return stdout, stderr
 
 
@@ -172,7 +173,7 @@ def scale_to_coprime(v):
     m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
     m = m//reduce(np.gcd,m)
 
-    with np.errstate(divide='ignore'):
+    with np.errstate(invalid='ignore'):
         if not np.allclose(np.ma.masked_invalid(v/m),v[np.argmax(abs(v))]/m[np.argmax(abs(v))]):
             raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
 
