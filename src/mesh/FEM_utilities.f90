@@ -122,7 +122,7 @@ subroutine FEM_utilities_init
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
                  ' add more using the PETSc_Options keyword in numerics.yaml '
-  flush(6)
+  flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
   if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)

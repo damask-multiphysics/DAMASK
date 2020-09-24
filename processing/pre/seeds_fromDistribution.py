@@ -30,7 +30,7 @@ class myThread (threading.Thread):
   def run(self):
     global bestSeedsUpdate
     global bestSeedsVFile
-    global nMicrostructures
+    global nMaterials
     global delta
     global points
     global target
@@ -70,7 +70,7 @@ class myThread (threading.Thread):
         selectedMs = []
         direction = []
         for i in range(NmoveGrains):
-          selectedMs.append(random.randrange(1,nMicrostructures))
+          selectedMs.append(random.randrange(1,nMaterials))
 
           direction.append((np.random.random()-0.5)*delta)
 
@@ -78,7 +78,7 @@ class myThread (threading.Thread):
       perturbedSeedsVFile = StringIO()
       myBestSeedsVFile.seek(0)
 
-      perturbedSeedsTable = damask.Table.from_ASCII(myBestSeedsVFile)
+      perturbedSeedsTable = damask.Table.load(myBestSeedsVFile)
       coords = perturbedSeedsTable.get('pos')
       i = 0
       for ms,coord in enumerate(coords):
@@ -89,8 +89,7 @@ class myThread (threading.Thread):
           coords[i]=newCoords
           direction[i]*=2.
           i+= 1
-      perturbedSeedsTable.set('pos',coords)
-      perturbedSeedsTable.to_file(perturbedSeedsVFile)
+      perturbedSeedsTable.set('pos',coords).save(perturbedSeedsVFile,legacy=True)
 
 #--- do tesselation with perturbed seed file ------------------------------------------------------
       perturbedGeomVFile.close()
@@ -101,12 +100,12 @@ class myThread (threading.Thread):
       perturbedGeomVFile.seek(0)
 
 #--- evaluate current seeds file ------------------------------------------------------------------
-      perturbedGeom = damask.Geom.from_file(perturbedGeomVFile)
-      myNmicrostructures = len(np.unique(perturbedGeom.microstructure))
-      currentData=np.bincount(perturbedGeom.microstructure.ravel())[1:]/points
+      perturbedGeom = damask.Geom.load_ASCII(perturbedGeomVFile)
+      myNmaterials = len(np.unique(perturbedGeom.material))
+      currentData = np.bincount(perturbedGeom.material.ravel())[1:]/points
       currentError=[]
       currentHist=[]
-      for i in range(nMicrostructures):                                                             # calculate the deviation in all bins per histogram
+      for i in range(nMaterials):                                                             # calculate the deviation in all bins per histogram
         currentHist.append(np.histogram(currentData,bins=target[i]['bins'])[0])
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
 
@@ -118,12 +117,12 @@ class myThread (threading.Thread):
       bestMatch = match
 #--- count bin classes with no mismatch ----------------------------------------------------------------------
       myMatch=0
-      for i in range(nMicrostructures):
+      for i in range(nMaterials):
         if currentError[i] > 0.0: break
         myMatch = i+1
 
-      if myNmicrostructures == nMicrostructures:
-        for i in range(min(nMicrostructures,myMatch+options.bins)):
+      if myNmaterials == nMaterials:
+        for i in range(min(nMaterials,myMatch+options.bins)):
           if currentError[i] > target[i]['error']:                                                  # worse fitting, next try
             randReset = True
             break
@@ -142,25 +141,25 @@ class myThread (threading.Thread):
               for line in perturbedSeedsVFile:
                 currentSeedsFile.write(line)
                 bestSeedsVFile.write(line)
-            for j in range(nMicrostructures):                                                       # save new errors for all bins
+            for j in range(nMaterials):                                                       # save new errors for all bins
               target[j]['error'] = currentError[j]
             if myMatch > match:                                                                     # one or more new bins have no deviation
               damask.util.croak( 'Stage {:d}  cleared'.format(myMatch))
               match=myMatch
               sys.stdout.flush()
             break
-          if i == min(nMicrostructures,myMatch+options.bins)-1:                                     # same quality as before: take it to keep on moving
+          if i == min(nMaterials,myMatch+options.bins)-1:                                     # same quality as before: take it to keep on moving
             bestSeedsUpdate = time.time()
             perturbedSeedsVFile.seek(0)
             bestSeedsVFile.close()
             bestSeedsVFile = StringIO()
             bestSeedsVFile.writelines(perturbedSeedsVFile.readlines())
-            for j in range(nMicrostructures):
+            for j in range(nMaterials):
               target[j]['error'] = currentError[j]
             randReset = True
       else:                                                                                         #--- not all grains are tessellated
-        damask.util.croak('Thread {:d}: Microstructure mismatch ({:d} microstructures mapped)'\
-                                                         .format(self.threadID,myNmicrostructures))
+        damask.util.croak('Thread {:d}: Material mismatch ({:d} material indices mapped)'\
+                                                         .format(self.threadID,myNmaterials))
         randReset = True
 
 
@@ -213,15 +212,15 @@ if options.randomSeed is None:
   options.randomSeed = int(os.urandom(4).hex(),16)
 damask.util.croak(options.randomSeed)
 delta = options.scale/np.array(options.grid)
-baseFile=os.path.splitext(os.path.basename(options.seedFile))[0]
+baseFile = os.path.splitext(os.path.basename(options.seedFile))[0]
 points = np.array(options.grid).prod().astype('float')
 
 # ----------- calculate target distribution and bin edges
-targetGeom = damask.Geom.from_file(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
-nMicrostructures = len(np.unique(targetGeom.microstructure))
-targetVolFrac = np.bincount(targetGeom.microstructure.flatten())/targetGeom.grid.prod().astype(np.float)
-target=[]
-for i in range(1,nMicrostructures+1):
+targetGeom = damask.Geom.load_ASCII(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
+nMaterials = len(np.unique(targetGeom.material))
+targetVolFrac = np.bincount(targetGeom.material.flatten())/targetGeom.grid.prod().astype(np.float)
+target = []
+for i in range(1,nMaterials+1):
   targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
   target.append({'histogram':targetHist,'bins':targetBins})
 
@@ -234,7 +233,7 @@ else:
   bestSeedsVFile.write(damask.util.execute('seeds_fromRandom'+\
                                 ' -g '+' '.join(list(map(str, options.grid)))+\
                                 ' -r {:d}'.format(options.randomSeed)+\
-                                ' -N '+str(nMicrostructures))[0])
+                                ' -N '+str(nMaterials))[0])
 bestSeedsUpdate = time.time()
 
 # ----------- tessellate initial seed file to get and evaluate geom file
@@ -243,13 +242,13 @@ initialGeomVFile = StringIO()
 initialGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
                                ' -g '+' '.join(list(map(str, options.grid))),bestSeedsVFile)[0])
 initialGeomVFile.seek(0)
-initialGeom = damask.Geom.from_file(initialGeomVFile)
+initialGeom = damask.Geom.load_ASCII(initialGeomVFile)
 
-if len(np.unique(targetGeom.microstructure)) != nMicrostructures:
-  damask.util.croak('error. Microstructure count mismatch')
+if len(np.unique(targetGeom.material)) != nMaterials:
+  damask.util.croak('error. Material count mismatch')
 
-initialData = np.bincount(initialGeom.microstructure.flatten())/points
-for i in range(nMicrostructures):
+initialData = np.bincount(initialGeom.material.flatten())/points
+for i in range(nMaterials):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
 
@@ -258,13 +257,13 @@ if target[0]['error'] > 0.0:
   target[0]['error'] *=((target[0]['bins'][0]-np.min(initialData))**2.0+
                         (target[0]['bins'][1]-np.max(initialData))**2.0)**0.5
 match=0
-for i in range(nMicrostructures):
+for i in range(nMaterials):
   if target[i]['error'] > 0.0: break
   match = i+1
 
 
 if options.maxseeds < 1:
-  maxSeeds = len(np.unique(initialGeom.microstructure))
+  maxSeeds = len(np.unique(initialGeom.material))
 else:
   maxSeeds = options.maxseeds
 
@@ -273,8 +272,8 @@ sys.stdout.flush()
 initialGeomVFile.close()
 
 # start mulithreaded monte carlo simulation
-threads=[]
-s=threading.Semaphore(1)
+threads = []
+s = threading.Semaphore(1)
 
 for i in range(options.threads):
   threads.append(myThread(i))

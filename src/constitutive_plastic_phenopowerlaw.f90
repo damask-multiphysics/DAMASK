@@ -92,7 +92,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
   myPlasticity = plastic_active('phenopowerlaw')
   Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
   if(Ninstance == 0) return
 
   allocate(param(Ninstance))

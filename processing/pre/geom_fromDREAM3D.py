@@ -52,16 +52,11 @@ parser.add_option('-q', '--quaternion',
                   type = 'string',
                   metavar='string',
                   help = 'name of the dataset containing pointwise/average orientation as quaternion [%default]')
-parser.add_option('--homogenization',
-                  dest = 'homogenization',
-                  type = 'int', metavar = 'int',
-                  help = 'homogenization index to be used [%default]')
 
 parser.set_defaults(pointwise      = 'CellData',
                     quaternion     = 'Quats',
                     phase          = 'Phases',
                     microstructure = 'FeatureIds',
-                    homogenization = 1,
                    )
 
 (options, filenames) = parser.parse_args()
@@ -150,8 +145,7 @@ for name in filenames:
 
   header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
          + config_header
-  geom = damask.Geom(microstructure,size,origin,
-                     homogenization=options.homogenization,comments=header)
+  geom = damask.Geom(microstructure,size,origin,comments=header)
   damask.util.croak(geom)
 
-  geom.to_file(os.path.splitext(name)[0]+'.geom',format='ASCII',pack=False)
+  geom.save_ASCII(os.path.splitext(name)[0]+'.geom',compress=False)

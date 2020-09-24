@@ -110,7 +110,7 @@ R = damask.Rotation.from_axis_angle(np.array(options.labrotation),options.degree
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     if   options.eulers is not None:
         label = options.eulers
@@ -147,4 +147,4 @@ for name in filenames:
     if 'axisangle' in options.output:
         table = table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_file(sys.stdout if name is None else name)
+    table.save((sys.stdout if name is None else name), legacy=True)

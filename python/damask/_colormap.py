@@ -235,100 +235,128 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
-    def to_file(self,fname=None,format='ParaView'):
+
+    def save_paraview(self,fname=None):
         """
-        Export colormap to file for use in external programs.
+        Write colormap to JSON file for Paraview.
 
         Parameters
         ----------
         fname : file, str, or pathlib.Path, optional.
             Filename to store results. If not given, the filename will
-            consist of the name of the colormap and an extension that
-            depends on the file format.
-        format : {'ParaView', 'ASCII', 'GOM', 'gmsh'}, optional
-            File format, defaults to 'ParaView'. Available formats are:
-            - ParaView: JSON file, extension '.json'.
-            - ASCII: Plain text file, extension '.txt'.
-            - GOM: Aramis GOM (DIC), extension '.legend'.
-            - Gmsh: Gmsh FEM mesh-generator, extension '.msh'.
+            consist of the name of the colormap and extension '.json'.
 
         """
         if fname is not None:
             try:
-                f = open(fname,'w')
+                fhandle = open(fname,'w')
             except TypeError:
-                f = fname
+                fhandle = fname
         else:
-            f = None
+            fhandle = None
 
-        if format.lower() == 'paraview':
-            Colormap._export_paraview(self,f)
-        elif format.lower() == 'ascii':
-            Colormap._export_ASCII(self,f)
-        elif format.lower() == 'gom':
-            Colormap._export_GOM(self,f)
-        elif format.lower() == 'gmsh':
-            Colormap._export_gmsh(self,f)
-        else:
-            raise ValueError('Unknown output format: {format}.')
-
-    @staticmethod
-    def _export_paraview(colormap,fhandle=None):
-        """Write colormap to JSON file for Paraview."""
         colors = []
-        for i,c in enumerate(np.round(colormap.colors,6).tolist()):
+        for i,c in enumerate(np.round(self.colors,6).tolist()):
             colors+=[i]+c
 
         out = [{
                 'Creator':util.execution_stamp('Colormap'),
                 'ColorSpace':'RGB',
-                'Name':colormap.name,
+                'Name':self.name,
                 'DefaultMap':True,
                 'RGBPoints':colors
                }]
         if fhandle is None:
-            with open(colormap.name.replace(' ','_')+'.json', 'w') as f:
+            with open(self.name.replace(' ','_')+'.json', 'w') as f:
                 json.dump(out, f,indent=4)
         else:
             json.dump(out,fhandle,indent=4)
 
-    @staticmethod
-    def _export_ASCII(colormap,fhandle=None):
-        """Write colormap to ASCII table."""
-        labels = {'RGBA':4} if colormap.colors.shape[1] == 4 else {'RGB': 3}
-        t = Table(colormap.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
+
+    def save_ASCII(self,fname=None):
+        """
+        Write colormap to ASCII table.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path, optional.
+            Filename to store results. If not given, the filename will
+            consist of the name of the colormap and extension '.txt'.
+
+        """
+        if fname is not None:
+            try:
+                fhandle = open(fname,'w')
+            except TypeError:
+                fhandle = fname
+        else:
+            fhandle = None
+
+        labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
+        t = Table(self.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
 
         if fhandle is None:
-            with open(colormap.name.replace(' ','_')+'.txt', 'w') as f:
-                t.to_file(f,new_style=True)
+            with open(self.name.replace(' ','_')+'.txt', 'w') as f:
+                t.save(f)
         else:
-            t.to_file(fhandle,new_style=True)
+            t.save(fhandle)
 
-    @staticmethod
-    def _export_GOM(colormap,fhandle=None):
-        """Write colormap to GOM Aramis compatible format."""
+
+    def save_GOM(self,fname=None):
+        """
+        Write colormap to GOM Aramis compatible format.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path, optional.
+            Filename to store results. If not given, the filename will
+            consist of the name of the colormap and extension '.legend'.
+
+        """
+        if fname is not None:
+            try:
+                fhandle = open(fname,'w')
+            except TypeError:
+                fhandle = fname
+        else:
+            fhandle = None
         # ToDo: test in GOM
-        GOM_str = f'1 1 {colormap.name.replace(" ","_")} 9 {colormap.name.replace(" ","_")} ' \
+        GOM_str = '1 1 {name} 9 {name} '.format(name=self.name.replace(" ","_")) \
                 +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
-                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(colormap.colors)}' \
-                + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((colormap.colors*255).astype(int))]) \
+                + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(self.colors)}' \
+                + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(int))]) \
                 + '\n'
         if fhandle is None:
-            with open(colormap.name.replace(' ','_')+'.legend', 'w') as f:
+            with open(self.name.replace(' ','_')+'.legend', 'w') as f:
                 f.write(GOM_str)
         else:
             fhandle.write(GOM_str)
 
 
-    @staticmethod
-    def _export_gmsh(colormap,fhandle=None):
-        """Write colormap to Gmsh compatible format."""
+    def save_gmsh(self,fname=None):
+        """
+        Write colormap to Gmsh compatible format.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path, optional.
+            Filename to store results. If not given, the filename will
+            consist of the name of the colormap and extension '.msh'.
+
+        """
+        if fname is not None:
+            try:
+                fhandle = open(fname,'w')
+            except TypeError:
+                fhandle = fname
+        else:
+            fhandle = None
         # ToDo: test in gmsh
         gmsh_str = 'View.ColorTable = {\n' \
-                 +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in colormap.colors[:,:3]*255]) \
+                 +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in self.colors[:,:3]*255]) \
                  +'\n}\n'
         if fhandle is None:
-            with open(colormap.name.replace(' ','_')+'.msh', 'w') as f:
+            with open(self.name.replace(' ','_')+'.msh', 'w') as f:
                 f.write(gmsh_str)
         else:
             fhandle.write(gmsh_str)

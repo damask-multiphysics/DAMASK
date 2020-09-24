@@ -116,7 +116,7 @@ subroutine grid_mech_FEM_init
     num_grid, &
     debug_grid
 
-  print'(/,a)', ' <<<+-  grid_mech_FEM init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  grid_mech_FEM init  -+>>>'; flush(IO_STDOUT)
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
@@ -408,7 +408,7 @@ subroutine grid_mech_FEM_restartWrite
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
-  print*, 'writing solver data required for restart to file'; flush(6)
+  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -476,7 +476,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
   print'(a,f12.2,a,es8.2,a,es9.2,a)',    ' error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
   print'(/,a)', ' ==========================================================================='
-  flush(6)
+  flush(IO_STDOUT)
 
 end subroutine converged
 
@@ -510,11 +510,11 @@ subroutine formResidual(da_local,x_local, &
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
     if (debugRotation) &
-      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+      write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+    write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
-    flush(6)
+    flush(IO_STDOUT)
   endif newIteration
 
 !--------------------------------------------------------------------------------------------------

@@ -78,7 +78,7 @@ program DAMASK_mesh
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
   call CPFEM_initAll
-  print'(/,a)', ' <<<+-  DAMASK_mesh init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  DAMASK_mesh init  -+>>>'; flush(IO_STDOUT)
 
 !--------------------------------------------------------------------- 
 ! reading field information from numerics file and do sanity checks
@@ -299,7 +299,7 @@ program DAMASK_mesh
         write(incInfo,'(4(a,i0))') &
                'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel
-        flush(6)
+        flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
 ! forward fields
@@ -363,7 +363,7 @@ program DAMASK_mesh
         print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' converged'
       else
         print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
-      endif; flush(6)
+      endif; flush(IO_STDOUT)
 
       if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0) then                            ! at output frequency
         print'(/,a)', ' ... writing results to file ......................................'

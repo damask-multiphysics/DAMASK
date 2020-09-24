@@ -56,7 +56,7 @@ subroutine discretization_grid_init(restart)
     myGrid                                                                                          !< domain grid of this process
 
   integer,     dimension(:),   allocatable :: &
-    microstructureAt
+    materialAt
 
   integer :: &
     j, &
@@ -65,12 +65,12 @@ subroutine discretization_grid_init(restart)
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
-  print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
   if(index(interface_geomFile,'.vtr') /= 0) then
-    call readVTR(grid,geomSize,origin,microstructureAt)
+    call readVTR(grid,geomSize,origin,materialAt)
   else
-    call readGeom(grid,geomSize,origin,microstructureAt)
+    call readGeom(grid,geomSize,origin,materialAt)
   endif
 
   print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
@@ -102,10 +102,9 @@ subroutine discretization_grid_init(restart)
 
 !--------------------------------------------------------------------------------------------------
 ! general discretization
-  microstructureAt = microstructureAt(product(grid(1:2))*grid3Offset+1: &
-                                      product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
+  materialAt = materialAt(product(grid(1:2))*grid3Offset+1:product(grid(1:2))*(grid3Offset+grid3))  ! reallocate/shrink in case of MPI
 
-  call discretization_init(microstructureAt, &
+  call discretization_init(materialAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
                            Nodes0(myGrid,mySize,grid3Offset),&
                            merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer
@@ -147,7 +146,7 @@ end subroutine discretization_grid_init
 !> @details important variables have an implicit "save" attribute. Therefore, this function is
 ! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
-subroutine readGeom(grid,geomSize,origin,microstructure)
+subroutine readGeom(grid,geomSize,origin,material)
 
   integer,     dimension(3), intent(out) :: &
     grid                                                                                            ! grid   (across all processes!)
@@ -155,7 +154,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
     geomSize, &                                                                                     ! size   (across all processes!)
     origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
-    microstructure
+    material
 
   character(len=:),      allocatable :: rawData
   character(len=65536)               :: line
@@ -167,7 +166,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
     startPos, endPos, &
     myStat, &
     l, &                                                                                            !< line counter
-    c, &                                                                                            !< counter for # microstructures in line
+    c, &                                                                                            !< counter for # materials in line
     o, &                                                                                            !< order of "to" packing
     e, &                                                                                            !< "element", i.e. spectral collocation point
     i, j
@@ -266,7 +265,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
   if(any(geomSize < 0.0_pReal)) &
     call IO_error(error_ID = 842, ext_msg='size (readGeom)')
 
-  allocate(microstructure(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
+  allocate(material(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
 
 !--------------------------------------------------------------------------------------------------
 ! read and interpret content
@@ -281,18 +280,18 @@ subroutine readGeom(grid,geomSize,origin,microstructure)
 
     noCompression: if (chunkPos(1) /= 3) then
       c = chunkPos(1)
-      microstructure(e:e+c-1) =  [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
+      material(e:e+c-1) =  [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
     else noCompression
       compression: if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'of') then
         c = IO_intValue(line,chunkPos,1)
-        microstructure(e:e+c-1) = [(IO_intValue(line,chunkPos,3),i = 1,IO_intValue(line,chunkPos,1))]
+        material(e:e+c-1) = [(IO_intValue(line,chunkPos,3),i = 1,IO_intValue(line,chunkPos,1))]
       else         if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then compression
         c = abs(IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1)) + 1
         o = merge(+1, -1, IO_intValue(line,chunkPos,3) > IO_intValue(line,chunkPos,1))
-        microstructure(e:e+c-1) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
+        material(e:e+c-1) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
       else compression
         c = chunkPos(1)
-        microstructure(e:e+c-1) = [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
+        material(e:e+c-1) = [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
       endif compression
     endif noCompression
 
@@ -308,7 +307,7 @@ end subroutine readGeom
 !> @brief Parse vtk rectilinear grid (.vtr)
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
-subroutine readVTR(grid,geomSize,origin,microstructure)
+subroutine readVTR(grid,geomSize,origin,material)
 
   integer,     dimension(3), intent(out) :: &
     grid                                                                                            ! grid   (across all processes!)
@@ -316,7 +315,7 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
     geomSize, &                                                                                     ! size   (across all processes!)
     origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
-    microstructure
+    material
 
   character(len=:), allocatable :: fileContent, dataType, headerType
   logical :: inFile,inGrid,gotCoordinates,gotCellData,compressed
@@ -364,11 +363,9 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
       else
         if(index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
           gotCellData = .true.
-          startPos = endPos + 2_pI64
           do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
-            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
             if(index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
-                 getXMLValue(fileContent(startPos:endPos),'Name') == 'materialpoint' ) then
+                 getXMLValue(fileContent(startPos:endPos),'Name') == 'material' ) then
 
               if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
                 call IO_error(error_ID = 844, ext_msg='format (materialpoint)')
@@ -377,10 +374,11 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
               startPos = endPos + 2_pI64
               endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
               s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
-              microstructure = as_Int(fileContent(s:endPos),headerType,compressed,dataType)
+              material = as_Int(fileContent(s:endPos),headerType,compressed,dataType)
               exit
             endif
             startPos = endPos + 2_pI64
+            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
           enddo
         elseif(index(fileContent(startPos:endPos),'<Coordinates>',kind=pI64) /= 0_pI64) then
           gotCoordinates = .true.
@@ -415,10 +413,10 @@ subroutine readVTR(grid,geomSize,origin,microstructure)
 
   end do
 
-  if(.not. allocated(microstructure))       call IO_error(error_ID = 844, ext_msg='materialpoint not found')
-  if(size(microstructure) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(materialpoint)')
-  if(any(geomSize<=0))                      call IO_error(error_ID = 844, ext_msg='size')
-  if(any(grid<1))                           call IO_error(error_ID = 844, ext_msg='grid')
+  if(.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
+  if(size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
+  if(any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
+  if(any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
 
   contains
 

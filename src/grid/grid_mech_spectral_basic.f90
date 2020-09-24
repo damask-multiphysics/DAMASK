@@ -106,7 +106,7 @@ subroutine grid_mech_spectral_basic_init
     num_grid, &
     debug_grid
 
-  print'(/,a)', ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
   print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
@@ -118,18 +118,18 @@ subroutine grid_mech_spectral_basic_init
 ! debugging options
   debug_grid => config_debug%get('grid', defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
-
+  
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
-  num%update_gamma    = num_grid%get_asBool ('update_gamma',   defaultVal=.false.)
-  num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
-  num%eps_div_rtol    = num_grid%get_asFloat('eps_div_rtol',   defaultVal=5.0e-4_pReal)
-  num%eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
+  num%update_gamma    = num_grid%get_asBool   ('update_gamma',   defaultVal=.false.)
+  num%eps_div_atol    = num_grid%get_asFloat  ('eps_div_atol',   defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid%get_asFloat  ('eps_div_rtol',   defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid%get_asFloat  ('eps_stress_atol',defaultVal=1.0e3_pReal)
   num%eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=1.0e-3_pReal)
-  num%itmin           = num_grid%get_asInt  ('itmin',          defaultVal=1)
-  num%itmax           = num_grid%get_asInt  ('itmax',          defaultVal=250)
+  num%itmin           = num_grid%get_asInt    ('itmin',defaultVal=1)
+  num%itmax           = num_grid%get_asInt    ('itmax',defaultVal=250)
 
   if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
   if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
@@ -137,7 +137,7 @@ subroutine grid_mech_spectral_basic_init
   if (num%eps_stress_rtol < 0.0_pReal)           call IO_error(301,ext_msg='eps_stress_rtol')
   if (num%itmax <= 1)                            call IO_error(301,ext_msg='itmax')
   if (num%itmin > num%itmax .or. num%itmin < 1)  call IO_error(301,ext_msg='itmin')
-
+   
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
@@ -154,7 +154,7 @@ subroutine grid_mech_spectral_basic_init
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr)
-  localK            = 0
+  localK              = 0
   localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
@@ -370,7 +370,7 @@ subroutine grid_mech_spectral_basic_restartWrite
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-  print*, 'writing solver data required for restart to file'; flush(6)
+  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -436,7 +436,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
   print'(a,f12.2,a,es8.2,a,es9.2,a)',    ' error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
   print'(/,a)', ' ==========================================================================='
-  flush(6)
+  flush(IO_STDOUT)
 
 end subroutine converged
 
@@ -471,11 +471,11 @@ subroutine formResidual(in, F, &
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
     if (debugRotation) &
-      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+      write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+    write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
-    flush(6)
+    flush(IO_STDOUT)
   endif newIteration
 
 !--------------------------------------------------------------------------------------------------
@@ -502,7 +502,7 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
-  residuum = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                  ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
+  residuum = tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3)                                   ! Gamma*P gives correction towards div(P) = 0, so needs to be zero, too
 
 end subroutine formResidual
 
