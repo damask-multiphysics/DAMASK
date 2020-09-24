@@ -52,7 +52,7 @@ subroutine discretization_marc_init
   type(tElement) :: elem
 
   integer,     dimension(:),   allocatable :: &
-    microstructureAt
+    materialAt
   integer:: &
     Nnodes, &                                                                                       !< total number of nodes in the mesh
     Nelems, &                                                                                       !< total number of elements in the mesh
@@ -70,7 +70,7 @@ subroutine discretization_marc_init
   class(tNode), pointer :: &
     num_commercialFEM
 
-  write(6,'(/,a)') ' <<<+-  discretization_marc init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  discretization_marc init  -+>>>'; flush(6)
 
 !---------------------------------------------------------------------------------
 ! read debug parameters
@@ -83,7 +83,7 @@ subroutine discretization_marc_init
   mesh_unitlength = num_commercialFEM%get_asFloat('unitlength',defaultVal=1.0_pReal)                ! set physical extent of a length unit in mesh
   if (mesh_unitlength <= 0.0_pReal) call IO_error(301,ext_msg='unitlength')
 
-  call inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
+  call inputRead(elem,node0_elem,connectivity_elem,materialAt)
   nElems = size(connectivity_elem,2)
 
   if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
@@ -103,7 +103,7 @@ subroutine discretization_marc_init
   call buildIPcoordinates(IP_reshaped,reshape(connectivity_cell,[elem%NcellNodesPerCell,&
                           elem%nIPs*nElems]),node0_cell)
 
-  call discretization_init(microstructureAt,&
+  call discretization_init(materialAt,&
                            IP_reshaped,&
                            node0_cell)
 
@@ -172,7 +172,7 @@ end subroutine writeGeometry
 !--------------------------------------------------------------------------------------------------
 !> @brief Read mesh from marc input file
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
+subroutine inputRead(elem,node0_elem,connectivity_elem,materialAt)
 
   type(tElement), intent(out) :: elem
   real(pReal), dimension(:,:), allocatable, intent(out) :: &
@@ -180,7 +180,7 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
   integer, dimension(:,:),     allocatable, intent(out) :: &
     connectivity_elem
   integer,     dimension(:),   allocatable, intent(out) :: &
-    microstructureAt
+    materialAt
 
   integer :: &
     fileFormatVersion, &
@@ -226,9 +226,9 @@ subroutine inputRead(elem,node0_elem,connectivity_elem,microstructureAt)
 
   connectivity_elem = inputRead_connectivityElem(nElems,elem%nNodes,inputFile)
 
-  call inputRead_microstructure(microstructureAt, &
-                                nElems,elem%nNodes,nameElemSet,mapElemSet,&
-                                initialcondTableStyle,inputFile)
+  call inputRead_material(materialAt, &
+                          nElems,elem%nNodes,nameElemSet,mapElemSet,&
+                          initialcondTableStyle,inputFile)
 end subroutine inputRead
 
 
@@ -675,13 +675,13 @@ end function inputRead_connectivityElem
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Store microstructure ID
+!> @brief Store material ID
 !--------------------------------------------------------------------------------------------------
-subroutine inputRead_microstructure(microstructureAt,&
-                                    nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileContent)
+subroutine inputRead_material(materialAt,&
+                              nElem,nNodes,nameElemSet,mapElemSet,initialcondTableStyle,fileContent)
 
   integer, dimension(:), allocatable, intent(out) :: &
-    microstructureAt
+    materialAt
   integer, intent(in) :: &
     nElem, &
     nNodes, &                                                                                       !< number of nodes per element
@@ -696,7 +696,7 @@ subroutine inputRead_microstructure(microstructureAt,&
   integer :: i,j,t,sv,myVal,e,nNodesAlreadyRead,l,k,m
 
 
-  allocate(microstructureAt(nElem),source=0)
+  allocate(materialAt(nElem),source=0)
 
   do l = 1, size(fileContent)
     chunkPos = IO_stringPos(fileContent(l))
@@ -715,7 +715,7 @@ subroutine inputRead_microstructure(microstructureAt,&
           contInts = continuousIntValues(fileContent(l+k+m+1:),nElem,nameElemSet,mapElemSet,size(nameElemSet)) ! get affected elements
           do i = 1,contInts(1)
             e = mesh_FEM2DAMASK_elem(contInts(1+i))
-            microstructureAt(e) = myVal
+            materialAt(e) = myVal
           enddo
           if (initialcondTableStyle == 0) m = m + 1
         enddo
@@ -723,9 +723,9 @@ subroutine inputRead_microstructure(microstructureAt,&
     endif
   enddo
 
-  if(any(microstructureAt < 1)) call IO_error(180)
+  if(any(materialAt < 1)) call IO_error(180)
 
-end subroutine inputRead_microstructure
+end subroutine inputRead_material
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1030,10 +1030,9 @@ pure function IPareaNormal(elem,nElem,connectivity,node)
             IPareaNormal(1:3,f,i,e) = math_cross(nodePos(1:3,2) - nodePos(1:3,1), &
                                                  nodePos(1:3,3) - nodePos(1:3,1))
           case (4)                                                                                  ! 3D 8node
-            ! for this cell type we get the normal of the quadrilateral face as an average of
-            ! four normals of triangular subfaces; since the face consists only of two triangles,
-            ! the sum has to be divided by two; this whole prcedure tries to compensate for
-            ! probable non-planar cell surfaces
+            ! Get the normal of the quadrilateral face as the average of four normals of triangular
+            ! subfaces. Since the face consists only of two triangles, the sum has to be divided
+            ! by two. This procedure tries to compensate for probable non-planar cell surfaces
             IPareaNormal(1:3,f,i,e) = 0.0_pReal
             do n = 1, m
               IPareaNormal(1:3,f,i,e) = IPareaNormal(1:3,f,i,e) &

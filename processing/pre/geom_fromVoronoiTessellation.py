@@ -142,10 +142,6 @@ group.add_option('--without-config',
                  dest = 'config',
                  action = 'store_false',
                  help = 'omit material configuration header')
-group.add_option('--homogenization',
-                 dest = 'homogenization',
-                 type = 'int', metavar = 'int',
-                 help = 'homogenization index to be used [%default]')
 group.add_option('--phase',
                  dest = 'phase',
                  type = 'int', metavar = 'int',
@@ -157,7 +153,6 @@ parser.set_defaults(pos            = 'pos',
                     weight         = 'weight',
                     microstructure = 'microstructure',
                     eulers         = 'euler',
-                    homogenization = 1,
                     phase          = 1,
                     cpus           = 2,
                     laguerre       = False,
@@ -171,7 +166,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     size   = np.ones(3)
     origin = np.zeros(3)
@@ -225,8 +220,7 @@ for name in filenames:
     header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
            + config_header
     geom = damask.Geom(indices.reshape(grid),size,origin,
-                       homogenization=options.homogenization,comments=header)
+                       comments=header)
     damask.util.croak(geom)
 
-    geom.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',
-                 format='ASCII',pack=False)
+    geom.save_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',compress=False)

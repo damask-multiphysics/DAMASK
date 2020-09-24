@@ -57,10 +57,6 @@ parser.add_option('-w', '--omega',
                   dest='omega',
                   type='float', metavar = 'float',
                   help='rotation angle around normal of osteon [%default]')
-parser.add_option(      '--homogenization',
-                  dest='homogenization',
-                  type='int', metavar = 'int',
-                  help='homogenization index to be used [%default]')
 
 parser.set_defaults(canal = 25e-6,
                     osteon = 100e-6,
@@ -70,7 +66,7 @@ parser.set_defaults(canal = 25e-6,
                     amplitude = 60,
                     size = (300e-6,300e-6),
                     grid = (512,512),
-                    homogenization = 1)
+                   )
 
 (options,filename) = parser.parse_args()
 
@@ -139,7 +135,7 @@ header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
        + config_header
 geom = damask.Geom(microstructure.reshape(grid),
                    size,-size/2,
-                   homogenization=options.homogenization,comments=header)
+                   comments=header)
 damask.util.croak(geom)
 
-geom.to_file(sys.stdout if name is None else name,format='ASCII',pack=False)
+geom.save_ASCII(sys.stdout if name is None else name,compress=False)

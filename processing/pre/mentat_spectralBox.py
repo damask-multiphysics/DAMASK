@@ -42,7 +42,7 @@ def output(cmds,locals,dest):
       else:
         outFile(str(cmd),locals,dest)
 
-  
+
 #-------------------------------------------------------------------------------------------------
 def init():
   return [
@@ -100,7 +100,7 @@ def mesh(r,d):
 
 
 #-------------------------------------------------------------------------------------------------
-def material():
+def materials():
   return [\
   "*new_mater standard",
   "*mater_option general:state:solid",
@@ -114,7 +114,7 @@ def material():
   "*add_geometry_elements",
   "all_existing",
   ]
-  
+
 
 #-------------------------------------------------------------------------------------------------
 def geometry():
@@ -127,14 +127,14 @@ def geometry():
   "*element_type 7",
   "all_existing",
   ]
-  
+
 
 #-------------------------------------------------------------------------------------------------
-def initial_conditions(microstructures):
+def initial_conditions(material):
   elements = []
   element = 0
-  for id in microstructures:
-    element += 1 
+  for id in material:
+    element += 1
     if len(elements) < id:
       for i in range(id-len(elements)):
         elements.append([])
@@ -153,7 +153,7 @@ def initial_conditions(microstructures):
   for grain,elementList in enumerate(elements):
     cmds.append([\
             "*new_icond",
-            "*icond_name microstructure_%i"%(grain+1),
+            "*icond_name material_%i"%(grain+1),
             "*icond_type state_variable",
             "*icond_param_value state_var_id 2",
             "*icond_dof_value var %i"%(grain+1),
@@ -195,22 +195,22 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
     damask.util.report(scriptName,name)
-    
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    microstructure = geom.get_microstructure().flatten(order='F')
+
+    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    material = geom.material.flatten(order='F')
 
     cmds = [\
       init(),
       mesh(geom.grid,geom.size),
-      material(),
+      materials(),
       geometry(),
-      initial_conditions(microstructure),
+      initial_conditions(material),
       '*identify_sets',
       '*show_model',
       '*redraw',
       '*draw_automatic',
     ]
-    
+
     outputLocals = {}
     if options.port:
         py_mentat.py_connect('',options.port)

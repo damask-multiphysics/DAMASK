@@ -17,7 +17,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #--------------------------------------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Create seed file taking microstructure indices from given geom file.
+Create seed file taking material indices from given geom file.
 Indices can be black-listed or white-listed.
 
 """, version = scriptID)
@@ -46,12 +46,12 @@ options.blacklist = [int(i) for i in options.blacklist]
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    microstructure = geom.get_microstructure().reshape((-1,1),order='F')
+    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    material = geom.material.reshape((-1,1),order='F')
 
-    mask = np.logical_and(np.in1d(microstructure,options.whitelist,invert=False) if options.whitelist else \
+    mask = np.logical_and(np.in1d(material,options.whitelist,invert=False) if options.whitelist else \
                           np.full(geom.grid.prod(),True,dtype=bool),
-                          np.in1d(microstructure,options.blacklist,invert=True)  if options.blacklist else \
+                          np.in1d(material,options.blacklist,invert=True)  if options.blacklist else \
                           np.full(geom.grid.prod(),True,dtype=bool))
 
     seeds = damask.grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
@@ -61,8 +61,8 @@ for name in filenames:
                 'grid\ta {}\tb {}\tc {}'.format(*geom.grid),
                 'size\tx {}\ty {}\tz {}'.format(*geom.size),
                 'origin\tx {}\ty {}\tz {}'.format(*geom.origin),
-                'homogenization\t{}'.format(geom.homogenization)]
+                ]
 
-    table = damask.Table(seeds[mask],{'pos':(3,)},comments)
-    table = table.add('microstructure',microstructure[mask])
-    table.to_file(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds')
+    damask.Table(seeds[mask],{'pos':(3,)},comments)\
+          .add('material',material[mask].astype(int))\
+          .save(sys.stdout if name is None else os.path.splitext(name)[0]+'.seeds',legacy=True)

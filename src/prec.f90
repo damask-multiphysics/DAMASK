@@ -8,7 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 module prec
   use, intrinsic :: IEEE_arithmetic
-  use, intrinsic :: ISO_C_Binding
+  use, intrinsic :: ISO_C_binding
 
   implicit none
   public

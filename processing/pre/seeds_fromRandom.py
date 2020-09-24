@@ -154,12 +154,12 @@ for name in filenames:
                 'randomSeed\t{}'.format(options.randomSeed),
                ]
 
-    table = damask.Table(np.hstack((seeds,eulers)),{'pos':(3,),'euler':(3,)},comments)
-    table = table.add('microstructure',np.arange(options.microstructure,options.microstructure + options.N,dtype=int))
+    table = damask.Table(np.hstack((seeds,eulers)),{'pos':(3,),'euler':(3,)},comments)\
+                  .add('microstructure',np.arange(options.microstructure,options.microstructure + options.N,dtype=int))
 
     if options.weights:
         weights = np.random.uniform(low = 0, high = options.max, size = options.N) if options.max > 0.0 \
              else np.random.normal(loc = options.mean, scale = options.sigma, size = options.N)
         table = table.add('weight',weights)
 
-    table.to_file(sys.stdout if name is None else name)
+    table.save(sys.stdout if name is None else name,legacy=True)

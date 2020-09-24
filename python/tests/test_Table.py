@@ -35,50 +35,50 @@ class TestTable:
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_write_read(self,default,tmpdir,mode):
-        default.to_file(tmpdir/'default.txt')
+        default.save(tmpdir/'default.txt')
         if   mode == 'path':
-            new = Table.from_ASCII(tmpdir/'default.txt')
+            new = Table.load(tmpdir/'default.txt')
         elif mode == 'str':
-            new = Table.from_ASCII(str(tmpdir/'default.txt'))
+            new = Table.load(str(tmpdir/'default.txt'))
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_read_file(self,default,tmpdir):
         with open(tmpdir/'default.txt','w') as f:
-            default.to_file(f)
+            default.save(f)
         with open(tmpdir/'default.txt') as f:
-            new = Table.from_ASCII(f)
+            new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
-    def test_write_read_new_style(self,default,tmpdir):
-        with open(tmpdir/'new_style.txt','w') as f:
-            default.to_file(f,new_style=True)
-        with open(tmpdir/'new_style.txt') as f:
-            new = Table.from_ASCII(f)
+    def test_write_read_legacy_style(self,default,tmpdir):
+        with open(tmpdir/'legacy.txt','w') as f:
+            default.save(f,legacy=True)
+        with open(tmpdir/'legacy.txt') as f:
+            new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
     def test_write_invalid_format(self,default,tmpdir):
         with pytest.raises(TypeError):
-            default.to_file(tmpdir/'shouldnotbethere.txt',format='invalid')
+            default.save(tmpdir/'shouldnotbethere.txt',format='invalid')
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_read_ang(self,reference_dir,mode):
         if   mode == 'path':
-            new = Table.from_ang(reference_dir/'simple.ang')
+            new = Table.load_ang(reference_dir/'simple.ang')
         elif mode == 'str':
-            new = Table.from_ang(str(reference_dir/'simple.ang'))
+            new = Table.load_ang(str(reference_dir/'simple.ang'))
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
     def test_read_ang_file(self,reference_dir):
         f = open(reference_dir/'simple.ang')
-        new = Table.from_ang(f)
+        new = Table.load_ang(f)
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
     def test_read_strange(self,reference_dir,fname):
         with open(reference_dir/fname) as f:
-            Table.from_ASCII(f)
+            Table.load(f)
 
     def test_set(self,default):
         d = default.set('F',np.zeros((5,3,3)),'set to zero').get('F')
@@ -166,7 +166,7 @@ class TestTable:
         x = np.random.random((5,12))
         t = Table(x,{'F':(3,3),'v':(3,)},['random test data'])
         unsort = t.get('4_F')
-        sort = t.sort_by('4_F').get('4_F')
+        sort   = t.sort_by('4_F').get('4_F')
         assert np.all(np.sort(unsort,0)==sort)
 
     def test_sort_revert(self):
@@ -179,6 +179,6 @@ class TestTable:
         t = Table(np.array([[0,1,],[2,1,]]),
                   {'v':(2,)},
                   ['test data'])\
-                  .add('s',np.array(['b','a']))\
-                  .sort_by('s')
+            .add('s',np.array(['b','a']))\
+            .sort_by('s')
         assert np.all(t.get('1_v') == np.array([2,0]).reshape(2,1))

@@ -52,7 +52,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
 
   myKinematics = kinematics_active('slipplane_opening',kinematics_length)
   Ninstance = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(6)
+  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
   if(Ninstance == 0) return
 
   phases => config_material%get('phase')

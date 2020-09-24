@@ -118,7 +118,7 @@ class VTK:
 
 
     @staticmethod
-    def from_file(fname,dataset_type=None):
+    def load(fname,dataset_type=None):
         """
         Create VTK from file.
 
@@ -168,7 +168,7 @@ class VTK:
     def _write(writer):
         """Wrapper for parallel writing."""
         writer.Write()
-    def to_file(self,fname,parallel=True,compress=True):
+    def save(self,fname,parallel=True,compress=True):
         """
         Write to file.
 
@@ -178,6 +178,8 @@ class VTK:
             Filename for writing.
         parallel : boolean, optional
             Write data in parallel background process. Defaults to True.
+        compress : bool, optional
+            Compress with zlib algorithm. Defaults to True.
 
         """
         if   isinstance(self.vtk_data,vtk.vtkRectilinearGrid):
