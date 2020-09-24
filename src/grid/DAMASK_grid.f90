@@ -211,7 +211,7 @@ program DAMASK_grid
             if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
           enddo
           newLoadCase%deformation%mask   = transpose(reshape(temp_maskVector,[ 3,3]))               ! mask in 3x3 notation
-          newLoadCase%deformation%values    = math_9to33(temp_valueVector)                          ! values in 3x3 notation
+          newLoadCase%deformation%values = math_9to33(temp_valueVector)                             ! values in 3x3 notation
         case('p','stress', 's')
           temp_valueVector = 0.0_pReal
           do j = 1, 9
@@ -219,7 +219,7 @@ program DAMASK_grid
             if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
           enddo
           newLoadCase%stress%mask   = transpose(reshape(temp_maskVector,[ 3,3]))
-          newLoadCase%stress%values      = math_9to33(temp_valueVector)
+          newLoadCase%stress%values = math_9to33(temp_valueVector)
         case('t','time','delta')                                                                    ! increment time
           newLoadCase%time = IO_floatValue(line,chunkPos,i+1)
         case('n','incs','increments')                                                               ! number of increments

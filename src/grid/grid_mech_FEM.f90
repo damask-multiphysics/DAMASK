@@ -62,7 +62,6 @@ module grid_mech_FEM
   real(pReal), dimension(3,3) :: &
     F_aimDot = 0.0_pReal, &                                                                         !< assumed rate of average deformation gradient
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
-    F_aim_lastIter = math_I3, &
     F_aim_lastInc  = math_I3, &                                                                     !< previous average deformation gradient
     P_av = 0.0_pReal, &                                                                             !< average 1st Piola--Kirchhoff stress
     P_aim = 0.0_pReal
