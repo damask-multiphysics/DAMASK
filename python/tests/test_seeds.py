@@ -13,11 +13,13 @@ class TestSeeds:
         coords = seeds.from_random(size,N_seeds,grid)
         assert (0<=coords).all() and (coords<size).all()
 
-    def test_from_Poisson_disc(self):
+    @pytest.mark.parametrize('periodic',[True,False])
+    def test_from_Poisson_disc(self,periodic):
         N_seeds = np.random.randint(30,300)
         N_candidates = N_seeds//15
         distance = np.random.random()
         size = np.ones(3)*distance*N_seeds
-        coords = seeds.from_Poisson_disc(size,N_seeds,N_candidates,distance)
-        min_dists, _ = cKDTree(coords).query(coords, 2)
+        coords = seeds.from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=periodic)
+        min_dists, _ = cKDTree(coords,boxsize=size).query(coords, 2) if periodic else \
+                       cKDTree(coords).query(coords, 2)
         assert (0<= coords).all() and (coords<size).all() and np.min(min_dists[:,1])>=distance
