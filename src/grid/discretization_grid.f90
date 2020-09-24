@@ -107,9 +107,9 @@ subroutine discretization_grid_init(restart)
   call discretization_init(materialAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
                            Nodes0(myGrid,mySize,grid3Offset),&
-                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer
-                                 (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! do not write bottom layer (is top of rank-1)
-                                 worldrank<1))
+                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write top layer...
+                                 (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! ...unless not last process
+                                 worldrank+1==worldsize))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
   FEsolving_execIP   = [1,1]                                                                        ! parallel loop bounds set to comprise the only IP
