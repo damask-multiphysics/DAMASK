@@ -365,11 +365,7 @@ program DAMASK_grid
         timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
       else
         if (currentLoadCase == 1) then                                                              ! 1st load case of logarithmic scale
-          if (inc == 1) then                                                                        ! 1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))           ! assume 1st inc is equal to 2nd
-          else                                                                                      ! not-1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1-loadCases(1)%incs ,pReal))
-          endif
+          timeinc = loadCases(1)%time*(2.0_pReal**real(max(inc-1,1)-loadCases(1)%incs ,pReal))      ! assume 1st inc is equal to 2nd
         else                                                                                        ! not-1st load case of logarithmic scale
           timeinc = time0 * &
                ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc         ,pReal)/&
