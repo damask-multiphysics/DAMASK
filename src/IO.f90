@@ -494,6 +494,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Unsupported feature'
     case (706)
       msg = 'Access by incorrect node type'
+    case (707)
+      msg = 'Abrupt end of file'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
