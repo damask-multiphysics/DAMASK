@@ -253,27 +253,6 @@ grid_parsingArguments:
     - master
     - release
 
-StateIntegration_compareVariants:
-  stage: grid
-  script: StateIntegration_compareVariants/test.py
-  except:
-    - master
-    - release
-
-nonlocal_densityConservation:
-  stage: grid
-  script: nonlocal_densityConservation/test.py
-  except:
-    - master
-    - release
-
-RGC_DetectChanges:
-  stage: grid
-  script: RGC_DetectChanges/test.py
-  except:
-    - master
-    - release
-
 Nonlocal_Damage_DetectChanges:
   stage: grid
   script: Nonlocal_Damage_DetectChanges/test.py
@@ -302,15 +281,6 @@ grid_all_loadCaseRotation:
     - master
     - release
 
-grid_mech_MPI:
-  stage: grid
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - grid_mech_MPI/test.py
-  except:
-    - master
-    - release
-
 grid_all_restartMPI:
   stage: grid
   script:
@@ -323,13 +293,6 @@ grid_all_restartMPI:
 Plasticity_DetectChanges:
   stage: grid
   script: Plasticity_DetectChanges/test.py
-  except:
-    - master
-    - release
-
-Homogenization:
-  stage: grid
-  script: Homogenization/test.py
   except:
     - master
     - release
