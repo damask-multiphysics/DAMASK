@@ -288,7 +288,7 @@ program DAMASK_grid
         errorID = 838                                                                               ! no rotation is allowed by stress BC
       print*, ' stress / GPa:'
       do i = 1, 3; do j = 1, 3
-        if(newLoadCase%stress%maskLogical(i,j)) then
+        if(newLoadCase%stress%mask(i,j)) then
           write(IO_STDOUT,'(2x,f12.7)',advance='no') newLoadCase%stress%values(i,j)*1e-9_pReal
         else
           write(IO_STDOUT,'(2x,12a)',advance='no') '     *      '

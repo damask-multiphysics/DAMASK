@@ -369,7 +369,7 @@ subroutine material_parseMicrostructure
     microstructure => microstructures%get(discretization_microstructureAt(e))
     constituents   => microstructure%get('constituents')
     
-    material_homogenizationAt(e) = homogenization%getIndex(microstructure%get_asString('homogenization'))
+    material_homogenizationAt(e) = homogenizations%getIndex(microstructure%get_asString('homogenization'))
     do i = 1, discretization_nIP
       counterHomogenization(material_homogenizationAt(e)) = counterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e)                = counterHomogenization(material_homogenizationAt(e))
