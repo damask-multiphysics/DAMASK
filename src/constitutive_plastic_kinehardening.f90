@@ -9,15 +9,15 @@ submodule(constitutive:constitutive_plastic) plastic_kinehardening
 
   type :: tParameters
     real(pReal) :: &
-      gdot0 = 1.0_pReal, &                                                                          !< reference shear strain rate for slip
-      n     = 1.0_pReal                                                                             !< stress exponent for slip
+      n           = 1.0_pReal, &                                                                    !< stress exponent for slip
+      dot_gamma_0 = 1.0_pReal                                                                       !< reference shear strain rate for slip
     real(pReal),              allocatable, dimension(:) :: &
-      theta0, &                                                                                     !< initial hardening rate of forward stress for each slip
-      theta1, &                                                                                     !< asymptotic hardening rate of forward stress for each slip
-      theta0_b, &                                                                                   !< initial hardening rate of back stress for each slip
-      theta1_b, &                                                                                   !< asymptotic hardening rate of back stress for each slip
-      tau1, &
-      tau1_b
+      h_0_f, &                                                                                      !< initial hardening rate of forward stress for each slip
+      h_inf_f, &                                                                                    !< asymptotic hardening rate of forward stress for each slip
+      h_0_b, &                                                                                      !< initial hardening rate of back stress for each slip
+      h_inf_b, &                                                                                    !< asymptotic hardening rate of back stress for each slip
+      xi_inf_f, &
+      xi_inf_b
     real(pReal),              allocatable, dimension(:,:) :: &
       interaction_slipslip                                                                          !< slip resistance from slip activity
     real(pReal),              allocatable, dimension(:,:,:) :: &
@@ -125,7 +125,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
                                         phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(phase%get_asString('lattice')) == 'bcc') then
-        a = pl%get_asFloats('nonSchmid_coefficients',defaultVal = emptyRealArray)
+        a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg  = lattice_nonSchmidMatrix(N_sl,a,-1)
@@ -137,38 +137,38 @@ module function plastic_kinehardening_init() result(myPlasticity)
                                                                 pl%get_asFloats('h_sl_sl'), &
                                                                 phase%get_asString('lattice'))
 
-      xi_0         = pl%get_asFloats('xi_0',       requiredSize=size(N_sl))
-      prm%tau1     = pl%get_asFloats('xi_inf_f',   requiredSize=size(N_sl))
-      prm%tau1_b   = pl%get_asFloats('xi_inf_b',   requiredSize=size(N_sl))
-      prm%theta0   = pl%get_asFloats('h_0_f',      requiredSize=size(N_sl))
-      prm%theta1   = pl%get_asFloats('h_inf_f',    requiredSize=size(N_sl))
-      prm%theta0_b = pl%get_asFloats('h_0_b',      requiredSize=size(N_sl))
-      prm%theta1_b = pl%get_asFloats('h_inf_b',    requiredSize=size(N_sl))
+      xi_0          = pl%get_asFloats('xi_0',       requiredSize=size(N_sl))
+      prm%xi_inf_f  = pl%get_asFloats('xi_inf_f',   requiredSize=size(N_sl))
+      prm%xi_inf_b  = pl%get_asFloats('xi_inf_b',   requiredSize=size(N_sl))
+      prm%h_0_f     = pl%get_asFloats('h_0_f',      requiredSize=size(N_sl))
+      prm%h_inf_f   = pl%get_asFloats('h_inf_f',    requiredSize=size(N_sl))
+      prm%h_0_b     = pl%get_asFloats('h_0_b',      requiredSize=size(N_sl))
+      prm%h_inf_b   = pl%get_asFloats('h_inf_b',    requiredSize=size(N_sl))
 
-      prm%gdot0    = pl%get_asFloat('dot_gamma_0')
-      prm%n        = pl%get_asFloat('n')
+      prm%dot_gamma_0  = pl%get_asFloat('dot_gamma_0')
+      prm%n            = pl%get_asFloat('n')
 
       ! expand: family => system
-      xi_0         = math_expand(xi_0,        N_sl)
-      prm%tau1     = math_expand(prm%tau1,    N_sl)
-      prm%tau1_b   = math_expand(prm%tau1_b,  N_sl)
-      prm%theta0   = math_expand(prm%theta0,  N_sl)
-      prm%theta1   = math_expand(prm%theta1,  N_sl)
-      prm%theta0_b = math_expand(prm%theta0_b,N_sl)
-      prm%theta1_b = math_expand(prm%theta1_b,N_sl)
+      xi_0          = math_expand(xi_0,            N_sl)
+      prm%xi_inf_f  = math_expand(prm%xi_inf_f,    N_sl)
+      prm%xi_inf_b  = math_expand(prm%xi_inf_b,    N_sl)
+      prm%h_0_f     = math_expand(prm%h_0_f,       N_sl)
+      prm%h_inf_f   = math_expand(prm%h_inf_f,     N_sl)
+      prm%h_0_b     = math_expand(prm%h_0_b,       N_sl)
+      prm%h_inf_b   = math_expand(prm%h_inf_b,     N_sl)
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-      if (    prm%gdot0  <= 0.0_pReal)   extmsg = trim(extmsg)//' dot_gamma_0'
-      if (    prm%n      <= 0.0_pReal)   extmsg = trim(extmsg)//' n'
-      if (any(xi_0       <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_0'
-      if (any(prm%tau1   <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_f'
-      if (any(prm%tau1_b <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_b'
+      if (    prm%dot_gamma_0  <= 0.0_pReal)   extmsg = trim(extmsg)//' dot_gamma_0'
+      if (    prm%n            <= 0.0_pReal)   extmsg = trim(extmsg)//' n'
+      if (any(xi_0             <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_0'
+      if (any(prm%xi_inf_f     <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_f'
+      if (any(prm%xi_inf_b     <= 0.0_pReal))  extmsg = trim(extmsg)//' xi_inf_b'
 
       !ToDo: Any sensible checks for theta?
     else slipActive
       xi_0 = emptyRealArray
-      allocate(prm%tau1,prm%tau1_b,prm%theta0,prm%theta1,prm%theta0_b,prm%theta1_b,source=emptyRealArray)
+      allocate(prm%xi_inf_f,prm%xi_inf_b,prm%h_0_f,prm%h_inf_f,prm%h_0_b,prm%h_inf_b,source=emptyRealArray)
       allocate(prm%interaction_SlipSlip(0,0))
     endif slipActive
 
@@ -303,16 +303,16 @@ module subroutine plastic_kinehardening_dotState(Mp,instance,of)
 
 
   dot%crss(:,of) = matmul(prm%interaction_SlipSlip,dot%accshear(:,of)) &
-                 * (  prm%theta1 &
-                     + (prm%theta0 - prm%theta1 + prm%theta0*prm%theta1*sumGamma/prm%tau1) &
-                     * exp(-sumGamma*prm%theta0/prm%tau1) &
+                 * (  prm%h_inf_f &
+                     + (prm%h_0_f - prm%h_inf_f + prm%h_0_f*prm%h_inf_f*sumGamma/prm%xi_inf_f) &
+                     * exp(-sumGamma*prm%h_0_f/prm%xi_inf_f) &
                    )
 
   dot%crss_back(:,of) = stt%sense(:,of)*dot%accshear(:,of) * &
-           ( prm%theta1_b + &
-             (prm%theta0_b - prm%theta1_b &
-               + prm%theta0_b*prm%theta1_b/(prm%tau1_b+stt%chi0(:,of))*(stt%accshear(:,of)-stt%gamma0(:,of))&
-             ) *exp(-(stt%accshear(:,of)-stt%gamma0(:,of)) *prm%theta0_b/(prm%tau1_b+stt%chi0(:,of))) &
+           ( prm%h_inf_b + &
+             (prm%h_0_b - prm%h_inf_b &
+               + prm%h_0_b*prm%h_inf_b/(prm%xi_inf_b+stt%chi0(:,of))*(stt%accshear(:,of)-stt%gamma0(:,of))&
+             ) *exp(-(stt%accshear(:,of)-stt%gamma0(:,of)) *prm%h_0_b/(prm%xi_inf_b+stt%chi0(:,of))) &
            )
 
   end associate
@@ -442,14 +442,14 @@ pure subroutine kinetics(Mp,instance,of, &
   enddo
 
   where(dNeq0(tau_pos))
-    gdot_pos = prm%gdot0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                         ! 1/2 if non-Schmid active
+    gdot_pos = prm%dot_gamma_0 * merge(0.5_pReal,1.0_pReal, prm%nonSchmidActive) &                  ! 1/2 if non-Schmid active
              * sign(abs(tau_pos/stt%crss(:,of))**prm%n,  tau_pos)
   else where
     gdot_pos = 0.0_pReal
   end where
 
   where(dNeq0(tau_neg))
-    gdot_neg = prm%gdot0 * 0.5_pReal &                                                              ! only used if non-Schmid active, always 1/2
+    gdot_neg = prm%dot_gamma_0 * 0.5_pReal &                                                        ! only used if non-Schmid active, always 1/2
              * sign(abs(tau_neg/stt%crss(:,of))**prm%n,  tau_neg)
   else where
     gdot_neg = 0.0_pReal
