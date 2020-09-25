@@ -12,7 +12,7 @@ def from_random(size,N_seeds,grid=None,seed=None):
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        Physical size of the periodic field.
+        Physical size of the seeding domain.
     N_seeds : int
         Number of seeds.
     grid : numpy.ndarray of shape (3), optional.
@@ -41,7 +41,7 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,seed=None
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        Physical size of the periodic field.
+        Physical size of the seeding domain.
     N_seeds : int
         Number of seeds.
     N_candidates : int
@@ -75,18 +75,22 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,seed=None
     return coords
 
 
-def from_geom(geom,selection=None,invert=False):
+def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
     """
     Create seed from existing geometry description.
 
     Parameters
     ----------
     geom : damask.Geom
-        Geometry, from which the material IDs are used as seeds
+        Geometry, from which the material IDs are used as seeds.
     selection : iterable of integers, optional
-        Material IDs to consider
+        Material IDs to consider.
     invert : boolean, false
         Do not consider the material IDs given in selection. Defaults to False.
+    average : boolean, optional
+        Seed corresponds to center of gravity of material ID cloud.
+    periodic : boolean, optional
+        Center of gravity with periodic boundaries.
 
     """
     material = geom.material.reshape((-1,1),order='F')
@@ -94,4 +98,16 @@ def from_geom(geom,selection=None,invert=False):
            _np.isin(material,selection,invert=invert)
     coords = grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
 
-    return (coords[mask],material[mask])
+    if not average:
+        return (coords[mask],material[mask])
+    else:
+        materials = _np.unique(material[mask])
+        coords_ = _np.zeros((materials.size,3),dtype=float)
+        for i,mat in enumerate(materials):
+            pc = (2*_np.pi*coords[material[:,0]==mat,:]-geom.origin)/geom.size
+            coords_[i] = geom.origin + geom.size / 2 / _np.pi * (_np.pi +
+                         _np.arctan2(-_np.average(_np.sin(pc),axis=0),
+                                     -_np.average(_np.cos(pc),axis=0))) \
+                         if periodic else \
+                         _np.average(coords[material[:,0]==mat,:],axis=0)
+        return (coords_,materials)

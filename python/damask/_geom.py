@@ -256,15 +256,10 @@ class Geom:
         else:
             material_ = material_.reshape(grid)
 
-        geom = Geom(material = material_+1,
+        return Geom(material = material_+1 if material is None else material[material_],
                     size     = size,
                     comments = util.execution_stamp('Geom','from_Laguerre_tessellation'),
                    )
-        if material is not None:
-            geom = geom.substitute(np.arange(seeds.shape[0])+1,material)
-            geom.comments = geom.comments[:-1]
-
-        return geom
 
 
     @staticmethod
@@ -291,15 +286,10 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,material_ = KDTree.query(coords)
 
-        geom = Geom(material = material_.reshape(grid)+1,
+        return Geom(material = (material_+1 if material is None else material[material_]).reshape(grid),
                     size     = size,
                     comments = util.execution_stamp('Geom','from_Voronoi_tessellation'),
                    )
-        if material is not None:
-            geom = geom.substitute(np.arange(seeds.shape[0])+1,material)
-            geom.comments = geom.comments[:-1]
-
-        return geom
 
 
     def save_ASCII(self,fname,compress=None):
