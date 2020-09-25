@@ -239,6 +239,16 @@ Compile_Intel_Prepare:
     - release
 
 ###################################################################################################
+Pytest_grid:
+  stage: grid
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - cd pytest
+    - pytest
+  except:
+    - master
+    - release
+
 Thermal:
   stage: grid
   script: Thermal/test.py
@@ -300,16 +310,6 @@ Plasticity_DetectChanges:
 Phenopowerlaw_singleSlip:
   stage: grid
   script: Phenopowerlaw_singleSlip/test.py
-  except:
-    - master
-    - release
-
-Pytest_grid:
-  stage: grid
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cd pytest
-    - pytest
   except:
     - master
     - release
