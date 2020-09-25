@@ -594,12 +594,13 @@ function to_flow(blck)
   s_blck = 1
   offset = 0
 
-  call skip_empty_lines(blck,s_blck)
-  e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-  line = IO_rmComment(blck(s_blck:e_blck))
-  if(trim(line) == '---') s_blck = e_blck + 2
-
-  call decide(blck,to_flow,s_blck,s_flow,offset)
+  if(len_trim(blck) /= 0) then
+    call skip_empty_lines(blck,s_blck)
+    e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
+    line = IO_rmComment(blck(s_blck:e_blck))
+    if(trim(line) == '---') s_blck = e_blck + 2
+    call decide(blck,to_flow,s_blck,s_flow,offset)
+  endif
   to_flow = trim(to_flow(:s_flow-1))
 
   end_line = index(to_flow,IO_EOL)
