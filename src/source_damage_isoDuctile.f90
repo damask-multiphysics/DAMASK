@@ -12,8 +12,8 @@ submodule (constitutive:constitutive_damage) source_damage_isoDuctile
 
   type:: tParameters                                                                                !< container type for internal constitutive parameters
     real(pReal) :: &
-      critPlasticStrain, &                                                                          !< critical plastic strain
-      N
+      gamma_crit, &                                                                                 !< critical plastic strain
+      q
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
@@ -64,8 +64,8 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
         associate(prm  => param(source_damage_isoDuctile_instance(p)))
         src => sources%get(sourceOffset) 
 
-        prm%N                 = src%get_asFloat('q')
-        prm%critPlasticStrain = src%get_asFloat('gamma_crit')
+        prm%q          = src%get_asFloat('q')
+        prm%gamma_crit = src%get_asFloat('gamma_crit')
 
 #if defined (__GFORTRAN__)
         prm%output = output_asStrings(src)
@@ -74,8 +74,8 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
 #endif
  
         ! sanity checks
-        if (prm%N                 <= 0.0_pReal) extmsg = trim(extmsg)//' q'
-        if (prm%critPlasticStrain <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
+        if (prm%q          <= 0.0_pReal) extmsg = trim(extmsg)//' q'
+        if (prm%gamma_crit <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
 
         NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
@@ -120,7 +120,7 @@ module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
 
   associate(prm => param(source_damage_isoDuctile_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
-    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%N)/prm%critPlasticStrain
+    sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit
   end associate
 
 end subroutine source_damage_isoDuctile_dotState
