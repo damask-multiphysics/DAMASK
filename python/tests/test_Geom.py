@@ -83,6 +83,13 @@ class TestGeom:
         with pytest.raises(ValueError):
             Geom.load(tmpdir/'no_materialpoint.vtr')
 
+    def test_invalid_material(self):
+        with pytest.raises(TypeError):
+            Geom(np.zeros((3,3,3),dtype='complex'),np.ones(3))
+
+    def test_cast_to_int(self):
+        g = Geom(np.zeros((3,3,3)),np.ones(3))
+        assert g.material.dtype in np.sctypes['int']
 
     @pytest.mark.parametrize('compress',[True,False])
     def test_compress(self,default,tmpdir,compress):
@@ -324,8 +331,8 @@ class TestGeom:
         size   = np.random.random(3) + 1.0
         N_seeds= np.random.randint(10,30)
         seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
-        Voronoi  = Geom.from_Voronoi_tessellation( grid,size,seeds,                 periodic)
-        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),periodic)
+        Voronoi  = Geom.from_Voronoi_tessellation( grid,size,seeds,                 np.arange(N_seeds)+5,periodic)
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
         assert geom_equal(Laguerre,Voronoi)
 
 
@@ -337,7 +344,7 @@ class TestGeom:
         weights= np.full((N_seeds),-np.inf)
         ms     = np.random.randint(1, N_seeds+1)
         weights[ms-1] = np.random.random()
-        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,np.random.random()>0.5)
+        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,periodic=np.random.random()>0.5)
         assert np.all(Laguerre.material == ms)
 
 
@@ -349,7 +356,7 @@ class TestGeom:
         material = np.ones(grid)
         material[:,grid[1]//2:,:] = 2
         if   approach == 'Laguerre':
-            geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),np.random.random()>0.5)
+            geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),periodic=np.random.random()>0.5)
         elif approach == 'Voronoi':
-            geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            np.random.random()>0.5)
+            geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(geom.material == material)

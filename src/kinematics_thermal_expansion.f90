@@ -11,7 +11,7 @@ submodule(constitutive:constitutive_thermal) kinematics_thermal_expansion
     real(pReal) :: &
       T_ref
     real(pReal), dimension(3,3,3) :: &
-      expansion = 0.0_pReal
+      A = 0.0_pReal
   end type tParameters
 
   type(tParameters), dimension(:), allocatable :: param
@@ -64,13 +64,13 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
 
         ! read up to three parameters (constant, linear, quadratic with T)
         temp = kinematic_type%get_asFloats('A_11')
-        prm%expansion(1,1,1:size(temp)) = temp
+        prm%A(1,1,1:size(temp)) = temp
         temp = kinematic_type%get_asFloats('A_22',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-        prm%expansion(2,2,1:size(temp)) = temp
+        prm%A(2,2,1:size(temp)) = temp
         temp = kinematic_type%get_asFloats('A_33',defaultVal=[(0.0_pReal, i=1,size(temp))],requiredSize=size(temp))
-        prm%expansion(3,3,1:size(temp)) = temp
-        do i=1, size(prm%expansion,3)
-          prm%expansion(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%expansion(1:3,1:3,i),&
+        prm%A(3,3,1:size(temp)) = temp
+        do i=1, size(prm%A,3)
+          prm%A(1:3,1:3,i) = lattice_applyLatticeSymmetry33(prm%A(1:3,1:3,i),&
                                                    phase%get_asString('lattice'))
         enddo
 
@@ -94,13 +94,13 @@ pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offs
    offset
 
  real(pReal), dimension(3,3) :: &
-   initialStrain                                                                                   !< initial thermal strain (should be small strain, though)
+   initialStrain                                                                                    !< initial thermal strain (should be small strain, though)
 
  associate(prm => param(kinematics_thermal_expansion_instance(phase)))
  initialStrain = &
-   (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%expansion(1:3,1:3,1) + &               ! constant  coefficient
-   (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%expansion(1:3,1:3,2) + &               ! linear    coefficient
-   (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%expansion(1:3,1:3,3)                   ! quadratic coefficient
+   (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%A(1:3,1:3,1) + &                        ! constant  coefficient
+   (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%A(1:3,1:3,2) + &                        ! linear    coefficient
+   (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%A(1:3,1:3,3)                            ! quadratic coefficient
  end associate
 
 end function kinematics_thermal_expansion_initialStrain
@@ -133,14 +133,14 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, i
 
   associate(prm => param(kinematics_thermal_expansion_instance(phase)))
   Li = TDot * ( &
-                prm%expansion(1:3,1:3,1)*(T - prm%T_ref)**0 &                                       ! constant  coefficient
-              + prm%expansion(1:3,1:3,2)*(T - prm%T_ref)**1 &                                       ! linear    coefficient
-              + prm%expansion(1:3,1:3,3)*(T - prm%T_ref)**2 &                                       ! quadratic coefficient
+                prm%A(1:3,1:3,1)*(T - prm%T_ref)**0 &                                               ! constant  coefficient
+              + prm%A(1:3,1:3,2)*(T - prm%T_ref)**1 &                                               ! linear    coefficient
+              + prm%A(1:3,1:3,3)*(T - prm%T_ref)**2 &                                               ! quadratic coefficient
               ) / &
        (1.0_pReal &
-             + prm%expansion(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
-             + prm%expansion(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
-             + prm%expansion(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
+             + prm%A(1:3,1:3,1)*(T - prm%T_ref)**1 / 1. &
+             + prm%A(1:3,1:3,2)*(T - prm%T_ref)**2 / 2. &
+             + prm%A(1:3,1:3,3)*(T - prm%T_ref)**3 / 3. &
        )
   end associate
   dLi_dTstar = 0.0_pReal
