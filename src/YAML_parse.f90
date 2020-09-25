@@ -238,18 +238,14 @@ subroutine skip_empty_lines(blck,s_blck)
 
   character(len=:), allocatable    :: line
   integer :: e_blck
-  logical :: not_empty
+  logical :: empty
 
-  not_empty = .false.
-  do while(.not. not_empty)
+  empty = .true.
+  do while(empty)
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
-    if(len_trim(line) == 0) then
-      s_blck = e_blck + 2
-      not_empty = .false.
-    else
-      not_empty = .true.
-    endif
+    empty = len_trim(line) == 0
+    if(empty) s_blck = e_blck + 2
   enddo
 
 
