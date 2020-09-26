@@ -46,58 +46,58 @@ submodule(constitutive:constitutive_plastic) plastic_nonlocal
 
   type :: tInitialParameters                                                                        !< container type for internal constitutive parameters
     real(pReal) :: &
-      rhoSglScatter, &                                                                              !< standard deviation of scatter in initial dislocation density
-      rhoSglRandom, &
-      rhoSglRandomBinning
+      sigma_rho_u, &                                                                                !< standard deviation of scatter in initial dislocation density
+      random_rho_u, &
+      random_rho_u_binning
     real(pReal), dimension(:), allocatable :: &
-      rhoSglEdgePos0, &                                                                             !< initial edge_pos dislocation density
-      rhoSglEdgeNeg0, &                                                                             !< initial edge_neg dislocation density
-      rhoSglScrewPos0, &                                                                            !< initial screw_pos dislocation density
-      rhoSglScrewNeg0, &                                                                            !< initial screw_neg dislocation density
-      rhoDipEdge0, &                                                                                !< initial edge dipole dislocation density
-      rhoDipScrew0                                                                                  !< initial screw dipole dislocation density
+      rho_u_ed_pos_0, &                                                                             !< initial edge_pos dislocation density
+      rho_u_ed_neg_0, &                                                                             !< initial edge_neg dislocation density
+      rho_u_sc_pos_0, &                                                                             !< initial screw_pos dislocation density
+      rho_u_sc_neg_0, &                                                                             !< initial screw_neg dislocation density
+      rho_d_ed_0, &                                                                                 !< initial edge dipole dislocation density
+      rho_d_sc_0                                                                                    !< initial screw dipole dislocation density
     integer,     dimension(:), allocatable :: &
       N_sl
   end type tInitialParameters
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      atomicVolume, &                                                                               !< atomic volume
-      Dsd0, &                                                                                       !< prefactor for self-diffusion coefficient
-      selfDiffusionEnergy, &                                                                        !< activation enthalpy for diffusion
+      V_at, &                                                                                       !< atomic volume
+      D_0, &                                                                                        !< prefactor for self-diffusion coefficient
+      Q_cl, &                                                                                       !< activation enthalpy for diffusion
       atol_rho, &                                                                                   !< absolute tolerance for dislocation density in state integration
-      significantRho, &                                                                             !< density considered significant
-      significantN, &                                                                               !< number of dislocations considered significant
-      doublekinkwidth, &                                                                            !< width of a doubkle kink in multiples of the burgers vector length b
-      solidSolutionEnergy, &                                                                        !< activation energy for solid solution in J
-      solidSolutionSize, &                                                                          !< solid solution obstacle size in multiples of the burgers vector length
-      solidSolutionConcentration, &                                                                 !< concentration of solid solution in atomic parts
+      rho_significant, &                                                                            !< density considered significant
+      rho_min, &                                                                                    !< number of dislocations considered significant
+      w, &                                                                                          !< width of a doubkle kink in multiples of the Burgers vector length b
+      Q_sol, &                                                                                      !< activation energy for solid solution in J
+      f_sol, &                                                                                      !< solid solution obstacle size in multiples of the Burgers vector length
+      c_sol, &                                                                                      !< concentration of solid solution in atomic parts
       p, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
       q, &                                                                                          !< parameter for kinetic law (Kocks,Argon,Ashby)
-      viscosity, &                                                                                  !< viscosity for dislocation glide in Pa s
-      fattack, &                                                                                    !< attack frequency in Hz
-      surfaceTransmissivity, &                                                                      !< transmissivity at free surface
-      grainboundaryTransmissivity, &                                                                !< transmissivity at grain boundary (identified by different texture)
-      CFLfactor, &                                                                                  !< safety factor for CFL flux condition
-      fEdgeMultiplication, &                                                                        !< factor that determines how much edge dislocations contribute to multiplication (0...1)
-      linetensionEffect, &
-      edgeJogFactor, &
+      eta, &                                                                                        !< viscosity for dislocation glide in Pa s
+      nu_a, &                                                                                       !< attack frequency in Hz
+      chi_surface, &                                                                                !< transmissivity at free surface
+      chi_GB, &                                                                                     !< transmissivity at grain boundary (identified by different texture)
+      f_c, &                                                                                        !< safety factor for CFL flux condition
+      f_ed_mult, &                                                                                  !< factor that determines how much edge dislocations contribute to multiplication (0...1)
+      f_F, &
+      f_ed, &
       mu, &
       nu
     real(pReal), dimension(:),      allocatable :: &
-      minDipoleHeight_edge, &                                                                       !< minimum stable edge dipole height
-      minDipoleHeight_screw, &                                                                      !< minimum stable screw dipole height
-      peierlsstress_edge, &
-      peierlsstress_screw, &
-      lambda0, &                                                                                    !< mean free path prefactor for each
-      burgers                                                                                       !< absolute length of burgers vector [m]
+      d_ed, &                                                                                       !< minimum stable edge dipole height
+      d_sc, &                                                                                       !< minimum stable screw dipole height
+      tau_Peierls_ed, &
+      tau_Peierls_sc, &
+      i_sl, &                                                                                       !< mean free path prefactor for each
+      b_sl                                                                                          !< absolute length of Burgers vector [m]
     real(pReal), dimension(:,:),   allocatable :: &
       slip_normal, &
       slip_direction, &
       slip_transverse, &
       minDipoleHeight, &                                                                            ! edge and screw
       peierlsstress, &                                                                              ! edge and screw
-      interactionSlipSlip ,&                                                                        !< coefficients for slip-slip interaction
+      h_sl_sl ,&                                                                                    !< coefficients for slip-slip interaction
       forestProjection_Edge, &                                                                      !< matrix of forest projections of edge dislocations
       forestProjection_Screw                                                                        !< matrix of forest projections of screw dislocations
     real(pReal), dimension(:,:,:), allocatable :: &
@@ -244,7 +244,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(phase%get_asString('lattice')) == 'bcc') then
-        a = pl%get_asFloats('nonSchmid_coefficients',defaultVal = emptyRealArray)
+        a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
         prm%nonSchmid_neg  = lattice_nonSchmidMatrix(ini%N_sl,a,-1)
@@ -253,9 +253,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
         prm%nonSchmid_neg  = prm%Schmid
       endif
 
-      prm%interactionSlipSlip = lattice_interaction_SlipBySlip(ini%N_sl, &
-                                                               pl%get_asFloats('h_sl_sl'), &
-                                                               phase%get_asString('lattice'))
+      prm%h_sl_sl = lattice_interaction_SlipBySlip(ini%N_sl, &
+                                                   pl%get_asFloats('h_sl_sl'), &
+                                                   phase%get_asString('lattice'))
 
       prm%forestProjection_edge  = lattice_forestProjection_edge (ini%N_sl,phase%get_asString('lattice'),&
                                                                   phase%get_asFloat('c/a',defaultVal=0.0_pReal))
@@ -279,113 +279,113 @@ module function plastic_nonlocal_init() result(myPlasticity)
         enddo
       enddo
 
-      ini%rhoSglEdgePos0  = pl%get_asFloats('rho_u_ed_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rhoSglEdgeNeg0  = pl%get_asFloats('rho_u_ed_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rhoSglScrewPos0 = pl%get_asFloats('rho_u_sc_pos_0',   requiredSize=size(ini%N_sl))
-      ini%rhoSglScrewNeg0 = pl%get_asFloats('rho_u_sc_neg_0',   requiredSize=size(ini%N_sl))
-      ini%rhoDipEdge0     = pl%get_asFloats('rho_d_ed_0',       requiredSize=size(ini%N_sl))
-      ini%rhoDipScrew0    = pl%get_asFloats('rho_d_sc_0',       requiredSize=size(ini%N_sl))
+      ini%rho_u_ed_pos_0  = pl%get_asFloats('rho_u_ed_pos_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_ed_neg_0  = pl%get_asFloats('rho_u_ed_neg_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_sc_pos_0  = pl%get_asFloats('rho_u_sc_pos_0',   requiredSize=size(ini%N_sl))
+      ini%rho_u_sc_neg_0  = pl%get_asFloats('rho_u_sc_neg_0',   requiredSize=size(ini%N_sl))
+      ini%rho_d_ed_0      = pl%get_asFloats('rho_d_ed_0',       requiredSize=size(ini%N_sl))
+      ini%rho_d_sc_0      = pl%get_asFloats('rho_d_sc_0',       requiredSize=size(ini%N_sl))
 
-      prm%lambda0         = pl%get_asFloats('i_sl',             requiredSize=size(ini%N_sl))
-      prm%burgers         = pl%get_asFloats('b_sl',             requiredSize=size(ini%N_sl))
+      prm%i_sl            = pl%get_asFloats('i_sl',             requiredSize=size(ini%N_sl))
+      prm%b_sl            = pl%get_asFloats('b_sl',             requiredSize=size(ini%N_sl))
 
-      prm%lambda0 = math_expand(prm%lambda0,ini%N_sl)
-      prm%burgers = math_expand(prm%burgers,ini%N_sl)
+      prm%i_sl = math_expand(prm%i_sl,ini%N_sl)
+      prm%b_sl = math_expand(prm%b_sl,ini%N_sl)
 
-      prm%minDipoleHeight_edge  = pl%get_asFloats('d_ed',       requiredSize=size(ini%N_sl))
-      prm%minDipoleHeight_screw = pl%get_asFloats('d_sc',       requiredSize=size(ini%N_sl))
-      prm%minDipoleHeight_edge  = math_expand(prm%minDipoleHeight_edge, ini%N_sl)
-      prm%minDipoleHeight_screw = math_expand(prm%minDipoleHeight_screw,ini%N_sl)
+      prm%d_ed            = pl%get_asFloats('d_ed',             requiredSize=size(ini%N_sl))
+      prm%d_sc            = pl%get_asFloats('d_sc',             requiredSize=size(ini%N_sl))
+      prm%d_ed            = math_expand(prm%d_ed,ini%N_sl)
+      prm%d_sc            = math_expand(prm%d_sc,ini%N_sl)
       allocate(prm%minDipoleHeight(prm%sum_N_sl,2))
-      prm%minDipoleHeight(:,1)  = prm%minDipoleHeight_edge
-      prm%minDipoleHeight(:,2)  = prm%minDipoleHeight_screw
+      prm%minDipoleHeight(:,1)  = prm%d_ed
+      prm%minDipoleHeight(:,2)  = prm%d_sc
 
-      prm%peierlsstress_edge    = pl%get_asFloats('tau_peierls_ed',        requiredSize=size(ini%N_sl))
-      prm%peierlsstress_screw   = pl%get_asFloats('tau_peierls_sc',        requiredSize=size(ini%N_sl))
-      prm%peierlsstress_edge    = math_expand(prm%peierlsstress_edge, ini%N_sl)
-      prm%peierlsstress_screw   = math_expand(prm%peierlsstress_screw,ini%N_sl)
+      prm%tau_Peierls_ed    = pl%get_asFloats('tau_Peierls_ed', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_sc    = pl%get_asFloats('tau_Peierls_sc', requiredSize=size(ini%N_sl))
+      prm%tau_Peierls_ed    = math_expand(prm%tau_Peierls_ed,ini%N_sl)
+      prm%tau_Peierls_sc    = math_expand(prm%tau_Peierls_sc,ini%N_sl)
       allocate(prm%peierlsstress(prm%sum_N_sl,2))
-      prm%peierlsstress(:,1)    = prm%peierlsstress_edge
-      prm%peierlsstress(:,2)    = prm%peierlsstress_screw
+      prm%peierlsstress(:,1)    = prm%tau_Peierls_ed
+      prm%peierlsstress(:,2)    = prm%tau_Peierls_sc
 
-      prm%significantRho              = pl%get_asFloat('rho_significant')
-      prm%significantN                = pl%get_asFloat('rho_num_significant', 0.0_pReal)
-      prm%CFLfactor                   = pl%get_asFloat('f_c',defaultVal=2.0_pReal)
+      prm%rho_significant       = pl%get_asFloat('rho_significant')
+      prm%rho_min               = pl%get_asFloat('rho_min', 0.0_pReal)
+      prm%f_c                   = pl%get_asFloat('f_c',defaultVal=2.0_pReal)
 
-      prm%atomicVolume                = pl%get_asFloat('V_at')
-      prm%Dsd0                        = pl%get_asFloat('D_0')  !,'dsd0'
-      prm%selfDiffusionEnergy         = pl%get_asFloat('Q_cl') !,'qsd'
-      prm%linetensionEffect           = pl%get_asFloat('f_F')
-      prm%edgeJogFactor               = pl%get_asFloat('f_ed') !,'edgejogs'
-      prm%doublekinkwidth             = pl%get_asFloat('w')
-      prm%solidSolutionEnergy         = pl%get_asFloat('Q_sol')
-      prm%solidSolutionSize           = pl%get_asFloat('f_sol')
-      prm%solidSolutionConcentration  = pl%get_asFloat('c_sol')
+      prm%V_at                  = pl%get_asFloat('V_at')
+      prm%D_0                   = pl%get_asFloat('D_0')
+      prm%Q_cl                  = pl%get_asFloat('Q_cl')
+      prm%f_F                   = pl%get_asFloat('f_F')
+      prm%f_ed                  = pl%get_asFloat('f_ed') !,'edgejogs'
+      prm%w                     = pl%get_asFloat('w')
+      prm%Q_sol                 = pl%get_asFloat('Q_sol')
+      prm%f_sol                 = pl%get_asFloat('f_sol')
+      prm%c_sol                 = pl%get_asFloat('c_sol')
 
-      prm%p                           = pl%get_asFloat('p_sl')
-      prm%q                           = pl%get_asFloat('q_sl')
-      prm%viscosity                   = pl%get_asFloat('eta')
-      prm%fattack                     = pl%get_asFloat('nu_a')
+      prm%p                     = pl%get_asFloat('p_sl')
+      prm%q                     = pl%get_asFloat('q_sl')
+      prm%eta                   = pl%get_asFloat('eta')
+      prm%nu_a                  = pl%get_asFloat('nu_a')
 
       ! ToDo: discuss logic
-      ini%rhoSglScatter               = pl%get_asFloat('sigma_rho_u')
-      ini%rhoSglRandom                = pl%get_asFloat('random_rho_u',defaultVal= 0.0_pReal)
+      ini%sigma_rho_u           = pl%get_asFloat('sigma_rho_u')
+      ini%random_rho_u          = pl%get_asFloat('random_rho_u',defaultVal= 0.0_pReal)
       if (pl%contains('random_rho_u')) &
-        ini%rhoSglRandomBinning       = pl%get_asFloat('random_rho_u_binning',defaultVal=0.0_pReal) !ToDo: useful default?
+        ini%random_rho_u_binning      = pl%get_asFloat('random_rho_u_binning',defaultVal=0.0_pReal) !ToDo: useful default?
      ! if (rhoSglRandom(instance) < 0.0_pReal) &
      ! if (rhoSglRandomBinning(instance) <= 0.0_pReal) &
 
-      prm%surfaceTransmissivity       = pl%get_asFloat('chi_surface',defaultVal=1.0_pReal)
-      prm%grainboundaryTransmissivity = pl%get_asFloat('chi_GB',     defaultVal=-1.0_pReal)
-      prm%fEdgeMultiplication         = pl%get_asFloat('f_ed_mult')
+      prm%chi_surface                 = pl%get_asFloat('chi_surface',defaultVal=1.0_pReal)
+      prm%chi_GB                      = pl%get_asFloat('chi_GB',     defaultVal=-1.0_pReal)
+      prm%f_ed_mult                   = pl%get_asFloat('f_ed_mult')
       prm%shortRangeStressCorrection  = pl%get_asBool('short_range_stress_correction', defaultVal = .false.)
 
 
 !--------------------------------------------------------------------------------------------------
 !  sanity checks
-      if (any(prm%burgers          <  0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
-      if (any(prm%lambda0          <= 0.0_pReal)) extmsg = trim(extmsg)//' i_sl'
+      if (any(prm%b_sl             <  0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
+      if (any(prm%i_sl             <= 0.0_pReal)) extmsg = trim(extmsg)//' i_sl'
 
-      if (any(ini%rhoSglEdgePos0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_ed_pos_0'
-      if (any(ini%rhoSglEdgeNeg0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_ed_neg_0'
-      if (any(ini%rhoSglScrewPos0  <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_sc_pos_0'
-      if (any(ini%rhoSglScrewNeg0  <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_sc_neg_0'
-      if (any(ini%rhoDipEdge0      <  0.0_pReal)) extmsg = trim(extmsg)//' rho_d_ed_0'
-      if (any(ini%rhoDipScrew0     <  0.0_pReal)) extmsg = trim(extmsg)//' rho_d_sc_0'
+      if (any(ini%rho_u_ed_pos_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_ed_pos_0'
+      if (any(ini%rho_u_ed_neg_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_ed_neg_0'
+      if (any(ini%rho_u_sc_pos_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_sc_pos_0'
+      if (any(ini%rho_u_sc_neg_0   <  0.0_pReal)) extmsg = trim(extmsg)//' rho_u_sc_neg_0'
+      if (any(ini%rho_d_ed_0       <  0.0_pReal)) extmsg = trim(extmsg)//' rho_d_ed_0'
+      if (any(ini%rho_d_sc_0       <  0.0_pReal)) extmsg = trim(extmsg)//' rho_d_sc_0'
 
       if (any(prm%peierlsstress    <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
       if (any(prm%minDipoleHeight  <  0.0_pReal)) extmsg = trim(extmsg)//' d_ed or d_sc'
 
-      if (prm%viscosity           <= 0.0_pReal)   extmsg = trim(extmsg)//' eta'
-      if (prm%selfDiffusionEnergy <= 0.0_pReal)   extmsg = trim(extmsg)//' Q_cl'
-      if (prm%fattack             <= 0.0_pReal)   extmsg = trim(extmsg)//' nu_a'
-      if (prm%doublekinkwidth     <= 0.0_pReal)   extmsg = trim(extmsg)//' w'
-      if (prm%Dsd0                < 0.0_pReal)    extmsg = trim(extmsg)//' D_0'
-      if (prm%atomicVolume        <= 0.0_pReal)   extmsg = trim(extmsg)//' V_at'                    ! ToDo: in disloTungsten, the atomic volume is given as a factor
+      if (prm%eta                 <=  0.0_pReal)  extmsg = trim(extmsg)//' eta'
+      if (prm%Q_cl                <=  0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
+      if (prm%nu_a                <=  0.0_pReal)  extmsg = trim(extmsg)//' nu_a'
+      if (prm%w                   <=  0.0_pReal)  extmsg = trim(extmsg)//' w'
+      if (prm%D_0                 <   0.0_pReal)  extmsg = trim(extmsg)//' D_0'
+      if (prm%V_at                <=  0.0_pReal)  extmsg = trim(extmsg)//' V_at'                   ! ToDo: in disloTungsten, the atomic volume is given as a factor
 
-      if (prm%significantN         < 0.0_pReal)   extmsg = trim(extmsg)//' rho_num_significant'
-      if (prm%significantrho       < 0.0_pReal)   extmsg = trim(extmsg)//' rho_significant'
-      if (prm%atol_rho             < 0.0_pReal)   extmsg = trim(extmsg)//' atol_rho'
-      if (prm%CFLfactor            < 0.0_pReal)   extmsg = trim(extmsg)//' f_c'
+      if (prm%rho_min             <   0.0_pReal)  extmsg = trim(extmsg)//' rho_min'
+      if (prm%rho_significant     <   0.0_pReal)  extmsg = trim(extmsg)//' rho_significant'
+      if (prm%atol_rho            <   0.0_pReal)  extmsg = trim(extmsg)//' atol_rho'
+      if (prm%f_c                 <   0.0_pReal)  extmsg = trim(extmsg)//' f_c'
 
-      if (prm%p <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p_sl'
-      if (prm%q <  1.0_pReal .or. prm%q > 2.0_pReal) extmsg = trim(extmsg)//' q_sl'
+      if (prm%p    <= 0.0_pReal .or. prm%p > 1.0_pReal) extmsg = trim(extmsg)//' p_sl'
+      if (prm%q    <  1.0_pReal .or. prm%q > 2.0_pReal) extmsg = trim(extmsg)//' q_sl'
 
-      if (prm%linetensionEffect <  0.0_pReal .or. prm%linetensionEffect  > 1.0_pReal) &
+      if (prm%f_F  < 0.0_pReal  .or. prm%f_F  > 1.0_pReal) &
                                                   extmsg = trim(extmsg)//' f_F'
-      if (prm%edgeJogFactor     <  0.0_pReal .or. prm%edgeJogFactor      > 1.0_pReal) &
+      if (prm%f_ed <  0.0_pReal .or. prm%f_ed > 1.0_pReal) &
                                                   extmsg = trim(extmsg)//' f_ed'
 
-      if (prm%solidSolutionEnergy        <= 0.0_pReal) extmsg = trim(extmsg)//' Q_sol'
-      if (prm%solidSolutionSize          <= 0.0_pReal) extmsg = trim(extmsg)//' f_sol'
-      if (prm%solidSolutionConcentration <= 0.0_pReal) extmsg = trim(extmsg)//' c_sol'
+      if (prm%Q_sol               <=  0.0_pReal)  extmsg = trim(extmsg)//' Q_sol'
+      if (prm%f_sol               <=  0.0_pReal)  extmsg = trim(extmsg)//' f_sol'
+      if (prm%c_sol               <=  0.0_pReal)  extmsg = trim(extmsg)//' c_sol'
 
-      if (prm%grainboundaryTransmissivity  > 1.0_pReal) extmsg = trim(extmsg)//' chi_GB'
-      if (prm%surfaceTransmissivity  <  0.0_pReal .or. prm%surfaceTransmissivity  > 1.0_pReal) &
-                                                        extmsg = trim(extmsg)//' chi_surface'
+      if (prm%chi_GB              >   1.0_pReal)  extmsg = trim(extmsg)//' chi_GB'
+      if (prm%chi_surface  < 0.0_pReal .or. prm%chi_surface  > 1.0_pReal) &
+                                                  extmsg = trim(extmsg)//' chi_surface'
 
-      if (prm%fEdgeMultiplication  <  0.0_pReal .or. prm%fEdgeMultiplication  > 1.0_pReal) &
-        extmsg = trim(extmsg)//' f_ed_mult'
+      if (prm%f_ed_mult    < 0.0_pReal .or. prm%f_ed_mult    > 1.0_pReal) &
+                                                  extmsg = trim(extmsg)//' f_ed_mult'
 
     endif slipActive
 
@@ -412,7 +412,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       call IO_error(212,ext_msg='IPneighborhood does not exist')
 
 
-    plasticState(p)%offsetDeltaState = 0                                                             ! ToDo: state structure does not follow convention
+    plasticState(p)%offsetDeltaState = 0                                                            ! ToDo: state structure does not follow convention
 
     st0%rho => plasticState(p)%state0                             (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
     stt%rho => plasticState(p)%state                              (0*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
@@ -620,16 +620,16 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
   ! coefficients are corrected for the line tension effect
   ! (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
   if (any(lattice_structure(material_phaseAt(1,el)) == [LATTICE_bcc_ID,LATTICE_fcc_ID])) then
-    myInteractionMatrix = prm%interactionSlipSlip &
-                        * spread((  1.0_pReal - prm%linetensionEffect &
-                                   + prm%linetensionEffect &
-                                   * log(0.35_pReal * prm%burgers * sqrt(max(stt%rho_forest(:,of),prm%significantRho))) &
-                                   / log(0.35_pReal * prm%burgers * 1e6_pReal))** 2.0_pReal,2,prm%sum_N_sl)
+    myInteractionMatrix = prm%h_sl_sl &
+                        * spread((  1.0_pReal - prm%f_F &
+                                   + prm%f_F &
+                                   * log(0.35_pReal * prm%b_sl * sqrt(max(stt%rho_forest(:,of),prm%rho_significant))) &
+                                   / log(0.35_pReal * prm%b_sl * 1e6_pReal))** 2.0_pReal,2,prm%sum_N_sl)
   else
-    myInteractionMatrix = prm%interactionSlipSlip
+    myInteractionMatrix = prm%h_sl_sl
   endif
 
-  dst%tau_pass(:,of) = prm%mu * prm%burgers &
+  dst%tau_pass(:,of) = prm%mu * prm%b_sl &
                      * sqrt(matmul(myInteractionMatrix,sum(abs(rho),2)))
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
@@ -731,7 +731,7 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
       where(rhoTotal > 0.0_pReal) rhoExcessGradient_over_rho = rhoExcessGradient / rhoTotal
 
         ! ... gives the local stress correction when multiplied with a factor
-      dst%tau_back(s,of) = - prm%mu * prm%burgers(s) / (2.0_pReal * PI) &
+      dst%tau_back(s,of) = - prm%mu * prm%b_sl(s) / (2.0_pReal * PI) &
                          * (  rhoExcessGradient_over_rho(1) / (1.0_pReal - prm%nu) &
                             + rhoExcessGradient_over_rho(2))
     enddo
@@ -841,7 +841,7 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
   forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * v(s,t-4) < 0.0_pReal) &
     rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
 
-  gdotTotal = sum(rhoSgl(:,1:4) * v, 2) * prm%burgers
+  gdotTotal = sum(rhoSgl(:,1:4) * v, 2) * prm%b_sl
 
   Lp = 0.0_pReal
   dLp_dMp = 0.0_pReal
@@ -850,10 +850,10 @@ module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
     forall (i=1:3,j=1:3,k=1:3,l=1:3) &
       dLp_dMp(i,j,k,l) = dLp_dMp(i,j,k,l) &
           + prm%Schmid(i,j,s) * prm%Schmid(k,l,s) &
-          * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%burgers(s) &
+          * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * prm%b_sl(s) &
           + prm%Schmid(i,j,s) &
           * ( prm%nonSchmid_pos(k,l,s) * rhoSgl(s,3) * dv_dtauNS(s,3) &
-            - prm%nonSchmid_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%burgers(s)
+            - prm%nonSchmid_neg(k,l,s) * rhoSgl(s,4) * dv_dtauNS(s,4))  * prm%b_sl(s)
   enddo
 
   end associate
@@ -929,8 +929,8 @@ module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
     if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
   enddo
 
-  dUpper(:,1) = prm%mu * prm%burgers/(8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
-  dUpper(:,2) = prm%mu * prm%burgers/(4.0_pReal * PI * abs(tau))
+  dUpper(:,1) = prm%mu * prm%b_sl/(8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
+  dUpper(:,2) = prm%mu * prm%b_sl/(4.0_pReal * PI * abs(tau))
 
   where(dNeq0(sqrt(sum(abs(rho(:,edg)),2)))) &
     dUpper(:,1) = min(1.0_pReal/sqrt(sum(abs(rho(:,edg)),2)),dUpper(:,1))
@@ -1041,7 +1041,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)
-  gdot = rhoSgl(:,1:4) * v * spread(prm%burgers,2,4)
+  gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
 #ifdef DEBUG
     if (debugConstitutive%basic &
@@ -1060,8 +1060,8 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   enddo
 
   dLower = prm%minDipoleHeight
-  dUpper(:,1) = prm%mu * prm%burgers/(8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
-  dUpper(:,2) = prm%mu * prm%burgers/(4.0_pReal * PI * abs(tau))
+  dUpper(:,1) = prm%mu * prm%b_sl/(8.0_pReal * PI * (1.0_pReal - prm%nu) * abs(tau))
+  dUpper(:,2) = prm%mu * prm%b_sl/(4.0_pReal * PI * abs(tau))
 
   where(dNeq0(sqrt(sum(abs(rho(:,edg)),2)))) &
     dUpper(:,1) = min(1.0_pReal/sqrt(sum(abs(rho(:,edg)),2)),dUpper(:,1))
@@ -1075,18 +1075,18 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   rhoDotMultiplication = 0.0_pReal
   isBCC: if (lattice_structure(ph) == LATTICE_bcc_ID) then
     forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
-      rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / prm%burgers(s) &                        ! assuming double-cross-slip of screws to be decisive for multiplication
-                                  * sqrt(stt%rho_forest(s,of)) / prm%lambda0(s) ! &                 ! mean free path
+      rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / prm%b_sl(s) &                           ! assuming double-cross-slip of screws to be decisive for multiplication
+                                  * sqrt(stt%rho_forest(s,of)) / prm%i_sl(s) ! &                    ! mean free path
                                   ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))           ! ratio of screw to overall velocity determines edge generation
-      rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) /prm%burgers(s) &                         ! assuming double-cross-slip of screws to be decisive for multiplication
-                                  * sqrt(stt%rho_forest(s,of)) / prm%lambda0(s) ! &                 ! mean free path
+      rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) /prm%b_sl(s) &                            ! assuming double-cross-slip of screws to be decisive for multiplication
+                                  * sqrt(stt%rho_forest(s,of)) / prm%i_sl(s) ! &                    ! mean free path
                                   ! * 2.0_pReal * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))           ! ratio of edge to overall velocity determines screw generation
     endforall
 
   else isBCC
     rhoDotMultiplication(:,1:4) = spread( &
-          (sum(abs(gdot(:,1:2)),2) * prm%fEdgeMultiplication + sum(abs(gdot(:,3:4)),2)) &
-        * sqrt(stt%rho_forest(:,of)) / prm%lambda0 / prm%burgers, 2, 4)
+          (sum(abs(gdot(:,1:2)),2) * prm%f_ed_mult + sum(abs(gdot(:,3:4)),2)) &
+        * sqrt(stt%rho_forest(:,of)) / prm%i_sl / prm%b_sl, 2, 4)
   endif isBCC
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,instance),of)
@@ -1097,20 +1097,20 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   !*** formation by glide
   do c = 1,2
-    rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+    rhoDotSingle2DipoleGlide(:,2*c-1) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
                                                    * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &   ! negative mobile --> positive mobile
                                                       +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) & ! positive mobile --> negative mobile
                                                       + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)))  ! positive mobile --> negative immobile
 
-    rhoDotSingle2DipoleGlide(:,2*c) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+    rhoDotSingle2DipoleGlide(:,2*c) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
                                                  * (      rhoSgl(:,2*c-1)  * abs(gdot(:,2*c)) &     ! negative mobile --> positive mobile
                                                     +     rhoSgl(:,2*c)    * abs(gdot(:,2*c-1)) &   ! positive mobile --> negative mobile
                                                     + abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)))      ! negative mobile --> positive immobile
 
-    rhoDotSingle2DipoleGlide(:,2*c+3) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+    rhoDotSingle2DipoleGlide(:,2*c+3) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
                                                    * rhoSgl(:,2*c+3) * abs(gdot(:,2*c))             ! negative mobile --> positive immobile
 
-    rhoDotSingle2DipoleGlide(:,2*c+4) = -2.0_pReal * dUpper(:,c) / prm%burgers &
+    rhoDotSingle2DipoleGlide(:,2*c+4) = -2.0_pReal * dUpper(:,c) / prm%b_sl &
                                                    * rhoSgl(:,2*c+4) * abs(gdot(:,2*c-1))           ! positive mobile --> negative immobile
 
     rhoDotSingle2DipoleGlide(:,c+8) = abs(rhoDotSingle2DipoleGlide(:,2*c+3)) &
@@ -1123,27 +1123,27 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
   !*** athermal annihilation
   rhoDotAthermalAnnihilation = 0.0_pReal
   forall (c=1:2) &
-    rhoDotAthermalAnnihilation(:,c+8) = -2.0_pReal * dLower(:,c) / prm%burgers &
-       * (  2.0_pReal * (rhoSgl(:,2*c-1) * abs(gdot(:,2*c)) + rhoSgl(:,2*c) * abs(gdot(:,2*c-1))) &             ! was single hitting single
+    rhoDotAthermalAnnihilation(:,c+8) = -2.0_pReal * dLower(:,c) / prm%b_sl &
+       * (  2.0_pReal * (rhoSgl(:,2*c-1) * abs(gdot(:,2*c)) + rhoSgl(:,2*c) * abs(gdot(:,2*c-1))) & ! was single hitting single
           + 2.0_pReal * (abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
-          + rhoDip(:,c) * (abs(gdot(:,2*c-1)) + abs(gdot(:,2*c))))                                              ! single knocks dipole constituent
+          + rhoDip(:,c) * (abs(gdot(:,2*c-1)) + abs(gdot(:,2*c))))                                  ! single knocks dipole constituent
 
   ! annihilated screw dipoles leave edge jogs behind on the colinear system
   if (lattice_structure(ph) == LATTICE_fcc_ID) &
     forall (s = 1:ns, prm%colinearSystem(s) > 0) &
       rhoDotAthermalAnnihilation(prm%colinearSystem(s),1:2) = - rhoDotAthermalAnnihilation(s,10) &
-        * 0.25_pReal * sqrt(stt%rho_forest(s,of)) * (dUpper(s,2) + dLower(s,2)) * prm%edgeJogFactor
+        * 0.25_pReal * sqrt(stt%rho_forest(s,of)) * (dUpper(s,2) + dLower(s,2)) * prm%f_ed
 
 
   !*** thermally activated annihilation of edge dipoles by climb
   rhoDotThermalAnnihilation = 0.0_pReal
-  selfDiffusion = prm%Dsd0 * exp(-prm%selfDiffusionEnergy / (kB * Temperature))
-  vClimb = prm%atomicVolume * selfDiffusion * prm%mu &
+  selfDiffusion = prm%D_0 * exp(-prm%Q_cl / (kB * Temperature))
+  vClimb = prm%V_at * selfDiffusion * prm%mu &
          / ( kB * Temperature  * PI * (1.0_pReal-prm%nu) * (dUpper(:,1) + dLower(:,1)))
   forall (s = 1:ns, dUpper(s,1) > dLower(s,1)) &
     rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
-                                                                  - rhoDotSingle2DipoleGlide(s,9))    ! make sure that we do not annihilate more dipoles than we have
+                                                                  - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
   rhoDot = rhoDotFlux(F,Fp,timestep,  instance,of,ip,el) &
          + rhoDotMultiplication &
@@ -1252,7 +1252,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
   my_rhoSgl0 = rho0(:,sgl)
 
   forall (s = 1:ns, t = 1:4) v(s,t) = plasticState(ph)%state(iV(s,t,instance),of)                   !ToDo: MD: I think we should use state0 here
-  gdot = rhoSgl(:,1:4) * v * spread(prm%burgers,2,4)
+  gdot = rhoSgl(:,1:4) * v * spread(prm%b_sl,2,4)
 
 
   forall (s = 1:ns, t = 1:4) v0(s,t) = plasticState(ph)%state0(iV(s,t,instance),of)
@@ -1264,14 +1264,14 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
 
     !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
     if (any( abs(gdot) > 0.0_pReal &                                                                ! any active slip system ...
-            .and. prm%CFLfactor * abs(v0) * timestep &
+            .and. prm%f_c * abs(v0) * timestep &
                 > IPvolume(ip,el) / maxval(IParea(:,ip,el)))) then                                  ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifdef DEBUG
     if (debugConstitutive%extensive) then
       print'(a,i5,a,i2)', '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       print'(a,e10.3,a,e10.3)', '<< CONST >> velocity is at  ', &
         maxval(abs(v0), abs(gdot) > 0.0_pReal &
-                       .and.  prm%CFLfactor * abs(v0) * timestep &
+                       .and.  prm%f_c * abs(v0) * timestep &
                              > IPvolume(ip,el) / maxval(IParea(:,ip,el))), &
         ' at a timestep of ',timestep
       print*, '<< CONST >> enforcing cutback !!!'
@@ -1334,8 +1334,8 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
           neighbor_rhoSgl0(s,t) = max(plasticState(np)%state0(iRhoU(s,t,neighbor_instance),no),0.0_pReal)
         endforall
 
-        where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%significantN &
-          .or. neighbor_rhoSgl0 < prm%significantRho) &
+        where (neighbor_rhoSgl0 * IPvolume(neighbor_ip,neighbor_el) ** 0.667_pReal < prm%rho_min &
+          .or. neighbor_rhoSgl0 < prm%rho_significant) &
           neighbor_rhoSgl0 = 0.0_pReal
         normal_neighbor2me_defConf = math_det33(Favg) * matmul(math_inv33(transpose(Favg)), &
                                      IPareaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))          ! normal of the interface in (average) deformed configuration (pointing neighbor => me)
@@ -1460,7 +1460,7 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
     if (neighbor_e <= 0 .or. neighbor_i <= 0) then
       !* FREE SURFACE
       !* Set surface transmissivity to the value specified in the material.config
-      forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%surfaceTransmissivity)
+      forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_surface)
     elseif (neighbor_phase /= ph) then
       !* PHASE BOUNDARY
       !* If we encounter a different nonlocal phase at the neighbor,
@@ -1469,13 +1469,13 @@ module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
       !* we do not consider this to be a phase boundary, so completely compatible.
       if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(ph)) &
         forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = 0.0_pReal
-    elseif (prm%grainboundaryTransmissivity >= 0.0_pReal) then
+    elseif (prm%chi_GB >= 0.0_pReal) then
       !* GRAIN BOUNDARY !
       !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
       if (any(dNeq(material_orientation0(1,i,e)%asQuaternion(), &
                    material_orientation0(1,neighbor_i,neighbor_e)%asQuaternion())) .and. &
           (.not. phase_localPlasticity(neighbor_phase))) &
-        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%grainboundaryTransmissivity)
+        forall(s1 = 1:ns) my_compatibility(:,s1,s1,n) = sqrt(prm%chi_GB)
     else
       !* GRAIN BOUNDARY ?
       !* Compatibility defined by relative orientation of slip systems:
@@ -1631,7 +1631,7 @@ subroutine stateInit(ini,phase,NipcMyPhase,instance)
 
   associate(stt => state(instance))
 
-  if (ini%rhoSglRandom > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
+  if (ini%random_rho_u > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
     do e = 1,discretization_nElem
       do i = 1,discretization_nIP
         if (material_phaseAt(1,e) == phase) volume(material_phasememberAt(1,i,e)) = IPvolume(i,e)
@@ -1639,11 +1639,11 @@ subroutine stateInit(ini,phase,NipcMyPhase,instance)
     enddo
     totalVolume     = sum(volume)
     minimumIPVolume = minval(volume)
-    densityBinning  = ini%rhoSglRandomBinning / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
+    densityBinning  = ini%random_rho_u_binning / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
 
     ! fill random material points with dislocation segments until the desired overall density is reached
     meanDensity = 0.0_pReal
-    do while(meanDensity < ini%rhoSglRandom)
+    do while(meanDensity < ini%random_rho_u)
       call random_number(rnd)
       phasemember = nint(rnd(1)*real(NipcMyPhase,pReal) + 0.5_pReal)
       s           = nint(rnd(2)*real(sum(ini%N_sl),pReal)*4.0_pReal + 0.5_pReal)
@@ -1656,15 +1656,15 @@ subroutine stateInit(ini,phase,NipcMyPhase,instance)
         from = 1 + sum(ini%N_sl(1:f-1))
         upto = sum(ini%N_sl(1:f))
         do s = from,upto
-          noise = [math_sampleGaussVar(0.0_pReal, ini%rhoSglScatter), &
-                   math_sampleGaussVar(0.0_pReal, ini%rhoSglScatter)]
-          stt%rho_sgl_mob_edg_pos(s,e) = ini%rhoSglEdgePos0(f)  + noise(1)
-          stt%rho_sgl_mob_edg_neg(s,e) = ini%rhoSglEdgeNeg0(f)  + noise(1)
-          stt%rho_sgl_mob_scr_pos(s,e) = ini%rhoSglScrewPos0(f) + noise(2)
-          stt%rho_sgl_mob_scr_neg(s,e) = ini%rhoSglScrewNeg0(f) + noise(2)
+          noise = [math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u), &
+                   math_sampleGaussVar(0.0_pReal, ini%sigma_rho_u)]
+          stt%rho_sgl_mob_edg_pos(s,e) = ini%rho_u_ed_pos_0(f)  + noise(1)
+          stt%rho_sgl_mob_edg_neg(s,e) = ini%rho_u_ed_neg_0(f)  + noise(1)
+          stt%rho_sgl_mob_scr_pos(s,e) = ini%rho_u_sc_pos_0(f) + noise(2)
+          stt%rho_sgl_mob_scr_neg(s,e) = ini%rho_u_sc_neg_0(f) + noise(2)
         enddo
-        stt%rho_dip_edg(from:upto,e)   = ini%rhoDipEdge0(f)
-        stt%rho_dip_scr(from:upto,e)   = ini%rhoDipScrew0(f)
+        stt%rho_dip_edg(from:upto,e)   = ini%rho_d_ed_0(f)
+        stt%rho_dip_scr(from:upto,e)   = ini%rho_d_sc_0(f)
       enddo
     enddo
   endif
@@ -1732,14 +1732,14 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
       !* Effective stress includes non Schmid constributions
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
       tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))                                      ! ensure that the effective stress is positive
-      meanfreepath_P = prm%burgers(s)
-      jumpWidth_P = prm%burgers(s)
-      activationLength_P = prm%doublekinkwidth *prm%burgers(s)
-      activationVolume_P = activationLength_P * jumpWidth_P * prm%burgers(s)
+      meanfreepath_P = prm%b_sl(s)
+      jumpWidth_P = prm%b_sl(s)
+      activationLength_P = prm%w *prm%b_sl(s)
+      activationVolume_P = activationLength_P * jumpWidth_P * prm%b_sl(s)
       criticalStress_P = prm%peierlsStress(s,c)
       activationEnergy_P = criticalStress_P * activationVolume_P
       tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                          ! ensure that the activation probability cannot become greater than one
-      tPeierls = 1.0_pReal / prm%fattack &
+      tPeierls = 1.0_pReal / prm%nu_a &
                * exp(activationEnergy_P / (kB * Temperature) &
                      * (1.0_pReal - tauRel_P**prm%p)**prm%q)
       if (tauEff < criticalStress_P) then
@@ -1752,14 +1752,14 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
       !* Contribution from solid solution strengthening
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
       tauEff = abs(tau(s)) - tauThreshold(s)
-      meanfreepath_S = prm%burgers(s) / sqrt(prm%solidSolutionConcentration)
-      jumpWidth_S = prm%solidSolutionSize * prm%burgers(s)
-      activationLength_S = prm%burgers(s) / sqrt(prm%solidSolutionConcentration)
-      activationVolume_S = activationLength_S * jumpWidth_S * prm%burgers(s)
-      activationEnergy_S = prm%solidSolutionEnergy
+      meanfreepath_S = prm%b_sl(s) / sqrt(prm%c_sol)
+      jumpWidth_S = prm%f_sol * prm%b_sl(s)
+      activationLength_S = prm%b_sl(s) / sqrt(prm%c_sol)
+      activationVolume_S = activationLength_S * jumpWidth_S * prm%b_sl(s)
+      activationEnergy_S = prm%Q_sol
       criticalStress_S = activationEnergy_S / activationVolume_S
       tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)                                          ! ensure that the activation probability cannot become greater than one
-      tSolidSolution = 1.0_pReal /  prm%fattack &
+      tSolidSolution = 1.0_pReal /  prm%nu_a &
                      * exp(activationEnergy_S / (kB * Temperature)* (1.0_pReal - tauRel_S**prm%p)**prm%q)
       if (tauEff < criticalStress_S) then
         dtSolidSolution_dtau = tSolidSolution * prm%p * prm%q * activationVolume_S / (kB * Temperature) &
@@ -1770,7 +1770,7 @@ pure subroutine kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, tauThreshold, c, Tem
 
       !* viscous glide velocity
       tauEff = abs(tau(s)) - tauThreshold(s)
-      mobility = prm%burgers(s) / prm%viscosity
+      mobility = prm%b_sl(s) / prm%eta
       vViscous = mobility * tauEff
 
       !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of
@@ -1805,7 +1805,7 @@ pure function getRho(instance,of,ip,el)
   getRho(:,mob) = max(getRho(:,mob),0.0_pReal)
   getRho(:,dip) = max(getRho(:,dip),0.0_pReal)
 
-  where(abs(getRho) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
+  where(abs(getRho) < max(prm%rho_min/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
     getRho = 0.0_pReal
 
   end associate
@@ -1830,7 +1830,7 @@ pure function getRho0(instance,of,ip,el)
   getRho0(:,mob) = max(getRho0(:,mob),0.0_pReal)
   getRho0(:,dip) = max(getRho0(:,dip),0.0_pReal)
 
-  where(abs(getRho0) < max(prm%significantN/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%significantRho)) &
+  where(abs(getRho0) < max(prm%rho_min/IPvolume(ip,el)**(2.0_pReal/3.0_pReal),prm%rho_significant)) &
     getRho0 = 0.0_pReal
 
   end associate

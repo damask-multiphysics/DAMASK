@@ -20,6 +20,12 @@ from ._result      import Result           # noqa
 from ._geom        import Geom             # noqa
 from ._material    import Material         # noqa
 from .             import solver           # noqa
+from .             import util             # noqa
+from .             import seeds            # noqa
+from .             import grid_filters     # noqa
+from .             import mechanics        # noqa
+
+
 
 # deprecated
 Environment = _

@@ -134,7 +134,7 @@ function damage_nonlocal_getDiffusion(ip,el)
   damage_nonlocal_getDiffusion = 0.0_pReal
   do grain = 1, homogenization_Ngrains(homog)
     damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
-      crystallite_push33ToRef(grain,ip,el,lattice_DamageDiffusion(1:3,1:3,material_phaseAt(grain,el)))
+      crystallite_push33ToRef(grain,ip,el,lattice_D(1:3,1:3,material_phaseAt(grain,el)))
   enddo
 
   damage_nonlocal_getDiffusion = &
@@ -157,7 +157,7 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
   damage_nonlocal_getMobility = 0.0_pReal
 
   do ipc = 1, homogenization_Ngrains(material_homogenizationAt(el))
-    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_DamageMobility(material_phaseAt(ipc,el))
+    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(ipc,el))
   enddo
 
   damage_nonlocal_getMobility = damage_nonlocal_getMobility/&

@@ -52,10 +52,6 @@ parser.add_option('-p', '--periods',
                   dest = 'periods',
                   type = 'int', metavar = 'int',
                   help = 'number of repetitions of unit cell [%default]')
-parser.add_option('--homogenization',
-                  dest = 'homogenization',
-                  type = 'int', metavar = 'int',
-                  help = 'homogenization index to be used [%default]')
 parser.add_option('--m',
                   dest = 'microstructure',
                   type = 'int', nargs = 2, metavar = 'int int',
@@ -66,7 +62,6 @@ parser.set_defaults(type = minimal_surfaces[0],
                     periods = 1,
                     grid = (16,16,16),
                     size = (1.0,1.0,1.0),
-                    homogenization = 1,
                     microstructure = (1,2),
                    )
 
@@ -85,7 +80,6 @@ microstructure = np.where(options.threshold < surface[options.type](x,y,z),
                           options.microstructure[1],options.microstructure[0])
 
 geom=damask.Geom(microstructure,options.size,
-                 homogenization=options.homogenization,
                  comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
 damask.util.croak(geom)
 
