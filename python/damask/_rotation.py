@@ -212,7 +212,7 @@ class Rotation:
         Returns
         -------
         q : numpy.ndarray of shape (...,4)
-            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3), |q|=1, q_0 ≥ 0.
+            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3), ǀqǀ=1, q_0 ≥ 0.
 
         """
         return self.quaternion.copy()
@@ -255,7 +255,7 @@ class Rotation:
         -------
         axis_angle : numpy.ndarray of shape (...,4) unless pair == True:
             tuple containing numpy.ndarray of shapes (...,3) and (...)
-            Axis angle pair: (n_1, n_2, n_3, ω), |n| = 1 and ω ∈ [0,π]
+            Axis angle pair: (n_1, n_2, n_3, ω), ǀnǀ = 1 and ω ∈ [0,π]
             unless degrees = True: ω ∈ [0,180].
 
         """
@@ -290,7 +290,7 @@ class Rotation:
         -------
         rho : numpy.ndarray of shape (...,4) unless vector == True:
             numpy.ndarray of shape (...,3)
-            Rodrigues-Frank vector: [n_1, n_2, n_3, tan(ω/2)], |n| = 1 and ω ∈ [0,π].
+            Rodrigues-Frank vector: [n_1, n_2, n_3, tan(ω/2)], ǀnǀ = 1 and ω ∈ [0,π].
 
         """
         ro = Rotation._qu2ro(self.quaternion)
@@ -307,7 +307,7 @@ class Rotation:
         Returns
         -------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), |h| < 1/2*π^(2/3).
+            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < 1/2*π^(2/3).
 
         """
         return Rotation._qu2ho(self.quaternion)
@@ -353,7 +353,7 @@ class Rotation:
         ----------
         q : numpy.ndarray of shape (...,4)
             Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3),
-            |q|=1, q_0 ≥ 0.
+            ǀqǀ=1, q_0 ≥ 0.
         accept_homomorph : boolean, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
@@ -416,12 +416,12 @@ class Rotation:
         Parameters
         ----------
         axis_angle : numpy.ndarray of shape (...,4)
-            Axis angle pair: [n_1, n_2, n_3, ω], |n| = 1 and ω ∈ [0,π]
+            Axis angle pair: [n_1, n_2, n_3, ω], ǀnǀ = 1 and ω ∈ [0,π]
             unless degrees = True: ω ∈ [0,180].
         degrees : boolean, optional
             Angle ω is given in degrees. Defaults to False.
         normalize: boolean, optional
-            Allow |n| ≠ 1. Defaults to False.
+            Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
@@ -503,9 +503,9 @@ class Rotation:
         ----------
         rho : numpy.ndarray of shape (...,4)
             Rodrigues-Frank vector (angle separated from axis).
-            (n_1, n_2, n_3, tan(ω/2)), |n| = 1  and ω ∈ [0,π].
+            (n_1, n_2, n_3, tan(ω/2)), ǀnǀ = 1  and ω ∈ [0,π].
         normalize : boolean, optional
-            Allow |n| ≠ 1. Defaults to False.
+            Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
@@ -534,7 +534,7 @@ class Rotation:
         Parameters
         ----------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), |h| < (3/4*π)^(1/3).
+            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < (3/4*π)^(1/3).
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
