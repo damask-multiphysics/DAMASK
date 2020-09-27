@@ -147,12 +147,12 @@ class Colormap(mpl.colors.ListedColormap):
 
         References
         ----------
-        .. [1] DAMASK colormap theory
-           https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
-        .. [2] DAMASK colormaps first use
-           https://doi.org/10.1016/j.ijplas.2012.09.012
-        .. [3] Matplotlib colormaps overview
-           https://matplotlib.org/tutorials/colors/colormaps.html
+        [1] DAMASK colormap theory
+          https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
+        [2] DAMASK colormaps first use
+          https://doi.org/10.1016/j.ijplas.2012.09.012
+        [3] Matplotlib colormaps overview
+          https://matplotlib.org/tutorials/colors/colormaps.html
 
         """
         print('DAMASK colormaps')
