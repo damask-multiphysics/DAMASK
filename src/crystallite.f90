@@ -119,7 +119,10 @@ module crystallite
     crystallite_results, &
     crystallite_restartWrite, &
     crystallite_restartRead, &
-    crystallite_forward
+    crystallite_forward, &
+    crystallite_initializeRestorationPoints, &
+    crystallite_windForward, &
+    crystallite_restore
 
 contains
 
@@ -237,7 +240,7 @@ subroutine crystallite_init
   allocate(output_constituent(phases%length))
   do c = 1, phases%length
     phase => phases%get(c)
-    generic_param  => phase%get('generic',defaultVal = emptyDict) 
+    generic_param  => phase%get('generic',defaultVal = emptyDict)
 #if defined(__GFORTRAN__)
     output_constituent(c)%label  = output_asStrings(generic_param)
 #else
@@ -478,6 +481,102 @@ function crystallite_stress()
   enddo elementLooping5
 
 end function crystallite_stress
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief tbd
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_initializeRestorationPoints(i,e)
+
+  integer, intent(in) :: &
+    i, &                                                                                            !< integration point number
+    e                                                                                               !< element number
+  integer :: &
+    c, &                                                                                            !< grain number
+    s
+
+  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+    crystallite_partionedFp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e)
+    crystallite_partionedLp0(1:3,1:3,c,i,e) = crystallite_Lp0(1:3,1:3,c,i,e)
+    crystallite_partionedFi0(1:3,1:3,c,i,e) = crystallite_Fi0(1:3,1:3,c,i,e)
+    crystallite_partionedLi0(1:3,1:3,c,i,e) = crystallite_Li0(1:3,1:3,c,i,e)
+    crystallite_partionedF0(1:3,1:3,c,i,e)  = crystallite_F0(1:3,1:3,c,i,e)
+    crystallite_partionedS0(1:3,1:3,c,i,e)  = crystallite_S0(1:3,1:3,c,i,e)
+
+    plasticState(material_phaseAt(c,e))%partionedState0(:,material_phasememberAt(c,i,e)) = &
+    plasticState(material_phaseAt(c,e))%state0(         :,material_phasememberAt(c,i,e))
+    do s = 1, phase_Nsources(material_phaseAt(c,e))
+      sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phasememberAt(c,i,e)) = &
+      sourceState(material_phaseAt(c,e))%p(s)%state0(         :,material_phasememberAt(c,i,e))
+    enddo
+  enddo
+
+end subroutine crystallite_initializeRestorationPoints
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief tbd
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_windForward(i,e)
+
+  integer, intent(in) :: &
+    i, &                                                                                            !< integration point number
+    e                                                                                               !< element number
+  integer :: &
+    c, &                                                                                            !< grain number
+    s
+
+  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+    crystallite_partionedF0 (1:3,1:3,c,i,e) = crystallite_partionedF(1:3,1:3,c,i,e)
+    crystallite_partionedFp0(1:3,1:3,c,i,e) = crystallite_Fp        (1:3,1:3,c,i,e)
+    crystallite_partionedLp0(1:3,1:3,c,i,e) = crystallite_Lp        (1:3,1:3,c,i,e)
+    crystallite_partionedFi0(1:3,1:3,c,i,e) = crystallite_Fi        (1:3,1:3,c,i,e)
+    crystallite_partionedLi0(1:3,1:3,c,i,e) = crystallite_Li        (1:3,1:3,c,i,e)
+    crystallite_partionedS0 (1:3,1:3,c,i,e) = crystallite_S         (1:3,1:3,c,i,e)
+
+    plasticState    (material_phaseAt(c,e))%partionedState0(:,material_phasememberAt(c,i,e)) = &
+    plasticState    (material_phaseAt(c,e))%state          (:,material_phasememberAt(c,i,e))
+    do s = 1, phase_Nsources(material_phaseAt(c,e))
+      sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phasememberAt(c,i,e)) = &
+      sourceState(material_phaseAt(c,e))%p(s)%state          (:,material_phasememberAt(c,i,e))
+    enddo
+  enddo
+
+end subroutine crystallite_windForward
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief tbd
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_restore(i,e,includeL)
+
+  integer, intent(in) :: &
+    i, &                                                                                            !< integration point number
+    e                                                                                               !< element number
+  logical, intent(in) :: &
+    includeL                                                                                        !< protect agains fake cutback
+  integer :: &
+    c, &                                                                                            !< grain number
+    s
+
+  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+    if (includeL) then
+      crystallite_Lp(1:3,1:3,c,i,e) = crystallite_partionedLp0(1:3,1:3,c,i,e)
+      crystallite_Li(1:3,1:3,c,i,e) = crystallite_partionedLi0(1:3,1:3,c,i,e)
+    endif                                                                                           ! maybe protecting everything from overwriting makes more sense
+    crystallite_Fp(1:3,1:3,c,i,e)   = crystallite_partionedFp0(1:3,1:3,c,i,e)
+    crystallite_Fi(1:3,1:3,c,i,e)   = crystallite_partionedFi0(1:3,1:3,c,i,e)
+    crystallite_S (1:3,1:3,c,i,e)   = crystallite_partionedS0 (1:3,1:3,c,i,e)
+
+    plasticState    (material_phaseAt(c,e))%state(          :,material_phasememberAt(c,i,e)) = &
+    plasticState    (material_phaseAt(c,e))%partionedState0(:,material_phasememberAt(c,i,e))
+    do s = 1, phase_Nsources(material_phaseAt(c,e))
+      sourceState(material_phaseAt(c,e))%p(s)%state(          :,material_phasememberAt(c,i,e)) = &
+      sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phasememberAt(c,i,e))
+    enddo
+  enddo
+
+end subroutine crystallite_restore
 
 
 !--------------------------------------------------------------------------------------------------
