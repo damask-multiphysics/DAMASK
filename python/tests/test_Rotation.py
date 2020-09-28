@@ -1,11 +1,11 @@
-import os
-
 import pytest
 import numpy as np
 from scipy import stats
 
 from damask import Rotation
+from damask import Table
 from damask import _rotation
+from damask import grid_filters
 
 n = 1000
 atol=1.e-4
@@ -13,7 +13,7 @@ atol=1.e-4
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
-    return os.path.join(reference_dir_base,'Rotation')
+    return reference_dir_base/'Rotation'
 
 @pytest.fixture
 def set_of_rotations(set_of_quaternions):
@@ -943,3 +943,39 @@ class TestRotation:
         sigma_out = np.degrees(np.std(dist))
         p = np.average(p)
         assert (.9 < sigma/sigma_out < 1.1) and p > 1e-2, f'{sigma/sigma_out},{p}'
+
+
+    @pytest.mark.parametrize('fractions',[True,False])
+    @pytest.mark.parametrize('degrees',[True,False])
+    @pytest.mark.parametrize('N',[2**13,2**14,2**15])
+    def test_ODF_cell(self,reference_dir,fractions,degrees,N):
+        steps = np.array([144,36,36])
+        limits = np.array([360.,90.,90.])
+        rng = tuple(zip(np.zeros(3),limits))
+
+        weights = Table.load(reference_dir/'ODF_experimental_cell.txt').get('intensity').flatten()
+        Eulers = grid_filters.cell_coord0(steps,limits)
+        Eulers = np.radians(Eulers) if not degrees else Eulers
+
+        Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees,fractions).as_Eulers(True)
+        weights_r = np.histogramdd(Eulers_r,steps,rng)[0].flatten(order='F')/N * np.sum(weights)
+
+        if fractions: assert np.sqrt(((weights_r - weights) ** 2).mean()) < 4
+
+    @pytest.mark.parametrize('degrees',[True,False])
+    @pytest.mark.parametrize('N',[2**13,2**14,2**15])
+    def test_ODF_node(self,reference_dir,degrees,N):
+        steps = np.array([144,36,36])
+        limits = np.array([360.,90.,90.])
+        rng = tuple(zip(np.zeros(3)-limits/steps*.5,limits-limits/steps*.5))
+
+        weights = Table.load(reference_dir/'ODF_experimental.txt').get('intensity')
+        weights = weights.reshape(steps+1,order='F')[:-1,:-1,:-1].reshape(-1,order='F')
+
+        Eulers = grid_filters.node_coord0(steps,limits)[:-1,:-1,:-1]
+        Eulers = np.radians(Eulers) if not degrees else Eulers
+
+        Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees).as_Eulers(True)
+        weights_r = np.histogramdd(Eulers_r,steps,rng)[0].flatten(order='F')/N * np.sum(weights)
+
+        assert np.sqrt(((weights_r - weights) ** 2).mean()) < 5

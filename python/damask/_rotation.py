@@ -1,6 +1,8 @@
 import numpy as np
 
 from . import mechanics
+from . import util
+from . import grid_filters
 
 _P = -1
 
@@ -647,11 +649,54 @@ class Rotation:
 
         return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q)._standardize()
 
-    # for compatibility (old names do not follow convention)
-    fromEulers     = from_Eulers
-    fromQuaternion = from_quaternion
-    asAxisAngle    = as_axis_angle
+    # for compatibility
     __mul__        = __matmul__
+
+
+    @staticmethod
+    def from_ODF(weights,Eulers,N=500,degrees=True,fractions=True,seed=None):
+        """
+        Sample discrete orientations from a binned ODF.
+
+        References
+        ----------
+        P. Eisenlohr, F. Roters, Computational Materials Science 42(4), 670-678, 2008
+        https://doi.org/10.1016/j.commatsci.2007.09.015
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            ODF file containing normalized probability (labeled 'intensity')
+            on a grid in Euler space (labeled 'euler').
+        N : integer, optional
+            Number of discrete orientations to be sampled from the given ODF.
+            Defaults to 500.
+        degrees : boolean, optional
+            Euler grid values are in degrees. Defaults to True.
+        fractions : boolean, optional
+            ODF values correspond to volume fractions, not probability density.
+            Defaults to True.
+        seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
+            will be pulled from the OS.
+
+        Notes
+        -----
+        Explain here the different things that need to be considered
+
+        """
+        def _dg(eu,deg):
+            """Return infinitesimal Euler space volume of bin(s)."""
+            Eulers_sorted = eu[np.lexsort((eu[:,0],eu[:,1],eu[:,2]))]
+            steps,size,_ = grid_filters.cell_coord0_gridSizeOrigin(Eulers_sorted)
+            delta = np.radians(size/steps) if deg else size/steps
+            return delta[0]*2.0*np.sin(delta[1]/2.0)*delta[2] / 8.0 / np.pi**2 * np.sin(np.radians(eu[:,1]) if deg else eu[:,1])
+
+        dg = 1.0 if fractions else _dg(Eulers,degrees)
+        dV_V = dg * np.maximum(0.0,weights.squeeze())
+        orientations = Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,seed)],degrees)
+
+        return orientations
 
 
     @staticmethod
