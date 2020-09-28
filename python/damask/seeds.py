@@ -95,7 +95,7 @@ def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
     """
     material = geom.material.reshape((-1,1),order='F')
     mask = _np.full(geom.grid.prod(),True,dtype=bool) if selection is None else \
-           _np.isin(material,selection,invert=invert)
+           _np.isin(material,selection,invert=invert).flatten()
     coords = grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
 
     if not average:

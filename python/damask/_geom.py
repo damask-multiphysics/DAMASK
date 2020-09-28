@@ -406,9 +406,9 @@ class Geom:
             locations (cell centers) are addressed.
             If given as floats, coordinates are addressed.
         exponent : numpy.ndarray of shape(3) or float
-            Exponents for the three axis.
-            0 gives octahedron (|x|^(2^0) + |y|^(2^0) + |z|^(2^0) < 1)
-            1 gives a sphere (|x|^(2^1) + |y|^(2^1) + |z|^(2^1) < 1)
+            Exponents for the three axes.
+            0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1)
+            1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1)
         fill : int, optional
             Fill value for primitive. Defaults to material.max() + 1.
         R : damask.Rotation, optional

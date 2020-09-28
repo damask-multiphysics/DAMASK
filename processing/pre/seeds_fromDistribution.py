@@ -48,7 +48,6 @@ class myThread (threading.Thread):
 
     myBestSeedsVFile    = StringIO()                                                                # store local copy of best seeds file
     perturbedSeedsVFile = StringIO()                                                                # perturbed best seeds file
-    perturbedGeomVFile  = StringIO()                                                                # tessellated geom file
 
 #--- still not matching desired bin class ----------------------------------------------------------
     while bestMatch < options.threshold:
@@ -92,15 +91,10 @@ class myThread (threading.Thread):
       perturbedSeedsTable.set('pos',coords).save(perturbedSeedsVFile,legacy=True)
 
 #--- do tesselation with perturbed seed file ------------------------------------------------------
-      perturbedGeomVFile.close()
-      perturbedGeomVFile = StringIO()
-      perturbedSeedsVFile.seek(0)
-      perturbedGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
-                     ' -g '+' '.join(list(map(str, options.grid))),streamIn=perturbedSeedsVFile)[0])
-      perturbedGeomVFile.seek(0)
+      perturbedGeom = damask.Geom.from_Voronoi_tessellation(options.grid,np.ones(3),coords)
+
 
 #--- evaluate current seeds file ------------------------------------------------------------------
-      perturbedGeom = damask.Geom.load_ASCII(perturbedGeomVFile)
       myNmaterials = len(np.unique(perturbedGeom.material))
       currentData = np.bincount(perturbedGeom.material.ravel())[1:]/points
       currentError=[]
@@ -227,22 +221,15 @@ for i in range(1,nMaterials+1):
 # ----------- create initial seed file or open existing one
 bestSeedsVFile = StringIO()
 if os.path.isfile(os.path.splitext(options.seedFile)[0]+'.seeds'):
-  with open(os.path.splitext(options.seedFile)[0]+'.seeds') as initialSeedFile:
-    for line in initialSeedFile: bestSeedsVFile.write(line)
+  initial_seeds = damask.Table.load(os.path.splitext(options.seedFile)[0]+'.seeds').get('pos')
 else:
-  bestSeedsVFile.write(damask.util.execute('seeds_fromRandom'+\
-                                ' -g '+' '.join(list(map(str, options.grid)))+\
-                                ' -r {:d}'.format(options.randomSeed)+\
-                                ' -N '+str(nMaterials))[0])
+  initial_seeds = damask.seeds.from_random(np.ones(3),nMaterials,options.grid,options.randomSeed)
+
 bestSeedsUpdate = time.time()
 
 # ----------- tessellate initial seed file to get and evaluate geom file
 bestSeedsVFile.seek(0)
-initialGeomVFile = StringIO()
-initialGeomVFile.write(damask.util.execute('geom_fromVoronoiTessellation '+
-                               ' -g '+' '.join(list(map(str, options.grid))),bestSeedsVFile)[0])
-initialGeomVFile.seek(0)
-initialGeom = damask.Geom.load_ASCII(initialGeomVFile)
+initialGeom = damask.Geom.from_Voronoi_tessellation(options.grid,np.ones(3),initial_seeds)
 
 if len(np.unique(targetGeom.material)) != nMaterials:
   damask.util.croak('error. Material count mismatch')
@@ -269,7 +256,6 @@ else:
 
 if match >0: damask.util.croak('Stage {:d} cleared'.format(match))
 sys.stdout.flush()
-initialGeomVFile.close()
 
 # start mulithreaded monte carlo simulation
 threads = []
