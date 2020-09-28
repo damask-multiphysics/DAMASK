@@ -35,35 +35,36 @@ module crystallite
     crystallite_subStep                                                                             !< size of next integration step
   type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation                                                                         !< current orientation
-  real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
+  real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
     crystallite_Fe, &                                                                               !< current "elastic" def grad (end of converged time step)
-    crystallite_P, &                                                                                !< 1st Piola-Kirchhoff stress per grain
     crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
     crystallite_Fp0, &                                                                              !< plastic def grad at start of FE inc
     crystallite_Fi0, &                                                                              !< intermediate def grad at start of FE inc
     crystallite_F0, &                                                                               !< def grad at start of FE inc
     crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
-    crystallite_Li0                                                                                 !< intermediate velocitiy grad at start of FE inc
-  real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
-    crystallite_S, &                                                                                !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
+    crystallite_Li0, &                                                                              !< intermediate velocitiy grad at start of FE inc
     crystallite_partionedS0, &                                                                      !< 2nd Piola-Kirchhoff stress vector at start of homog inc
     crystallite_Fp, &                                                                               !< current plastic def grad (end of converged time step)
     crystallite_partionedFp0,&                                                                      !< plastic def grad at start of homog inc
     crystallite_Fi, &                                                                               !< current intermediate def grad (end of converged time step)
     crystallite_partionedFi0,&                                                                      !< intermediate def grad at start of homog inc
-    crystallite_partionedF,  &                                                                      !< def grad to be reached at end of homog inc
-    crystallite_partionedF0, &                                                                      !< def grad at start of homog inc
-    crystallite_Lp, &                                                                               !< current plastic velocitiy grad (end of converged time step)
     crystallite_partionedLp0, &                                                                     !< plastic velocity grad at start of homog inc
     crystallite_Li, &                                                                               !< current intermediate velocitiy grad (end of converged time step)
-    crystallite_partionedLi0                                                                        !< intermediate velocity grad at start of homog inc
-  real(pReal),                dimension(:,:,:,:,:),    allocatable :: &
+    crystallite_partionedLi0, &                                                                     !< intermediate velocity grad at start of homog inc
     crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
     crystallite_subFi0,&                                                                            !< intermediate def grad at start of crystallite inc
     crystallite_subF,  &                                                                            !< def grad to be reached at end of crystallite inc
     crystallite_subF0, &                                                                            !< def grad at start of crystallite inc
     crystallite_subLp0,&                                                                            !< plastic velocity grad at start of crystallite inc
     crystallite_subLi0                                                                              !< intermediate velocity grad at start of crystallite inc
+  real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
+    crystallite_P, &                                                                                !< 1st Piola-Kirchhoff stress per grain
+    crystallite_Lp, &                                                                               !< current plastic velocitiy grad (end of converged time step)
+    crystallite_S, &                                                                                !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
+    crystallite_partionedF0                                                                         !< def grad at start of homog inc
+  real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
+    crystallite_partionedF                                                                         !< def grad to be reached at end of homog inc
+
   real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public, protected :: &
     crystallite_dPdF                                                                                !< current individual dPdF per grain (end of converged time step)
   logical,                    dimension(:,:,:),         allocatable, public :: &
@@ -139,8 +140,8 @@ subroutine crystallite_init
     e, &                                                                                            !< counter in element loop
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
-    eMax, &                                                                                         !< maximum number of elements
-    myNcomponents                                                                                   !< number of components at current IP
+    eMax                                                                                            !< maximum number of elements
+
 
   class(tNode), pointer :: &
     num_crystallite, &
@@ -251,10 +252,9 @@ subroutine crystallite_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize
- !$OMP PARALLEL DO PRIVATE(myNcomponents,i,c)
+ !$OMP PARALLEL DO PRIVATE(i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    myNcomponents = homogenization_Ngrains(material_homogenizationAt(e))
-    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, myNcomponents
+    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Ngrains(material_homogenizationAt(e))
       crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       crystallite_Fp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e) &
                                      / math_det33(crystallite_Fp0(1:3,1:3,c,i,e))**(1.0_pReal/3.0_pReal)
@@ -299,7 +299,6 @@ subroutine crystallite_init
     print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
     flush(IO_STDOUT)
   endif
-
 #endif
 
 end subroutine crystallite_init
@@ -414,7 +413,6 @@ function crystallite_stress()
               crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_Li  (1:3,1:3,c,i,e)
               crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_Fp  (1:3,1:3,c,i,e)
               crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_Fi  (1:3,1:3,c,i,e)
-              !if abbrevation, make c and p private in omp
               plasticState(    material_phaseAt(c,e))%subState0(:,material_phaseMemberAt(c,i,e)) &
                 = plasticState(material_phaseAt(c,e))%state(    :,material_phaseMemberAt(c,i,e))
               do s = 1, phase_Nsources(material_phaseAt(c,e))
@@ -465,7 +463,7 @@ function crystallite_stress()
 
 !--------------------------------------------------------------------------------------------------
 !  integrate --- requires fully defined state array (basic + dependent state)
-    if (any(todo)) call integrateState(todo)                                                              ! TODO: unroll into proper elementloop to avoid N^2 for single point evaluation
+    if (any(todo)) call integrateState(todo)                                                        ! TODO: unroll into proper elementloop to avoid N^2 for single point evaluation
     where(.not. crystallite_converged .and. crystallite_subStep > num%subStepMinCryst) &            ! do not try non-converged but fully cutbacked any further
       todo = .true.                                                                                 ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
 
@@ -492,7 +490,7 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     i, &                                                                                            !< integration point number
     e                                                                                               !< element number
   integer :: &
-    c, &                                                                                            !< grain number
+    c, &                                                                                            !< constituent number
     s
 
   do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -523,7 +521,7 @@ subroutine crystallite_windForward(i,e)
     i, &                                                                                            !< integration point number
     e                                                                                               !< element number
   integer :: &
-    c, &                                                                                            !< grain number
+    c, &                                                                                            !< constituent number
     s
 
   do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -556,7 +554,7 @@ subroutine crystallite_restore(i,e,includeL)
   logical, intent(in) :: &
     includeL                                                                                        !< protect agains fake cutback
   integer :: &
-    c, &                                                                                            !< grain number
+    c, &                                                                                            !< constituent number
     s
 
   do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
@@ -585,7 +583,7 @@ end subroutine crystallite_restore
 subroutine crystallite_stressTangent
 
   integer :: &
-    c, &                                                                                            !< counter in integration point component loop
+    c, &                                                                                            !< counter in constituent loop
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
     o, &
