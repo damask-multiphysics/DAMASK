@@ -967,7 +967,7 @@ class TestRotation:
     def test_ODF_node(self,reference_dir,degrees,N):
         steps = np.array([144,36,36])
         limits = np.array([360.,90.,90.])
-        rng = tuple(zip(np.zeros(3)-limits/steps*.5,limits-limits/steps*.5))
+        rng = tuple(zip(-limits/steps*.5,limits-limits/steps*.5))
 
         weights = Table.load(reference_dir/'ODF_experimental.txt').get('intensity')
         weights = weights.reshape(steps+1,order='F')[:-1,:-1,:-1].reshape(-1,order='F')
