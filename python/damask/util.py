@@ -20,6 +20,7 @@ __all__=[
          'execute',
          'show_progress',
          'scale_to_coprime',
+         'hybrid_IA',
          'return_message',
          'extendableOption',
          'execution_stamp'
@@ -185,6 +186,23 @@ def execution_stamp(class_name,function_name=None):
     now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
     _function_name = '' if function_name is None else f'.{function_name}'
     return f'damask.{class_name}{_function_name} v{version} ({now})'
+
+
+def hybrid_IA(dist,N,seed=None):
+    rng = np.random.default_rng(seed)
+    N_opt_samples = max(np.count_nonzero(dist),N)                                                   # random subsampling if too little samples requested
+
+    scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
+    repeats = np.rint(scale*dist).astype(int)
+    N_inv_samples = np.sum(repeats)
+    while (not np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
+        scale_,scale,inc_factor = (scale,scale+inc_factor*0.5*(scale - scale_), inc_factor*2.0) \
+                                   if N_inv_samples < N_opt_samples else \
+                                  (scale_,0.5*(scale_ + scale), 1.0)
+        repeats = np.rint(scale*dist).astype(int)
+        N_inv_samples = np.sum(repeats)
+
+    return np.repeat(np.arange(len(dist)),repeats)[rng.permutation(N_inv_samples)[:N]]
 
 
 ####################################################################################################
