@@ -656,12 +656,7 @@ class Rotation:
     @staticmethod
     def from_ODF(weights,Eulers,N=500,degrees=True,fractions=True,seed=None):
         """
-        Sample discrete orientations from a binned ODF.
-
-        References
-        ----------
-        P. Eisenlohr, F. Roters, Computational Materials Science 42(4), 670-678, 2008
-        https://doi.org/10.1016/j.commatsci.2007.09.015
+        Sample discrete values from a binned ODF.
 
         Parameters
         ----------
@@ -680,6 +675,22 @@ class Rotation:
         seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
             will be pulled from the OS.
+
+        Returns
+        -------
+        samples : damask.Rotation of shape (N)
+            Array of sampled rotations closely representing the input ODF.
+
+        Notes
+        -----
+        Due to the distortion of Euler space in the vicinity of ϕ = 0, probability densities, p, defined on
+        grid points with ϕ = 0 will never result in reconstructed orientations as their dV/V = p dγ = p × 0.
+        Hence, it is recommended to transform any such dataset to cell centers that avoid grid points at ϕ = 0.
+
+        References
+        ----------
+        P. Eisenlohr, F. Roters, Computational Materials Science 42(4), 670-678, 2008
+        https://doi.org/10.1016/j.commatsci.2007.09.015
 
         """
         def _dg(eu,deg):
