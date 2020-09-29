@@ -54,12 +54,10 @@ module crystallite
     !
     crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
     crystallite_partionedLp0, &                                                                     !< plastic velocity grad at start of homog inc
-    crystallite_subLp0,&                                                                            !< plastic velocity grad at start of crystallite inc
     !
     crystallite_Li, &                                                                               !< current intermediate velocitiy grad (end of converged time step)
     crystallite_Li0, &                                                                              !< intermediate velocitiy grad at start of FE inc
     crystallite_partionedLi0, &                                                                     !< intermediate velocity grad at start of homog inc
-    crystallite_subLi0, &                                                                           !< intermediate velocity grad at start of crystallite inc
     !
     crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
     crystallite_partionedS0                                                                         !< 2nd Piola-Kirchhoff stress vector at start of homog inc
@@ -183,7 +181,6 @@ subroutine crystallite_init
                           crystallite_Li,crystallite_Lp, &
            crystallite_subF,crystallite_subF0, &
            crystallite_subFp0,crystallite_subFi0, &
-           crystallite_subLi0,crystallite_subLp0, &
            source = crystallite_partionedF)
 
   allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),source=0.0_pReal)
@@ -326,34 +323,17 @@ function crystallite_stress()
     startIP, endIP, &
     s
   logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
-    todo = .false.
+  real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
+    subLp0,&                                                                                        !< plastic velocity grad at start of crystallite inc
+    subLi0                                                                                          !< intermediate velocity grad at start of crystallite inc
 
-#ifdef DEBUG
-  if (debugCrystallite%selective &
-      .and. FEsolving_execElem(1) <= debugCrystallite%element &
-      .and.                          debugCrystallite%element <= FEsolving_execElem(2)) then
-      print'(/,a,i8,1x,i2,1x,i3)',    '<< CRYST stress >> boundary and initial values at el ip ipc ', &
-        debugCrystallite%element,debugCrystallite%ip, debugCrystallite%grain
-    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> F  ', &
-                                          transpose(crystallite_partionedF(1:3,1:3,debugCrystallite%grain, &
-                                                      debugCrystallite%ip,debugCrystallite%element))
-    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> F0 ', &
-                                          transpose(crystallite_partionedF0(1:3,1:3,debugCrystallite%grain, &
-                                                      debugCrystallite%ip,debugCrystallite%element))
-    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Fp0', &
-                                          transpose(crystallite_partionedFp0(1:3,1:3,debugCrystallite%grain, &
-                                                      debugCrystallite%ip,debugCrystallite%element))
-    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Fi0', &
-                                          transpose(crystallite_partionedFi0(1:3,1:3,debugCrystallite%grain, &
-                                                      debugCrystallite%ip,debugCrystallite%element))
-    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Lp0', &
-                                          transpose(crystallite_partionedLp0(1:3,1:3,debugCrystallite%grain, &
-                                                      debugCrystallite%ip,debugCrystallite%element))
-    print'(a,/,3(12x,3(f14.9,1x)/))', '<< CRYST stress >> Li0', &
-                                          transpose(crystallite_partionedLi0(1:3,1:3,debugCrystallite%grain, &
-                                                      debugCrystallite%ip,debugCrystallite%element))
-  endif
-#endif
+
+  todo = .false.
+
+  subLp0 = crystallite_partionedLp0
+  subLi0 = crystallite_partionedLi0
+
+
 
 !--------------------------------------------------------------------------------------------------
 ! initialize to starting condition
@@ -370,9 +350,7 @@ function crystallite_stress()
           sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phaseMemberAt(c,i,e))
         enddo
         crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_partionedFp0(1:3,1:3,c,i,e)
-        crystallite_subLp0(1:3,1:3,c,i,e) = crystallite_partionedLp0(1:3,1:3,c,i,e)
         crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_partionedFi0(1:3,1:3,c,i,e)
-        crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_partionedLi0(1:3,1:3,c,i,e)
         crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partionedF0(1:3,1:3,c,i,e)
         crystallite_subFrac(c,i,e) = 0.0_pReal
         crystallite_subStep(c,i,e) = 1.0_pReal/num%subStepSizeCryst
@@ -415,8 +393,8 @@ function crystallite_stress()
             todo(c,i,e) = crystallite_subStep(c,i,e) > 0.0_pReal                        ! still time left to integrate on?
             if (todo(c,i,e)) then
               crystallite_subF0 (1:3,1:3,c,i,e) = crystallite_subF(1:3,1:3,c,i,e)
-              crystallite_subLp0(1:3,1:3,c,i,e) = crystallite_Lp  (1:3,1:3,c,i,e)
-              crystallite_subLi0(1:3,1:3,c,i,e) = crystallite_Li  (1:3,1:3,c,i,e)
+              subLp0(1:3,1:3,c,i,e) = crystallite_Lp  (1:3,1:3,c,i,e)
+              subLi0(1:3,1:3,c,i,e) = crystallite_Li  (1:3,1:3,c,i,e)
               crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_Fp  (1:3,1:3,c,i,e)
               crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_Fi  (1:3,1:3,c,i,e)
               plasticState(    material_phaseAt(c,e))%subState0(:,material_phaseMemberAt(c,i,e)) &
@@ -435,8 +413,8 @@ function crystallite_stress()
             crystallite_Fi   (1:3,1:3,c,i,e) =            crystallite_subFi0(1:3,1:3,c,i,e)
             crystallite_S    (1:3,1:3,c,i,e) =            crystallite_S0    (1:3,1:3,c,i,e)
             if (crystallite_subStep(c,i,e) < 1.0_pReal) then                                        ! actual (not initial) cutback
-              crystallite_Lp (1:3,1:3,c,i,e) =            crystallite_subLp0(1:3,1:3,c,i,e)
-              crystallite_Li (1:3,1:3,c,i,e) =            crystallite_subLi0(1:3,1:3,c,i,e)
+              crystallite_Lp (1:3,1:3,c,i,e) =            subLp0(1:3,1:3,c,i,e)
+              crystallite_Li (1:3,1:3,c,i,e) =            subLi0(1:3,1:3,c,i,e)
             endif
             plasticState    (material_phaseAt(c,e))%state(    :,material_phaseMemberAt(c,i,e)) &
               = plasticState(material_phaseAt(c,e))%subState0(:,material_phaseMemberAt(c,i,e))
