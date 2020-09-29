@@ -236,14 +236,12 @@ subroutine skip_empty_lines(blck,s_blck)
   character(len=*), intent(in)     :: blck
   integer,          intent(inout)  :: s_blck
 
-  integer :: e_blck
   logical :: empty
 
   empty = .true.
   do while(empty .and. len_trim(blck(s_blck:)) /= 0)
-    e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    empty = len_trim(IO_rmComment(blck(s_blck:e_blck))) == 0
-    if(empty) s_blck = e_blck + 2
+    empty = len_trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == 0
+    if(empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
   enddo
 
 
