@@ -665,9 +665,10 @@ class Rotation:
 
         Parameters
         ----------
-        fname : file, str, or pathlib.Path
-            ODF file containing normalized probability (labeled 'intensity')
-            on a grid in Euler space (labeled 'euler').
+        weights : numpy.ndarray of shape (n)
+            Texture intensity values (probability density or volume fraction) at Euler grid points.
+        Eulers : numpy.ndarray of shape (n,3)
+            Grid coordinates in Euler space at which weights are defined.
         N : integer, optional
             Number of discrete orientations to be sampled from the given ODF.
             Defaults to 500.
@@ -680,10 +681,6 @@ class Rotation:
             A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
             will be pulled from the OS.
 
-        Notes
-        -----
-        Explain here the different things that need to be considered
-
         """
         def _dg(eu,deg):
             """Return infinitesimal Euler space volume of bin(s)."""
@@ -694,9 +691,8 @@ class Rotation:
 
         dg = 1.0 if fractions else _dg(Eulers,degrees)
         dV_V = dg * np.maximum(0.0,weights.squeeze())
-        orientations = Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,seed)],degrees)
 
-        return orientations
+        return Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,seed)],degrees)
 
 
     @staticmethod

@@ -189,20 +189,17 @@ def execution_stamp(class_name,function_name=None):
 
 
 def hybrid_IA(dist,N,seed=None):
-    rng = np.random.default_rng(seed)
-    N_opt_samples = max(np.count_nonzero(dist),N)                                                   # random subsampling if too little samples requested
+    N_opt_samples,N_inv_samples = (max(np.count_nonzero(dist),N),0)                                 # random subsampling if too little samples requested
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
-    repeats = np.rint(scale*dist).astype(int)
-    N_inv_samples = np.sum(repeats)
     while (not np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
+        repeats = np.rint(scale*dist).astype(int)
+        N_inv_samples = np.sum(repeats)
         scale_,scale,inc_factor = (scale,scale+inc_factor*0.5*(scale - scale_), inc_factor*2.0) \
                                    if N_inv_samples < N_opt_samples else \
                                   (scale_,0.5*(scale_ + scale), 1.0)
-        repeats = np.rint(scale*dist).astype(int)
-        N_inv_samples = np.sum(repeats)
 
-    return np.repeat(np.arange(len(dist)),repeats)[rng.permutation(N_inv_samples)[:N]]
+    return np.repeat(np.arange(len(dist)),repeats)[np.random.default_rng(seed).permutation(N_inv_samples)[:N]]
 
 
 ####################################################################################################
