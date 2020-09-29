@@ -1147,16 +1147,15 @@ subroutine integrateStateFPI(todo)
     plastic_dotState
   real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
-    nonlocalBroken, broken
+    broken
 
-  nonlocalBroken = .false.
+
   !$OMP PARALLEL DO PRIVATE(size_pl,size_so,r,zeta,p,c,plastic_dotState,source_dotState,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        p = material_phaseAt(g,e)
-        if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
-
+        if(todo(g,i,e)) then
+          p = material_phaseAt(g,e)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
@@ -1164,7 +1163,6 @@ subroutine integrateStateFPI(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           size_pl = plasticState(p)%sizeDotState
@@ -1236,7 +1234,6 @@ subroutine integrateStateFPI(todo)
             endif
 
           enddo iteration
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
         endif
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
@@ -1284,16 +1281,15 @@ subroutine integrateStateEuler(todo)
     s, &
     sizeDotState
   logical :: &
-    nonlocalBroken, broken
+    broken
 
-  nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE (sizeDotState,p,c,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        p = material_phaseAt(g,e)
-        if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
+        if(todo(g,i,e)) then
 
+          p = material_phaseAt(g,e)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
@@ -1301,7 +1297,6 @@ subroutine integrateStateEuler(todo)
                                             crystallite_Fi(1:3,1:3,g,i,e), &
                                             crystallite_partionedFp0, &
                                             crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           sizeDotState = plasticState(p)%sizeDotState
@@ -1318,11 +1313,9 @@ subroutine integrateStateEuler(todo)
           broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
                                            crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           if(broken) cycle
 
           broken = integrateStress(g,i,e)
-          if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
           crystallite_converged(g,i,e) = .not. broken
         endif
   enddo; enddo; enddo
@@ -1349,20 +1342,19 @@ subroutine integrateStateAdaptiveEuler(todo)
     s, &
     sizeDotState
   logical :: &
-    nonlocalBroken, broken
+    broken
 
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: residuum_plastic
   real(pReal), dimension(constitutive_source_maxSizeDotState,maxval(phase_Nsources)) :: residuum_source
 
-  nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,residuum_plastic,residuum_source,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
         broken = .false.
-        p = material_phaseAt(g,e)
-        if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
 
+        if(todo(g,i,e)) then
+          p = material_phaseAt(g,e)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
@@ -1418,7 +1410,6 @@ subroutine integrateStateAdaptiveEuler(todo)
            enddo
 
         endif
-        if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
@@ -1503,19 +1494,18 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
     s, &
     sizeDotState
   logical :: &
-    nonlocalBroken, broken
+    broken
   real(pReal), dimension(constitutive_source_maxSizeDotState,size(B),maxval(phase_Nsources)) :: source_RKdotState
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B))                    :: plastic_RKdotState
 
-  nonlocalBroken = .false.
   !$OMP PARALLEL DO PRIVATE(sizeDotState,p,c,plastic_RKdotState,source_RKdotState,broken)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do g = 1,homogenization_Ngrains(material_homogenizationAt(e))
         broken = .false.
-        p = material_phaseAt(g,e)
-        if(todo(g,i,e) .and. .not. (nonlocalBroken .and. plasticState(p)%nonlocal)) then
 
+        if(todo(g,i,e)) then
+           p = material_phaseAt(g,e)
           c = material_phaseMemberAt(g,i,e)
 
           broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
@@ -1608,7 +1598,6 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
           crystallite_converged(g,i,e) = .not. broken
 
         endif
-        if(broken .and. plasticState(p)%nonlocal) nonlocalBroken = .true.
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
@@ -1624,8 +1613,8 @@ end subroutine integrateStateRK
 subroutine nonlocalConvergenceCheck
 
   integer :: e,i,p
-  logical :: nonlocal_broken 
-  
+  logical :: nonlocal_broken
+
   nonlocal_broken = .false.
   !$OMP PARALLEL DO PRIVATE(p)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -1635,7 +1624,7 @@ subroutine nonlocalConvergenceCheck
     enddo
   enddo
   !$OMP END PARALLEL DO
-  
+
   if(.not. nonlocal_broken) return
   !$OMP PARALLEL DO PRIVATE(p)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
