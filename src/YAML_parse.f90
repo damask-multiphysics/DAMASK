@@ -236,21 +236,44 @@ subroutine skip_empty_lines(blck,s_blck)
   character(len=*), intent(in)     :: blck
   integer,          intent(inout)  :: s_blck
 
-  character(len=:), allocatable    :: line
   integer :: e_blck
   logical :: empty
 
   empty = .true.
-  do while(empty)
+  do while(empty .and. len_trim(blck(s_blck:)) /= 0)
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
-    empty = len_trim(line) == 0
+    empty = len_trim(IO_rmComment(blck(s_blck:e_blck))) == 0
     if(empty) s_blck = e_blck + 2
   enddo
 
 
 end subroutine skip_empty_lines
  
+
+!--------------------------------------------------------------------------------------------------
+! @brief skip file header
+! @details update start position in the block by skipping file header if present.
+!--------------------------------------------------------------------------------------------------
+subroutine skip_file_header(blck,s_blck)
+
+  character(len=*), intent(in)     :: blck
+  integer,          intent(inout)  :: s_blck
+
+  character(len=:), allocatable    :: line
+
+  line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+  if(adjustl(line(1:5)) == '%YAML') then
+    s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    call skip_empty_lines(blck,s_blck)
+    if(trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
+      s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    else
+      call IO_error(708,ext_msg = line)
+    endif
+  endif
+ 
+end subroutine skip_file_header
+
 
 !--------------------------------------------------------------------------------------------------
 ! @brief reads a line of YAML block which is already in flow style
@@ -388,7 +411,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
-    if(trim(line) == '---') then
+    if(trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
       s_blck = e_blck + 2                                                                           ! forward to next line
@@ -476,7 +499,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
   do while (s_blck <= len_trim(blck))
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
-    if(trim(line) == '---') then
+    if(trim(line) == '---' .or. trim(line) == '...') then
       exit
     elseif (len_trim(line) == 0) then
       s_blck = e_blck + 2                                                                           ! forward to next line
@@ -544,7 +567,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
     call skip_empty_lines(blck,s_blck)
     e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
     line = IO_rmComment(blck(s_blck:e_blck))
-    if(trim(line) == '---') then
+    if(trim(line) == '---' .or. trim(line) == '...') then
       continue                                                                                      ! end parsing at this point but not stop the simulation
     elseif(len_trim(line) == 0) then
       s_blck = e_blck +2
@@ -584,7 +607,6 @@ function to_flow(blck)
 
   character(len=:), allocatable :: line
   integer                       :: s_blck, &                                                        !< start position in blck
-                                   e_blck, &                                                        !< end position of a line
                                    s_flow, &                                                        !< start position in flow
                                    offset, &                                                        !< counts leading '- ' in nested lists
                                    end_line
@@ -596,13 +618,14 @@ function to_flow(blck)
 
   if(len_trim(blck) /= 0) then
     call skip_empty_lines(blck,s_blck)
-    e_blck = s_blck + index(blck(s_blck:),IO_EOL) - 2
-    line = IO_rmComment(blck(s_blck:e_blck))
-    if(trim(line) == '---') s_blck = e_blck + 2
+    call skip_file_header(blck,s_blck)
+    line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
+    if(trim(line) == '---') s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call decide(blck,to_flow,s_blck,s_flow,offset)
   endif
+  line = IO_rmComment(blck(s_blck:s_blck+index(blck(s_blck:),IO_EOL)-2))
+  if(trim(line)== '---') call IO_warning(709,ext_msg=line)
   to_flow = trim(to_flow(:s_flow-1))
-
   end_line = index(to_flow,IO_EOL)
   if(end_line > 0) to_flow = to_flow(:end_line-1)
 
@@ -704,6 +727,7 @@ subroutine selfTest
 
   basic_mixed: block
   character(len=*), parameter :: block_flow = &
+    "%YAML 1.2"//IO_EOL//&
     " "//IO_EOL//&
     " "//IO_EOL//&
     "---"//IO_EOL//&
@@ -717,7 +741,7 @@ subroutine selfTest
     " "//IO_EOL//&
     "  - "//IO_EOL//&
     "   {param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}"//IO_EOL//&
-    "---"//IO_EOL
+    "..."//IO_EOL
   character(len=*), parameter :: mixed_flow = &
     "{aa: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}, {c: d}], bb: [{param_1: [{a: b}, c, {d: {e: [{f: g}, h]}}]}]}"
 
