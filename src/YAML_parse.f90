@@ -260,7 +260,7 @@ subroutine skip_file_header(blck,s_blck)
   character(len=:), allocatable    :: line
 
   line = IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))
-  if(adjustl(line(1:5)) == '%YAML') then
+  if(index(adjustl(line),'%YAML') == 1) then
     s_blck = s_blck + index(blck(s_blck:),IO_EOL)
     call skip_empty_lines(blck,s_blck)
     if(trim(IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))) == '---') then
@@ -725,7 +725,7 @@ subroutine selfTest
 
   basic_mixed: block
   character(len=*), parameter :: block_flow = &
-    "%YAML 1.2"//IO_EOL//&
+    "%YAML 1.1"//IO_EOL//&
     " "//IO_EOL//&
     " "//IO_EOL//&
     "---"//IO_EOL//&
