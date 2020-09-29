@@ -467,7 +467,7 @@ function crystallite_stress()
       enddo
     enddo elementLooping3
     !$OMP END PARALLEL DO
-    
+
     call nonlocalConvergenceCheck
 
 !--------------------------------------------------------------------------------------------------
@@ -1129,11 +1129,12 @@ end function integrateStress
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateFPI(g,i,e)
 
-  integer :: &
-    NiterationState, &                                                                              !< number of iterations in state loop
+  integer, intent(in) :: &
     e, &                                                                                            !< element index in element loop
     i, &                                                                                            !< integration point index in ip loop
-    g, &                                                                                            !< grain index in grain loop
+    g                                                                                               !< grain index in grain loop
+  integer :: &
+    NiterationState, &                                                                              !< number of iterations in state loop
     p, &
     c, &
     s, &
@@ -1150,86 +1151,85 @@ subroutine integrateStateFPI(g,i,e)
   logical :: &
     broken
 
+  p = material_phaseAt(g,e)
+  c = material_phaseMemberAt(g,i,e)
 
-          p = material_phaseAt(g,e)
-          c = material_phaseMemberAt(g,i,e)
+  broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                    crystallite_partionedF0, &
+                                    crystallite_Fi(1:3,1:3,g,i,e), &
+                                    crystallite_partionedFp0, &
+                                    crystallite_subdt(g,i,e), g,i,e,p,c)
+  if(broken) return
 
-          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken) return
+  size_pl = plasticState(p)%sizeDotState
+  plasticState(p)%state(1:size_pl,c) = plasticState(p)%subState0(1:size_pl,c) &
+                                     + plasticState(p)%dotState (1:size_pl,c) &
+                                     * crystallite_subdt(g,i,e)
+  plastic_dotState(1:size_pl,2) = 0.0_pReal
+  do s = 1, phase_Nsources(p)
+    size_so(s) = sourceState(p)%p(s)%sizeDotState
+    sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%subState0(1:size_so(s),c) &
+                                              + sourceState(p)%p(s)%dotState (1:size_so(s),c) &
+                                              * crystallite_subdt(g,i,e)
+    source_dotState(1:size_so(s),2,s) = 0.0_pReal
+  enddo
 
-          size_pl = plasticState(p)%sizeDotState
-          plasticState(p)%state(1:size_pl,c) = plasticState(p)%subState0(1:size_pl,c) &
-                                             + plasticState(p)%dotState (1:size_pl,c) &
-                                             * crystallite_subdt(g,i,e)
-          plastic_dotState(1:size_pl,2) = 0.0_pReal
-          do s = 1, phase_Nsources(p)
-            size_so(s) = sourceState(p)%p(s)%sizeDotState
-            sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%subState0(1:size_so(s),c) &
-                                                      + sourceState(p)%p(s)%dotState (1:size_so(s),c) &
-                                                      * crystallite_subdt(g,i,e)
-            source_dotState(1:size_so(s),2,s) = 0.0_pReal
-          enddo
+  iteration: do NiterationState = 1, num%nState
 
-          iteration: do NiterationState = 1, num%nState
+    if(nIterationState > 1) plastic_dotState(1:size_pl,2) = plastic_dotState(1:size_pl,1)
+    plastic_dotState(1:size_pl,1) = plasticState(p)%dotState(:,c)
+    do s = 1, phase_Nsources(p)
+      if(nIterationState > 1) source_dotState(1:size_so(s),2,s) = source_dotState(1:size_so(s),1,s)
+      source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
+    enddo
 
-            if(nIterationState > 1) plastic_dotState(1:size_pl,2) = plastic_dotState(1:size_pl,1)
-            plastic_dotState(1:size_pl,1) = plasticState(p)%dotState(:,c)
-            do s = 1, phase_Nsources(p)
-              if(nIterationState > 1) source_dotState(1:size_so(s),2,s) = source_dotState(1:size_so(s),1,s)
-              source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
-            enddo
+    broken = integrateStress(g,i,e)
+    if(broken) exit iteration
 
-            broken = integrateStress(g,i,e)
-            if(broken) exit iteration
+    broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                          crystallite_partionedF0, &
+                                          crystallite_Fi(1:3,1:3,g,i,e), &
+                                          crystallite_partionedFp0, &
+                                          crystallite_subdt(g,i,e), g,i,e,p,c)
+    if(broken) exit iteration
 
-            broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                                  crystallite_partionedF0, &
-                                                  crystallite_Fi(1:3,1:3,g,i,e), &
-                                                  crystallite_partionedFp0, &
-                                                  crystallite_subdt(g,i,e), g,i,e,p,c)
-            if(broken) exit iteration
+    zeta = damper(plasticState(p)%dotState(:,c),plastic_dotState(1:size_pl,1),&
+                                                plastic_dotState(1:size_pl,2))
+    plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * zeta &
+                                  + plastic_dotState(1:size_pl,1) * (1.0_pReal - zeta)
+    r(1:size_pl) = plasticState(p)%state    (1:size_pl,c) &
+                 - plasticState(p)%subState0(1:size_pl,c)  &
+                 - plasticState(p)%dotState (1:size_pl,c) * crystallite_subdt(g,i,e)
+    plasticState(p)%state(1:size_pl,c) = plasticState(p)%state(1:size_pl,c) &
+                                       - r(1:size_pl)
+    crystallite_converged(g,i,e) = converged(r(1:size_pl), &
+                                             plasticState(p)%state(1:size_pl,c), &
+                                             plasticState(p)%atol(1:size_pl))
+    do s = 1, phase_Nsources(p)
+      zeta = damper(sourceState(p)%p(s)%dotState(:,c), &
+                    source_dotState(1:size_so(s),1,s),&
+                    source_dotState(1:size_so(s),2,s))
+      sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
+                                        + source_dotState(1:size_so(s),1,s)* (1.0_pReal - zeta)
+      r(1:size_so(s)) = sourceState(p)%p(s)%state    (1:size_so(s),c)  &
+                      - sourceState(p)%p(s)%subState0(1:size_so(s),c)  &
+                      - sourceState(p)%p(s)%dotState (1:size_so(s),c) * crystallite_subdt(g,i,e)
+      sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%state(1:size_so(s),c) &
+                                                - r(1:size_so(s))
+      crystallite_converged(g,i,e) = &
+      crystallite_converged(g,i,e) .and. converged(r(1:size_so(s)), &
+                                                   sourceState(p)%p(s)%state(1:size_so(s),c), &
+                                                   sourceState(p)%p(s)%atol(1:size_so(s)))
+    enddo
 
-            zeta = damper(plasticState(p)%dotState(:,c),plastic_dotState(1:size_pl,1),&
-                                                        plastic_dotState(1:size_pl,2))
-            plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * zeta &
-                                          + plastic_dotState(1:size_pl,1) * (1.0_pReal - zeta)
-            r(1:size_pl) = plasticState(p)%state    (1:size_pl,c) &
-                         - plasticState(p)%subState0(1:size_pl,c)  &
-                         - plasticState(p)%dotState (1:size_pl,c) * crystallite_subdt(g,i,e)
-            plasticState(p)%state(1:size_pl,c) = plasticState(p)%state(1:size_pl,c) &
-                                               - r(1:size_pl)
-            crystallite_converged(g,i,e) = converged(r(1:size_pl), &
-                                                     plasticState(p)%state(1:size_pl,c), &
-                                                     plasticState(p)%atol(1:size_pl))
-            do s = 1, phase_Nsources(p)
-              zeta = damper(sourceState(p)%p(s)%dotState(:,c), &
-                            source_dotState(1:size_so(s),1,s),&
-                            source_dotState(1:size_so(s),2,s))
-              sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
-                                                + source_dotState(1:size_so(s),1,s)* (1.0_pReal - zeta)
-              r(1:size_so(s)) = sourceState(p)%p(s)%state    (1:size_so(s),c)  &
-                              - sourceState(p)%p(s)%subState0(1:size_so(s),c)  &
-                              - sourceState(p)%p(s)%dotState (1:size_so(s),c) * crystallite_subdt(g,i,e)
-              sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%state(1:size_so(s),c) &
-                                                        - r(1:size_so(s))
-              crystallite_converged(g,i,e) = &
-              crystallite_converged(g,i,e) .and. converged(r(1:size_so(s)), &
-                                                           sourceState(p)%p(s)%state(1:size_so(s),c), &
-                                                           sourceState(p)%p(s)%atol(1:size_so(s)))
-            enddo
+    if(crystallite_converged(g,i,e)) then
+      broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                       crystallite_Fe(1:3,1:3,g,i,e), &
+                                       crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+      exit iteration
+    endif
 
-            if(crystallite_converged(g,i,e)) then
-              broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                               crystallite_Fe(1:3,1:3,g,i,e), &
-                                               crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-              exit iteration
-            endif
-
-          enddo iteration
+  enddo iteration
 
 
   contains
@@ -1262,10 +1262,11 @@ end subroutine integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateEuler(g,i,e)
 
-  integer :: &
+  integer, intent(in) :: &
     e, &                                                                                            !< element index in element loop
     i, &                                                                                            !< integration point index in ip loop
-    g, &                                                                                            !< grain index in grain loop
+    g                                                                                               !< grain index in grain loop
+  integer :: &
     p, &
     c, &
     s, &
@@ -1273,35 +1274,34 @@ subroutine integrateStateEuler(g,i,e)
   logical :: &
     broken
 
+  p = material_phaseAt(g,e)
+  c = material_phaseMemberAt(g,i,e)
 
-          p = material_phaseAt(g,e)
-          c = material_phaseMemberAt(g,i,e)
+  broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                    crystallite_partionedF0, &
+                                    crystallite_Fi(1:3,1:3,g,i,e), &
+                                    crystallite_partionedFp0, &
+                                    crystallite_subdt(g,i,e), g,i,e,p,c)
+  if(broken) return
 
-          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                            crystallite_partionedF0, &
-                                            crystallite_Fi(1:3,1:3,g,i,e), &
-                                            crystallite_partionedFp0, &
-                                            crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken) return
+  sizeDotState = plasticState(p)%sizeDotState
+  plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                          + plasticState(p)%dotState (1:sizeDotState,c) &
+                                            * crystallite_subdt(g,i,e)
+  do s = 1, phase_Nsources(p)
+    sizeDotState = sourceState(p)%p(s)%sizeDotState
+    sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
+                                                  * crystallite_subdt(g,i,e)
+  enddo
 
-          sizeDotState = plasticState(p)%sizeDotState
-          plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                  + plasticState(p)%dotState (1:sizeDotState,c) &
-                                                    * crystallite_subdt(g,i,e)
-          do s = 1, phase_Nsources(p)
-            sizeDotState = sourceState(p)%p(s)%sizeDotState
-            sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                        + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                          * crystallite_subdt(g,i,e)
-          enddo
+  broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                   crystallite_Fe(1:3,1:3,g,i,e), &
+                                  crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+  if(broken) return
 
-          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                           crystallite_Fe(1:3,1:3,g,i,e), &
-                                          crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken) return
-
-          broken = integrateStress(g,i,e)
-          crystallite_converged(g,i,e) = .not. broken
+  broken = integrateStress(g,i,e)
+  crystallite_converged(g,i,e) = .not. broken
 
 end subroutine integrateStateEuler
 
@@ -1311,10 +1311,11 @@ end subroutine integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateAdaptiveEuler(g,i,e)
 
+  integer, intent(in) :: &
+    e, &                                                                                            !< element index in element loop
+    i, &                                                                                            !< integration point index in ip loop
+    g                                                                                               !< grain index in grain loop
   integer :: &
-    e, &                                                                                             ! element index in element loop
-    i, &                                                                                             ! integration point index in ip loop
-    g, &                                                                                             ! grain index in grain loop
     p, &
     c, &
     s, &
@@ -1326,60 +1327,60 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
   real(pReal), dimension(constitutive_source_maxSizeDotState,maxval(phase_Nsources)) :: residuum_source
 
 
-          p = material_phaseAt(g,e)
-          c = material_phaseMemberAt(g,i,e)
+  p = material_phaseAt(g,e)
+  c = material_phaseMemberAt(g,i,e)
 
-          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                                crystallite_partionedF0, &
-                                                crystallite_Fi(1:3,1:3,g,i,e), &
-                                                crystallite_partionedFp0, &
-                                                crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken) return
+  broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                        crystallite_partionedF0, &
+                                        crystallite_Fi(1:3,1:3,g,i,e), &
+                                        crystallite_partionedFp0, &
+                                        crystallite_subdt(g,i,e), g,i,e,p,c)
+  if(broken) return
 
-          sizeDotState = plasticState(p)%sizeDotState
+  sizeDotState = plasticState(p)%sizeDotState
 
-          residuum_plastic(1:sizeDotState) = - plasticState(p)%dotstate(1:sizeDotState,c) * 0.5_pReal * crystallite_subdt(g,i,e)
-          plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                  + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
-          do s = 1, phase_Nsources(p)
-            sizeDotState = sourceState(p)%p(s)%sizeDotState
+  residuum_plastic(1:sizeDotState) = - plasticState(p)%dotstate(1:sizeDotState,c) * 0.5_pReal * crystallite_subdt(g,i,e)
+  plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                          + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
+  do s = 1, phase_Nsources(p)
+    sizeDotState = sourceState(p)%p(s)%sizeDotState
 
-            residuum_source(1:sizeDotState,s)  = - sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
-                                               * 0.5_pReal * crystallite_subdt(g,i,e)
-            sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                        + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
-          enddo
+    residuum_source(1:sizeDotState,s)  = - sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
+                                       * 0.5_pReal * crystallite_subdt(g,i,e)
+    sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
+  enddo
 
-          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                           crystallite_Fe(1:3,1:3,g,i,e), &
-                                           crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken) return
+  broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                   crystallite_Fe(1:3,1:3,g,i,e), &
+                                   crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+  if(broken) return
 
-          broken = integrateStress(g,i,e)
-          if(broken) return
+  broken = integrateStress(g,i,e)
+  if(broken) return
 
-          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                                crystallite_partionedF0, &
-                                                crystallite_Fi(1:3,1:3,g,i,e), &
-                                                crystallite_partionedFp0, &
-                                                crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken) return
+  broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                        crystallite_partionedF0, &
+                                        crystallite_Fi(1:3,1:3,g,i,e), &
+                                        crystallite_partionedFp0, &
+                                        crystallite_subdt(g,i,e), g,i,e,p,c)
+  if(broken) return
 
 
-          sizeDotState = plasticState(p)%sizeDotState
-          crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState) &
-                                                   + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e), &
-                                                   plasticState(p)%state(1:sizeDotState,c), &
-                                                   plasticState(p)%atol(1:sizeDotState))
+  sizeDotState = plasticState(p)%sizeDotState
+  crystallite_converged(g,i,e) = converged(residuum_plastic(1:sizeDotState) &
+                                           + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e), &
+                                           plasticState(p)%state(1:sizeDotState,c), &
+                                           plasticState(p)%atol(1:sizeDotState))
 
-          do s = 1, phase_Nsources(p)
-            sizeDotState = sourceState(p)%p(s)%sizeDotState
-            crystallite_converged(g,i,e) = &
-            crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s) &
-                                                         + 0.5_pReal*sourceState(p)%p(s)%dotState(:,c)*crystallite_subdt(g,i,e), &
-                                                         sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                         sourceState(p)%p(s)%atol(1:sizeDotState))
-          enddo
+  do s = 1, phase_Nsources(p)
+    sizeDotState = sourceState(p)%p(s)%sizeDotState
+    crystallite_converged(g,i,e) = &
+    crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s) &
+                                                 + 0.5_pReal*sourceState(p)%p(s)%dotState(:,c)*crystallite_subdt(g,i,e), &
+                                                 sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                                                 sourceState(p)%p(s)%atol(1:sizeDotState))
+  enddo
 
 end subroutine integrateStateAdaptiveEuler
 
@@ -1389,7 +1390,7 @@ end subroutine integrateStateAdaptiveEuler
 !---------------------------------------------------------------------------------------------------
 subroutine integrateStateRK4(g,i,e)
 
-  integer :: g,i,e
+  integer, intent(in) :: g,i,e
 
   real(pReal), dimension(3,3), parameter :: &
     A = reshape([&
@@ -1412,7 +1413,7 @@ end subroutine integrateStateRK4
 !---------------------------------------------------------------------------------------------------
 subroutine integrateStateRKCK45(g,i,e)
 
-  integer :: g,i,e
+  integer, intent(in) :: g,i,e
 
   real(pReal), dimension(5,5), parameter :: &
     A = reshape([&
@@ -1448,10 +1449,11 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
   real(pReal), dimension(:),   intent(in) :: B, CC
   real(pReal), dimension(:),   intent(in), optional :: DB
 
+  integer, intent(in) :: &
+    e, &                                                                                            !< element index in element loop
+    i, &                                                                                            !< integration point index in ip loop
+    g                                                                                               !< grain index in grain loop
   integer :: &
-    e, &                                                                                            ! element index in element loop
-    i, &                                                                                            ! integration point index in ip loop
-    g, &                                                                                            ! grain index in grain loop
     stage, &                                                                                        ! stage index in integration stage loop
     n, &
     p, &
@@ -1463,97 +1465,97 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
   real(pReal), dimension(constitutive_source_maxSizeDotState,size(B),maxval(phase_Nsources)) :: source_RKdotState
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B))                    :: plastic_RKdotState
 
-           p = material_phaseAt(g,e)
-          c = material_phaseMemberAt(g,i,e)
+  p = material_phaseAt(g,e)
+  c = material_phaseMemberAt(g,i,e)
 
-          broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                                crystallite_partionedF0, &
-                                                crystallite_Fi(1:3,1:3,g,i,e), &
-                                                crystallite_partionedFp0, &
-                                                crystallite_subdt(g,i,e), g,i,e,p,c)
-          if(broken) return
+  broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                        crystallite_partionedF0, &
+                                        crystallite_Fi(1:3,1:3,g,i,e), &
+                                        crystallite_partionedFp0, &
+                                        crystallite_subdt(g,i,e), g,i,e,p,c)
+  if(broken) return
 
-          do stage = 1,size(A,1)
-            sizeDotState = plasticState(p)%sizeDotState
-            plastic_RKdotState(1:sizeDotState,stage) = plasticState(p)%dotState(:,c)
-            plasticState(p)%dotState(:,c) = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
-            do s = 1, phase_Nsources(p)
-              sizeDotState = sourceState(p)%p(s)%sizeDotState
-              source_RKdotState(1:sizeDotState,stage,s) = sourceState(p)%p(s)%dotState(:,c)
-              sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * source_RKdotState(1:sizeDotState,1,s)
-            enddo
+  do stage = 1,size(A,1)
+    sizeDotState = plasticState(p)%sizeDotState
+    plastic_RKdotState(1:sizeDotState,stage) = plasticState(p)%dotState(:,c)
+    plasticState(p)%dotState(:,c) = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
+    do s = 1, phase_Nsources(p)
+      sizeDotState = sourceState(p)%p(s)%sizeDotState
+      source_RKdotState(1:sizeDotState,stage,s) = sourceState(p)%p(s)%dotState(:,c)
+      sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * source_RKdotState(1:sizeDotState,1,s)
+    enddo
 
-            do n = 2, stage
-              sizeDotState = plasticState(p)%sizeDotState
-              plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
-                                            + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
-              do s = 1, phase_Nsources(p)
-                sizeDotState = sourceState(p)%p(s)%sizeDotState
-                sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
-                                                  + A(n,stage) * source_RKdotState(1:sizeDotState,n,s)
-              enddo
-            enddo
+    do n = 2, stage
+      sizeDotState = plasticState(p)%sizeDotState
+      plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
+                                    + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
+      do s = 1, phase_Nsources(p)
+        sizeDotState = sourceState(p)%p(s)%sizeDotState
+        sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
+                                          + A(n,stage) * source_RKdotState(1:sizeDotState,n,s)
+      enddo
+    enddo
 
-            sizeDotState = plasticState(p)%sizeDotState
-            plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                    + plasticState(p)%dotState (1:sizeDotState,c) &
-                                                      * crystallite_subdt(g,i,e)
-            do s = 1, phase_Nsources(p)
-              sizeDotState = sourceState(p)%p(s)%sizeDotState
-              sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                          + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                            * crystallite_subdt(g,i,e)
-            enddo
-
-            broken = integrateStress(g,i,e,CC(stage))
-            if(broken) exit
-
-            broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                                  crystallite_partionedF0, &
-                                                  crystallite_Fi(1:3,1:3,g,i,e), &
-                                                  crystallite_partionedFp0, &
-                                                  crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
-            if(broken) exit
-
-          enddo
-          if(broken) return
-
-          sizeDotState = plasticState(p)%sizeDotState
-
-          plastic_RKdotState(1:sizeDotState,size(B)) = plasticState (p)%dotState(:,c)
-          plasticState(p)%dotState(:,c) = matmul(plastic_RKdotState(1:sizeDotState,1:size(B)),B)
-          plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
-                                                  + plasticState(p)%dotState (1:sizeDotState,c) &
+    sizeDotState = plasticState(p)%sizeDotState
+    plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                            + plasticState(p)%dotState (1:sizeDotState,c) &
+                                              * crystallite_subdt(g,i,e)
+    do s = 1, phase_Nsources(p)
+      sizeDotState = sourceState(p)%p(s)%sizeDotState
+      sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                  + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
                                                     * crystallite_subdt(g,i,e)
-          if(present(DB)) &
-            broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) &
-                                                     * crystallite_subdt(g,i,e), &
-                                                plasticState(p)%state(1:sizeDotState,c), &
-                                                plasticState(p)%atol(1:sizeDotState))
+    enddo
 
-          do s = 1, phase_Nsources(p)
-            sizeDotState = sourceState(p)%p(s)%sizeDotState
+    broken = integrateStress(g,i,e,CC(stage))
+    if(broken) exit
 
-            source_RKdotState(1:sizeDotState,size(B),s) = sourceState(p)%p(s)%dotState(:,c)
-            sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:size(B),s),B)
-            sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                        + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                          * crystallite_subdt(g,i,e)
-            if(present(DB)) &
-              broken = broken .or. .not. converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
-                                                         * crystallite_subdt(g,i,e), &
-                                                   sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                   sourceState(p)%p(s)%atol(1:sizeDotState))
-          enddo
-          if(broken) return
+    broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                          crystallite_partionedF0, &
+                                          crystallite_Fi(1:3,1:3,g,i,e), &
+                                          crystallite_partionedFp0, &
+                                          crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
+    if(broken) exit
 
-          broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                           crystallite_Fe(1:3,1:3,g,i,e), &
-                                           crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-          if(broken) return
+  enddo
+  if(broken) return
 
-          broken = integrateStress(g,i,e)
-          crystallite_converged(g,i,e) = .not. broken
+  sizeDotState = plasticState(p)%sizeDotState
+
+  plastic_RKdotState(1:sizeDotState,size(B)) = plasticState (p)%dotState(:,c)
+  plasticState(p)%dotState(:,c) = matmul(plastic_RKdotState(1:sizeDotState,1:size(B)),B)
+  plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
+                                          + plasticState(p)%dotState (1:sizeDotState,c) &
+                                            * crystallite_subdt(g,i,e)
+  if(present(DB)) &
+    broken = .not. converged( matmul(plastic_RKdotState(1:sizeDotState,1:size(DB)),DB) &
+                                             * crystallite_subdt(g,i,e), &
+                                        plasticState(p)%state(1:sizeDotState,c), &
+                                        plasticState(p)%atol(1:sizeDotState))
+
+  do s = 1, phase_Nsources(p)
+    sizeDotState = sourceState(p)%p(s)%sizeDotState
+
+    source_RKdotState(1:sizeDotState,size(B),s) = sourceState(p)%p(s)%dotState(:,c)
+    sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:size(B),s),B)
+    sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
+                                                + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
+                                                  * crystallite_subdt(g,i,e)
+    if(present(DB)) &
+      broken = broken .or. .not. converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
+                                                 * crystallite_subdt(g,i,e), &
+                                           sourceState(p)%p(s)%state(1:sizeDotState,c), &
+                                           sourceState(p)%p(s)%atol(1:sizeDotState))
+  enddo
+  if(broken) return
+
+  broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                   crystallite_Fe(1:3,1:3,g,i,e), &
+                                   crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+  if(broken) return
+
+  broken = integrateStress(g,i,e)
+  crystallite_converged(g,i,e) = .not. broken
 
 
 end subroutine integrateStateRK
