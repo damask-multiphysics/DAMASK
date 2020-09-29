@@ -1241,7 +1241,7 @@ subroutine integrateStateFPI(todo)
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if (nonlocalBroken) call nonlocalConvergenceCheck
+  call nonlocalConvergenceCheck
 
   contains
 
@@ -1328,7 +1328,7 @@ subroutine integrateStateEuler(todo)
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if (nonlocalBroken) call nonlocalConvergenceCheck
+  call nonlocalConvergenceCheck
 
 end subroutine integrateStateEuler
 
@@ -1422,7 +1422,7 @@ subroutine integrateStateAdaptiveEuler(todo)
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if (nonlocalBroken) call nonlocalConvergenceCheck
+  call nonlocalConvergenceCheck
 
 end subroutine integrateStateAdaptiveEuler
 
@@ -1612,7 +1612,7 @@ subroutine integrateStateRK(todo,A,B,CC,DB)
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
 
-  if(nonlocalBroken) call nonlocalConvergenceCheck
+  call nonlocalConvergenceCheck
 
 end subroutine integrateStateRK
 
@@ -1624,7 +1624,19 @@ end subroutine integrateStateRK
 subroutine nonlocalConvergenceCheck
 
   integer :: e,i,p
-
+  logical :: nonlocal_broken 
+  
+  nonlocal_broken = .false.
+  !$OMP PARALLEL DO PRIVATE(p)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    p = material_phaseAt(1,e)
+    do i = FEsolving_execIP(1),FEsolving_execIP(2)
+      if(plasticState(p)%nonlocal .and. .not. crystallite_converged(1,i,e)) nonlocal_broken = .true.
+    enddo
+  enddo
+  !$OMP END PARALLEL DO
+  
+  if(.not. nonlocal_broken) return
   !$OMP PARALLEL DO PRIVATE(p)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     p = material_phaseAt(1,e)
