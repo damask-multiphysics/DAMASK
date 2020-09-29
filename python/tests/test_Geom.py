@@ -42,46 +42,46 @@ class TestGeom:
         assert str(default.diff(new)) != ''
 
 
-    def test_write_read_str(self,default,tmpdir):
-        default.save_ASCII(str(tmpdir/'default.geom'))
-        new = Geom.load_ASCII(str(tmpdir/'default.geom'))
+    def test_write_read_str(self,default,tmp_path):
+        default.save_ASCII(str(tmp_path/'default.geom'))
+        new = Geom.load_ASCII(str(tmp_path/'default.geom'))
         assert geom_equal(default,new)
 
 
-    def test_write_read_file(self,default,tmpdir):
-        with open(tmpdir/'default.geom','w') as f:
+    def test_write_read_file(self,default,tmp_path):
+        with open(tmp_path/'default.geom','w') as f:
             default.save_ASCII(f,compress=True)
-        with open(tmpdir/'default.geom') as f:
+        with open(tmp_path/'default.geom') as f:
             new = Geom.load_ASCII(f)
         assert geom_equal(default,new)
 
 
-    def test_read_write_vtr(self,default,tmpdir):
-        default.save(tmpdir/'default')
+    def test_read_write_vtr(self,default,tmp_path):
+        default.save(tmp_path/'default')
         for _ in range(10):
             time.sleep(.2)
-            if os.path.exists(tmpdir/'default.vtr'): break
+            if os.path.exists(tmp_path/'default.vtr'): break
 
-        new = Geom.load(tmpdir/'default.vtr')
+        new = Geom.load(tmp_path/'default.vtr')
         assert geom_equal(new,default)
 
 
-    def test_invalid_geom(self,tmpdir):
-        with open('invalid_file','w') as f:
+    def test_invalid_geom(self,tmp_path):
+        with open(tmp_path/'invalid_file','w') as f:
             f.write('this is not a valid header')
-        with open('invalid_file','r') as f:
+        with open(tmp_path/'invalid_file','r') as f:
             with pytest.raises(TypeError):
                 Geom.load_ASCII(f)
 
 
-    def test_invalid_vtr(self,tmpdir):
+    def test_invalid_vtr(self,tmp_path):
         v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
-        v.save(tmpdir/'no_materialpoint.vtr')
+        v.save(tmp_path/'no_materialpoint.vtr')
         for _ in range(10):
             time.sleep(.2)
-            if os.path.exists(tmpdir/'no_materialpoint.vtr'): break
+            if os.path.exists(tmp_path/'no_materialpoint.vtr'): break
         with pytest.raises(ValueError):
-            Geom.load(tmpdir/'no_materialpoint.vtr')
+            Geom.load(tmp_path/'no_materialpoint.vtr')
 
     def test_invalid_material(self):
         with pytest.raises(TypeError):
@@ -92,9 +92,9 @@ class TestGeom:
         assert g.material.dtype in np.sctypes['int']
 
     @pytest.mark.parametrize('compress',[True,False])
-    def test_compress(self,default,tmpdir,compress):
-        default.save_ASCII(tmpdir/'default.geom',compress=compress)
-        new = Geom.load_ASCII(tmpdir/'default.geom')
+    def test_compress(self,default,tmp_path,compress):
+        default.save_ASCII(tmp_path/'default.geom',compress=compress)
+        new = Geom.load_ASCII(tmp_path/'default.geom')
         assert geom_equal(new,default)
 
 
