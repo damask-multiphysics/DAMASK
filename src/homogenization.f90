@@ -211,10 +211,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   integer :: &
     NiterationHomog, &
     NiterationMPstate, &
-    g, &                                                                                            !< grain number
     i, &                                                                                            !< integration point number
     e, &                                                                                            !< element number
-    mySource, &
     myNgrains
   real(pReal), dimension(discretization_nIP,discretization_nElem) :: &
     subFrac, &
@@ -225,40 +223,13 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   logical,     dimension(2,discretization_nIP,discretization_nElem) :: &
     doneAndHappy
 
-#ifdef DEBUG
-
-  if (debugHomog%basic) then
-    print'(/a,i5,1x,i2)', ' << HOMOG >> Material Point start at el ip ', debugHomog%element, debugHomog%ip
-
-    print'(a,/,3(12x,3(f14.9,1x)/))', ' << HOMOG >> F0', &
-                                    transpose(materialpoint_F0(1:3,1:3,debugHomog%ip,debugHomog%element))
-    print'(a,/,3(12x,3(f14.9,1x)/))', ' << HOMOG >> F', &
-                                    transpose(materialpoint_F(1:3,1:3,debugHomog%ip,debugHomog%element))
-  endif
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
     do i = FEsolving_execIP(1),FEsolving_execIP(2);
-      do g = 1,myNgrains
 
-        plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e)) = &
-        plasticState    (material_phaseAt(g,e))%state0(         :,material_phasememberAt(g,i,e))
-        do mySource = 1, phase_Nsources(material_phaseAt(g,e))
-          sourceState(material_phaseAt(g,e))%p(mySource)%partionedState0(:,material_phasememberAt(g,i,e)) = &
-          sourceState(material_phaseAt(g,e))%p(mySource)%state0(         :,material_phasememberAt(g,i,e))
-        enddo
-
-        crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)
-        crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)
-        crystallite_partionedFi0(1:3,1:3,g,i,e) = crystallite_Fi0(1:3,1:3,g,i,e)
-        crystallite_partionedLi0(1:3,1:3,g,i,e) = crystallite_Li0(1:3,1:3,g,i,e)
-        crystallite_partionedF0(1:3,1:3,g,i,e)  = crystallite_F0(1:3,1:3,g,i,e)
-        crystallite_partionedS0(1:3,1:3,g,i,e)  = crystallite_S0(1:3,1:3,g,i,e)
-
-      enddo
+      call crystallite_initializeRestorationPoints(i,e)
 
       subFrac(i,e) = 0.0_pReal
       converged(i,e) = .false.                                                                      ! pretend failed step ...
@@ -285,44 +256,19 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
        any(subStep(FEsolving_execIP(1):FEsolving_execIP(2),&
                    FEsolving_execElem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
-    !$OMP PARALLEL DO PRIVATE(myNgrains)
+    !$OMP PARALLEL DO
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
       IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
 
         if (converged(i,e)) then
-#ifdef DEBUG
-          if (debugHomog%extensive .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
-              .or. .not. debugHomog%selective)) then
-            print'(a,f12.8,a,f12.8,a,i8,1x,i2/)', ' << HOMOG >> winding forward from ', &
-              subFrac(i,e), ' to current subFrac ', &
-              subFrac(i,e)+subStep(i,e),' in materialpoint_stressAndItsTangent at el ip ',e,i
-          endif
-#endif
-
-!---------------------------------------------------------------------------------------------------
-! calculate new subStep and new subFrac
           subFrac(i,e) = subFrac(i,e) + subStep(i,e)
           subStep(i,e) = min(1.0_pReal-subFrac(i,e),num%stepIncreaseHomog*subStep(i,e))             ! introduce flexibility for step increase/acceleration
 
           steppingNeeded: if (subStep(i,e) > num%subStepMinHomog) then
 
             ! wind forward grain starting point
-            crystallite_partionedF0 (1:3,1:3,1:myNgrains,i,e) = crystallite_partionedF(1:3,1:3,1:myNgrains,i,e)
-            crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fp        (1:3,1:3,1:myNgrains,i,e)
-            crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp        (1:3,1:3,1:myNgrains,i,e)
-            crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fi        (1:3,1:3,1:myNgrains,i,e)
-            crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e) = crystallite_Li        (1:3,1:3,1:myNgrains,i,e)
-            crystallite_partionedS0 (1:3,1:3,1:myNgrains,i,e) = crystallite_S         (1:3,1:3,1:myNgrains,i,e)
-
-            do g = 1,myNgrains
-              plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e)) = &
-              plasticState    (material_phaseAt(g,e))%state          (:,material_phasememberAt(g,i,e))
-              do mySource = 1, phase_Nsources(material_phaseAt(g,e))
-                sourceState(material_phaseAt(g,e))%p(mySource)%partionedState0(:,material_phasememberAt(g,i,e)) = &
-                sourceState(material_phaseAt(g,e))%p(mySource)%state          (:,material_phasememberAt(g,i,e))
-              enddo
-            enddo
+            call crystallite_windForward(i,e)
 
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                 homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
@@ -347,32 +293,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
           else                                                                                      ! cutback makes sense
             subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
-#ifdef DEBUG
-            if (debugHomog%extensive .and. ((e == debugHomog%element .and. i == debugHomog%ip) &
-                .or. .not. debugHomog%selective)) then
-              print'(a,f12.8,a,i8,1x,i2/)', &
-                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new subStep: ',&
-                subStep(i,e),' at el ip',e,i
-            endif
-#endif
+            call crystallite_restore(i,e,subStep(i,e) < 1.0_pReal)
 
-!--------------------------------------------------------------------------------------------------
-! restore
-            if (subStep(i,e) < 1.0_pReal) then                                                      ! protect against fake cutback from \Delta t = 2 to 1. Maybe that "trick" is not necessary anymore at all? I.e. start with \Delta t = 1
-              crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)
-              crystallite_Li(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLi0(1:3,1:3,1:myNgrains,i,e)
-            endif                                                                                   ! maybe protecting everything from overwriting (not only L) makes even more sense
-            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)
-            crystallite_Fi(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFi0(1:3,1:3,1:myNgrains,i,e)
-            crystallite_S (1:3,1:3,1:myNgrains,i,e) = crystallite_partionedS0 (1:3,1:3,1:myNgrains,i,e)
-            do g = 1, myNgrains
-              plasticState    (material_phaseAt(g,e))%state(          :,material_phasememberAt(g,i,e)) = &
-              plasticState    (material_phaseAt(g,e))%partionedState0(:,material_phasememberAt(g,i,e))
-              do mySource = 1, phase_Nsources(material_phaseAt(g,e))
-                sourceState(material_phaseAt(g,e))%p(mySource)%state(          :,material_phasememberAt(g,i,e)) = &
-                sourceState(material_phaseAt(g,e))%p(mySource)%partionedState0(:,material_phasememberAt(g,i,e))
-              enddo
-            enddo
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                 homogState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
                 homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
