@@ -362,7 +362,19 @@ class TestGeom:
         assert np.all(geom.material == material)
 
 
-    @pytest.mark.parametrize('surface',['primitive','gyroid','diamond'])
+    @pytest.mark.parametrize('surface',['Schwarz P',
+                                        'Double Primitive',
+                                        'Schwarz D',
+                                        'Complementary D',
+                                        'Double Diamond',
+                                        'Dprime',
+                                        'Gyroid',
+                                        'Gprime',
+                                        'Karcher K',
+                                        'Lidinoid',
+                                        'Neovius',
+                                        'Fisher-Koch S',
+                                        ])
     def test_minimal_surface_basic_properties(self,surface):
         grid = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
@@ -373,8 +385,20 @@ class TestGeom:
         assert geom.material.max() == materials.max() and geom.material.min() == materials.min() \
                and (geom.size == size).all() and (geom.grid == grid).all()
 
-    @pytest.mark.parametrize('surface',['primitive','gyroid','diamond'])
-    def test_minimal_surface_volume(self,surface):
-        grid = np.ones(3,dtype='i')*64
-        geom = Geom.from_minimal_surface(grid,np.ones(3),surface)
-        assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5)
+    @pytest.mark.parametrize('surface,threshold',[('Schwarz P',0),
+                                        ('Double Primitive',-1./6.),
+                                        ('Schwarz D',0),
+                                        ('Complementary D',0),
+                                        ('Double Diamond',-0.133),
+                                        ('Dprime',-0.0395),
+                                        ('Gyroid',0),
+                                        ('Gprime',0.22913),
+                                        ('Karcher K',0.17045),
+                                        ('Lidinoid',0.14455),
+                                        ('Neovius',0),
+                                        ('Fisher-Koch S',0),
+                                        ])
+    def test_minimal_surface_volume(self,surface,threshold):
+        grid = np.ones(3,dtype=int)*64
+        geom = Geom.from_minimal_surface(grid,np.ones(3),surface,threshold)
+        assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5,rtol=1e-3)
