@@ -77,17 +77,17 @@ class TestColormap:
 
     @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
     @pytest.mark.parametrize('model',['rgb','hsv','hsl','xyz','lab','msh'])
-    def test_from_range(self,model,format,tmpdir):
+    def test_from_range(self,model,format,tmp_path):
         N = np.random.randint(2,256)
         c = Colormap.from_range(np.random.rand(3),np.random.rand(3),model=model,N=N)    # noqa
-        eval(f'c.save_{format}(tmpdir/"color_out")')
+        eval(f'c.save_{format}(tmp_path/"color_out")')
 
     @pytest.mark.parametrize('format',['ASCII','paraview','GOM','gmsh'])
     @pytest.mark.parametrize('name',['strain','gnuplot','Greys','PRGn','viridis'])
-    def test_from_predefined(self,name,format,tmpdir):
+    def test_from_predefined(self,name,format,tmp_path):
         N = np.random.randint(2,256)
         c = Colormap.from_predefined(name,N)                                            # noqa
-        os.chdir(tmpdir)
+        os.chdir(tmp_path)
         eval(f'c.save_{format}()')
 
     @pytest.mark.parametrize('format,name',[('ASCII','test.txt'),
@@ -95,9 +95,9 @@ class TestColormap:
                                             ('GOM','test.legend'),
                                             ('gmsh','test.msh')
                                            ])
-    def test_write_filehandle(self,format,name,tmpdir):
+    def test_write_filehandle(self,format,name,tmp_path):
         c = Colormap.from_predefined('Dark2')                                           # noqa
-        fname = tmpdir/name
+        fname = tmp_path/name
         with open(fname,'w') as f:                                                      # noqa
             eval(f'c.save_{format}(f)')
         for i in range(10):
@@ -146,14 +146,14 @@ class TestColormap:
                                            ('GOM','.legend'),
                                            ('gmsh','.msh')
                                           ])
-    def test_compare_reference(self,format,ext,tmpdir,reference_dir,update):
+    def test_compare_reference(self,format,ext,tmp_path,reference_dir,update):
         name = 'binary'
         c = Colormap.from_predefined(name)                                              # noqa
         if update:
             os.chdir(reference_dir)
             eval(f'c.save_{format}()')
         else:
-            os.chdir(tmpdir)
+            os.chdir(tmp_path)
             eval(f'c.save_{format}()')
             time.sleep(.5)
-            assert filecmp.cmp(tmpdir/(name+ext),reference_dir/(name+ext))
+            assert filecmp.cmp(tmp_path/(name+ext),reference_dir/(name+ext))

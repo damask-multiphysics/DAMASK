@@ -34,31 +34,31 @@ class TestTable:
         assert np.allclose(d,1.0) and d.shape[1:] == (1,)
 
     @pytest.mark.parametrize('mode',['str','path'])
-    def test_write_read(self,default,tmpdir,mode):
-        default.save(tmpdir/'default.txt')
+    def test_write_read(self,default,tmp_path,mode):
+        default.save(tmp_path/'default.txt')
         if   mode == 'path':
-            new = Table.load(tmpdir/'default.txt')
+            new = Table.load(tmp_path/'default.txt')
         elif mode == 'str':
-            new = Table.load(str(tmpdir/'default.txt'))
+            new = Table.load(str(tmp_path/'default.txt'))
         assert all(default.data==new.data) and default.shapes == new.shapes
 
-    def test_write_read_file(self,default,tmpdir):
-        with open(tmpdir/'default.txt','w') as f:
+    def test_write_read_file(self,default,tmp_path):
+        with open(tmp_path/'default.txt','w') as f:
             default.save(f)
-        with open(tmpdir/'default.txt') as f:
+        with open(tmp_path/'default.txt') as f:
             new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
-    def test_write_read_legacy_style(self,default,tmpdir):
-        with open(tmpdir/'legacy.txt','w') as f:
+    def test_write_read_legacy_style(self,default,tmp_path):
+        with open(tmp_path/'legacy.txt','w') as f:
             default.save(f,legacy=True)
-        with open(tmpdir/'legacy.txt') as f:
+        with open(tmp_path/'legacy.txt') as f:
             new = Table.load(f)
         assert all(default.data==new.data) and default.shapes == new.shapes
 
-    def test_write_invalid_format(self,default,tmpdir):
+    def test_write_invalid_format(self,default,tmp_path):
         with pytest.raises(TypeError):
-            default.save(tmpdir/'shouldnotbethere.txt',format='invalid')
+            default.save(tmp_path/'shouldnotbethere.txt',format='invalid')
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_read_ang(self,reference_dir,mode):
