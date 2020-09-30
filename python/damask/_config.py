@@ -43,7 +43,7 @@ class Config(dict):
             fhandle = fname
         return cls(yaml.safe_load(fhandle))
 
-    def save(self,fname):
+    def save(self,fname,**kwargs):
         """
         Save to yaml file.
 
@@ -51,13 +51,20 @@ class Config(dict):
         ----------
         fname : file, str, or pathlib.Path
             Filename or file for writing.
+        **kwargs : dict
+            Keyword arguments parsed to yaml.dump.
 
         """
         try:
             fhandle = open(fname,'w')
         except TypeError:
             fhandle = fname
-        fhandle.write(yaml.dump(dict(self),width=256,default_flow_style=None,Dumper=NiceDumper))
+
+        if 'width' not in kwargs:
+            kwargs['width'] = 256
+        if 'default_flow_style' not in kwargs:
+            kwargs['default_flow_style'] = None
+        fhandle.write(yaml.dump(dict(self),Dumper=NiceDumper,**kwargs))
 
 
     @property

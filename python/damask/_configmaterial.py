@@ -9,7 +9,7 @@ from . import Rotation
 class ConfigMaterial(Config):
     """Material configuration."""
 
-    def save(self,fname='material.yaml'):
+    def save(self,fname='material.yaml',**kwargs):
         """
         Save to yaml file.
 
@@ -17,9 +17,11 @@ class ConfigMaterial(Config):
         ----------
         fname : file, str, or pathlib.Path, optional
             Filename or file for writing. Defaults to 'material.yaml'.
+        **kwargs : dict
+            Keyword arguments parsed to yaml.dump.
 
         """
-        super().save(fname)
+        super().save(fname,**kwargs)
 
     @property
     def is_complete(self):

@@ -1,12 +1,15 @@
+import pytest
+
 from damask import Config
 
 class TestConfig:
 
-    def test_load_save_str(self,tmp_path):
+    @pytest.mark.parametrize('flow_style',[None,True,False])
+    def test_load_save_str(self,tmp_path,flow_style):
         config = Config()
         config['A'] = 1
         config['B'] = [2,3]
-        config.save(tmp_path/'config.yaml')
+        config.save(tmp_path/'config.yaml',default_flow_style=flow_style)
         assert Config.load(tmp_path/'config.yaml') == config
 
     def test_load_save_file(self,tmp_path):
