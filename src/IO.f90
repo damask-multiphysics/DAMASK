@@ -498,9 +498,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Abrupt end of file'
     case (708)
       msg = '--- expected after YAML file header'
-    case (710)
-      msg = 'key mismatch'
-
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
