@@ -952,6 +952,9 @@ function tNode_get_byKey_asIndex(self,key)  result(keyIndex)
     endif
   enddo
 
+  if(keyIndex == -1) call IO_error(710,ext_msg=key)
+
+ 
 end function tNode_get_byKey_asIndex
 
 
