@@ -48,11 +48,11 @@ subroutine CPFEM_initAll
 #ifdef Mesh
   call FEM_quadrature_init
 #endif
+  call YAML_types_init
+  call YAML_parse_init
   call config_init
   call math_init
   call rotations_init
-  call YAML_types_init
-  call YAML_parse_init
   call lattice_init
   call HDF5_utilities_init
   call results_init(restart=interface_restartInc>0)

@@ -494,6 +494,10 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Unsupported feature'
     case (706)
       msg = 'Access by incorrect node type'
+    case (707)
+      msg = 'Abrupt end of file'
+    case (708)
+      msg = '--- expected after YAML file header'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
@@ -621,6 +625,9 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'polar decomposition failed'
     case (700)
       msg = 'unknown crystal symmetry'
+    case (709)
+      msg = 'read only the first document'
+ 
     case (850)
       msg = 'max number of cut back exceeded, terminating'
     case default
