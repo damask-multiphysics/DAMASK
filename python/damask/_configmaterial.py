@@ -9,6 +9,18 @@ from . import Rotation
 class ConfigMaterial(Config):
     """Material configuration."""
 
+    def save(self,fname='material.yaml'):
+        """
+        Save to yaml file.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path, optional
+            Filename or file for writing. Defaults to 'material.yaml'.
+
+        """
+        super().save(fname)
+
     @property
     def is_complete(self):
         """Check for completeness."""

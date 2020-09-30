@@ -28,21 +28,29 @@ class Config(dict):
 
     @classmethod
     def load(cls,fname):
-        """Load from yaml file."""
+        """
+        Load from yaml file.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path
+            Filename or file for writing.
+
+        """
         try:
             fhandle = open(fname)
         except TypeError:
             fhandle = fname
         return cls(yaml.safe_load(fhandle))
 
-    def save(self,fname='material.yaml'):
+    def save(self,fname):
         """
         Save to yaml file.
 
         Parameters
         ----------
         fname : file, str, or pathlib.Path
-            Filename or file for reading.
+            Filename or file for writing.
 
         """
         try:
