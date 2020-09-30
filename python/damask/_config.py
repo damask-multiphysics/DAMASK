@@ -2,7 +2,6 @@ from io import StringIO
 import abc
 
 import yaml
-import numpy as np
 
 class NiceDumper(yaml.SafeDumper):
     """Make YAML readable for humans."""
