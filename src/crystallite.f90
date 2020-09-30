@@ -69,8 +69,6 @@ module crystallite
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_partionedF                                                                         !< def grad to be reached at end of homog inc
 
-  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public, protected :: &
-    crystallite_dPdF                                                                                !< current individual dPdF per grain (end of converged time step)
   logical,                    dimension(:,:,:),         allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
   logical,                    dimension(:,:,:),         allocatable :: &
@@ -183,8 +181,6 @@ subroutine crystallite_init
            crystallite_subFp0,crystallite_subFi0, &
            source = crystallite_partionedF)
 
-  allocate(crystallite_dPdF(3,3,3,3,cMax,iMax,eMax),source=0.0_pReal)
-
   allocate(crystallite_dt(cMax,iMax,eMax),source=0.0_pReal)
   allocate(crystallite_subdt,crystallite_subFrac,crystallite_subStep, &
            source = crystallite_dt)
@@ -293,7 +289,6 @@ subroutine crystallite_init
   !$OMP END PARALLEL DO
 
   devNull = crystallite_stress()
-  call crystallite_stressTangent
 
 #ifdef DEBUG
   if (debugCrystallite%basic) then
@@ -566,12 +561,14 @@ end subroutine crystallite_restore
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate tangent (dPdF).
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_stressTangent
+function crystallite_stressTangent(c,i,e) result(dPdF)
 
-  integer :: &
+  real(pReal), dimension(3,3,3,3) :: dPdF
+  integer, intent(in) :: &
     c, &                                                                                            !< counter in constituent loop
     i, &                                                                                            !< counter in integration point loop
-    e, &                                                                                            !< counter in element loop
+    e                                                                                               !< counter in element loop
+  integer :: &
     o, &
     p
 
@@ -593,12 +590,6 @@ subroutine crystallite_stressTangent
   real(pReal), dimension(9,9)::        temp_99
   logical :: error
 
-  !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFi,dLpdS,dLpdFi,dFpinvdF,dLidS,dLidFi,dFidS,o,p, &
-  !$OMP                     invSubFp0,invSubFi0,invFp,invFi, &
-  !$OMP                     rhs_3333,lhs_3333,temp_99,temp_33_1,temp_33_2,temp_33_3,temp_33_4,temp_3333,error)
-  elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
 
         call constitutive_SandItsTangents(devNull,dSdFe,dSdFi, &
                                          crystallite_Fe(1:3,1:3,c,i,e), &
@@ -679,24 +670,20 @@ subroutine crystallite_stressTangent
         temp_33_3 = matmul(crystallite_subF(1:3,1:3,c,i,e),invFp)
         temp_33_4 = matmul(temp_33_3,crystallite_S(1:3,1:3,c,i,e))
 
-        crystallite_dPdF(1:3,1:3,1:3,1:3,c,i,e) = 0.0_pReal
+        dPdF = 0.0_pReal
         do p=1,3
-          crystallite_dPdF(p,1:3,p,1:3,c,i,e) = transpose(temp_33_2)
+          dPdF(p,1:3,p,1:3) = transpose(temp_33_2)
         enddo
         do o=1,3; do p=1,3
-          crystallite_dPdF(1:3,1:3,p,o,c,i,e) = crystallite_dPdF(1:3,1:3,p,o,c,i,e) &
-                                              + matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
-                                                       dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
-                                              + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
-                                                       transpose(invFp)) &
-                                              + matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
+          dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
+                            + matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
+                                     dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
+                            + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
+                                     transpose(invFp)) &
+                            + matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
         enddo; enddo
 
-    enddo; enddo
-  enddo elementLooping
-  !$OMP END PARALLEL DO
-
-end subroutine crystallite_stressTangent
+end function crystallite_stressTangent
 
 
 !--------------------------------------------------------------------------------------------------

@@ -374,8 +374,6 @@ subroutine materialpoint_stressAndItsTangent(dt)
 
   enddo cutBackLooping
 
-  call crystallite_stressTangent
-
   if (.not. terminallyIll ) then
     call crystallite_orientations()                                                                 ! calculate crystal orientations
     !$OMP PARALLEL DO
@@ -437,11 +435,16 @@ function updateState(subdt,subF,ip,el)
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
+  integer :: c
   logical, dimension(2) :: updateState
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Ngrains(material_homogenizationAt(el)))
 
   updateState = .true.
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      do c=1,homogenization_Ngrains(material_homogenizationAt(el))
+        dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
+      enddo
       updateState = &
         updateState .and. &
           mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
@@ -449,7 +452,7 @@ function updateState(subdt,subF,ip,el)
                                crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
                                subF,&
                                subdt, &
-                               crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               dPdFs, &
                                ip, &
                                el)
   end select chosenHomogenization
@@ -483,26 +486,35 @@ subroutine averageStressAndItsTangent(ip,el)
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
-
+  integer :: c
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Ngrains(material_homogenizationAt(el)))
+ 
+  
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
         materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
-        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_dPdF(1:3,1:3,1:3,1:3,1,ip,el)
+        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_stressTangent(1,ip,el)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
+      do c = 1, homogenization_Ngrains(material_homogenizationAt(el))
+        dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
+      enddo
       call mech_isostrain_averageStressAndItsTangent(&
         materialpoint_P(1:3,1:3,ip,el), &
         materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
         crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+      do c = 1, homogenization_Ngrains(material_homogenizationAt(el))
+        dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
+      enddo
       call mech_RGC_averageStressAndItsTangent(&
         materialpoint_P(1:3,1:3,ip,el), &
         materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
         crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))
   end select chosenHomogenization
 
