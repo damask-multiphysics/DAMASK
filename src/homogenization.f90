@@ -204,10 +204,9 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  parallelized calculation of stress and corresponding tangent at material points
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
+subroutine materialpoint_stressAndItsTangent(dt)
 
   real(pReal), intent(in) :: dt                                                                     !< time increment
-  logical,     intent(in) :: updateJaco                                                             !< initiating Jacobian update
   integer :: &
     NiterationHomog, &
     NiterationMPstate, &
@@ -375,7 +374,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
   enddo cutBackLooping
 
-  if(updateJaco) call crystallite_stressTangent
+  call crystallite_stressTangent
 
   if (.not. terminallyIll ) then
     call crystallite_orientations()                                                                 ! calculate crystal orientations

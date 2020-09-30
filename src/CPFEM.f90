@@ -103,7 +103,6 @@ end subroutine CPFEM_initAll
 subroutine CPFEM_init
 
   class(tNode), pointer :: &
-    num_commercialFEM, &
     debug_CPFEM
 
   print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
@@ -111,12 +110,6 @@ subroutine CPFEM_init
   allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
   allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
-
-!------------------------------------------------------------------------------
-! read numerical parameters and do sanity check
-  num_commercialFEM => config_numerics%get('commercialFEM',defaultVal=emptyDict)
-  num%iJacoStiffness = num_commercialFEM%get_asInt('ijacostiffness',defaultVal=1)
-  if (num%iJacoStiffness < 1)  call IO_error(301,ext_msg='iJacoStiffness')
 
 !------------------------------------------------------------------------------
 ! read debug options
@@ -161,7 +154,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
   integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
                                                       i, j, k, l, m, n, ph, homog, mySource
-  logical                                             updateJaco                                    ! flag indicating if Jacobian has to be updated
 
   real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress if terminallyIll
                                                      ODD_JACOBIAN  = 1e50_pReal                     !< return value for jacobian if terminallyIll
@@ -204,12 +196,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      updateJaco = mod(cycleCounter,num%iJacoStiffness) == 0
       FEsolving_execElem = elCP
       FEsolving_execIP   = ip
       if (debugCPFEM%extensive) &
         print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
-      call materialpoint_stressAndItsTangent(updateJaco, dt)
+      call materialpoint_stressAndItsTangent(dt)
 
       terminalIllness: if (terminallyIll) then
 

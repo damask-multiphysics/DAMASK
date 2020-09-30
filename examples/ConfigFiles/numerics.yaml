@@ -78,7 +78,6 @@ crystallite:
   iJacoLpresiduum:             1            # frequency of Jacobian update of residuum in Lp
 
 commercialFEM:
-  ijacostiffness:              1            # frequency of stiffness update
   unitlength:                  1            # physical length of one computational length unit
 
 generic:
