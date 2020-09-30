@@ -292,6 +292,41 @@ class Geom:
                    )
 
 
+    @staticmethod
+    def from_minimal_surface(grid,size,surface,threshold=0.0,periods=1,materials=(1,2)):
+        """
+        Generate geometry from definition of minimal surface.
+
+        Parameters
+        ----------
+        grid : int numpy.ndarray of shape (3)
+            Number of grid points in x,y,z direction.
+        size : list or numpy.ndarray of shape (3)
+            Physical size of the geometry in meter.
+        surface : {'primitive', 'gyroid', 'diamond'}
+            Type of the minimal surface.
+        threshold : float, optional.
+            Threshold of the minimal surface. Defaults to 0.0.
+        periods : integer, optional.
+            Number of periods per unit cell. Defaults to 1.
+        materials : (int, int), optional
+            Material IDs. Defaults to (1,2).
+
+        """
+        s = {'primitive': lambda x,y,z: np.cos(x)+np.cos(y)+np.cos(z),
+             'gyroid':    lambda x,y,z: np.sin(x)*np.cos(y)+np.sin(y)*np.cos(z)+np.cos(x)*np.sin(z),
+             'diamond':   lambda x,y,z: np.cos(x-y)*np.cos(z)+np.sin(x+y)*np.sin(z),
+          }
+        x,y,z = np.meshgrid(periods*2.0*np.pi*(np.arange(grid[0])+0.5)/grid[0],
+                            periods*2.0*np.pi*(np.arange(grid[1])+0.5)/grid[1],
+                            periods*2.0*np.pi*(np.arange(grid[2])+0.5)/grid[2],
+                            indexing='ij',sparse=True)
+        return Geom(material = np.where(threshold < s[surface](x,y,z),materials[1],materials[0]),
+                    size     = size,
+                    comments = util.execution_stamp('Geom','from_minimal_surface'),
+                   )
+
+
     def save_ASCII(self,fname,compress=None):
         """
         Writes a geom file.

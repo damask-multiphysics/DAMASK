@@ -360,3 +360,21 @@ class TestGeom:
         elif approach == 'Voronoi':
             geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(geom.material == material)
+
+
+    @pytest.mark.parametrize('surface',['primitive','gyroid','diamond'])
+    def test_minimal_surface_basic_properties(self,surface):
+        grid = np.random.randint(60,100,3)
+        size = np.ones(3)+np.random.rand(3)
+        threshold = np.random.rand()-.5
+        periods = np.random.randint(2)+1
+        materials = np.random.randint(0,40,2)
+        geom = Geom.from_minimal_surface(grid,size,surface,threshold,periods,materials)
+        assert geom.material.max() == materials.max() and geom.material.min() == materials.min() \
+               and (geom.size == size).all() and (geom.grid == grid).all()
+
+    @pytest.mark.parametrize('surface',['primitive','gyroid','diamond'])
+    def test_minimal_surface_volume(self,surface):
+        grid = np.ones(3,dtype='i')*64
+        geom = Geom.from_minimal_surface(grid,np.ones(3),surface)
+        assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5)
