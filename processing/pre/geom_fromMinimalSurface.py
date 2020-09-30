@@ -11,7 +11,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-minimal_surfaces = ['primitive','gyroid','diamond']
+minimal_surfaces = list(damask.Geom._minimal_surface.keys())
 
 # --------------------------------------------------------------------
 #                                MAIN
