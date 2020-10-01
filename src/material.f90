@@ -97,7 +97,7 @@ module material
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
 
   integer, dimension(:), allocatable, private :: &
-    material_Nconstituents                                                                    !< number of constituents in each material
+    material_Nconstituents                                                                          !< number of constituents in each material
 
 
 
@@ -385,7 +385,7 @@ subroutine material_parseMicrostructure
         counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
         
-        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('orientation',requiredSize=4))
+        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
       enddo
     
     enddo
