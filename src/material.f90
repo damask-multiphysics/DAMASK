@@ -180,8 +180,8 @@ subroutine material_init(restart)
     material_name_homogenization(myHomog) = trim(adjustl(sectionName))//material_homogenization%getKey(myHomog)
   enddo
 
-  call material_parseMicrostructure
-  print*, 'Microstructure parsed'
+  call material_parseMaterial
+  print*, 'Material parsed'
 
   call material_parseHomogenization
   print*, 'Homogenization parsed'
@@ -319,7 +319,7 @@ end subroutine material_parseHomogenization
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the material part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseMicrostructure
+subroutine material_parseMaterial
 
   class(tNode), pointer :: materials, &                                                             !> list of materials
                            material, &                                                              !> material definition
@@ -393,7 +393,7 @@ subroutine material_parseMicrostructure
     
   enddo
 
-end subroutine material_parseMicrostructure
+end subroutine material_parseMaterial
 
 
 end module material
