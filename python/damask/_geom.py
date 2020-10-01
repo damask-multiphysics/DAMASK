@@ -345,14 +345,30 @@ class Geom:
             Number of grid points in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
             Physical size of the geometry in meter.
-        surface : {'primitive', 'gyroid', 'lidinoid', 'neovius', 'diamond', 'doublediamond'}
-            Type of the minimal surface.
+        surface : str
+            Type of the minimal surface. See notes for details.
         threshold : float, optional.
             Threshold of the minimal surface. Defaults to 0.0.
         periods : integer, optional.
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
             Material IDs. Defaults to (1,2).
+        
+        Notes
+        -----
+        The following triply-periodic minimal surfaces are implemented:
+          - Schwarz P
+          - Double Primitive
+          - Schwarz D
+          - Complementary D
+          - Double Diamond
+          - Dprime
+          - Gyroid
+          - Gprime
+          - Karcher K
+          - Lidinoid
+          - Neovius
+          - Fisher-Koch S
 
         References
         ----------
