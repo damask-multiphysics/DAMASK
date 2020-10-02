@@ -378,11 +378,11 @@ class TestGeom:
     def test_minimal_surface_basic_properties(self,surface):
         grid = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
-        threshold = np.random.rand()-.5
+        threshold = 2*np.random.rand()-1.
         periods = np.random.randint(2)+1
         materials = np.random.randint(0,40,2)
         geom = Geom.from_minimal_surface(grid,size,surface,threshold,periods,materials)
-        assert geom.material.max() == materials.max() and geom.material.min() == materials.min() \
+        assert set(geom.material.flatten()) | set(materials) == set(materials) \
                and (geom.size == size).all() and (geom.grid == grid).all()
 
     @pytest.mark.parametrize('surface,threshold',[('Schwarz P',0),
