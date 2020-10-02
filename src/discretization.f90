@@ -15,7 +15,7 @@ module discretization
     discretization_nElem
     
   integer,     public, protected, dimension(:),   allocatable :: &
-    discretization_microstructureAt   
+    discretization_materialAt   
 
   real(pReal), public, protected, dimension(:,:), allocatable :: & 
     discretization_IPcoords0, &
@@ -37,12 +37,12 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief stores the relevant information in globally accesible variables
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_init(microstructureAt,&
+subroutine discretization_init(materialAt,&
                                IPcoords0,NodeCoords0,&
                                sharedNodesBegin)
 
   integer,     dimension(:),   intent(in) :: &
-    microstructureAt
+    materialAt
   real(pReal), dimension(:,:), intent(in) :: &
     IPcoords0, &
     NodeCoords0
@@ -51,10 +51,10 @@ subroutine discretization_init(microstructureAt,&
 
   print'(/,a)', ' <<<+-  discretization init  -+>>>'; flush(6)
 
-  discretization_nElem = size(microstructureAt,1)
+  discretization_nElem = size(materialAt,1)
   discretization_nIP   = size(IPcoords0,2)/discretization_nElem
 
-  discretization_microstructureAt = microstructureAt  
+  discretization_materialAt = materialAt  
 
   discretization_IPcoords0   = IPcoords0
   discretization_IPcoords    = IPcoords0
