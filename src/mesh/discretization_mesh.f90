@@ -78,7 +78,7 @@ subroutine discretization_mesh_init(restart)
   IS :: faceSetIS
   PetscErrorCode :: ierr
   integer, dimension(:), allocatable :: &
-    microstructureAt
+    materialAt
   class(tNode), pointer :: &
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
@@ -164,9 +164,9 @@ subroutine discretization_mesh_init(restart)
   call mesh_FEM_build_ipCoordinates(dimPlex,FEM_quadrature_points(dimPlex,integrationOrder)%p)
   call mesh_FEM_build_ipVolumes(dimPlex)
 
-  allocate(microstructureAt(mesh_NcpElems))
+  allocate(materialAt(mesh_NcpElems))
   do j = 1, mesh_NcpElems
-    call DMGetLabelValue(geomMesh,'material',j-1,microstructureAt(j),ierr)
+    call DMGetLabelValue(geomMesh,'material',j-1,materialAt(j),ierr)
     CHKERRQ(ierr)
   end do
 
@@ -178,7 +178,7 @@ subroutine discretization_mesh_init(restart)
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 
-  call discretization_init(microstructureAt,&
+  call discretization_init(materialAt,&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
 

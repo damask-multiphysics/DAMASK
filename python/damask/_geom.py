@@ -121,6 +121,29 @@ class Geom:
 
 
     @staticmethod
+    def load(fname):
+        """
+        Read a VTK rectilinear grid.
+
+        Parameters
+        ----------
+        fname : str or or pathlib.Path
+            Geometry file to read.
+            Valid extension is .vtr, it will be appended if not given.
+
+        """
+        v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
+        comments = v.get_comments()
+        grid = np.array(v.vtk_data.GetDimensions())-1
+        bbox = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
+
+        return Geom(material = v.get('material').reshape(grid,order='F'),
+                    size = bbox[1] - bbox[0],
+                    origin = bbox[0],
+                    comments=comments)
+
+
+    @staticmethod
     def load_ASCII(fname):
         """
         Read a geom file.
@@ -182,29 +205,6 @@ class Geom:
             material = material.astype('int')
 
         return Geom(material.reshape(grid,order='F'),size,origin,comments)
-
-
-    @staticmethod
-    def load(fname):
-        """
-        Read a VTK rectilinear grid.
-
-        Parameters
-        ----------
-        fname : str or or pathlib.Path
-            Geometry file to read.
-            Valid extension is .vtr, it will be appended if not given.
-
-        """
-        v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
-        comments = v.get_comments()
-        grid = np.array(v.vtk_data.GetDimensions())-1
-        bbox = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
-
-        return Geom(material = v.get('material').reshape(grid,order='F'),
-                    size = bbox[1] - bbox[0],
-                    origin = bbox[0],
-                    comments=comments)
 
 
     @staticmethod
@@ -292,6 +292,131 @@ class Geom:
                    )
 
 
+    _minimal_surface = \
+        {'Schwarz P':        lambda x,y,z: np.cos(x) + np.cos(y) + np.cos(z),
+         'Double Primitive': lambda x,y,z: ( 0.5 * (np.cos(x)*np.cos(y) + np.cos(y)*np.cos(z) + np.cos(z)*np.cos(x))
+                                           + 0.2 * (np.cos(2*x) + np.cos(2*y) + np.cos(2*z)) ),
+         'Schwarz D':        lambda x,y,z: ( np.sin(x)*np.sin(y)*np.sin(z)
+                                           + np.sin(x)*np.cos(y)*np.cos(z)
+                                           + np.cos(x)*np.cos(y)*np.sin(z)
+                                           + np.cos(x)*np.sin(y)*np.cos(z) ),
+         'Complementary D':  lambda x,y,z: ( np.cos(3*x+y)*np.cos(z) - np.sin(3*x-y)*np.sin(z) + np.cos(x+3*y)*np.cos(z)
+                                           + np.sin(x-3*y)*np.sin(z) + np.cos(x-y)*np.cos(3*z) - np.sin(x+y)*np.sin(3*z) ),
+         'Double Diamond':   lambda x,y,z: 0.5 * (np.sin(x)*np.sin(y)
+                                                + np.sin(y)*np.sin(z)
+                                                + np.sin(z)*np.sin(x)
+                                                + np.cos(x) * np.cos(y) * np.cos(z) ),
+         'Dprime':           lambda x,y,z: 0.5 * ( np.cos(x)*np.cos(y)*np.cos(z)
+                                                 + np.cos(x)*np.sin(y)*np.sin(z)
+                                                 + np.sin(x)*np.cos(y)*np.sin(z)
+                                                 + np.sin(x)*np.sin(y)*np.cos(z)
+                                                 - np.sin(2*x)*np.sin(2*y)
+                                                 - np.sin(2*y)*np.sin(2*z)
+                                                 - np.sin(2*z)*np.sin(2*x) ) - 0.2,
+         'Gyroid':           lambda x,y,z: np.cos(x)*np.sin(y) + np.cos(y)*np.sin(z) + np.cos(z)*np.sin(x),
+         'Gprime':           lambda x,y,z : ( np.sin(2*x)*np.cos(y)*np.sin(z)
+                                            + np.sin(2*y)*np.cos(z)*np.sin(x)
+                                            + np.sin(2*z)*np.cos(x)*np.sin(y) ) + 0.32,
+         'Karcher K':        lambda x,y,z: ( 0.3 * ( np.cos(x)           + np.cos(y)           + np.cos(z)
+                                                   + np.cos(x)*np.cos(y) + np.cos(y)*np.cos(z) + np.cos(z)*np.cos(x) )
+                                           - 0.4 * ( np.cos(2*x)         + np.cos(2*y)         + np.cos(2*z) ) ) + 0.2,
+         'Lidinoid':         lambda x,y,z: 0.5 * ( np.sin(2*x)*np.cos(y)*np.sin(z)
+                                                 + np.sin(2*y)*np.cos(z)*np.sin(x)
+                                                 + np.sin(2*z)*np.cos(x)*np.sin(y)
+                                                 - np.cos(2*x)*np.cos(2*y)
+                                                 - np.cos(2*y)*np.cos(2*z)
+                                                 - np.cos(2*z)*np.cos(2*x) ) + 0.15,
+         'Neovius':          lambda x,y,z: ( 3 * (np.cos(x)+np.cos(y)+np.cos(z))
+                                           + 4 * np.cos(x)*np.cos(y)*np.cos(z) ),
+         'Fisher-Koch S':    lambda x,y,z: ( np.cos(2*x)*np.sin(  y)*np.cos(  z)
+                                           + np.cos(  x)*np.cos(2*y)*np.sin(  z)
+                                           + np.sin(  x)*np.cos(  y)*np.cos(2*z) ),
+      }
+
+
+    @staticmethod
+    def from_minimal_surface(grid,size,surface,threshold=0.0,periods=1,materials=(1,2)):
+        """
+        Generate geometry from definition of triply periodic minimal surface.
+
+        Parameters
+        ----------
+        grid : int numpy.ndarray of shape (3)
+            Number of grid points in x,y,z direction.
+        size : list or numpy.ndarray of shape (3)
+            Physical size of the geometry in meter.
+        surface : str
+            Type of the minimal surface. See notes for details.
+        threshold : float, optional.
+            Threshold of the minimal surface. Defaults to 0.0.
+        periods : integer, optional.
+            Number of periods per unit cell. Defaults to 1.
+        materials : (int, int), optional
+            Material IDs. Defaults to (1,2).
+        
+        Notes
+        -----
+        The following triply-periodic minimal surfaces are implemented:
+          - Schwarz P
+          - Double Primitive
+          - Schwarz D
+          - Complementary D
+          - Double Diamond
+          - Dprime
+          - Gyroid
+          - Gprime
+          - Karcher K
+          - Lidinoid
+          - Neovius
+          - Fisher-Koch S
+
+        References
+        ----------
+        Surface curvature in triply-periodic minimal surface architectures as
+        a distinct design parameter in preparing advanced tissue engineering scaffolds
+        Sébastien B G Blanquer, Maike Werner, Markus Hannula, Shahriar Sharifi,
+        Guillaume P R Lajoinie, David Eglin, Jari Hyttinen, André A Poot, and Dirk W Grijpma
+        10.1088/1758-5090/aa6553
+
+        Triply Periodic Bicontinuous Cubic Microdomain Morphologies by Symmetries
+        Meinhard Wohlgemuth, Nataliya Yufa, James Hoffman, and Edwin L. Thomas
+        10.1021/ma0019499
+
+        Minisurf – A minimal surface generator for finite element modeling and additive manufacturing
+        Meng-Ting Hsieh, Lorenzo Valdevit
+        10.1016/j.simpa.2020.100026
+
+        """
+        x,y,z = np.meshgrid(periods*2.0*np.pi*(np.arange(grid[0])+0.5)/grid[0],
+                            periods*2.0*np.pi*(np.arange(grid[1])+0.5)/grid[1],
+                            periods*2.0*np.pi*(np.arange(grid[2])+0.5)/grid[2],
+                            indexing='ij',sparse=True)
+        return Geom(material = np.where(threshold < Geom._minimal_surface[surface](x,y,z),materials[1],materials[0]),
+                    size     = size,
+                    comments = util.execution_stamp('Geom','from_minimal_surface'),
+                   )
+
+
+    def save(self,fname,compress=True):
+        """
+        Generates vtk rectilinear grid.
+
+        Parameters
+        ----------
+        fname : str, optional
+            Filename to write. If no file is given, a string is returned.
+            Valid extension is .vtr, it will be appended if not given.
+        compress : bool, optional
+            Compress with zlib algorithm. Defaults to True.
+
+        """
+        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+        v.add(self.material.flatten(order='F'),'material')
+        v.add_comments(self.comments)
+
+        v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr',parallel=False,compress=compress)
+
+
     def save_ASCII(self,fname,compress=None):
         """
         Writes a geom file.
@@ -362,26 +487,6 @@ class Geom:
                 f.write(f'{start} to {former}\n')
             elif compressType == 'of':
                 f.write(f'{reps} of {former}\n')
-
-
-    def save(self,fname,compress=True):
-        """
-        Generates vtk rectilinear grid.
-
-        Parameters
-        ----------
-        fname : str, optional
-            Filename to write. If no file is given, a string is returned.
-            Valid extension is .vtr, it will be appended if not given.
-        compress : bool, optional
-            Compress with zlib algorithm. Defaults to True.
-
-        """
-        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
-        v.add(self.material.flatten(order='F'),'material')
-        v.add_comments(self.comments)
-
-        v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr',parallel=False,compress=compress)
 
 
     def show(self):
