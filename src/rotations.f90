@@ -1452,7 +1452,7 @@ subroutine selfTest
 
   contains
 
-  function quaternion_equal(qu1,qu2) result(ok)
+  pure recursive function quaternion_equal(qu1,qu2) result(ok)
 
     real(pReal), intent(in), dimension(4) :: qu1,qu2
     logical :: ok
