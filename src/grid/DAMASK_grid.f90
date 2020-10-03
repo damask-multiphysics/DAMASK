@@ -181,7 +181,7 @@ program DAMASK_grid
     if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
       call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(interface_loadFile))             ! error message for incomplete loadcase
   
-    newLoadCase%stress%myType='stress'
+    newLoadCase%stress%myType='p'
     field = 1
     newLoadCase%ID(field) = FIELD_MECH_ID                                                           ! mechanical active by default
     thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
@@ -210,18 +210,16 @@ program DAMASK_grid
             temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                           ! true if not a *
             if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
           enddo
-          newLoadCase%deformation%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))          ! logical mask in 3x3 notation
-          newLoadCase%deformation%maskFloat = merge(ones,zeros,newLoadCase%deformation%maskLogical) ! float (1.0/0.0) mask in 3x3 notation
-          newLoadCase%deformation%values    = math_9to33(temp_valueVector)                          ! values in 3x3 notation
+          newLoadCase%deformation%mask   = transpose(reshape(temp_maskVector,[ 3,3]))               ! mask in 3x3 notation
+          newLoadCase%deformation%values = math_9to33(temp_valueVector)                             ! values in 3x3 notation
         case('p','stress', 's')
           temp_valueVector = 0.0_pReal
           do j = 1, 9
             temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                           ! true if not an asterisk
             if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
           enddo
-          newLoadCase%stress%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
-          newLoadCase%stress%maskFloat   = merge(ones,zeros,newLoadCase%stress%maskLogical)
-          newLoadCase%stress%values      = math_9to33(temp_valueVector)
+          newLoadCase%stress%mask   = transpose(reshape(temp_maskVector,[ 3,3]))
+          newLoadCase%stress%values = math_9to33(temp_valueVector)
         case('t','time','delta')                                                                    ! increment time
           newLoadCase%time = IO_floatValue(line,chunkPos,i+1)
         case('n','incs','increments')                                                               ! number of increments
@@ -268,8 +266,8 @@ program DAMASK_grid
         print*, ' drop guessing along trajectory'
       if (newLoadCase%deformation%myType == 'l') then
         do j = 1, 3
-          if (any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .true.) .and. &
-              any(newLoadCase%deformation%maskLogical(j,1:3) .eqv. .false.)) errorID = 832          ! each row should be either fully or not at all defined
+          if (any(newLoadCase%deformation%mask(j,1:3) .eqv. .true.) .and. &
+              any(newLoadCase%deformation%mask(j,1:3) .eqv. .false.)) errorID = 832                 ! each row should be either fully or not at all defined
         enddo
         print*, ' velocity gradient:'
       else if (newLoadCase%deformation%myType == 'f') then
@@ -278,20 +276,19 @@ program DAMASK_grid
         print*, ' deformation gradient rate:'
       endif
       do i = 1, 3; do j = 1, 3
-        if(newLoadCase%deformation%maskLogical(i,j)) then
+        if(newLoadCase%deformation%mask(i,j)) then
           write(IO_STDOUT,'(2x,f12.7)',advance='no') newLoadCase%deformation%values(i,j)
         else
           write(IO_STDOUT,'(2x,12a)',advance='no') '     *      '
           endif
         enddo; write(IO_STDOUT,'(/)',advance='no')
       enddo
-      if (any(newLoadCase%stress%maskLogical .eqv. &
-              newLoadCase%deformation%maskLogical)) errorID = 831                                   ! exclusive or masking only
-      if (any(newLoadCase%stress%maskLogical .and. transpose(newLoadCase%stress%maskLogical) &
-          .and. (math_I3<1))) errorID = 838                                                         ! no rotation is allowed by stress BC
+      if (any(newLoadCase%stress%mask .eqv. newLoadCase%deformation%mask)) errorID = 831            ! exclusive or masking only
+      if (any(newLoadCase%stress%mask .and. transpose(newLoadCase%stress%mask) .and. (math_I3<1))) &
+        errorID = 838                                                                               ! no rotation is allowed by stress BC
       print*, ' stress / GPa:'
       do i = 1, 3; do j = 1, 3
-        if(newLoadCase%stress%maskLogical(i,j)) then
+        if(newLoadCase%stress%mask(i,j)) then
           write(IO_STDOUT,'(2x,f12.7)',advance='no') newLoadCase%stress%values(i,j)*1e-9_pReal
         else
           write(IO_STDOUT,'(2x,12a)',advance='no') '     *      '
@@ -368,11 +365,7 @@ program DAMASK_grid
         timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
       else
         if (currentLoadCase == 1) then                                                              ! 1st load case of logarithmic scale
-          if (inc == 1) then                                                                        ! 1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))           ! assume 1st inc is equal to 2nd
-          else                                                                                      ! not-1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1-loadCases(1)%incs ,pReal))
-          endif
+          timeinc = loadCases(1)%time*(2.0_pReal**real(max(inc-1,1)-loadCases(1)%incs ,pReal))      ! assume 1st inc is equal to 2nd
         else                                                                                        ! not-1st load case of logarithmic scale
           timeinc = time0 * &
                ( (1.0_pReal + loadCases(currentLoadCase)%time/time0 )**(real( inc         ,pReal)/&
@@ -432,17 +425,11 @@ program DAMASK_grid
             do field = 1, nActiveFields
               select case(loadCases(currentLoadCase)%ID(field))
                 case(FIELD_MECH_ID)
-                  solres(field) = mech_solution (&
-                                         incInfo,timeinc,timeIncOld, &
-                                         stress_BC   = loadCases(currentLoadCase)%stress, &
-                                         rotation_BC = loadCases(currentLoadCase)%rot)
-  
+                  solres(field) = mech_solution(incInfo)
                 case(FIELD_THERMAL_ID)
-                  solres(field) = grid_thermal_spectral_solution(timeinc,timeIncOld)
-  
+                  solres(field) = grid_thermal_spectral_solution(timeinc)
                 case(FIELD_DAMAGE_ID)
-                  solres(field) = grid_damage_spectral_solution(timeinc,timeIncOld)
-  
+                  solres(field) = grid_damage_spectral_solution(timeinc)
               end select
   
               if (.not. solres(field)%converged) exit                                               ! no solution found

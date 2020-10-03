@@ -42,46 +42,46 @@ class TestGeom:
         assert str(default.diff(new)) != ''
 
 
-    def test_write_read_str(self,default,tmpdir):
-        default.save_ASCII(str(tmpdir/'default.geom'))
-        new = Geom.load_ASCII(str(tmpdir/'default.geom'))
+    def test_write_read_str(self,default,tmp_path):
+        default.save_ASCII(str(tmp_path/'default.geom'))
+        new = Geom.load_ASCII(str(tmp_path/'default.geom'))
         assert geom_equal(default,new)
 
 
-    def test_write_read_file(self,default,tmpdir):
-        with open(tmpdir/'default.geom','w') as f:
+    def test_write_read_file(self,default,tmp_path):
+        with open(tmp_path/'default.geom','w') as f:
             default.save_ASCII(f,compress=True)
-        with open(tmpdir/'default.geom') as f:
+        with open(tmp_path/'default.geom') as f:
             new = Geom.load_ASCII(f)
         assert geom_equal(default,new)
 
 
-    def test_read_write_vtr(self,default,tmpdir):
-        default.save(tmpdir/'default')
+    def test_read_write_vtr(self,default,tmp_path):
+        default.save(tmp_path/'default')
         for _ in range(10):
             time.sleep(.2)
-            if os.path.exists(tmpdir/'default.vtr'): break
+            if os.path.exists(tmp_path/'default.vtr'): break
 
-        new = Geom.load(tmpdir/'default.vtr')
+        new = Geom.load(tmp_path/'default.vtr')
         assert geom_equal(new,default)
 
 
-    def test_invalid_geom(self,tmpdir):
-        with open('invalid_file','w') as f:
+    def test_invalid_geom(self,tmp_path):
+        with open(tmp_path/'invalid_file','w') as f:
             f.write('this is not a valid header')
-        with open('invalid_file','r') as f:
+        with open(tmp_path/'invalid_file','r') as f:
             with pytest.raises(TypeError):
                 Geom.load_ASCII(f)
 
 
-    def test_invalid_vtr(self,tmpdir):
+    def test_invalid_vtr(self,tmp_path):
         v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
-        v.save(tmpdir/'no_materialpoint.vtr')
+        v.save(tmp_path/'no_materialpoint.vtr')
         for _ in range(10):
             time.sleep(.2)
-            if os.path.exists(tmpdir/'no_materialpoint.vtr'): break
+            if os.path.exists(tmp_path/'no_materialpoint.vtr'): break
         with pytest.raises(ValueError):
-            Geom.load(tmpdir/'no_materialpoint.vtr')
+            Geom.load(tmp_path/'no_materialpoint.vtr')
 
     def test_invalid_material(self):
         with pytest.raises(TypeError):
@@ -92,9 +92,9 @@ class TestGeom:
         assert g.material.dtype in np.sctypes['int']
 
     @pytest.mark.parametrize('compress',[True,False])
-    def test_compress(self,default,tmpdir,compress):
-        default.save_ASCII(tmpdir/'default.geom',compress=compress)
-        new = Geom.load_ASCII(tmpdir/'default.geom')
+    def test_compress(self,default,tmp_path,compress):
+        default.save_ASCII(tmp_path/'default.geom',compress=compress)
+        new = Geom.load_ASCII(tmp_path/'default.geom')
         assert geom_equal(new,default)
 
 
@@ -360,3 +360,45 @@ class TestGeom:
         elif approach == 'Voronoi':
             geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(geom.material == material)
+
+
+    @pytest.mark.parametrize('surface',['Schwarz P',
+                                        'Double Primitive',
+                                        'Schwarz D',
+                                        'Complementary D',
+                                        'Double Diamond',
+                                        'Dprime',
+                                        'Gyroid',
+                                        'Gprime',
+                                        'Karcher K',
+                                        'Lidinoid',
+                                        'Neovius',
+                                        'Fisher-Koch S',
+                                        ])
+    def test_minimal_surface_basic_properties(self,surface):
+        grid = np.random.randint(60,100,3)
+        size = np.ones(3)+np.random.rand(3)
+        threshold = 2*np.random.rand()-1.
+        periods = np.random.randint(2)+1
+        materials = np.random.randint(0,40,2)
+        geom = Geom.from_minimal_surface(grid,size,surface,threshold,periods,materials)
+        assert set(geom.material.flatten()) | set(materials) == set(materials) \
+               and (geom.size == size).all() and (geom.grid == grid).all()
+
+    @pytest.mark.parametrize('surface,threshold',[('Schwarz P',0),
+                                        ('Double Primitive',-1./6.),
+                                        ('Schwarz D',0),
+                                        ('Complementary D',0),
+                                        ('Double Diamond',-0.133),
+                                        ('Dprime',-0.0395),
+                                        ('Gyroid',0),
+                                        ('Gprime',0.22913),
+                                        ('Karcher K',0.17045),
+                                        ('Lidinoid',0.14455),
+                                        ('Neovius',0),
+                                        ('Fisher-Koch S',0),
+                                        ])
+    def test_minimal_surface_volume(self,surface,threshold):
+        grid = np.ones(3,dtype=int)*64
+        geom = Geom.from_minimal_surface(grid,np.ones(3),surface,threshold)
+        assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5,rtol=1e-3)

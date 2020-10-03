@@ -78,11 +78,11 @@ subroutine CPFEM_initAll
   call DAMASK_interface_init
   call prec_init
   call IO_init
+  call YAML_types_init
+  call YAML_parse_init
   call config_init
   call math_init
   call rotations_init
-  call YAML_types_init
-  call YAML_parse_init
   call HDF5_utilities_init
   call results_init(.false.)
   call discretization_marc_init

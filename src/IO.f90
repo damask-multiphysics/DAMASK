@@ -427,20 +427,20 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (146)
       msg = 'number of values does not match'
     case (148)
-      msg = 'Nconstituents mismatch between homogenization and microstructure'
+      msg = 'Nconstituents mismatch between homogenization and material'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
     case (150)
       msg = 'index out of bounds'
     case (151)
-      msg = 'microstructure has no constituents'
+      msg = 'material has no constituents'
     case (153)
       msg = 'sum of phase fractions differs from 1'
     case (155)
-      msg = 'microstructure index out of bounds'
+      msg = 'material index out of bounds'
     case (180)
-      msg = 'missing/invalid microstructure definition via State Variable 2'
+      msg = 'missing/invalid material definition via State Variable 2'
     case (190)
       msg = 'unknown element type:'
     case (191)
@@ -494,6 +494,10 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'Unsupported feature'
     case (706)
       msg = 'Access by incorrect node type'
+    case (707)
+      msg = 'Abrupt end of file'
+    case (708)
+      msg = '--- expected after YAML file header'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
@@ -522,7 +526,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (842)
       msg = 'incomplete information in grid mesh header'
     case (843)
-      msg = 'microstructure count mismatch'
+      msg = 'material count mismatch'
     case (844)
       msg = 'invalid VTR file'
     case (846)
@@ -621,6 +625,9 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'polar decomposition failed'
     case (700)
       msg = 'unknown crystal symmetry'
+    case (709)
+      msg = 'read only the first document'
+ 
     case (850)
       msg = 'max number of cut back exceeded, terminating'
     case default

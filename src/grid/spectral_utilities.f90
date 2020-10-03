@@ -47,15 +47,15 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourier   !< vector field fourier representation for fftw
   real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_real      !< scalar field real representation for fftw
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:),         pointer     :: scalarField_fourier   !< scalar field fourier representation for fftw
-  complex(pReal),           private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat             !< gamma operator (field) for spectral method
-  complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
-  complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
-  real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
+  complex(pReal),                    dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat             !< gamma operator (field) for spectral method
+  complex(pReal),                    dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
+  complex(pReal),                    dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
+  real(pReal),                       dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
 
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
-  type(C_PTR),   private :: &
+  type(C_PTR) :: &
     planTensorForth, &                                                                              !< FFTW MPI plan P(x) to P(k)
     planTensorBack, &                                                                               !< FFTW MPI plan F(k) to F(x)
     planVectorForth, &                                                                              !< FFTW MPI plan v(x) to v(k)
@@ -65,7 +65,7 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
-  logical, private :: &
+  logical :: &
     debugGeneral, &                                                                                 !< general debugging of spectral solver
     debugRotation, &                                                                                !< also printing out results in lab frame
     debugPETSc                                                                                      !< use some in debug defined options for more verbose PETSc solution
@@ -82,10 +82,9 @@ module spectral_utilities
   end type tSolutionState
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
-    real(pReal), dimension(3,3) :: values      = 0.0_pReal, &
-                                   maskFloat   = 0.0_pReal
-    logical,     dimension(3,3) :: maskLogical = .false.
-    character(len=pStringLen)   :: myType      = 'None'
+    real(pReal), dimension(3,3) :: values = 0.0_pReal
+    logical,     dimension(3,3) :: mask   = .false.
+    character(len=pStringLen)   :: myType = 'None'
   end type tBoundaryCondition
 
   type, public :: tLoadCase
@@ -101,21 +100,21 @@ module spectral_utilities
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
-  type, public :: tSolutionParams                                                                   !< @todo use here the type definition for a full loadcase
-    real(pReal), dimension(3,3) :: stress_mask, stress_BC
+  type, public :: tSolutionParams
+    real(pReal), dimension(3,3) :: stress_BC
+    logical, dimension(3,3)     :: stress_mask
     type(rotation)              :: rotation_BC
-    real(pReal) :: timeinc
-    real(pReal) :: timeincOld
+    real(pReal) :: timeinc, timeincOld
   end type tSolutionParams
 
-  type, private :: tNumerics
+  type :: tNumerics
     integer :: &
       divergence_correction                                                                         !< scale divergence/curl calculation: [0: no correction, 1: size scaled to 1, 2: size scaled to Npoints]
     logical :: &
       memory_efficient                                                                              !< calculate gamma operator on the fly
   end type tNumerics
 
-  type(tNumerics), private :: num                                                                   ! numerics parameters. Better name?
+  type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
   enum, bind(c); enumerator :: &
     DERIVATIVE_CONTINUOUS_ID, &

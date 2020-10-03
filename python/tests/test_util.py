@@ -1,5 +1,7 @@
 import pytest
 import numpy as np
+from scipy import stats
+
 from damask import util
 
 
@@ -31,3 +33,14 @@ class TestUtil:
     def test_lackofprecision(self):
         with pytest.raises(ValueError):
             util.scale_to_coprime(np.array([1/333.333,1,1]))
+
+
+    @pytest.mark.parametrize('rv',[stats.rayleigh(),stats.weibull_min(1.2),stats.halfnorm(),stats.pareto(2.62)])
+    def test_hybridIA(self,rv):
+        bins = np.linspace(0,10,100000)
+        centers = (bins[1:]+bins[:-1])/2
+        N_samples = bins.shape[0]-1000
+        dist = rv.pdf(centers)
+        selected = util.hybrid_IA(dist,N_samples)
+        dist_sampled = np.histogram(centers[selected],bins)[0]/N_samples*np.sum(dist)
+        assert np.sqrt(((dist - dist_sampled) ** 2).mean()) < .025 and selected.shape[0]==N_samples

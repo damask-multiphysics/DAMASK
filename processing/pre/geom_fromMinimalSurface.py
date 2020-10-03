@@ -4,8 +4,6 @@ import os
 import sys
 from optparse import OptionParser
 
-import numpy as np
-
 import damask
 
 
@@ -13,14 +11,7 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-minimal_surfaces = ['primitive','gyroid','diamond']
-
-surface = {
-            'primitive': lambda x,y,z: np.cos(x)+np.cos(y)+np.cos(z),
-            'gyroid':    lambda x,y,z: np.sin(x)*np.cos(y)+np.sin(y)*np.cos(z)+np.cos(x)*np.sin(z),
-            'diamond':   lambda x,y,z: np.cos(x-y)*np.cos(z)+np.sin(x+y)*np.sin(z),
-          }
-
+minimal_surfaces = list(damask.Geom._minimal_surface.keys())
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -71,16 +62,8 @@ parser.set_defaults(type = minimal_surfaces[0],
 name = None if filename == [] else filename[0]
 damask.util.report(scriptName,name)
 
-x,y,z = np.meshgrid(options.periods*2.0*np.pi*(np.arange(options.grid[0])+0.5)/options.grid[0],
-                    options.periods*2.0*np.pi*(np.arange(options.grid[1])+0.5)/options.grid[1],
-                    options.periods*2.0*np.pi*(np.arange(options.grid[2])+0.5)/options.grid[2],
-                    indexing='xy',sparse=True)
-
-microstructure = np.where(options.threshold < surface[options.type](x,y,z),
-                          options.microstructure[1],options.microstructure[0])
-
-geom=damask.Geom(microstructure,options.size,
-                 comments=[scriptID + ' ' + ' '.join(sys.argv[1:])])
+geom=damask.Geom.from_minimal_surface(options.grid,options.size,options.type,options.threshold,
+                                      options.periods,options.microstructure)
 damask.util.croak(geom)
 
 geom.save_ASCII(sys.stdout if name is None else name,compress=False)

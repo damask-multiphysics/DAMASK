@@ -2,7 +2,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Parses material config file, either solverJobName.materialConfig or material.config
+!> @brief Defines phase and homogenization
 !--------------------------------------------------------------------------------------------------
 module material
   use prec
@@ -97,7 +97,7 @@ module material
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
 
   integer, dimension(:), allocatable, private :: &
-    microstructure_Nconstituents                                                                    !< number of constituents in each microstructure
+    material_Nconstituents                                                                          !< number of constituents in each material
 
 
 
@@ -180,8 +180,8 @@ subroutine material_init(restart)
     material_name_homogenization(myHomog) = trim(adjustl(sectionName))//material_homogenization%getKey(myHomog)
   enddo
 
-  call material_parseMicrostructure
-  print*, 'Microstructure parsed'
+  call material_parseMaterial
+  print*, 'Material parsed'
 
   call material_parseHomogenization
   print*, 'Homogenization parsed'
@@ -317,16 +317,16 @@ end subroutine material_parseHomogenization
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief parses the microstructure part in the material configuration file
+!> @brief parses the material part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseMicrostructure
+subroutine material_parseMaterial
 
-  class(tNode), pointer :: microstructures, &                                                       !> list of microstructures
-                           microstructure, &                                                        !> microstructure definition
+  class(tNode), pointer :: materials, &                                                             !> list of materials
+                           material, &                                                              !> material definition
                            constituents, &                                                          !> list of constituents
                            constituent, &                                                           !> constituent definition
                            phases, &
-                           homogenization
+                           homogenizations
 
   integer, dimension(:), allocatable :: &
     counterPhase, &
@@ -341,17 +341,17 @@ subroutine material_parseMicrostructure
     c, &
     maxNconstituents
 
-  microstructures => config_material%get('microstructure')
-  if(any(discretization_microstructureAt > microstructures%length)) &
-    call IO_error(155,ext_msg='More microstructures requested than found in material.yaml')
+  materials => config_material%get('material')
+  if(any(discretization_materialAt > materials%length)) &
+    call IO_error(155,ext_msg='More materials requested than found in material.yaml')
 
-  allocate(microstructure_Nconstituents(microstructures%length),source=0)
-  do m = 1, microstructures%length
-    microstructure => microstructures%get(m)
-    constituents   => microstructure%get('constituents')
-    microstructure_Nconstituents(m) = constituents%length
+  allocate(material_Nconstituents(materials%length),source=0)
+  do m = 1, materials%length
+    material => materials%get(m)
+    constituents   => material%get('constituents')
+    material_Nconstituents(m) = constituents%length
   enddo
-  maxNconstituents = maxval(microstructure_Nconstituents)
+  maxNconstituents = maxval(material_Nconstituents)
   
   allocate(material_homogenizationAt(discretization_nElem),source=0)
   allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
@@ -362,14 +362,14 @@ subroutine material_parseMicrostructure
   
   phases => config_material%get('phase')
   allocate(counterPhase(phases%length),source=0)
-  homogenization => config_material%get('homogenization')
-  allocate(counterHomogenization(homogenization%length),source=0)
+  homogenizations => config_material%get('homogenization')
+  allocate(counterHomogenization(homogenizations%length),source=0)
 
   do e = 1, discretization_nElem
-    microstructure => microstructures%get(discretization_microstructureAt(e))
-    constituents   => microstructure%get('constituents')
+    material     => materials%get(discretization_materialAt(e))
+    constituents => material%get('constituents')
     
-    material_homogenizationAt(e) = homogenization%getIndex(microstructure%get_asString('homogenization'))
+    material_homogenizationAt(e) = homogenizations%getIndex(material%get_asString('homogenization'))
     do i = 1, discretization_nIP
       counterHomogenization(material_homogenizationAt(e)) = counterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e)                = counterHomogenization(material_homogenizationAt(e))
@@ -385,7 +385,7 @@ subroutine material_parseMicrostructure
         counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
         
-        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('orientation',requiredSize=4))
+        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
       enddo
     
     enddo
@@ -393,7 +393,7 @@ subroutine material_parseMicrostructure
     
   enddo
 
-end subroutine material_parseMicrostructure
+end subroutine material_parseMaterial
 
 
 end module material
