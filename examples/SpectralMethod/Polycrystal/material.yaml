@@ -1,6 +1,8 @@
+---
 homogenization:
   SX:
-    mech: {type: none}
+    mech: {type: 
+none}
 microstructure:
 - constituents:
   - fraction: 1.0
@@ -9,7 +11,8 @@ microstructure:
   homogenization: SX
 - constituents:
   - fraction: 1.0
-    orientation: [0.7936696712125002, -0.28765777461664166, -0.3436487135089419, 0.4113964260949434]
+    orientation: [0.7936696712125002, -0.28765777461664166,
+ -0.3436487135089419, 0.4113964260949434]
     phase: Aluminum
   homogenization: SX
 - constituents:
@@ -19,7 +22,12 @@ microstructure:
   homogenization: SX
 - constituents:
   - fraction: 1.0
-    orientation: [0.28645844315788244, -0.022571491243423537, -0.467933059311115, -0.8357456192708106]
+    orientation: [0.28645844315788244, 
+
+
+
+-0.022571491243423537,
+ -0.467933059311115, -0.8357456192708106]
     phase: Aluminum
   homogenization: SX
 - constituents:

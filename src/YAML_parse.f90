@@ -810,19 +810,35 @@ subroutine selfTest
   if (.not. to_flow(flow_mixed_braces)  == flow) error stop 'to_flow'
   end block basic_flow
 
-  multi_line_flow: block
+  multi_line_flow1: block
   character(len=*), parameter :: flow_multi = &
     "%YAML 1.1"//IO_EOL//&
     "---"//IO_EOL//&
     "a: [b,"//IO_EOL//&
     "c: "//IO_EOL//&
     "d, e]"//IO_EOL
+
   character(len=*), parameter :: flow = &
     "{a: [b, {c: d}, e]}"
   
   if( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
-  end block multi_line_flow
+  end block multi_line_flow1
 
+  multi_line_flow2: block
+  character(len=*), parameter :: flow_multi = &
+    "%YAML 1.1"//IO_EOL//&
+    "---"//IO_EOL//&
+    "-"//IO_EOL//&
+    " a: {b:"//IO_EOL//&
+    "[c,"//IO_EOL//&
+    "d"//IO_EOL//&
+    "e, f]}"//IO_EOL
+ 
+  character(len=*), parameter :: flow = &
+    "[{a: {b: [c, d e, f]}}]"
+
+  if( .not. to_flow(flow_multi)        == flow) error stop 'to_flow'
+  end block multi_line_flow2
 
   basic_mixed: block
   character(len=*), parameter :: block_flow = &
