@@ -17,18 +17,18 @@ submodule(constitutive:constitutive_plastic) plastic_disloTungsten
       D_0  = 1.0_pReal, &                                                                           !< prefactor for self-diffusion coefficient
       Q_cl = 1.0_pReal                                                                              !< activation energy for dislocation climb
     real(pReal),               allocatable, dimension(:) :: &
-      b_sl, &                                                                                       !< magnitude of burgers vector [m]
+      b_sl, &                                                                                       !< magnitude of Burgers vector [m]
       D_a, &
       i_sl, &                                                                                       !< Adj. parameter for distance between 2 forest dislocations
-      atomicVolume, &                                                                               !< factor to calculate atomic volume
-      tau_0, &                                                                                      !< Peierls stress
+      f_at, &                                                                                       !< factor to calculate atomic volume
+      tau_Peierls, &                                                                                !< Peierls stress
       !* mobility law parameters
-      delta_F, &                                                                                    !< activation energy for glide [J]
-      v0, &                                                                                         !< dislocation velocity prefactor [m/s]
+      Q_s, &                                                                                        !< activation energy for glide [J]
+      v_0, &                                                                                        !< dislocation velocity prefactor [m/s]
       p, &                                                                                          !< p-exponent in glide velocity
       q, &                                                                                          !< q-exponent in glide velocity
       B, &                                                                                          !< friction coefficient
-      kink_height, &                                                                                !< height of the kink pair
+      h, &                                                                                          !< height of the kink pair
       w, &                                                                                          !< width of the kink pair
       omega                                                                                         !< attempt frequency for kink pair nucleation
     real(pReal),               allocatable, dimension(:,:) :: &
@@ -142,7 +142,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
       if(trim(phase%get_asString('lattice')) == 'bcc') then
-        a = pl%get_asFloats('nonSchmid_coefficients',defaultVal = emptyRealArray)
+        a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
       else
@@ -158,17 +158,17 @@ module function plastic_disloTungsten_init() result(myPlasticity)
 
       rho_mob_0       = pl%get_asFloats('rho_mob_0',     requiredSize=size(N_sl))
       rho_dip_0       = pl%get_asFloats('rho_dip_0',     requiredSize=size(N_sl))
-      prm%v0          = pl%get_asFloats('v_0',           requiredSize=size(N_sl))
+      prm%v_0         = pl%get_asFloats('v_0',           requiredSize=size(N_sl))
       prm%b_sl        = pl%get_asFloats('b_sl',          requiredSize=size(N_sl))
-      prm%delta_F     = pl%get_asFloats('Q_s',           requiredSize=size(N_sl))
+      prm%Q_s         = pl%get_asFloats('Q_s',           requiredSize=size(N_sl))
 
       prm%i_sl        = pl%get_asFloats('i_sl',          requiredSize=size(N_sl))
-      prm%tau_0       = pl%get_asFloats('tau_peierls',   requiredSize=size(N_sl))
+      prm%tau_Peierls = pl%get_asFloats('tau_Peierls',   requiredSize=size(N_sl))
       prm%p           = pl%get_asFloats('p_sl',          requiredSize=size(N_sl), &
                                          defaultVal=[(1.0_pReal,i=1,size(N_sl))])
       prm%q           = pl%get_asFloats('q_sl',          requiredSize=size(N_sl), &
                                          defaultVal=[(1.0_pReal,i=1,size(N_sl))])
-      prm%kink_height = pl%get_asFloats('h',             requiredSize=size(N_sl))
+      prm%h           = pl%get_asFloats('h',             requiredSize=size(N_sl))
       prm%w           = pl%get_asFloats('w',             requiredSize=size(N_sl))
       prm%omega       = pl%get_asFloats('omega',         requiredSize=size(N_sl))
       prm%B           = pl%get_asFloats('B',             requiredSize=size(N_sl))
@@ -176,7 +176,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
       prm%D               = pl%get_asFloat('D')
       prm%D_0             = pl%get_asFloat('D_0')
       prm%Q_cl            = pl%get_asFloat('Q_cl')
-      prm%atomicVolume    = pl%get_asFloat('f_at')       * prm%b_sl**3.0_pReal
+      prm%f_at            = pl%get_asFloat('f_at')       * prm%b_sl**3.0_pReal
       prm%D_a             = pl%get_asFloat('D_a')        * prm%b_sl
 
       prm%dipoleformation = pl%get_asBool('dipole_formation_factor', defaultVal = .true.)
@@ -186,16 +186,16 @@ module function plastic_disloTungsten_init() result(myPlasticity)
       rho_dip_0          = math_expand(rho_dip_0,          N_sl)
       prm%q              = math_expand(prm%q,              N_sl)
       prm%p              = math_expand(prm%p,              N_sl)
-      prm%delta_F        = math_expand(prm%delta_F,        N_sl)
+      prm%Q_s            = math_expand(prm%Q_s,            N_sl)
       prm%b_sl           = math_expand(prm%b_sl,           N_sl)
-      prm%kink_height    = math_expand(prm%kink_height,    N_sl)
+      prm%h              = math_expand(prm%h,              N_sl)
       prm%w              = math_expand(prm%w,              N_sl)
       prm%omega          = math_expand(prm%omega,          N_sl)
-      prm%tau_0          = math_expand(prm%tau_0,          N_sl)
-      prm%v0             = math_expand(prm%v0,             N_sl)
+      prm%tau_Peierls    = math_expand(prm%tau_Peierls,    N_sl)
+      prm%v_0            = math_expand(prm%v_0,            N_sl)
       prm%B              = math_expand(prm%B,              N_sl)
       prm%i_sl           = math_expand(prm%i_sl,           N_sl)
-      prm%atomicVolume   = math_expand(prm%atomicVolume,   N_sl)
+      prm%f_at           = math_expand(prm%f_at,           N_sl)
       prm%D_a            = math_expand(prm%D_a,            N_sl)
 
       ! sanity checks
@@ -203,17 +203,17 @@ module function plastic_disloTungsten_init() result(myPlasticity)
       if (    prm%Q_cl         <= 0.0_pReal)  extmsg = trim(extmsg)//' Q_cl'
       if (any(rho_mob_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_mob_0'
       if (any(rho_dip_0        <  0.0_pReal)) extmsg = trim(extmsg)//' rho_dip_0'
-      if (any(prm%v0           <  0.0_pReal)) extmsg = trim(extmsg)//' v_0'
+      if (any(prm%v_0          <  0.0_pReal)) extmsg = trim(extmsg)//' v_0'
       if (any(prm%b_sl         <= 0.0_pReal)) extmsg = trim(extmsg)//' b_sl'
-      if (any(prm%delta_F      <= 0.0_pReal)) extmsg = trim(extmsg)//' Q_s'
-      if (any(prm%tau_0        <  0.0_pReal)) extmsg = trim(extmsg)//' tau_peierls'
+      if (any(prm%Q_s          <= 0.0_pReal)) extmsg = trim(extmsg)//' Q_s'
+      if (any(prm%tau_Peierls  <  0.0_pReal)) extmsg = trim(extmsg)//' tau_Peierls'
       if (any(prm%D_a          <= 0.0_pReal)) extmsg = trim(extmsg)//' D_a or b_sl'
-      if (any(prm%atomicVolume <= 0.0_pReal)) extmsg = trim(extmsg)//' f_at or b_sl'
+      if (any(prm%f_at         <= 0.0_pReal)) extmsg = trim(extmsg)//' f_at or b_sl'
 
     else slipActive
       rho_mob_0= emptyRealArray; rho_dip_0 = emptyRealArray
-      allocate(prm%b_sl,prm%D_a,prm%i_sl,prm%atomicVolume,prm%tau_0, &
-               prm%delta_F,prm%v0,prm%p,prm%q,prm%B,prm%kink_height,prm%w,prm%omega, &
+      allocate(prm%b_sl,prm%D_a,prm%i_sl,prm%f_at,prm%tau_Peierls, &
+               prm%Q_s,prm%v_0,prm%p,prm%q,prm%B,prm%h,prm%w,prm%omega, &
                source = emptyRealArray)
       allocate(prm%forestProjection(0,0))
       allocate(prm%h_sl_sl         (0,0))
@@ -354,7 +354,7 @@ module subroutine plastic_disloTungsten_dotState(Mp,T,instance,of)
     dot_rho_dip_formation = merge(2.0_pReal*dip_distance* stt%rho_mob(:,of)*abs(dot%gamma_sl(:,of))/prm%b_sl, & ! ToDo: ignore region of spontaneous annihilation
                                   0.0_pReal, &
                                   prm%dipoleformation)
-    v_cl = (3.0_pReal*prm%mu*VacancyDiffusion*prm%atomicVolume/(2.0_pReal*pi*kB*T)) &
+    v_cl = (3.0_pReal*prm%mu*VacancyDiffusion*prm%f_at/(2.0_pReal*pi*kB*T)) &
                   * (1.0_pReal/(dip_distance+prm%D_a))
     dot_rho_dip_climb = (4.0_pReal*v_cl*stt%rho_dip(:,of))/(dip_distance-prm%D_a)                   ! ToDo: Discuss with Franz: Stress dependency?
   end where
@@ -477,12 +477,12 @@ pure subroutine kinetics(Mp,T,instance,of, &
   if (present(tau_pos_out)) tau_pos_out = tau_pos
   if (present(tau_neg_out)) tau_neg_out = tau_neg
 
-  associate(BoltzmannRatio  => prm%delta_F/(kB*T), &
-            dot_gamma_0     => stt%rho_mob(:,of)*prm%b_sl*prm%v0, &
+  associate(BoltzmannRatio  => prm%Q_s/(kB*T), &
+            dot_gamma_0     => stt%rho_mob(:,of)*prm%b_sl*prm%v_0, &
             effectiveLength => dst%Lambda_sl(:,of) - prm%w)
 
   significantPositiveTau: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
-    StressRatio = (abs(tau_pos)-dst%threshold_stress(:,of))/prm%tau_0
+    StressRatio = (abs(tau_pos)-dst%threshold_stress(:,of))/prm%tau_Peierls
     StressRatio_p       = StressRatio** prm%p
     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
     needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
@@ -490,7 +490,7 @@ pure subroutine kinetics(Mp,T,instance,of, &
     t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
     t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
-    vel = prm%kink_height/(t_n + t_k)
+    vel = prm%h/(t_n + t_k)
 
     dot_gamma_pos = dot_gamma_0 * sign(vel,tau_pos) * 0.5_pReal
   else where significantPositiveTau
@@ -500,10 +500,10 @@ pure subroutine kinetics(Mp,T,instance,of, &
   if (present(ddot_gamma_dtau_pos)) then
     significantPositiveTau2: where(abs(tau_pos)-dst%threshold_stress(:,of) > tol_math_check)
       dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-          * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
+          * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
       dtk = -1.0_pReal * t_k / tau_pos
 
-      dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+      dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
       ddot_gamma_dtau_pos = dot_gamma_0 * dvel* 0.5_pReal
     else where significantPositiveTau2
@@ -512,7 +512,7 @@ pure subroutine kinetics(Mp,T,instance,of, &
   endif
 
   significantNegativeTau: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
-    StressRatio = (abs(tau_neg)-dst%threshold_stress(:,of))/prm%tau_0
+    StressRatio = (abs(tau_neg)-dst%threshold_stress(:,of))/prm%tau_Peierls
     StressRatio_p       = StressRatio** prm%p
     StressRatio_pminus1 = StressRatio**(prm%p-1.0_pReal)
     needsGoodName       = exp(-BoltzmannRatio*(1-StressRatio_p) ** prm%q)
@@ -520,7 +520,7 @@ pure subroutine kinetics(Mp,T,instance,of, &
     t_n = prm%b_sl/(needsGoodName*prm%omega*effectiveLength)
     t_k = effectiveLength * prm%B /(2.0_pReal*prm%b_sl*tau_pos)
 
-    vel = prm%kink_height/(t_n + t_k)
+    vel = prm%h/(t_n + t_k)
 
     dot_gamma_neg = dot_gamma_0 * sign(vel,tau_neg) * 0.5_pReal
   else where significantNegativeTau
@@ -530,10 +530,10 @@ pure subroutine kinetics(Mp,T,instance,of, &
   if (present(ddot_gamma_dtau_neg)) then
     significantNegativeTau2: where(abs(tau_neg)-dst%threshold_stress(:,of) > tol_math_check)
       dtn = -1.0_pReal * t_n * BoltzmannRatio * prm%p * prm%q * (1.0_pReal-StressRatio_p)**(prm%q - 1.0_pReal) &
-          * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_0
+          * (StressRatio)**(prm%p - 1.0_pReal) / prm%tau_Peierls
       dtk = -1.0_pReal * t_k / tau_neg
 
-      dvel = -1.0_pReal * prm%kink_height * (dtk + dtn) / (t_n + t_k)**2.0_pReal
+      dvel = -1.0_pReal * prm%h * (dtk + dtn) / (t_n + t_k)**2.0_pReal
 
       ddot_gamma_dtau_neg = dot_gamma_0 * dvel * 0.5_pReal
     else where significantNegativeTau2

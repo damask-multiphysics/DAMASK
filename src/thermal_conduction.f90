@@ -127,7 +127,7 @@ function thermal_conduction_getConductivity(ip,el)
   thermal_conduction_getConductivity = 0.0_pReal
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getConductivity = thermal_conduction_getConductivity + &
-     crystallite_push33ToRef(grain,ip,el,lattice_thermalConductivity(:,:,material_phaseAt(grain,el)))
+     crystallite_push33ToRef(grain,ip,el,lattice_K(:,:,material_phaseAt(grain,el)))
   enddo
 
   thermal_conduction_getConductivity = thermal_conduction_getConductivity &
@@ -153,7 +153,7 @@ function thermal_conduction_getSpecificHeat(ip,el)
 
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
-                                       + lattice_specificHeat(material_phaseAt(grain,el))
+                                       + lattice_c_p(material_phaseAt(grain,el))
   enddo
 
   thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
@@ -180,7 +180,7 @@ function thermal_conduction_getMassDensity(ip,el)
 
   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
     thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
-                                      + lattice_massDensity(material_phaseAt(grain,el))
+                                      + lattice_rho(material_phaseAt(grain,el))
   enddo
 
   thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &

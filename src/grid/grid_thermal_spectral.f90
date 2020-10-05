@@ -148,11 +148,10 @@ end subroutine grid_thermal_spectral_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral thermal scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
+function grid_thermal_spectral_solution(timeinc) result(solution)
  
   real(pReal), intent(in) :: &
-    timeinc, &                                                                                      !< increment in time for current solution
-    timeinc_old                                                                                     !< increment in time of last increment
+    timeinc                                                                                         !< increment in time for current solution
   integer :: i, j, k, cell
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -166,7 +165,6 @@ function grid_thermal_spectral_solution(timeinc,timeinc_old) result(solution)
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data 
   params%timeinc = timeinc
-  params%timeincOld = timeinc_old
 
   call SNESSolve(thermal_snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(thermal_snes,reason,ierr); CHKERRQ(ierr)

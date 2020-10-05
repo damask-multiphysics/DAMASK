@@ -1,6 +1,8 @@
 import numpy as np
 
 from . import mechanics
+from . import util
+from . import grid_filters
 
 _P = -1
 
@@ -212,7 +214,7 @@ class Rotation:
         Returns
         -------
         q : numpy.ndarray of shape (...,4)
-            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3), |q|=1, q_0 ≥ 0.
+            Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3), ǀqǀ=1, q_0 ≥ 0.
 
         """
         return self.quaternion.copy()
@@ -255,7 +257,7 @@ class Rotation:
         -------
         axis_angle : numpy.ndarray of shape (...,4) unless pair == True:
             tuple containing numpy.ndarray of shapes (...,3) and (...)
-            Axis angle pair: (n_1, n_2, n_3, ω), |n| = 1 and ω ∈ [0,π]
+            Axis angle pair: (n_1, n_2, n_3, ω), ǀnǀ = 1 and ω ∈ [0,π]
             unless degrees = True: ω ∈ [0,180].
 
         """
@@ -290,7 +292,7 @@ class Rotation:
         -------
         rho : numpy.ndarray of shape (...,4) unless vector == True:
             numpy.ndarray of shape (...,3)
-            Rodrigues-Frank vector: [n_1, n_2, n_3, tan(ω/2)], |n| = 1 and ω ∈ [0,π].
+            Rodrigues-Frank vector: [n_1, n_2, n_3, tan(ω/2)], ǀnǀ = 1 and ω ∈ [0,π].
 
         """
         ro = Rotation._qu2ro(self.quaternion)
@@ -307,7 +309,7 @@ class Rotation:
         Returns
         -------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), |h| < 1/2*π^(2/3).
+            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < 1/2*π^(2/3).
 
         """
         return Rotation._qu2ho(self.quaternion)
@@ -353,7 +355,7 @@ class Rotation:
         ----------
         q : numpy.ndarray of shape (...,4)
             Unit quaternion in positive real hemisphere: (q_0, q_1, q_2, q_3),
-            |q|=1, q_0 ≥ 0.
+            ǀqǀ=1, q_0 ≥ 0.
         accept_homomorph : boolean, optional
             Allow homomorphic variants, i.e. q_0 < 0 (negative real hemisphere).
             Defaults to False.
@@ -416,12 +418,12 @@ class Rotation:
         Parameters
         ----------
         axis_angle : numpy.ndarray of shape (...,4)
-            Axis angle pair: [n_1, n_2, n_3, ω], |n| = 1 and ω ∈ [0,π]
+            Axis angle pair: [n_1, n_2, n_3, ω], ǀnǀ = 1 and ω ∈ [0,π]
             unless degrees = True: ω ∈ [0,180].
         degrees : boolean, optional
             Angle ω is given in degrees. Defaults to False.
         normalize: boolean, optional
-            Allow |n| ≠ 1. Defaults to False.
+            Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
@@ -503,9 +505,9 @@ class Rotation:
         ----------
         rho : numpy.ndarray of shape (...,4)
             Rodrigues-Frank vector (angle separated from axis).
-            (n_1, n_2, n_3, tan(ω/2)), |n| = 1  and ω ∈ [0,π].
+            (n_1, n_2, n_3, tan(ω/2)), ǀnǀ = 1  and ω ∈ [0,π].
         normalize : boolean, optional
-            Allow |n| ≠ 1. Defaults to False.
+            Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
@@ -534,7 +536,7 @@ class Rotation:
         Parameters
         ----------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), |h| < (3/4*π)^(1/3).
+            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < (3/4*π)^(1/3).
         P : int ∈ {-1,1}, optional
             Convention used. Defaults to -1.
 
@@ -647,11 +649,61 @@ class Rotation:
 
         return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q)._standardize()
 
-    # for compatibility (old names do not follow convention)
-    fromEulers     = from_Eulers
-    fromQuaternion = from_quaternion
-    asAxisAngle    = as_axis_angle
+    # for compatibility
     __mul__        = __matmul__
+
+
+    @staticmethod
+    def from_ODF(weights,Eulers,N=500,degrees=True,fractions=True,seed=None):
+        """
+        Sample discrete values from a binned ODF.
+
+        Parameters
+        ----------
+        weights : numpy.ndarray of shape (n)
+            Texture intensity values (probability density or volume fraction) at Euler grid points.
+        Eulers : numpy.ndarray of shape (n,3)
+            Grid coordinates in Euler space at which weights are defined.
+        N : integer, optional
+            Number of discrete orientations to be sampled from the given ODF.
+            Defaults to 500.
+        degrees : boolean, optional
+            Euler grid values are in degrees. Defaults to True.
+        fractions : boolean, optional
+            ODF values correspond to volume fractions, not probability density.
+            Defaults to True.
+        seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+            A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
+            will be pulled from the OS.
+
+        Returns
+        -------
+        samples : damask.Rotation of shape (N)
+            Array of sampled rotations closely representing the input ODF.
+
+        Notes
+        -----
+        Due to the distortion of Euler space in the vicinity of ϕ = 0, probability densities, p, defined on
+        grid points with ϕ = 0 will never result in reconstructed orientations as their dV/V = p dγ = p × 0.
+        Hence, it is recommended to transform any such dataset to cell centers that avoid grid points at ϕ = 0.
+
+        References
+        ----------
+        P. Eisenlohr, F. Roters, Computational Materials Science 42(4), 670-678, 2008
+        https://doi.org/10.1016/j.commatsci.2007.09.015
+
+        """
+        def _dg(eu,deg):
+            """Return infinitesimal Euler space volume of bin(s)."""
+            Eulers_sorted = eu[np.lexsort((eu[:,0],eu[:,1],eu[:,2]))]
+            steps,size,_ = grid_filters.cell_coord0_gridSizeOrigin(Eulers_sorted)
+            delta = np.radians(size/steps) if deg else size/steps
+            return delta[0]*2.0*np.sin(delta[1]/2.0)*delta[2] / 8.0 / np.pi**2 * np.sin(np.radians(eu[:,1]) if deg else eu[:,1])
+
+        dg = 1.0 if fractions else _dg(Eulers,degrees)
+        dV_V = dg * np.maximum(0.0,weights.squeeze())
+
+        return Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,seed)],degrees)
 
 
     @staticmethod

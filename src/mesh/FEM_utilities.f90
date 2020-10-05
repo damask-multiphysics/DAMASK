@@ -160,7 +160,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
   print'(/,a)', ' ... evaluating constitutive response ......................................'
 
-  call materialpoint_stressAndItsTangent(.true.,timeinc)                                            ! calculate P field
+  call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
 
   cutBack = .false.                                                                                 ! reset cutBack status
   

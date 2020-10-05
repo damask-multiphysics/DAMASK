@@ -46,21 +46,21 @@ subroutine parallelization_init
   ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
   ! Otherwise, the first call to PETSc will do the initialization.
   call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,err)
-  if (err /= 0)                        error stop 'MPI init failed'
-  if (threadLevel<MPI_THREAD_FUNNELED) error stop 'MPI library does not support OpenMP'
+  if (err /= 0)                              error stop 'MPI init failed'
+  if (threadLevel<MPI_THREAD_FUNNELED)       error stop 'MPI library does not support OpenMP'
 #endif
 
   call PETScInitializeNoArguments(petsc_err)                                                        ! first line in the code according to PETSc manual
   CHKERRQ(petsc_err)
 
   call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
-  if (err /= 0) error stop 'Could not determine worldrank'
+  if (err /= 0)                              error stop 'Could not determine worldrank'
 
   if (worldrank == 0) print'(/,a)',  ' <<<+-  parallelization init  -+>>>'
-  if (worldrank == 0) print'(a,i3)', ' MPI processes: ',worldsize
 
   call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,err)
-  if (err /= 0) error stop 'Could not determine worldsize'
+  if (err /= 0)                              error stop 'Could not determine worldsize'
+  if (worldrank == 0) print'(a,i3)', ' MPI processes: ',worldsize
 
   call MPI_Type_size(MPI_INTEGER,typeSize,err)
   if (err /= 0)                              error stop 'Could not determine MPI integer size'

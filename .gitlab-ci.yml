@@ -239,6 +239,16 @@ Compile_Intel_Prepare:
     - release
 
 ###################################################################################################
+Pytest_grid:
+  stage: grid
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - cd pytest
+    - pytest
+  except:
+    - master
+    - release
+
 Thermal:
   stage: grid
   script: Thermal/test.py
@@ -249,27 +259,6 @@ Thermal:
 grid_parsingArguments:
   stage: grid
   script: grid_parsingArguments/test.py
-  except:
-    - master
-    - release
-
-StateIntegration_compareVariants:
-  stage: grid
-  script: StateIntegration_compareVariants/test.py
-  except:
-    - master
-    - release
-
-nonlocal_densityConservation:
-  stage: grid
-  script: nonlocal_densityConservation/test.py
-  except:
-    - master
-    - release
-
-RGC_DetectChanges:
-  stage: grid
-  script: RGC_DetectChanges/test.py
   except:
     - master
     - release
@@ -302,15 +291,6 @@ grid_all_loadCaseRotation:
     - master
     - release
 
-grid_mech_MPI:
-  stage: grid
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - grid_mech_MPI/test.py
-  except:
-    - master
-    - release
-
 grid_all_restartMPI:
   stage: grid
   script:
@@ -327,25 +307,9 @@ Plasticity_DetectChanges:
     - master
     - release
 
-Homogenization:
-  stage: grid
-  script: Homogenization/test.py
-  except:
-    - master
-    - release
-
 Phenopowerlaw_singleSlip:
   stage: grid
   script: Phenopowerlaw_singleSlip/test.py
-  except:
-    - master
-    - release
-
-Pytest_grid:
-  stage: grid
-  script:
-    - cd pytest
-    - pytest
   except:
     - master
     - release

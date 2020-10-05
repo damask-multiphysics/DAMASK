@@ -24,11 +24,9 @@ module grid_mech_spectral_basic
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-! derived types
   type(tSolutionParams) :: params
 
-  type, private :: tNumerics
+  type :: tNumerics
     logical :: update_gamma                                                                         !< update gamma operator with current stiffness
     integer :: &
       itmin, &                                                                                      !< minimum number of iterations
@@ -42,7 +40,7 @@ module grid_mech_spectral_basic
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
 
-  logical, private :: debugRotation
+  logical :: debugRotation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -62,10 +60,10 @@ module grid_mech_spectral_basic
     F_aimDot = 0.0_pReal, &                                                                         !< assumed rate of average deformation gradient
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
     F_aim_lastInc = math_I3, &                                                                      !< previous average deformation gradient
-    P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
-
+    P_av = 0.0_pReal, &                                                                             !< average 1st Piola--Kirchhoff stress
+    P_aim = 0.0_pReal
   character(len=:), allocatable :: incInfo                                                          !< time and increment information
-  real(pReal), private, dimension(3,3,3,3) :: &
+  real(pReal), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
     C_minMaxAvg = 0.0_pReal, &                                                                      !< current (min+max)/2 stiffness
@@ -96,18 +94,17 @@ subroutine grid_mech_spectral_basic_init
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
-  class (tNode), pointer :: &
-    num_grid, &
-    debug_grid
- 
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
-  PetscInt, dimension(worldsize) :: localK
+  PetscInt, dimension(0:worldsize-1) :: localK
   integer(HID_T) :: fileHandle, groupHandle
   integer        :: fileUnit
   character(len=pStringLen) :: &
     fileName
+  class (tNode), pointer :: &
+    num_grid, &
+    debug_grid
 
   print'(/,a)', ' <<<+-  grid_mech_spectral_basic init  -+>>>'; flush(IO_STDOUT)
 
@@ -126,13 +123,13 @@ subroutine grid_mech_spectral_basic_init
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
-  num%update_gamma    = num_grid%get_asBool   ('update_gamma',   defaultVal=.false.)
-  num%eps_div_atol    = num_grid%get_asFloat  ('eps_div_atol',   defaultVal=1.0e-4_pReal)
-  num%eps_div_rtol    = num_grid%get_asFloat  ('eps_div_rtol',   defaultVal=5.0e-4_pReal)
-  num%eps_stress_atol = num_grid%get_asFloat  ('eps_stress_atol',defaultVal=1.0e3_pReal)
-  num%eps_stress_rtol = num_grid%get_asFloat  ('eps_stress_rtol',defaultVal=0.01_pReal)
-  num%itmin           = num_grid%get_asInt    ('itmin',defaultVal=1)
-  num%itmax           = num_grid%get_asInt    ('itmax',defaultVal=250)
+  num%update_gamma    = num_grid%get_asBool  ('update_gamma',   defaultVal=.false.)
+  num%eps_div_atol    = num_grid%get_asFloat ('eps_div_atol',   defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid%get_asFloat ('eps_div_rtol',   defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid%get_asFloat ('eps_stress_atol',defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol = num_grid%get_asFloat ('eps_stress_rtol',defaultVal=1.0e-3_pReal)
+  num%itmin           = num_grid%get_asInt   ('itmin',defaultVal=1)
+  num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
 
   if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
   if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
@@ -158,7 +155,7 @@ subroutine grid_mech_spectral_basic_init
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr)
   localK              = 0
-  localK(worldrank+1) = grid3
+  localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
          DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                    ! cut off stencil at boundary
@@ -202,8 +199,8 @@ subroutine grid_mech_spectral_basic_init
   endif restartRead
 
   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
-  call Utilities_updateCoords(reshape(F,shape(F_lastInc)))
-  call Utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_updateCoords(reshape(F,shape(F_lastInc)))
+  call utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
@@ -231,19 +228,12 @@ end subroutine grid_mech_spectral_basic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
+function grid_mech_spectral_basic_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
     incInfoIn
-  real(pReal),                 intent(in) :: &
-    timeinc, &                                                                                      !< time increment of current solution
-    timeinc_old                                                                                     !< time increment of last successful increment
-  type(tBoundaryCondition),    intent(in) :: &
-    stress_BC
-  type(rotation),              intent(in) :: &
-    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -255,16 +245,8 @@ function grid_mech_spectral_basic_solution(incInfoIn,timeinc,timeinc_old,stress_
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
+  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
   if(num%update_gamma) call utilities_updateGamma(C_minMaxAvg)
-
-!--------------------------------------------------------------------------------------------------
-! set module wide available data
-  params%stress_mask = stress_BC%maskFloat
-  params%stress_BC   = stress_BC%values
-  params%rotation_BC = rotation_BC
-  params%timeinc     = timeinc
-  params%timeincOld  = timeinc_old
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
@@ -303,7 +285,14 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
   type(rotation),              intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
-  PetscScalar, dimension(:,:,:,:), pointer :: F
+  PetscScalar, pointer, dimension(:,:,:,:) :: F
+
+!--------------------------------------------------------------------------------------------------
+! set module wide available data
+  params%stress_mask = stress_BC%mask
+  params%rotation_BC = rotation_BC
+  params%timeinc     = timeinc
+  params%timeincOld  = timeinc_old
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
@@ -314,20 +303,20 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
-    F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
+    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/timeinc_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
     if     (deformation_BC%myType=='l') then                                                         ! calculate F_aimDot from given L and current F
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
+      F_aimDot = F_aimDot &
+               + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
     elseif(deformation_BC%myType=='fdot') then                                                       ! F_aimDot is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * deformation_BC%values
+      F_aimDot = F_aimDot & 
+               + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
     elseif (deformation_BC%myType=='f') then                                                         ! aim at end of load case is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
+      F_aimDot = F_aimDot &
+               + merge((deformation_BC%values - F_aim_lastInc)/loadCaseTime,.0_pReal,deformation_BC%mask)
     endif
 
     Fdot = utilities_calculateRate(guess, &
@@ -341,7 +330,13 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
-  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
+  if     (stress_BC%myType=='p') then
+    P_aim = P_aim + merge((stress_BC%values - P_aim)/loadCaseTime*timeinc,.0_pReal,stress_BC%mask)
+  elseif (stress_BC%myType=='pdot') then !UNTESTED
+    P_aim = P_aim + merge(stress_BC%values*timeinc,.0_pReal,stress_BC%mask)
+  endif
+ 
+  F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
@@ -375,7 +370,7 @@ subroutine grid_mech_spectral_basic_restartWrite
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
-  print'(a)', ' writing solver data required for restart to file'; flush(IO_STDOUT)
+  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -469,6 +464,7 @@ subroutine formResidual(in, F, &
   call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
+
 !--------------------------------------------------------------------------------------------------
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
@@ -491,16 +487,16 @@ subroutine formResidual(in, F, &
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)
+  deltaF_aim = math_mul3333xx33(S, P_av - P_aim)                                                    ! S = 0.0 for no bc
   F_aim = F_aim - deltaF_aim
-  err_BC = maxval(abs(params%stress_mask * (P_av - params%stress_BC)))                              ! mask = 0.0 when no stress bc
+  err_BC = maxval(abs(merge(P_av - P_aim,.0_pReal,params%stress_mask)))
 
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
   tensorField_real = 0.0_pReal
   tensorField_real(1:3,1:3,1:grid(1),1:grid(2),1:grid3) = residuum                                  ! store fPK field for subsequent FFT forward transform
   call utilities_FFTtensorForward                                                                   ! FFT forward of global "tensorField_real"
-  err_div = Utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
+  err_div = utilities_divergenceRMS()                                                               ! divRMS of tensorField_fourier for later use
   call utilities_fourierGammaConvolution(params%rotation_BC%rotate(deltaF_aim,active=.true.))       ! convolution of Gamma and tensorField_fourier
   call utilities_FFTtensorBackward                                                                  ! FFT backward of global tensorField_fourier
 

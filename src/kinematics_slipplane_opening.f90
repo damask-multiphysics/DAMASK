@@ -12,10 +12,10 @@ submodule(constitutive:constitutive_damage) kinematics_slipplane_opening
     integer :: &
       sum_N_sl                                                                                      !< total number of cleavage planes
     real(pReal) :: &
-      sdot0, &                                                                                      !< opening rate of cleavage planes
-      n                                                                                             !< damage rate sensitivity
+      dot_o, &                                                                                      !< opening rate of cleavage planes
+      q                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:),   allocatable :: &
-      critLoad
+      g_crit
     real(pReal), dimension(:,:,:), allocatable     :: &
       P_d, &
       P_t, &
@@ -70,8 +70,8 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
         associate(prm  => param(kinematics_slipplane_opening_instance(p)))
         kinematic_type => kinematics%get(k) 
 
-        prm%sdot0    = kinematic_type%get_asFloat('dot_o')
-        prm%n        = kinematic_type%get_asFloat('q')
+        prm%dot_o    = kinematic_type%get_asFloat('dot_o')
+        prm%q        = kinematic_type%get_asFloat('q')
         N_sl         = pl%get_asInts('N_sl')
         prm%sum_N_sl = sum(abs(N_sl))
 
@@ -89,15 +89,15 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
           prm%P_n(1:3,1:3,i) = math_outer(n(1:3,i), n(1:3,i))
         enddo
 
-        prm%critLoad = kinematic_type%get_asFloats('g_crit',requiredSize=size(N_sl))
+        prm%g_crit = kinematic_type%get_asFloats('g_crit',requiredSize=size(N_sl))
 
         ! expand: family => system
-        prm%critLoad = math_expand(prm%critLoad,N_sl)
+        prm%g_crit = math_expand(prm%g_crit,N_sl)
 
         ! sanity checks
-        if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_n'
-        if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_sdot0'
-        if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisoDuctile_critLoad'
+        if (prm%q          <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_n'
+        if (prm%dot_o      <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoDuctile_sdot0'
+        if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' anisoDuctile_critLoad'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
@@ -150,27 +150,27 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
     traction_t = math_tensordot(S,prm%P_t(1:3,1:3,i))
     traction_n = math_tensordot(S,prm%P_n(1:3,1:3,i))
 
-    traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)                                  ! degrading critical load carrying capacity by damage
+    traction_crit = prm%g_crit(i)* damage(homog)%p(damageOffset)                                  ! degrading critical load carrying capacity by damage
 
-    udotd = sign(1.0_pReal,traction_d)* prm%sdot0* (  abs(traction_d)/traction_crit &
-                                                    - abs(traction_d)/prm%critLoad(i))**prm%n
-    udott = sign(1.0_pReal,traction_t)* prm%sdot0* (  abs(traction_t)/traction_crit &
-                                                    - abs(traction_t)/prm%critLoad(i))**prm%n
-    udotn = prm%sdot0* (  max(0.0_pReal,traction_n)/traction_crit &
-                        - max(0.0_pReal,traction_n)/prm%critLoad(i))**prm%n
+    udotd = sign(1.0_pReal,traction_d)* prm%dot_o* (  abs(traction_d)/traction_crit &
+                                                    - abs(traction_d)/prm%g_crit(i))**prm%q
+    udott = sign(1.0_pReal,traction_t)* prm%dot_o* (  abs(traction_t)/traction_crit &
+                                                    - abs(traction_t)/prm%g_crit(i))**prm%q
+    udotn = prm%dot_o* (  max(0.0_pReal,traction_n)/traction_crit &
+                        - max(0.0_pReal,traction_n)/prm%g_crit(i))**prm%q
 
     if (dNeq0(traction_d)) then
-      dudotd_dt = udotd*prm%n/traction_d
+      dudotd_dt = udotd*prm%q/traction_d
     else
       dudotd_dt = 0.0_pReal
     endif
     if (dNeq0(traction_t)) then
-      dudott_dt = udott*prm%n/traction_t
+      dudott_dt = udott*prm%q/traction_t
     else
       dudott_dt = 0.0_pReal
     endif
     if (dNeq0(traction_n)) then
-      dudotn_dt = udotn*prm%n/traction_n
+      dudotn_dt = udotn*prm%q/traction_n
     else
       dudotn_dt = 0.0_pReal
     endif

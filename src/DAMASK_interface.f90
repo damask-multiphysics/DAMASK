@@ -82,7 +82,7 @@ subroutine DAMASK_interface_init
 
   print'(/,a)', ' <<<+-  DAMASK_interface init  -+>>>'
 
-  open(OUTPUT_unit, encoding='UTF-8')                                                               ! for special characters in output
+  if(worldrank == 0) open(OUTPUT_UNIT, encoding='UTF-8')                                            ! for special characters in output
 
  ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
 #ifdef DEBUG
