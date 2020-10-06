@@ -262,10 +262,10 @@ subroutine material_parseHomogenization
         homogenization_Ngrains(h) = 1
       case('isostrain')
         homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
-        homogenization_Ngrains(h) = homogMech%get_asInt('N_constituents')
+        homogenization_Ngrains(h) = homog%get_asInt('N_constituents')
       case('RGC')
         homogenization_type(h) = HOMOGENIZATION_RGC_ID
-        homogenization_Ngrains(h) = homogMech%get_asInt('N_constituents')
+        homogenization_Ngrains(h) = homog%get_asInt('N_constituents')
       case default
         call IO_error(500,ext_msg=homogMech%get_asString('type'))
     end select
