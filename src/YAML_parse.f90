@@ -257,7 +257,6 @@ subroutine skip_empty_lines(blck,s_blck)
     if(empty) s_blck = s_blck + index(blck(s_blck:),IO_EOL)
   enddo
 
-
 end subroutine skip_empty_lines
  
 
@@ -285,10 +284,11 @@ subroutine skip_file_header(blck,s_blck)
  
 end subroutine skip_file_header
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief check if the flow line contains line break
+!> @brief check if a line in flow YAML starts and ends in the same line
 !--------------------------------------------------------------------------------------------------
-logical function is_end(str,e_char)
+logical function flow_is_closed(str,e_char)
 
   character(len=*), intent(in) :: str
   character,        intent(in) :: e_char                                                            !< end of list/dict  ( '}' or ']')
@@ -297,44 +297,44 @@ logical function is_end(str,e_char)
                                   i
   character(len=:), allocatable:: line
 
-  is_end = .false.
+  flow_is_closed = .false.
   N_sq = 0
   N_cu = 0
   if(e_char == ']') line = str(index(str(:),'[')+1:)
   if(e_char == '}') line = str(index(str(:),'{')+1:)
 
   do i = 1, len_trim(line)
-    is_end = (N_sq==0 .and. N_cu==0 .and. scan(line(i:i),e_char) == 1)
+    flow_is_closed = (N_sq==0 .and. N_cu==0 .and. scan(line(i:i),e_char) == 1)
     N_sq = N_sq + merge(1,0,line(i:i) == '[')
     N_cu = N_cu + merge(1,0,line(i:i) == '{')
     N_sq = N_sq - merge(1,0,line(i:i) == ']')
     N_cu = N_cu - merge(1,0,line(i:i) == '}')
   enddo
 
+end function flow_is_closed
 
-end function is_end
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return the flow YAML line without line break
 !--------------------------------------------------------------------------------------------------
-subroutine line_break(blck,s_blck,e_char,flow_sgl)
+subroutine remove_line_break(blck,s_blck,e_char,flow_line)
 
   character(len=*), intent(in)               :: blck                                                !< YAML in mixed style
   integer,          intent(inout)            :: s_blck
   character,        intent(in)               :: e_char                                              !< end of list/dict  ( '}' or ']')
-  character(len=:), allocatable, intent(out) :: flow_sgl
+  character(len=:), allocatable, intent(out) :: flow_line
   logical :: line_end
 
   line_end =.false.
-  flow_sgl = ''
+  flow_line = ''
 
   do while(.not.line_end)
-    flow_sgl   = flow_sgl//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
-    line_end = is_end(flow_sgl,e_char)
-    s_blck = s_blck + index(blck(s_blck:),IO_EOL)
+    flow_line = flow_line//IO_rmComment(blck(s_blck:s_blck + index(blck(s_blck:),IO_EOL) - 2))//' '
+    line_end  = flow_is_closed(flow_line,e_char)
+    s_blck    = s_blck + index(blck(s_blck:),IO_EOL)
   enddo
 
-end subroutine line_break
+end subroutine remove_line_break
 
 
 !--------------------------------------------------------------------------------------------------
@@ -466,7 +466,7 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
   integer,          intent(inout) :: s_blck, &                                                      !< start position in blck
                                      s_flow, &                                                      !< start position in flow
                                      offset                                                         !< stores leading '- ' in nested lists
-  character(len=:), allocatable :: line,flow_sgl
+  character(len=:), allocatable :: line,flow_line
   integer :: e_blck,indent
 
   indent = indentDepth(blck(s_blck:),offset)
@@ -502,11 +502,11 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
           offset = 0
         elseif(isFlow(line)) then
           if(isFlowList(line)) then
-            call line_break(blck,s_blck,']',flow_sgl)
+            call remove_line_break(blck,s_blck,']',flow_line)
           else
-            call line_break(blck,s_blck,'}',flow_sgl)
+            call remove_line_break(blck,s_blck,'}',flow_line)
           endif
-          call line_isFlow(flow,s_flow,flow_sgl)
+          call line_isFlow(flow,s_flow,flow_line)
           offset = 0
         endif
       else                                                                                          ! list item in the same line
@@ -518,11 +518,11 @@ recursive subroutine lst(blck,flow,s_blck,s_flow,offset)
         elseif(isFlow(line)) then
           s_blck = s_blck + index(blck(s_blck:),'-')
           if(isFlowList(line)) then
-            call line_break(blck,s_blck,']',flow_sgl)
+            call remove_line_break(blck,s_blck,']',flow_line)
           else
-            call line_break(blck,s_blck,'}',flow_sgl)
+            call remove_line_break(blck,s_blck,'}',flow_line)
           endif
-          call line_isFlow(flow,s_flow,flow_sgl)
+          call line_isFlow(flow,s_flow,flow_line)
           offset = 0
         else                                                                                        ! non scalar list item
           offset = offset + indentDepth(blck(s_blck:))+1                                            ! offset in spaces to be ignored
@@ -559,7 +559,7 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
                                      s_flow, &                                                      !< start position in flow
                                      offset
 
-  character(len=:), allocatable :: line,flow_sgl
+  character(len=:), allocatable :: line,flow_line
   integer :: e_blck,indent,col_pos
   logical :: previous_isKey
 
@@ -597,11 +597,11 @@ recursive subroutine dct(blck,flow,s_blck,s_flow,offset)
         col_pos = index(line,':')
         if(isFlow(line(col_pos+1:))) then
           if(isFlowList(line(col_pos+1:))) then
-            call line_break(blck,s_blck,']',flow_sgl)
+            call remove_line_break(blck,s_blck,']',flow_line)
           else
-            call line_break(blck,s_blck,'}',flow_sgl)
+            call remove_line_break(blck,s_blck,'}',flow_line)
           endif
-          call keyValue_toFlow(flow,s_flow,flow_sgl)
+          call keyValue_toFlow(flow,s_flow,flow_line)
         else
           call keyValue_toFlow(flow,s_flow,line)
           s_blck = e_blck + 2
@@ -642,7 +642,7 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
                                      s_flow, &                                                      !< start position in flow
                                      offset
   integer :: e_blck
-  character(len=:), allocatable :: line,flow_sgl
+  character(len=:), allocatable :: line,flow_line
 
   if(s_blck <= len(blck)) then
     call skip_empty_lines(blck,s_blck)
@@ -667,9 +667,9 @@ recursive subroutine decide(blck,flow,s_blck,s_flow,offset)
       s_flow = s_flow + 1
     elseif(isFlow(line)) then
       if(isFlowList(line)) then
-        call line_break(blck,s_blck,']',flow_sgl)
+        call remove_line_break(blck,s_blck,']',flow_line)
       else
-        call line_break(blck,s_blck,'}',flow_sgl)
+        call remove_line_break(blck,s_blck,'}',flow_line)
       endif
       call line_isFlow(flow,s_flow,line)
     else
