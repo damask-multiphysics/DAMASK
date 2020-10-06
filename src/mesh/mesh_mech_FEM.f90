@@ -594,7 +594,11 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! apply boundary conditions
+#if (PETSC_VERSION_MINOR < 14)
   call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr)
+#else
+  call DMPlexCreateRigidBody(dm_local,0,matnull,ierr); CHKERRQ(ierr)
+#endif
   call MatSetNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
   call MatSetNearNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
   call MatNullSpaceDestroy(matnull,ierr); CHKERRQ(ierr)
