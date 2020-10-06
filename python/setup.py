@@ -21,6 +21,7 @@ setuptools.setup(
         "h5py",                                                                                     # requires numpy
         "vtk",
         "matplotlib",                                                                               # requires numpy, pillow
+        "pyaml"
     ],
     classifiers = [
         "Intended Audience :: Science/Research",
