@@ -220,9 +220,9 @@ logical function isKey(line)
   if(len(IO_rmComment(line)) == 0) then
     isKey = .false.
   else
-    isKey = IO_rmComment(line(len(IO_rmComment(line)):len(IO_rmComment(line)))) == ':' &
-                                                                .and. .not. isFlow(line)
-    isKey = isKey .and. index(IO_rmComment(line),':') == index(IO_rmComment(line),':',back =.true.)
+    isKey = index(IO_rmComment(line),':',back=.false.) == len(IO_rmComment(line)) .and. &
+            index(IO_rmComment(line),':',back=.true.)  == len(IO_rmComment(line)) .and. &
+            .not. isFlow(line)
   endif
 
 end function isKey
