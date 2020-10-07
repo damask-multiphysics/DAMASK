@@ -441,8 +441,6 @@ function crystallite_stress()
     enddo elementLooping3
     !$OMP END PARALLEL DO
 
-    call nonlocalConvergenceCheck
-
 !--------------------------------------------------------------------------------------------------
 !  integrate --- requires fully defined state array (basic + dependent state)
     where(.not. crystallite_converged .and. crystallite_subStep > num%subStepMinCryst) &            ! do not try non-converged but fully cutbacked any further
@@ -1524,38 +1522,6 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
 
 
 end subroutine integrateStateRK
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets convergence flag for nonlocal calculations
-!> @details one non-converged nonlocal sets all other nonlocals to non-converged to trigger cut back
-!--------------------------------------------------------------------------------------------------
-subroutine nonlocalConvergenceCheck
-
-  integer :: e,i,p
-  logical :: nonlocal_broken
-
-  nonlocal_broken = .false.
-  !$OMP PARALLEL DO PRIVATE(p)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    p = material_phaseAt(1,e)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      if(plasticState(p)%nonlocal .and. .not. crystallite_converged(1,i,e)) nonlocal_broken = .true.
-    enddo
-  enddo
-  !$OMP END PARALLEL DO
-
-  if(.not. nonlocal_broken) return
-  !$OMP PARALLEL DO PRIVATE(p)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    p = material_phaseAt(1,e)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      if(plasticState(p)%nonlocal) crystallite_converged(1,i,e) = .false.
-    enddo
-  enddo
-  !$OMP END PARALLEL DO
-
-end subroutine nonlocalConvergenceCheck
 
 
 !--------------------------------------------------------------------------------------------------
