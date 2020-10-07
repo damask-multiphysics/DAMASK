@@ -1,5 +1,6 @@
 homogenization:
   SX:
+    N_constituents: 1
     mech: {type: none}
 
 material:

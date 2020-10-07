@@ -24,8 +24,11 @@ module subroutine mech_none_init
   print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
 
   do h = 1, size(homogenization_type)
-    if (homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
+    if(homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
 
+    if(homogenization_Ngrains(h) /= 1) &
+      call IO_error(211,ext_msg='N_constituents (mech_none)')
+    
     NofMyHomog = count(material_homogenizationAt == h)
     homogState(h)%sizeState = 0
     allocate(homogState(h)%state0   (0,NofMyHomog))
