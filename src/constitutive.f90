@@ -452,11 +452,11 @@ subroutine constitutive_init
   PhaseLoop2:do p = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
-    plasticState(p)%partionedState0 = plasticState(p)%state0
-    plasticState(p)%state           = plasticState(p)%partionedState0
+    plasticState(p)%partitionedState0 = plasticState(p)%state0
+    plasticState(p)%state             = plasticState(p)%partitionedState0
     forall(s = 1:phase_Nsources(p))
-      sourceState(p)%p(s)%partionedState0 = sourceState(p)%p(s)%state0
-      sourceState(p)%p(s)%state           = sourceState(p)%p(s)%partionedState0
+      sourceState(p)%p(s)%partitionedState0 = sourceState(p)%p(s)%state0
+      sourceState(p)%p(s)%state             = sourceState(p)%p(s)%partitionedState0
     end forall
 
     constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
@@ -922,7 +922,7 @@ subroutine constitutive_allocateState(state, &
 
   allocate(state%atol           (sizeState),             source=0.0_pReal)
   allocate(state%state0         (sizeState,NipcMyPhase), source=0.0_pReal)
-  allocate(state%partionedState0(sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%partitionedState0(sizeState,NipcMyPhase), source=0.0_pReal)
   allocate(state%subState0      (sizeState,NipcMyPhase), source=0.0_pReal)
   allocate(state%state          (sizeState,NipcMyPhase), source=0.0_pReal)
 

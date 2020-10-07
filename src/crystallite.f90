@@ -44,30 +44,30 @@ module crystallite
     !
     crystallite_Fp, &                                                                               !< current plastic def grad (end of converged time step)
     crystallite_Fp0, &                                                                              !< plastic def grad at start of FE inc
-    crystallite_partionedFp0,&                                                                      !< plastic def grad at start of homog inc
+    crystallite_partitionedFp0,&                                                                    !< plastic def grad at start of homog inc
     crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
     !
     crystallite_Fi, &                                                                               !< current intermediate def grad (end of converged time step)
     crystallite_Fi0, &                                                                              !< intermediate def grad at start of FE inc
-    crystallite_partionedFi0,&                                                                      !< intermediate def grad at start of homog inc
+    crystallite_partitionedFi0,&                                                                    !< intermediate def grad at start of homog inc
     crystallite_subFi0,&                                                                            !< intermediate def grad at start of crystallite inc
     !
     crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
-    crystallite_partionedLp0, &                                                                     !< plastic velocity grad at start of homog inc
+    crystallite_partitionedLp0, &                                                                   !< plastic velocity grad at start of homog inc
     !
     crystallite_Li, &                                                                               !< current intermediate velocitiy grad (end of converged time step)
     crystallite_Li0, &                                                                              !< intermediate velocitiy grad at start of FE inc
-    crystallite_partionedLi0, &                                                                     !< intermediate velocity grad at start of homog inc
+    crystallite_partitionedLi0, &                                                                   !< intermediate velocity grad at start of homog inc
     !
     crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
-    crystallite_partionedS0                                                                         !< 2nd Piola-Kirchhoff stress vector at start of homog inc
+    crystallite_partitionedS0                                                                       !< 2nd Piola-Kirchhoff stress vector at start of homog inc
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
     crystallite_P, &                                                                                !< 1st Piola-Kirchhoff stress per grain
     crystallite_Lp, &                                                                               !< current plastic velocitiy grad (end of converged time step)
     crystallite_S, &                                                                                !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
-    crystallite_partionedF0                                                                         !< def grad at start of homog inc
+    crystallite_partitionedF0                                                                       !< def grad at start of homog inc
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
-    crystallite_partionedF                                                                         !< def grad to be reached at end of homog inc
+    crystallite_partitionedF                                                                        !< def grad to be reached at end of homog inc
 
   logical,                    dimension(:,:,:),         allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
@@ -166,20 +166,20 @@ subroutine crystallite_init
   iMax = discretization_nIP
   eMax = discretization_nElem
 
-  allocate(crystallite_partionedF(3,3,cMax,iMax,eMax),source=0.0_pReal)
+  allocate(crystallite_partitionedF(3,3,cMax,iMax,eMax),source=0.0_pReal)
 
   allocate(crystallite_S0, &
            crystallite_F0, crystallite_Fi0,crystallite_Fp0, &
                            crystallite_Li0,crystallite_Lp0, &
-           crystallite_partionedS0, &
-           crystallite_partionedF0,crystallite_partionedFp0,crystallite_partionedFi0, &
-                                   crystallite_partionedLp0,crystallite_partionedLi0, &
+           crystallite_partitionedS0, &
+           crystallite_partitionedF0,crystallite_partitionedFp0,crystallite_partitionedFi0, &
+                                   crystallite_partitionedLp0,crystallite_partitionedLi0, &
            crystallite_S,crystallite_P, &
            crystallite_Fe,crystallite_Fi,crystallite_Fp, &
                           crystallite_Li,crystallite_Lp, &
            crystallite_subF,crystallite_subF0, &
            crystallite_subFp0,crystallite_subFi0, &
-           source = crystallite_partionedF)
+           source = crystallite_partitionedF)
 
   allocate(crystallite_dt(cMax,iMax,eMax),source=0.0_pReal)
   allocate(crystallite_subdt,crystallite_subFrac,crystallite_subStep, &
@@ -269,10 +269,10 @@ subroutine crystallite_init
   !$OMP END PARALLEL DO
 
 
-  crystallite_partionedFp0 = crystallite_Fp0
-  crystallite_partionedFi0 = crystallite_Fi0
-  crystallite_partionedF0  = crystallite_F0
-  crystallite_partionedF   = crystallite_F0
+  crystallite_partitionedFp0 = crystallite_Fp0
+  crystallite_partitionedFi0 = crystallite_Fi0
+  crystallite_partitionedF0  = crystallite_F0
+  crystallite_partitionedF   = crystallite_F0
 
   call crystallite_orientations()
 
@@ -280,8 +280,8 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
-        call constitutive_dependentState(crystallite_partionedF0(1:3,1:3,c,i,e), &
-                                         crystallite_partionedFp0(1:3,1:3,c,i,e), &
+        call constitutive_dependentState(crystallite_partitionedF0(1:3,1:3,c,i,e), &
+                                         crystallite_partitionedFp0(1:3,1:3,c,i,e), &
                                          c,i,e)                                                     ! update dependent state variables to be consistent with basic states
      enddo
     enddo
@@ -325,8 +325,8 @@ function crystallite_stress()
 
   todo = .false.
 
-  subLp0 = crystallite_partionedLp0
-  subLi0 = crystallite_partionedLi0
+  subLp0 = crystallite_partitionedLp0
+  subLi0 = crystallite_partitionedLi0
 
 
 
@@ -338,15 +338,15 @@ function crystallite_stress()
     do i = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
       homogenizationRequestsCalculation: if (crystallite_requested(c,i,e)) then
         plasticState    (material_phaseAt(c,e))%subState0(      :,material_phaseMemberAt(c,i,e)) = &
-        plasticState    (material_phaseAt(c,e))%partionedState0(:,material_phaseMemberAt(c,i,e))
+        plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phaseMemberAt(c,i,e))
 
         do s = 1, phase_Nsources(material_phaseAt(c,e))
           sourceState(material_phaseAt(c,e))%p(s)%subState0(      :,material_phaseMemberAt(c,i,e)) = &
-          sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phaseMemberAt(c,i,e))
+          sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phaseMemberAt(c,i,e))
         enddo
-        crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_partionedFp0(1:3,1:3,c,i,e)
-        crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_partionedFi0(1:3,1:3,c,i,e)
-        crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partionedF0(1:3,1:3,c,i,e)
+        crystallite_subFp0(1:3,1:3,c,i,e) = crystallite_partitionedFp0(1:3,1:3,c,i,e)
+        crystallite_subFi0(1:3,1:3,c,i,e) = crystallite_partitionedFi0(1:3,1:3,c,i,e)
+        crystallite_subF0(1:3,1:3,c,i,e)  = crystallite_partitionedF0(1:3,1:3,c,i,e)
         crystallite_subFrac(c,i,e) = 0.0_pReal
         crystallite_subStep(c,i,e) = 1.0_pReal/num%subStepSizeCryst
         todo(c,i,e) = .true.
@@ -426,8 +426,8 @@ function crystallite_stress()
 !  prepare for integration
           if (todo(c,i,e)) then
             crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
-                                            + crystallite_subStep(c,i,e) *( crystallite_partionedF (1:3,1:3,c,i,e) &
-                                                                           -crystallite_partionedF0(1:3,1:3,c,i,e))
+                                            + crystallite_subStep(c,i,e) *( crystallite_partitionedF (1:3,1:3,c,i,e) &
+                                                                           -crystallite_partitionedF0(1:3,1:3,c,i,e))
             crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
                                                           math_inv33(crystallite_Fp(1:3,1:3,c,i,e))), &
                                                    math_inv33(crystallite_Fi(1:3,1:3,c,i,e)))
@@ -475,17 +475,17 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     s
 
   do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
-    crystallite_partionedFp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e)
-    crystallite_partionedLp0(1:3,1:3,c,i,e) = crystallite_Lp0(1:3,1:3,c,i,e)
-    crystallite_partionedFi0(1:3,1:3,c,i,e) = crystallite_Fi0(1:3,1:3,c,i,e)
-    crystallite_partionedLi0(1:3,1:3,c,i,e) = crystallite_Li0(1:3,1:3,c,i,e)
-    crystallite_partionedF0(1:3,1:3,c,i,e)  = crystallite_F0(1:3,1:3,c,i,e)
-    crystallite_partionedS0(1:3,1:3,c,i,e)  = crystallite_S0(1:3,1:3,c,i,e)
+    crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e)
+    crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp0(1:3,1:3,c,i,e)
+    crystallite_partitionedFi0(1:3,1:3,c,i,e) = crystallite_Fi0(1:3,1:3,c,i,e)
+    crystallite_partitionedLi0(1:3,1:3,c,i,e) = crystallite_Li0(1:3,1:3,c,i,e)
+    crystallite_partitionedF0(1:3,1:3,c,i,e)  = crystallite_F0(1:3,1:3,c,i,e)
+    crystallite_partitionedS0(1:3,1:3,c,i,e)  = crystallite_S0(1:3,1:3,c,i,e)
 
-    plasticState(material_phaseAt(c,e))%partionedState0(:,material_phasememberAt(c,i,e)) = &
+    plasticState(material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e)) = &
     plasticState(material_phaseAt(c,e))%state0(         :,material_phasememberAt(c,i,e))
     do s = 1, phase_Nsources(material_phaseAt(c,e))
-      sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phasememberAt(c,i,e)) = &
+      sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e)) = &
       sourceState(material_phaseAt(c,e))%p(s)%state0(         :,material_phasememberAt(c,i,e))
     enddo
   enddo
@@ -506,17 +506,17 @@ subroutine crystallite_windForward(i,e)
     s
 
   do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
-    crystallite_partionedF0 (1:3,1:3,c,i,e) = crystallite_partionedF(1:3,1:3,c,i,e)
-    crystallite_partionedFp0(1:3,1:3,c,i,e) = crystallite_Fp        (1:3,1:3,c,i,e)
-    crystallite_partionedLp0(1:3,1:3,c,i,e) = crystallite_Lp        (1:3,1:3,c,i,e)
-    crystallite_partionedFi0(1:3,1:3,c,i,e) = crystallite_Fi        (1:3,1:3,c,i,e)
-    crystallite_partionedLi0(1:3,1:3,c,i,e) = crystallite_Li        (1:3,1:3,c,i,e)
-    crystallite_partionedS0 (1:3,1:3,c,i,e) = crystallite_S         (1:3,1:3,c,i,e)
+    crystallite_partitionedF0 (1:3,1:3,c,i,e) = crystallite_partitionedF(1:3,1:3,c,i,e)
+    crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp        (1:3,1:3,c,i,e)
+    crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp        (1:3,1:3,c,i,e)
+    crystallite_partitionedFi0(1:3,1:3,c,i,e) = crystallite_Fi        (1:3,1:3,c,i,e)
+    crystallite_partitionedLi0(1:3,1:3,c,i,e) = crystallite_Li        (1:3,1:3,c,i,e)
+    crystallite_partitionedS0 (1:3,1:3,c,i,e) = crystallite_S         (1:3,1:3,c,i,e)
 
-    plasticState    (material_phaseAt(c,e))%partionedState0(:,material_phasememberAt(c,i,e)) = &
+    plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e)) = &
     plasticState    (material_phaseAt(c,e))%state          (:,material_phasememberAt(c,i,e))
     do s = 1, phase_Nsources(material_phaseAt(c,e))
-      sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phasememberAt(c,i,e)) = &
+      sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e)) = &
       sourceState(material_phaseAt(c,e))%p(s)%state          (:,material_phasememberAt(c,i,e))
     enddo
   enddo
@@ -540,18 +540,18 @@ subroutine crystallite_restore(i,e,includeL)
 
   do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
     if (includeL) then
-      crystallite_Lp(1:3,1:3,c,i,e) = crystallite_partionedLp0(1:3,1:3,c,i,e)
-      crystallite_Li(1:3,1:3,c,i,e) = crystallite_partionedLi0(1:3,1:3,c,i,e)
+      crystallite_Lp(1:3,1:3,c,i,e) = crystallite_partitionedLp0(1:3,1:3,c,i,e)
+      crystallite_Li(1:3,1:3,c,i,e) = crystallite_partitionedLi0(1:3,1:3,c,i,e)
     endif                                                                                           ! maybe protecting everything from overwriting makes more sense
-    crystallite_Fp(1:3,1:3,c,i,e)   = crystallite_partionedFp0(1:3,1:3,c,i,e)
-    crystallite_Fi(1:3,1:3,c,i,e)   = crystallite_partionedFi0(1:3,1:3,c,i,e)
-    crystallite_S (1:3,1:3,c,i,e)   = crystallite_partionedS0 (1:3,1:3,c,i,e)
+    crystallite_Fp(1:3,1:3,c,i,e)   = crystallite_partitionedFp0(1:3,1:3,c,i,e)
+    crystallite_Fi(1:3,1:3,c,i,e)   = crystallite_partitionedFi0(1:3,1:3,c,i,e)
+    crystallite_S (1:3,1:3,c,i,e)   = crystallite_partitionedS0 (1:3,1:3,c,i,e)
 
     plasticState    (material_phaseAt(c,e))%state(          :,material_phasememberAt(c,i,e)) = &
-    plasticState    (material_phaseAt(c,e))%partionedState0(:,material_phasememberAt(c,i,e))
+    plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e))
     do s = 1, phase_Nsources(material_phaseAt(c,e))
       sourceState(material_phaseAt(c,e))%p(s)%state(          :,material_phasememberAt(c,i,e)) = &
-      sourceState(material_phaseAt(c,e))%p(s)%partionedState0(:,material_phasememberAt(c,i,e))
+      sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e))
     enddo
   enddo
 
@@ -758,7 +758,7 @@ subroutine crystallite_results
     do o = 1, size(output_constituent(p)%label)
       select case (output_constituent(p)%label(o))
         case('F')
-          selected_tensors = select_tensors(crystallite_partionedF,p)
+          selected_tensors = select_tensors(crystallite_partitionedF,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'deformation gradient','1')
         case('Fe')
@@ -943,7 +943,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
     F  = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
-  call constitutive_dependentState(crystallite_partionedF(1:3,1:3,ipc,ip,el), &
+  call constitutive_dependentState(crystallite_partitionedF(1:3,1:3,ipc,ip,el), &
                                    crystallite_Fp(1:3,1:3,ipc,ip,el),ipc,ip,el)
 
   Lpguess = crystallite_Lp(1:3,1:3,ipc,ip,el)                                                       ! take as first guess
@@ -1120,9 +1120,9 @@ subroutine integrateStateFPI(g,i,e)
   c = material_phaseMemberAt(g,i,e)
 
   broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                    crystallite_partionedF0, &
+                                    crystallite_partitionedF0, &
                                     crystallite_Fi(1:3,1:3,g,i,e), &
-                                    crystallite_partionedFp0, &
+                                    crystallite_partitionedFp0, &
                                     crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1152,9 +1152,9 @@ subroutine integrateStateFPI(g,i,e)
     if(broken) exit iteration
 
     broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                          crystallite_partionedF0, &
+                                          crystallite_partitionedF0, &
                                           crystallite_Fi(1:3,1:3,g,i,e), &
-                                          crystallite_partionedFp0, &
+                                          crystallite_partitionedFp0, &
                                           crystallite_subdt(g,i,e), g,i,e,p,c)
     if(broken) exit iteration
 
@@ -1243,9 +1243,9 @@ subroutine integrateStateEuler(g,i,e)
   c = material_phaseMemberAt(g,i,e)
 
   broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                    crystallite_partionedF0, &
+                                    crystallite_partitionedF0, &
                                     crystallite_Fi(1:3,1:3,g,i,e), &
-                                    crystallite_partionedFp0, &
+                                    crystallite_partitionedFp0, &
                                     crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1296,9 +1296,9 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
   c = material_phaseMemberAt(g,i,e)
 
   broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                        crystallite_partionedF0, &
+                                        crystallite_partitionedF0, &
                                         crystallite_Fi(1:3,1:3,g,i,e), &
-                                        crystallite_partionedFp0, &
+                                        crystallite_partitionedFp0, &
                                         crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1325,9 +1325,9 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
   if(broken) return
 
   broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                        crystallite_partionedF0, &
+                                        crystallite_partitionedF0, &
                                         crystallite_Fi(1:3,1:3,g,i,e), &
-                                        crystallite_partionedFp0, &
+                                        crystallite_partitionedFp0, &
                                         crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1434,9 +1434,9 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
   c = material_phaseMemberAt(g,i,e)
 
   broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                        crystallite_partionedF0, &
+                                        crystallite_partitionedF0, &
                                         crystallite_Fi(1:3,1:3,g,i,e), &
-                                        crystallite_partionedFp0, &
+                                        crystallite_partitionedFp0, &
                                         crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1476,9 +1476,9 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
     if(broken) exit
 
     broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                          crystallite_partionedF0, &
+                                          crystallite_partitionedF0, &
                                           crystallite_Fi(1:3,1:3,g,i,e), &
-                                          crystallite_partionedFp0, &
+                                          crystallite_partitionedFp0, &
                                           crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
     if(broken) exit
 
@@ -1590,7 +1590,7 @@ subroutine crystallite_restartWrite
   write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName,'a')
 
-  call HDF5_write(fileHandle,crystallite_partionedF,'F')
+  call HDF5_write(fileHandle,crystallite_partitionedF,'F')
   call HDF5_write(fileHandle,crystallite_Fp,        'Fp')
   call HDF5_write(fileHandle,crystallite_Fi,        'Fi')
   call HDF5_write(fileHandle,crystallite_Lp,        'Lp')
@@ -1665,7 +1665,7 @@ subroutine crystallite_forward
 
   integer :: i, j
 
-  crystallite_F0  = crystallite_partionedF
+  crystallite_F0  = crystallite_partitionedF
   crystallite_Fp0 = crystallite_Fp
   crystallite_Lp0 = crystallite_Lp
   crystallite_Fi0 = crystallite_Fi
