@@ -1,3 +1,4 @@
+---
 homogenization:
   SX:
     mech: {type: none}
