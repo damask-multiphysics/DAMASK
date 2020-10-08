@@ -10,21 +10,21 @@ with open(_Path(__file__).parent/_Path('VERSION')) as _f:
 # make classes directly accessible as damask.Class
 from ._environment import Environment as _ # noqa
 environment = _()
-from ._table           import Table            # noqa
-from ._vtk             import VTK              # noqa
-from ._colormap        import Colormap         # noqa
-from ._rotation        import Rotation         # noqa
-from ._lattice         import Symmetry, Lattice# noqa
-from ._orientation     import Orientation      # noqa
-from ._result          import Result           # noqa
-from ._geom            import Geom             # noqa
-from ._config          import Config           # noqa
-from ._configmaterial  import ConfigMaterial   # noqa
-from .                 import solver           # noqa
 from .                 import util             # noqa
 from .                 import seeds            # noqa
-from .                 import grid_filters     # noqa
 from .                 import mechanics        # noqa
+from .                 import solver           # noqa
+from .                 import grid_filters     # noqa
+from ._lattice         import Symmetry, Lattice# noqa
+from ._table           import Table            # noqa
+from ._rotation        import Rotation         # noqa
+from ._vtk             import VTK              # noqa
+from ._colormap        import Colormap         # noqa
+from ._orientation     import Orientation      # noqa
+from ._config          import Config           # noqa
+from ._configmaterial  import ConfigMaterial   # noqa
+from ._geom            import Geom             # noqa
+from ._result          import Result           # noqa
 
 
 
