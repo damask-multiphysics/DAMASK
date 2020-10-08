@@ -62,10 +62,10 @@ class ConfigMaterial(Config):
                     print(f'No lattice specified in phase {k}')
                     ok = False
 
-            #for k,v in self['homogenization'].items():
-            #    if 'N_constituents' not in v:
-            #        print(f'No. of constituents not specified in homogenization {k}'}
-            #        ok = False
+            for k,v in self['homogenization'].items():
+                if 'N_constituents' not in v:
+                    print(f'No. of constituents not specified in homogenization {k}')
+                    ok = False
 
             if phase - set(self['phase']):
                 print(f'Phase(s) {phase-set(self["phase"])} missing')
@@ -158,3 +158,57 @@ class ConfigMaterial(Config):
             except KeyError:
                 continue
         return dup
+
+
+    def material_add(self,constituents,**kwargs):
+        """
+        Add material entries.
+
+        Parameters
+        ----------
+        constituents: scalar or numpy.ndarray
+        **kwargs: tbd
+
+        Examples
+        --------
+        m = damask.ConfigMaterial()
+        O = damask.Rotation.from_random(3).as_quaternion()
+        phase = ['Aluminum','Steel','Aluminum']
+
+        m.material_add(constituents={'phase':phase,'O':O},homogenization='SX')
+
+        """
+        c = [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
+        for k,v in kwargs.items():
+            if isinstance(v,np.ndarray):
+                for i,vv in enumerate(v):
+                    c[i][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
+            else:
+                for i in range(len(c)):
+                    c[i][k] = v
+        dup = copy.deepcopy(self)
+        if 'material' not in dup: dup['material'] = []
+        dup['material'] +=c
+
+        return dup
+
+
+    @staticmethod
+    def _constituents(N=1,**kwargs):
+        for v in kwargs.values():
+            if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
+
+        if N == 1:
+            m = [[{'fraction':1.0}] for _ in range(N_material)]
+            for k,v in kwargs.items():
+                if hasattr(v,'__len__') and not isinstance(v,str):
+                    if len(v) != N_material:
+                        raise ValueError
+                    for i,vv in enumerate(np.array(v)):
+                        m[i][0][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
+                else:
+                    for i in range(N_material):
+                        m[i][0][k] = v
+            return m
+        else:
+            raise NotImplementedError
