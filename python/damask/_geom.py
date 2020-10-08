@@ -1,15 +1,18 @@
 import copy
 import multiprocessing as mp
 from functools import partial
+from os import path
 
 import numpy as np
+import h5py
 from scipy import ndimage,spatial
 
 from . import environment
-from . import Rotation
 from . import VTK
 from . import util
 from . import grid_filters
+from . import Table
+from . import Rotation
 
 
 class Geom:
@@ -353,7 +356,7 @@ class Geom:
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
             Material IDs. Defaults to (1,2).
-        
+
         Notes
         -----
         The following triply-periodic minimal surfaces are implemented:
@@ -395,6 +398,35 @@ class Geom:
                     size     = size,
                     comments = util.execution_stamp('Geom','from_minimal_surface'),
                    )
+
+
+    @staticmethod
+    def load_DREAM3D(fname,base_group,point_data=None,material='FeatureIds'):
+        root_dir ='DataContainers'
+        f = h5py.File(fname, 'r')
+        g = path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
+        size   = f[path.join(g,'DIMENSIONS')][()] * f[path.join(g,'SPACING')][()]
+        grid   = f[path.join(g,'DIMENSIONS')][()]
+        origin = f[path.join(g,'ORIGIN')][()]
+        group_pointwise = path.join(root_dir,base_group,point_data)
+
+        ma = np.arange(1,np.product(grid)+1,dtype=int) if point_data is None else \
+             np.reshape(f[path.join(group_pointwise,material)],grid.prod())
+
+        return Geom(ma.reshape(grid,order='F'),size,origin,util.execution_stamp('Geom','from_DREAM3D'))
+
+
+    @staticmethod
+    def load_table(fname,coordinates,labels):
+        table = Table.load(fname).sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
+
+        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(table.get(coordinates))
+
+        labels_ = [labels] if isinstance(labels,str) else labels
+        _,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
+        ma = unique_inverse.reshape(grid,order='F') + 1
+
+        return Geom(ma,size,origin,util.execution_stamp('Geom','from_table'))
 
 
     def save(self,fname,compress=True):
@@ -536,7 +568,7 @@ class Geom:
         coords_rot = R.broadcast_to(tuple(self.grid))@coords
 
         with np.errstate(all='ignore'):
-            mask = np.where(np.sum(np.power(coords_rot/r,2.0**exponent),axis=-1) > 1.0,True,False)
+            mask = np.sum(np.power(coords_rot/r,2.0**np.array(exponent)),axis=-1) > 1.0
 
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
