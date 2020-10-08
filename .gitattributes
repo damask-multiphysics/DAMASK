@@ -8,6 +8,7 @@
 *.jpg binary
 *.hdf5 binary
 *.pdf binary
+*.dream3d binary
 
 # ignore files from MSC.Marc in language statistics
 installation/mods_MarcMentat/20*/*  linguist-vendored
