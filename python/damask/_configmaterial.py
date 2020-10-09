@@ -54,7 +54,7 @@ class ConfigMaterial(Config):
             pos  pos  pos   qu   qu    qu    qu   phase    homog
         0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
         1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.load_table('small.txt','pos',{'O':'qu','phase':'phase'},homogenization='h')
+        >>> cm.load_table('small.txt','pos',{'O':'qu','phase':'phase'},homogenization='homog')
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
