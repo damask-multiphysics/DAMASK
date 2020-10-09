@@ -5,6 +5,7 @@ import numpy as np
 from . import Config
 from . import Lattice
 from . import Rotation
+from . import Table
 
 class ConfigMaterial(Config):
     """Material configuration."""
@@ -22,6 +23,22 @@ class ConfigMaterial(Config):
 
         """
         super().save(fname,**kwargs)
+
+
+    @staticmethod
+    def load_table(fname,coordinates=None,constituents={},**kwargs):
+        t = Table.load(fname)
+        if coordinates is not None: t = t.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
+        constituents_ = {k:t.get(v) for k,v in constituents.items()}
+        kwargs_       = {k:t.get(v) for k,v in kwargs.items()}
+
+        _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
+
+        constituents_ = {k:v[idx].squeeze() for k,v in constituents_.items()}
+        kwargs_       = {k:v[idx].squeeze() for k,v in kwargs_.items()}
+
+        return ConfigMaterial().material_add(constituents_,**kwargs_)
+
 
     @property
     def is_complete(self):
@@ -180,7 +197,9 @@ class ConfigMaterial(Config):
         """
         c = [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
         for k,v in kwargs.items():
-            if isinstance(v,np.ndarray):
+            if hasattr(v,'__len__') and not isinstance(v,str):
+                if len(v) != len(c):
+                    raise ValueError('len mismatch 1')
                 for i,vv in enumerate(v):
                     c[i][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
             else:
@@ -195,6 +214,7 @@ class ConfigMaterial(Config):
 
     @staticmethod
     def _constituents(N=1,**kwargs):
+        """Construct list of constituents."""
         for v in kwargs.values():
             if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
 
@@ -203,7 +223,7 @@ class ConfigMaterial(Config):
             for k,v in kwargs.items():
                 if hasattr(v,'__len__') and not isinstance(v,str):
                     if len(v) != N_material:
-                        raise ValueError
+                        raise ValueError('len mismatch 2')
                     for i,vv in enumerate(np.array(v)):
                         m[i][0][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
                 else:
