@@ -50,7 +50,8 @@ for name in filenames:
     for l in [options.quaternion,options.phase,options.microstructure]:
         if l is not None: labels.append(l)
 
-    geom = damask.Geom.load_table(name,options.pos,labels)
+    t = damask.Table.load(name)
+    geom = damask.Geom.from_table(t,options.pos,labels)
     damask.util.croak(geom)
 
     geom.save_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',compress=False)

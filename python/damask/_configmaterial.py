@@ -6,7 +6,6 @@ from . import grid_filters
 from . import Config
 from . import Lattice
 from . import Rotation
-from . import Table
 
 class ConfigMaterial(Config):
     """Material configuration."""
@@ -27,13 +26,13 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_table(fname,coordinates=None,constituents={},**kwargs):
+    def from_table(table,coordinates=None,constituents={},**kwargs):
         """
         Load from an ASCII table.
 
         Parameters
         ----------
-        fname : str, file handle, or damask.Table
+        table : damask.Table
             Table that contains material information.
         coordinates : str, optional
             Label of spatial coordiates. Used for sorting and performing a
@@ -50,11 +49,12 @@ class ConfigMaterial(Config):
         --------
         >>> import damask
         >>> import damask.ConfigMaterial as cm
-        >>> damask.Table.load('small.txt')
+        >>> t = damask.Table.load('small.txt')
+        >>> t
             pos  pos  pos   qu   qu    qu    qu   phase    homog
         0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
         1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.load_table('small.txt','pos',{'O':'qu','phase':'phase'},homogenization='homog')
+        >>> cm.from_table(t,'pos',{'O':'qu','phase':'phase'},homogenization='homog')
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
@@ -68,10 +68,12 @@ class ConfigMaterial(Config):
             homogenization: SX
 
         """
-        t = Table.load(fname)
         if coordinates is not None:
-            t = t.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
+            t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
             grid_filters.coord0_check(t.get(coordinates))
+        else:
+            t = table
+
         constituents_ = {k:t.get(v) for k,v in constituents.items()}
         kwargs_       = {k:t.get(v) for k,v in kwargs.items()}
 
@@ -256,7 +258,7 @@ class ConfigMaterial(Config):
                 fraction: 1.0
                 phase: Aluminum
             homogenization: SX
-        
+
         """
         c = [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
         for k,v in kwargs.items():

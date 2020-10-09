@@ -11,7 +11,6 @@ from . import environment
 from . import VTK
 from . import util
 from . import grid_filters
-from . import Table
 from . import Rotation
 
 
@@ -246,14 +245,14 @@ class Geom:
 
 
     @staticmethod
-    def load_table(fname,coordinates,labels):
+    def from_table(table,coordinates,labels):
         """
         Load an ASCII table.
 
         Parameters
         ----------
-        fname : str, file handle, or damask.Table
-            Table that contains geometry information.
+        table : damask.Table
+            Table that contains material information.
         coordinates : str
             Label of the column containing the spatial coordinates.
         labels : str or list of str
@@ -261,16 +260,15 @@ class Geom:
             Each unique combintation of values results in a material.
 
         """
-        table = (fname if isinstance(fname,Table) else Table.load(fname)). \
-                sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
+        t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
 
-        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(table.get(coordinates))
+        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(t.get(coordinates))
 
         labels_ = [labels] if isinstance(labels,str) else labels
-        _,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
+        _,unique_inverse = np.unique(np.hstack([t.get(l) for l in labels_]),return_inverse=True,axis=0)
         ma = unique_inverse.reshape(grid,order='F') + 1
 
-        return Geom(ma,size,origin,util.execution_stamp('Geom','load_table'))
+        return Geom(ma,size,origin,util.execution_stamp('Geom','from_table'))
 
 
     @staticmethod
