@@ -1,8 +1,10 @@
 homogenization:
   SX:
+    N_constituents: 2
     mech: {type: none}
   Taylor:
-    mech: {N_constituents: 2, type: isostrain}
+    N_constituents: 2
+    mech: {type: isostrain}
 
 material:
   - constituents:
