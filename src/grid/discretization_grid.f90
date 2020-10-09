@@ -67,11 +67,7 @@ subroutine discretization_grid_init(restart)
 
   print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
-  if(index(interface_geomFile,'.vtr') /= 0) then
-    call readVTR(grid,geomSize,origin,materialAt)
-  else
-    call readGeom(grid,geomSize,origin,materialAt)
-  endif
+  call readVTR(grid,geomSize,origin,materialAt)
 
   print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
   print'(a,3(es12.5))',   ' size     x y z: ', geomSize
@@ -412,11 +408,12 @@ subroutine readVTR(grid,geomSize,origin,material)
     startPos = endPos + 2_pI64
 
   end do
-
+  material = material + 1
   if(.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
   if(size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
   if(any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
   if(any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
+  if(any(material<0))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
 
   contains
 
