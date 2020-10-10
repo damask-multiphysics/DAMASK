@@ -32,6 +32,10 @@ def reference_dir(reference_dir_base):
 
 class TestGeom:
 
+    @pytest.fixture(autouse=True)
+    def _execution_stamp(self, execution_stamp):
+        print('patched damask.util.execution_stamp')
+
     def test_diff_equal(self,default):
         assert str(default.diff(default)) == ''
 
@@ -95,10 +99,10 @@ class TestGeom:
                             )
     def test_mirror(self,default,update,reference_dir,directions,reflect):
         modified = default.mirror(directions,reflect)
-        tag = f'directions={"-".join(directions)}_reflect={reflect}'
-        reference = reference_dir/f'mirror_{tag}.geom'
-        if update: modified.save_ASCII(reference)
-        assert geom_equal(Geom.load_ASCII(reference),
+        tag = f'directions_{"-".join(directions)}+reflect_{reflect}'
+        reference = reference_dir/f'mirror_{tag}.vtr'
+        if update: modified.save(reference)
+        assert geom_equal(Geom.load(reference),
                           modified)
 
 
@@ -117,10 +121,10 @@ class TestGeom:
                             )
     def test_flip(self,default,update,reference_dir,directions):
         modified = default.flip(directions)
-        tag = f'directions={"-".join(directions)}'
-        reference = reference_dir/f'flip_{tag}.geom'
-        if update: modified.save_ASCII(reference)
-        assert geom_equal(Geom.load_ASCII(reference),
+        tag = f'directions_{"-".join(directions)}'
+        reference = reference_dir/f'flip_{tag}.vtr'
+        if update: modified.save(reference)
+        assert geom_equal(Geom.load(reference),
                           modified)
 
 
@@ -163,10 +167,10 @@ class TestGeom:
                             )
     def test_scale(self,default,update,reference_dir,grid):
         modified = default.scale(grid)
-        tag = f'grid={util.srepr(grid,"-")}'
-        reference = reference_dir/f'scale_{tag}.geom'
-        if update: modified.save_ASCII(reference)
-        assert geom_equal(Geom.load_ASCII(reference),
+        tag = f'grid_{util.srepr(grid,"-")}'
+        reference = reference_dir/f'scale_{tag}.vtr'
+        if update: modified.save(reference)
+        assert geom_equal(Geom.load(reference),
                           modified)
 
 
@@ -206,10 +210,10 @@ class TestGeom:
                                        [0.0,32.0,240.0]])
     def test_rotate(self,default,update,reference_dir,Eulers):
         modified = default.rotate(Rotation.from_Eulers(Eulers,degrees=True))
-        tag = f'Eulers={util.srepr(Eulers,"-")}'
-        reference = reference_dir/f'rotate_{tag}.geom'
-        if update: modified.save_ASCII(reference)
-        assert geom_equal(Geom.load_ASCII(reference),
+        tag = f'Eulers_{util.srepr(Eulers,"-")}'
+        reference = reference_dir/f'rotate_{tag}.vtr'
+        if update: modified.save(reference)
+        assert geom_equal(Geom.load(reference),
                           modified)
 
 

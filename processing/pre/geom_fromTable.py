@@ -100,4 +100,4 @@ for name in filenames:
                        comments=header)
     damask.util.croak(geom)
 
-    geom.save_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom',compress=False)
+    geom.save_ASCII(sys.stdout if name is None else os.path.splitext(name)[0]+'.geom')

@@ -138,4 +138,4 @@ geom = damask.Geom(microstructure.reshape(grid),
                    comments=header)
 damask.util.croak(geom)
 
-geom.save_ASCII(sys.stdout if name is None else name,compress=False)
+geom.save_ASCII(sys.stdout if name is None else name)

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<VTKFile type="RectilinearGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <RectilinearGrid WholeExtent="0 10 0 11 0 10">
+    <FieldData>
+      <Array type="String" Name="comments" NumberOfTuples="1" format="binary">
+        AQAAAACAAAA+AAAAQQAAAA==eF5LScxNLM7Wc0/Nz9UrTk7MSVUos7TUAyNdSyDQLagsSS0uUdAwMjC01DU01DUwUjA0tDK1sDIw0GQAAFYKEKs=
+      </Array>
+    </FieldData>
+  <Piece Extent="0 10 0 11 0 10">
+    <PointData>
+    </PointData>
+    <CellData>
+      <DataArray type="Int64" Name="material" format="binary" RangeMin="1" RangeMax="41">
+        AQAAAACAAABgIgAA/gAAAA==eF7t2CcOA0EQRFHnnHPO8f4XNHAtKWmQPxhZveSxj6ZBbbn0/cphGIZh+EdWZFXWzLpsyKbZkm1J9zqyK3tmXw7k0BzJsaR7EzmVM3MuF3JpruRa5t7byK3cmXt5kEfzJM+S7l3kVd7Mu3zIp/mSb0n36Puge/R90D36Pefeo++D7tH3Qffo+6B79H3QPfo9596j74Pu0fdB9yphGIZhGIZh+IOp/5S+v3x3+f4qdhfdS+0431++u3x/FbuL7qV2nO8l30m+l4qdlHsvteN8f/nu8v11knQvteN8f/nu8v1V7C66R98H3aPvg+7R7zn3Hn0fdI++D7r3AZqNMMY=
+      </DataArray>
+    </CellData>
+    <Coordinates>
+      <DataArray type="Float64" Name="x" format="binary" RangeMin="0" RangeMax="0.000008">
+        AQAAAACAAABYAAAARQAAAA==eF5jYIAAj/V7Zn26vsoOQu+yK2vm/fJV8QiUf8qu9+3WBd+PXYCKX7GLl0x1/1JzHSp/y87QVeTdB6N7UHUP7ACC9C8w
+      </DataArray>
+      <DataArray type="Float64" Name="y" format="binary" RangeMin="0" RangeMax="0.000005">
+        AQAAAACAAABgAAAATgAAAA==eF5jYICAV+vf8nA0zrOD0OvsPjhv4jz2YBuUv8/uU68Ix1KBw1DxY3Zvf/pzP99wCip/zu7LJtf2KRoXoeou233MeNyx9ccVOwADxy6u
+      </DataArray>
+      <DataArray type="Float64" Name="z" format="binary" RangeMin="0" RangeMax="0.000004">
+        AQAAAACAAABYAAAARQAAAA==eF5jYIAAj/V7Zn26PssOQq+yK2vm/fJVcQuUv8uu9+3WBd+PHYCKH7GLl0x1/1JzHCp/ys7QVeTdB6NzUHUX7ABrNC6Q
+      </DataArray>
+    </Coordinates>
+  </Piece>
+  </RectilinearGrid>
+</VTKFile>

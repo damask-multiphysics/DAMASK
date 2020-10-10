@@ -148,4 +148,4 @@ for name in filenames:
   geom = damask.Geom(microstructure,size,origin,comments=header)
   damask.util.croak(geom)
 
-  geom.save_ASCII(os.path.splitext(name)[0]+'.geom',compress=False)
+  geom.save_ASCII(os.path.splitext(name)[0]+'.geom')

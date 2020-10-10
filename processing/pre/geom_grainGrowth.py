@@ -174,4 +174,4 @@ for name in filenames:
               origin    = geom.origin,
               comments  = geom.comments + [scriptID + ' ' + ' '.join(sys.argv[1:])],
              )\
-        .save_ASCII(sys.stdout if name is None else name,compress=False)
+        .save_ASCII(sys.stdout if name is None else name)
