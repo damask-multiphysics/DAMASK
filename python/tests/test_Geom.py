@@ -1,5 +1,4 @@
 import os
-import time
 
 import pytest
 import numpy as np
@@ -42,44 +41,14 @@ class TestGeom:
         assert str(default.diff(new)) != ''
 
 
-    def test_write_read_str(self,default,tmp_path):
-        default.save_ASCII(str(tmp_path/'default.geom'))
-        new = Geom.load_ASCII(str(tmp_path/'default.geom'))
-        assert geom_equal(default,new)
-
-
-    def test_write_read_file(self,default,tmp_path):
-        with open(tmp_path/'default.geom','w') as f:
-            default.save_ASCII(f,compress=True)
-        with open(tmp_path/'default.geom') as f:
-            new = Geom.load_ASCII(f)
-        assert geom_equal(default,new)
-
-
     def test_read_write_vtr(self,default,tmp_path):
         default.save(tmp_path/'default')
-        for _ in range(10):
-            time.sleep(.2)
-            if os.path.exists(tmp_path/'default.vtr'): break
-
         new = Geom.load(tmp_path/'default.vtr')
         assert geom_equal(new,default)
-
-
-    def test_invalid_geom(self,tmp_path):
-        with open(tmp_path/'invalid_file','w') as f:
-            f.write('this is not a valid header')
-        with open(tmp_path/'invalid_file','r') as f:
-            with pytest.raises(TypeError):
-                Geom.load_ASCII(f)
-
 
     def test_invalid_vtr(self,tmp_path):
         v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
         v.save(tmp_path/'no_materialpoint.vtr')
-        for _ in range(10):
-            time.sleep(.2)
-            if os.path.exists(tmp_path/'no_materialpoint.vtr'): break
         with pytest.raises(ValueError):
             Geom.load(tmp_path/'no_materialpoint.vtr')
 
@@ -90,13 +59,6 @@ class TestGeom:
     def test_cast_to_int(self):
         g = Geom(np.zeros((3,3,3)),np.ones(3))
         assert g.material.dtype in np.sctypes['int']
-
-    @pytest.mark.parametrize('compress',[True,False])
-    def test_compress(self,default,tmp_path,compress):
-        default.save_ASCII(tmp_path/'default.geom',compress=compress)
-        new = Geom.load_ASCII(tmp_path/'default.geom')
-        assert geom_equal(new,default)
-
 
     def test_invalid_size(self,default):
         with pytest.raises(ValueError):
@@ -185,9 +147,6 @@ class TestGeom:
         reference = reference_dir/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
         if update and stencil > 1:
             current.save(reference)
-            for _ in range(10):
-                time.sleep(.2)
-                if os.path.exists(reference.with_suffix('.vtr')): break
         assert geom_equal(Geom.load(reference) if stencil > 1 else default,
                           current
                          )
