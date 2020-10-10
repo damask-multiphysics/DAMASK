@@ -1,5 +1,3 @@
-import os
-
 import pytest
 import numpy as np
 
@@ -305,8 +303,8 @@ class TestGeom:
         N_seeds= np.random.randint(10,30)
         seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
         weights= np.full((N_seeds),-np.inf)
-        ms     = np.random.randint(1, N_seeds+1)
-        weights[ms-1] = np.random.random()
+        ms     = np.random.randint(N_seeds)
+        weights[ms] = np.random.random()
         Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,periodic=np.random.random()>0.5)
         assert np.all(Laguerre.material == ms)
 
@@ -316,8 +314,8 @@ class TestGeom:
         grid  = np.random.randint(5,10,3)*2
         size  = grid.astype(np.float)
         seeds = np.vstack((size*np.array([0.5,0.25,0.5]),size*np.array([0.5,0.75,0.5])))
-        material = np.ones(grid)
-        material[:,grid[1]//2:,:] = 2
+        material = np.zeros(grid)
+        material[:,grid[1]//2:,:] = 1
         if   approach == 'Laguerre':
             geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),periodic=np.random.random()>0.5)
         elif approach == 'Voronoi':

@@ -256,7 +256,7 @@ class Geom:
         else:
             material_ = material_.reshape(grid)
 
-        return Geom(material = material_+1 if material is None else material[material_],
+        return Geom(material = material_ if material is None else material[material_],
                     size     = size,
                     comments = util.execution_stamp('Geom','from_Laguerre_tessellation'),
                    )
@@ -286,7 +286,7 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,material_ = KDTree.query(coords)
 
-        return Geom(material = (material_+1 if material is None else material[material_]).reshape(grid),
+        return Geom(material = (material_ if material is None else material[material_]).reshape(grid),
                     size     = size,
                     comments = util.execution_stamp('Geom','from_Voronoi_tessellation'),
                    )
@@ -335,7 +335,7 @@ class Geom:
 
 
     @staticmethod
-    def from_minimal_surface(grid,size,surface,threshold=0.0,periods=1,materials=(1,2)):
+    def from_minimal_surface(grid,size,surface,threshold=0.0,periods=1,materials=(0,1)):
         """
         Generate geometry from definition of triply periodic minimal surface.
 
