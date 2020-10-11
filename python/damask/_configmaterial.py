@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 
+from . import grid_filters
 from . import Config
 from . import Lattice
 from . import Rotation
@@ -17,11 +18,72 @@ class ConfigMaterial(Config):
         ----------
         fname : file, str, or pathlib.Path, optional
             Filename or file for writing. Defaults to 'material.yaml'.
-        **kwargs : dict
+        **kwargs
             Keyword arguments parsed to yaml.dump.
 
         """
         super().save(fname,**kwargs)
+
+
+    @staticmethod
+    def from_table(table,coordinates=None,constituents={},**kwargs):
+        """
+        Load from an ASCII table.
+
+        Parameters
+        ----------
+        table : damask.Table
+            Table that contains material information.
+        coordinates : str, optional
+            Label of spatial coordiates. Used for sorting and performing a
+            sanity check. Default to None, in which case no sorting or checking is
+            peformed.
+        constituents : dict, optional
+            Entries for 'constituents'. The key is the name and the value specifies
+            the label of the data column in the table
+        **kwargs
+            Keyword arguments where the key is the name and  the value specifies
+            the label of the data column in the table
+
+        Examples
+        --------
+        >>> import damask
+        >>> import damask.ConfigMaterial as cm
+        >>> t = damask.Table.load('small.txt')
+        >>> t
+            pos  pos  pos   qu   qu    qu    qu   phase    homog
+        0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
+        1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
+        >>> cm.from_table(t,'pos',{'O':'qu','phase':'phase'},homogenization='homog')
+        material:
+          - constituents:
+              - O: [0.19, 0.8, 0.24, -0.51]
+                fraction: 1.0
+                phase: Aluminum
+            homogenization: SX
+          - constituents:
+              - O: [0.8, 0.19, 0.24, -0.51]
+                fraction: 1.0
+                phase: Steel
+            homogenization: SX
+
+        """
+        if coordinates is not None:
+            t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
+            grid_filters.coord0_check(t.get(coordinates))
+        else:
+            t = table
+
+        constituents_ = {k:t.get(v) for k,v in constituents.items()}
+        kwargs_       = {k:t.get(v) for k,v in kwargs.items()}
+
+        _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
+
+        constituents_ = {k:v[idx].squeeze() for k,v in constituents_.items()}
+        kwargs_       = {k:v[idx].squeeze() for k,v in kwargs_.items()}
+
+        return ConfigMaterial().material_add(constituents_,**kwargs_)
+
 
     @property
     def is_complete(self):
@@ -62,10 +124,10 @@ class ConfigMaterial(Config):
                     print(f'No lattice specified in phase {k}')
                     ok = False
 
-            #for k,v in self['homogenization'].items():
-            #    if 'N_constituents' not in v:
-            #        print(f'No. of constituents not specified in homogenization {k}'}
-            #        ok = False
+            for k,v in self['homogenization'].items():
+                if 'N_constituents' not in v:
+                    print(f'No. of constituents not specified in homogenization {k}')
+                    ok = False
 
             if phase - set(self['phase']):
                 print(f'Phase(s) {phase-set(self["phase"])} missing')
@@ -158,3 +220,80 @@ class ConfigMaterial(Config):
             except KeyError:
                 continue
         return dup
+
+
+    def material_add(self,constituents,**kwargs):
+        """
+        Add material entries.
+
+        Parameters
+        ----------
+        constituents : dict
+            Entries for 'constituents'. The key is the name and the value specifies
+            the label of the data column in the table
+        **kwargs
+            Keyword arguments where the key is the name and  the value specifies
+            the label of the data column in the table
+
+        Examples
+        --------
+        >>> import damask
+        >>> m = damask.ConfigMaterial()
+        >>> O = damask.Rotation.from_random(3).as_quaternion()
+        >>> phase = ['Aluminum','Steel','Aluminum']
+        >>> m.material_add(constituents={'phase':phase,'O':O},homogenization='SX')
+        material:
+          - constituents:
+              - O: [0.577764, -0.146299, -0.617669, 0.513010]
+                fraction: 1.0
+                phase: Aluminum
+            homogenization: SX
+          - constituents:
+              - O: [0.184176, 0.340305, 0.737247, 0.553840]
+                fraction: 1.0
+                phase: Steel
+            homogenization: SX
+          - constituents:
+              - O: [0.0886257, -0.144848, 0.615674, -0.769487]
+                fraction: 1.0
+                phase: Aluminum
+            homogenization: SX
+
+        """
+        c = [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
+        for k,v in kwargs.items():
+            if hasattr(v,'__len__') and not isinstance(v,str):
+                if len(v) != len(c):
+                    raise ValueError('len mismatch 1')
+                for i,vv in enumerate(v):
+                    c[i][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
+            else:
+                for i in range(len(c)):
+                    c[i][k] = v
+        dup = copy.deepcopy(self)
+        if 'material' not in dup: dup['material'] = []
+        dup['material'] +=c
+
+        return dup
+
+
+    @staticmethod
+    def _constituents(N=1,**kwargs):
+        """Construct list of constituents."""
+        for v in kwargs.values():
+            if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
+
+        if N == 1:
+            m = [[{'fraction':1.0}] for _ in range(N_material)]
+            for k,v in kwargs.items():
+                if hasattr(v,'__len__') and not isinstance(v,str):
+                    if len(v) != N_material:
+                        raise ValueError('len mismatch 2')
+                    for i,vv in enumerate(np.array(v)):
+                        m[i][0][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
+                else:
+                    for i in range(N_material):
+                        m[i][0][k] = v
+            return m
+        else:
+            raise NotImplementedError

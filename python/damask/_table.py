@@ -33,6 +33,10 @@ class Table:
         """Brief overview."""
         return util.srepr(self.comments)+'\n'+self.data.__repr__()
 
+    def __len__(self):
+        """Number of rows."""
+        return len(self.data)
+
     def __copy__(self):
         """Copy Table."""
         return copy.deepcopy(self)
