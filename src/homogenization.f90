@@ -404,16 +404,16 @@ subroutine partitionDeformation(subF,ip,el)
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-      crystallite_partionedF(1:3,1:3,1,ip,el) = subF
+      crystallite_partitionedF(1:3,1:3,1,ip,el) = subF
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
       call mech_isostrain_partitionDeformation(&
-                           crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                           crystallite_partitionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                            subF)
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
       call mech_RGC_partitionDeformation(&
-                          crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                          crystallite_partitionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
                           subF,&
                           ip, &
                           el)
@@ -448,8 +448,8 @@ function updateState(subdt,subF,ip,el)
       updateState = &
         updateState .and. &
           mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                               crystallite_partionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                               crystallite_partionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
+                               crystallite_partitionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                               crystallite_partitionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
                                subF,&
                                subdt, &
                                dPdFs, &
