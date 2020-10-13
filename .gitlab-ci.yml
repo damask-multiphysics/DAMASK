@@ -193,6 +193,8 @@ grid_mech_compile_Intel:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cp -r grid_mech_compile grid_mech_compile_Intel
     - grid_mech_compile_Intel/test.py
+    - cd pytest
+    - pytest -k 'compile and grid'
   except:
     - master
     - release
@@ -203,6 +205,8 @@ Compile_FEM_Intel:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cp -r FEM_compile FEM_compile_Intel
     - FEM_compile_Intel/test.py
+    - cd pytest
+    - pytest -k 'compile and mesh'
   except:
     - master
     - release
@@ -213,6 +217,8 @@ grid_mech_compile_GNU:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - cp -r grid_mech_compile grid_mech_compile_GNU
     - grid_mech_compile_GNU/test.py
+    - cd pytest
+    - pytest -k 'compile and grid'
   except:
     - master
     - release
@@ -223,6 +229,8 @@ Compile_FEM_GNU:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - cp -r FEM_compile FEM_compile_GNU
     - FEM_compile_GNU/test.py
+    - cd pytest
+    - pytest -k 'compile and mesh'
   except:
     - master
     - release
@@ -244,7 +252,7 @@ Pytest_grid:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
-    - pytest
+    - pytest -m 'not compile'
   except:
     - master
     - release
@@ -306,6 +314,8 @@ Marc_compileIfort:
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - Marc_compileIfort/test.py
+    - cd pytest
+    - pytest -k 'compile and Marc'
   except:
     - master
     - release

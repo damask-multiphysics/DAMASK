@@ -1,15 +1,17 @@
 import copy
 import multiprocessing as mp
 from functools import partial
+from os import path
 
 import numpy as np
+import h5py
 from scipy import ndimage,spatial
 
 from . import environment
-from . import Rotation
 from . import VTK
 from . import util
 from . import grid_filters
+from . import Rotation
 
 
 class Geom:
@@ -207,6 +209,68 @@ class Geom:
         return Geom(material.reshape(grid,order='F'),size,origin,comments)
 
 
+
+    @staticmethod
+    def load_DREAM3D(fname,base_group,point_data=None,material='FeatureIds'):
+        """
+        Load a DREAM.3D file.
+
+        Parameters
+        ----------
+        fname : str
+            Filename of the DREAM.3D file
+        base_group : str
+            Name of the group (folder) below 'DataContainers'. For example
+            'SyntheticVolumeDataContainer'.
+        point_data : str, optional
+            Name of the group (folder) containing the point wise material data,
+            for example 'CellData'. Defaults to None, in which case points consecutively numbered.
+        material : str, optional
+            Name of the dataset containing the material ID. Defaults to
+            'FeatureIds'.
+
+        """
+        root_dir ='DataContainers'
+        f = h5py.File(fname, 'r')
+        g = path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
+        size   = f[path.join(g,'DIMENSIONS')][()] * f[path.join(g,'SPACING')][()]
+        grid   = f[path.join(g,'DIMENSIONS')][()]
+        origin = f[path.join(g,'ORIGIN')][()]
+        group_pointwise = path.join(root_dir,base_group,point_data)
+
+        ma = np.arange(1,np.product(grid)+1,dtype=int) if point_data is None else \
+             np.reshape(f[path.join(group_pointwise,material)],grid.prod())
+
+        return Geom(ma.reshape(grid,order='F'),size,origin,util.execution_stamp('Geom','load_DREAM3D'))
+
+
+    @staticmethod
+    def from_table(table,coordinates,labels):
+        """
+        Load an ASCII table.
+
+        Parameters
+        ----------
+        table : damask.Table
+            Table that contains material information.
+        coordinates : str
+            Label of the column containing the spatial coordinates.
+        labels : str or list of str
+            Label(s) of the columns containing the material definition.
+            Each unique combintation of values results in a material.
+
+        """
+        t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
+
+        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(t.get(coordinates))
+
+        labels_ = [labels] if isinstance(labels,str) else labels
+        _,unique_inverse = np.unique(np.hstack([t.get(l) for l in labels_]),return_inverse=True,axis=0)
+        ma = unique_inverse.reshape(grid,order='F') + 1
+
+        return Geom(ma,size,origin,util.execution_stamp('Geom','from_table'))
+
+
     @staticmethod
     def _find_closest_seed(seeds, weights, point):
         return np.argmin(np.sum((np.broadcast_to(point,(len(seeds),3))-seeds)**2,axis=1) - weights)
@@ -399,7 +463,7 @@ class Geom:
 
     def save(self,fname,compress=True):
         """
-        Generate vtk rectilinear grid.
+        Store as vtk rectilinear grid.
 
         Parameters
         ----------
@@ -489,7 +553,7 @@ class Geom:
         coords_rot = R.broadcast_to(tuple(self.grid))@coords
 
         with np.errstate(all='ignore'):
-            mask = np.where(np.sum(np.power(coords_rot/r,2.0**exponent),axis=-1) > 1.0,True,False)
+            mask = np.sum(np.power(coords_rot/r,2.0**np.array(exponent)),axis=-1) > 1.0
 
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))

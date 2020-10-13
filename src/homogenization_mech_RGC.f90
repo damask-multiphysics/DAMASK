@@ -212,7 +212,7 @@ end subroutine mech_RGC_init
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
 
-  real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partioned F  per grain
+  real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned F  per grain
 
   real(pReal),   dimension (3,3),   intent(in)  :: avgF                                             !< averaged F
   integer,                          intent(in)  :: &
@@ -867,7 +867,7 @@ module procedure mech_RGC_updateState
   !--------------------------------------------------------------------------------------------------
   subroutine grainDeformation(F, avgF, instance, of)
 
-    real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partioned F  per grain
+    real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
 
     real(pReal),   dimension(:,:),   intent(in)  :: avgF                                            !< averaged F
     integer,                          intent(in)  :: &
