@@ -57,7 +57,7 @@ program DAMASK_grid
     stagIterate, &
     cutBack = .false.
   integer :: &
-    i, j, k, l, field, &
+    i, j, m, field, &
     errorID = 0, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0                                                                                !< fraction of current time interval
@@ -68,7 +68,6 @@ program DAMASK_grid
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
     nActiveFields = 0
-  character(len=pStringLen), dimension(:), allocatable :: fileContent
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
@@ -93,7 +92,14 @@ program DAMASK_grid
     quit
   class (tNode), pointer :: &
     num_grid, &
-    debug_grid                                                                                      ! pointer to grid debug options
+    debug_grid, &                                                                                    ! pointer to grid debug options
+    config_load, &
+    load_steps, &
+    load_step, &
+    step_mech, &
+    step_discretization, &
+    step_deformation, &
+    step_stress
 
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
@@ -159,25 +165,23 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! reading information from load case file and to sanity checks 
-  fileContent = IO_readlines(trim(interface_loadFile))
-  if(size(fileContent) == 0) call IO_error(307,ext_msg='No load case specified')
-  
-  allocate (loadCases(0))                                                                           ! array of load cases
-  do currentLoadCase = 1, size(fileContent)
-    line = fileContent(currentLoadCase)
-    if (IO_isBlank(line)) cycle
-    chunkPos = IO_stringPos(line)
-  
-    do i = 1, chunkPos(1)                                                                           ! reading compulsory parameters for loadcase
-      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-        case('l','fdot','dotf','f')
+  config_load => YAML_parse_file(trim(interface_loadFile)) 
+ 
+  load_steps => config_load%get('step')
+  allocate(loadCases(load_steps%length))                                                            ! array of load cases
+
+  do currentLoadCase = 1, load_steps%length
+    load_step => load_steps%get(currentLoadCase)
+    step_mech => load_step%get('mech')
+    step_discretization => load_step%get('discretization')
+    do m = 1, step_mech%length
+      select case (step_mech%getKey(m))
+        case('L','Fdot','F')
           N_def = N_def + 1
-        case('t','time','delta')
-          N_t = N_t + 1
-        case('n','incs','increments','logincs','logincrements')
-          N_n = N_n + 1
       end select
     enddo
+    if(step_discretization%contains('t')) N_t = N_t + 1
+    if(step_discretization%contains('N')) N_n = N_n + 1
     if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
       call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(interface_loadFile))             ! error message for incomplete loadcase
   
@@ -192,70 +196,51 @@ program DAMASK_grid
       field = field + 1
       newLoadCase%ID(field) = FIELD_DAMAGE_ID
     endif damageActive
-  
-    call newLoadCase%rot%fromEulers(real([0.0,0.0,0.0],pReal))
-    readIn: do i = 1, chunkPos(1)
-      select case (IO_lc(IO_stringValue(line,chunkPos,i)))
-        case('fdot','dotf','l','f')                                                                 ! assign values for the deformation BC matrix
-          temp_valueVector = 0.0_pReal
-          if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'fdot'.or. &                                ! in case of Fdot, set type to fdot
-              IO_lc(IO_stringValue(line,chunkPos,i)) == 'dotf') then
+ 
+    call newLoadCase%rot%fromEulers(real([0.0,0.0,0.0],pReal)) 
+    readMech: do m = 1, step_mech%length
+      select case (step_mech%getKey(m))
+        case('Fdot','L','F')                                                                        ! assign values for the deformation BC matrix
+          temp_valueVector = 0.0_pReal 
+          if (step_mech%getKey(m) == 'Fdot') then                                                   ! in case of Fdot, set type to fdot
             newLoadCase%deformation%myType = 'fdot'
-          else if (IO_lc(IO_stringValue(line,chunkPos,i)) == 'f') then
+          else if (step_mech%getKey(m) == 'F') then
             newLoadCase%deformation%myType = 'f'
           else
             newLoadCase%deformation%myType = 'l'
           endif
+          step_deformation => step_mech%get(m)
           do j = 1, 9
-            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                           ! true if not a *
-            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
+            temp_maskVector(j) = step_deformation%get_asString(j) /= 'x'                            ! true if not a x
+            if (temp_maskVector(j)) temp_valueVector(j) = step_deformation%get_asFloat(j)           ! read value where applicable
           enddo
           newLoadCase%deformation%mask   = transpose(reshape(temp_maskVector,[ 3,3]))               ! mask in 3x3 notation
           newLoadCase%deformation%values = math_9to33(temp_valueVector)                             ! values in 3x3 notation
-        case('p','stress', 's')
+        case('P')
           temp_valueVector = 0.0_pReal
+          step_stress => step_mech%get(m)
           do j = 1, 9
-            temp_maskVector(j) = IO_stringValue(line,chunkPos,i+j) /= '*'                           ! true if not an asterisk
-            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)          ! read value where applicable
+            temp_maskVector(j) = step_stress%get_asString(j) /= 'x'                                 ! true if not an asterisk
+            if (temp_maskVector(j)) temp_valueVector(j) = step_stress%get_asFloat(j)                ! read value where applicable
           enddo
           newLoadCase%stress%mask   = transpose(reshape(temp_maskVector,[ 3,3]))
           newLoadCase%stress%values = math_9to33(temp_valueVector)
-        case('t','time','delta')                                                                    ! increment time
-          newLoadCase%time = IO_floatValue(line,chunkPos,i+1)
-        case('n','incs','increments')                                                               ! number of increments
-          newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
-        case('logincs','logincrements')                                                             ! number of increments (switch to log time scaling)
-          newLoadCase%incs = IO_intValue(line,chunkPos,i+1)
-          newLoadCase%logscale = 1
-        case('freq','frequency','outputfreq')                                                       ! frequency of result writings
-          newLoadCase%outputfrequency = IO_intValue(line,chunkPos,i+1)
-        case('r','restart','restartwrite')                                                          ! frequency of writing restart information
-          newLoadCase%restartfrequency = IO_intValue(line,chunkPos,i+1)
-        case('guessreset','dropguessing')
-          newLoadCase%followFormerTrajectory = .false.                                              ! do not continue to predict deformation along former trajectory
-        case('euler')                                                                               ! rotation of load case given in euler angles
-          temp_valueVector = 0.0_pReal
-          l = 1                                                                                     ! assuming values given in degrees
-          k = 1                                                                                     ! assuming keyword indicating degree/radians present
-          select case (IO_lc(IO_stringValue(line,chunkPos,i+1)))
-            case('deg','degree')
-            case('rad','radian')                                                                    ! don't convert from degree to radian
-              l = 0
-            case default
-              k = 0
-          end select
-          do j = 1, 3
-            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+k+j)
-          enddo
-          call newLoadCase%rot%fromEulers(temp_valueVector(1:3),degrees=(l==1))
-        case('rotation','rot')                                                                      ! assign values for the rotation  matrix
-          temp_valueVector = 0.0_pReal
-          do j = 1, 9
-            temp_valueVector(j) = IO_floatValue(line,chunkPos,i+j)
-          enddo
-          call newLoadCase%rot%fromMatrix(math_9to33(temp_valueVector))
       end select
-    enddo readIn
+    enddo readMech
+
+!--------------------------------------------------------------------------------------------------------
+! Read discretization parameters
+!--------------------------------------------------------------------------------------------------------
+    newLoadCase%time             = step_discretization%get_asFloat('t')
+    newLoadCase%incs             = step_discretization%get_asFloat('N')
+    newLoadCase%logscale         = step_discretization%get_asBool ('log_timestep', defaultVal= .false.)
+    newLoadCase%outputfrequency  = step_discretization%get_asInt  ('f_out',        defaultVal=1)
+    newLoadCase%restartfrequency = step_discretization%get_asInt  ('f_restart',    defaultVal=huge(0))
+    if(step_discretization%contains('R')) then
+      call newLoadCase%rot%fromAxisAngle(step_discretization%get_asFloats('R'),degrees=.true.)
+    endif
+            
+    newLoadCase%followFormerTrajectory = .not. load_step%get_asBool('drop_guessing',defaultVal=.false.) ! do not continue to predict deformation along former trajectory
   
     newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1)                  ! by default, guess from previous load case
   
@@ -312,7 +297,7 @@ program DAMASK_grid
         print'(a,i0)',  ' restart frequency: ', newLoadCase%restartfrequency
       if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
     endif reportAndCheck
-    loadCases = [loadCases,newLoadCase]                                                             ! load case is ok, append it
+    loadCases(currentLoadCase) = newLoadCase                                                        ! load case is ok, append it
   enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -361,7 +346,7 @@ program DAMASK_grid
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
       timeIncOld = timeinc                                                                          ! last timeinc that brought former inc to an end
-      if (loadCases(currentLoadCase)%logscale == 0) then                                            ! linear scale
+      if (.not. loadCases(currentLoadCase)%logscale) then                                           ! linear scale
         timeinc = loadCases(currentLoadCase)%time/real(loadCases(currentLoadCase)%incs,pReal)
       else
         if (currentLoadCase == 1) then                                                              ! 1st load case of logarithmic scale

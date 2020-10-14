@@ -94,9 +94,9 @@ module spectral_utilities
     real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
     integer ::                      incs                   = 0, &                                   !< number of increments
                                     outputfrequency        = 1, &                                   !< frequency of result writes
-                                    restartfrequency       = huge(0), &                             !< frequency of restart writes
-                                    logscale               = 0                                      !< linear/logarithmic time inc flag
-    logical ::                      followFormerTrajectory = .true.                                 !< follow trajectory of former loadcase
+                                    restartfrequency       = huge(0)                                !< frequency of restart writes
+    logical ::                      followFormerTrajectory = .true., &                              !< follow trajectory of former loadcase
+                                    logscale               = .false.                                !< logarithmic time inc flag
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
