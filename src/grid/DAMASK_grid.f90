@@ -89,7 +89,7 @@ program DAMASK_grid
     quit
   class (tNode), pointer :: &
     num_grid, &
-    debug_grid, &                                                                                    ! pointer to grid debug options
+    debug_grid, &                                                                                   ! pointer to grid debug options
     config_load, &
     load_steps, &
     load_step, &
@@ -235,9 +235,8 @@ program DAMASK_grid
     call newLoadCase%rot%fromAxisAngle(step_discretization%get_asFloats('R', &
                                                          defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
             
-    newLoadCase%followFormerTrajectory = .not. load_step%get_asBool('drop_guessing',defaultVal=.false.) ! do not continue to predict deformation along former trajectory
-  
-    newLoadCase%followFormerTrajectory = merge(.true.,.false.,currentLoadCase > 1)                  ! by default, guess from previous load case
+    newLoadCase%followFormerTrajectory = .not. (load_step%get_asBool('drop_guessing',defaultVal=.false.) .or. &
+                                                merge(.false.,.true.,currentLoadCase > 1))          ! do not continue to predict deformation along former trajectory
   
     reportAndCheck: if (worldrank == 0) then
       write (loadcase_string, '(i0)' ) currentLoadCase
