@@ -66,4 +66,4 @@ geom=damask.Geom.from_minimal_surface(options.grid,options.size,options.type,opt
                                       options.periods,options.microstructure)
 damask.util.croak(geom)
 
-geom.save_ASCII(sys.stdout if name is None else name,compress=False)
+geom.save_ASCII(sys.stdout if name is None else name)
