@@ -1,0 +1,8 @@
+step:
+  - mech:
+      Fdot: [0, 0, 1e-3, 0, 0, 0, 0, 0, 0]
+      P:    [x, x,    x, x, x, x, x, x, x]
+    discretization:
+      t: 60
+      N: 120
+      f_out: 20
