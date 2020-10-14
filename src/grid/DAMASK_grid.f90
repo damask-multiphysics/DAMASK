@@ -197,7 +197,6 @@ program DAMASK_grid
       newLoadCase%ID(field) = FIELD_DAMAGE_ID
     endif damageActive
  
-    call newLoadCase%rot%fromEulers(real([0.0,0.0,0.0],pReal)) 
     readMech: do m = 1, step_mech%length
       select case (step_mech%getKey(m))
         case('Fdot','L','F')                                                                        ! assign values for the deformation BC matrix
@@ -236,9 +235,8 @@ program DAMASK_grid
     newLoadCase%logscale         = step_discretization%get_asBool ('log_timestep', defaultVal= .false.)
     newLoadCase%outputfrequency  = step_discretization%get_asInt  ('f_out',        defaultVal=1)
     newLoadCase%restartfrequency = step_discretization%get_asInt  ('f_restart',    defaultVal=huge(0))
-    if(step_discretization%contains('R')) then
-      call newLoadCase%rot%fromAxisAngle(step_discretization%get_asFloats('R'),degrees=.true.)
-    endif
+    call newLoadCase%rot%fromAxisAngle(step_discretization%get_asFloats('R', &
+                                                         defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
             
     newLoadCase%followFormerTrajectory = .not. load_step%get_asBool('drop_guessing',defaultVal=.false.) ! do not continue to predict deformation along former trajectory
   

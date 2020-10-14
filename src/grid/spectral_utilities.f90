@@ -91,12 +91,12 @@ module spectral_utilities
     type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
                                     deformation                                                     !< deformation BC (Fdot or L)
-    real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
-    integer ::                      incs                   = 0, &                                   !< number of increments
-                                    outputfrequency        = 1, &                                   !< frequency of result writes
-                                    restartfrequency       = huge(0)                                !< frequency of restart writes
-    logical ::                      followFormerTrajectory = .true., &                              !< follow trajectory of former loadcase
-                                    logscale               = .false.                                !< logarithmic time inc flag
+    real(pReal) ::                  time                                                            !< length of increment
+    integer ::                      incs, &                                                         !< number of increments
+                                    outputfrequency, &                                              !< frequency of result writes
+                                    restartfrequency                                                !< frequency of restart writes
+    logical ::                      followFormerTrajectory, &                                       !< follow trajectory of former loadcase
+                                    logscale                                                        !< logarithmic time inc flag
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
