@@ -31,13 +31,10 @@ program DAMASK_grid
 ! variables related to information from load case and geom file
   real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                         !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
   logical,     dimension(9) :: temp_maskVector  = .false.                                           !< temporarily from loadcase file when reading in tensors
-  integer, allocatable, dimension(:) :: chunkPos
   integer :: &
     N_t   = 0, &                                                                                    !< # of time indicators found in load case file
     N_n   = 0, &                                                                                    !< # of increment specifiers found in load case file
     N_def = 0                                                                                       !< # of rate of deformation specifiers found in load case file
-  character(len=:), allocatable :: &
-    line
 
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
