@@ -256,16 +256,14 @@ subroutine material_parseHomogenization
   do h=1, material_Nhomogenization
     homog => material_homogenization%get(h)
     homogMech => homog%get('mech')
+    homogenization_Ngrains(h) = homog%get_asInt('N_constituents')
     select case (homogMech%get_asString('type'))
       case('none')
         homogenization_type(h) = HOMOGENIZATION_NONE_ID
-        homogenization_Ngrains(h) = 1
       case('isostrain')
         homogenization_type(h) = HOMOGENIZATION_ISOSTRAIN_ID
-        homogenization_Ngrains(h) = homogMech%get_asInt('N_constituents')
       case('RGC')
         homogenization_type(h) = HOMOGENIZATION_RGC_ID
-        homogenization_Ngrains(h) = homogMech%get_asInt('N_constituents')
       case default
         call IO_error(500,ext_msg=homogMech%get_asString('type'))
     end select
