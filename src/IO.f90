@@ -371,8 +371,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'write error for file:'
     case (102)
       msg = 'could not read file:'
-    case (103)
-      msg = 'could not assemble input files'
     case (106)
       msg = 'working directory does not exist:'
 
@@ -411,7 +409,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'not enough interaction parameters given'
 
 !--------------------------------------------------------------------------------------------------
-! errors related to the parsing of material.config
+! errors related to the parsing of material.yaml
     case (140)
       msg = 'key not found'
     case (141)

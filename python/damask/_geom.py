@@ -320,7 +320,7 @@ class Geom:
         else:
             material_ = material_.reshape(grid)
 
-        return Geom(material = material_+1 if material is None else material[material_],
+        return Geom(material = material_ if material is None else material[material_],
                     size     = size,
                     comments = util.execution_stamp('Geom','from_Laguerre_tessellation'),
                    )
@@ -350,7 +350,7 @@ class Geom:
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,material_ = KDTree.query(coords)
 
-        return Geom(material = (material_+1 if material is None else material[material_]).reshape(grid),
+        return Geom(material = (material_ if material is None else material[material_]).reshape(grid),
                     size     = size,
                     comments = util.execution_stamp('Geom','from_Voronoi_tessellation'),
                    )
@@ -399,7 +399,7 @@ class Geom:
 
 
     @staticmethod
-    def from_minimal_surface(grid,size,surface,threshold=0.0,periods=1,materials=(1,2)):
+    def from_minimal_surface(grid,size,surface,threshold=0.0,periods=1,materials=(0,1)):
         """
         Generate geometry from definition of triply periodic minimal surface.
 
@@ -417,7 +417,7 @@ class Geom:
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
             Material IDs. Defaults to (1,2).
-
+        
         Notes
         -----
         The following triply-periodic minimal surfaces are implemented:
@@ -467,9 +467,8 @@ class Geom:
 
         Parameters
         ----------
-        fname : str, optional
-            Filename to write. If no file is given, a string is returned.
-            Valid extension is .vtr, it will be appended if not given.
+        fname : str or or pathlib.Path
+            Filename to write. Valid extension is .vtr, it will be appended if not given.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.
 
@@ -481,9 +480,9 @@ class Geom:
         v.save(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr',parallel=False,compress=compress)
 
 
-    def save_ASCII(self,fname,compress=None):
+    def save_ASCII(self,fname):
         """
-        Writes a geom file.
+        Write a geom file.
 
         Parameters
         ----------
@@ -500,57 +499,11 @@ class Geom:
                    'homogenization 1',
                   ]
 
-        grid = self.grid
-
-        if compress is None:
-            plain = grid.prod()/self.N_materials < 250
-        else:
-            plain = not compress
-
-        if plain:
-            format_string = '%g' if self.material.dtype in np.sctypes['float'] else \
-                            '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.material)))))
-            np.savetxt(fname,
-                       self.material.reshape([grid[0],np.prod(grid[1:])],order='F').T,
-                       header='\n'.join(header), fmt=format_string, comments='')
-        else:
-            try:
-                f = open(fname,'w')
-            except TypeError:
-                f = fname
-
-            compressType = None
-            former = start = -1
-            reps = 0
-            for current in self.material.flatten('F'):
-                if abs(current - former) == 1 and (start - current) == reps*(former - current):
-                    compressType = 'to'
-                    reps += 1
-                elif current == former and start == former:
-                    compressType = 'of'
-                    reps += 1
-                else:
-                    if   compressType is None:
-                        f.write('\n'.join(header)+'\n')
-                    elif compressType == '.':
-                        f.write(f'{former}\n')
-                    elif compressType == 'to':
-                        f.write(f'{start} to {former}\n')
-                    elif compressType == 'of':
-                        f.write(f'{reps} of {former}\n')
-
-                    compressType = '.'
-                    start = current
-                    reps = 1
-
-                former = current
-
-            if compressType == '.':
-                f.write(f'{former}\n')
-            elif compressType == 'to':
-                f.write(f'{start} to {former}\n')
-            elif compressType == 'of':
-                f.write(f'{reps} of {former}\n')
+        format_string = '%g' if self.material.dtype in np.sctypes['float'] else \
+                        '%{}i'.format(1+int(np.floor(np.log10(np.nanmax(self.material)))))
+        np.savetxt(fname,
+                   self.material.reshape([self.grid[0],np.prod(self.grid[1:])],order='F').T,
+                   header='\n'.join(header), fmt=format_string, comments='')
 
 
     def show(self):
@@ -562,7 +515,7 @@ class Geom:
     def add_primitive(self,dimension,center,exponent,
                       fill=None,R=Rotation(),inverse=False,periodic=True):
         """
-        Inserts a primitive geometric object at a given position.
+        Insert a primitive geometric object at a given position.
 
         Parameters
         ----------

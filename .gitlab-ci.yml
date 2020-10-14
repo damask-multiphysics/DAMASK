@@ -285,20 +285,6 @@ grid_all_restart:
     - master
     - release
 
-grid_parsingLoadCase:
-  stage: grid
-  script: grid_parsingLoadCase/test.py
-  except:
-    - master
-    - release
-
-grid_all_loadCaseRotation:
-  stage: grid
-  script: grid_all_loadCaseRotation/test.py
-  except:
-    - master
-    - release
-
 grid_all_restartMPI:
   stage: grid
   script:

@@ -68,4 +68,4 @@ for name in filenames:
     geom = damask.Geom.load_DREAM3D(name,options.basegroup,options.pointwise)
     damask.util.croak(geom)
 
-    geom.save_ASCII(os.path.splitext(name)[0]+'.geom',compress=False)
+    geom.save_ASCII(os.path.splitext(name)[0]+'.geom')

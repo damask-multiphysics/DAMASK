@@ -165,7 +165,7 @@ module subroutine mech_RGC_init(num_homogMech)
 
     prm%N_constituents = homogMech%get_asInts('cluster_size',requiredSize=3)
     if (homogenization_Ngrains(h) /= product(prm%N_constituents)) &
-      call IO_error(211,ext_msg='clustersize (mech_rgc)')
+      call IO_error(211,ext_msg='N_constituents (mech_RGC)')
 
     prm%xi_alpha = homogMech%get_asFloat('xi_alpha')
     prm%c_alpha  = homogMech%get_asFloat('c_alpha')
