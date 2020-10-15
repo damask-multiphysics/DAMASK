@@ -1,53 +1,17 @@
-## Isotropic Material model to simulate free surfaces ##
-## For more information see paper Maiti+Eisenlohr2018, Scripta Materialia,
-## "Fourier-based spectral method solution to finite strain crystal plasticity with free surfaces"
-
----
-homogenization:
-  SX:
-    mech: {type: none}
-
-material:
-  - constituents:
-      - fraction: 1.0
-        O: [1.0, 0.0, 0.0, 0.0]
-        phase: Aluminum
-    homogenization: SX
-  - constituents:
-      - fraction: 1.0
-        O: [1.0, 0.0, 0.0, 0.0]
-        phase: Air
-    homogenization: SX
-
-phase:
-  Aluminum:
-    elasticity: {C_11: 110.9e9, C_12: 58.34e9, type: hooke}
-    generic:
-      output: [F, P, Fe, Fp, Lp]
-    lattice: iso
-    plasticity:
-      type: isotropic
-      output: [xi]
-      xi_0: 31e6
-      xi_inf: 63e6
-      dot_gamma_0: 0.001
-      n: 20
-      M: 3
-      h_0: 75e6
-      a: 2.25
-  Air:
-    elasticity: {C_11: 10e9, C_12: 0.0, type: hooke}
-    generic:
-      output: [F, P, Fe, Fp, Lp]
-    lattice: iso
-    plasticity:
-      type: isotropic
-      output: [xi]
-      xi_0: 0.3e6
-      xi_inf: 0.6e6
-      dot_gamma_0: 0.001
-      n: 5
-      M: 3
-      h_0: 1e6
-      a: 2
-      dilatation: true
+# Maiti and Eisenlohr 2018 Scripta Materialia
+Air:
+  elasticity: {C_11: 10e9, C_12: 0.0, type: hooke}
+  generic:
+    output: [F, P, Fe, Fp, Lp]
+  lattice: iso
+  plasticity:
+    type: isotropic
+    output: [xi]
+    xi_0: 0.3e6
+    xi_inf: 0.6e6
+    dot_gamma_0: 0.001
+    n: 5
+    M: 3
+    h_0: 1e6
+    a: 2
+    dilatation: true
