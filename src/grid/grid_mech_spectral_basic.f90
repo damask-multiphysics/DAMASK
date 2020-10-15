@@ -308,13 +308,13 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
-    if     (deformation_BC%myType=='l') then                                                        ! calculate F_aimDot from given L and current F
+    if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
                + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
-    elseif(deformation_BC%myType=='dotf') then                                                      ! F_aimDot is prescribed
+    elseif(deformation_BC%myType=='dotF') then                                                      ! F_aimDot is prescribed
       F_aimDot = F_aimDot & 
                + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
-    elseif (deformation_BC%myType=='f') then                                                        ! aim at end of load case is prescribed
+    elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
                + merge((deformation_BC%values - F_aim_lastInc)/loadCaseTime,.0_pReal,deformation_BC%mask)
     endif
@@ -330,9 +330,9 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
-  if     (stress_BC%myType=='p') then
+  if     (stress_BC%myType=='P') then
     P_aim = P_aim + merge((stress_BC%values - P_aim)/loadCaseTime*timeinc,.0_pReal,stress_BC%mask)
-  elseif (stress_BC%myType=='dotp') then !UNTESTED
+  elseif (stress_BC%myType=='dotP') then !UNTESTED
     P_aim = P_aim + merge(stress_BC%values*timeinc,.0_pReal,stress_BC%mask)
   endif
  

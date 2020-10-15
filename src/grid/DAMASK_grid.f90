@@ -182,7 +182,7 @@ program DAMASK_grid
     if ((N_def /= N_n) .or. (N_n /= N_t) .or. N_n < 1) &                                            ! sanity check
       call IO_error(error_ID=837,el=currentLoadCase,ext_msg = trim(interface_loadFile))             ! error message for incomplete loadcase
   
-    newLoadCase%stress%myType='p'
+    newLoadCase%stress%myType='P'
     field = 1
     newLoadCase%ID(field) = FIELD_MECH_ID                                                           ! mechanical active by default
     thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
@@ -198,12 +198,12 @@ program DAMASK_grid
       select case (step_mech%getKey(m))
         case('dotF','L','F')                                                                        ! assign values for the deformation BC matrix
           temp_valueVector = 0.0_pReal 
-          if (step_mech%getKey(m) == 'dotF') then                                                   ! in case of dotF, set type to dotf
-            newLoadCase%deformation%myType = 'dotf'
+          if (step_mech%getKey(m) == 'dotF') then                                                   ! in case of dotF, set type to dotF
+            newLoadCase%deformation%myType = 'dotF'
           else if (step_mech%getKey(m) == 'F') then
-            newLoadCase%deformation%myType = 'f'
+            newLoadCase%deformation%myType = 'F'
           else
-            newLoadCase%deformation%myType = 'l'
+            newLoadCase%deformation%myType = 'L'
           endif
           step_deformation => step_mech%get(m)
           do j = 1, 9
@@ -244,13 +244,13 @@ program DAMASK_grid
       print'(/,a,i0)', ' load case: ', currentLoadCase
       if (.not. newLoadCase%followFormerTrajectory) &
         print*, ' drop guessing along trajectory'
-      if (newLoadCase%deformation%myType == 'l') then
+      if (newLoadCase%deformation%myType == 'L') then
         do j = 1, 3
           if (any(newLoadCase%deformation%mask(j,1:3) .eqv. .true.) .and. &
               any(newLoadCase%deformation%mask(j,1:3) .eqv. .false.)) errorID = 832                 ! each row should be either fully or not at all defined
         enddo
         print*, ' velocity gradient:'
-      else if (newLoadCase%deformation%myType == 'f') then
+      else if (newLoadCase%deformation%myType == 'F') then
         print*, ' deformation gradient at end of load case:'
       else
         print*, ' deformation gradient rate:'
