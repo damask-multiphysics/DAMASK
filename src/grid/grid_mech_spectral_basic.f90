@@ -308,13 +308,13 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
 
     !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
-    if     (deformation_BC%myType=='l') then                                                         ! calculate F_aimDot from given L and current F
+    if     (deformation_BC%myType=='l') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
                + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
-    elseif(deformation_BC%myType=='fdot') then                                                       ! F_aimDot is prescribed
+    elseif(deformation_BC%myType=='dotf') then                                                      ! F_aimDot is prescribed
       F_aimDot = F_aimDot & 
                + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
-    elseif (deformation_BC%myType=='f') then                                                         ! aim at end of load case is prescribed
+    elseif (deformation_BC%myType=='f') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
                + merge((deformation_BC%values - F_aim_lastInc)/loadCaseTime,.0_pReal,deformation_BC%mask)
     endif
@@ -332,11 +332,11 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
   F_aim = F_aim_lastInc + F_aimDot * timeinc
   if     (stress_BC%myType=='p') then
     P_aim = P_aim + merge((stress_BC%values - P_aim)/loadCaseTime*timeinc,.0_pReal,stress_BC%mask)
-  elseif (stress_BC%myType=='pdot') then !UNTESTED
+  elseif (stress_BC%myType=='dotp') then !UNTESTED
     P_aim = P_aim + merge(stress_BC%values*timeinc,.0_pReal,stress_BC%mask)
   endif
  
-  F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! estimate of F at end of time+timeinc that matches rotated F_aim on average
+  F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! estimate of F at end of time+timeinc that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 

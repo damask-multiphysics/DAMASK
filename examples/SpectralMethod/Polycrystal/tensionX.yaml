@@ -1,13 +1,13 @@
 step:
   - mech:
-      Fdot: [1.0e-3,0,0,  0,x,0,  0,0,x]
+      dotF: [1.0e-3,0,0,  0,x,0,  0,0,x]
       P:    [     x,x,x,  x,0,x,  x,x,0]
     discretization:
       t: 10
       N: 40
       f_out: 4
   - mech:
-      Fdot: [1.0e-3,0,0,  0,x,0,  0,0,x]
+      dotF: [1.0e-3,0,0,  0,x,0,  0,0,x]
       P:    [     x,x,x,  x,0,x,  x,x,0]
     discretization:
       t: 60

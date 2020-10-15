@@ -173,7 +173,7 @@ program DAMASK_grid
     step_discretization => load_step%get('discretization')
     do m = 1, step_mech%length
       select case (step_mech%getKey(m))
-        case('L','Fdot','F')
+        case('L','dotF','F')
           N_def = N_def + 1
       end select
     enddo
@@ -196,10 +196,10 @@ program DAMASK_grid
  
     readMech: do m = 1, step_mech%length
       select case (step_mech%getKey(m))
-        case('Fdot','L','F')                                                                        ! assign values for the deformation BC matrix
+        case('dotF','L','F')                                                                        ! assign values for the deformation BC matrix
           temp_valueVector = 0.0_pReal 
-          if (step_mech%getKey(m) == 'Fdot') then                                                   ! in case of Fdot, set type to fdot
-            newLoadCase%deformation%myType = 'fdot'
+          if (step_mech%getKey(m) == 'dotF') then                                                   ! in case of dotF, set type to dotf
+            newLoadCase%deformation%myType = 'dotf'
           else if (step_mech%getKey(m) == 'F') then
             newLoadCase%deformation%myType = 'f'
           else

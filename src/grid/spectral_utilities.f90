@@ -90,7 +90,7 @@ module spectral_utilities
   type, public :: tLoadCase
     type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
-                                    deformation                                                     !< deformation BC (Fdot or L)
+                                    deformation                                                     !< deformation BC (dotF or L)
     real(pReal) ::                  time                                                            !< length of increment
     integer ::                      incs, &                                                         !< number of increments
                                     outputfrequency, &                                              !< frequency of result writes
