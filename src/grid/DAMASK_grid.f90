@@ -222,6 +222,9 @@ program DAMASK_grid
           newLoadCase%stress%mask   = transpose(reshape(temp_maskVector,[ 3,3]))
           newLoadCase%stress%values = math_9to33(temp_valueVector)
       end select
+     call newLoadCase%rot%fromAxisAngle(step_mech%get_asFloats('R', &
+                                                         defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
+ 
     enddo readMech
 
 !--------------------------------------------------------------------------------------------------------
@@ -232,8 +235,6 @@ program DAMASK_grid
     newLoadCase%logscale         = step_discretization%get_asBool ('log_timestep', defaultVal= .false.)
     newLoadCase%outputfrequency  = step_discretization%get_asInt  ('f_out',        defaultVal=1)
     newLoadCase%restartfrequency = step_discretization%get_asInt  ('f_restart',    defaultVal=huge(0))
-    call newLoadCase%rot%fromAxisAngle(step_discretization%get_asFloats('R', &
-                                                         defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
             
     newLoadCase%followFormerTrajectory = .not. (load_step%get_asBool('drop_guessing',defaultVal=.false.) .or. &
                                                 merge(.false.,.true.,currentLoadCase > 1))          ! do not continue to predict deformation along former trajectory
