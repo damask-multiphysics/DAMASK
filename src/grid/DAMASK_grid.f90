@@ -173,7 +173,7 @@ program DAMASK_grid
     step_discretization => load_step%get('discretization')
     do m = 1, step_mech%length
       select case (step_mech%getKey(m))
-        case('L','dotF','F')
+        case('L','dot_F','F')
           N_def = N_def + 1
       end select
     enddo
@@ -196,10 +196,10 @@ program DAMASK_grid
  
     readMech: do m = 1, step_mech%length
       select case (step_mech%getKey(m))
-        case('dotF','L','F')                                                                        ! assign values for the deformation BC matrix
+        case('dot_F','L','F')                                                                       ! assign values for the deformation BC matrix
           temp_valueVector = 0.0_pReal 
-          if (step_mech%getKey(m) == 'dotF') then                                                   ! in case of dotF, set type to dotF
-            newLoadCase%deformation%myType = 'dotF'
+          if (step_mech%getKey(m) == 'dot_F') then                                                  ! in case of dot_F, set type to dot_F
+            newLoadCase%deformation%myType = 'dot_F'
           else if (step_mech%getKey(m) == 'F') then
             newLoadCase%deformation%myType = 'F'
           else
@@ -207,7 +207,7 @@ program DAMASK_grid
           endif
           step_deformation => step_mech%get(m)
           do j = 1, 9
-            temp_maskVector(j) = step_deformation%get_asString(j) /= 'x'                            ! true if not a x
+            temp_maskVector(j) = step_deformation%get_asString(j) /= 'x'                            ! true if not a 'x'
             if (temp_maskVector(j)) temp_valueVector(j) = step_deformation%get_asFloat(j)           ! read value where applicable
           enddo
           newLoadCase%deformation%mask   = transpose(reshape(temp_maskVector,[ 3,3]))               ! mask in 3x3 notation
@@ -216,7 +216,7 @@ program DAMASK_grid
           temp_valueVector = 0.0_pReal
           step_stress => step_mech%get(m)
           do j = 1, 9
-            temp_maskVector(j) = step_stress%get_asString(j) /= 'x'                                 ! true if not an asterisk
+            temp_maskVector(j) = step_stress%get_asString(j) /= 'x'                                 ! true if not a 'x'
             if (temp_maskVector(j)) temp_valueVector(j) = step_stress%get_asFloat(j)                ! read value where applicable
           enddo
           newLoadCase%stress%mask   = transpose(reshape(temp_maskVector,[ 3,3]))
