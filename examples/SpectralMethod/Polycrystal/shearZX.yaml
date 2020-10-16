@@ -1,7 +1,7 @@
 step:
   - mech:
-      dotF: [0, 0, 1e-3, 0, 0, 0, 0, 0, 0]
-      P:    [x, x,    x, x, x, x, x, x, x]
+      dot_F: [0, 0, 1e-3, 0, 0, 0, 0, 0, 0]
+      P:     [x, x,    x, x, x, x, x, x, x]
     discretization:
       t: 60
       N: 120
