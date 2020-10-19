@@ -6,6 +6,9 @@ from os import path
 import numpy as np
 import h5py
 from scipy import ndimage,spatial
+import vtk
+from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
+from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 
 from . import environment
 from . import VTK
@@ -840,3 +843,76 @@ class Geom:
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','vicinity_offset')],
                    )
+                   
+    def ShowGB(self,periodic=False):
+        """
+        Create an extra VTK file to show grain boundaries as feature edges.
+
+        Parameters
+        ----------
+        periodic : Boolean, optional
+            Show boundaries at periodic nodes too. Defalts to False.
+
+        """
+        v = VTK.from_polyData(grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F'))
+        cells = vtk.vtkCellArray()
+
+        #Grid to nodes
+        a=self.grid[0]+1
+        b=self.grid[1]+1
+        c=self.grid[2]+1
+        
+        if periodic:
+            FaceYZ_per=np.empty()
+            FaceXY_per=np.empty()
+            FaceXZ_per=np.empty()
+        else:          
+            # get nodes of periodic boundaries in X
+            FaceYZ_per=np.concatenate((  np.arange(0,a*b*c,a) , np.arange(self.grid[0],   a*b*c,a)  ))  
+            # get nodes of periodic boundaries in Z
+            FaceXY_per=np.concatenate((  np.arange(0,a*b)     , np.arange(a*b*c -  a*b, a*b*c )  ))
+            # get nodes of periodic boundaries in Y
+            FaceXZ_0=np.arange(0, a) # face Y=0
+            for i in range(c):
+                add=np.arange( (i+1)*(a)*(b), (i+1)*(a)*(b)+ (a))
+                FaceXZ_0=np.append(FaceXZ_0, add)
+            FaceXZ_end=np.arange(a*b-b, a*b) # face Y=end
+            for i in range(c):
+                add= np.arange( (i+1)*a*b-b, (i+1)*a*b)
+                FaceXZ_end=np.append(FaceXZ_end, add)
+            FaceXZ_per=np.concatenate (( FaceXZ_0,  FaceXZ_end ))
+        
+        for d_s in [0,1,2]:
+            base_nodes = np.where(self.material==np.roll(self.material,1,d_s),False,True)
+            for d in [0,1,2]:
+                if d_s == d:
+                    base_nodes = np.concatenate((base_nodes,np.take(base_nodes,[0],d)),d)
+                else:
+                    base_nodes = np.concatenate((base_nodes,np.logical_and(np.take(base_nodes,[0],d),False)),d)
+            for p in np.argwhere(base_nodes.flatten(order='F')):
+                if np.any(FaceYZ_per == p[0]) and d_s == 0:
+                    pass
+                elif np.any(FaceXY_per == p[0]) and d_s == 2:
+                    pass
+                elif np.any(FaceXZ_per == p[0]) and d_s == 1:
+                    pass
+                else:
+                    q = vtk.vtkQuad()
+                    q.GetPointIds().SetId(0, p[0])
+                    if d_s == 0:
+                        q.GetPointIds().SetId(1, p[0]+a)
+                        q.GetPointIds().SetId(2, p[0]+a*b+a)
+                        q.GetPointIds().SetId(3, p[0]+a*b)
+                    if d_s == 1:
+                        q.GetPointIds().SetId(1, p[0]+a*b)
+                        q.GetPointIds().SetId(2, p[0]+a*b+1)
+                        q.GetPointIds().SetId(3, p[0]+1)
+                    if d_s == 2:
+                        q.GetPointIds().SetId(1, p[0]+1)
+                        q.GetPointIds().SetId(2, p[0]+a+1)
+                        q.GetPointIds().SetId(3, p[0]+a)
+                    cells.InsertNextCell(q)
+        v.vtk_data.SetPolys(cells)
+        v.save('GrainBoundaries') 
+
+
