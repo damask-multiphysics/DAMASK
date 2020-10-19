@@ -7,8 +7,6 @@ import numpy as np
 import h5py
 from scipy import ndimage,spatial
 import vtk
-from vtk.util.numpy_support import numpy_to_vtk            as np_to_vtk
-from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArray
 
 from . import environment
 from . import VTK
