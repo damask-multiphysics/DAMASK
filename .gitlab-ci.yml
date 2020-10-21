@@ -108,7 +108,7 @@ Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest
+    - pytest --basetemp=/tmp/${CI_PIPELINE_ID}/python
   except:
     - master
     - release
@@ -194,7 +194,7 @@ grid_mech_compile_Intel:
     - cp -r grid_mech_compile grid_mech_compile_Intel
     - grid_mech_compile_Intel/test.py
     - cd pytest
-    - pytest -k 'compile and grid'
+    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_Intel
   except:
     - master
     - release
@@ -206,7 +206,7 @@ Compile_FEM_Intel:
     - cp -r FEM_compile FEM_compile_Intel
     - FEM_compile_Intel/test.py
     - cd pytest
-    - pytest -k 'compile and mesh'
+    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_Intel
   except:
     - master
     - release
@@ -218,7 +218,7 @@ grid_mech_compile_GNU:
     - cp -r grid_mech_compile grid_mech_compile_GNU
     - grid_mech_compile_GNU/test.py
     - cd pytest
-    - pytest -k 'compile and grid'
+    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_GNU
   except:
     - master
     - release
@@ -230,7 +230,7 @@ Compile_FEM_GNU:
     - cp -r FEM_compile FEM_compile_GNU
     - FEM_compile_GNU/test.py
     - cd pytest
-    - pytest -k 'compile and mesh'
+    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_GNU
   except:
     - master
     - release
@@ -252,7 +252,7 @@ Pytest_grid:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
-    - pytest -m 'not compile'
+    - pytest -m 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran
   except:
     - master
     - release
