@@ -53,20 +53,19 @@ program DAMASK_grid
     i, j, m, field, &
     errorID = 0, &
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
-    stepFraction = 0                                                                                !< fraction of current time interval
-  integer :: &
+    stepFraction = 0, &                                                                             !< fraction of current time interval
     l = 0, &                                                                                        !< current load case
     inc, &                                                                                          !< current increment in current load case
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
-    nActiveFields = 0
+    nActiveFields = 0, &
+    maxCutBack, &                                                                                   !< max number of cut backs
+    stagItMax                                                                                       !< max number of field level staggered iterations
   character(len=pStringLen) :: &
     incInfo, &
     loadcase_string
-  integer :: &
-    maxCutBack, &                                                                                   !< max number of cut backs
-    stagItMax                                                                                       !< max number of field level staggered iterations
+
   type(tLoadCase), allocatable, dimension(:) :: loadCases                                           !< array of all load cases
   type(tSolutionState), allocatable, dimension(:) :: solres
   procedure(grid_mech_spectral_basic_init), pointer :: &
