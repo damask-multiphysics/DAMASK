@@ -99,6 +99,7 @@ checkout:
     - git submodule update --init
     - source env/DAMASK.sh
     - make processing
+    - mkdir /tmp/$CI_PIPELINE_ID
   except:
     - master
     - release
