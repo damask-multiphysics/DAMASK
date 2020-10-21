@@ -82,15 +82,15 @@ module spectral_utilities
   end type tSolutionState
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
-    real(pReal), dimension(3,3) :: values = 0.0_pReal
-    logical,     dimension(3,3) :: mask   = .false.
-    character(len=pStringLen)   :: myType = 'None'
+    real(pReal), dimension(3,3)   :: values = 0.0_pReal
+    logical,     dimension(3,3)   :: mask   = .false.
+    character(len=:), allocatable :: myType
   end type tBoundaryCondition
 
   type, public :: tLoadCase
     type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
-                                    deformation                                                     !< deformation BC (dot_F or L)
+                                    deformation                                                     !< deformation BC (dot_F, F, or L)
     real(pReal) ::                  time                                                            !< length of increment
     integer ::                      incs, &                                                         !< number of increments
                                     outputfrequency, &                                              !< frequency of result writes
