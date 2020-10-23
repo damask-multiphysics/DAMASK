@@ -418,9 +418,9 @@ function crystallite_stress()
             crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
                                             + crystallite_subStep(c,i,e) *( crystallite_partitionedF (1:3,1:3,c,i,e) &
                                                                            -crystallite_partitionedF0(1:3,1:3,c,i,e))
-            crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
-                                                          math_inv33(crystallite_Fp(1:3,1:3,c,i,e))), &
-                                                   math_inv33(crystallite_Fi(1:3,1:3,c,i,e)))
+            crystallite_Fe(1:3,1:3,c,i,e) = matmul(crystallite_subF(1:3,1:3,c,i,e), &
+                                                   math_inv33(matmul(crystallite_Fi(1:3,1:3,c,i,e), &
+                                                   crystallite_Fp(1:3,1:3,c,i,e))))
             crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
             crystallite_converged(c,i,e) = .false.
             call integrateState(c,i,e)
