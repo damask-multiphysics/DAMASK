@@ -311,7 +311,7 @@ function tNode_asScalar(self) result(scalar)
     class is(tScalar)
       scalar => self
     class default
-      call IO_error(706,ext_msg='tNode_asScalar')
+      call IO_error(706,ext_msg='Expected "scalar"')
   end select
 
 end function tNode_asScalar
@@ -329,7 +329,7 @@ function tNode_asList(self) result(list)
     class is(tList)
       list => self
     class default
-      call IO_error(706,ext_msg='tNode_asList')
+      call IO_error(706,ext_msg='Expected "list"')
   end select
 
 end function tNode_asList
@@ -347,7 +347,7 @@ function tNode_asDict(self) result(dict)
     class is(tDict)
       dict => self
     class default
-      call IO_error(706,ext_msg='tNode_asDict')
+      call IO_error(706,ext_msg='Expected "dict"')
   end select
 
 end function tNode_asDict
@@ -641,7 +641,7 @@ function tNode_contains(self,k)  result(exists)
       endif
     enddo
   else
-     call IO_error(706,ext_msg='tNode_contains')
+     call IO_error(706,ext_msg='Expected "list" or "dict"')
   endif
 
 end function tNode_contains

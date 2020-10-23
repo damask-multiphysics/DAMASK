@@ -491,7 +491,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (705)
       msg = 'Unsupported feature'
     case (706)
-      msg = 'Access by incorrect node type'
+      msg = 'Type mismatch in YAML data node'
     case (707)
       msg = 'Abrupt end of file'
     case (708)
