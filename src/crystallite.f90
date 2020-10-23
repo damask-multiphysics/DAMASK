@@ -315,7 +315,6 @@ function crystallite_stress()
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
-    startIP, endIP, &
     s
   logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
   real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
@@ -356,17 +355,8 @@ function crystallite_stress()
   enddo elementLooping1
   !$OMP END PARALLEL DO
 
-  singleRun: if (FEsolving_execELem(1) == FEsolving_execElem(2) .and. &
-                 FEsolving_execIP  (1) == FEsolving_execIP  (2)) then
-    startIP = FEsolving_execIP(1)
-    endIP   = startIP
-  else singleRun
-    startIP = 1
-    endIP   = discretization_nIP
-  endif singleRun
-
   NiterationCrystallite = 0
-  cutbackLooping: do while (any(todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
+  cutbackLooping: do while (any(todo(:,FEsolving_execIP(1):FEsolving_execIP(2),FEsolving_execELem(1):FEsolving_execElem(2))))
     NiterationCrystallite = NiterationCrystallite + 1
 
 #ifdef DEBUG
