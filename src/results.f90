@@ -56,7 +56,7 @@ module results
     results_addAttribute, &
     results_removeLink, &
     results_mapping_constituent, &
-    results_mapping_materialpoint
+    results_mapping_homogenization
 contains
 
 subroutine results_init(restart)
@@ -644,7 +644,7 @@ end subroutine results_mapping_constituent
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
+subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
   integer,          dimension(:),   intent(in) :: homogenizationAt                                  !< homogenization section at (element)
   integer,                   dimension(:,:), intent(in) :: memberAtLocal                            !< homogenization member at (IP,element)
@@ -711,13 +711,13 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
 ! MPI settings and communication
 #ifdef PETSc
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5pset_dxpl_mpio_f')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5pset_dxpl_mpio_f')
 
   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
-  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/writeSize')
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_homogenization: MPI_allreduce/writeSize')
 
   call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
-  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/memberOffset')
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_homogenization: MPI_allreduce/memberOffset')
 #endif
 
   myShape    = int([writeSize(worldrank)],          HSIZE_T)
@@ -727,13 +727,13 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
   call h5screate_simple_f(1,myShape,memspace_id,ierr,myShape)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/memspace_id')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5screate_simple_f/memspace_id')
 
   call h5screate_simple_f(1,totalShape,filespace_id,ierr,totalShape)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/filespace_id')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5screate_simple_f/filespace_id')
 
   call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5sselect_hyperslab_f')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5sselect_hyperslab_f')
 
 !---------------------------------------------------------------------------------------------------
 ! expand phaseAt to consider IPs (is not stored per IP)
@@ -753,14 +753,14 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
 
   loc_id = results_openGroup('/mapping')
   call h5dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, ierr)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dcreate_f')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5dcreate_f')
 
   call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/name_id')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5dwrite_f/name_id')
   call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/position_id')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5dwrite_f/position_id')
 
 !--------------------------------------------------------------------------------------------------
 ! close all
@@ -776,7 +776,7 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
   ! for backward compatibility
   call results_setLink('/mapping/homogenization','/mapping/cellResults/materialpoint')
 
-end subroutine results_mapping_materialpoint
+end subroutine results_mapping_homogenization
 
 
 !--------------------------------------------------------------------------------------------------

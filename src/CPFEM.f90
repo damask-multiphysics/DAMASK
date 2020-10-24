@@ -184,8 +184,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
         temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
           temperature_inp
       end select chosenThermal1
-    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
-    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
+    homogenization_F0(1:3,1:3,ip,elCP) = ffn
+    homogenization_F(1:3,1:3,ip,elCP) = ffn1
 
   if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
 
@@ -212,17 +212,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       else terminalIllness
 
         ! translate from P to sigma
-        Kirchhoff = matmul(materialpoint_P(1:3,1:3,ip,elCP), transpose(materialpoint_F(1:3,1:3,ip,elCP)))
-        J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
+        Kirchhoff = matmul(homogenization_P(1:3,1:3,ip,elCP), transpose(homogenization_F(1:3,1:3,ip,elCP)))
+        J_inverse  = 1.0_pReal / math_det33(homogenization_F(1:3,1:3,ip,elCP))
         CPFEM_cs(1:6,ip,elCP) = math_sym33to6(J_inverse * Kirchhoff,weighted=.false.)
 
         !  translate from dP/dF to dCS/dE
         H = 0.0_pReal
         do i=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3; do n=1,3
           H(i,j,k,l) = H(i,j,k,l) &
-                     +  materialpoint_F(j,m,ip,elCP) * materialpoint_F(l,n,ip,elCP) &
-                                                     * materialpoint_dPdF(i,m,k,n,ip,elCP) &
-                     -  math_delta(j,l) * materialpoint_F(i,m,ip,elCP) * materialpoint_P(k,m,ip,elCP) &
+                     +  homogenization_F(j,m,ip,elCP) * homogenization_F(l,n,ip,elCP) &
+                                                     * homogenization_dPdF(i,m,k,n,ip,elCP) &
+                     -  math_delta(j,l) * homogenization_F(i,m,ip,elCP) * homogenization_P(k,m,ip,elCP) &
                      +  0.5_pReal * (  Kirchhoff(j,l)*math_delta(i,k) + Kirchhoff(i,k)*math_delta(j,l) &
                                      + Kirchhoff(j,k)*math_delta(i,l) + Kirchhoff(i,l)*math_delta(j,k))
         enddo; enddo; enddo; enddo; enddo; enddo
