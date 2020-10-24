@@ -149,38 +149,17 @@ contains
 subroutine material_init(restart)
 
   logical, intent(in) :: restart
-
-  integer            :: ph, myHomog
-  class(tNode), pointer :: &
-    phases, &
-    material_homogenization
-  character(len=pStringLen) :: sectionName
+  integer            :: myHomog
 
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
-  phases => config_material%get('phase')
-  allocate(material_name_phase(phases%length))
-  do ph = 1, phases%length
-    write(sectionName,'(i0,a)') ph,'_'
-    material_name_phase(ph) = trim(adjustl(sectionName))//phases%getKey(ph)    !ToDO: No reason to do. Update damage tests
-  enddo
-
-  material_homogenization => config_material%get('homogenization')
-  allocate(material_name_homogenization(material_homogenization%length))
-  do myHomog = 1, material_homogenization%length
-    write(sectionName,'(i0,a)') myHomog,'_'
-    material_name_homogenization(myHomog) = trim(adjustl(sectionName))//material_homogenization%getKey(myHomog)
-  enddo
 
   call material_parseMaterial
   print*, 'Material parsed'
 
-  call material_parseNconstituent
   call material_parseHomogenization
   print*, 'Homogenization parsed'
 
-
-  if(homogenization_maxNconstituent > size(material_phaseAt,1)) call IO_error(148)
 
   allocate(homogState      (size(material_name_homogenization)))
   allocate(thermalState    (size(material_name_homogenization)))
@@ -217,32 +196,6 @@ subroutine material_init(restart)
 ! END DEPRECATED
 
 end subroutine material_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Determine Nconstituent in homogenization
-!--------------------------------------------------------------------------------------------------
-subroutine material_parseNconstituent
-
-  class(tNode), pointer :: &
-    material_homogenization, &
-    homog
-
-  integer :: h
-
-  material_homogenization => config_material%get('homogenization')
-
-  allocate(homogenization_Nconstituent(size(material_name_homogenization)))
-
-
-  do h=1, size(material_name_homogenization)
-    homog => material_homogenization%get(h)
-    homogenization_Nconstituent(h) = homog%get_asInt('N_constituents')
-  enddo
-  homogenization_maxNconstituent = maxval(homogenization_Nconstituent)
-
-
-end subroutine material_parseNconstituent
 
 
 !--------------------------------------------------------------------------------------------------
@@ -338,49 +291,69 @@ subroutine material_parseMaterial
                            constituents, &                                                          !> list of constituents
                            constituent, &                                                           !> constituent definition
                            phases, &
-                           homogenizations
+                           homogenizations, &
+                           homogenization
 
   integer, dimension(:), allocatable :: &
     counterPhase, &
     counterHomogenization
 
+  character(len=pStringLen) :: sectionName
+
   real(pReal) :: &
     frac
   integer :: &
-    e, &
-    i, &
-    m, &
-    c, &
-    maxNconstituents
+    e, i, c, &
+    p, h, &
+    m
 
-  integer, dimension(:), allocatable :: &
-    material_Nconstituents                                                                          !< number of constituents in each material
+  materials       => config_material%get('material')
+  phases          => config_material%get('phase')
+  homogenizations => config_material%get('homogenization')
 
-  materials => config_material%get('material')
+
   if(any(discretization_materialAt > materials%length)) &
     call IO_error(155,ext_msg='More materials requested than found in material.yaml')
 
-  phases => config_material%get('phase')
-  allocate(counterPhase(phases%length),source=0)
-  homogenizations => config_material%get('homogenization')
-  allocate(counterHomogenization(homogenizations%length),source=0)
+!--------------------------------------------------------------------------------------------------
+! determine name of phases/homogenizations
+  allocate(material_name_phase(phases%length))
+  do p = 1, phases%length
+    write(sectionName,'(i0,a)') p,'_'
+    material_name_phase(p) = trim(adjustl(sectionName))//phases%getKey(p)                           !ToDo: remove prefix
+  enddo
 
-  allocate(material_Nconstituents(materials%length),source=0)
+  allocate(material_name_homogenization(homogenizations%length))
+  do h = 1, homogenizations%length
+    write(sectionName,'(i0,a)') h,'_'
+    material_name_homogenization(h) = trim(adjustl(sectionName))//homogenizations%getKey(h)         !ToDo: remove prefix
+  enddo
 
+!--------------------------------------------------------------------------------------------------
+! sanity check: Matching # of constituents
   do m = 1, materials%length
     material => materials%get(m)
-    constituents => material%get('constituents')
-    material_Nconstituents(m) = constituents%length
+    constituents   => material%get('constituents')
+    homogenization => homogenizations%get(material%get_asString('homogenization'))
+    if(constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
   enddo
-  maxNconstituents = maxval(material_Nconstituents)
+
+  allocate(homogenization_Nconstituent(size(material_name_homogenization)))
+  do h=1, size(material_name_homogenization)
+    homogenization => homogenizations%get(h)
+    homogenization_Nconstituent(h) = homogenization%get_asInt('N_constituents')
+  enddo
+  homogenization_maxNconstituent = maxval(homogenization_Nconstituent)
+
+  allocate(counterPhase(phases%length),source=0)
+  allocate(counterHomogenization(homogenizations%length),source=0)
 
   allocate(material_homogenizationAt(discretization_nElem),source=0)
   allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
-  allocate(material_phaseAt(maxNconstituents,discretization_nElem),source=0)
-  allocate(material_phaseMemberAt(maxNconstituents,discretization_nIP,discretization_nElem),source=0)
+  allocate(material_phaseAt(homogenization_maxNconstituent,discretization_nElem),source=0)
+  allocate(material_phaseMemberAt(homogenization_maxNconstituent,discretization_nIP,discretization_nElem),source=0)
 
-  allocate(material_orientation0(maxNconstituents,discretization_nIP,discretization_nElem))
-
+  allocate(material_orientation0(homogenization_maxNconstituent,discretization_nIP,discretization_nElem))
 
   do e = 1, discretization_nElem
     material     => materials%get(discretization_materialAt(e))
