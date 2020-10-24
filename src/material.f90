@@ -67,10 +67,10 @@ module material
     material_Nhomogenization                                                                        !< number of homogenizations
 
   integer, public, protected :: &
-    homogenization_maxNconstituent                                                                       !< max number of grains in any USED homogenization
+    homogenization_maxNconstituent                                                                  !< max number of grains in any USED homogenization
 
   integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Nconstituent, &                                                                       !< number of grains in each homogenization
+    homogenization_Nconstituent, &                                                                  !< number of grains in each homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
@@ -85,7 +85,7 @@ module material
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
-  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,elem)
+  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 
   type(tState),        allocatable, dimension(:), public :: &
@@ -183,6 +183,7 @@ subroutine material_init(restart)
   call material_parseMaterial
   print*, 'Material parsed'
 
+  call material_parseNconstituent
   call material_parseHomogenization
   print*, 'Homogenization parsed'
 
@@ -225,6 +226,34 @@ subroutine material_init(restart)
 
 end subroutine material_init
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Determine Nconstituent in homogenization
+!--------------------------------------------------------------------------------------------------
+subroutine material_parseNconstituent
+
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog
+
+  integer :: h
+
+  material_homogenization => config_material%get('homogenization')
+  material_Nhomogenization = material_homogenization%length
+
+  allocate(homogenization_Nconstituent(material_Nhomogenization))
+
+
+  do h=1, material_Nhomogenization
+    homog => material_homogenization%get(h)
+    homogenization_Nconstituent(h) = homog%get_asInt('N_constituents')
+  enddo
+  homogenization_maxNconstituent = maxval(homogenization_Nconstituent)
+
+
+end subroutine material_parseNconstituent
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part from the material configuration
 ! ToDo: This should be done in homogenization
@@ -241,7 +270,6 @@ subroutine material_parseHomogenization
   integer :: h
 
   material_homogenization => config_material%get('homogenization')
-  material_Nhomogenization = material_homogenization%length
 
   allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
   allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
@@ -249,7 +277,6 @@ subroutine material_parseHomogenization
   allocate(homogenization_typeInstance(material_Nhomogenization),   source=0)
   allocate(thermal_typeInstance(material_Nhomogenization),          source=0)
   allocate(damage_typeInstance(material_Nhomogenization),           source=0)
-  allocate(homogenization_Nconstituent(material_Nhomogenization),        source=0)
   allocate(thermal_initialT(material_Nhomogenization),              source=300.0_pReal)
   allocate(damage_initialPhi(material_Nhomogenization),             source=1.0_pReal)
 
@@ -308,9 +335,6 @@ subroutine material_parseHomogenization
     damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
   enddo
 
-  homogenization_maxNconstituent = maxval(homogenization_Nconstituent)
-
-
 end subroutine material_parseHomogenization
 
 
@@ -350,14 +374,14 @@ subroutine material_parseMaterial
     material_Nconstituents(m) = constituents%length
   enddo
   maxNconstituents = maxval(material_Nconstituents)
-  
+
   allocate(material_homogenizationAt(discretization_nElem),source=0)
   allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
   allocate(material_phaseAt(maxNconstituents,discretization_nElem),source=0)
   allocate(material_phaseMemberAt(maxNconstituents,discretization_nIP,discretization_nElem),source=0)
 
   allocate(material_orientation0(maxNconstituents,discretization_nIP,discretization_nElem))
-  
+
   phases => config_material%get('phase')
   allocate(counterPhase(phases%length),source=0)
   homogenizations => config_material%get('homogenization')
@@ -366,29 +390,29 @@ subroutine material_parseMaterial
   do e = 1, discretization_nElem
     material     => materials%get(discretization_materialAt(e))
     constituents => material%get('constituents')
-    
+
     material_homogenizationAt(e) = homogenizations%getIndex(material%get_asString('homogenization'))
     do i = 1, discretization_nIP
       counterHomogenization(material_homogenizationAt(e)) = counterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e)                = counterHomogenization(material_homogenizationAt(e))
     enddo
-    
+
     frac = 0.0_pReal
     do c = 1, constituents%length
       constituent => constituents%get(c)
       frac = frac + constituent%get_asFloat('fraction')
-      
+
       material_phaseAt(c,e) = phases%getIndex(constituent%get_asString('phase'))
       do i = 1, discretization_nIP
         counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
-        
+
         call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
       enddo
-    
+
     enddo
     if (dNeq(frac,1.0_pReal)) call IO_error(153,ext_msg='constituent')
-    
+
   enddo
 
 end subroutine material_parseMaterial
