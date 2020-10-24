@@ -145,8 +145,8 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   homog  = material_homogenizationAt(el)
   call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, crystallite_S, crystallite_Lp, ip, el)
 
-  Tdot = Tdot/real(homogenization_Ngrains(homog),pReal)
-  dTdot_dT = dTdot_dT/real(homogenization_Ngrains(homog),pReal)
+  Tdot = Tdot/real(homogenization_Nconstituent(homog),pReal)
+  dTdot_dT = dTdot_dT/real(homogenization_Nconstituent(homog),pReal)
  
 end subroutine thermal_adiabatic_getSourceAndItsTangent
 
@@ -167,13 +167,13 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
    
   thermal_adiabatic_getSpecificHeat = 0.0_pReal
   
-  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
+  do grain = 1, homogenization_Nconstituent(material_homogenizationAt(el))
     thermal_adiabatic_getSpecificHeat = thermal_adiabatic_getSpecificHeat & 
                                       + lattice_c_p(material_phaseAt(grain,el))
   enddo
  
   thermal_adiabatic_getSpecificHeat = thermal_adiabatic_getSpecificHeat &
-                                    / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+                                    / real(homogenization_Nconstituent(material_homogenizationAt(el)),pReal)
   
 end function thermal_adiabatic_getSpecificHeat
  
@@ -193,13 +193,13 @@ function thermal_adiabatic_getMassDensity(ip,el)
    
   thermal_adiabatic_getMassDensity = 0.0_pReal
  
-  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
+  do grain = 1, homogenization_Nconstituent(material_homogenizationAt(el))
     thermal_adiabatic_getMassDensity = thermal_adiabatic_getMassDensity &
                                      + lattice_rho(material_phaseAt(grain,el))
   enddo
  
   thermal_adiabatic_getMassDensity = thermal_adiabatic_getMassDensity &
-                                   / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+                                   / real(homogenization_Nconstituent(material_homogenizationAt(el)),pReal)
  
 end function thermal_adiabatic_getMassDensity
 

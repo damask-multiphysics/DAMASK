@@ -976,7 +976,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
-  real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   real(pReal), intent(in) :: &
@@ -1176,7 +1176,7 @@ end subroutine plastic_nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
 
-  real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   real(pReal), intent(in) :: &

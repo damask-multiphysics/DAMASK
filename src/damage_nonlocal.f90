@@ -110,8 +110,8 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
   dPhiDot_dPhi = 0.0_pReal
  
   call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-  phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  phiDot = phiDot/real(homogenization_Nconstituent(material_homogenizationAt(el)),pReal)
+  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituent(material_homogenizationAt(el)),pReal)
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
@@ -132,13 +132,13 @@ function damage_nonlocal_getDiffusion(ip,el)
 
   homog  = material_homogenizationAt(el)
   damage_nonlocal_getDiffusion = 0.0_pReal
-  do grain = 1, homogenization_Ngrains(homog)
+  do grain = 1, homogenization_Nconstituent(homog)
     damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
       crystallite_push33ToRef(grain,ip,el,lattice_D(1:3,1:3,material_phaseAt(grain,el)))
   enddo
 
   damage_nonlocal_getDiffusion = &
-    num%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Ngrains(homog),pReal)
+    num%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituent(homog),pReal)
 
 end function damage_nonlocal_getDiffusion
 
@@ -156,12 +156,12 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
 
   damage_nonlocal_getMobility = 0.0_pReal
 
-  do ipc = 1, homogenization_Ngrains(material_homogenizationAt(el))
+  do ipc = 1, homogenization_Nconstituent(material_homogenizationAt(el))
     damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(ipc,el))
   enddo
 
   damage_nonlocal_getMobility = damage_nonlocal_getMobility/&
-                                real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+                                real(homogenization_Nconstituent(material_homogenizationAt(el)),pReal)
 
 end function damage_nonlocal_getMobility
 

@@ -67,10 +67,10 @@ module material
     material_Nhomogenization                                                                        !< number of homogenizations
 
   integer, public, protected :: &
-    homogenization_maxNgrains                                                                       !< max number of grains in any USED homogenization
+    homogenization_maxNconstituent                                                                       !< max number of grains in any USED homogenization
 
   integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Ngrains, &                                                                       !< number of grains in each homogenization
+    homogenization_Nconstituent, &                                                                       !< number of grains in each homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
@@ -187,7 +187,7 @@ subroutine material_init(restart)
   print*, 'Homogenization parsed'
 
 
-  if(homogenization_maxNgrains > size(material_phaseAt,1)) call IO_error(148)
+  if(homogenization_maxNconstituent > size(material_phaseAt,1)) call IO_error(148)
 
   allocate(homogState      (material_Nhomogenization))
   allocate(thermalState    (material_Nhomogenization))
@@ -249,14 +249,14 @@ subroutine material_parseHomogenization
   allocate(homogenization_typeInstance(material_Nhomogenization),   source=0)
   allocate(thermal_typeInstance(material_Nhomogenization),          source=0)
   allocate(damage_typeInstance(material_Nhomogenization),           source=0)
-  allocate(homogenization_Ngrains(material_Nhomogenization),        source=0)
+  allocate(homogenization_Nconstituent(material_Nhomogenization),        source=0)
   allocate(thermal_initialT(material_Nhomogenization),              source=300.0_pReal)
   allocate(damage_initialPhi(material_Nhomogenization),             source=1.0_pReal)
 
   do h=1, material_Nhomogenization
     homog => material_homogenization%get(h)
     homogMech => homog%get('mech')
-    homogenization_Ngrains(h) = homog%get_asInt('N_constituents')
+    homogenization_Nconstituent(h) = homog%get_asInt('N_constituents')
     select case (homogMech%get_asString('type'))
       case('none')
         homogenization_type(h) = HOMOGENIZATION_NONE_ID
@@ -308,7 +308,7 @@ subroutine material_parseHomogenization
     damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
   enddo
 
-  homogenization_maxNgrains = maxval(homogenization_Ngrains)
+  homogenization_maxNconstituent = maxval(homogenization_Nconstituent)
 
 
 end subroutine material_parseHomogenization

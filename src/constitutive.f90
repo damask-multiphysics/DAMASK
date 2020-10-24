@@ -127,7 +127,7 @@ module constitutive
                                                         instance,of,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
-      real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+      real(pReal), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem), intent(in) :: &
         F, &                                                                                        !< deformation gradient
         Fp                                                                                          !< plastic deformation gradient
       real(pReal), intent(in) :: &
@@ -753,7 +753,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
     of
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem) :: &
     FArray, &                                                                                       !< elastic deformation gradient
     FpArray                                                                                         !< plastic deformation gradient
   real(pReal),  intent(in), dimension(3,3) :: &
