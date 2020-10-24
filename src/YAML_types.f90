@@ -583,9 +583,9 @@ function tNode_get_byIndex_asStrings(self,i) result(nodeAsStrings)
 end function tNode_get_byIndex_asStrings
 
 
-!-------------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 !> @brief Returns the key in a dictionary as a string
-!-------------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 function tNode_getKey_byIndex(self,i)  result(key)
 
   class(tNode),     intent(in), target  :: self
@@ -1169,16 +1169,20 @@ function tList_asStrings(self)
   type(tScalar), pointer :: scalar
 
   len_max = 0
-  allocate(character(len=pStringLen) :: tList_asStrings(self%length))
+  item => self%first
+  do i = 1, self%length
+    scalar => item%node%asScalar()
+    len_max = max(len_max, len_trim(scalar%asString()))
+    item => item%next
+  enddo
+
+  allocate(character(len=len_max) :: tList_asStrings(self%length))
   item => self%first
   do i = 1, self%length
     scalar => item%node%asScalar()
     tList_asStrings(i) = scalar%asString()
-    len_max = max(len_max, len_trim(tList_asStrings(i)))
     item => item%next
   enddo
-
-  !ToDo: trim to len_max
 
 end function tList_asStrings
 
