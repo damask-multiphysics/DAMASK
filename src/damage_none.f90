@@ -20,7 +20,7 @@ subroutine damage_none_init
 
   print'(/,a)', ' <<<+-  damage_none init  -+>>>'; flush(6)
 
-  do h = 1, material_Nhomogenization
+  do h = 1, size(material_name_homogenization)
     if (damage_type(h) /= DAMAGE_NONE_ID) cycle
 
     NofMyHomog = count(material_homogenizationAt == h)

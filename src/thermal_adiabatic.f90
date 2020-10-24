@@ -54,7 +54,7 @@ subroutine thermal_adiabatic_init
   allocate(param(maxNinstance))
   
   material_homogenization => config_material%get('homogenization')
-  do h = 1, material_Nhomogenization
+  do h = 1, size(material_name_homogenization)
     if (thermal_type(h) /= THERMAL_adiabatic_ID) cycle
     homog => material_homogenization%get(h)
     homogThermal => homog%get('thermal')

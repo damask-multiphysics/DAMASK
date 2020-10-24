@@ -1571,7 +1571,7 @@ subroutine crystallite_restartWrite
   call HDF5_closeGroup(groupHandle)
 
   groupHandle = HDF5_addGroup(fileHandle,'materialpoint')
-  do i = 1, material_Nhomogenization
+  do i = 1, size(material_name_homogenization)
     write(datasetName,'(i0,a)') i,'_omega_homogenization'
     call HDF5_write(groupHandle,homogState(i)%state,datasetName)
   enddo
@@ -1612,7 +1612,7 @@ subroutine crystallite_restartRead
   call HDF5_closeGroup(groupHandle)
 
   groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
-  do i = 1, material_Nhomogenization
+  do i = 1,size(material_name_homogenization)
     write(datasetName,'(i0,a)') i,'_omega_homogenization'
     call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
   enddo
@@ -1645,7 +1645,7 @@ subroutine crystallite_forward
     do j = 1,phase_Nsources(i)
       sourceState(i)%p(j)%state0 = sourceState(i)%p(j)%state
   enddo; enddo
-  do i = 1, material_Nhomogenization
+  do i = 1,size(material_name_homogenization)
     homogState  (i)%state0 = homogState  (i)%state
     thermalState(i)%state0 = thermalState(i)%state
     damageState (i)%state0 = damageState (i)%state

@@ -20,7 +20,7 @@ subroutine thermal_isothermal_init
 
   print'(/,a)',   ' <<<+-  thermal_isothermal init  -+>>>'; flush(6)
 
-  do h = 1, material_Nhomogenization
+  do h = 1, size(material_name_homogenization)
     if (thermal_type(h) /= THERMAL_isothermal_ID) cycle
 
     NofMyHomog = count(material_homogenizationAt == h)

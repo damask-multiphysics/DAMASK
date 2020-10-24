@@ -64,9 +64,6 @@ module material
     homogenization_type                                                                             !< type of each homogenization
 
   integer, public, protected :: &
-    material_Nhomogenization                                                                        !< number of homogenizations
-
-  integer, public, protected :: &
     homogenization_maxNconstituent                                                                  !< max number of grains in any USED homogenization
 
   integer, dimension(:), allocatable, public, protected :: &
@@ -83,7 +80,7 @@ module material
     material_homogenizationAt                                                                       !< homogenization ID of each element
   integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
-  integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
+  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
@@ -185,17 +182,17 @@ subroutine material_init(restart)
 
   if(homogenization_maxNconstituent > size(material_phaseAt,1)) call IO_error(148)
 
-  allocate(homogState      (material_Nhomogenization))
-  allocate(thermalState    (material_Nhomogenization))
-  allocate(damageState     (material_Nhomogenization))
+  allocate(homogState      (size(material_name_homogenization)))
+  allocate(thermalState    (size(material_name_homogenization)))
+  allocate(damageState     (size(material_name_homogenization)))
 
-  allocate(thermalMapping  (material_Nhomogenization))
-  allocate(damageMapping   (material_Nhomogenization))
+  allocate(thermalMapping  (size(material_name_homogenization)))
+  allocate(damageMapping   (size(material_name_homogenization)))
 
-  allocate(temperature     (material_Nhomogenization))
-  allocate(damage          (material_Nhomogenization))
+  allocate(temperature     (size(material_name_homogenization)))
+  allocate(damage          (size(material_name_homogenization)))
 
-  allocate(temperatureRate (material_Nhomogenization))
+  allocate(temperatureRate (size(material_name_homogenization)))
 
 
   if (.not. restart) then
@@ -210,7 +207,7 @@ subroutine material_init(restart)
   allocate(mappingHomogenizationConst(  discretization_nIP,discretization_nElem),source=1)
 
 ! hack needed to initialize field values used during constitutive initialization
-  do myHomog = 1,material_Nhomogenization
+  do myHomog = 1, size(material_name_homogenization)
     thermalMapping     (myHomog)%p => mappingHomogenizationConst
     damageMapping      (myHomog)%p => mappingHomogenizationConst
     allocate(temperature     (myHomog)%p(1), source=thermal_initialT(myHomog))
@@ -234,12 +231,11 @@ subroutine material_parseNconstituent
   integer :: h
 
   material_homogenization => config_material%get('homogenization')
-  material_Nhomogenization = material_homogenization%length
 
-  allocate(homogenization_Nconstituent(material_Nhomogenization))
+  allocate(homogenization_Nconstituent(size(material_name_homogenization)))
 
 
-  do h=1, material_Nhomogenization
+  do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
     homogenization_Nconstituent(h) = homog%get_asInt('N_constituents')
   enddo
@@ -266,19 +262,18 @@ subroutine material_parseHomogenization
 
   material_homogenization => config_material%get('homogenization')
 
-  allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
-  allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
-  allocate(damage_type (material_Nhomogenization),                  source=DAMAGE_none_ID)
-  allocate(homogenization_typeInstance(material_Nhomogenization),   source=0)
-  allocate(thermal_typeInstance(material_Nhomogenization),          source=0)
-  allocate(damage_typeInstance(material_Nhomogenization),           source=0)
-  allocate(thermal_initialT(material_Nhomogenization),              source=300.0_pReal)
-  allocate(damage_initialPhi(material_Nhomogenization),             source=1.0_pReal)
+  allocate(homogenization_type(size(material_name_homogenization)),           source=HOMOGENIZATION_undefined_ID)
+  allocate(thermal_type(size(material_name_homogenization)),                  source=THERMAL_isothermal_ID)
+  allocate(damage_type (size(material_name_homogenization)),                  source=DAMAGE_none_ID)
+  allocate(homogenization_typeInstance(size(material_name_homogenization)),   source=0)
+  allocate(thermal_typeInstance(size(material_name_homogenization)),          source=0)
+  allocate(damage_typeInstance(size(material_name_homogenization)),           source=0)
+  allocate(thermal_initialT(size(material_name_homogenization)),              source=300.0_pReal)
+  allocate(damage_initialPhi(size(material_name_homogenization)),             source=1.0_pReal)
 
-  do h=1, material_Nhomogenization
+  do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
     homogMech => homog%get('mech')
-    homogenization_Nconstituent(h) = homog%get_asInt('N_constituents')
     select case (homogMech%get_asString('type'))
       case('none')
         homogenization_type(h) = HOMOGENIZATION_NONE_ID
@@ -324,7 +319,7 @@ subroutine material_parseHomogenization
     endif
   enddo
 
-  do h=1, material_Nhomogenization
+  do h=1, size(material_name_homogenization)
     homogenization_typeInstance(h)  = count(homogenization_type(1:h) == homogenization_type(h))
     thermal_typeInstance(h)         = count(thermal_type       (1:h) == thermal_type       (h))
     damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
@@ -385,7 +380,6 @@ subroutine material_parseMaterial
   allocate(material_phaseMemberAt(maxNconstituents,discretization_nIP,discretization_nElem),source=0)
 
   allocate(material_orientation0(maxNconstituents,discretization_nIP,discretization_nElem))
-
 
 
   do e = 1, discretization_nElem
