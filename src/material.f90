@@ -52,7 +52,7 @@ module material
     HOMOGENIZATION_RGC_ID
   end enum
 
-  character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
+  character(len=pStringLen), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
 
@@ -95,11 +95,6 @@ module material
 
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
-
-  integer, dimension(:), allocatable, private :: &
-    material_Nconstituents                                                                          !< number of constituents in each material
-
-
 
 ! BEGIN DEPRECATED
   integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst             !< mapping from material points to offset in constant state/field
@@ -363,14 +358,23 @@ subroutine material_parseMaterial
     c, &
     maxNconstituents
 
+  integer, dimension(:), allocatable :: &
+    material_Nconstituents                                                                          !< number of constituents in each material
+
   materials => config_material%get('material')
   if(any(discretization_materialAt > materials%length)) &
     call IO_error(155,ext_msg='More materials requested than found in material.yaml')
 
+  phases => config_material%get('phase')
+  allocate(counterPhase(phases%length),source=0)
+  homogenizations => config_material%get('homogenization')
+  allocate(counterHomogenization(homogenizations%length),source=0)
+
   allocate(material_Nconstituents(materials%length),source=0)
+
   do m = 1, materials%length
     material => materials%get(m)
-    constituents   => material%get('constituents')
+    constituents => material%get('constituents')
     material_Nconstituents(m) = constituents%length
   enddo
   maxNconstituents = maxval(material_Nconstituents)
@@ -382,10 +386,7 @@ subroutine material_parseMaterial
 
   allocate(material_orientation0(maxNconstituents,discretization_nIP,discretization_nElem))
 
-  phases => config_material%get('phase')
-  allocate(counterPhase(phases%length),source=0)
-  homogenizations => config_material%get('homogenization')
-  allocate(counterHomogenization(homogenizations%length),source=0)
+
 
   do e = 1, discretization_nElem
     material     => materials%get(discretization_materialAt(e))
@@ -407,7 +408,7 @@ subroutine material_parseMaterial
         counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
 
-        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
+        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4)) ! should be done in crystallite
       enddo
 
     enddo
