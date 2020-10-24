@@ -149,7 +149,7 @@ contains
 subroutine material_init(restart)
 
   logical, intent(in) :: restart
-  integer            :: myHomog
+  integer             :: myHomog
 
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
@@ -298,48 +298,22 @@ subroutine material_parseMaterial
     counterPhase, &
     counterHomogenization
 
-  character(len=pStringLen) :: sectionName
-
   real(pReal) :: &
     frac
   integer :: &
     e, i, c, &
-    p, h, &
-    m
+    h
 
   materials       => config_material%get('material')
   phases          => config_material%get('phase')
   homogenizations => config_material%get('homogenization')
 
+  call sanityCheck(materials, homogenizations)
+  material_name_phase          = getKeys(phases)
+  material_name_homogenization = getKeys(homogenizations)
 
-  if(any(discretization_materialAt > materials%length)) &
-    call IO_error(155,ext_msg='More materials requested than found in material.yaml')
-
-!--------------------------------------------------------------------------------------------------
-! determine name of phases/homogenizations
-  allocate(material_name_phase(phases%length))
-  do p = 1, phases%length
-    write(sectionName,'(i0,a)') p,'_'
-    material_name_phase(p) = trim(adjustl(sectionName))//phases%getKey(p)                           !ToDo: remove prefix
-  enddo
-
-  allocate(material_name_homogenization(homogenizations%length))
-  do h = 1, homogenizations%length
-    write(sectionName,'(i0,a)') h,'_'
-    material_name_homogenization(h) = trim(adjustl(sectionName))//homogenizations%getKey(h)         !ToDo: remove prefix
-  enddo
-
-!--------------------------------------------------------------------------------------------------
-! sanity check: Matching # of constituents
-  do m = 1, materials%length
-    material => materials%get(m)
-    constituents   => material%get('constituents')
-    homogenization => homogenizations%get(material%get_asString('homogenization'))
-    if(constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
-  enddo
-
-  allocate(homogenization_Nconstituent(size(material_name_homogenization)))
-  do h=1, size(material_name_homogenization)
+  allocate(homogenization_Nconstituent(homogenizations%length))
+  do h=1, homogenizations%length
     homogenization => homogenizations%get(h)
     homogenization_Nconstituent(h) = homogenization%get_asInt('N_constituents')
   enddo
@@ -385,5 +359,50 @@ subroutine material_parseMaterial
 
 end subroutine material_parseMaterial
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check if material.yaml is consistent and contains sufficient # of materials
+!--------------------------------------------------------------------------------------------------
+subroutine sanityCheck(materials,homogenizations)
+
+  class(tNode), intent(in) :: materials, &
+                              homogenizations
+
+  class(tNode), pointer :: material, &
+                           homogenization, &
+                           constituents
+  integer :: m
+
+  if(maxval(discretization_materialAt) > materials%length) &
+    call IO_error(155,ext_msg='More materials requested than found in material.yaml')
+
+  do m = 1, materials%length
+    material => materials%get(m)
+    constituents   => material%get('constituents')
+    homogenization => homogenizations%get(material%get_asString('homogenization'))
+    if(constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
+  enddo
+
+end subroutine sanityCheck
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get all keys from a dictionary (currently with #_ prefix)
+!--------------------------------------------------------------------------------------------------
+function getKeys(dict)
+
+  class(tNode), intent(in) :: dict
+  character(len=pStringLen), dimension(:), allocatable :: getKeys
+
+  integer :: i
+  character(len=pStringLen) :: sectionName
+
+  allocate(getKeys(dict%length))
+  do i=1, dict%length
+    write(sectionName,'(i0,a)') i,'_'
+    getKeys(i) = trim(adjustl(sectionName))//dict%getKey(i)                                         !ToDo: remove prefix
+  enddo
+
+end function getKeys
 
 end module material
