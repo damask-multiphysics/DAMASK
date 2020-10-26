@@ -1,6 +1,7 @@
 from io import StringIO
 import abc
 
+import numpy as np
 import yaml
 
 class NiceDumper(yaml.SafeDumper):
@@ -14,6 +15,11 @@ class NiceDumper(yaml.SafeDumper):
 
     def increase_indent(self, flow=False, indentless=False):
         return super().increase_indent(flow, False)
+
+    def represent_data(self, data):
+        """Cast Config objects and its qsubclasses to dict."""
+        return self.represent_data(dict(data)) if isinstance(data, dict) and type(data) != dict else \
+               super().represent_data(data)
 
 
 class Config(dict):
@@ -64,7 +70,14 @@ class Config(dict):
             kwargs['width'] = 256
         if 'default_flow_style' not in kwargs:
             kwargs['default_flow_style'] = None
-        fhandle.write(yaml.dump(dict(self),Dumper=NiceDumper,**kwargs))
+
+        def array_representer(dumper, data):
+            """Convert numpy array to list of native types."""
+            return dumper.represent_list([d.item() for d in data])
+
+        NiceDumper.add_representer(np.ndarray, array_representer)
+
+        fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
 
 
     @property
