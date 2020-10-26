@@ -82,21 +82,21 @@ module spectral_utilities
   end type tSolutionState
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
-    real(pReal), dimension(3,3) :: values = 0.0_pReal
-    logical,     dimension(3,3) :: mask   = .false.
-    character(len=pStringLen)   :: myType = 'None'
+    real(pReal), dimension(3,3)   :: values = 0.0_pReal
+    logical,     dimension(3,3)   :: mask   = .false.
+    character(len=:), allocatable :: myType
   end type tBoundaryCondition
 
   type, public :: tLoadCase
     type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
-                                    deformation                                                     !< deformation BC (Fdot or L)
-    real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
-    integer ::                      incs                   = 0, &                                   !< number of increments
-                                    outputfrequency        = 1, &                                   !< frequency of result writes
-                                    restartfrequency       = huge(0), &                             !< frequency of restart writes
-                                    logscale               = 0                                      !< linear/logarithmic time inc flag
-    logical ::                      followFormerTrajectory = .true.                                 !< follow trajectory of former loadcase
+                                    deformation                                                     !< deformation BC (dot_F, F, or L)
+    real(pReal) ::                  time                                                            !< length of increment
+    integer ::                      incs, &                                                         !< number of increments
+                                    outputfrequency, &                                              !< frequency of result writes
+                                    restartfrequency                                                !< frequency of restart writes
+    logical ::                      followFormerTrajectory, &                                       !< follow trajectory of former loadcase
+                                    logscale                                                        !< logarithmic time inc flag
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
