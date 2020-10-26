@@ -854,20 +854,23 @@ class Geom:
         """
         v = VTK.from_polyData(grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F'))
         cells = vtk.vtkCellArray()
-
+        
+        index={}
+        nodes={}
+        nodes_PBC={}
         if periodic:
-            FaceYZ_per=np.empty([])
-            FaceXY_per=np.empty([])
-            FaceXZ_per=np.empty([])
-        else:          
-            FaceYZ_per=np.concatenate((
+            nodes_PBC['0']=np.array([])
+            nodes_PBC['1']=np.array([])
+            nodes_PBC['2']=np.array([])
+        else:
+            nodes_PBC['0']=np.concatenate((
                         np.arange(0                                        , np.prod(self.grid+1)     , (self.grid[0]+1) ),
                         np.arange(self.grid[0]                             , np.prod(self.grid+1)     , (self.grid[0]+1) )  ))
-            FaceXY_per=np.concatenate((  
+            nodes_PBC['2']=np.concatenate((  
                         np.arange(0                                        , np.prod(self.grid[:2]+1) , 1                ), 
                         np.arange(np.prod(self.grid+1) - np.prod(self.grid[:2]+1), \
                                                     np.prod(self.grid+1)     , 1                )  ))
-            FaceXZ_per=np.concatenate((   
+            nodes_PBC['1']=np.concatenate((   
                         np.concatenate([np.arange((i)*np.prod(self.grid[:2]+1), \
                                        (i)*np.prod(self.grid[:2]+1)+ (self.grid[0]+1)) for i in range(self.grid[2]+1)]) ,
                         np.concatenate([np.arange( (i+1)*np.prod(self.grid[:2]+1)-(self.grid[0]+1),\
@@ -880,29 +883,33 @@ class Geom:
                     base_nodes = np.concatenate((base_nodes,np.take(base_nodes,[0],d)),d)
                 else:
                     base_nodes = np.concatenate((base_nodes,np.logical_and(np.take(base_nodes,[0],d),False)),d)
-            for p in np.argwhere(base_nodes.flatten(order='F')):
-                if np.any(FaceYZ_per == p[0]) and d_s == 0:
-                    pass
-                elif np.any(FaceXY_per == p[0]) and d_s == 2:
-                    pass
-                elif np.any(FaceXZ_per == p[0]) and d_s == 1:
-                    pass
-                else:
-                    q = vtk.vtkQuad()
-                    q.GetPointIds().SetId(0, p[0])
-                    if d_s == 0:
-                        q.GetPointIds().SetId(1, p[0]+(self.grid[0]+1))
-                        q.GetPointIds().SetId(2, p[0]+np.prod(self.grid[:2]+1)+(self.grid[0]+1))
-                        q.GetPointIds().SetId(3, p[0]+np.prod(self.grid[:2]+1))
-                    if d_s == 1:
-                        q.GetPointIds().SetId(1, p[0]+np.prod(self.grid[:2]+1))
-                        q.GetPointIds().SetId(2, p[0]+np.prod(self.grid[:2]+1)+1)
-                        q.GetPointIds().SetId(3, p[0]+1)
-                    if d_s == 2:
-                        q.GetPointIds().SetId(1, p[0]+1)
-                        q.GetPointIds().SetId(2, p[0]+(self.grid[0]+1)+1)
-                        q.GetPointIds().SetId(3, p[0]+(self.grid[0]+1))
-                    cells.InsertNextCell(q)
+            nodes['{}'.format(d_s)]= np.argwhere(base_nodes.flatten(order='F'))[:,0]
+            index['{}'.format(d_s)]=  np.isin( nodes['{}'.format(d_s)]   ,   nodes_PBC['{}'.format(d_s)]   , assume_unique=True,  invert=True )
+
+        for p in nodes['0'][index['0']]:
+            q = vtk.vtkQuad()
+            q.GetPointIds().SetId(0, p)
+            q.GetPointIds().SetId(1, p+(self.grid[0]+1))
+            q.GetPointIds().SetId(2, p+np.prod(self.grid[:2]+1)+(self.grid[0]+1))
+            q.GetPointIds().SetId(3, p+np.prod(self.grid[:2]+1))
+            cells.InsertNextCell(q)
+
+        for p in nodes['1'][index['1']]:
+            q = vtk.vtkQuad()
+            q.GetPointIds().SetId(0, p)
+            q.GetPointIds().SetId(1, p+np.prod(self.grid[:2]+1))
+            q.GetPointIds().SetId(2, p+np.prod(self.grid[:2]+1)+1)
+            q.GetPointIds().SetId(3, p+1)
+            cells.InsertNextCell(q)
+
+        for p in nodes['2'][index['2']]:
+            q = vtk.vtkQuad()
+            q.GetPointIds().SetId(0, p)
+            q.GetPointIds().SetId(1, p+1)
+            q.GetPointIds().SetId(2, p+(self.grid[0]+1)+1)
+            q.GetPointIds().SetId(3, p+(self.grid[0]+1))
+            cells.InsertNextCell(q)
+
         v.vtk_data.SetPolys(cells)
         v.save('GrainBoundaries') 
 
