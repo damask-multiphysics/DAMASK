@@ -17,7 +17,7 @@ class NiceDumper(yaml.SafeDumper):
         return super().increase_indent(flow, False)
 
     def represent_data(self, data):
-        """Cast Config objects and its qsubclasses to dict."""
+        """Cast Config objects and its subclasses to dict."""
         return self.represent_data(dict(data)) if isinstance(data, dict) and type(data) != dict else \
                super().represent_data(data)
 
@@ -70,6 +70,8 @@ class Config(dict):
             kwargs['width'] = 256
         if 'default_flow_style' not in kwargs:
             kwargs['default_flow_style'] = None
+        if 'sort_keys' not in kwargs:
+            kwargs['sort_keys'] = False
 
         def array_representer(dumper, data):
             """Convert numpy array to list of native types."""
