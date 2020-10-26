@@ -884,7 +884,7 @@ class Geom:
                 else:
                     base_nodes = np.concatenate((base_nodes,np.logical_and(np.take(base_nodes,[0],d),False)),d)
             nodes['{}'.format(d_s)]= np.argwhere(base_nodes.flatten(order='F'))[:,0]
-            index['{}'.format(d_s)]=  np.isin( nodes['{}'.format(d_s)]   ,   nodes_PBC['{}'.format(d_s)]   , assume_unique=True,  invert=True )
+            index['{}'.format(d_s)]=np.isin(nodes['{}'.format(d_s)],nodes_PBC['{}'.format(d_s)],assume_unique=True,invert=True)
 
         for p in nodes['0'][index['0']]:
             q = vtk.vtkQuad()
