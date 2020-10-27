@@ -12,6 +12,7 @@ module discretization_marc
   use DAMASK_interface
   use IO
   use config
+  use FEsolving
   use element
   use discretization
   use geometry_plastic_nonlocal
@@ -87,6 +88,9 @@ subroutine discretization_marc_init
 
   if (debug_e < 1 .or. debug_e > nElems)    call IO_error(602,ext_msg='element')
   if (debug_i < 1 .or. debug_i > elem%nIPs) call IO_error(602,ext_msg='IP')
+
+  FEsolving_execElem = [1,nElems]
+  FEsolving_execIP   = [1,elem%nIPs]
 
   allocate(cellNodeDefinition(elem%nNodes-1))
   allocate(connectivity_cell(elem%NcellNodesPerCell,elem%nIPs,nElems))
