@@ -473,7 +473,7 @@ class Geom:
             Compress with zlib algorithm. Defaults to True.
 
         """
-        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+        v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
         v.add(self.material.flatten(order='F'),'material')
         v.add_comments(self.comments)
 
@@ -508,7 +508,7 @@ class Geom:
 
     def show(self):
         """Show on screen."""
-        v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+        v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
         v.show()
 
 

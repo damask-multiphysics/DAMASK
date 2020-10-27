@@ -18,7 +18,7 @@ def default():
     """Simple VTK."""
     grid = np.array([5,6,7],int)
     size = np.array([.6,1.,.5])
-    return VTK.from_rectilinearGrid(grid,size)
+    return VTK.from_rectilinear_grid(grid,size)
 
 class TestVTK:
 
@@ -30,7 +30,7 @@ class TestVTK:
         grid   = np.random.randint(5,10,3)*2
         size   = np.random.random(3) + 1.0
         origin = np.random.random(3)
-        v = VTK.from_rectilinearGrid(grid,size,origin)
+        v = VTK.from_rectilinear_grid(grid,size,origin)
         string = v.__repr__()
         v.save(tmp_path/'rectilinearGrid',False)
         vtr = VTK.load(tmp_path/'rectilinearGrid.vtr')
@@ -41,7 +41,7 @@ class TestVTK:
 
     def test_polyData(self,tmp_path):
         points = np.random.rand(100,3)
-        v = VTK.from_polyData(points)
+        v = VTK.from_poly_data(points)
         string = v.__repr__()
         v.save(tmp_path/'polyData',False)
         vtp = VTK.load(tmp_path/'polyData.vtp')
@@ -60,7 +60,7 @@ class TestVTK:
     def test_unstructuredGrid(self,tmp_path,cell_type,n):
         nodes = np.random.rand(n,3)
         connectivity = np.random.choice(np.arange(n),n,False).reshape(-1,n)
-        v = VTK.from_unstructuredGrid(nodes,connectivity,cell_type)
+        v = VTK.from_unstructured_grid(nodes,connectivity,cell_type)
         string = v.__repr__()
         v.save(tmp_path/'unstructuredGrid',False)
         vtu = VTK.load(tmp_path/'unstructuredGrid.vtu')
@@ -72,7 +72,7 @@ class TestVTK:
 
     def test_parallel_out(self,tmp_path):
         points = np.random.rand(102,3)
-        v = VTK.from_polyData(points)
+        v = VTK.from_poly_data(points)
         fname_s = tmp_path/'single.vtp'
         fname_p = tmp_path/'parallel.vtp'
         v.save(fname_s,False)
@@ -121,7 +121,7 @@ class TestVTK:
 
     def test_compare_reference_polyData(self,update,reference_dir,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
-        polyData = VTK.from_polyData(points)
+        polyData = VTK.from_poly_data(points)
         polyData.add(points,'coordinates')
         if update:
              polyData.save(reference_dir/'polyData')
@@ -133,7 +133,7 @@ class TestVTK:
     def test_compare_reference_rectilinearGrid(self,update,reference_dir,tmp_path):
         grid = np.array([5,6,7],int)
         size = np.array([.6,1.,.5])
-        rectilinearGrid = VTK.from_rectilinearGrid(grid,size)
+        rectilinearGrid = VTK.from_rectilinear_grid(grid,size)
         c = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
         n = grid_filters.node_coord0(grid,size).reshape(-1,3,order='F')
         rectilinearGrid.add(c,'cell')

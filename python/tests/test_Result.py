@@ -341,6 +341,11 @@ class TestResult:
         os.chdir(tmp_path)
         default.save_vtk(output)
 
+    @pytest.mark.parametrize('mode',['point','cell'])
+    def test_vtk_mode(self,tmp_path,single_phase,mode):
+        os.chdir(tmp_path)
+        single_phase.save_vtk(mode=mode)
+
     def test_XDMF(self,tmp_path,single_phase):
         os.chdir(tmp_path)
         single_phase.save_XDMF()
