@@ -79,7 +79,11 @@ class Config(dict):
 
         NiceDumper.add_representer(np.ndarray, array_representer)
 
-        fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
+        try:
+            fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
+        except TypeError:                                                                           # compatibility with old pyyaml
+            del kwargs['sort_keys']
+            fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
 
 
     @property
