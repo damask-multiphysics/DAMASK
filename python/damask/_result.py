@@ -1219,7 +1219,7 @@ class Result:
                                                   f['/geometry/T_c'][()]-1,
                                                   f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-            v = VTK.from_polyData(self.cell_coordinates())
+            v = VTK.from_polyData(self.cell_coordinates)
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 
