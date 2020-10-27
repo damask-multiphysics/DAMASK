@@ -49,7 +49,7 @@ class TestGeom:
         assert geom_equal(new,default)
 
     def test_invalid_vtr(self,tmp_path):
-        v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
+        v = VTK.from_rectilinear_grid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
         v.save(tmp_path/'no_materialpoint.vtr')
         with pytest.raises(ValueError):
             Geom.load(tmp_path/'no_materialpoint.vtr')

@@ -36,7 +36,7 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinearGrid(grid,size,origin=np.zeros(3)):
+    def from_rectilinear_grid(grid,size,origin=np.zeros(3)):
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
@@ -64,7 +64,7 @@ class VTK:
 
 
     @staticmethod
-    def from_unstructuredGrid(nodes,connectivity,cell_type):
+    def from_unstructured_grid(nodes,connectivity,cell_type):
         """
         Create VTK of type vtk.vtkUnstructuredGrid.
 
@@ -96,7 +96,7 @@ class VTK:
 
 
     @staticmethod
-    def from_polyData(points):
+    def from_poly_data(points):
         """
         Create VTK of type vtk.polyData.
 
