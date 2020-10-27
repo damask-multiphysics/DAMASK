@@ -41,7 +41,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_conduction_init
 
-  integer :: Ninstance,NofMyHomog,h
+  integer :: Ninstances,Nmaterialpoints,h
   class(tNode), pointer :: &
     material_homogenization, &
     homog, &
@@ -49,8 +49,8 @@ subroutine thermal_conduction_init
  
   print'(/,a)', ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
 
-  Ninstance = count(thermal_type == THERMAL_conduction_ID)
-  allocate(param(Ninstance))
+  Ninstances = count(thermal_type == THERMAL_conduction_ID)
+  allocate(param(Ninstances))
 
   material_homogenization => config_material%get('homogenization')
   do h = 1, size(material_name_homogenization)
@@ -65,17 +65,17 @@ subroutine thermal_conduction_init
     prm%output = homogThermal%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
 
-    NofMyHomog=count(material_homogenizationAt==h)
+    Nmaterialpoints=count(material_homogenizationAt==h)
     thermalState(h)%sizeState = 0
-    allocate(thermalState(h)%state0   (0,NofMyHomog))
-    allocate(thermalState(h)%subState0(0,NofMyHomog))
-    allocate(thermalState(h)%state    (0,NofMyHomog))
+    allocate(thermalState(h)%state0   (0,Nmaterialpoints))
+    allocate(thermalState(h)%subState0(0,Nmaterialpoints))
+    allocate(thermalState(h)%state    (0,Nmaterialpoints))
 
     thermalMapping(h)%p => material_homogenizationMemberAt
     deallocate(temperature    (h)%p)
-    allocate  (temperature    (h)%p(NofMyHomog), source=thermal_initialT(h))
+    allocate  (temperature    (h)%p(Nmaterialpoints), source=thermal_initialT(h))
     deallocate(temperatureRate(h)%p)
-    allocate  (temperatureRate(h)%p(NofMyHomog), source=0.0_pReal)
+    allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
 
     end associate
   enddo

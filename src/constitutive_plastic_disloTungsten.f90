@@ -78,9 +78,9 @@ module function plastic_disloTungsten_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstance, &
+    Ninstances, &
     p, i, &
-    NipcMyPhase, &
+    Nconstituents, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,    dimension(:), allocatable :: &
@@ -99,17 +99,17 @@ module function plastic_disloTungsten_init() result(myPlasticity)
   print'(/,a)', ' <<<+-  plastic_dislotungsten init  -+>>>'
 
   myPlasticity = plastic_active('disloTungsten')
-  Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myPlasticity)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
   
   print*, 'Cereceda et al., International Journal of Plasticity 78:242–256, 2016'
   print*, 'https://dx.doi.org/10.1016/j.ijplas.2015.09.002'
 
-  allocate(param(Ninstance))
-  allocate(state(Ninstance))
-  allocate(dotState(Ninstance))
-  allocate(dependentState(Ninstance))
+  allocate(param(Ninstances))
+  allocate(state(Ninstances))
+  allocate(dotState(Ninstances))
+  allocate(dependentState(Ninstances))
 
   phases => config_material%get('phase')
   i = 0
@@ -221,18 +221,18 @@ module function plastic_disloTungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phaseAt == p) * discretization_nIPs
+    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 
-    call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
+    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob => plasticState(p)%state(startIndex:endIndex,:)
-    stt%rho_mob =  spread(rho_mob_0,2,NipcMyPhase)
+    stt%rho_mob =  spread(rho_mob_0,2,Nconstituents)
     dot%rho_mob => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
@@ -240,7 +240,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%rho_dip => plasticState(p)%state(startIndex:endIndex,:)
-    stt%rho_dip =  spread(rho_dip_0,2,NipcMyPhase)
+    stt%rho_dip =  spread(rho_dip_0,2,Nconstituents)
     dot%rho_dip => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
@@ -252,8 +252,8 @@ module function plastic_disloTungsten_init() result(myPlasticity)
     ! global alias
     plasticState(p)%slipRate        => plasticState(p)%dotState(startIndex:endIndex,:)
 
-    allocate(dst%Lambda_sl(prm%sum_N_sl,NipcMyPhase),         source=0.0_pReal)
-    allocate(dst%threshold_stress(prm%sum_N_sl,NipcMyPhase),  source=0.0_pReal)
+    allocate(dst%Lambda_sl(prm%sum_N_sl,Nconstituents),         source=0.0_pReal)
+    allocate(dst%threshold_stress(prm%sum_N_sl,Nconstituents),  source=0.0_pReal)
 
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 

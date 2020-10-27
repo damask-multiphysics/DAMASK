@@ -40,7 +40,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
  
-  integer :: maxNinstance,h,NofMyHomog
+  integer :: maxNinstances,h,Nmaterialpoints
   class(tNode), pointer :: &
     material_homogenization, &
     homog, &
@@ -48,10 +48,10 @@ subroutine thermal_adiabatic_init
 
   print'(/,a)', ' <<<+-  thermal_adiabatic init  -+>>>'; flush(6)
   
-  maxNinstance = count(thermal_type == THERMAL_adiabatic_ID)
-  if (maxNinstance == 0) return
+  maxNinstances = count(thermal_type == THERMAL_adiabatic_ID)
+  if (maxNinstances == 0) return
   
-  allocate(param(maxNinstance))
+  allocate(param(maxNinstances))
   
   material_homogenization => config_material%get('homogenization')
   do h = 1, size(material_name_homogenization)
@@ -67,17 +67,17 @@ subroutine thermal_adiabatic_init
     prm%output = homogThermal%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
 
-    NofMyHomog=count(material_homogenizationAt==h)
+    Nmaterialpoints=count(material_homogenizationAt==h)
     thermalState(h)%sizeState = 1
-    allocate(thermalState(h)%state0   (1,NofMyHomog), source=thermal_initialT(h))
-    allocate(thermalState(h)%subState0(1,NofMyHomog), source=thermal_initialT(h))
-    allocate(thermalState(h)%state    (1,NofMyHomog), source=thermal_initialT(h))
+    allocate(thermalState(h)%state0   (1,Nmaterialpoints), source=thermal_initialT(h))
+    allocate(thermalState(h)%subState0(1,Nmaterialpoints), source=thermal_initialT(h))
+    allocate(thermalState(h)%state    (1,Nmaterialpoints), source=thermal_initialT(h))
  
     thermalMapping(h)%p => material_homogenizationMemberAt
     deallocate(temperature(h)%p)
     temperature(h)%p => thermalState(h)%state(1,:)
     deallocate(temperatureRate(h)%p)
-    allocate  (temperatureRate(h)%p(NofMyHomog), source=0.0_pReal)
+    allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
   
     end associate
   enddo

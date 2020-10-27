@@ -53,10 +53,10 @@ module function plastic_isotropic_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstance, &
+    Ninstances, &
     p, &
     i, &
-    NipcMyPhase, &
+    Nconstituents, &
     sizeState, sizeDotState
   real(pReal) :: &
     xi_0                                                                                            !< initial critical stress
@@ -70,16 +70,16 @@ module function plastic_isotropic_init() result(myPlasticity)
   print'(/,a)', ' <<<+-  plastic_isotropic init  -+>>>'
 
   myPlasticity = plastic_active('isotropic')
-  Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myPlasticity)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
   print*, 'Maiti and Eisenlohr, Scripta Materialia 145:37–40, 2018'
   print*, 'https://doi.org/10.1016/j.scriptamat.2017.09.047'
 
-  allocate(param(Ninstance))
-  allocate(state(Ninstance))
-  allocate(dotState(Ninstance))
+  allocate(param(Ninstances))
+  allocate(state(Ninstances))
+  allocate(dotState(Ninstances))
 
   phases => config_material%get('phase')
   i = 0
@@ -130,11 +130,11 @@ module function plastic_isotropic_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phaseAt == p) * discretization_nIPs
+    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
     sizeDotState = size(['xi   ','gamma'])
     sizeState = sizeDotState
 
-    call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
+    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization

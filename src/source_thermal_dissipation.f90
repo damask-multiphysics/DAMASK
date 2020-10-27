@@ -15,7 +15,7 @@ submodule(constitutive:constitutive_thermal) source_thermal_dissipation
       kappa                                                                                         !< TAYLOR-QUINNEY factor
   end type tParameters
 
-  type(tParameters), dimension(:),   allocatable :: param                                           !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:),   allocatable :: param                                           !< containers of constitutive parameters (len Ninstances)
 
 
 contains
@@ -35,17 +35,17 @@ module function source_thermal_dissipation_init(source_length) result(mySources)
     phase, &
     sources, &
     src 
-  integer :: Ninstance,sourceOffset,NipcMyPhase,p
+  integer :: Ninstances,sourceOffset,Nconstituents,p
 
   print'(/,a)', ' <<<+-  source_thermal_dissipation init  -+>>>'
 
   mySources = source_active('thermal_dissipation',source_length)
-  Ninstance = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(mySources)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstance))
+  allocate(param(Ninstances))
   allocate(source_thermal_dissipation_offset  (phases%length), source=0)
   allocate(source_thermal_dissipation_instance(phases%length), source=0)
 
@@ -61,8 +61,8 @@ module function source_thermal_dissipation_init(source_length) result(mySources)
 
         src => sources%get(sourceOffset) 
         prm%kappa = src%get_asFloat('kappa')
-        NipcMyPhase = count(material_phaseAt==p) * discretization_nIPs
-        call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,0,0,0)
+        Nconstituents = count(material_phaseAt==p) * discretization_nIPs
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),Nconstituents,0,0,0)
 
         end associate
       endif
@@ -74,7 +74,7 @@ end function source_thermal_dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Ninstances dissipation rate
+!> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
 module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
 

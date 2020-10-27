@@ -905,12 +905,12 @@ end function constitutive_deltaState
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_allocateState(state, &
-                                  NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
+                                  Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
   class(tState), intent(out) :: &
     state
   integer, intent(in) :: &
-    NipcMyPhase, &
+    Nconstituents, &
     sizeState, &
     sizeDotState, &
     sizeDeltaState
@@ -921,14 +921,14 @@ subroutine constitutive_allocateState(state, &
   state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
 
   allocate(state%atol           (sizeState),             source=0.0_pReal)
-  allocate(state%state0         (sizeState,NipcMyPhase), source=0.0_pReal)
-  allocate(state%partitionedState0(sizeState,NipcMyPhase), source=0.0_pReal)
-  allocate(state%subState0      (sizeState,NipcMyPhase), source=0.0_pReal)
-  allocate(state%state          (sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%state0         (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%partitionedState0(sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%subState0      (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%state          (sizeState,Nconstituents), source=0.0_pReal)
 
-  allocate(state%dotState    (sizeDotState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%dotState    (sizeDotState,Nconstituents), source=0.0_pReal)
 
-  allocate(state%deltaState(sizeDeltaState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%deltaState(sizeDeltaState,Nconstituents), source=0.0_pReal)
 
 
 end subroutine constitutive_allocateState

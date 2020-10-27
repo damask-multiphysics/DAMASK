@@ -14,14 +14,14 @@ contains
 module subroutine mech_none_init
 
   integer :: &
-    Ninstance, &
+    Ninstances, &
     h, &
-    NofMyHomog
+    Nmaterialpoints
 
   print'(/,a)', ' <<<+-  homogenization_mech_none init  -+>>>'
 
-  Ninstance = count(homogenization_type == HOMOGENIZATION_NONE_ID)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
+  Ninstances = count(homogenization_type == HOMOGENIZATION_NONE_ID)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
 
   do h = 1, size(homogenization_type)
     if(homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
@@ -29,11 +29,11 @@ module subroutine mech_none_init
     if(homogenization_Nconstituents(h) /= 1) &
       call IO_error(211,ext_msg='N_constituents (mech_none)')
     
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     homogState(h)%sizeState = 0
-    allocate(homogState(h)%state0   (0,NofMyHomog))
-    allocate(homogState(h)%subState0(0,NofMyHomog))
-    allocate(homogState(h)%state    (0,NofMyHomog))
+    allocate(homogState(h)%state0   (0,Nmaterialpoints))
+    allocate(homogState(h)%subState0(0,Nmaterialpoints))
+    allocate(homogState(h)%state    (0,Nmaterialpoints))
 
   enddo
 

@@ -16,18 +16,18 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_isothermal_init
 
-  integer :: h,NofMyHomog
+  integer :: h,Nmaterialpoints
 
   print'(/,a)',   ' <<<+-  thermal_isothermal init  -+>>>'; flush(6)
 
   do h = 1, size(material_name_homogenization)
     if (thermal_type(h) /= THERMAL_isothermal_ID) cycle
 
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     thermalState(h)%sizeState = 0
-    allocate(thermalState(h)%state0   (0,NofMyHomog))
-    allocate(thermalState(h)%subState0(0,NofMyHomog))
-    allocate(thermalState(h)%state    (0,NofMyHomog))
+    allocate(thermalState(h)%state0   (0,Nmaterialpoints))
+    allocate(thermalState(h)%subState0(0,Nmaterialpoints))
+    allocate(thermalState(h)%state    (0,Nmaterialpoints))
 
     deallocate(temperature    (h)%p)
     allocate  (temperature    (h)%p(1), source=thermal_initialT(h))
