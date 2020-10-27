@@ -51,7 +51,7 @@ module subroutine mech_isostrain_init
     homogMech => homog%get('mech')
     associate(prm => param(homogenization_typeInstance(h)))
 
-    prm%N_constituents = homogenization_Nconstituent(h)
+    prm%N_constituents = homogenization_Nconstituents(h)
     select case(homogMech%get_asString('mapping',defaultVal = 'sum'))
       case ('sum')
         prm%mapping = parallel_ID

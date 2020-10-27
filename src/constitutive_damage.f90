@@ -184,7 +184,7 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
    phiDot = 0.0_pReal
    dPhiDot_dPhi = 0.0_pReal
  
-   do grain = 1, homogenization_Nconstituent(material_homogenizationAt(el))
+   do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
      phase = material_phaseAt(grain,el)
      constituent = material_phasememberAt(grain,ip,el)
      do source = 1, phase_Nsources(phase)

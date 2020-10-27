@@ -221,7 +221,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
+    NipcMyPhase = count(material_phaseAt == p) * discretization_nIPs
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl
     sizeState = sizeDotState
 

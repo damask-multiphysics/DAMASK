@@ -73,7 +73,7 @@ module function source_damage_isoBrittle_init(source_length) result(mySources)
         ! sanity checks
         if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-        NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+        NipcMyPhase = count(material_phaseAt==p) * discretization_nIPs
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,1)
         sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
         if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'

@@ -77,7 +77,7 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
         if (prm%q          <= 0.0_pReal) extmsg = trim(extmsg)//' q'
         if (prm%gamma_crit <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
 
-        NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
+        NipcMyPhase=count(material_phaseAt==p) * discretization_nIPs
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
         sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
         if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'

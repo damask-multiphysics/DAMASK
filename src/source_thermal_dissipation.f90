@@ -61,7 +61,7 @@ module function source_thermal_dissipation_init(source_length) result(mySources)
 
         src => sources%get(sourceOffset) 
         prm%kappa = src%get_asFloat('kappa')
-        NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+        NipcMyPhase = count(material_phaseAt==p) * discretization_nIPs
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,0,0,0)
 
         end associate

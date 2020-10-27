@@ -127,7 +127,7 @@ module constitutive
                                                         instance,of,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
-      real(pReal), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem), intent(in) :: &
+      real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
         F, &                                                                                        !< deformation gradient
         Fp                                                                                          !< plastic deformation gradient
       real(pReal), intent(in) :: &
@@ -218,7 +218,7 @@ module constitutive
         instance, &
         i, &
         e
-      type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
+      type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
         orientation                                                                                 !< crystal orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
@@ -753,7 +753,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
     of
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem) :: &
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
     FArray, &                                                                                       !< elastic deformation gradient
     FpArray                                                                                         !< plastic deformation gradient
   real(pReal),  intent(in), dimension(3,3) :: &

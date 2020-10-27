@@ -174,7 +174,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
+    NipcMyPhase = count(material_phaseAt == p) * discretization_nIPs
     sizeDotState   = size(['crss     ','crss_back', 'accshear ']) * prm%sum_N_sl!ToDo: adjust names, ask Philip
     sizeDeltaState = size(['sense ',   'chi0  ',    'gamma0'   ]) * prm%sum_N_sl !ToDo: adjust names
     sizeState = sizeDotState + sizeDeltaState

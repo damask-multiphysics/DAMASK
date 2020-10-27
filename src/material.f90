@@ -64,10 +64,10 @@ module material
     homogenization_type                                                                             !< type of each homogenization
 
   integer, public, protected :: &
-    homogenization_maxNconstituent                                                                  !< max number of grains in any USED homogenization
+    homogenization_maxNconstituents                                                                  !< max number of grains in any USED homogenization
 
   integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Nconstituent, &                                                                  !< number of grains in each homogenization
+    homogenization_Nconstituents, &                                                                  !< number of grains in each homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
@@ -183,7 +183,7 @@ subroutine material_init(restart)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
-  allocate(mappingHomogenizationConst(  discretization_nIP,discretization_nElem),source=1)
+  allocate(mappingHomogenizationConst(  discretization_nIPs,discretization_Nelems),source=1)
 
 ! hack needed to initialize field values used during constitutive initialization
   do myHomog = 1, size(material_name_homogenization)
@@ -312,29 +312,29 @@ subroutine material_parseMaterial
   material_name_phase          = getKeys(phases)
   material_name_homogenization = getKeys(homogenizations)
 
-  allocate(homogenization_Nconstituent(homogenizations%length))
+  allocate(homogenization_Nconstituents(homogenizations%length))
   do h=1, homogenizations%length
     homogenization => homogenizations%get(h)
-    homogenization_Nconstituent(h) = homogenization%get_asInt('N_constituents')
+    homogenization_Nconstituents(h) = homogenization%get_asInt('N_constituents')
   enddo
-  homogenization_maxNconstituent = maxval(homogenization_Nconstituent)
+  homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
 
   allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
 
-  allocate(material_homogenizationAt(discretization_nElem),source=0)
-  allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
-  allocate(material_phaseAt(homogenization_maxNconstituent,discretization_nElem),source=0)
-  allocate(material_phaseMemberAt(homogenization_maxNconstituent,discretization_nIP,discretization_nElem),source=0)
+  allocate(material_homogenizationAt(discretization_Nelems),source=0)
+  allocate(material_homogenizationMemberAt(discretization_nIPs,discretization_Nelems),source=0)
+  allocate(material_phaseAt(homogenization_maxNconstituents,discretization_Nelems),source=0)
+  allocate(material_phaseMemberAt(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems),source=0)
 
-  allocate(material_orientation0(homogenization_maxNconstituent,discretization_nIP,discretization_nElem))
+  allocate(material_orientation0(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems))
 
-  do e = 1, discretization_nElem
+  do e = 1, discretization_Nelems
     material     => materials%get(discretization_materialAt(e))
     constituents => material%get('constituents')
 
     material_homogenizationAt(e) = homogenizations%getIndex(material%get_asString('homogenization'))
-    do i = 1, discretization_nIP
+    do i = 1, discretization_nIPs
       counterHomogenization(material_homogenizationAt(e)) = counterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e)                = counterHomogenization(material_homogenizationAt(e))
     enddo
@@ -345,7 +345,7 @@ subroutine material_parseMaterial
       frac = frac + constituent%get_asFloat('fraction')
 
       material_phaseAt(c,e) = phases%getIndex(constituent%get_asString('phase'))
-      do i = 1, discretization_nIP
+      do i = 1, discretization_nIPs
         counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
 

@@ -391,7 +391,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase  = count(material_phaseAt==p) * discretization_nIP
+    NipcMyPhase  = count(material_phaseAt==p) * discretization_nIPs
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -505,7 +505,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   enddo
 
   allocate(compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nIPneighbors,&
-                         discretization_nIP,discretization_nElem), source=0.0_pReal)
+                         discretization_nIPs,discretization_Nelems), source=0.0_pReal)
 
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
   allocate(iRhoU(maxval(param%sum_N_sl),4,Ninstance), source=0)
@@ -519,7 +519,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if(.not. myPlasticity(p)) cycle
     i = i + 1
 
-    NipcMyPhase  = count(material_phaseAt==p) * discretization_nIP
+    NipcMyPhase  = count(material_phaseAt==p) * discretization_nIPs
     l = 0
     do t = 1,4
       do s = 1,param(i)%sum_N_sl
@@ -976,7 +976,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
-  real(pReal), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   real(pReal), intent(in) :: &
@@ -1176,7 +1176,7 @@ end subroutine plastic_nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
 
-  real(pReal), dimension(3,3,homogenization_maxNconstituent,discretization_nIP,discretization_nElem), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   real(pReal), intent(in) :: &
@@ -1416,7 +1416,7 @@ end function rhoDotFlux
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
 
-  type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
+  type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
     orientation                                                                                     ! crystal orientation
   integer, intent(in) :: &
     instance, &
@@ -1632,8 +1632,8 @@ subroutine stateInit(ini,phase,NipcMyPhase,instance)
   associate(stt => state(instance))
 
   if (ini%random_rho_u > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
-    do e = 1,discretization_nElem
-      do i = 1,discretization_nIP
+    do e = 1,discretization_Nelems
+      do i = 1,discretization_nIPs
         if (material_phaseAt(1,e) == phase) volume(material_phasememberAt(1,i,e)) = IPvolume(i,e)
       enddo
     enddo

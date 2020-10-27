@@ -69,7 +69,7 @@ module function source_thermal_externalheat_init(source_length) result(mySources
 
         prm%f_T = src%get_asFloats('f_T',requiredSize = size(prm%t_n))
 
-        NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
+        NipcMyPhase = count(material_phaseAt==p) * discretization_nIPs
         call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
         end associate
 

@@ -26,7 +26,7 @@ module subroutine mech_none_init
   do h = 1, size(homogenization_type)
     if(homogenization_type(h) /= HOMOGENIZATION_NONE_ID) cycle
 
-    if(homogenization_Nconstituent(h) /= 1) &
+    if(homogenization_Nconstituents(h) /= 1) &
       call IO_error(211,ext_msg='N_constituents (mech_none)')
     
     NofMyHomog = count(material_homogenizationAt == h)

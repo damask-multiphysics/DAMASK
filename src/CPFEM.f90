@@ -107,9 +107,9 @@ subroutine CPFEM_init
 
   print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
 
-  allocate(CPFEM_cs(               6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
-  allocate(CPFEM_dcsdE(          6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
-  allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIP,discretization_nElem), source= 0.0_pReal)
+  allocate(CPFEM_cs(               6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
+  allocate(CPFEM_dcsdE(          6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
+  allocate(CPFEM_dcsdE_knownGood(6,6,discretization_nIPs,discretization_Nelems), source= 0.0_pReal)
 
 !------------------------------------------------------------------------------
 ! read debug options
