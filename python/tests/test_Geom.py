@@ -176,6 +176,7 @@ class TestGeom:
         material = default.material.copy()
         for m in np.unique(material):
             material[material==m] = material.max() + np.random.randint(1,30)
+        default.material -= 1
         modified = Geom(material,
                         default.size,
                         default.origin)

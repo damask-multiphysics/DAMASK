@@ -417,7 +417,7 @@ class Geom:
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
             Material IDs. Defaults to (1,2).
-        
+
         Notes
         -----
         The following triply-periodic minimal surfaces are implemented:
@@ -687,10 +687,10 @@ class Geom:
 
 
     def renumber(self):
-        """Renumber sorted material indices to 1,...,N."""
+        """Renumber sorted material indices to 0,...,N-1."""
         renumbered = np.empty(self.grid,dtype=self.material.dtype)
         for i, oldID in enumerate(np.unique(self.material)):
-            renumbered = np.where(self.material == oldID, i+1, renumbered)
+            renumbered = np.where(self.material == oldID, i, renumbered)
 
         return Geom(material = renumbered,
                     size     = self.size,
