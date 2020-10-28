@@ -229,11 +229,9 @@ class ConfigMaterial(Config):
         Parameters
         ----------
         constituents : dict
-            Entries for 'constituents'. The key is the name and the value specifies
-            the label of the data column in the table
+            Entries for 'constituents' as key-value pair.
         **kwargs
-            Keyword arguments where the key is the name and  the value specifies
-            the label of the data column in the table
+            Key-value pairs.
 
         Examples
         --------
@@ -264,7 +262,7 @@ class ConfigMaterial(Config):
         for k,v in kwargs.items():
             if hasattr(v,'__len__') and not isinstance(v,str):
                 if len(v) != len(c):
-                    raise ValueError('len mismatch 1')
+                    raise ValueError('Cannot add entries of different length')
                 for i,vv in enumerate(v):
                     c[i][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
             else:
@@ -288,7 +286,7 @@ class ConfigMaterial(Config):
             for k,v in kwargs.items():
                 if hasattr(v,'__len__') and not isinstance(v,str):
                     if len(v) != N_material:
-                        raise ValueError('len mismatch 2')
+                        raise ValueError('Cannot add entries of different length')
                     for i,vv in enumerate(np.array(v)):
                         m[i][0][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
                 else:
