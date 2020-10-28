@@ -4,6 +4,7 @@ from functools import partial
 from os import path
 
 import numpy as np
+import pandas as pd
 import h5py
 from scipy import ndimage,spatial
 
@@ -260,15 +261,19 @@ class Geom:
             Each unique combintation of values results in a material.
 
         """
-        t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
-
-        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(t.get(coordinates))
+        coords = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)]).get(coordinates)
+        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(coords)
 
         labels_ = [labels] if isinstance(labels,str) else labels
-        _,unique_inverse = np.unique(np.hstack([t.get(l) for l in labels_]),return_inverse=True,axis=0)
-        ma = unique_inverse.reshape(grid,order='F') + 1
+        unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
+        if len(unique) == grid.prod():
+            ma = np.arange(grid.prod())
+        else:
+            ma = np.empty(grid.prod(),'i')
+            for to_ma,from_ma in enumerate(pd.unique(unique_inverse)):
+                ma[unique_inverse==from_ma] = to_ma
 
-        return Geom(ma,size,origin,util.execution_stamp('Geom','from_table'))
+        return Geom(ma.reshape(grid,order='F'),size,origin,util.execution_stamp('Geom','from_table'))
 
 
     @staticmethod
@@ -782,8 +787,8 @@ class Geom:
 
         """
         substituted = self.material.copy()
-        for from_ms,to_ms in zip(from_material,to_material):
-            substituted[self.material==from_ms] = to_ms
+        for from_ma,to_ma in zip(from_material,to_material):
+            substituted[self.material==from_ma] = to_ma
 
         return Geom(material = substituted,
                     size     = self.size,
