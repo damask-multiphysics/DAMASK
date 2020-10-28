@@ -688,11 +688,9 @@ class Geom:
 
     def renumber(self):
         """Renumber sorted material indices to 0,...,N-1."""
-        renumbered = np.empty(self.grid,dtype=self.material.dtype)
-        for i, oldID in enumerate(np.unique(self.material)):
-            renumbered = np.where(self.material == oldID, i, renumbered)
+        _,renumbered = np.unique(self.material,return_inverse=True)
 
-        return Geom(material = renumbered,
+        return Geom(material = renumbered.reshape(self.grid),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','renumber')],
