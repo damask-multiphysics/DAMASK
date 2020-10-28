@@ -787,11 +787,14 @@ class Geom:
             New material indices.
 
         """
-        substituted = self.material.copy()
-        for from_ma,to_ma in zip(from_material,to_material):
-            substituted[self.material==from_ma] = to_ma
+        mapper = dict(zip(from_material,to_material))
+        
+        def mp(entry):
+            return mapper[entry] if entry in mapper else entry
+       
+        mp = np.vectorize(mp)
 
-        return Geom(material = substituted,
+        return Geom(material = mp(self.material).reshape(self.grid),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','substitute')],

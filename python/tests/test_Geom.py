@@ -195,6 +195,13 @@ class TestGeom:
                           modified.substitute(np.arange(default.material.max())+1+offset,
                                               np.arange(default.material.max())+1))
 
+    def test_substitute_invariant(self,default):
+        f = np.unique(default.material.flatten())[:np.random.randint(1,default.material.max())]
+        t = np.random.permutation(f)
+        modified = default.substitute(f,t)
+        assert np.array_equiv(t,f) or (not geom_equal(modified,default))
+        assert geom_equal(default, modified.substitute(t,f))
+
 
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
                                            np.array([1,0,0,175]),np.array([0,-1,0,178]),np.array([0,0,1,180])])
