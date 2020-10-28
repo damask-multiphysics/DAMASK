@@ -269,9 +269,10 @@ class Geom:
         if len(unique) == grid.prod():
             ma = np.arange(grid.prod())
         else:
-            ma = np.empty(grid.prod(),'i')
-            for to_ma,from_ma in enumerate(pd.unique(unique_inverse)):
-                ma[unique_inverse==from_ma] = to_ma
+            from_ma = pd.unique(unique_inverse)
+            sort_idx = np.argsort(from_ma)
+            idx = np.searchsorted(from_ma,unique_inverse,sorter = sort_idx)
+            ma = np.arange(from_ma.size)[sort_idx][idx]
 
         return Geom(ma.reshape(grid,order='F'),size,origin,util.execution_stamp('Geom','from_table'))
 
