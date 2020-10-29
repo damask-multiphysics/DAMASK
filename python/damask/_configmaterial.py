@@ -226,10 +226,11 @@ class ConfigMaterial(Config):
         Examples
         --------
         >>> import damask
-        >>> m = damask.ConfigMaterial()
         >>> O = damask.Rotation.from_random(3).as_quaternion()
         >>> phase = ['Aluminum','Steel','Aluminum']
-        >>> m.material_add(constituents={'phase':phase,'O':O},homogenization='SX')
+        >>> m = damask.ConfigMaterial().material_add(constituents={'phase':phase,'O':O},
+        ...                                          homogenization='SX')
+        >>> m
         material:
           - constituents:
               - O: [0.577764, -0.146299, -0.617669, 0.513010]
@@ -259,8 +260,7 @@ class ConfigMaterial(Config):
                 for i in range(len(c)):
                     c[i][k] = v
         dup = copy.deepcopy(self)
-        if 'material' not in dup: dup['material'] = []
-        dup['material'] +=c
+        dup['material'] = dup['material'] + c if 'material' in dup else c
 
         return dup
 
