@@ -26,7 +26,7 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def from_table(table,coordinates=None,constituents={},**kwargs):
+    def from_table(table,constituents={},**kwargs):
         """
         Load from an ASCII table.
 
@@ -34,10 +34,6 @@ class ConfigMaterial(Config):
         ----------
         table : damask.Table
             Table that contains material information.
-        coordinates : str, optional
-            Label of spatial coordiates. Used for sorting and performing a
-            sanity check. Default to None, in which case no sorting or checking is
-            peformed.
         constituents : dict, optional
             Entries for 'constituents'. The key is the name and the value specifies
             the label of the data column in the table
@@ -54,7 +50,7 @@ class ConfigMaterial(Config):
             pos  pos  pos   qu   qu    qu    qu   phase    homog
         0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
         1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.from_table(t,'pos',{'O':'qu','phase':'phase'},homogenization='homog')
+        >>> cm.from_table(t,{'O':'qu','phase':'phase'},homogenization='homog')
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
@@ -68,17 +64,12 @@ class ConfigMaterial(Config):
             homogenization: SX
 
         """
-        if coordinates is not None:
-            t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
-            grid_filters.coord0_check(t.get(coordinates))
-        else:
-            t = table
-
-        constituents_ = {k:t.get(v) for k,v in constituents.items()}
-        kwargs_       = {k:t.get(v) for k,v in kwargs.items()}
+        constituents_ = {k:table.get(v) for k,v in constituents.items()}
+        kwargs_       = {k:table.get(v) for k,v in kwargs.items()}
 
         _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
 
+        idx = np.sort(idx)
         constituents_ = {k:v[idx].squeeze() for k,v in constituents_.items()}
         kwargs_       = {k:v[idx].squeeze() for k,v in kwargs_.items()}
 

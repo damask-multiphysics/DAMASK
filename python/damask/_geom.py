@@ -255,13 +255,13 @@ class Geom:
         table : damask.Table
             Table that contains material information.
         coordinates : str
-            Label of the column containing the spatial coordinates.
+            Label of the column containing the vector of spatial coordinates.
+            Need to be ordered (1./x fast, 3./z slow).
         labels : str or list of str
             Label(s) of the columns containing the material definition.
             Each unique combintation of values results in a material.
 
         """
-        coords = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)]).get(coordinates)
         grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(coords)
 
         labels_ = [labels] if isinstance(labels,str) else labels
