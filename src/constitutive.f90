@@ -127,7 +127,7 @@ module constitutive
                                                         instance,of,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
-      real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+      real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
         F, &                                                                                        !< deformation gradient
         Fp                                                                                          !< plastic deformation gradient
       real(pReal), intent(in) :: &
@@ -218,7 +218,7 @@ module constitutive
         instance, &
         i, &
         e
-      type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
+      type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
         orientation                                                                                 !< crystal orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
@@ -753,7 +753,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
     of
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: &
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
     FArray, &                                                                                       !< elastic deformation gradient
     FpArray                                                                                         !< plastic deformation gradient
   real(pReal),  intent(in), dimension(3,3) :: &
@@ -905,12 +905,12 @@ end function constitutive_deltaState
 !> @brief Allocate the components of the state structure for a given phase
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_allocateState(state, &
-                                  NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
+                                  Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
   class(tState), intent(out) :: &
     state
   integer, intent(in) :: &
-    NipcMyPhase, &
+    Nconstituents, &
     sizeState, &
     sizeDotState, &
     sizeDeltaState
@@ -921,14 +921,14 @@ subroutine constitutive_allocateState(state, &
   state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
 
   allocate(state%atol           (sizeState),             source=0.0_pReal)
-  allocate(state%state0         (sizeState,NipcMyPhase), source=0.0_pReal)
-  allocate(state%partitionedState0(sizeState,NipcMyPhase), source=0.0_pReal)
-  allocate(state%subState0      (sizeState,NipcMyPhase), source=0.0_pReal)
-  allocate(state%state          (sizeState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%state0         (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%partitionedState0(sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%subState0      (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%state          (sizeState,Nconstituents), source=0.0_pReal)
 
-  allocate(state%dotState    (sizeDotState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%dotState    (sizeDotState,Nconstituents), source=0.0_pReal)
 
-  allocate(state%deltaState(sizeDeltaState,NipcMyPhase), source=0.0_pReal)
+  allocate(state%deltaState(sizeDeltaState,Nconstituents), source=0.0_pReal)
 
 
 end subroutine constitutive_allocateState

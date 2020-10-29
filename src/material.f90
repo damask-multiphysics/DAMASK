@@ -52,7 +52,7 @@ module material
     HOMOGENIZATION_RGC_ID
   end enum
 
-  character(len=pStringLen),    public, protected, allocatable, dimension(:) :: &
+  character(len=pStringLen), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
 
@@ -64,13 +64,10 @@ module material
     homogenization_type                                                                             !< type of each homogenization
 
   integer, public, protected :: &
-    material_Nhomogenization                                                                        !< number of homogenizations
-
-  integer, public, protected :: &
-    homogenization_maxNgrains                                                                       !< max number of grains in any USED homogenization
+    homogenization_maxNconstituents                                                                  !< max number of grains in any USED homogenization
 
   integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Ngrains, &                                                                       !< number of grains in each homogenization
+    homogenization_Nconstituents, &                                                                  !< number of grains in each homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
@@ -83,9 +80,9 @@ module material
     material_homogenizationAt                                                                       !< homogenization ID of each element
   integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
-  integer, dimension(:,:), allocatable, public, protected :: &                                      ! (constituent,elem)
+  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
-  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,elem)
+  integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 
   type(tState),        allocatable, dimension(:), public :: &
@@ -95,11 +92,6 @@ module material
 
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
-
-  integer, dimension(:), allocatable, private :: &
-    material_Nconstituents                                                                          !< number of constituents in each material
-
-
 
 ! BEGIN DEPRECATED
   integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst             !< mapping from material points to offset in constant state/field
@@ -157,28 +149,10 @@ contains
 subroutine material_init(restart)
 
   logical, intent(in) :: restart
-
-  integer            :: ph, myHomog
-  class(tNode), pointer :: &
-    phases, &
-    material_homogenization
-  character(len=pStringLen) :: sectionName
+  integer             :: myHomog
 
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
-  phases => config_material%get('phase')
-  allocate(material_name_phase(phases%length))
-  do ph = 1, phases%length
-    write(sectionName,'(i0,a)') ph,'_'
-    material_name_phase(ph) = trim(adjustl(sectionName))//phases%getKey(ph)    !ToDO: No reason to do. Update damage tests
-  enddo
-
-  material_homogenization => config_material%get('homogenization')
-  allocate(material_name_homogenization(material_homogenization%length))
-  do myHomog = 1, material_homogenization%length
-    write(sectionName,'(i0,a)') myHomog,'_'
-    material_name_homogenization(myHomog) = trim(adjustl(sectionName))//material_homogenization%getKey(myHomog)
-  enddo
 
   call material_parseMaterial
   print*, 'Material parsed'
@@ -187,34 +161,32 @@ subroutine material_init(restart)
   print*, 'Homogenization parsed'
 
 
-  if(homogenization_maxNgrains > size(material_phaseAt,1)) call IO_error(148)
+  allocate(homogState      (size(material_name_homogenization)))
+  allocate(thermalState    (size(material_name_homogenization)))
+  allocate(damageState     (size(material_name_homogenization)))
 
-  allocate(homogState      (material_Nhomogenization))
-  allocate(thermalState    (material_Nhomogenization))
-  allocate(damageState     (material_Nhomogenization))
+  allocate(thermalMapping  (size(material_name_homogenization)))
+  allocate(damageMapping   (size(material_name_homogenization)))
 
-  allocate(thermalMapping  (material_Nhomogenization))
-  allocate(damageMapping   (material_Nhomogenization))
+  allocate(temperature     (size(material_name_homogenization)))
+  allocate(damage          (size(material_name_homogenization)))
 
-  allocate(temperature     (material_Nhomogenization))
-  allocate(damage          (material_Nhomogenization))
-
-  allocate(temperatureRate (material_Nhomogenization))
+  allocate(temperatureRate (size(material_name_homogenization)))
 
 
   if (.not. restart) then
     call results_openJobFile
     call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,material_name_phase)
-    call results_mapping_materialpoint(material_homogenizationAt,material_homogenizationMemberAt,material_name_homogenization)
+    call results_mapping_homogenization(material_homogenizationAt,material_homogenizationMemberAt,material_name_homogenization)
     call results_closeJobFile
   endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN DEPRECATED
-  allocate(mappingHomogenizationConst(  discretization_nIP,discretization_nElem),source=1)
+  allocate(mappingHomogenizationConst(  discretization_nIPs,discretization_Nelems),source=1)
 
 ! hack needed to initialize field values used during constitutive initialization
-  do myHomog = 1,material_Nhomogenization
+  do myHomog = 1, size(material_name_homogenization)
     thermalMapping     (myHomog)%p => mappingHomogenizationConst
     damageMapping      (myHomog)%p => mappingHomogenizationConst
     allocate(temperature     (myHomog)%p(1), source=thermal_initialT(myHomog))
@@ -224,6 +196,7 @@ subroutine material_init(restart)
 ! END DEPRECATED
 
 end subroutine material_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part from the material configuration
@@ -241,22 +214,19 @@ subroutine material_parseHomogenization
   integer :: h
 
   material_homogenization => config_material%get('homogenization')
-  material_Nhomogenization = material_homogenization%length
 
-  allocate(homogenization_type(material_Nhomogenization),           source=HOMOGENIZATION_undefined_ID)
-  allocate(thermal_type(material_Nhomogenization),                  source=THERMAL_isothermal_ID)
-  allocate(damage_type (material_Nhomogenization),                  source=DAMAGE_none_ID)
-  allocate(homogenization_typeInstance(material_Nhomogenization),   source=0)
-  allocate(thermal_typeInstance(material_Nhomogenization),          source=0)
-  allocate(damage_typeInstance(material_Nhomogenization),           source=0)
-  allocate(homogenization_Ngrains(material_Nhomogenization),        source=0)
-  allocate(thermal_initialT(material_Nhomogenization),              source=300.0_pReal)
-  allocate(damage_initialPhi(material_Nhomogenization),             source=1.0_pReal)
+  allocate(homogenization_type(size(material_name_homogenization)),           source=HOMOGENIZATION_undefined_ID)
+  allocate(thermal_type(size(material_name_homogenization)),                  source=THERMAL_isothermal_ID)
+  allocate(damage_type (size(material_name_homogenization)),                  source=DAMAGE_none_ID)
+  allocate(homogenization_typeInstance(size(material_name_homogenization)),   source=0)
+  allocate(thermal_typeInstance(size(material_name_homogenization)),          source=0)
+  allocate(damage_typeInstance(size(material_name_homogenization)),           source=0)
+  allocate(thermal_initialT(size(material_name_homogenization)),              source=300.0_pReal)
+  allocate(damage_initialPhi(size(material_name_homogenization)),             source=1.0_pReal)
 
-  do h=1, material_Nhomogenization
+  do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
     homogMech => homog%get('mech')
-    homogenization_Ngrains(h) = homog%get_asInt('N_constituents')
     select case (homogMech%get_asString('type'))
       case('none')
         homogenization_type(h) = HOMOGENIZATION_NONE_ID
@@ -302,14 +272,11 @@ subroutine material_parseHomogenization
     endif
   enddo
 
-  do h=1, material_Nhomogenization
+  do h=1, size(material_name_homogenization)
     homogenization_typeInstance(h)  = count(homogenization_type(1:h) == homogenization_type(h))
     thermal_typeInstance(h)         = count(thermal_type       (1:h) == thermal_type       (h))
     damage_typeInstance(h)          = count(damage_type        (1:h) == damage_type        (h))
   enddo
-
-  homogenization_maxNgrains = maxval(homogenization_Ngrains)
-
 
 end subroutine material_parseHomogenization
 
@@ -324,7 +291,8 @@ subroutine material_parseMaterial
                            constituents, &                                                          !> list of constituents
                            constituent, &                                                           !> constituent definition
                            phases, &
-                           homogenizations
+                           homogenizations, &
+                           homogenization
 
   integer, dimension(:), allocatable :: &
     counterPhase, &
@@ -333,65 +301,108 @@ subroutine material_parseMaterial
   real(pReal) :: &
     frac
   integer :: &
-    e, &
-    i, &
-    m, &
-    c, &
-    maxNconstituents
+    e, i, c, &
+    h
 
-  materials => config_material%get('material')
-  if(any(discretization_materialAt > materials%length)) &
-    call IO_error(155,ext_msg='More materials requested than found in material.yaml')
-
-  allocate(material_Nconstituents(materials%length),source=0)
-  do m = 1, materials%length
-    material => materials%get(m)
-    constituents   => material%get('constituents')
-    material_Nconstituents(m) = constituents%length
-  enddo
-  maxNconstituents = maxval(material_Nconstituents)
-  
-  allocate(material_homogenizationAt(discretization_nElem),source=0)
-  allocate(material_homogenizationMemberAt(discretization_nIP,discretization_nElem),source=0)
-  allocate(material_phaseAt(maxNconstituents,discretization_nElem),source=0)
-  allocate(material_phaseMemberAt(maxNconstituents,discretization_nIP,discretization_nElem),source=0)
-
-  allocate(material_orientation0(maxNconstituents,discretization_nIP,discretization_nElem))
-  
-  phases => config_material%get('phase')
-  allocate(counterPhase(phases%length),source=0)
+  materials       => config_material%get('material')
+  phases          => config_material%get('phase')
   homogenizations => config_material%get('homogenization')
+
+  call sanityCheck(materials, homogenizations)
+  material_name_phase          = getKeys(phases)
+  material_name_homogenization = getKeys(homogenizations)
+
+  allocate(homogenization_Nconstituents(homogenizations%length))
+  do h=1, homogenizations%length
+    homogenization => homogenizations%get(h)
+    homogenization_Nconstituents(h) = homogenization%get_asInt('N_constituents')
+  enddo
+  homogenization_maxNconstituents = maxval(homogenization_Nconstituents)
+
+  allocate(counterPhase(phases%length),source=0)
   allocate(counterHomogenization(homogenizations%length),source=0)
 
-  do e = 1, discretization_nElem
+  allocate(material_homogenizationAt(discretization_Nelems),source=0)
+  allocate(material_homogenizationMemberAt(discretization_nIPs,discretization_Nelems),source=0)
+  allocate(material_phaseAt(homogenization_maxNconstituents,discretization_Nelems),source=0)
+  allocate(material_phaseMemberAt(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems),source=0)
+
+  allocate(material_orientation0(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems))
+
+  do e = 1, discretization_Nelems
     material     => materials%get(discretization_materialAt(e))
     constituents => material%get('constituents')
-    
+
     material_homogenizationAt(e) = homogenizations%getIndex(material%get_asString('homogenization'))
-    do i = 1, discretization_nIP
+    do i = 1, discretization_nIPs
       counterHomogenization(material_homogenizationAt(e)) = counterHomogenization(material_homogenizationAt(e)) + 1
       material_homogenizationMemberAt(i,e)                = counterHomogenization(material_homogenizationAt(e))
     enddo
-    
+
     frac = 0.0_pReal
     do c = 1, constituents%length
       constituent => constituents%get(c)
       frac = frac + constituent%get_asFloat('fraction')
-      
+
       material_phaseAt(c,e) = phases%getIndex(constituent%get_asString('phase'))
-      do i = 1, discretization_nIP
+      do i = 1, discretization_nIPs
         counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
         material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
-        
-        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4))
+
+        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4)) ! should be done in crystallite
       enddo
-    
+
     enddo
     if (dNeq(frac,1.0_pReal)) call IO_error(153,ext_msg='constituent')
-    
+
   enddo
 
 end subroutine material_parseMaterial
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check if material.yaml is consistent and contains sufficient # of materials
+!--------------------------------------------------------------------------------------------------
+subroutine sanityCheck(materials,homogenizations)
+
+  class(tNode), intent(in) :: materials, &
+                              homogenizations
+
+  class(tNode), pointer :: material, &
+                           homogenization, &
+                           constituents
+  integer :: m
+
+  if(maxval(discretization_materialAt) > materials%length) &
+    call IO_error(155,ext_msg='More materials requested than found in material.yaml')
+
+  do m = 1, materials%length
+    material => materials%get(m)
+    constituents   => material%get('constituents')
+    homogenization => homogenizations%get(material%get_asString('homogenization'))
+    if(constituents%length /= homogenization%get_asInt('N_constituents')) call IO_error(148)
+  enddo
+
+end subroutine sanityCheck
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Get all keys from a dictionary (currently with #_ prefix)
+!--------------------------------------------------------------------------------------------------
+function getKeys(dict)
+
+  class(tNode), intent(in) :: dict
+  character(len=pStringLen), dimension(:), allocatable :: getKeys
+
+  integer :: i
+  character(len=pStringLen) :: sectionName
+
+  allocate(getKeys(dict%length))
+  do i=1, dict%length
+    write(sectionName,'(i0,a)') i,'_'
+    getKeys(i) = trim(adjustl(sectionName))//dict%getKey(i)                                         !ToDo: remove prefix
+  enddo
+
+end function getKeys
 
 end module material

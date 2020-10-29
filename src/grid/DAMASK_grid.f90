@@ -210,7 +210,7 @@ program DAMASK_grid
     if(.not. step_discretization%contains('t')) call IO_error(error_ID=837,ext_msg = 't missing')
     if(.not. step_discretization%contains('N')) call IO_error(error_ID=837,ext_msg = 'N missing')
     loadCases(l)%time             = step_discretization%get_asFloat('t')
-    loadCases(l)%incs             = step_discretization%get_asFloat('N')
+    loadCases(l)%incs             = step_discretization%get_asInt  ('N')
     loadCases(l)%logscale         = step_discretization%get_asBool ('log_timestep', defaultVal= .false.)
     loadCases(l)%outputfrequency  = step_discretization%get_asInt  ('f_out',        defaultVal=1)
     loadCases(l)%restartfrequency = step_discretization%get_asInt  ('f_restart',    defaultVal=huge(0))

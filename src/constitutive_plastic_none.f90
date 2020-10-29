@@ -16,9 +16,9 @@ module function plastic_none_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstance, &
+    Ninstances, &
     p, &
-    NipcMyPhase
+    Nconstituents
   class(tNode), pointer :: &
     phases, &
     phase, &
@@ -34,15 +34,15 @@ module function plastic_none_init() result(myPlasticity)
     if(pl%get_asString('type') == 'none') myPlasticity(p) = .true.
   enddo
 
-  Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myPlasticity)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
   do p = 1, phases%length
     phase => phases%get(p)
     if(.not. myPlasticity(p)) cycle
-    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
-    call constitutive_allocateState(plasticState(p),NipcMyPhase,0,0,0)
+    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
+    call constitutive_allocateState(plasticState(p),Nconstituents,0,0,0)
   enddo
 
 end function plastic_none_init

@@ -802,7 +802,7 @@ end subroutine utilities_fourierTensorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate constitutive response from materialpoint_F0 to F during timeinc
+!> @brief calculate constitutive response from homogenization_F0 to F during timeinc
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,timeinc,rotation_BC)
@@ -824,11 +824,11 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   print'(/,a)', ' ... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
 
-  materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
+  homogenization_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
 
   call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
 
-  P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
+  P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                   ! average of P
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   if (debugRotation) &
@@ -845,13 +845,13 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_min = huge(1.0_pReal)
   dPdF_norm_min = huge(1.0_pReal)
   do i = 1, product(grid(1:2))*grid3
-    if (dPdF_norm_max < sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_max = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_max = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
+      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
     endif
-    if (dPdF_norm_min > sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_min = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_min = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
+      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
     endif
   end do
 
@@ -869,7 +869,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
 
-  C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5)
+  C_volAvg = sum(sum(homogenization_dPdF,dim=6),dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   C_volAvg = C_volAvg * wgt
 

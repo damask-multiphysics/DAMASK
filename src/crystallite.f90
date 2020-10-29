@@ -135,7 +135,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
 
-  logical, dimension(discretization_nIP,discretization_nElem) :: devNull
+  logical, dimension(discretization_nIPs,discretization_Nelems) :: devNull
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
@@ -162,9 +162,9 @@ subroutine crystallite_init
   debugCrystallite%ip        = config_debug%get_asInt('integrationpoint', defaultVal=1)
   debugCrystallite%grain     = config_debug%get_asInt('grain', defaultVal=1)
 
-  cMax = homogenization_maxNgrains
-  iMax = discretization_nIP
-  eMax = discretization_nElem
+  cMax = homogenization_maxNconstituents
+  iMax = discretization_nIPs
+  eMax = discretization_Nelems
 
   allocate(crystallite_partitionedF(3,3,cMax,iMax,eMax),source=0.0_pReal)
 
@@ -253,7 +253,7 @@ subroutine crystallite_init
 ! initialize
  !$OMP PARALLEL DO PRIVATE(i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Ngrains(material_homogenizationAt(e))
+    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Nconstituents(material_homogenizationAt(e))
       crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       crystallite_Fp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e) &
                                      / math_det33(crystallite_Fp0(1:3,1:3,c,i,e))**(1.0_pReal/3.0_pReal)
@@ -279,7 +279,7 @@ subroutine crystallite_init
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+      do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
         call constitutive_dependentState(crystallite_partitionedF0(1:3,1:3,c,i,e), &
                                          crystallite_partitionedFp0(1:3,1:3,c,i,e), &
                                          c,i,e)                                                     ! update dependent state variables to be consistent with basic states
@@ -307,7 +307,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 function crystallite_stress()
 
-  logical, dimension(discretization_nIP,discretization_nElem) :: crystallite_stress
+  logical, dimension(discretization_nIPs,discretization_Nelems) :: crystallite_stress
   real(pReal) :: &
     formerSubStep
   integer :: &
@@ -317,7 +317,7 @@ function crystallite_stress()
     e, &                                                                                            !< counter in element loop
     startIP, endIP, &
     s
-  logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
+  logical, dimension(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: todo     !ToDo: need to set some values to false for different Ngrains
   real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
     subLp0,&                                                                                        !< plastic velocity grad at start of crystallite inc
     subLi0                                                                                          !< intermediate velocity grad at start of crystallite inc
@@ -335,7 +335,7 @@ function crystallite_stress()
   crystallite_subStep = 0.0_pReal
   !$OMP PARALLEL DO
   elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+    do i = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
       homogenizationRequestsCalculation: if (crystallite_requested(c,i,e)) then
         plasticState    (material_phaseAt(c,e))%subState0(      :,material_phaseMemberAt(c,i,e)) = &
         plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phaseMemberAt(c,i,e))
@@ -362,7 +362,7 @@ function crystallite_stress()
     endIP   = startIP
   else singleRun
     startIP = 1
-    endIP   = discretization_nIP
+    endIP   = discretization_nIPs
   endif singleRun
 
   NiterationCrystallite = 0
@@ -376,7 +376,7 @@ function crystallite_stress()
     !$OMP PARALLEL DO PRIVATE(formerSubStep)
     elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       do i = FEsolving_execIP(1),FEsolving_execIP(2)
-        do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
 !--------------------------------------------------------------------------------------------------
 !  wind forward
           if (crystallite_converged(c,i,e)) then
@@ -472,7 +472,7 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     c, &                                                                                            !< constituent number
     s
 
-  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+  do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp0(1:3,1:3,c,i,e)
     crystallite_partitionedFi0(1:3,1:3,c,i,e) = crystallite_Fi0(1:3,1:3,c,i,e)
@@ -503,7 +503,7 @@ subroutine crystallite_windForward(i,e)
     c, &                                                                                            !< constituent number
     s
 
-  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+  do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     crystallite_partitionedF0 (1:3,1:3,c,i,e) = crystallite_partitionedF(1:3,1:3,c,i,e)
     crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp        (1:3,1:3,c,i,e)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp        (1:3,1:3,c,i,e)
@@ -536,7 +536,7 @@ subroutine crystallite_restore(i,e,includeL)
     c, &                                                                                            !< constituent number
     s
 
-  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+  do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     if (includeL) then
       crystallite_Lp(1:3,1:3,c,i,e) = crystallite_partitionedLp0(1:3,1:3,c,i,e)
       crystallite_Li(1:3,1:3,c,i,e) = crystallite_partitionedLi0(1:3,1:3,c,i,e)
@@ -697,7 +697,7 @@ subroutine crystallite_orientations
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+      do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
         call crystallite_orientation(c,i,e)%fromMatrix(transpose(math_rotationalPart(crystallite_Fe(1:3,1:3,c,i,e))))
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
@@ -821,11 +821,11 @@ subroutine crystallite_results
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
     integer :: e,i,c,j
 
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIP))
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIPs))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIP
+      do i = 1, discretization_nIPs
         do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
           if (material_phaseAt(c,e) == instance) then
             j = j + 1
@@ -848,11 +848,11 @@ subroutine crystallite_results
     type(rotation), allocatable, dimension(:) :: select_rotations
     integer :: e,i,c,j
 
-    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
+    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNconstituents*discretization_nIPs))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIP
+      do i = 1, discretization_nIPs
         do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
            if (material_phaseAt(c,e) == instance) then
              j = j + 1
@@ -1571,7 +1571,7 @@ subroutine crystallite_restartWrite
   call HDF5_closeGroup(groupHandle)
 
   groupHandle = HDF5_addGroup(fileHandle,'materialpoint')
-  do i = 1, material_Nhomogenization
+  do i = 1, size(material_name_homogenization)
     write(datasetName,'(i0,a)') i,'_omega_homogenization'
     call HDF5_write(groupHandle,homogState(i)%state,datasetName)
   enddo
@@ -1612,7 +1612,7 @@ subroutine crystallite_restartRead
   call HDF5_closeGroup(groupHandle)
 
   groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
-  do i = 1, material_Nhomogenization
+  do i = 1,size(material_name_homogenization)
     write(datasetName,'(i0,a)') i,'_omega_homogenization'
     call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
   enddo
@@ -1645,7 +1645,7 @@ subroutine crystallite_forward
     do j = 1,phase_Nsources(i)
       sourceState(i)%p(j)%state0 = sourceState(i)%p(j)%state
   enddo; enddo
-  do i = 1, material_Nhomogenization
+  do i = 1,size(material_name_homogenization)
     homogState  (i)%state0 = homogState  (i)%state
     thermalState(i)%state0 = thermalState(i)%state
     damageState (i)%state0 = damageState (i)%state
