@@ -3,8 +3,10 @@ import numpy as np
 
 from damask import VTK
 from damask import Geom
+from damask import Table
 from damask import Rotation
 from damask import util
+from damask import grid_filters
 
 
 def geom_equal(a,b):
@@ -371,3 +373,14 @@ class TestGeom:
         grid = np.ones(3,dtype=int)*64
         geom = Geom.from_minimal_surface(grid,np.ones(3),surface,threshold)
         assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5,rtol=1e-3)
+
+
+    def test_from_table(self):
+        grid = np.random.randint(60,100,3)
+        size = np.ones(3)+np.random.rand(3)
+        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+        x = np.ones(grid.prod()).reshape(-1,1)
+        y = np.hstack([np.arange(grid[1])]*grid[0]*grid[2]).reshape(-1,1)
+        t = Table(np.hstack((coords,x,y)),{'coords':3,'x':1,'y':1})
+        g = Geom.from_table(t,'coords',['x','y'])
+        assert g.N_materials == g.grid[2]

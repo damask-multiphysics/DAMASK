@@ -262,7 +262,7 @@ class Geom:
             Each unique combintation of values results in a material.
 
         """
-        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(coords)
+        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(table.get(coordinates))
 
         labels_ = [labels] if isinstance(labels,str) else labels
         unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
