@@ -3,8 +3,10 @@ import numpy as np
 
 from damask import VTK
 from damask import Geom
+from damask import Table
 from damask import Rotation
 from damask import util
+from damask import grid_filters
 
 
 def geom_equal(a,b):
@@ -176,6 +178,7 @@ class TestGeom:
         material = default.material.copy()
         for m in np.unique(material):
             material[material==m] = material.max() + np.random.randint(1,30)
+        default.material -= 1
         modified = Geom(material,
                         default.size,
                         default.origin)
@@ -193,6 +196,13 @@ class TestGeom:
         assert geom_equal(default,
                           modified.substitute(np.arange(default.material.max())+1+offset,
                                               np.arange(default.material.max())+1))
+
+    def test_substitute_invariant(self,default):
+        f = np.unique(default.material.flatten())[:np.random.randint(1,default.material.max())]
+        t = np.random.permutation(f)
+        modified = default.substitute(f,t)
+        assert np.array_equiv(t,f) or (not geom_equal(modified,default))
+        assert geom_equal(default, modified.substitute(t,f))
 
 
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
@@ -363,3 +373,14 @@ class TestGeom:
         grid = np.ones(3,dtype=int)*64
         geom = Geom.from_minimal_surface(grid,np.ones(3),surface,threshold)
         assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5,rtol=1e-3)
+
+
+    def test_from_table(self):
+        grid = np.random.randint(60,100,3)
+        size = np.ones(3)+np.random.rand(3)
+        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+        z=np.ones(grid.prod())
+        z[grid[:2].prod()*int(grid[2]/2):]=0
+        t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
+        g = Geom.from_table(t,'coords',['1_coords','z'])
+        assert g.N_materials == g.grid[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == grid[0]).all()
