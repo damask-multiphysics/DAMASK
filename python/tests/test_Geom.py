@@ -380,8 +380,7 @@ class TestGeom:
         size = np.ones(3)+np.random.rand(3)
         coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
         z=np.ones(grid.prod())
-        z[int(z.size/2):]=0
+        z[grid[:2].prod()*int(grid[2]/2):]=0
         t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
         g = Geom.from_table(t,'coords',['1_coords','z'])
-        assert g.N_materials == g.grid[0]*2 and \
-               (g.material[:,:,-1]-g.material[:,:,0]-grid[:1].prod() == 0).all()
+        assert g.N_materials == g.grid[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == grid[0]).all()
