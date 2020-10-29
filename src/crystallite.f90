@@ -759,23 +759,23 @@ subroutine crystallite_results
           selected_tensors = select_tensors(crystallite_partitionedF,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'deformation gradient','1')
-        case('Fe')
+        case('F_e')
           selected_tensors = select_tensors(crystallite_Fe,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'elastic deformation gradient','1')
-        case('Fp')
+        case('F_p')
           selected_tensors = select_tensors(crystallite_Fp,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic deformation gradient','1')
-        case('Fi')
+        case('F_i')
           selected_tensors = select_tensors(crystallite_Fi,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic deformation gradient','1')
-        case('Lp')
+        case('L_p')
           selected_tensors = select_tensors(crystallite_Lp,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic velocity gradient','1/s')
-        case('Li')
+        case('L_i')
           selected_tensors = select_tensors(crystallite_Li,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic velocity gradient','1/s')
