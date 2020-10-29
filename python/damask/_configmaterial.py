@@ -2,7 +2,6 @@ import copy
 
 import numpy as np
 
-from . import grid_filters
 from . import Config
 from . import Lattice
 from . import Rotation

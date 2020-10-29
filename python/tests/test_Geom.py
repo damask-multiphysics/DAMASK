@@ -379,8 +379,9 @@ class TestGeom:
         grid = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
         coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
-        x = np.ones(grid.prod()).reshape(-1,1)
-        y = np.hstack([np.arange(grid[1])]*grid[0]*grid[2]).reshape(-1,1)
-        t = Table(np.hstack((coords,x,y)),{'coords':3,'x':1,'y':1})
-        g = Geom.from_table(t,'coords',['x','y'])
-        assert g.N_materials == g.grid[2]
+        z=np.ones(grid.prod())
+        z[int(z.size/2):]=0
+        t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
+        g = Geom.from_table(t,'coords',['1_coords','z'])
+        assert g.N_materials == g.grid[0]*2 and \
+               (g.material[:,:,-1]-g.material[:,:,0]-grid[:1].prod() == 0).all()
