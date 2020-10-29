@@ -7,7 +7,7 @@ from pathlib import Path
 
 import damask
 
-marc_version = float(damask.environment.options['MSCVERSION'])
+marc_version = float(damask.environment.options['MSC_VERSION'])
 if int(marc_version) == marc_version:
     marc_version = int(marc_version)
 msc_root     = Path(damask.environment.options['MSC_ROOT'])
@@ -15,7 +15,7 @@ damask_root  = damask.environment.root_dir
 
 parser = argparse.ArgumentParser(
      description='Apply DAMASK modification to MSC.Marc/Mentat',
-     epilog = f'MSC_ROOT={msc_root} and MSCVERSION={marc_version} (from {damask_root}/env/CONFIG)')
+     epilog = f'MSC_ROOT={msc_root} and MSC_VERSION={marc_version} (from {damask_root}/env/CONFIG)')
 parser.add_argument('--editor', dest='editor', metavar='string', default='vi',
                     help='Name of the editor for MSC.Mentat (executable)')
 

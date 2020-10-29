@@ -8,7 +8,7 @@ from .. import environment
 class Marc:
     """Wrapper to run DAMASK with MSCMarc."""
 
-    def __init__(self,version=environment.options['MSCVERSION']):
+    def __init__(self,version=environment.options['MSC_VERSION']):
         """
         Create a Marc solver object.
 

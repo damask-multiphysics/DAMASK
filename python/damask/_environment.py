@@ -32,7 +32,7 @@ class Environment:
         options = {}
         for item in ['DAMASK_NUM_THREADS',
                      'MSC_ROOT',
-                     'MSCVERSION',
+                     'MSC_VERSION',
                      ]:
             options[item] = os.environ[item] if item in os.environ else None
 
