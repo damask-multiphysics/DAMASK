@@ -224,7 +224,7 @@ subroutine grid_mech_spectral_polarisation_init
     F_tau_lastInc = 2.0_pReal*F_lastInc
   endif restartRead
 
-  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+  homogenization_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -364,7 +364,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
     F_lastInc     = reshape(F,    [3,3,grid(1),grid(2),grid3])
     F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])
 
-    materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -606,7 +606,7 @@ subroutine formResidual(in, FandF_tau, &
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
     e = e + 1
     residual_F(1:3,1:3,i,j,k) = &
-      math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
+      math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
                        residual_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
                        + residual_F_tau(1:3,1:3,i,j,k)

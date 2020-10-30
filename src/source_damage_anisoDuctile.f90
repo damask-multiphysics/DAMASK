@@ -19,7 +19,7 @@ submodule(constitutive:constitutive_damage)  source_damage_anisoDuctile
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
 contains
 
@@ -39,19 +39,19 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
     pl, &
     sources, &
     src
-  integer :: Ninstance,sourceOffset,NipcMyPhase,p
+  integer :: Ninstances,sourceOffset,Nconstituents,p
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
   print'(/,a)', ' <<<+-  source_damage_anisoDuctile init  -+>>>'
 
   mySources = source_active('damage_anisoDuctile',source_length)
-  Ninstance = count(mySources)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(mySources)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstance))
+  allocate(param(Ninstances))
   allocate(source_damage_anisoDuctile_offset  (phases%length), source=0)
   allocate(source_damage_anisoDuctile_instance(phases%length), source=0)
 
@@ -84,8 +84,8 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
         if (prm%q              <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
         if (any(prm%gamma_crit <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
 
-        NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
-        call constitutive_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
+        Nconstituents=count(material_phaseAt==p) * discretization_nIPs
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),Nconstituents,1,1,0)
         sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('anisoDuctile_atol',defaultVal=1.0e-3_pReal)
         if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
 

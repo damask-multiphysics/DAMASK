@@ -153,7 +153,7 @@ submodule(constitutive:constitutive_plastic) plastic_nonlocal
     state, &
     state0
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
   type(tNonlocalMicrostructure), dimension(:), allocatable :: microstructure
 
@@ -168,9 +168,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstance, &
+    Ninstances, &
     p, i, &
-    NipcMyPhase, &
+    Nconstituents, &
     sizeState, sizeDotState, sizeDependentState, sizeDeltaState, &
     s1, s2, &
     s, t, l
@@ -188,9 +188,9 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print'(/,a)', ' <<<+-  plastic_nonlocal init  -+>>>'
 
   myPlasticity = plastic_active('nonlocal')
-  Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) then
+  Ninstances = count(myPlasticity)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) then
     call geometry_plastic_nonlocal_disable
     return
   endif
@@ -201,12 +201,12 @@ module function plastic_nonlocal_init() result(myPlasticity)
   print*, 'Kords, Dissertation RWTH Aachen, 2014'
   print*, 'http://publications.rwth-aachen.de/record/229993'
 
-  allocate(param(Ninstance))
-  allocate(state(Ninstance))
-  allocate(state0(Ninstance))
-  allocate(dotState(Ninstance))
-  allocate(deltaState(Ninstance))
-  allocate(microstructure(Ninstance))
+  allocate(param(Ninstances))
+  allocate(state(Ninstances))
+  allocate(state0(Ninstances))
+  allocate(dotState(Ninstances))
+  allocate(deltaState(Ninstances))
+  allocate(microstructure(Ninstances))
 
   phases => config_material%get('phase')
   i = 0
@@ -391,7 +391,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase  = count(material_phaseAt==p) * discretization_nIP
+    Nconstituents  = count(material_phaseAt==p) * discretization_nIPs
     sizeDotState = size([   'rhoSglEdgePosMobile   ','rhoSglEdgeNegMobile   ', &
                             'rhoSglScrewPosMobile  ','rhoSglScrewNegMobile  ', &
                             'rhoSglEdgePosImmobile ','rhoSglEdgeNegImmobile ', &
@@ -405,7 +405,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
                                 'maxDipoleHeightEdge ','maxDipoleHeightScrew' ]) * prm%sum_N_sl     !< other dependent state variables that are not updated by microstructure
     sizeDeltaState            = sizeDotState
 
-    call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,sizeDeltaState)
+    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,sizeDeltaState)
 
     plasticState(p)%nonlocal         = pl%get_asBool('nonlocal')
     if(plasticState(p)%nonlocal .and. .not. allocated(IPneighborhood)) &
@@ -476,26 +476,26 @@ module function plastic_nonlocal_init() result(myPlasticity)
         dot%rho_dip_scr => plasticState(p)%dotState               (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
         del%rho_dip_scr => plasticState(p)%deltaState             (9*prm%sum_N_sl+1:10*prm%sum_N_sl,:)
 
-    stt%gamma => plasticState(p)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
-    dot%gamma => plasticState(p)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
-    del%gamma => plasticState(p)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
+    stt%gamma => plasticState(p)%state                      (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    dot%gamma => plasticState(p)%dotState                   (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
+    del%gamma => plasticState(p)%deltaState                 (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
     plasticState(p)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl )  = pl%get_asFloat('atol_gamma', defaultVal = 1.0e-2_pReal)
     if(any(plasticState(p)%atol(10*prm%sum_N_sl+1:11*prm%sum_N_sl) < 0.0_pReal)) &
       extmsg = trim(extmsg)//' atol_gamma'
-    plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:NipcMyPhase)
+    plasticState(p)%slipRate => plasticState(p)%dotState    (10*prm%sum_N_sl + 1:11*prm%sum_N_sl,1:Nconstituents)
 
-    stt%rho_forest => plasticState(p)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:NipcMyPhase)
-    stt%v          => plasticState(p)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:NipcMyPhase)
-        stt%v_edg_pos  => plasticState(p)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:NipcMyPhase)
-        stt%v_edg_neg  => plasticState(p)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:NipcMyPhase)
-        stt%v_scr_pos  => plasticState(p)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:NipcMyPhase)
-        stt%v_scr_neg  => plasticState(p)%state             (15*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:NipcMyPhase)
+    stt%rho_forest => plasticState(p)%state                 (11*prm%sum_N_sl + 1:12*prm%sum_N_sl,1:Nconstituents)
+    stt%v          => plasticState(p)%state                 (12*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
+        stt%v_edg_pos  => plasticState(p)%state             (12*prm%sum_N_sl + 1:13*prm%sum_N_sl,1:Nconstituents)
+        stt%v_edg_neg  => plasticState(p)%state             (13*prm%sum_N_sl + 1:14*prm%sum_N_sl,1:Nconstituents)
+        stt%v_scr_pos  => plasticState(p)%state             (14*prm%sum_N_sl + 1:15*prm%sum_N_sl,1:Nconstituents)
+        stt%v_scr_neg  => plasticState(p)%state             (15*prm%sum_N_sl + 1:16*prm%sum_N_sl,1:Nconstituents)
 
-    allocate(dst%tau_pass(prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%tau_back(prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)
+    allocate(dst%tau_pass(prm%sum_N_sl,Nconstituents),source=0.0_pReal)
+    allocate(dst%tau_back(prm%sum_N_sl,Nconstituents),source=0.0_pReal)
     end associate
 
-    if (NipcMyPhase > 0) call stateInit(ini,p,NipcMyPhase,i)
+    if (Nconstituents > 0) call stateInit(ini,p,Nconstituents,i)
     plasticState(p)%state0 = plasticState(p)%state
 
 !--------------------------------------------------------------------------------------------------
@@ -505,12 +505,12 @@ module function plastic_nonlocal_init() result(myPlasticity)
   enddo
 
   allocate(compatibility(2,maxval(param%sum_N_sl),maxval(param%sum_N_sl),nIPneighbors,&
-                         discretization_nIP,discretization_nElem), source=0.0_pReal)
+                         discretization_nIPs,discretization_Nelems), source=0.0_pReal)
 
 ! BEGIN DEPRECATED----------------------------------------------------------------------------------
-  allocate(iRhoU(maxval(param%sum_N_sl),4,Ninstance), source=0)
-  allocate(iV(maxval(param%sum_N_sl),4,Ninstance),    source=0)
-  allocate(iD(maxval(param%sum_N_sl),2,Ninstance),    source=0)
+  allocate(iRhoU(maxval(param%sum_N_sl),4,Ninstances), source=0)
+  allocate(iV(maxval(param%sum_N_sl),4,Ninstances),    source=0)
+  allocate(iD(maxval(param%sum_N_sl),2,Ninstances),    source=0)
 
   i = 0
   do p = 1, phases%length
@@ -519,7 +519,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     if(.not. myPlasticity(p)) cycle
     i = i + 1
 
-    NipcMyPhase  = count(material_phaseAt==p) * discretization_nIP
+    Nconstituents  = count(material_phaseAt==p) * discretization_nIPs
     l = 0
     do t = 1,4
       do s = 1,param(i)%sum_N_sl
@@ -976,7 +976,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
-  real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   real(pReal), intent(in) :: &
@@ -1176,7 +1176,7 @@ end subroutine plastic_nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
 
-  real(pReal), dimension(3,3,homogenization_maxNgrains,discretization_nIP,discretization_nElem), intent(in) :: &
+  real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
     F, &                                                                                            !< elastic deformation gradient
     Fp                                                                                              !< plastic deformation gradient
   real(pReal), intent(in) :: &
@@ -1416,7 +1416,7 @@ end function rhoDotFlux
 !--------------------------------------------------------------------------------------------------
 module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
 
-  type(rotation), dimension(1,discretization_nIP,discretization_nElem), intent(in) :: &
+  type(rotation), dimension(1,discretization_nIPs,discretization_Nelems), intent(in) :: &
     orientation                                                                                     ! crystal orientation
   integer, intent(in) :: &
     instance, &
@@ -1601,13 +1601,13 @@ end subroutine plastic_nonlocal_results
 !--------------------------------------------------------------------------------------------------
 !> @brief populates the initial dislocation density
 !--------------------------------------------------------------------------------------------------
-subroutine stateInit(ini,phase,NipcMyPhase,instance)
+subroutine stateInit(ini,phase,Nconstituents,instance)
 
   type(tInitialParameters) :: &
     ini
   integer,intent(in) :: &
     phase, &
-    NipcMyPhase, &
+    Nconstituents, &
     instance
   integer :: &
     e, &
@@ -1625,15 +1625,15 @@ subroutine stateInit(ini,phase,NipcMyPhase,instance)
     totalVolume, &
     densityBinning, &
     minimumIpVolume
-  real(pReal), dimension(NipcMyPhase) :: &
+  real(pReal), dimension(Nconstituents) :: &
     volume
 
 
   associate(stt => state(instance))
 
   if (ini%random_rho_u > 0.0_pReal) then ! randomly distribute dislocation segments on random slip system and of random type in the volume
-    do e = 1,discretization_nElem
-      do i = 1,discretization_nIP
+    do e = 1,discretization_Nelems
+      do i = 1,discretization_nIPs
         if (material_phaseAt(1,e) == phase) volume(material_phasememberAt(1,i,e)) = IPvolume(i,e)
       enddo
     enddo
@@ -1645,13 +1645,13 @@ subroutine stateInit(ini,phase,NipcMyPhase,instance)
     meanDensity = 0.0_pReal
     do while(meanDensity < ini%random_rho_u)
       call random_number(rnd)
-      phasemember = nint(rnd(1)*real(NipcMyPhase,pReal) + 0.5_pReal)
+      phasemember = nint(rnd(1)*real(Nconstituents,pReal) + 0.5_pReal)
       s           = nint(rnd(2)*real(sum(ini%N_sl),pReal)*4.0_pReal + 0.5_pReal)
       meanDensity = meanDensity + densityBinning * volume(phasemember) / totalVolume
       stt%rhoSglMobile(s,phasemember) = densityBinning
     enddo
   else                                ! homogeneous distribution with noise
-    do e = 1, NipcMyPhase
+    do e = 1, Nconstituents
       do f = 1,size(ini%N_sl,1)
         from = 1 + sum(ini%N_sl(1:f-1))
         upto = sum(ini%N_sl(1:f))

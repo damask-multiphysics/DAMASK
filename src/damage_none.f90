@@ -16,18 +16,18 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_none_init
 
-  integer :: h,NofMyHomog
+  integer :: h,Nmaterialpoints
 
   print'(/,a)', ' <<<+-  damage_none init  -+>>>'; flush(6)
 
-  do h = 1, material_Nhomogenization
+  do h = 1, size(material_name_homogenization)
     if (damage_type(h) /= DAMAGE_NONE_ID) cycle
 
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     damageState(h)%sizeState = 0
-    allocate(damageState(h)%state0   (0,NofMyHomog))
-    allocate(damageState(h)%subState0(0,NofMyHomog))
-    allocate(damageState(h)%state    (0,NofMyHomog))
+    allocate(damageState(h)%state0   (0,Nmaterialpoints))
+    allocate(damageState(h)%subState0(0,Nmaterialpoints))
+    allocate(damageState(h)%state    (0,Nmaterialpoints))
 
     deallocate(damage(h)%p)
     allocate  (damage(h)%p(1), source=damage_initialPhi(h))

@@ -2,7 +2,6 @@ import copy
 
 import numpy as np
 
-from . import grid_filters
 from . import Config
 from . import Lattice
 from . import Rotation
@@ -26,7 +25,7 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def from_table(table,coordinates=None,constituents={},**kwargs):
+    def from_table(table,constituents={},**kwargs):
         """
         Load from an ASCII table.
 
@@ -34,10 +33,6 @@ class ConfigMaterial(Config):
         ----------
         table : damask.Table
             Table that contains material information.
-        coordinates : str, optional
-            Label of spatial coordiates. Used for sorting and performing a
-            sanity check. Default to None, in which case no sorting or checking is
-            peformed.
         constituents : dict, optional
             Entries for 'constituents'. The key is the name and the value specifies
             the label of the data column in the table
@@ -54,7 +49,7 @@ class ConfigMaterial(Config):
             pos  pos  pos   qu   qu    qu    qu   phase    homog
         0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
         1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.from_table(t,'pos',{'O':'qu','phase':'phase'},homogenization='homog')
+        >>> cm.from_table(t,{'O':'qu','phase':'phase'},homogenization='homog')
         material:
           - constituents:
               - O: [0.19, 0.8, 0.24, -0.51]
@@ -68,17 +63,12 @@ class ConfigMaterial(Config):
             homogenization: SX
 
         """
-        if coordinates is not None:
-            t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
-            grid_filters.coord0_check(t.get(coordinates))
-        else:
-            t = table
-
-        constituents_ = {k:t.get(v) for k,v in constituents.items()}
-        kwargs_       = {k:t.get(v) for k,v in kwargs.items()}
+        constituents_ = {k:table.get(v) for k,v in constituents.items()}
+        kwargs_       = {k:table.get(v) for k,v in kwargs.items()}
 
         _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
 
+        idx = np.sort(idx)
         constituents_ = {k:v[idx].squeeze() for k,v in constituents_.items()}
         kwargs_       = {k:v[idx].squeeze() for k,v in kwargs_.items()}
 
@@ -229,19 +219,18 @@ class ConfigMaterial(Config):
         Parameters
         ----------
         constituents : dict
-            Entries for 'constituents'. The key is the name and the value specifies
-            the label of the data column in the table
+            Entries for 'constituents' as key-value pair.
         **kwargs
-            Keyword arguments where the key is the name and  the value specifies
-            the label of the data column in the table
+            Key-value pairs.
 
         Examples
         --------
         >>> import damask
-        >>> m = damask.ConfigMaterial()
         >>> O = damask.Rotation.from_random(3).as_quaternion()
         >>> phase = ['Aluminum','Steel','Aluminum']
-        >>> m.material_add(constituents={'phase':phase,'O':O},homogenization='SX')
+        >>> m = damask.ConfigMaterial().material_add(constituents={'phase':phase,'O':O},
+        ...                                          homogenization='SX')
+        >>> m
         material:
           - constituents:
               - O: [0.577764, -0.146299, -0.617669, 0.513010]
@@ -264,15 +253,14 @@ class ConfigMaterial(Config):
         for k,v in kwargs.items():
             if hasattr(v,'__len__') and not isinstance(v,str):
                 if len(v) != len(c):
-                    raise ValueError('len mismatch 1')
+                    raise ValueError('Cannot add entries of different length')
                 for i,vv in enumerate(v):
                     c[i][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
             else:
                 for i in range(len(c)):
                     c[i][k] = v
         dup = copy.deepcopy(self)
-        if 'material' not in dup: dup['material'] = []
-        dup['material'] +=c
+        dup['material'] = dup['material'] + c if 'material' in dup else c
 
         return dup
 
@@ -288,7 +276,7 @@ class ConfigMaterial(Config):
             for k,v in kwargs.items():
                 if hasattr(v,'__len__') and not isinstance(v,str):
                     if len(v) != N_material:
-                        raise ValueError('len mismatch 2')
+                        raise ValueError('Cannot add entries of different length')
                     for i,vv in enumerate(np.array(v)):
                         m[i][0][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
                 else:

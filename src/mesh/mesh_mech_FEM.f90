@@ -400,15 +400,15 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
+      homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
         reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     enddo
     if (num%BBarStabilisation) then
-      detFAvg = math_det33(sum(materialpoint_F(1:3,1:3,1:nQuadrature,cell+1),dim=3)/real(nQuadrature))
+      detFAvg = math_det33(sum(homogenization_F(1:3,1:3,1:nQuadrature,cell+1),dim=3)/real(nQuadrature))
       do qPt = 1, nQuadrature
-        materialpoint_F(1:dimPlex,1:dimPlex,qPt,cell+1) = &
-          materialpoint_F(1:dimPlex,1:dimPlex,qPt,cell+1)* &
-          (detFAvg/math_det33(materialpoint_F(1:3,1:3,qPt,cell+1)))**(1.0/real(dimPlex))
+        homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1) = &
+          homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1)* &
+          (detFAvg/math_det33(homogenization_F(1:3,1:3,qPt,cell+1)))**(1.0/real(dimPlex))
 
       enddo
     endif
@@ -443,7 +443,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
       enddo
       f_scal = f_scal + &
                matmul(transpose(BMat), &
-                      reshape(transpose(materialpoint_P(1:dimPlex,1:dimPlex,qPt+1,cell+1)), &
+                      reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,qPt+1,cell+1)), &
                               shape=[dimPlex*dimPlex]))*qWeights(qPt+1)
     enddo
     f_scal = f_scal*abs(detJ)
@@ -545,7 +545,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      MatA = matmul(reshape(reshape(materialpoint_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
+      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1)
       if (num%BBarStabilisation) then
@@ -553,12 +553,12 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0/real(dimPlex))
         K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1), &
+               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1), &
                                                shape=[dimPlex*dimPlex,1]), &
                                        matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
                                                       shape=[1,dimPlex*dimPlex],order=[2,1]),BMat))),MatA)
         MatB = MatB + &
-               matmul(reshape(materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1),shape=[1,dimPlex*dimPlex]),MatA)
+               matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1),shape=[1,dimPlex*dimPlex]),MatA)
         FAvg = FAvg + F
         BMatAvg = BMatAvg + BMat
       else
@@ -630,7 +630,7 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
 ! forward last inc
   if (guess .and. .not. cutBack) then
     ForwardData = .True.
-    materialpoint_F0 = materialpoint_F
+    homogenization_F0 = homogenization_F
     call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                          !< retrieve mesh info from mech_snes into dm_local
     call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
     call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)

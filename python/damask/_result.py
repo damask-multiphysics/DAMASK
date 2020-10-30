@@ -1212,14 +1212,14 @@ class Result:
         if mode.lower()=='cell':
 
             if self.structured:
-                v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+                v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
             else:
                 with h5py.File(self.fname,'r') as f:
-                    v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
-                                                  f['/geometry/T_c'][()]-1,
-                                                  f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+                    v = VTK.from_unstructured_grid(f['/geometry/x_n'][()],
+                                                   f['/geometry/T_c'][()]-1,
+                                                   f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-            v = VTK.from_polyData(self.cell_coordinates())
+            v = VTK.from_poly_data(self.cell_coordinates)
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 

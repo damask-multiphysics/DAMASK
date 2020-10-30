@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from damask import Config
 
@@ -29,6 +30,8 @@ class TestConfig:
             f.write(config.__repr__())
         assert Config.load(tmp_path/'config.yaml') == config
 
+    def test_numpy(self,tmp_path):
+        assert Config({'A':np.ones(3,'i')}).__repr__() == Config({'A':[1,1,1]}).__repr__()
 
     def test_abstract_is_valid(self):
         assert Config().is_valid is None
