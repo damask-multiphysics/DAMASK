@@ -268,6 +268,7 @@ class ConfigMaterial(Config):
     @staticmethod
     def _constituents(N=1,**kwargs):
         """Construct list of constituents."""
+        N_material=1
         for v in kwargs.values():
             if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
 
