@@ -1557,11 +1557,11 @@ subroutine crystallite_restartWrite
   fileHandle = HDF5_openFile(fileName,'a')
 
   call HDF5_write(fileHandle,crystallite_partitionedF,'F')
-  call HDF5_write(fileHandle,crystallite_Fp,        'Fp')
-  call HDF5_write(fileHandle,crystallite_Fi,        'Fi')
-  call HDF5_write(fileHandle,crystallite_Lp,        'Lp')
-  call HDF5_write(fileHandle,crystallite_Li,        'Li')
-  call HDF5_write(fileHandle,crystallite_S,         'S')
+  call HDF5_write(fileHandle,crystallite_Fp,        'F_p')
+  call HDF5_write(fileHandle,crystallite_Fi,        'F_i')
+  call HDF5_write(fileHandle,crystallite_Lp,        'L_p')
+  call HDF5_write(fileHandle,crystallite_Li,        'L_i')
+  call HDF5_write(fileHandle,crystallite_S,           'S')
 
   groupHandle = HDF5_addGroup(fileHandle,'constituent')
   do i = 1,size(material_name_phase)
@@ -1598,10 +1598,10 @@ subroutine crystallite_restartRead
   fileHandle = HDF5_openFile(fileName)
 
   call HDF5_read(fileHandle,crystallite_F0, 'F')
-  call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
-  call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
-  call HDF5_read(fileHandle,crystallite_Lp0,'Lp')
-  call HDF5_read(fileHandle,crystallite_Li0,'Li')
+  call HDF5_read(fileHandle,crystallite_Fp0,'F_p')
+  call HDF5_read(fileHandle,crystallite_Fi0,'F_i')
+  call HDF5_read(fileHandle,crystallite_Lp0,'L_p')
+  call HDF5_read(fileHandle,crystallite_Li0,'L_i')
   call HDF5_read(fileHandle,crystallite_S0, 'S')
 
   groupHandle = HDF5_openGroup(fileHandle,'constituent')
