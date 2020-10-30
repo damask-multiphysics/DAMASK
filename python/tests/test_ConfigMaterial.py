@@ -1,8 +1,10 @@
 import os
 
 import pytest
+import numpy as np
 
 from damask import ConfigMaterial
+from damask import Table
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
@@ -74,3 +76,14 @@ class TestConfigMaterial:
         material_config = ConfigMaterial.load(reference_dir/'material.yaml')
         new = material_config.material_rename_homogenization({'Taylor':'isostrain'})
         assert not new.is_complete
+
+    def test_from_table(self):
+        N = np.random.randint(3,10)
+        a = np.vstack((np.hstack((np.arange(N),np.arange(N)[::-1])),np.ones(N*2),np.zeros(N*2),np.ones(N*2))).T
+        t = Table(a,{'varying':2,'constant':2})
+        c = ConfigMaterial.from_table(t,constituents={'a':'varying','b':'1_constant'},c='2_constant')
+        assert len(c['material']) == N
+        for i,m in enumerate(c['material']):
+            c = m['constituents'][0]
+            assert m['c'] == 1 and c['b'] == 0 and c['a'] == [i,1]
+

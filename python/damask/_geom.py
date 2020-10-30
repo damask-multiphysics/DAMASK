@@ -4,6 +4,7 @@ from functools import partial
 from os import path
 
 import numpy as np
+import pandas as pd
 import h5py
 from scipy import ndimage,spatial
 
@@ -254,21 +255,26 @@ class Geom:
         table : damask.Table
             Table that contains material information.
         coordinates : str
-            Label of the column containing the spatial coordinates.
+            Label of the column containing the vector of spatial coordinates.
+            Need to be ordered (1./x fast, 3./z slow).
         labels : str or list of str
             Label(s) of the columns containing the material definition.
             Each unique combintation of values results in a material.
 
         """
-        t = table.sort_by([f'{i}_{coordinates}' for i in range(3,0,-1)])
-
-        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(t.get(coordinates))
+        grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(table.get(coordinates))
 
         labels_ = [labels] if isinstance(labels,str) else labels
-        _,unique_inverse = np.unique(np.hstack([t.get(l) for l in labels_]),return_inverse=True,axis=0)
-        ma = unique_inverse.reshape(grid,order='F') + 1
+        unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
+        if len(unique) == grid.prod():
+            ma = np.arange(grid.prod())
+        else:
+            from_ma = pd.unique(unique_inverse)
+            sort_idx = np.argsort(from_ma)
+            idx = np.searchsorted(from_ma,unique_inverse,sorter = sort_idx)
+            ma = np.arange(from_ma.size)[sort_idx][idx]
 
-        return Geom(ma,size,origin,util.execution_stamp('Geom','from_table'))
+        return Geom(ma.reshape(grid,order='F'),size,origin,util.execution_stamp('Geom','from_table'))
 
 
     @staticmethod
@@ -417,7 +423,7 @@ class Geom:
             Number of periods per unit cell. Defaults to 1.
         materials : (int, int), optional
             Material IDs. Defaults to (1,2).
-        
+
         Notes
         -----
         The following triply-periodic minimal surfaces are implemented:
@@ -687,12 +693,10 @@ class Geom:
 
 
     def renumber(self):
-        """Renumber sorted material indices to 1,...,N."""
-        renumbered = np.empty(self.grid,dtype=self.material.dtype)
-        for i, oldID in enumerate(np.unique(self.material)):
-            renumbered = np.where(self.material == oldID, i+1, renumbered)
+        """Renumber sorted material indices to 0,...,N-1."""
+        _,renumbered = np.unique(self.material,return_inverse=True)
 
-        return Geom(material = renumbered,
+        return Geom(material = renumbered.reshape(self.grid),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','renumber')],
@@ -783,11 +787,13 @@ class Geom:
             New material indices.
 
         """
-        substituted = self.material.copy()
-        for from_ms,to_ms in zip(from_material,to_material):
-            substituted[self.material==from_ms] = to_ms
+        def mp(entry,mapper):
+            return mapper[entry] if entry in mapper else entry
+       
+        mp = np.vectorize(mp)
+        mapper = dict(zip(from_material,to_material))
 
-        return Geom(material = substituted,
+        return Geom(material = mp(self.material,mapper).reshape(self.grid),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','substitute')],
