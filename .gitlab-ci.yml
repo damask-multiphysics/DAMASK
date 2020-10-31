@@ -253,7 +253,7 @@ Pytest_grid:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
-    - pytest -m 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran -k
+    - pytest -k 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran -v
   except:
     - master
     - release
