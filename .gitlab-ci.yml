@@ -109,7 +109,7 @@ Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest --basetemp=/tmp/${CI_PIPELINE_ID}/python
+    - pytest --basetemp=/tmp/${CI_PIPELINE_ID}/python -v
   except:
     - master
     - release
@@ -253,7 +253,7 @@ Pytest_grid:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
-    - pytest -m 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran
+    - pytest -m 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran -k
   except:
     - master
     - release
@@ -316,7 +316,7 @@ Marc_compileIfort:
     - module load $IntelMarc $HDF5Marc $MSC
     - Marc_compileIfort/test.py
     - cd pytest
-    - pytest -k 'compile and Marc'
+    - pytest -k 'compile and Marc' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_Marc
   except:
     - master
     - release
