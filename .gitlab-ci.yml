@@ -314,7 +314,6 @@ Marc_compileIfort:
   stage: compileMarc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - Marc_compileIfort/test.py
     - cd pytest
     - pytest -k 'compile and Marc' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_Marc
   except:
