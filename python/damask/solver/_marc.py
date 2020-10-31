@@ -1,6 +1,7 @@
 import subprocess
 import shlex
-import string
+import re
+import io
 from pathlib import Path
 
 from .. import environment
@@ -27,7 +28,10 @@ class Marc:
         path_MSC = environment.options['MSC_ROOT']
         path_lib = Path(f'{path_MSC}/mentat{self.version}/shlib/linux64')
 
-        return path_lib if path_lib.is_dir() else None
+        if not path_lib.is_dir():
+            raise FileNotFoundError(f'library path "{path_lib}" not found')
+
+        return path_lib
 
 
     @property
@@ -36,10 +40,12 @@ class Marc:
         path_MSC   = environment.options['MSC_ROOT']
         path_tools = Path(f'{path_MSC}/marc{self.version}/tools')
 
-        return path_tools if path_tools.is_dir() else None
+        if not path_tools.is_dir():
+            raise FileNotFoundError(f'tools path "{path_tools}" not found')
+
+        return path_tools
 
 
-#--------------------------
     def submit_job(self,
                    model,
                    job          = 'job1',
@@ -48,38 +54,37 @@ class Marc:
                    optimization = '',
                   ):
 
-
         usersub = environment.root_dir/'src/DAMASK_marc'
         usersub = usersub.parent/(usersub.name + ('.f90' if compile else '.marc'))
         if not usersub.is_file():
-            raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),usersub))
+            raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')
 
         # Define options [see Marc Installation and Operation Guide, pp 23]
         script = f'run_damask_{optimization}mp'
 
-        cmd = str(self.tools_path/Path(script)) + \
-              ' -jid ' + model + '_' + job + \
-              ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
-
-        if compile: cmd += ' -u ' + str(usersub) + ' -save y'
-        else:       cmd += ' -prog ' + str(usersub.with_suffix(''))
-
-        print('job submission {} compilation: {}'.format(('with' if compile else 'without'),usersub))
-        if logfile: log = open(logfile, 'w')
+        cmd = str(self.tools_path/script) + \
+              ' -jid ' + model+'_'+job + \
+              ' -nprocd 1 -autorst 0 -ci n -cr n -dcoup 0 -b no -v no'
+        cmd += ' -u ' + str(usersub) + ' -save y' if compile else \
+               ' -prog ' + str(usersub.with_suffix(''))
         print(cmd)
-        process = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
-        log.close()
-        process.wait()
 
-#--------------------------
-    def exit_number_from_outFile(self,outFile=None):
-        exitnumber = -1
-        with open(outFile,'r') as fid_out:
-            for line in fid_out:
-                if (string.find(line,'tress iteration') != -1):
-                    print(line)
-                elif (string.find(line,'Exit number')   != -1):
-                    substr = line[string.find(line,'Exit number'):len(line)]
-                    exitnumber = int(substr[12:16])
+        if logfile is not None:
+            try:
+                f = open(logfile,'w+')
+            except TypeError:
+                f = logfile
+        else:
+            f = io.StringIO()
 
-        return exitnumber
+        proc = subprocess.Popen(shlex.split(cmd),stdout=f,stderr=subprocess.STDOUT)
+        proc.wait()
+        f.seek(0)
+
+        try:
+            v = int(re.search('Exit number ([0-9]+)',f.readlines()[-1]).group(1))
+        except (AttributeError,ValueError):
+            raise RuntimeError('Marc simulation failed (unknown return value)')
+
+        if v != 3004:
+            raise RuntimeError(f'Marc simulation failed ({v})')
