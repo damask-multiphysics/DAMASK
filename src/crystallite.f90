@@ -315,7 +315,6 @@ function crystallite_stress()
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
-    startIP, endIP, &
     s
   logical, dimension(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: todo     !ToDo: need to set some values to false for different Ngrains
   real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
@@ -356,17 +355,8 @@ function crystallite_stress()
   enddo elementLooping1
   !$OMP END PARALLEL DO
 
-  singleRun: if (FEsolving_execELem(1) == FEsolving_execElem(2) .and. &
-                 FEsolving_execIP  (1) == FEsolving_execIP  (2)) then
-    startIP = FEsolving_execIP(1)
-    endIP   = startIP
-  else singleRun
-    startIP = 1
-    endIP   = discretization_nIPs
-  endif singleRun
-
   NiterationCrystallite = 0
-  cutbackLooping: do while (any(todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
+  cutbackLooping: do while (any(todo(:,FEsolving_execIP(1):FEsolving_execIP(2),FEsolving_execELem(1):FEsolving_execElem(2))))
     NiterationCrystallite = NiterationCrystallite + 1
 
 #ifdef DEBUG
@@ -428,9 +418,9 @@ function crystallite_stress()
             crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
                                             + crystallite_subStep(c,i,e) *( crystallite_partitionedF (1:3,1:3,c,i,e) &
                                                                            -crystallite_partitionedF0(1:3,1:3,c,i,e))
-            crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
-                                                          math_inv33(crystallite_Fp(1:3,1:3,c,i,e))), &
-                                                   math_inv33(crystallite_Fi(1:3,1:3,c,i,e)))
+            crystallite_Fe(1:3,1:3,c,i,e) = matmul(crystallite_subF(1:3,1:3,c,i,e), &
+                                                   math_inv33(matmul(crystallite_Fi(1:3,1:3,c,i,e), &
+                                                                     crystallite_Fp(1:3,1:3,c,i,e))))
             crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
             crystallite_converged(c,i,e) = .false.
             call integrateState(c,i,e)
