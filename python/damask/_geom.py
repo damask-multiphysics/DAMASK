@@ -800,6 +800,20 @@ class Geom:
                    )
 
 
+    def sort(self):
+        """Sort material indices such that min(material) is located at (0,0,0)."""
+        a = self.material.flatten(order='F')
+        from_ma = pd.unique(a)
+        sort_idx = np.argsort(from_ma)
+        ma = np.unique(a)[sort_idx][np.searchsorted(from_ma,a,sorter = sort_idx)]
+
+        return Geom(material = ma.reshape(self.grid,order='F'),
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Geom','sort')],
+                   )
+
+
     def vicinity_offset(self,vicinity=1,offset=None,trigger=[],periodic=True):
         """
         Offset material index of points in the vicinity of xxx.

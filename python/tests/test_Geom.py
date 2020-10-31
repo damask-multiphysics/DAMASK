@@ -6,6 +6,7 @@ from damask import Geom
 from damask import Table
 from damask import Rotation
 from damask import util
+from damask import seeds
 from damask import grid_filters
 
 
@@ -204,6 +205,12 @@ class TestGeom:
         assert np.array_equiv(t,f) or (not geom_equal(modified,default))
         assert geom_equal(default, modified.substitute(t,f))
 
+    def test_sort(self):
+        grid = np.random.randint(5,20,3)
+        m = Geom(np.random.randint(1,20,grid)*3,np.ones(3)).sort().material.flatten(order='F')
+        assert m[0] == m.min()
+        for i,v in enumerate(m[1:]):
+            assert v > m[:i+1].max() or v in m[:i+1]
 
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
                                            np.array([1,0,0,175]),np.array([0,-1,0,178]),np.array([0,0,1,180])])
@@ -384,3 +391,13 @@ class TestGeom:
         t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
         g = Geom.from_table(t,'coords',['1_coords','z'])
         assert g.N_materials == g.grid[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == grid[0]).all()
+
+
+    def test_from_table_recover(self,tmp_path):
+        grid = np.random.randint(60,100,3)
+        size = np.ones(3)+np.random.rand(3)
+        s = seeds.from_random(size,np.random.randint(60,100))
+        geom = Geom.from_Voronoi_tessellation(grid,size,s)
+        coords = grid_filters.cell_coord0(grid,size)
+        t = Table(np.column_stack((coords.reshape(-1,3,order='F'),geom.material.flatten(order='F'))),{'c':3,'m':1})
+        assert geom_equal(geom.sort().renumber(),Geom.from_table(t,'c',['m']))
