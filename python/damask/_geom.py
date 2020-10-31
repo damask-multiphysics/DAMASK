@@ -266,13 +266,9 @@ class Geom:
 
         labels_ = [labels] if isinstance(labels,str) else labels
         unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
-        if len(unique) == grid.prod():
-            ma = np.arange(grid.prod())
-        else:
-            from_ma = pd.unique(unique_inverse)
-            sort_idx = np.argsort(from_ma)
-            idx = np.searchsorted(from_ma,unique_inverse,sorter = sort_idx)
-            ma = np.arange(from_ma.size)[sort_idx][idx]
+
+        ma = np.arange(grid.prod()) if len(unique) == grid.prod() else \
+             np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
 
         return Geom(ma.reshape(grid,order='F'),size,origin,util.execution_stamp('Geom','from_table'))
 
