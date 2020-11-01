@@ -87,3 +87,7 @@ class TestConfigMaterial:
             c = m['constituents'][0]
             assert m['c'] == 1 and c['b'] == 0 and c['a'] == [i,1]
 
+    def test__constituents(self):
+        c = ConfigMaterial._constituents(c=1,v=[2,3])
+        assert c[0][0]['c'] == c[1][0]['c']    == 1
+        assert c[0][0]['v'] == c[1][0]['v'] -1 ==2

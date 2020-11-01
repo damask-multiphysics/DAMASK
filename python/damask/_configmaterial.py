@@ -69,8 +69,8 @@ class ConfigMaterial(Config):
         _,idx = np.unique(np.hstack(list({**constituents_,**kwargs_}.values())),return_index=True,axis=0)
 
         idx = np.sort(idx)
-        constituents_ = {k:v[idx].squeeze() for k,v in constituents_.items()}
-        kwargs_       = {k:v[idx].squeeze() for k,v in kwargs_.items()}
+        constituents_ = {k:np.atleast_1d(v[idx].squeeze()) for k,v in constituents_.items()}
+        kwargs_       = {k:np.atleast_1d(v[idx].squeeze()) for k,v in kwargs_.items()}
 
         return ConfigMaterial().material_add(constituents_,**kwargs_)
 
@@ -268,6 +268,7 @@ class ConfigMaterial(Config):
     @staticmethod
     def _constituents(N=1,**kwargs):
         """Construct list of constituents."""
+        N_material=1
         for v in kwargs.values():
             if hasattr(v,'__len__') and not isinstance(v,str): N_material = len(v)
 

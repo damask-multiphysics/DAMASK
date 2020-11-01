@@ -169,6 +169,7 @@ def scale_to_coprime(v):
 
     def lcm(a, b):
         """Least common multiple."""
+        # Python 3.9 provides math.lcm, see https://stackoverflow.com/questions/51716916.
         return a * b // np.gcd(a, b)
 
     m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
