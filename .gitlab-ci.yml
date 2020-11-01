@@ -20,12 +20,12 @@ stages:
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ];
-      then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue;
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue)x == 'x' ];
+      then echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue;
     fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
       do sleep 5m;
-      echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
+      echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
     done
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
@@ -45,7 +45,7 @@ variables:
   # ===============================================================================================
   # Shortcut names
   # ===============================================================================================
-  DAMASKROOT: "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
 
   # ===============================================================================================
   # Names of module files to load
@@ -80,10 +80,10 @@ variables:
 checkout:
   stage: prepareAll
   before_script:
-    - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+    - echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
         do sleep 5m;
-        echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
+        echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
       done
   script:
     - mkdir -p $DAMASKROOT
@@ -376,10 +376,10 @@ SpectralRuntime:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
     - make clean grid processing OPTIMIZATION=AGGRESSIVE
-    - cd $TESTROOT/performance                                                                      # location of old results
+    - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
-    - SpectralAll_runtime/test.py -d $TESTROOT/performance
+    - SpectralAll_runtime/test.py -d $LOCAL_HOME/performance
   except:
     - master
     - release
@@ -407,11 +407,11 @@ Python:
 backupData:
   stage: saveDocumentation
   script:
-    - cd $TESTROOT/performance                                                                      # location of new runtime results
+    - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
@@ -441,8 +441,8 @@ removeData:
   before_script:
     - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
   script:
-    - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
-    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue                                          # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
+    - rm -rf $LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID
+    - sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue                                        # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
   except:
     - master
     - release
@@ -453,7 +453,7 @@ removeLock:
   before_script:
     - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
-  script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
+  script: sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue
   except:
     - master
     - release
