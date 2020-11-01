@@ -46,6 +46,7 @@ variables:
   # Shortcut names
   # ===============================================================================================
   DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/tests"
 
   # ===============================================================================================
   # Names of module files to load
@@ -87,14 +88,13 @@ checkout:
       done
   script:
     - mkdir -p $DAMASKROOT
+    - mkdir -p $TESTROOT
     - cd $DAMASKROOT
-    - if [ -d DAMASK ]; then rm -rf DAMASK; fi                                                      # there might be some leftovers from a failed clone
     - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
     - make processing
-    - mkdir /tmp/$CI_PIPELINE_ID
   except:
     - master
     - release
@@ -104,7 +104,7 @@ Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest --basetemp=/tmp/${CI_PIPELINE_ID}/python -v
+    - pytest --basetemp=${TESTROOT}/python -v
   except:
     - master
     - release
@@ -190,7 +190,7 @@ grid_mech_compile_Intel:
     - cp -r grid_mech_compile grid_mech_compile_Intel
     - grid_mech_compile_Intel/test.py
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_Intel
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
     - master
     - release
@@ -202,7 +202,7 @@ Compile_FEM_Intel:
     - cp -r FEM_compile FEM_compile_Intel
     - FEM_compile_Intel/test.py
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_Intel
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
     - master
     - release
@@ -214,7 +214,7 @@ grid_mech_compile_GNU:
     - cp -r grid_mech_compile grid_mech_compile_GNU
     - grid_mech_compile_GNU/test.py
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_GNU
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
     - master
     - release
@@ -226,7 +226,7 @@ Compile_FEM_GNU:
     - cp -r FEM_compile FEM_compile_GNU
     - FEM_compile_GNU/test.py
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_GNU
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
     - master
     - release
@@ -248,7 +248,7 @@ Pytest_grid:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
-    - pytest -k 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran -v
+    - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
   except:
     - master
     - release
@@ -310,7 +310,7 @@ Marc_compileIfort:
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - cd pytest
-    - pytest -k 'compile and Marc' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_Marc
+    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
   except:
     - master
     - release
