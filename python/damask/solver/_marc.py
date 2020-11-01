@@ -82,7 +82,7 @@ class Marc:
         f.seek(0)
 
         try:
-            v = int(re.search('Exit number ([0-9]+)',f.readlines()[-1]).group(1))
+            v = int(re.search('Exit number ([0-9]+)',''.join(f.readlines())).group(1))
         except (AttributeError,ValueError):
             raise RuntimeError('Marc simulation failed (unknown return value)')
 
