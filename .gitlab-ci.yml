@@ -20,12 +20,12 @@ stages:
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ];
-      then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue;
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue)x == 'x' ];
+      then echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue;
     fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
       do sleep 5m;
-      echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
+      echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
     done
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
@@ -45,7 +45,8 @@ variables:
   # ===============================================================================================
   # Shortcut names
   # ===============================================================================================
-  DAMASKROOT: "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/tests"
 
   # ===============================================================================================
   # Names of module files to load
@@ -75,31 +76,25 @@ variables:
   MSC:                             "$MSC2019_1"
   IntelMarc:                       "$IntelCompiler17_8"
   HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
-  # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  Doxygen1_8_17:                   "Documentation/Doxygen/1.8.17"
-  # ------------ Defaults ----------------------------------------------
-  Doxygen:                         "$Doxygen1_8_17"
-
 
 ###################################################################################################
 checkout:
   stage: prepareAll
   before_script:
-    - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+    - echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
         do sleep 5m;
-        echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
+        echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
       done
   script:
     - mkdir -p $DAMASKROOT
+    - mkdir -p $TESTROOT
     - cd $DAMASKROOT
-    - if [ -d DAMASK ]; then rm -rf DAMASK; fi                                                      # there might be some leftovers from a failed clone
     - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
     - make processing
-    - mkdir /tmp/$CI_PIPELINE_ID
   except:
     - master
     - release
@@ -109,7 +104,7 @@ Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest --basetemp=/tmp/${CI_PIPELINE_ID}/python
+    - pytest --basetemp=${TESTROOT}/python -v
   except:
     - master
     - release
@@ -195,7 +190,7 @@ grid_mech_compile_Intel:
     - cp -r grid_mech_compile grid_mech_compile_Intel
     - grid_mech_compile_Intel/test.py
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_Intel
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
     - master
     - release
@@ -207,7 +202,7 @@ Compile_FEM_Intel:
     - cp -r FEM_compile FEM_compile_Intel
     - FEM_compile_Intel/test.py
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_Intel
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
     - master
     - release
@@ -219,7 +214,7 @@ grid_mech_compile_GNU:
     - cp -r grid_mech_compile grid_mech_compile_GNU
     - grid_mech_compile_GNU/test.py
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_GNU
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
     - master
     - release
@@ -231,7 +226,7 @@ Compile_FEM_GNU:
     - cp -r FEM_compile FEM_compile_GNU
     - FEM_compile_GNU/test.py
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_GNU
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
     - master
     - release
@@ -253,7 +248,7 @@ Pytest_grid:
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
-    - pytest -m 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran
+    - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
   except:
     - master
     - release
@@ -314,9 +309,8 @@ Marc_compileIfort:
   stage: compileMarc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - Marc_compileIfort/test.py
     - cd pytest
-    - pytest -k 'compile and Marc'
+    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
   except:
     - master
     - release
@@ -382,10 +376,10 @@ SpectralRuntime:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
     - make clean grid processing OPTIMIZATION=AGGRESSIVE
-    - cd $TESTROOT/performance                                                                      # location of old results
+    - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
-    - SpectralAll_runtime/test.py -d $TESTROOT/performance
+    - SpectralAll_runtime/test.py -d $LOCAL_HOME/performance
   except:
     - master
     - release
@@ -401,20 +395,10 @@ createTar:
     - release
 
 ###################################################################################################
-Marc:
+Python:
   stage: createDocumentation
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
-  except:
-    - master
-    - release
-
-GridSolver:
-  stage: createDocumentation
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT grid
+    - echo 'tbd one matesting1'
   except:
     - master
     - release
@@ -423,11 +407,11 @@ GridSolver:
 backupData:
   stage: saveDocumentation
   script:
-    - cd $TESTROOT/performance                                                                      # location of new runtime results
+    - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
@@ -457,8 +441,8 @@ removeData:
   before_script:
     - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
   script:
-    - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
-    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue                                          # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
+    - rm -rf $LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID
+    - sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue                                        # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
   except:
     - master
     - release
@@ -469,7 +453,7 @@ removeLock:
   before_script:
     - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
-  script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
+  script: sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue
   except:
     - master
     - release
