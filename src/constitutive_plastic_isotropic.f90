@@ -65,6 +65,7 @@ module function plastic_isotropic_init() result(myPlasticity)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
 
   print'(/,a)', ' <<<+-  plastic_isotropic init  -+>>>'
@@ -85,13 +86,13 @@ module function plastic_isotropic_init() result(myPlasticity)
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
-
+    mech  => phase%get('mech')
     if(.not. myPlasticity(p)) cycle
     i = i + 1
     associate(prm => param(i), &
               dot => dotState(i), &
               stt => state(i))
-    pl  => phase%get('plasticity')
+    pl  => mech%get('plasticity')
 
 
 #if defined (__GFORTRAN__)

@@ -201,6 +201,7 @@ module subroutine mech_init
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     elastic, &
     stiffDegradation
 
@@ -215,13 +216,14 @@ module subroutine mech_init
 
   do p = 1, phases%length
     phase   => phases%get(p)
-    elastic => phase%get('elasticity')
+    mech    => phase%get('mech')
+    elastic => mech%get('elasticity')
     if(elastic%get_asString('type') == 'hooke') then
       phase_elasticity(p) = ELASTICITY_HOOKE_ID
     else
       call IO_error(200,ext_msg=elastic%get_asString('type'))
     endif
-    stiffDegradation => phase%get('stiffness_degradation',defaultVal=emptyList)     ! check for stiffness degradation mechanisms
+    stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)     ! check for stiffness degradation mechanisms
     phase_NstiffnessDegradations(p) = stiffDegradation%length
   enddo
 
@@ -231,17 +233,14 @@ module subroutine mech_init
   if(maxVal(phase_NstiffnessDegradations)/=0) then
     do p = 1, phases%length
       phase => phases%get(p)
-      stiffDegradation => phase%get('stiffness_degradation',defaultVal=emptyList)
+      mech    => phase%get('mech')
+      stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)
       do stiffDegradationCtr = 1, stiffDegradation%length
         if(stiffDegradation%get_asString(stiffDegradationCtr) == 'damage') &
             phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_damage_ID
       enddo
     enddo
   endif
-
-  do p = 1, phases%length
-    phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
-  enddo
 
 
   allocate(plasticState(phases%length))
@@ -258,6 +257,7 @@ module subroutine mech_init
   where(plastic_nonlocal_init())          phase_plasticity = PLASTICITY_NONLOCAL_ID
 
   do p = 1, phases%length
+    phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
     phase_plasticityInstance(p) = count(phase_plasticity(1:p) == phase_plasticity(p))
   enddo
 
@@ -276,6 +276,7 @@ module function plastic_active(plastic_label)  result(active_plastic)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
   integer :: p
 
@@ -283,7 +284,8 @@ module function plastic_active(plastic_label)  result(active_plastic)
   allocate(active_plastic(phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    pl => phase%get('plasticity')
+    mech  => phase%get('mech')
+    pl    => mech%get('plasticity')
     if(pl%get_asString('type') == plastic_label) active_plastic(p) = .true.
   enddo
 

@@ -22,6 +22,7 @@ module function plastic_none_init() result(myPlasticity)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
 
   print'(/,a)', ' <<<+-  plastic_none init  -+>>>'
@@ -30,7 +31,8 @@ module function plastic_none_init() result(myPlasticity)
   allocate(myPlasticity(phases%length), source = .false.)
   do p = 1, phases%length
     phase => phases%get(p)
-    pl => phase%get('plasticity')
+    mech  => phase%get('mech')
+    pl    => mech%get ('plasticity')
     if(pl%get_asString('type') == 'none') myPlasticity(p) = .true.
   enddo
 
