@@ -4,9 +4,9 @@
 !--------------------------------------------------------------------------------------------------
 module element
   use IO
- 
+
   implicit none
-  private 
+  private
 
 !---------------------------------------------------------------------------------------------------
 !> Properties of a single element
@@ -39,7 +39,7 @@ module element
 
   integer, parameter :: &
     NELEMTYPE = 13
- 
+
   integer, dimension(NELEMTYPE), parameter :: NNODE = &
     [ &
         3, & ! 2D, 1 IP
@@ -57,7 +57,7 @@ module element
        20, & ! 3D, 8 IP
        20  & ! 3D, 27 IP
     ]                                                                                               !< number of nodes that constitute a specific type of element
- 
+
   integer, dimension(NELEMTYPE), parameter :: GEOMTYPE = &
     [ &
         1, & ! 1 triangle
@@ -75,7 +75,7 @@ module element
         9, & ! 8 hexahedrons
        10  & ! 27 hexahedrons
     ]                                                                                               !< geometry type (same number of cell nodes and IPs)
- 
+
   integer, dimension(maxval(GEOMTYPE)), parameter :: NCELLNODE = &
     [ &
         3, &
@@ -89,21 +89,21 @@ module element
        27, &
        64  &
     ]                                                                                               !< number of cell nodes
- 
+
   integer, dimension(maxval(GEOMTYPE)), parameter :: NIP = &
     [ &
-        1, & 
-        3, & 
-        4, & 
-        9, & 
-        1, & 
-        4, & 
-        6, & 
-        1, & 
-        8, & 
-       27  & 
+        1, &
+        3, &
+        4, &
+        9, &
+        1, &
+        4, &
+        6, &
+        1, &
+        8, &
+       27  &
     ]                                                                                               !< number of IPs
- 
+
   integer, dimension(maxval(GEOMTYPE)), parameter :: CELLTYPE = &
     [ &
        1, & ! 2D, 3 node (Triangle)
@@ -147,7 +147,7 @@ module element
   ! It is sorted in (local) +x,-x, +y,-y, +z,-z direction.
   ! Positive integers denote an intra-element IP identifier.
   ! Negative integers denote the interface behind which the neighboring (extra-element) IP will be located.
- 
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(1)),NIP(1)),   parameter :: IPNEIGHBOR1 = &
     reshape([&
       -2,-3,-1  &
@@ -156,7 +156,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(1)),NIP(1)])
 #endif
- 
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(2)),NIP(2)),   parameter :: IPNEIGHBOR2 = &
     reshape([&
        2,-3, 3,-1, &
@@ -167,7 +167,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(2)),NIP(2)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(3)),NIP(3)),   parameter :: IPNEIGHBOR3 = &
     reshape([&
        2,-4, 3,-1, &
@@ -179,7 +179,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(3)),NIP(3)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(4)),NIP(4)),   parameter :: IPNEIGHBOR4 = &
     reshape([&
        2,-4, 4,-1, &
@@ -196,7 +196,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(4)),NIP(4)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(5)),NIP(5)),   parameter :: IPNEIGHBOR5 = &
     reshape([&
       -1,-2,-3,-4 &
@@ -205,7 +205,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(5)),NIP(5)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(6)),NIP(6)),   parameter :: IPNEIGHBOR6 = &
     reshape([&
        2,-4, 3,-2, 4,-1, &
@@ -217,7 +217,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(6)),NIP(6)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(7)),NIP(7)),   parameter :: IPNEIGHBOR7 = &
     reshape([&
        2,-4, 3,-2, 4,-1, &
@@ -231,7 +231,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(7)),NIP(7)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(8)),NIP(8)),   parameter :: IPNEIGHBOR8 = &
     reshape([&
       -3,-5,-4,-2,-6,-1  &
@@ -240,7 +240,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(8)),NIP(8)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(9)),NIP(9)),   parameter :: IPNEIGHBOR9 = &
     reshape([&
        2,-5, 3,-2, 5,-1, &
@@ -256,7 +256,7 @@ module element
 #else
     ],[NIPNEIGHBOR(CELLTYPE(9)),NIP(9)])
 #endif
-  
+
   integer, dimension(NIPNEIGHBOR(CELLTYPE(10)),NIP(10)), parameter :: IPNEIGHBOR10 = &
     reshape([&
        2,-5, 4,-2,10,-1, &
@@ -292,7 +292,7 @@ module element
     ],[NIPNEIGHBOR(CELLTYPE(10)),NIP(10)])
 #endif
 
- 
+
   integer, dimension(NNODE(1),NCELLNODE(GEOMTYPE(1))),   parameter :: CELLNODEPARENTNODEWEIGHTS1 = &
     reshape([&
       1, 0, 0, &
@@ -303,7 +303,7 @@ module element
 #else
     ],[NNODE(1),NCELLNODE(GEOMTYPE(1))])
 #endif
- 
+
   integer, dimension(NNODE(2),NCELLNODE(GEOMTYPE(2))),   parameter :: CELLNODEPARENTNODEWEIGHTS2 = &
     reshape([&
       1, 0, 0, 0, 0, 0, &
@@ -318,7 +318,7 @@ module element
 #else
     ],[NNODE(2),NCELLNODE(GEOMTYPE(2))])
 #endif
- 
+
   integer, dimension(NNODE(3),NCELLNODE(GEOMTYPE(3))),   parameter :: CELLNODEPARENTNODEWEIGHTS3 = &
     reshape([&
       1, 0, 0, 0, &
@@ -335,7 +335,7 @@ module element
 #else
     ],[NNODE(3),NCELLNODE(GEOMTYPE(3))])
 #endif
- 
+
   integer, dimension(NNODE(4),NCELLNODE(GEOMTYPE(4))),   parameter :: CELLNODEPARENTNODEWEIGHTS4 = &
     reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
@@ -359,7 +359,7 @@ module element
 #else
     ],[NNODE(4),NCELLNODE(GEOMTYPE(4))])
 #endif
- 
+
   integer, dimension(NNODE(5),NCELLNODE(GEOMTYPE(5))),   parameter :: CELLNODEPARENTNODEWEIGHTS5 = &
     reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
@@ -376,7 +376,7 @@ module element
 #else
     ],[NNODE(5),NCELLNODE(GEOMTYPE(5))])
 #endif
- 
+
   integer, dimension(NNODE(6),NcellNode(GEOMTYPE(6))),   parameter :: CELLNODEPARENTNODEWEIGHTS6 = &
     reshape([&
       1, 0, 0, 0, &
@@ -388,7 +388,7 @@ module element
 #else
     ],[NNODE(6),NcellNode(GEOMTYPE(6))])
 #endif
- 
+
   integer, dimension(NNODE(7),NCELLNODE(GEOMTYPE(7))),   parameter :: CELLNODEPARENTNODEWEIGHTS7 = &
     reshape([&
       1, 0, 0, 0, 0, &
@@ -411,7 +411,7 @@ module element
 #else
     ],[NNODE(7),NCELLNODE(GEOMTYPE(7))])
 #endif
- 
+
   integer, dimension(NNODE(8),NCELLNODE(GEOMTYPE(8))),   parameter :: CELLNODEPARENTNODEWEIGHTS8 = &
     reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
@@ -434,7 +434,7 @@ module element
 #else
     ],[NNODE(8),NCELLNODE(GEOMTYPE(8))])
 #endif
- 
+
   integer, dimension(NNODE(9),NCELLNODE(GEOMTYPE(9))),   parameter :: CELLNODEPARENTNODEWEIGHTS9 = &
     reshape([&
       1, 0, 0, 0, 0, 0, &
@@ -463,7 +463,7 @@ module element
 #else
     ],[NNODE(9),NCELLNODE(GEOMTYPE(9))])
 #endif
- 
+
   integer, dimension(NNODE(10),NCELLNODE(GEOMTYPE(10))), parameter :: CELLNODEPARENTNODEWEIGHTS10 = &
     reshape([&
       1, 0, 0, 0, 0, 0, 0, 0, &
@@ -479,7 +479,7 @@ module element
 #else
     ],[NNODE(10),NCELLNODE(GEOMTYPE(10))])
 #endif
-  
+
   integer, dimension(NNODE(11),NCELLNODE(GEOMTYPE(11))), parameter :: CELLNODEPARENTNODEWEIGHTS11 = &
     reshape([&
       1, 0, 0, 0,  0, 0, 0, 0, &   !
@@ -514,7 +514,7 @@ module element
 #else
     ],[NNODE(11),NCELLNODE(GEOMTYPE(11))])
 #endif
-  
+
   integer, dimension(NNODE(12),NCELLNODE(GEOMTYPE(12))), parameter :: CELLNODEPARENTNODEWEIGHTS12 = &
     reshape([&
       1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
@@ -549,7 +549,7 @@ module element
 #else
     ],[NNODE(12),NCELLNODE(GEOMTYPE(12))])
 #endif
-  
+
   integer, dimension(NNODE(13),NCELLNODE(GEOMTYPE(13))), parameter :: CELLNODEPARENTNODEWEIGHTS13 = &
     reshape([&
        1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, &   !
@@ -621,8 +621,8 @@ module element
 #else
     ],[NNODE(13),NCELLNODE(GEOMTYPE(13))])
 #endif
- 
- 
+
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)),   parameter :: CELL1 = &
     reshape([&
       1,2,3 &
@@ -631,7 +631,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(1)),NIP(1)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)),   parameter :: CELL2 = &
     reshape([&
       1, 4, 7, 6, &
@@ -642,7 +642,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(2)),NIP(2)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)),   parameter :: CELL3 = &
     reshape([&
       1, 5, 9, 8, &
@@ -654,7 +654,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(3)),NIP(3)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)),   parameter :: CELL4 = &
     reshape([&
        1, 5,13,12, &
@@ -671,7 +671,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(4)),NIP(4)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)),   parameter :: CELL5 = &
     reshape([&
       1, 2, 3, 4 &
@@ -680,7 +680,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(5)),NIP(5)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)),   parameter :: CELL6 = &
     reshape([&
       1, 5,11, 7, 8,12,15,14, &
@@ -692,7 +692,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(6)),NIP(6)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)),   parameter :: CELL7 = &
     reshape([&
       1, 7,16, 9,10,17,21,19, &
@@ -706,7 +706,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(7)),NIP(7)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)),   parameter :: CELL8 = &
     reshape([&
       1, 2, 3, 4, 5, 6, 7, 8 &
@@ -715,7 +715,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(8)),NIP(8)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)),   parameter :: CELL9 = &
     reshape([&
        1, 9,21,12,17,22,27,25, &
@@ -731,7 +731,7 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(9)),NIP(9)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)), parameter :: CELL10 = &
     reshape([&
        1, 9,33,16,17,37,57,44, &
@@ -766,8 +766,8 @@ module element
 #else
     ],[NCELLNODEPERCELL(CELLTYPE(10)),NIP(10)])
 #endif
- 
- 
+
+
   integer, dimension(NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)), parameter :: CELLFACE1 = &
     reshape([&
       2,3, &
@@ -778,7 +778,7 @@ module element
 #else
     ],[NCELLNODEPERCELLFACE(1),NIPNEIGHBOR(1)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)), parameter :: CELLFACE2 = &
     reshape([&
       2,3, &
@@ -790,7 +790,7 @@ module element
 #else
     ],[NCELLNODEPERCELLFACE(2),NIPNEIGHBOR(2)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)), parameter :: CELLFACE3 = &
     reshape([&
       1,3,2, &
@@ -802,7 +802,7 @@ module element
 #else
     ],[NCELLNODEPERCELLFACE(3),NIPNEIGHBOR(3)])
 #endif
- 
+
   integer, dimension(NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)), parameter :: CELLFACE4 = &
     reshape([&
       2,3,7,6, &
@@ -816,10 +816,10 @@ module element
 #else
     ],[NCELLNODEPERCELLFACE(4),NIPNEIGHBOR(4)])
 #endif
- 
- 
+
+
 contains
- 
+
 
 !---------------------------------------------------------------------------------------------------
 !> define properties of an element
@@ -828,9 +828,9 @@ subroutine tElement_init(self,elemType)
 
   class(tElement)     :: self
   integer, intent(in) :: elemType
-  
+
   self%elemType = elemType
- 
+
   self%Nnodes     = NNODE   (self%elemType)
   self%geomType   = GEOMTYPE(self%elemType)
 
@@ -864,12 +864,12 @@ subroutine tElement_init(self,elemType)
     case default
       call IO_error(0,ext_msg='invalid element type')
   end select
-  
- 
+
+
   self%NcellNodes = NCELLNODE(self%geomType)
   self%nIPs       = NIP      (self%geomType)
   self%cellType   = CELLTYPE (self%geomType)
- 
+
   select case (self%geomType)
     case(1)
       self%IPneighbor = IPNEIGHBOR1
@@ -904,7 +904,7 @@ subroutine tElement_init(self,elemType)
   end select
 
   self%NcellnodesPerCell = NCELLNODEPERCELL(self%cellType)
-  
+
   select case(self%cellType)
     case(1)
       self%cellFace = CELLFACE1
@@ -919,20 +919,20 @@ subroutine tElement_init(self,elemType)
       self%cellFace = CELLFACE4
       self%vtkType  = 'HEXAHEDRON'
   end select
-  
+
   self%nIPneighbors = size(self%IPneighbor,1)
-  
-  write(6,'(/,a)') ' <<<+-  element_init  -+>>>'; flush(6)
-  
-  write(6,*) ' element type:      ',self%elemType
-  write(6,*) '   geom type:       ',self%geomType
-  write(6,*) '   cell type:       ',self%cellType
-  write(6,*) '   # node:          ',self%Nnodes
-  write(6,*) '   # IP:            ',self%nIPs
-  write(6,*) '   # cellnode:      ',self%Ncellnodes
-  write(6,*) '   # cellnode/cell: ',self%NcellnodesPerCell
-  write(6,*) '   # IP neighbor:   ',self%nIPneighbors
-   
+
+  print'(/,a)', ' <<<+-  element_init  -+>>>'; flush(IO_STDOUT)
+
+  print*, 'element type:      ',self%elemType
+  print*, '  geom type:       ',self%geomType
+  print*, '  cell type:       ',self%cellType
+  print*, '  # node:          ',self%Nnodes
+  print*, '  # IP:            ',self%nIPs
+  print*, '  # cellnode:      ',self%Ncellnodes
+  print*, '  # cellnode/cell: ',self%NcellnodesPerCell
+  print*, '  # IP neighbor:   ',self%nIPneighbors
+
 end subroutine tElement_init
 
 end module element

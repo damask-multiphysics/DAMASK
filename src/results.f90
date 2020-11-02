@@ -6,8 +6,8 @@
 !--------------------------------------------------------------------------------------------------
 module results
   use DAMASK_interface
+  use parallelization
   use rotations
-  use numerics
   use HDF5_utilities
 #ifdef PETSc
   use PETSC
@@ -15,31 +15,31 @@ module results
 
   implicit none
   private
-  
+
   integer(HID_T) :: resultsFile
 
   interface results_writeDataset
-  
+
     module procedure results_writeTensorDataset_real
     module procedure results_writeVectorDataset_real
     module procedure results_writeScalarDataset_real
-    
+
     module procedure results_writeTensorDataset_int
     module procedure results_writeVectorDataset_int
-    
+
     module procedure results_writeScalarDataset_rotation
-    
+
   end interface results_writeDataset
-  
+
   interface results_addAttribute
-  
+
     module procedure results_addAttribute_real
     module procedure results_addAttribute_int
     module procedure results_addAttribute_str
-    
+
     module procedure results_addAttribute_int_array
     module procedure results_addAttribute_real_array
-    
+
   end interface results_addAttribute
 
   public :: &
@@ -56,27 +56,31 @@ module results
     results_addAttribute, &
     results_removeLink, &
     results_mapping_constituent, &
-    results_mapping_materialpoint
+    results_mapping_homogenization
 contains
 
-subroutine results_init
+subroutine results_init(restart)
+
+  logical, intent(in) :: restart
 
   character(len=pStringLen) :: commandLine
 
-  write(6,'(/,a)') ' <<<+-  results init  -+>>>'
+  print'(/,a)', ' <<<+-  results init  -+>>>'; flush(IO_STDOUT)
 
-  write(6,'(/,a)') ' Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
-  write(6,'(a)')   ' https://doi.org/10.1007/s40192-017-0084-5'
+  print*, 'Diehl et al., Integrating Materials and Manufacturing Innovation 6(1):83–91, 2017'
+  print*, 'https://doi.org/10.1007/s40192-017-0084-5'//IO_EOL
 
-  resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
-  call results_addAttribute('DADF5_version_major',0)
-  call results_addAttribute('DADF5_version_minor',6)
-  call results_addAttribute('DAMASK_version',DAMASKVERSION)
-  call get_command(commandLine)
-  call results_addAttribute('call',trim(commandLine))
-  call results_closeGroup(results_addGroup('mapping'))
-  call results_closeGroup(results_addGroup('mapping/cellResults'))
-  call results_closeJobFile
+  if(.not. restart) then
+    resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
+    call results_addAttribute('DADF5_version_major',0)
+    call results_addAttribute('DADF5_version_minor',7)
+    call results_addAttribute('DAMASK_version',DAMASKVERSION)
+    call get_command(commandLine)
+    call results_addAttribute('call',trim(commandLine))
+    call results_closeGroup(results_addGroup('mapping'))
+    call results_closeGroup(results_addGroup('mapping/cellResults'))
+    call results_closeJobFile
+  endif
 
 end subroutine results_init
 
@@ -87,7 +91,7 @@ end subroutine results_init
 subroutine results_openJobFile
 
   resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','a',.true.)
- 
+
 end subroutine results_openJobFile
 
 
@@ -105,7 +109,7 @@ end subroutine results_closeJobFile
 !> @brief creates the group of increment and adds time as attribute to the file
 !--------------------------------------------------------------------------------------------------
 subroutine results_addIncrement(inc,time)
- 
+
   integer,       intent(in) :: inc
   real(pReal),   intent(in) :: time
   character(len=pStringLen) :: incChar
@@ -114,8 +118,14 @@ subroutine results_addIncrement(inc,time)
   call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
-  call results_closeGroup(results_addGroup('current/constituent'))
-  call results_closeGroup(results_addGroup('current/materialpoint'))
+  call results_closeGroup(results_addGroup('current/phase'))
+  call results_closeGroup(results_addGroup('current/homogenization'))
+
+  ! for backward compatibility
+  call results_setLink(trim('/inc'//trim(adjustl(incChar)))//'/phase',&
+                       trim('/inc'//trim(adjustl(incChar)))//'/constituent')
+  call results_setLink(trim('/inc'//trim(adjustl(incChar)))//'/homogenization',&
+                       trim('/inc'//trim(adjustl(incChar)))//'/materialpoint')
 
 end subroutine results_addIncrement
 
@@ -137,7 +147,7 @@ end subroutine results_finalizeIncrement
 integer(HID_T) function results_openGroup(groupName)
 
   character(len=*), intent(in) :: groupName
-  
+
   results_openGroup = HDF5_openGroup(resultsFile,groupName)
 
 end function results_openGroup
@@ -149,7 +159,7 @@ end function results_openGroup
 integer(HID_T) function results_addGroup(groupName)
 
   character(len=*), intent(in) :: groupName
-  
+
   results_addGroup = HDF5_addGroup(resultsFile,groupName)
 
 end function results_addGroup
@@ -161,7 +171,7 @@ end function results_addGroup
 subroutine results_closeGroup(group_id)
 
   integer(HID_T), intent(in) :: group_id
-  
+
   call HDF5_closeGroup(group_id)
 
 end subroutine results_closeGroup
@@ -177,7 +187,6 @@ subroutine results_setLink(path,link)
   call HDF5_setLink(resultsFile,path,link)
 
 end subroutine results_setLink
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds a string attribute to an object in the results file
@@ -290,23 +299,25 @@ subroutine results_writeScalarDataset_real(group,dataset,label,description,SIuni
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in),    optional     :: SIunit
   real(pReal),      intent(inout), dimension(:) :: dataset
-  
+
   integer(HID_T) :: groupHandle
- 
+
   groupHandle = results_openGroup(group)
-  
+
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
 #else
   call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
-  
+
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_real
@@ -319,23 +330,25 @@ subroutine results_writeVectorDataset_real(group,dataset,label,description,SIuni
   character(len=*), intent(in)                    :: label,group,description
   character(len=*), intent(in),    optional       :: SIunit
   real(pReal),      intent(inout), dimension(:,:) :: dataset
-  
+
   integer(HID_T) :: groupHandle
- 
+
   groupHandle = results_openGroup(group)
-  
+
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
 #else
   call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
-  
+
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_real
@@ -350,13 +363,13 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   character(len=*), intent(in), optional         :: SIunit
   logical,          intent(in), optional         :: transposed
   real(pReal),      intent(in), dimension(:,:,:) :: dataset
-  
-  integer :: i 
+
+  integer :: i
   logical :: transposed_
   integer(HID_T) :: groupHandle
   real(pReal), dimension(:,:,:), allocatable :: dataset_transposed
 
-  
+
   if(present(transposed)) then
     transposed_ = transposed
   else
@@ -374,19 +387,21 @@ subroutine results_writeTensorDataset_real(group,dataset,label,description,SIuni
   endif
 
   groupHandle = results_openGroup(group)
-  
+
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset_transposed,label,.true.)
 #else
   call HDF5_write(groupHandle,dataset_transposed,label,.false.)
 #endif
-  
+
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_real
@@ -400,23 +415,25 @@ subroutine results_writeVectorDataset_int(group,dataset,label,description,SIunit
   character(len=*), intent(in)                :: label,group,description
   character(len=*), intent(in), optional      :: SIunit
   integer,      intent(inout), dimension(:,:) :: dataset
-  
+
   integer(HID_T) :: groupHandle
- 
+
   groupHandle = results_openGroup(group)
-  
+
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
 #else
   call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
-  
+
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeVectorDataset_int
@@ -430,23 +447,25 @@ subroutine results_writeTensorDataset_int(group,dataset,label,description,SIunit
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in), optional        :: SIunit
   integer,      intent(inout), dimension(:,:,:) :: dataset
-  
+
   integer(HID_T) :: groupHandle
- 
+
   groupHandle = results_openGroup(group)
-  
+
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
 #else
   call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
-  
+
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(SIunit)) &
     call HDF5_addAttribute(groupHandle,'Unit',SIunit,label)
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeTensorDataset_int
@@ -460,23 +479,25 @@ subroutine results_writeScalarDataset_rotation(group,dataset,label,description,l
   character(len=*), intent(in)                  :: label,group,description
   character(len=*), intent(in), optional        :: lattice_structure
   type(rotation),   intent(inout), dimension(:) :: dataset
-  
+
   integer(HID_T) :: groupHandle
- 
+
   groupHandle = results_openGroup(group)
-  
+
 #ifdef PETSc
   call HDF5_write(groupHandle,dataset,label,.true.)
 #else
   call HDF5_write(groupHandle,dataset,label,.false.)
 #endif
-  
+
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Description',description,label)
   if (HDF5_objectExists(groupHandle,label) .and. present(lattice_structure)) &
     call HDF5_addAttribute(groupHandle,'Lattice',lattice_structure,label)
   if (HDF5_objectExists(groupHandle,label)) &
     call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
+  if (HDF5_objectExists(groupHandle,label)) &
+    call HDF5_addAttribute(groupHandle,'Created',now(),label)
   call HDF5_closeGroup(groupHandle)
 
 end subroutine results_writeScalarDataset_rotation
@@ -486,11 +507,11 @@ end subroutine results_writeScalarDataset_rotation
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
 subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
-    
+
   integer,          dimension(:,:),   intent(in) :: phaseAt                                         !< phase section at (constituent,element)
   integer,                   dimension(:,:,:), intent(in) :: memberAtLocal                          !< phase member at (constituent,IP,element)
   character(len=pStringLen), dimension(:),     intent(in) :: label                                  !< label of each phase section
-  
+
   integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2),size(memberAtLocal,3)) :: &
     phaseAtMaterialpoint, &
     memberAtGlobal
@@ -500,7 +521,7 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
     totalShape                                                                                      !< shape of the dataset (all processes)
-  
+
   integer(HID_T) :: &
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
@@ -512,30 +533,30 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
     plist_id, &
     dt_id
 
-  
+
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: ierr, i
-  
+
 !---------------------------------------------------------------------------------------------------
 ! compound type: name of phase section + position/index within results array
   call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, ierr)
   call h5tset_size_f(dt_id, int(len(label(1)),SIZE_T), ierr)
   call h5tget_size_f(dt_id, type_size_string, ierr)
-  
+
   call h5tget_size_f(H5T_NATIVE_INTEGER, type_size_int, ierr)
-  
+
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, ierr)
   call h5tinsert_f(dtype_id, "Name", 0_SIZE_T, dt_id,ierr)
   call h5tinsert_f(dtype_id, "Position", type_size_string, H5T_NATIVE_INTEGER, ierr)
-  
+
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, ierr)
   call h5tinsert_f(name_id, "Name", 0_SIZE_T, dt_id, ierr)
-  
+
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, ierr)
   call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_NATIVE_INTEGER, ierr)
-  
+
   call h5tclose_f(dt_id, ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -553,10 +574,10 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
 #ifdef PETSc
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5pset_dxpl_mpio_f')
-  
+
   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
   if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_constituent: MPI_allreduce/writeSize')
-  
+
   call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
   if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_constituent: MPI_allreduce/memberOffset')
 #endif
@@ -564,15 +585,15 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   myShape    = int([size(phaseAt,1),writeSize(worldrank)],  HSIZE_T)
   myOffset   = int([0,sum(writeSize(0:worldrank-1))],       HSIZE_T)
   totalShape = int([size(phaseAt,1),sum(writeSize)],        HSIZE_T)
-  
+
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
   call h5screate_simple_f(2,myShape,memspace_id,ierr,myShape)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5screate_simple_f/memspace_id')
-  
+
   call h5screate_simple_f(2,totalShape,filespace_id,ierr,totalShape)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5screate_simple_f/filespace_id')
-  
+
   call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5sselect_hyperslab_f')
 
@@ -581,7 +602,7 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   do i = 1, size(phaseAtMaterialpoint,2)
     phaseAtMaterialpoint(:,i,:) = phaseAt
   enddo
-  
+
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
@@ -591,11 +612,11 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
   call h5pset_preserve_f(plist_id, .TRUE., ierr)
-  
-  loc_id = results_openGroup('/mapping/cellResults')
-  call h5dcreate_f(loc_id, 'constituent', dtype_id, filespace_id, dset_id, ierr)
+
+  loc_id = results_openGroup('/mapping')
+  call h5dcreate_f(loc_id, 'phase', dtype_id, filespace_id, dset_id, ierr)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dcreate_f')
-  
+
   call h5dwrite_f(dset_id, name_id, reshape(label(pack(phaseAtMaterialpoint,.true.)),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
   if (ierr < 0) call IO_error(1,ext_msg='results_mapping_constituent: h5dwrite_f/name_id')
@@ -614,18 +635,21 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   call h5tclose_f(name_id, ierr)
   call h5tclose_f(position_id, ierr)
 
+  ! for backward compatibility
+  call results_setLink('/mapping/phase','/mapping/cellResults/constituent')
+
 end subroutine results_mapping_constituent
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
-    
+subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
+
   integer,          dimension(:),   intent(in) :: homogenizationAt                                  !< homogenization section at (element)
   integer,                   dimension(:,:), intent(in) :: memberAtLocal                            !< homogenization member at (IP,element)
   character(len=pStringLen), dimension(:),   intent(in) :: label                                    !< label of each homogenization section
-  
+
   integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2)) :: &
     homogenizationAtMaterialpoint, &
     memberAtGlobal
@@ -635,7 +659,7 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
     myShape, &                                                                                      !< shape of the dataset (this process)
     myOffset, &
     totalShape                                                                                      !< shape of the dataset (all processes)
-  
+
   integer(HID_T) :: &
     loc_id, &                                                                                       !< identifier of group in file
     dtype_id, &                                                                                     !< identifier of compound data type
@@ -647,30 +671,30 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
     plist_id, &
     dt_id
 
-  
+
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: ierr, i
-  
+
 !---------------------------------------------------------------------------------------------------
 ! compound type: name of phase section + position/index within results array
   call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, ierr)
   call h5tset_size_f(dt_id, int(len(label(1)),SIZE_T), ierr)
   call h5tget_size_f(dt_id, type_size_string, ierr)
-  
+
   call h5tget_size_f(H5T_NATIVE_INTEGER, type_size_int, ierr)
-  
+
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string + type_size_int, dtype_id, ierr)
   call h5tinsert_f(dtype_id, "Name", 0_SIZE_T, dt_id,ierr)
   call h5tinsert_f(dtype_id, "Position", type_size_string, H5T_NATIVE_INTEGER, ierr)
-  
+
 !--------------------------------------------------------------------------------------------------
 ! create memory types for each component of the compound type
   call h5tcreate_f(H5T_COMPOUND_F, type_size_string, name_id, ierr)
   call h5tinsert_f(name_id, "Name", 0_SIZE_T, dt_id, ierr)
-  
+
   call h5tcreate_f(H5T_COMPOUND_F, type_size_int, position_id, ierr)
   call h5tinsert_f(position_id, "Position", 0_SIZE_T, H5T_NATIVE_INTEGER, ierr)
-  
+
   call h5tclose_f(dt_id, ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -687,36 +711,36 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
 ! MPI settings and communication
 #ifdef PETSc
   call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, ierr)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5pset_dxpl_mpio_f')
-  
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5pset_dxpl_mpio_f')
+
   call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
-  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/writeSize')
-  
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_homogenization: MPI_allreduce/writeSize')
+
   call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
-  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_materialpoint: MPI_allreduce/memberOffset')
+  if (ierr /= 0) call IO_error(894,ext_msg='results_mapping_homogenization: MPI_allreduce/memberOffset')
 #endif
 
   myShape    = int([writeSize(worldrank)],          HSIZE_T)
   myOffset   = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
   totalShape = int([sum(writeSize)],                HSIZE_T)
-  
+
 !--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
   call h5screate_simple_f(1,myShape,memspace_id,ierr,myShape)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/memspace_id')
-  
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5screate_simple_f/memspace_id')
+
   call h5screate_simple_f(1,totalShape,filespace_id,ierr,totalShape)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5screate_simple_f/filespace_id')
-  
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5screate_simple_f/filespace_id')
+
   call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, ierr)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5sselect_hyperslab_f')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5sselect_hyperslab_f')
 
 !---------------------------------------------------------------------------------------------------
 ! expand phaseAt to consider IPs (is not stored per IP)
   do i = 1, size(homogenizationAtMaterialpoint,1)
     homogenizationAtMaterialpoint(i,:) = homogenizationAt
   enddo
-  
+
 !---------------------------------------------------------------------------------------------------
 ! renumber member from my process to all processes
   do i = 1, size(label)
@@ -726,17 +750,17 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
   call h5pset_preserve_f(plist_id, .TRUE., ierr)
-  
-  loc_id = results_openGroup('/mapping/cellResults')
-  call h5dcreate_f(loc_id, 'materialpoint', dtype_id, filespace_id, dset_id, ierr)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dcreate_f')
-  
+
+  loc_id = results_openGroup('/mapping')
+  call h5dcreate_f(loc_id, 'homogenization', dtype_id, filespace_id, dset_id, ierr)
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5dcreate_f')
+
   call h5dwrite_f(dset_id, name_id, reshape(label(pack(homogenizationAtMaterialpoint,.true.)),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/name_id')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5dwrite_f/name_id')
   call h5dwrite_f(dset_id, position_id, reshape(pack(memberAtGlobal,.true.),myShape), &
                   myShape, ierr, file_space_id = filespace_id, mem_space_id = memspace_id, xfer_prp = plist_id)
-  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_materialpoint: h5dwrite_f/position_id')
+  if (ierr < 0) call IO_error(1,ext_msg='results_mapping_homogenization: h5dwrite_f/position_id')
 
 !--------------------------------------------------------------------------------------------------
 ! close all
@@ -749,7 +773,25 @@ subroutine results_mapping_materialpoint(homogenizationAt,memberAtLocal,label)
   call h5tclose_f(name_id, ierr)
   call h5tclose_f(position_id, ierr)
 
-end subroutine results_mapping_materialpoint
+  ! for backward compatibility
+  call results_setLink('/mapping/homogenization','/mapping/cellResults/materialpoint')
+
+end subroutine results_mapping_homogenization
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief current date and time (including time zone information)
+!--------------------------------------------------------------------------------------------------
+character(len=24) function now()
+
+  character(len=5)      :: zone
+  integer, dimension(8) :: values
+
+  call date_and_time(values=values,zone=zone)
+  write(now,'(i4.4,5(a,i2.2),a)') &
+    values(1),'-',values(2),'-',values(3),' ',values(5),':',values(6),':',values(7),zone
+
+end function now
 
 
 !!--------------------------------------------------------------------------------------------------

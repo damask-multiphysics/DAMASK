@@ -1,14 +1,15 @@
-import os
 import subprocess
 import shlex
-import string
+import re
+import io
+from pathlib import Path
 
-from .._environment import Environment
+from .. import environment
 
 class Marc:
     """Wrapper to run DAMASK with MSCMarc."""
 
-    def __init__(self,version=Environment().options['MARC_VERSION']):
+    def __init__(self,version=environment.options['MSC_VERSION']):
         """
         Create a Marc solver object.
 
@@ -19,31 +20,32 @@ class Marc:
 
         """
         self.solver  = 'Marc'
-        try:
-            self.version = int(version)
-        except TypeError:
-            self.version = -1
+        self.version = version
+
+    @property
+    def library_path(self):
+
+        path_MSC = environment.options['MSC_ROOT']
+        path_lib = Path(f'{path_MSC}/mentat{self.version}/shlib/linux64')
+
+        if not path_lib.is_dir():
+            raise FileNotFoundError(f'library path "{path_lib}" not found')
+
+        return path_lib
 
 
-#--------------------------
-    def libraryPath(self):
+    @property
+    def tools_path(self):
 
-        path_MSC = Environment().options['MSC_ROOT']
-        path_lib = '{}/mentat{}/shlib/linux64'.format(path_MSC,self.version)
+        path_MSC   = environment.options['MSC_ROOT']
+        path_tools = Path(f'{path_MSC}/marc{self.version}/tools')
 
-        return path_lib if os.path.exists(path_lib) else ''
+        if not path_tools.is_dir():
+            raise FileNotFoundError(f'tools path "{path_tools}" not found')
 
-
-#--------------------------
-    def toolsPath(self):
-
-        path_MSC   = Environment().options['MSC_ROOT']
-        path_tools = '{}/marc{}/tools'.format(path_MSC,self.version)
-
-        return path_tools if os.path.exists(path_tools) else ''
+        return path_tools
 
 
-#--------------------------
     def submit_job(self,
                    model,
                    job          = 'job1',
@@ -52,39 +54,37 @@ class Marc:
                    optimization = '',
                   ):
 
-
-        damaskEnv = Environment()
-
-        user = os.path.join(damaskEnv.relPath('src'),'DAMASK_marc{}.{}'.format(self.version,'f90' if compile else 'marc'))
-        if not os.path.isfile(user):
-            raise FileNotFoundError("DAMASK4Marc ({}) '{}' not found".format(('source' if compile else 'binary'),user))
+        usersub = environment.root_dir/'src/DAMASK_marc'
+        usersub = usersub.parent/(usersub.name + ('.f90' if compile else '.marc'))
+        if not usersub.is_file():
+            raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')
 
         # Define options [see Marc Installation and Operation Guide, pp 23]
-        script = 'run_damask_{}mp'.format(optimization)
+        script = f'run_damask_{optimization}mp'
 
-        cmd = os.path.join(self.toolsPath(),script) + \
-              ' -jid ' + model + '_' + job + \
-              ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
-
-        if compile: cmd += ' -u ' + user + ' -save y'
-        else:       cmd += ' -prog ' + os.path.splitext(user)[0]
-
-        print('job submission {} compilation: {}'.format('with' if compile else 'without',user))
-        if logfile: log = open(logfile, 'w')
+        cmd = str(self.tools_path/script) + \
+              ' -jid ' + model+'_'+job + \
+              ' -nprocd 1 -autorst 0 -ci n -cr n -dcoup 0 -b no -v no'
+        cmd += ' -u ' + str(usersub) + ' -save y' if compile else \
+               ' -prog ' + str(usersub.with_suffix(''))
         print(cmd)
-        process = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
-        log.close()
-        process.wait()
 
-#--------------------------
-    def exit_number_from_outFile(self,outFile=None):
-        exitnumber = -1
-        with open(outFile,'r') as fid_out:
-            for line in fid_out:
-                if (string.find(line,'tress iteration') != -1):
-                    print(line)
-                elif (string.find(line,'Exit number')   != -1):
-                    substr = line[string.find(line,'Exit number'):len(line)]
-                    exitnumber = int(substr[12:16])
+        if logfile is not None:
+            try:
+                f = open(logfile,'w+')
+            except TypeError:
+                f = logfile
+        else:
+            f = io.StringIO()
 
-        return exitnumber
+        proc = subprocess.Popen(shlex.split(cmd),stdout=f,stderr=subprocess.STDOUT)
+        proc.wait()
+        f.seek(0)
+
+        try:
+            v = int(re.search('Exit number ([0-9]+)',''.join(f.readlines())).group(1))
+        except (AttributeError,ValueError):
+            raise RuntimeError('Marc simulation failed (unknown return value)')
+
+        if v != 3004:
+            raise RuntimeError(f'Marc simulation failed ({v})')

@@ -20,11 +20,12 @@ stages:
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ];
-      then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue;
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue)x == 'x' ];
+      then echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue;
     fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
       do sleep 5m;
+      echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
     done
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
@@ -44,13 +45,13 @@ variables:
   # ===============================================================================================
   # Shortcut names
   # ===============================================================================================
-  DAMASKROOT: "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/tests"
 
   # ===============================================================================================
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler16_4:               "Compiler/Intel/16.4 Libraries/IMKL/2016"
   IntelCompiler17_8:               "Compiler/Intel/17.8 Libraries/IMKL/2017"
   IntelCompiler18_4:               "Compiler/Intel/18.4 Libraries/IMKL/2018"
   GNUCompiler8_2:                  "Compiler/GNU/8.2"
@@ -70,30 +71,25 @@ variables:
   PETSc_MPICH_Intel:               "$PETSc3_10_3IMPI2018Intel18_4"
   PETSc_MPICH_GNU:                 "$PETSc3_10_3MPICH3_3GNU8_2"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2018_1:                       "FEM/MSC/2018.1"
-  MSC2019:                         "FEM/MSC/2019"
+  MSC2019_1:                       "FEM/MSC/2019.1"
   # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2019"
+  MSC:                             "$MSC2019_1"
   IntelMarc:                       "$IntelCompiler17_8"
   HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
-  # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  Doxygen1_8_17:                   "Documentation/Doxygen/1.8.17"
-  # ------------ Defaults ----------------------------------------------
-  Doxygen:                         "$Doxygen1_8_17"
-
 
 ###################################################################################################
 checkout:
   stage: prepareAll
   before_script:
-    - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+    - echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
         do sleep 5m;
+        echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
       done
   script:
     - mkdir -p $DAMASKROOT
+    - mkdir -p $TESTROOT
     - cd $DAMASKROOT
-    - if [ -d DAMASK ]; then rm -rf DAMASK; fi                                                      # there might be some leftovers from a failed clone
     - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
@@ -108,7 +104,7 @@ Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest
+    - pytest --basetemp=${TESTROOT}/python -v
   except:
     - master
     - release
@@ -143,20 +139,6 @@ Pre_General:
     - release
 
 ###################################################################################################
-Post_AverageDown:
-  stage: postprocessing
-  script: averageDown/test.py
-  except:
-    - master
-    - release
-
-Post_ASCIItable:
-  stage: postprocessing
-  script: ASCIItable/test.py
-  except:
-    - master
-    - release
-
 Post_General:
   stage: postprocessing
   script: PostProcessing/test.py
@@ -192,21 +174,6 @@ Post_addGradient:
     - master
     - release
 
-Post_ParaviewRelated:
-  stage: postprocessing
-  script: ParaviewRelated/test.py
-  except:
-    - master
-    - release
-
-Post_OrientationConversion:
-  stage: postprocessing
-  script:
-    - OrientationConversion/test.py
-  except:
-    - master
-    - release
-
 Post_OrientationAverageMisorientation:
   stage: postprocessing
   script:
@@ -222,6 +189,8 @@ grid_mech_compile_Intel:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cp -r grid_mech_compile grid_mech_compile_Intel
     - grid_mech_compile_Intel/test.py
+    - cd pytest
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
     - master
     - release
@@ -232,6 +201,8 @@ Compile_FEM_Intel:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cp -r FEM_compile FEM_compile_Intel
     - FEM_compile_Intel/test.py
+    - cd pytest
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
     - master
     - release
@@ -242,6 +213,8 @@ grid_mech_compile_GNU:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - cp -r grid_mech_compile grid_mech_compile_GNU
     - grid_mech_compile_GNU/test.py
+    - cd pytest
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
     - master
     - release
@@ -252,6 +225,8 @@ Compile_FEM_GNU:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - cp -r FEM_compile FEM_compile_GNU
     - FEM_compile_GNU/test.py
+    - cd pytest
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
     - master
     - release
@@ -268,6 +243,16 @@ Compile_Intel_Prepare:
     - release
 
 ###################################################################################################
+Pytest_grid:
+  stage: grid
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - cd pytest
+    - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
+  except:
+    - master
+    - release
+
 Thermal:
   stage: grid
   script: Thermal/test.py
@@ -275,37 +260,9 @@ Thermal:
     - master
     - release
 
-grid_packedGeometry:
-  stage: grid
-  script: grid_packedGeometry/test.py
-  except:
-    - master
-    - release
-
 grid_parsingArguments:
   stage: grid
   script: grid_parsingArguments/test.py
-  except:
-    - master
-    - release
-
-StateIntegration_compareVariants:
-  stage: grid
-  script: StateIntegration_compareVariants/test.py
-  except:
-    - master
-    - release
-
-nonlocal_densityConservation:
-  stage: grid
-  script: nonlocal_densityConservation/test.py
-  except:
-    - master
-    - release
-
-RGC_DetectChanges:
-  stage: grid
-  script: RGC_DetectChanges/test.py
   except:
     - master
     - release
@@ -320,29 +277,6 @@ Nonlocal_Damage_DetectChanges:
 grid_all_restart:
   stage: grid
   script: grid_all_restart/test.py
-  except:
-    - master
-    - release
-
-grid_parsingLoadCase:
-  stage: grid
-  script: grid_parsingLoadCase/test.py
-  except:
-    - master
-    - release
-
-grid_all_loadCaseRotation:
-  stage: grid
-  script: grid_all_loadCaseRotation/test.py
-  except:
-    - master
-    - release
-
-grid_mech_MPI:
-  stage: grid
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - grid_mech_MPI/test.py
   except:
     - master
     - release
@@ -363,25 +297,9 @@ Plasticity_DetectChanges:
     - master
     - release
 
-Homogenization:
-  stage: grid
-  script: Homogenization/test.py
-  except:
-    - master
-    - release
-
 Phenopowerlaw_singleSlip:
   stage: grid
   script: Phenopowerlaw_singleSlip/test.py
-  except:
-    - master
-    - release
-
-Pytest_grid:
-  stage: grid
-  script:
-    - cd pytest
-    - pytest
   except:
     - master
     - release
@@ -391,7 +309,8 @@ Marc_compileIfort:
   stage: compileMarc
   script:
     - module load $IntelMarc $HDF5Marc $MSC
-    - Marc_compileIfort/test.py
+    - cd pytest
+    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
   except:
     - master
     - release
@@ -457,10 +376,10 @@ SpectralRuntime:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd $DAMASKROOT
     - make clean grid processing OPTIMIZATION=AGGRESSIVE
-    - cd $TESTROOT/performance                                                                      # location of old results
+    - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
-    - SpectralAll_runtime/test.py -d $TESTROOT/performance
+    - SpectralAll_runtime/test.py -d $LOCAL_HOME/performance
   except:
     - master
     - release
@@ -476,20 +395,10 @@ createTar:
     - release
 
 ###################################################################################################
-Marc:
+Python:
   stage: createDocumentation
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
-  except:
-    - master
-    - release
-
-GridSolver:
-  stage: createDocumentation
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT grid
+    - echo 'tbd one matesting1'
   except:
     - master
     - release
@@ -498,11 +407,11 @@ GridSolver:
 backupData:
   stage: saveDocumentation
   script:
-    - cd $TESTROOT/performance                                                                      # location of new runtime results
+    - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
@@ -530,10 +439,10 @@ mergeIntoMaster:
 removeData:
   stage: clean
   before_script:
-    - echo 'Do nothing'
+    - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
   script:
-    - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
-    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue                                          # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
+    - rm -rf $LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID
+    - sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue                                        # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
   except:
     - master
     - release
@@ -542,9 +451,9 @@ removeData:
 removeLock:
   stage: releaseLock
   before_script:
-    - echo 'Do nothing'
+    - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
-  script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
+  script: sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue
   except:
     - master
     - release

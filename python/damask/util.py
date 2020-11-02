@@ -9,6 +9,8 @@ from optparse import Option
 
 import numpy as np
 
+from . import version
+
 # limit visibility
 __all__=[
          'srepr',
@@ -18,8 +20,10 @@ __all__=[
          'execute',
          'show_progress',
          'scale_to_coprime',
+         'hybrid_IA',
          'return_message',
          'extendableOption',
+         'execution_stamp'
         ]
 
 ####################################################################################################
@@ -27,7 +31,7 @@ __all__=[
 ####################################################################################################
 def srepr(arg,glue = '\n'):
     r"""
-    Join arguments as individual lines.
+    Join arguments with glue string.
 
     Parameters
     ----------
@@ -93,7 +97,7 @@ def strikeout(what):
 
 
 def execute(cmd,
-            streamIn = None,
+            stream_in = None,
             wd = './',
             env = None):
     """
@@ -103,7 +107,7 @@ def execute(cmd,
     ----------
     cmd : str
         Command to be executed.
-    streanIn :, optional
+    stream_in : file object, optional
         Input (via pipe) for executed process.
     wd : str, optional
         Working directory of process. Defaults to ./ .
@@ -112,21 +116,22 @@ def execute(cmd,
 
     """
     initialPath = os.getcwd()
-    os.chdir(wd)
     myEnv = os.environ if env is None else env
+    os.chdir(wd)
+    print(f"executing '{cmd}' in '{wd}'")
     process = subprocess.Popen(shlex.split(cmd),
                                stdout = subprocess.PIPE,
                                stderr = subprocess.PIPE,
                                stdin  = subprocess.PIPE,
                                env = myEnv)
-    out,error = [i for i in (process.communicate() if streamIn is None
-                                                   else process.communicate(streamIn.read().encode('utf-8')))]
-    out   = out.decode('utf-8').replace('\x08','')
-    error = error.decode('utf-8').replace('\x08','')
+    stdout, stderr = [i for i in (process.communicate() if stream_in is None
+                             else process.communicate(stream_in.read().encode('utf-8')))]
     os.chdir(initialPath)
+    stdout = stdout.decode('utf-8').replace('\x08','')
+    stderr = stderr.decode('utf-8').replace('\x08','')
     if process.returncode != 0:
-        raise RuntimeError('{} failed with returncode {}'.format(cmd,process.returncode))
-    return out,error
+        raise RuntimeError(f"'{cmd}' failed with returncode {process.returncode}")
+    return stdout, stderr
 
 
 def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
@@ -156,7 +161,7 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
 
 def scale_to_coprime(v):
     """Scale vector to co-prime (relatively prime) integers."""
-    MAX_DENOMINATOR = 1000
+    MAX_DENOMINATOR = 1000000
 
     def get_square_denominator(x):
         """Denominator of the square of a number."""
@@ -164,12 +169,38 @@ def scale_to_coprime(v):
 
     def lcm(a, b):
         """Least common multiple."""
+        # Python 3.9 provides math.lcm, see https://stackoverflow.com/questions/51716916.
         return a * b // np.gcd(a, b)
 
-    denominators = [int(get_square_denominator(i)) for i in v]
-    s = reduce(lcm, denominators) ** 0.5
-    m = (np.array(v)*s).astype(np.int)
-    return m//reduce(np.gcd,m)
+    m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
+    m = m//reduce(np.gcd,m)
+
+    with np.errstate(invalid='ignore'):
+        if not np.allclose(np.ma.masked_invalid(v/m),v[np.argmax(abs(v))]/m[np.argmax(abs(v))]):
+            raise ValueError(f'Invalid result {m} for input {v}. Insufficient precision?')
+
+    return m
+
+
+def execution_stamp(class_name,function_name=None):
+    """Timestamp the execution of a (function within a) class."""
+    now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
+    _function_name = '' if function_name is None else f'.{function_name}'
+    return f'damask.{class_name}{_function_name} v{version} ({now})'
+
+
+def hybrid_IA(dist,N,seed=None):
+    N_opt_samples,N_inv_samples = (max(np.count_nonzero(dist),N),0)                                 # random subsampling if too little samples requested
+
+    scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
+    while (not np.isclose(scale, scale_)) and (N_inv_samples != N_opt_samples):
+        repeats = np.rint(scale*dist).astype(int)
+        N_inv_samples = np.sum(repeats)
+        scale_,scale,inc_factor = (scale,scale+inc_factor*0.5*(scale - scale_), inc_factor*2.0) \
+                                   if N_inv_samples < N_opt_samples else \
+                                  (scale_,0.5*(scale_ + scale), 1.0)
+
+    return np.repeat(np.arange(len(dist)),repeats)[np.random.default_rng(seed).permutation(N_inv_samples)[:N]]
 
 
 ####################################################################################################
@@ -223,21 +254,20 @@ class _ProgressBar:
         self.start_time = datetime.datetime.now()
         self.last_fraction = 0.0
 
-        sys.stderr.write('{} {}   0% ETA n/a'.format(self.prefix, '░'*self.bar_length))
+        sys.stderr.write(f"{self.prefix} {'░'*self.bar_length}   0% ETA n/a")
         sys.stderr.flush()
 
     def update(self,iteration):
 
         fraction = (iteration+1) / self.total
+        filled_length = int(self.bar_length * fraction)
 
-        if int(self.bar_length * fraction) > int(self.bar_length *  self.last_fraction):
+        if filled_length > int(self.bar_length * self.last_fraction):
+            bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
             delta_time = datetime.datetime.now() - self.start_time
             remaining_time = (self.total - (iteration+1)) * delta_time / (iteration+1)
             remaining_time -= datetime.timedelta(microseconds=remaining_time.microseconds)           # remove μs
-
-            filled_length = int(self.bar_length * fraction)
-            bar = '█' * filled_length + '░' * (self.bar_length - filled_length)
-            sys.stderr.write('\r{} {} {:>4.0%} ETA {}'.format(self.prefix, bar, fraction, remaining_time))
+            sys.stderr.write(f'\r{self.prefix} {bar} {fraction:>4.0%} ETA {remaining_time}')
             sys.stderr.flush()
 
         self.last_fraction = fraction
@@ -249,7 +279,7 @@ class _ProgressBar:
 
 class bcolors:
     """
-    ASCII Colors.
+    ASCII colors.
 
     https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
     https://stackoverflow.com/questions/287871

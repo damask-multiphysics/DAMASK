@@ -172,7 +172,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
 
-  table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
   grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
   F = table.get(options.defgrad).reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+(3,3))
@@ -181,14 +181,14 @@ for name in filenames:
   if options.shape:
     centers = damask.grid_filters.cell_coord(size,F)
     shapeMismatch = shapeMismatch(size,F,nodes,centers)
-    table.add('shapeMismatch(({}))'.format(options.defgrad),
-              shapeMismatch.reshape(-1,1,order='F'),
-              scriptID+' '+' '.join(sys.argv[1:]))
+    table = table.add('shapeMismatch(({}))'.format(options.defgrad),
+                      shapeMismatch.reshape(-1,1,order='F'),
+                      scriptID+' '+' '.join(sys.argv[1:]))
 
   if options.volume:
     volumeMismatch = volumeMismatch(size,F,nodes)
-    table.add('volMismatch(({}))'.format(options.defgrad),
-              volumeMismatch.reshape(-1,1,order='F'),
-              scriptID+' '+' '.join(sys.argv[1:]))
+    table = table.add('volMismatch(({}))'.format(options.defgrad),
+                      volumeMismatch.reshape(-1,1,order='F'),
+                      scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.to_ASCII(sys.stdout if name is None else name)
+  table.save((sys.stdout if name is None else name), legacy=True)

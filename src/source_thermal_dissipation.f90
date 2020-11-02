@@ -4,15 +4,7 @@
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_thermal_dissipation
-  use prec
-  use debug
-  use discretization
-  use material
-  use config
-
-  implicit none
-  private
+submodule(constitutive:constitutive_thermal) source_thermal_dissipation
 
   integer,           dimension(:),   allocatable :: &
     source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
@@ -20,15 +12,11 @@ module source_thermal_dissipation
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      kappa
+      kappa                                                                                         !< TAYLOR-QUINNEY factor
   end type tParameters
 
-  type(tParameters), dimension(:),   allocatable :: param                                           !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:),   allocatable :: param                                           !< containers of constitutive parameters (len Ninstances)
 
-
-  public :: &
-    source_thermal_dissipation_init, &
-    source_thermal_dissipation_getRateAndItsTangent
 
 contains
 
@@ -37,48 +25,58 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_dissipation_init
+module function source_thermal_dissipation_init(source_length) result(mySources)
 
-  integer :: Ninstance,sourceOffset,NipcMyPhase,p
+  integer, intent(in)                  :: source_length  
+  logical, dimension(:,:), allocatable :: mySources
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_thermal_dissipation_label//' init  -+>>>'; flush(6)
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    sources, &
+    src 
+  integer :: Ninstances,sourceOffset,Nconstituents,p
 
-  Ninstance = count(phase_source == SOURCE_THERMAL_DISSIPATION_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  print'(/,a)', ' <<<+-  source_thermal_dissipation init  -+>>>'
 
-  allocate(source_thermal_dissipation_offset  (size(config_phase)), source=0)
-  allocate(source_thermal_dissipation_instance(size(config_phase)), source=0)
-  allocate(param(Ninstance))
+  mySources = source_active('thermal_dissipation',source_length)
+  Ninstances = count(mySources)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
-  do p = 1, size(config_phase)
-    source_thermal_dissipation_instance(p) = count(phase_source(:,1:p) == SOURCE_THERMAL_DISSIPATION_ID)
-    do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_THERMAL_DISSIPATION_ID) then
+  phases => config_material%get('phase')
+  allocate(param(Ninstances))
+  allocate(source_thermal_dissipation_offset  (phases%length), source=0)
+  allocate(source_thermal_dissipation_instance(phases%length), source=0)
+
+  do p = 1, phases%length
+    phase => phases%get(p) 
+    if(count(mySources(:,p)) == 0) cycle
+    if(any(mySources(:,p))) source_thermal_dissipation_instance(p) = count(mySources(:,1:p))
+    sources => phase%get('source')
+    do sourceOffset = 1, sources%length
+      if(mySources(sourceOffset,p)) then
         source_thermal_dissipation_offset(p) = sourceOffset
-        exit
+        associate(prm  => param(source_thermal_dissipation_instance(p)))
+
+        src => sources%get(sourceOffset) 
+        prm%kappa = src%get_asFloat('kappa')
+        Nconstituents = count(material_phaseAt==p) * discretization_nIPs
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),Nconstituents,0,0,0)
+
+        end associate
       endif
     enddo
-
-    if (all(phase_source(:,p) /= SOURCE_THERMAL_DISSIPATION_ID)) cycle
-    associate(prm => param(source_thermal_dissipation_instance(p)), &
-              config => config_phase(p))
-
-    prm%kappa = config%getFloat('dissipation_coldworkcoeff')
-
-    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,0,0,0)
-
-    end associate
   enddo
 
-end subroutine source_thermal_dissipation_init
+
+end function source_thermal_dissipation_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Ninstances dissipation rate
+!> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
+module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
 
   integer, intent(in) :: &
     phase
@@ -98,4 +96,4 @@ subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar
 
 end subroutine source_thermal_dissipation_getRateAndItsTangent
 
-end module source_thermal_dissipation
+end submodule source_thermal_dissipation

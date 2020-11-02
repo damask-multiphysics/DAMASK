@@ -10,16 +10,16 @@ submodule(homogenization) homogenization_mech_isostrain
     parallel_ID, &
     average_ID
   end enum
- 
+
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
-      Nconstituents
+      N_constituents
     integer(kind(average_ID)) :: &
       mapping
   end type
- 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
-  
+
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
+
 
 contains
 
@@ -29,45 +29,46 @@ contains
 module subroutine mech_isostrain_init
 
   integer :: &
-    Ninstance, &
+    Ninstances, &
     h, &
-    NofMyHomog
-  character(len=pStringLen) :: &
-    tag  = ''
- 
-  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_LABEL//' init  -+>>>'
- 
-  Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
-  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
- 
-  allocate(param(Ninstance))                                                                        ! one container of parameters per instance
- 
+    Nmaterialpoints
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogMech
+
+  print'(/,a)',   ' <<<+-  homogenization_mech_isostrain init  -+>>>'
+
+  Ninstances = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+
+  allocate(param(Ninstances))                                                                        ! one container of parameters per instance
+
+  material_homogenization => config_material%get('homogenization')
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
-    
-    associate(prm => param(homogenization_typeInstance(h)),&
-              config => config_homogenization(h))
-   
-    prm%Nconstituents = config_homogenization(h)%getInt('nconstituents')
-    tag = 'sum'
-    select case(trim(config%getString('mapping',defaultVal = tag)))
+    homog => material_homogenization%get(h)
+    homogMech => homog%get('mech')
+    associate(prm => param(homogenization_typeInstance(h)))
+
+    prm%N_constituents = homogenization_Nconstituents(h)
+    select case(homogMech%get_asString('mapping',defaultVal = 'sum'))
       case ('sum')
         prm%mapping = parallel_ID
       case ('avg')
         prm%mapping = average_ID
       case default
-        call IO_error(211,ext_msg=trim(tag)//' ('//HOMOGENIZATION_ISOSTRAIN_LABEL//')')
+        call IO_error(211,ext_msg='sum'//' (mech_isostrain)')
     end select
- 
-    NofMyHomog = count(material_homogenizationAt == h)
+
+    Nmaterialpoints = count(material_homogenizationAt == h)
     homogState(h)%sizeState       = 0
-    allocate(homogState(h)%state0   (0,NofMyHomog))
-    allocate(homogState(h)%subState0(0,NofMyHomog))
-    allocate(homogState(h)%state    (0,NofMyHomog))
-    
+    allocate(homogState(h)%state0   (0,Nmaterialpoints))
+    allocate(homogState(h)%subState0(0,Nmaterialpoints))
+    allocate(homogState(h)%state    (0,Nmaterialpoints))
+
     end associate
- 
+
   enddo
 
 end subroutine mech_isostrain_init
@@ -77,39 +78,39 @@ end subroutine mech_isostrain_init
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_isostrain_partitionDeformation(F,avgF)
-  
+
   real(pReal),   dimension (:,:,:), intent(out) :: F                                                !< partitioned deformation gradient
-  
+
   real(pReal),   dimension (3,3),   intent(in)  :: avgF                                             !< average deformation gradient at material point
- 
+
   F = spread(avgF,3,size(F,3))
 
 end subroutine mech_isostrain_partitionDeformation
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief derive average stress and stiffness from constituent quantities 
+!> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,instance)
-   
+
   real(pReal),   dimension (3,3),       intent(out) :: avgP                                         !< average stress at material point
   real(pReal),   dimension (3,3,3,3),   intent(out) :: dAvgPdAvgF                                   !< average stiffness at material point
- 
+
   real(pReal),   dimension (:,:,:),     intent(in)  :: P                                            !< partitioned stresses
   real(pReal),   dimension (:,:,:,:,:), intent(in)  :: dPdF                                         !< partitioned stiffnesses
-  integer,                              intent(in)  :: instance 
-   
+  integer,                              intent(in)  :: instance
+
   associate(prm => param(instance))
-  
+
   select case (prm%mapping)
     case (parallel_ID)
       avgP       = sum(P,3)
       dAvgPdAvgF = sum(dPdF,5)
     case (average_ID)
-      avgP       = sum(P,3)   /real(prm%Nconstituents,pReal)
-      dAvgPdAvgF = sum(dPdF,5)/real(prm%Nconstituents,pReal)
+      avgP       = sum(P,3)   /real(prm%N_constituents,pReal)
+      dAvgPdAvgF = sum(dPdF,5)/real(prm%N_constituents,pReal)
   end select
-  
+
   end associate
 
 end subroutine mech_isostrain_averageStressAndItsTangent

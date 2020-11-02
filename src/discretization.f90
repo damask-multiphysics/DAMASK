@@ -11,12 +11,11 @@ module discretization
   private
   
   integer,     public, protected :: &
-    discretization_nIP, &
-    discretization_nElem
+    discretization_nIPs, &
+    discretization_Nelems
     
   integer,     public, protected, dimension(:),   allocatable :: &
-    discretization_homogenizationAt, &
-    discretization_microstructureAt   
+    discretization_materialAt   
 
   real(pReal), public, protected, dimension(:,:), allocatable :: & 
     discretization_IPcoords0, &
@@ -38,26 +37,24 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief stores the relevant information in globally accesible variables
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_init(homogenizationAt,microstructureAt,&
+subroutine discretization_init(materialAt,&
                                IPcoords0,NodeCoords0,&
                                sharedNodesBegin)
 
   integer,     dimension(:),   intent(in) :: &
-    homogenizationAt, &
-    microstructureAt
+    materialAt
   real(pReal), dimension(:,:), intent(in) :: &
     IPcoords0, &
     NodeCoords0
   integer, optional,           intent(in) :: &
-    sharedNodesBegin
+    sharedNodesBegin                                                                                !< index of first node shared among different processes (MPI)
 
-  write(6,'(/,a)') ' <<<+-  discretization init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  discretization init  -+>>>'; flush(6)
 
-  discretization_nElem = size(microstructureAt,1)
-  discretization_nIP   = size(IPcoords0,2)/discretization_nElem
+  discretization_Nelems = size(materialAt,1)
+  discretization_nIPs   = size(IPcoords0,2)/discretization_Nelems
 
-  discretization_homogenizationAt = homogenizationAt
-  discretization_microstructureAt = microstructureAt  
+  discretization_materialAt = materialAt  
 
   discretization_IPcoords0   = IPcoords0
   discretization_IPcoords    = IPcoords0

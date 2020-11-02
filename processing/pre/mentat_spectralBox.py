@@ -9,7 +9,7 @@ import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-sys.path.append(damask.solver.Marc().libraryPath())
+sys.path.append(str(damask.solver.Marc().library_path))
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
@@ -20,7 +20,6 @@ def outMentat(cmd,locals):
     py_mentat.py_send(cmd)
   else:
     py_mentat.py_send(cmd)
-  return
 
 #-------------------------------------------------------------------------------------------------
 def outFile(cmd,locals,dest):
@@ -31,7 +30,6 @@ def outFile(cmd,locals,dest):
     dest.write(cmd+'\n')
   else:
     dest.write(cmd+'\n')
-  return
 
 #-------------------------------------------------------------------------------------------------
 def output(cmds,locals,dest):
@@ -43,10 +41,8 @@ def output(cmds,locals,dest):
         outMentat(str(cmd),locals)
       else:
         outFile(str(cmd),locals,dest)
-  return
 
 
-  
 #-------------------------------------------------------------------------------------------------
 def init():
   return [
@@ -104,8 +100,8 @@ def mesh(r,d):
 
 
 #-------------------------------------------------------------------------------------------------
-def material():
-  cmds = [\
+def materials():
+  return [\
   "*new_mater standard",
   "*mater_option general:state:solid",
   "*mater_option structural:type:hypo_elast",
@@ -118,13 +114,11 @@ def material():
   "*add_geometry_elements",
   "all_existing",
   ]
-  
-  return cmds
-  
+
 
 #-------------------------------------------------------------------------------------------------
 def geometry():
-  cmds = [\
+  return [\
   "*geometry_type mech_three_solid",
 #  "*geometry_option red_integ_capacity:on",
   "*add_geometry_elements",
@@ -133,16 +127,14 @@ def geometry():
   "*element_type 7",
   "all_existing",
   ]
-  
-  return cmds
-  
+
 
 #-------------------------------------------------------------------------------------------------
-def initial_conditions(homogenization,microstructures):
+def initial_conditions(material):
   elements = []
   element = 0
-  for id in microstructures:
-    element += 1 
+  for id in material:
+    element += 1
     if len(elements) < id:
       for i in range(id-len(elements)):
         elements.append([])
@@ -156,21 +148,14 @@ def initial_conditions(homogenization,microstructures):
     "*icond_dof_value var 300",
     "*add_icond_elements",
     "all_existing",
-    "*new_icond",
-    "*icond_name _homogenization",
-    "*icond_type state_variable",
-    "*icond_param_value state_var_id 2",
-    "*icond_dof_value var %i"%homogenization,
-    "*add_icond_elements",
-    "all_existing",
     ]
 
   for grain,elementList in enumerate(elements):
     cmds.append([\
             "*new_icond",
-            "*icond_name microstructure_%i"%(grain+1),
+            "*icond_name material_%i"%(grain+1),
             "*icond_type state_variable",
-            "*icond_param_value state_var_id 3",
+            "*icond_param_value state_var_id 2",
             "*icond_dof_value var %i"%(grain+1),
             "*add_icond_elements",
             elementList,
@@ -210,22 +195,22 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
     damask.util.report(scriptName,name)
-    
-    geom = damask.Geom.from_file(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    microstructure = geom.get_microstructure().flatten(order='F')
+
+    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    material = geom.material.flatten(order='F')
 
     cmds = [\
       init(),
       mesh(geom.grid,geom.size),
-      material(),
+      materials(),
       geometry(),
-      initial_conditions(geom.homogenization,microstructure),
+      initial_conditions(material),
       '*identify_sets',
       '*show_model',
       '*redraw',
       '*draw_automatic',
     ]
-    
+
     outputLocals = {}
     if options.port:
         py_mentat.py_connect('',options.port)

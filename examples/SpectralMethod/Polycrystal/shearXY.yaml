@@ -1,0 +1,9 @@
+step:
+  - mech:
+      dot_F: [0,    0, 0,
+              1e-3, 0, 0,
+              0,    0, 0]
+    discretization:
+      t: 60
+      N: 120
+      f_out: 20

@@ -4,40 +4,22 @@
 !> @brief material subroutine incorporating anisotropic ductile damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_damage_anisoDuctile
-  use prec
-  use debug
-  use IO
-  use math
-  use discretization
-  use material
-  use config
-  use results
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage)  source_damage_anisoDuctile
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_anisoDuctile_offset, &                                                            !< which source is my current damage mechanism?
     source_damage_anisoDuctile_instance                                                             !< instance of damage source mechanism
 
-  type, private :: tParameters                                                                       !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      n
+      q                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:), allocatable :: &
-      critPlasticStrain
+      gamma_crit                                                                                    !< critical plastic strain per slip system
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable, private :: param                                     !< containers of constitutive parameters (len Ninstance)
-
-
-  public :: &
-    source_damage_anisoDuctile_init, &
-    source_damage_anisoDuctile_dotState, &
-    source_damage_anisoDuctile_getRateAndItsTangent, &
-    source_damage_anisoDuctile_results
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
 contains
 
@@ -46,68 +28,84 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_init
+module function source_damage_anisoDuctile_init(source_length) result(mySources)
 
-  integer :: Ninstance,sourceOffset,NipcMyPhase,p
+  integer, intent(in)                  :: source_length  
+  logical, dimension(:,:), allocatable :: mySources
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl, &
+    sources, &
+    src
+  integer :: Ninstances,sourceOffset,Nconstituents,p
   integer, dimension(:), allocatable :: N_sl
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISODUCTILE_LABEL//' init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  source_damage_anisoDuctile init  -+>>>'
 
-  Ninstance = count(phase_source == SOURCE_DAMAGE_ANISODUCTILE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  mySources = source_active('damage_anisoDuctile',source_length)
+  Ninstances = count(mySources)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
-  allocate(source_damage_anisoDuctile_offset  (size(config_phase)), source=0)
-  allocate(source_damage_anisoDuctile_instance(size(config_phase)), source=0)
-  allocate(param(Ninstance))
+  phases => config_material%get('phase')
+  allocate(param(Ninstances))
+  allocate(source_damage_anisoDuctile_offset  (phases%length), source=0)
+  allocate(source_damage_anisoDuctile_instance(phases%length), source=0)
 
-  do p = 1, size(config_phase)
-    source_damage_anisoDuctile_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ANISODUCTILE_ID)
-    do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_DAMAGE_ANISODUCTILE_ID) then
+  do p = 1, phases%length
+    phase => phases%get(p) 
+    if(any(mySources(:,p))) source_damage_anisoDuctile_instance(p) = count(mySources(:,1:p))
+    if(count(mySources(:,p)) == 0) cycle
+    sources => phase%get('source')
+    pl => phase%get('plasticity')
+    do sourceOffset = 1, sources%length
+      if(mySources(sourceOffset,p)) then
         source_damage_anisoDuctile_offset(p) = sourceOffset
-        exit
-      endif
-    enddo
+        associate(prm  => param(source_damage_anisoDuctile_instance(p)))
+        src => sources%get(sourceOffset) 
 
-    if (all(phase_source(:,p) /= SOURCE_DAMAGE_ANISODUCTILE_ID)) cycle
-    associate(prm => param(source_damage_anisoDuctile_instance(p)), &
-              config => config_phase(p))
+        N_sl           = pl%get_asInts('N_sl',defaultVal=emptyIntArray)
+        prm%q          = src%get_asFloat('q')
+        prm%gamma_crit = src%get_asFloats('gamma_crit',requiredSize=size(N_sl))
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+        ! expand: family => system
+        prm%gamma_crit = math_expand(prm%gamma_crit,N_sl)
 
-    N_sl = config%getInts('nslip',defaultVal=emptyIntArray)
-    prm%n                 = config%getFloat('anisoductile_ratesensitivity')
-    prm%critPlasticStrain = config%getFloats('anisoductile_criticalplasticstrain',requiredSize=size(N_sl))
+#if defined (__GFORTRAN__)
+        prm%output = output_asStrings(src)
+#else
+        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
+ 
+        ! sanity checks
+        if (prm%q              <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
+        if (any(prm%gamma_crit <  0.0_pReal)) extmsg = trim(extmsg)//' gamma_crit'
 
-    ! expand: family => system
-    prm%critPlasticStrain = math_expand(prm%critPlasticStrain,N_sl)
+        Nconstituents=count(material_phaseAt==p) * discretization_nIPs
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),Nconstituents,1,1,0)
+        sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('anisoDuctile_atol',defaultVal=1.0e-3_pReal)
+        if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
 
-    ! sanity checks
-    if (prm%n                     <= 0.0_pReal)  extmsg = trim(extmsg)//' anisoductile_ratesensitivity'
-    if (any(prm%critPlasticStrain <  0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_criticalplasticstrain'
-
-    NipcMyPhase=count(material_phaseAt==p) * discretization_nIP
-    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
-    sourceState(p)%p(sourceOffset)%atol = config%getFloat('anisoductile_atol',defaultVal=1.0e-3_pReal)
-    if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisoductile_atol'
-
-    end associate
+        end associate
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISODUCTILE_LABEL//')')
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoDuctile)')
+      endif
+    enddo
+  enddo
 
-enddo
 
-end subroutine source_damage_anisoDuctile_init
+end function source_damage_anisoDuctile_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
+module subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -129,7 +127,7 @@ subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
 
   associate(prm => param(source_damage_anisoDuctile_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    = sum(plasticState(phase)%slipRate(:,constituent)/(damage(homog)%p(damageOffset)**prm%n)/prm%critPlasticStrain)
+    = sum(plasticState(phase)%slipRate(:,constituent)/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit)
   end associate
 
 end subroutine source_damage_anisoDuctile_dotState
@@ -138,7 +136,7 @@ end subroutine source_damage_anisoDuctile_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
   integer, intent(in) :: &
     phase, &
@@ -165,7 +163,7 @@ end subroutine source_damage_anisoDuctile_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoDuctile_results(phase,group)
+module subroutine source_damage_anisoDuctile_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -176,12 +174,12 @@ subroutine source_damage_anisoDuctile_results(phase,group)
             stt => sourceState(phase)%p(source_damage_anisoDuctile_offset(phase))%state)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case ('anisoductile_drivingforce')
-        call results_writeDataset(group,stt,'tbd','driving force','tbd')
+      case ('f_phi')
+        call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
     end select
   enddo outputsLoop
   end associate
 
 end subroutine source_damage_anisoDuctile_results
 
-end module source_damage_anisoDuctile
+end submodule source_damage_anisoDuctile

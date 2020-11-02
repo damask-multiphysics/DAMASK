@@ -394,13 +394,13 @@ module lattice
 ! SHOULD NOT BE PART OF LATTICE BEGIN
   real(pReal),                        dimension(:),     allocatable, public, protected :: &
     lattice_mu, lattice_nu, &
-    lattice_damageMobility, &
-    lattice_massDensity, &
-    lattice_specificHeat
+    lattice_M, &
+    lattice_rho, &
+    lattice_c_p
    real(pReal),                       dimension(:,:,:), allocatable, public, protected :: &
     lattice_C66, &
-    lattice_thermalConductivity, &
-    lattice_damageDiffusion
+    lattice_K, &
+    lattice_D
  integer(kind(lattice_UNDEFINED_ID)), dimension(:),     allocatable, public, protected :: &
     lattice_structure
 ! SHOULD NOT BE PART OF LATTICE END
@@ -452,38 +452,42 @@ contains
 subroutine lattice_init
 
   integer :: Nphases, p,i
-  character(len=pStringLen) :: structure = ''
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    elasticity
+ 
+  print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
 
-  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'; flush(6)
-
-  Nphases = size(config_phase)
+  phases => config_material%get('phase')
+  Nphases = phases%length
 
   allocate(lattice_structure(Nphases),source = lattice_UNDEFINED_ID)
   allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
 
-  allocate(lattice_thermalConductivity  (3,3,Nphases), source=0.0_pReal)
-  allocate(lattice_damageDiffusion      (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_K  (3,3,Nphases), source=0.0_pReal)
+  allocate(lattice_D  (3,3,Nphases), source=0.0_pReal)
 
-  allocate(lattice_damageMobility,&
-           lattice_massDensity,lattice_specificHeat, &
+  allocate(lattice_M,&
+           lattice_rho,lattice_c_p, &
            lattice_mu, lattice_nu,&
            source=[(0.0_pReal,i=1,Nphases)])
 
-  do p = 1, size(config_phase)
+  do p = 1, phases%length
+    phase => phases%get(p)
+    elasticity => phase%get('elasticity')
+    lattice_C66(1,1,p) = elasticity%get_asFloat('C_11')
+    lattice_C66(1,2,p) = elasticity%get_asFloat('C_12')
 
-    lattice_C66(1,1,p) = config_phase(p)%getFloat('c11')
-    lattice_C66(1,2,p) = config_phase(p)%getFloat('c12')
+    lattice_C66(1,3,p) = elasticity%get_asFloat('C_13',defaultVal=0.0_pReal)
+    lattice_C66(2,2,p) = elasticity%get_asFloat('C_22',defaultVal=0.0_pReal)
+    lattice_C66(2,3,p) = elasticity%get_asFloat('C_23',defaultVal=0.0_pReal)
+    lattice_C66(3,3,p) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
+    lattice_C66(4,4,p) = elasticity%get_asFloat('C_44',defaultVal=0.0_pReal)
+    lattice_C66(5,5,p) = elasticity%get_asFloat('C_55',defaultVal=0.0_pReal)
+    lattice_C66(6,6,p) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
 
-    lattice_C66(1,3,p) = config_phase(p)%getFloat('c13',defaultVal=0.0_pReal)
-    lattice_C66(2,2,p) = config_phase(p)%getFloat('c22',defaultVal=0.0_pReal)
-    lattice_C66(2,3,p) = config_phase(p)%getFloat('c23',defaultVal=0.0_pReal)
-    lattice_C66(3,3,p) = config_phase(p)%getFloat('c33',defaultVal=0.0_pReal)
-    lattice_C66(4,4,p) = config_phase(p)%getFloat('c44',defaultVal=0.0_pReal)
-    lattice_C66(5,5,p) = config_phase(p)%getFloat('c55',defaultVal=0.0_pReal)
-    lattice_C66(6,6,p) = config_phase(p)%getFloat('c66',defaultVal=0.0_pReal)
-
-    structure = config_phase(p)%getString('lattice_structure')
-    select case(trim(structure))
+    select case(phase%get_asString('lattice'))
       case('iso')
         lattice_structure(p) = lattice_ISO_ID
       case('fcc')
@@ -497,10 +501,10 @@ subroutine lattice_init
       case('ort')
         lattice_structure(p) = lattice_ORT_ID
       case default
-        call IO_error(130,ext_msg='lattice_init: '//trim(structure))
+        call IO_error(130,ext_msg='lattice_init: '//phase%get_asString('lattice'))
     end select
 
-    lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),structure)
+    lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),phase%get_asString('lattice'))
 
     lattice_mu(p) = equivalent_mu(lattice_C66(1:6,1:6,p),'voigt')
     lattice_nu(p) = equivalent_nu(lattice_C66(1:6,1:6,p),'voigt')
@@ -513,23 +517,25 @@ subroutine lattice_init
 
 
     ! SHOULD NOT BE PART OF LATTICE BEGIN
-    lattice_thermalConductivity(1,1,p) = config_phase(p)%getFloat('thermal_conductivity11',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(2,2,p) = config_phase(p)%getFloat('thermal_conductivity22',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(3,3,p) = config_phase(p)%getFloat('thermal_conductivity33',defaultVal=0.0_pReal)
-    lattice_thermalConductivity(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_thermalConductivity(1:3,1:3,p),structure)
+    lattice_K(1,1,p) = phase%get_asFloat('K_11',defaultVal=0.0_pReal)
+    lattice_K(2,2,p) = phase%get_asFloat('K_22',defaultVal=0.0_pReal)
+    lattice_K(3,3,p) = phase%get_asFloat('K_33',defaultVal=0.0_pReal)
+    lattice_K(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_K(1:3,1:3,p), &
+                                                          phase%get_asString('lattice'))
 
-    lattice_specificHeat(p) = config_phase(p)%getFloat('specific_heat',defaultVal=0.0_pReal)
-    lattice_massDensity(p)  = config_phase(p)%getFloat('mass_density', defaultVal=0.0_pReal)
+    lattice_c_p(p) = phase%get_asFloat('c_p', defaultVal=0.0_pReal)
+    lattice_rho(p) = phase%get_asFloat('rho', defaultVal=0.0_pReal)
 
-    lattice_DamageDiffusion(1,1,p) = config_phase(p)%getFloat('damage_diffusion11',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(2,2,p) = config_phase(p)%getFloat('damage_diffusion22',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(3,3,p) = config_phase(p)%getFloat('damage_diffusion33',defaultVal=0.0_pReal)
-    lattice_DamageDiffusion(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_DamageDiffusion(1:3,1:3,p),structure)
+    lattice_D(1,1,p) = phase%get_asFloat('D_11',defaultVal=0.0_pReal)
+    lattice_D(2,2,p) = phase%get_asFloat('D_22',defaultVal=0.0_pReal)
+    lattice_D(3,3,p) = phase%get_asFloat('D_33',defaultVal=0.0_pReal)
+    lattice_D(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_D(1:3,1:3,p), &
+                                                          phase%get_asString('lattice'))
 
-    lattice_DamageMobility(p) = config_phase(p)%getFloat('damage_mobility',defaultVal=0.0_pReal)
+    lattice_M(p) = phase%get_asFloat('M',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
 
-    call unitTest
+    call selfTest
 
   enddo
 
@@ -732,7 +738,7 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   type(rotation)                                       :: R
   integer                                              :: i
 
-  if (abs(sense) /= 1) call IO_error(0,ext_msg='lattice_nonSchmidMatrix')
+  if (abs(sense) /= 1) error stop 'Sense in lattice_nonSchmidMatrix'
 
   coordinateSystem  = buildCoordinateSystem(Nslip,BCC_NSLIPSYSTEM,BCC_SYSTEMSLIP,&
                                             'bcc',0.0_pReal)
@@ -1436,6 +1442,7 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
+      allocate(NslipMax(0))
       call IO_error(137,ext_msg='lattice_SchmidMatrix_slip: '//trim(structure))
   end select
 
@@ -1485,6 +1492,7 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
       NtwinMax    = HEX_NTWINSYSTEM
       twinSystems = HEX_SYSTEMTWIN
     case default
+      allocate(NtwinMax(0))
       call IO_error(137,ext_msg='lattice_SchmidMatrix_twin: '//trim(structure))
   end select
 
@@ -1564,6 +1572,7 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
       NcleavageMax    = BCC_NCLEAVAGESYSTEM
       cleavageSystems = BCC_SYSTEMCLEAVAGE
     case default
+      allocate(NcleavageMax(0))
       call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(structure))
   end select
 
@@ -1919,6 +1928,7 @@ function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
+      allocate(NslipMax(0))
       call IO_error(137,ext_msg='coordinateSystem_slip: '//trim(structure))
   end select
 
@@ -2289,9 +2299,9 @@ end function equivalent_mu
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some lattice functions
+!> @brief Check correctness of some lattice functions.
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   real(pReal), dimension(:,:,:), allocatable :: CoSy
   real(pReal), dimension(:,:),   allocatable :: system
@@ -2304,23 +2314,20 @@ subroutine unitTest
 
   system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
   CoSy   = buildCoordinateSystem([1],[1],system,'fcc',0.0_pReal)
-
-  if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) &
-    call IO_error(0)
+  if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) error stop 'buildCoordinateSystem'
 
   call random_number(C)
   C(1,1) = C(1,1) + 1.0_pReal
   C = applyLatticeSymmetryC66(C,'iso')
-  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_mu/voigt')
-  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_mu/reuss')
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
+  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
+  
   lambda = C(1,2)
   if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'voigt')),equivalent_nu(C,'voigt'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_nu/voigt')
+    error stop 'equivalent_nu/voigt'
   if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'reuss')),equivalent_nu(C,'reuss'),1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='equivalent_nu/reuss')
+    error stop 'equivalent_nu/reuss'
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module lattice

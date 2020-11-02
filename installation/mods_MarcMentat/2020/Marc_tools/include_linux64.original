@@ -1,0 +1,785 @@
+#
+#                 General definitions for the Marc 2020 version
+#
+#                         EM64T
+#
+#                         Linux RedHat 7.3 / SuSE 12 SP1
+#
+#                         64 bit MPI version
+#
+#                         Intel(R) Fortran Intel(R) 64 Compiler XE for applications 
+#                         running on Intel(R) 64, Version 19.0.4.243 Build 20190416
+#
+#                         Intel(R) C Intel(R) 64 Compiler XE for applications 
+#                         running on Intel(R) 64, Version 19.0.4.243 Build 20190416
+#
+#                         To check the O/S level, type:
+#                           uname -a
+#
+#                         Distributed parallel MPI libraries:
+#                            Intel MPI 2019 Update 4
+#                             To check the mpi version, type:
+#                               mpiexec.hydra -version
+#
+#                         To check the Compiler level, type using the compiler
+#                         installation path:
+#                           ifort -V
+#                           icc -V
+#
+#  REMARKS      : This file contains the definitions of variables used during
+#                 compilation loading and use of the MARC programmes . The
+#                 current machine type is identified by means of the variable
+#                 MACHINE , defined below. 
+#
+#
+# MPI_ROOT: root directory in which mpi shared libraries, etc. are located
+# DIRJOB  : directory in which spawned jobs should look for Marc input
+# MPI_ARCH: system architecture
+# MPI_EPATH: path where executable resides
+#
+REVISION="VERSION, BUILD"
+HOSTNAME=`hostname`
+
+# find available memory in Mbyte on the machine
+#   can be set explicitly
+MEMLIMIT=`free -m | awk '/Mem:/ {print $2}'`
+
+# set _OEM_NASTRAN to 1 for MD Nastran build
+# override _OEM_NASTRAN setting with MARC_MD_NASTRAN environment variable
+_OEM_NASTRAN="${MARC_MD_NASTRAN:-0}"
+
+# uncomment the following line for an autoforge build
+#AUTOFORGE=1
+AUTOFORGE=0
+export AUTOFORGE
+
+# integer size
+if test "$MARC_INTEGER_SIZE" = "" ; then
+ INTEGER_PATH=
+else
+ INTEGER_PATH=/$MARC_INTEGER_SIZE
+fi
+
+FCOMP=ifort
+INTELPATH="/opt/intel/compilers_and_libraries_2019/linux"
+
+# find the root directory of the compiler installation:
+# - if ifort is found in $PATH, then the root directory is derived
+#   from the path to ifort
+# - if ifort is not found in $PATH, the root directory is assumed
+#   to be $INTELPATH and the directory in which ifort is found is
+#   added to $PATH
+FCOMPPATH=`which "$FCOMP" 2>/dev/null`
+if test -n "$FCOMPPATH"; then
+ # derive the root directory from $FCOMPPATH
+ FCOMPROOT="${FCOMPPATH%/bin/intel64/$FCOMP}"
+ if test "$FCOMPROOT" = "$FCOMPPATH"; then
+  FCOMPROOT="${FCOMPPATH%/bin/$FCOMP}"
+ fi
+ if test "$FCOMPROOT" = "$FCOMPPATH"; then
+  FCOMPROOT=
+ fi
+elif test -d "$INTELPATH"; then
+ # check for compiler in $INTELPATH
+ if test -d "$INTELPATH/bin/intel64" -a \
+         -x "$INTELPATH/bin/intel64/$FCOMP" ; then
+  FCOMPROOT="$INTELPATH"
+  PATH="$INTELPATH/bin/intel64:$PATH"
+ elif test -d "$INTELPATH/bin" -a \
+           -x "$INTELPATH/bin/$FCOMP"; then
+  FCOMPROOT="$INTELPATH"
+  PATH="$INTELPATH/bin:$PATH"
+ else
+  FCOMPROOT=
+ fi
+else
+ FCOMPROOT=
+fi
+
+# AEM
+if test "$MARCDLLOUTDIR" = ""; then
+ DLLOUTDIR="$MARC_LIB"
+else
+ DLLOUTDIR="$MARCDLLOUTDIR"
+fi
+
+# settings for MKL
+if test "$IMKLDIR" = ""; then
+  MARC_MKL="$FCOMPROOT/mkl/lib/intel64"
+else
+  MARC_MKL=$IMKLDIR/lib/intel64
+fi
+
+#
+# settings for Metis
+#
+METIS="-I$METIS_SOURCE/include"
+METISLIBS="$METISLIB_DIR/libmarcddm.a $METISLIB_DIR/libmarcmetis.a "
+
+#
+# settings for MPI
+#
+# RCP and RSH are used for parallel network runs
+#    replace with similar commands like rsh if needed
+RCP=/usr/bin/scp
+RSH=/usr/bin/ssh
+#
+
+
+MPI_DEFAULT=intelmpi
+MPI_OTHER=
+
+MPITYPE=$MPI_DEFAULT
+
+if test $AUTOFORGE
+then
+ if test $AUTOFORGE = 1
+ then
+  MPITYPE=none
+ fi
+fi
+
+
+# overrule MPITYPE setting with environmental variable MARC_MPITYPE
+if test $MARC_MPITYPE
+then
+ MPITYPE=$MARC_MPITYPE
+fi
+
+# always set MPITYPE to none for MD Nastran
+if test "$_OEM_NASTRAN" -ne 0
+then
+ MPITYPE=none
+fi
+
+# Edit following lines to build with GPGPU version of BCS Solver for
+# NVIDIA platforms
+#BCSGPUSOLVER=NONE
+BCSGPUSOLVER=BCSGPU
+
+# Edit following lines to build solver 2 with GPU support
+SOLVER2GPU=GPU
+#SOLVER2GPU=NONE
+
+# Edit following lines to set the openssl library
+if test "$OPENSSL" != "NONE" 
+then
+  OPENSSL_LIB="$MARC_LIB/libcrypto.a"
+fi
+OPENSSL_INCLUDE=-I"$MARC_OPENSSL/include/"
+
+MARCHDF_HDF=HDF
+#MARCHDF_HDF=NONE
+
+# activate contact component build if flagged
+AEM_DLL=0
+if test "$AEM_BUILD" = "ON" ; then
+ AEM_DLL=1
+ LINK_MARC_DLL="-shared -fPIC"
+ EXT_DLL="so"
+ MPITYPE=none
+ MPI_OTHER=
+ MARCHDF_HDF=NONE
+ BCSGPUSOLVER=NONE
+ SOLVER2GPU=NONE
+ MUMPSSOLVER=NONE
+ CASISOLVER=NONE
+fi
+
+if test "$MARCHDF_HDF" = "HDF"; then
+ HDF_INCLUDE="-I$MARC_HDF/include"
+ HDF_LIBS="$MARC_LIB/libhdf5_fortran.so.100 $MARC_LIB/libhdf5.so.103"
+fi
+
+SOLVERFLAGS=
+if test "$BCSGPUSOLVER" = BCSGPU
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DBCSGPU -DCUDA"
+  BCS_DIR=bcsgpusolver
+else
+  BCS_DIR=bcssolver
+fi
+#
+# settings for MPI
+#
+DDM=
+if test $MPITYPE != none
+then
+ if test $MPITYPE = intelmpi
+ then
+  INTELMPI_VERSION=HYDRA
+  FCOMPMPI=mpiifort
+  if test -n "$MARC_INTELMPI" ; then
+    MPI_ROOT=$MARC_INTELMPI
+  else
+    MPI_ROOT=/opt/intel/compilers_and_libraries_2019/linux/mpi/intel64
+    MARC_INTELMPI=$MPI_ROOT
+  fi
+  DDM="-I${MPI_ROOT}/include -DDDM"
+  PATH=$MPI_ROOT/bin:$PATH
+  export PATH
+  LD_LIBRARY_PATH=$MPI_ROOT/lib:$MPI_ROOT/lib/release:$MPI_ROOT/libfabric/lib:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH
+  if test $INTELMPI_VERSION = HYDRA
+  then
+    RUN_JOB1="${MPI_ROOT}/bin/mpiexec.hydra -genvall -n "
+    RUN_JOB2="${MPI_ROOT}/bin/mpiexec.hydra -genvall"
+  else
+    RUN_JOB1="${MPI_ROOT}/bin/mpiexec -n "
+    RUN_JOB2="${MPI_ROOT}/bin/mpiexec -configfile "
+  fi
+  RUN_JOB0=
+  MPI_CLEAN=
+  MPI_EPATH=$MARC_BIN
+  MPIR_HOME=$MPI_ROOT
+  MPICH_F77=$FCOMP
+  MPICH_F77LINKER=$FCOMP
+  export MPI_ROOT MPI_EPATH MPIR_HOME MPICH_F77 MPICH_F77LINKER
+  FI_PROVIDER_PATH=$MPI_ROOT/libfabric/lib/prov
+  export FI_PROVIDER_PATH
+ fi
+else
+  MPI_ROOT=$MARC_DUMMYMPI
+  export MPI_ROOT=$MARC_DUMMYMPI
+  DDM="-I$MPI_ROOT/include"
+fi
+
+#
+#  variables for the "maintain" script
+#
+
+MACHINENAME=LINUX
+MACHINE64BIT=yes
+MACHINE=Linux_EM64T
+DEV=/dev/tape
+GETLOG="whoami"
+CLEAR="clear"
+MY_UNAME=`uname -a`
+
+# Edit following 2 lines to build with VKI Solver
+#VKISOLVER=VKI
+VKISOLVER=NONE
+
+# Edit following 2 lines to build with CASI Solver
+CASISOLVER=CASI
+if test "$MARC_CASISOLVER" = "NONE" ; then
+  CASISOLVER=NONE
+fi
+#CASISOLVER=NONE
+
+# Edit following 2 lines to build with MF2 Solver
+MF2SOLVER=NONE
+#MF2SOLVER=SERIAL
+#MF2SOLVER=MF2PARALLEL
+
+# Edit following lines to build with Intel(c) Multithreaded solver (PARDISO)
+#INTELSOLVER=NONE
+INTELSOLVER=PARDISO
+
+# Edit following lines to build with MUMPS
+if test "$MARC_INTEGER_SIZE" = "i4" ; then
+ #MUMPSSOLVER=NONE
+ MUMPSSOLVER=MUMPS
+else
+ #MUMPSSOLVER=NONE
+ MUMPSSOLVER=MUMPS
+fi
+
+# Edit following 2 lines to build MARC dynamic shared library
+MARC_DLL=MARC_DLL
+MARC_DLL=NONE
+
+# always set VKISOLVER, CASISOLVER, BCSGPUSOLVER, and MARC_DLL to NONE for MD Nastran
+if test "$_OEM_NASTRAN" -ne 0
+then
+ VKISOLVER=NONE
+ CASISOLVER=NONE
+ MF2SOLVER=NONE
+ INTELSOLVER=NONE
+ MUMPSSOLVER=NONE
+ BCSGPUSOLVER=NONE
+ SOLVER2GPU=NONE
+ MARC_DLL=NONE
+fi
+if test "$AEM_DLL" -eq 1
+then
+ VKISOLVER=NONE
+ CASISOLVER=NONE
+ MF2SOLVER=NONE
+ INTELSOLVER=NONE
+ MUMPSSOLVER=NONE
+ BCSGPUSOLVER=NONE
+ SOLVER2GPU=NONE
+fi
+
+#
+#  define Fortran and C compile syntax
+#
+if test "$VKISOLVER" = VKI
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DVKI"
+fi
+
+if test "$CASISOLVER" = CASI
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DCASI"
+fi
+
+if test "$MF2SOLVER" = MF2PARALLEL
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMF2PARALLEL"
+fi
+if test "$MF2SOLVER" = MF2SERIAL
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMF2SERIAL"
+fi
+
+if test "$INTELSOLVER" = PARDISO
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DPARDISO"
+fi
+
+if test "$MUMPSSOLVER" = MUMPS
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMUMPS"
+fi
+
+
+if test "$MARC_DLL" = MARC_DLL
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMARC_DLL"
+fi
+
+if test "$SOLVER2GPU" = GPU
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DSOLVER2GPU"
+fi
+
+LINK_OPT=
+DEBUG_OPT=
+C_DEBUG_OPT=
+
+#Uncomment following line to build Marc in debuggable mode
+MARCDEBUG=
+#MARCDEBUG="ON"
+
+if test "$MARCDEBUG" = "ON"
+then
+  LINK_OPT="-debug -traceback"
+  DEBUG_OPT="-debug -traceback"
+  C_DEBUG_OPT="-debug -traceback"
+fi
+
+
+MARCCHECK=
+#MARCCHECK="ON"
+if test "$MARCCHECK" = "ON"
+then
+  DEBUG_OPT="$DEBUG_OPT -fpe0 -fp-stack-check -check all -ftrapuv "
+  C_DEBUG_OPT="$C_DEBUG_OPT -fp-stack-check -check-uninit -Wformat -ftrapuv "
+fi
+
+MARCCODECOV=
+#MARCCODECOV="ON"
+
+MARCCODEPROF=
+#MARCCODEPROF="ON"
+
+if test "$MARC_INTEGER_SIZE" = "i4" ; then
+  I8FFLAGS=
+  I8DEFINES=
+  I8CDEFINES=
+else
+  I8FFLAGS="-i8"
+  I8DEFINES="-DI64"
+  I8CDEFINES="-U_DOUBLE -D_SINGLE"
+fi
+
+MTHREAD=OPENMP
+if test "$MARC_OPENMP" = "NONE" ; then
+  MTHREAD=NONE
+fi
+#MTHREAD=NONE
+if test "$_OEM_NASTRAN" -ne 0
+then
+MTHREAD=NONE
+fi
+if test "$AEM_DLL" -eq 1
+then
+ MTHREAD=NONE
+ CASISOLVER=NONE
+ VKISOLVER=NONE
+ MF2SOLVER=NONE
+ INTELSOLVER=NONE
+ BCSGPUSOLVER=NONE
+ SOLVER2GPU=NONE
+ OPENSSL_LIB=
+ MARC_DLL=NONE
+ METISLIBS=
+fi
+
+OMP_COMPAT=NO
+OMP_COMPAT=YES
+if test "$MTHREAD" = "NONE"
+then
+OMP_COMPAT=NO
+fi
+
+CDEFINES=
+FDEFINES=
+
+if test "$_OEM_NASTRAN" -ne 0
+then
+  CDEFINES="$CDEFINES -D_OEM_NASTRAN"
+  FDEFINES="$FDEFINES -D_OEM_NASTRAN"
+fi
+
+FDEFINES="$FDEFINES -D_IMPLICITNONE"
+
+if test "$_OEM_NASTRAN" -eq 0
+then
+  FDEFINES="$FDEFINES -DMKL -DOPENMP"
+fi
+
+if test "$OMP_COMPAT" = "YES"
+then
+  FDEFINES="$FDEFINES -DOMP_COMPAT"
+fi
+
+# -D_MSCMARC
+FDEFINES="$FDEFINES -D_MSCMARC $DEBUG_OPT $MARC_SIMUFACT"
+CDEFINES="$CDEFINES -D_MSCMARC $C_DEBUG_OPT $I8CDEFINES"
+
+if test "$AEM_DLL" -eq 1
+then
+ FDEFINES="$FDEFINES -D_AEMNL -DAAA"
+ CDEFINES="$CDEFINES -D_AEMNL -DAAA"
+fi
+
+CINCL="-I$MARC_SOURCE/mdsrc -I$MARC_SOURCE/csource $METIS -I$LAPI_IMPORTS/common/include"
+if test "$_OEM_NASTRAN" -ne 0
+then
+  CINCL="$CINCL -I../../include"
+fi
+
+CC_OPT=
+if test "$MTHREAD" = "OPENMP"
+then
+  CC_OPT=" $CC_OPT -qopenmp"
+fi
+
+CC="icc -c $CC_OPT -O1 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
+CCLOW="icc -c $CC_OPT -O0 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
+CCHIGH="icc -c $CC_OPT -O3 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
+
+if test "$MARCDEBUG" = "ON"
+then
+  CC="icc -c $CC_OPT -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
+  CCLOW="icc $CC_OPT -c -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
+  CCHIGH="icc $CC_OPT -c -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS $OPENSSL_INCLUDE "
+fi
+
+LOAD_CC="icc $CC_OPT -O1 -DLinux -DLINUX -DLinux_intel"
+CCT="$CC"
+CCTLOW="$CCLOW"
+CCTHIGH="$CCHIGH"
+
+#PROFILE="-Mprof=func"
+#PROFILE="-Mprof=lines"
+#PROFILE="-Mprof=func,mpi"
+PROFILE=
+#PROFILE="-init=snan,arrays -CB -traceback -fpe0 -fp-stack-check -check all -check uninit -ftrapuv"
+if test "$MARCCODECOV" = "ON"
+then
+PROFILE="-prof-gen=srcpos"
+fi
+if test "$MARCCODEPROF" = "ON"
+then
+PROFILE=" $PROFILE -pg"
+fi
+
+FORT_OPT="-c -assume byterecl -safe_cray_ptr -mp1 -WB -fp-model source"
+if test "$MTHREAD" = "OPENMP"
+then
+  FORT_OPT=" $FORT_OPT -qopenmp"
+  if test "$OMP_COMPAT" = "YES"
+  then
+    FORT_OPT=" $FORT_OPT -qopenmp-threadprivate=compat"
+  fi
+else
+#  FORT_OPT=" $FORT_OPT -auto "
+  FORT_OPT=" $FORT_OPT -save -zero"
+fi
+if test "$MARCHDF_HDF" = "HDF"; then
+  FORT_OPT="$FORT_OPT -DMARCHDF_HDF=$MARCHDF_HDF $HDF_INCLUDE"
+fi
+
+FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
+FORTRAN="$FCOMP $FORT_OPT $PROFILE -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
+FORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
+FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+  $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
+#  for compiling free form f90 files. high opt, integer(4)
+FORTF90="$FCOMP -c -O3"
+
+if test "$MARCDEBUG" = "ON"
+then
+  FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
+    $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
+  FORTRAN="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
+    $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
+  FORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+    $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS -I$KDTREE2_MOD"
+  FORTNA="$FCOMP $FORT_OPT -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+    $MUMPS_INCLUDE $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
+fi
+
+FORTLOWT="$FORTLOW"
+FORTRANT="$FORTRAN"
+FORTHIGHT="$FORTHIGH"
+
+FORTRANMNF="$FCOMP -c $FDEFINES "
+CCMNF="icc -c -O1 -DLinux -DLINUX -DLinux_intel -Dport2egcs -I$MARC_SOURCE/marctoadams/mnf/include -D_LARGEFILE64_SOURCE"
+
+if test $MPITYPE != none
+then
+ if test $MPITYPE = hpmpi
+ then
+  LOAD="$MPI_ROOT/bin/$FCOMPMPI ${LOADOPTIONS} -L$MPI_ROOT/lib/$ARCHITECTURE $PROFILE $LINK_OPT -o "
+  LOADT="$MPI_ROOT/bin/$FCOMPMPI ${LOADOPTIONS} -L$MPI_ROOT/lib/$ARCHITECTURE $PROFILE $LINK_OPT -o "
+ fi
+# Uncomment the following lines to turn on the tracer and commnet out the next 5 lines
+# if test $MPITYPE = intelmpi
+# then
+#  INCLUDEMPI="-I$MPI_ROOT/include -I$VT_ROOT/include"
+#  LOAD="$MPI_ROOT/bin/$FCOMPMPI $PROFILE $INCLUDEMPI -g -t=log $LINK_OPT -o "
+#  LOADT="$MPI_ROOT/bin/$FCOMPMPI $PROFILE $INCLUDEMPI -g -t=log $LINK_OPT -o "
+# fi
+ if test $MPITYPE = intelmpi
+ then
+  LOAD="ifort $PROFILE $LINK_OPT -o "
+  LOADT="ifort $PROFILE $LINK_OPT -o "
+ fi
+else
+ LOAD="$FCOMP $LINK_OPT -o " 
+ LOADT="$FCOMP $LINK_OPT -o "
+fi
+
+if test "$MARC_DLL" = MARC_DLL
+then
+ FORTLOW="$FORTLOW -fpp -fPIC"
+ FORTRAN="$FORTRAN -fpp -fPIC"
+ FORTHIGH="$FORTHIGH -fpp -fPIC"
+ FORTRANMNF="$FORTRANMNF -fpp -fPIC"
+ CC="$CC -fPIC"
+ CCMNF="$CCMNF -fPIC"
+ LINK_EXE_MARC="-L$MARC_LIB -lmarc -L$MARC_LIB_SHARED -lguide -lpthread"
+ LINK_MARC_DLL="-shared -fPIC"
+ LOAD_DLL=$LOAD
+ LOADT_DLL=$LOADT
+ EXT_DLL="so"
+fi
+
+if test "$AEM_DLL" -eq 1
+then
+ FORTLOW="$FORTLOW -fpp -fPIC"
+ FORTRAN="$FORTRAN -fpp -fPIC"
+ FORTHIGH="$FORTHIGH -fpp -fPIC"
+ FORTRANMNF="$FORTRANMNF -fpp -fPIC"
+ CC="$CC -fPIC"
+ CCMNF="$CCMNF -fPIC"
+ LINK_EXE_MARC="-L$MARC_LIB -lmarc -L$MARC_LIB_SHARED -lguide"
+ LINK_MARC_DLL="-shared -fPIC"
+ LOAD_DLL=$LOAD
+ LOADT_DLL=$LOADT
+ EXT_DLL="so"
+fi
+
+
+XLIBS="-L/usr/X11/lib -lX11 "
+
+#
+#  define archive and ranlib syntax
+#
+
+ARC="ar rvl"
+ARD="ar dvl"
+ARX="ar xl"
+RAN=""
+
+#
+#  choose which libraries you want to use ( e.g. blas )
+#
+
+if test "$VKISOLVER" = VKI
+then
+  VKISOLVERLIBS="$MARC_LIB/vkisolver.a"
+else
+  VKISOLVERLIBS=
+fi
+
+if test "$CASISOLVER" = CASI
+then
+  CASISOLVERLIBS="$CASILIB_DIR/libmarccasi.a $CASILIB_DIR/libcasi.a"
+else
+  CASISOLVERLIBS=
+fi
+
+MF2SOLVERLIBS=
+if test "$MF2SOLVER" = MF2PARALLEL
+then
+  MF2SOLVERLIBS="$MARC_LIB/mf2parallel/libseq.a     \
+                 $MARC_LIB/mf2parallel/libsym.a     \
+                 $MARC_LIB/mf2parallel/libmet.a     \
+                 $MARC_LIB/mf2parallel/libmf2.a     \
+                 $MARC_LIB/mf2parallel/libgauss.a   \
+                 $MARC_LIB/mf2parallel/libmf2.a     \
+                 $MARC_LIB/mf2parallel/libgauss.a   \
+                 $MARC_LIB/mf2parallel/libnum.a     \
+                 $MARC_LIB/mf2parallel/libutl.a     \
+                 $MARC_LIB/mf2parallel/libr8.a      \
+                 $MARC_LIB/mf2parallel/libz.a       "
+fi
+
+if test "$MUMPSSOLVER" = MUMPS
+then
+  MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps.a"
+  if test $MPITYPE = none
+  then
+   MUMPSSOLVERLIBS2=
+   echo hello > /dev/null
+  fi
+  if test $MPITYPE = intelmpi
+  then
+   MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps_intelmpi.a"
+   if test "$MARC_INTEGER_SIZE" = "i4" ; then
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_intelmpi_lp64.a "
+   else
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_intelmpi_ilp64.a "
+   fi
+  fi
+  if test $MPITYPE = hpmpi
+  then
+   MUMPSSOLVERLIBS="$MUMPSLIB_DIR/libmumps_hpmpi.a"
+   if test "$MARC_INTEGER_SIZE" = "i4" ; then
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_intelmpi_lp64.a"
+   else
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_intelmpi_ilp64.a"
+   fi
+  fi
+else
+  MUMPSSOLVERLIBS=
+  MUMPSSOLVERLIBS2=
+fi
+
+if test "$BCSGPUSOLVER" = BCSGPU
+then
+  BCSSOLVERLIBS="${MARC_LIB}/bcsgpulib.a "
+  MARCCUDALIBS1="-L${MARC_LIB}/cuda_dummy -lmarccuda "
+  MARCCUDALIBS2="-L${MARC_LIB}/cuda       -lmarccuda "
+  MARCCUDALIBS=$MARCCUDALIBS1
+else
+  BCSSOLVERLIBS="${MARC_LIB}/bcslib.a "
+fi
+
+SOLVER2LIBS=
+if test "$SOLVER2GPU" = GPU
+then
+  SOLVER2LIBS="-L$MARC_LIB/cuda_dummy -lsolver2gpu"
+fi
+
+if test "$AEM_DLL" -eq 1
+then
+  BCSSOLVERLIBS=
+fi
+
+if test "$MARC_INTEGER_SIZE" = "i4" ; then
+ MKLLIB="$MARC_MKL/libmkl_scalapack_lp64.a  -Wl,--start-group $MARC_MKL/libmkl_intel_lp64.a  $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a $MUMPSSOLVERLIBS2 -Wl,--end-group"
+else
+ MKLLIB="$MARC_MKL/libmkl_scalapack_ilp64.a -Wl,--start-group $MARC_MKL/libmkl_intel_ilp64.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a $MUMPSSOLVERLIBS2 -Wl,--end-group"
+fi
+
+SECLIBS="-L$MARC_LIB -llapi"
+
+SOLVERLIBS="${BCSSOLVERLIBS} ${VKISOLVERLIBS} ${CASISOLVERLIBS} ${MF2SOLVERLIBS} \
+  $MKLLIB -L$MARC_MKL -liomp5 \
+  $MARC_LIB/blas_src.a ${ACSI_LIB}/ACSI_MarcLib.a $KDTREE2_LIB/libkdtree2.a $HDF_LIBS $SOLVER2LIBS"
+
+SOLVERLIBS_DLL=${SOLVERLIBS}
+if test "$AEM_DLL" -eq 1
+then
+SOLVERLIBS_DLL="$MKLLIB -L$MARC_MKL -liomp5 $MARC_LIB/blas_src.a"
+fi
+MRCLIBS="$MARC_LIB/clib.a ${CASISOLVERLIBS}"
+MRCLIBSPAR="$MARC_LIB/clib.a"
+STUBS="$MARC_LIB/stubs.a "
+MNFLIBS="$MARC_LIB/libmnf.a"
+MDUSER="$MARC_LIB/md_user.a"
+if test "X$MARC_SIMUFACT" != "X"
+then
+ SFLIB="-L$SFMATDIR -lMBA_Grain"
+else
+ SFLIB=" "
+fi
+OPENMP="-qopenmp"
+
+if test "$AEM_DLL" -eq 1
+then
+ LOAD_DLL=$LOAD
+ OPENMP=
+ LIBMNF=
+ OPENSSL=NONE
+fi
+
+SYSLIBS=" $OPENMP -lpthread -shared-intel -cxxlib"
+
+# Uncomment the following lines to turn on the trace and comment out the next 4 lines
+# if test $MPITYPE = intelmpi
+# then
+#  SYSLIBS="-L${VT_ROOT}/lib -lVT -ldwarf -lelf -lm -lpthread \
+#           -L${MPI_ROOT}/lib64 -lmpi -lmpiif -lmpigi -lrt"
+# fi
+if test $MPITYPE = intelmpi
+then
+ SYSLIBS="-L${MPI_ROOT}/lib/release -lmpi -L${MPI_ROOT}/lib -lmpifort -lrt $OPENMP -threads -lpthread -shared-intel -cxxlib"
+fi
+
+
+SYSLIBSPAR=" "
+
+MARC_DLL_CODES="runmarc.f"
+
+
+BLAS_SRC="dzero.f icopy.f izero.f"
+if test "$_OEM_NASTRAN" -ne 0
+then
+  if test "$MARC_INTEGER_SIZE" = "i4" ; then
+   BLAS_SRC="$BLAS_SRC dsctr.f zsctr.f dzasum.f daxpyi.f zaxpyi.f dgthr.f zgthr.f"
+  else
+   BLAS_SRC="ALL"
+  fi
+fi
+
+LOW_OPT_CODES="are163.f contro.f ndext.f omarc.f omarca.f omarcb.f omarcc.f \
+               omars.f fixbc.f triang.f  bet049.f norst3.f eldata.f \
+               elec*.f elct*.f fmeig.f oada00.f ogeig.f updtrbe2.f cycrota.f \
+               cordef.f ogpk.f ogtan.f eldam.f formrbe3.f \
+               inertie.f em_sso072.f cn_fol3d_qpatch6.f cosim_begin.f"
+if test "$MARC_INTEGER_SIZE" = "i8" ; then
+  LOW_OPT_CODES="$LOW_OPT_CODES bbcseg.f"
+fi
+
+HIGH_OPT_CODES="dpsmsa1.f  dpsmsa2.f  dpsmsa3.f   dpsmsa4.f  dpsmsa5.f  dpsmsa6.f \
+                dpsmsa7.f  dpsmsa8.f  dpsmsa9.f  dpsmsa10.f dpsmsa11.f dpsmsa12.f \
+               dpsmsa13.f dpsmsa14.f dpsmsa15.f  dpsmsa16.f dpsmsah.f tpsmsah.f cn_qsort4_11.f \
+                prei11.f prei12.f prei31.f prei32.f prei41.f prei42.f prei61.f prei62.f \
+                prei1n.f prei2n.f cgfullnts1.f cgfullnts2.f cg1n.f cg2n.f cg3n.f \
+                cg4n.f cg5n.f cg6n.f cgnn.f sortab.f sortab1.f triann1.f preinv_nts.f \
+                cn_sur_patchl.f cn_quad_3e.f"
+
+
+
+MAXNUM=1000000

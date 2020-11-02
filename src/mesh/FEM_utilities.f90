@@ -14,8 +14,7 @@ module FEM_utilities
   use prec
   use FEsolving
   use homogenization
-  use numerics
-  use debug
+  use config
   use math
   use discretization_mesh
 
@@ -84,7 +83,7 @@ module FEM_utilities
   end type tLoadCase
   
   public :: &
-    utilities_init, &
+    FEM_utilities_init, &
     utilities_constitutiveResponse, &
     utilities_projectBCValues, &
     FIELD_MECH_ID, &
@@ -95,24 +94,35 @@ module FEM_utilities
 
 contains 
 
+!ToDo: use functions in variable call
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_init
+subroutine FEM_utilities_init
    
   character(len=pStringLen) :: petsc_optionsOrder
+  class(tNode), pointer :: &
+    num_mesh, &
+    debug_mesh                                                                                      ! pointer to mesh debug options
+  integer :: structOrder                                                                            !< order of displacement shape functions
+  character(len=*), parameter :: &
+    PETSCDEBUG = ' -snes_view -snes_monitor '
+
   PetscErrorCode            :: ierr
 
-  write(6,'(/,a)')   ' <<<+-  DAMASK_FEM_utilities init  -+>>>'
+  print'(/,a)',   ' <<<+-  FEM_utilities init  -+>>>'
  
-!--------------------------------------------------------------------------------------------------
-! set debugging parameters
-  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
-  if(debugPETSc) write(6,'(3(/,a),/)') &
+  num_mesh    => config_numerics%get('mesh',defaultVal=emptyDict)
+  structOrder =  num_mesh%get_asInt('structOrder', defaultVal = 2)
+
+  debug_mesh  => config_debug%get('mesh',defaultVal=emptyList)
+  debugPETSc  =  debug_mesh%contains('petsc')
+
+  if(debugPETSc) print'(3(/,a),/)', &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the PETSc_Options keyword in numerics.config '
-  flush(6)
+                 ' add more using the PETSc_Options keyword in numerics.yaml '
+  flush(IO_STDOUT)
   call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
   if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
@@ -124,7 +134,7 @@ subroutine utilities_init
                                &-mech_pc_type ml -mech_mg_levels_ksp_type chebyshev &
                                &-mech_mg_levels_pc_type sor -mech_pc_ml_nullspace user',ierr)
   CHKERRQ(ierr)
-  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_mesh%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
   write(petsc_optionsOrder,'(a,i0)') '-mechFE_petscspace_degree ', structOrder
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_optionsOrder),ierr)
@@ -133,7 +143,7 @@ subroutine utilities_init
   wgt = 1.0/real(mesh_maxNips*mesh_NcpElemsGlobal,pReal)
 
 
-end subroutine utilities_init
+end subroutine FEM_utilities_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -148,13 +158,13 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
   
   PetscErrorCode :: ierr
 
-  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
+  print'(/,a)', ' ... evaluating constitutive response ......................................'
 
-  call materialpoint_stressAndItsTangent(.true.,timeinc)                                            ! calculate P field
+  call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
 
   cutBack = .false.                                                                                 ! reset cutBack status
   
-  P_av = sum(sum(materialpoint_P,dim=4),dim=3) * wgt                                                ! average of P 
+  P_av = sum(sum(homogenization_P,dim=4),dim=3) * wgt                                                ! average of P 
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
 end subroutine utilities_constitutiveResponse

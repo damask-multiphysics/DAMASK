@@ -17,11 +17,10 @@ module mesh_mech_FEM
   use prec
   use FEM_utilities
   use discretization_mesh
-  use IO
   use DAMASK_interface
-  use numerics
+  use config
+  use IO
   use FEM_quadrature
-  use FEsolving
   use homogenization
   use math
 
@@ -38,6 +37,18 @@ module mesh_mech_FEM
 
   type(tSolutionParams)  :: params
 
+  type, private :: tNumerics
+    integer :: &
+      integrationOrder, &                                                                           !< order of quadrature rule required
+      itmax
+    logical :: &
+      BBarStabilisation
+    real(pReal) :: &
+      eps_struct_atol, &                                                                            !< absolute tolerance for mechanical equilibrium
+      eps_struct_rtol                                                                               !< relative tolerance for mechanical equilibrium
+  end type tNumerics   
+
+  type(tNumerics), private :: num 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES                           :: mech_snes
@@ -73,7 +84,7 @@ subroutine FEM_mech_init(fieldBC)
   PetscQuadrature                        :: mechQuad, functional
   PetscDS                                :: mechDS
   PetscDualSpace                         :: mechDualSpace
-  DMLabel, dimension(:),pointer          :: pBCLabel
+  DMLabel, dimension(:),pointer          :: nolabel=>  NULL()
   DMLabel                                :: BCLabel
 
   PetscInt,  dimension(:),       pointer :: pNumComp, pNumDof, pBcField, pBcPoint
@@ -96,7 +107,23 @@ subroutine FEM_mech_init(fieldBC)
   character(len=*), parameter            :: prefix = 'mechFE_'
   PetscErrorCode                         :: ierr
 
-  write(6,'(/,a)') ' <<<+-  FEM_mech init  -+>>>'; flush(6)
+  class(tNode), pointer :: &
+    num_mesh
+   
+  print'(/,a)', ' <<<+-  FEM_mech init  -+>>>'; flush(IO_STDOUT)
+
+!-----------------------------------------------------------------------------
+! read numerical parametes and do sanity checks
+  num_mesh => config_numerics%get('mesh',defaultVal=emptyDict)
+  num%integrationOrder  = num_mesh%get_asInt('integrationorder',defaultVal = 2)
+  num%itmax             = num_mesh%get_asInt('itmax',defaultVal=250)
+  num%BBarStabilisation = num_mesh%get_asBool('bbarstabilisation',defaultVal = .false.)
+  num%eps_struct_atol   = num_mesh%get_asFloat('eps_struct_atol', defaultVal = 1.0e-10_pReal)
+  num%eps_struct_rtol   = num_mesh%get_asFloat('eps_struct_rtol', defaultVal = 1.0e-4_pReal)
+  
+  if (num%itmax <= 1)                       call IO_error(301,ext_msg='itmax')
+  if (num%eps_struct_rtol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_struct_rtol')
+  if (num%eps_struct_atol <= 0.0_pReal)     call IO_error(301,ext_msg='eps_struct_atol')
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech mesh
@@ -105,9 +132,9 @@ subroutine FEM_mech_init(fieldBC)
 
 !--------------------------------------------------------------------------------------------------
 ! Setup FEM mech discretization
-  qPoints  = FEM_quadrature_points( dimPlex,integrationOrder)%p
-  qWeights = FEM_quadrature_weights(dimPlex,integrationOrder)%p
-  nQuadrature = FEM_nQuadrature(    dimPlex,integrationOrder)
+  qPoints  = FEM_quadrature_points( dimPlex,num%integrationOrder)%p
+  qWeights = FEM_quadrature_weights(dimPlex,num%integrationOrder)%p
+  nQuadrature = FEM_nQuadrature(    dimPlex,num%integrationOrder)
   qPointsP  => qPoints
   qWeightsP => qWeights
   call PetscQuadratureCreate(PETSC_COMM_SELF,mechQuad,ierr); CHKERRQ(ierr)
@@ -116,7 +143,7 @@ subroutine FEM_mech_init(fieldBC)
   call PetscQuadratureSetData(mechQuad,dimPlex,nc,nQuadrature,qPointsP,qWeightsP,ierr)
   CHKERRQ(ierr)
   call PetscFECreateDefault(PETSC_COMM_SELF,dimPlex,nc,PETSC_TRUE,prefix, &
-                            integrationOrder,mechFE,ierr); CHKERRQ(ierr)
+                            num%integrationOrder,mechFE,ierr); CHKERRQ(ierr)
   call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
   call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
   nBasis = nBasis/nc
@@ -136,7 +163,7 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
@@ -182,8 +209,7 @@ subroutine FEM_mech_init(fieldBC)
   call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
 #else
-  allocate(pBClabel(1),source=BClabel)
-  call DMPlexCreateSection(mech_mesh,pBClabel,pNumComp,pNumDof, &
+  call DMPlexCreateSection(mech_mesh,nolabel,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
 
 #endif
@@ -208,7 +234,7 @@ subroutine FEM_mech_init(fieldBC)
   call SNESSetMaxLinearSolveFailures(mech_snes, huge(1), ierr); CHKERRQ(ierr)                       !< ignore linear solve failures
   call SNESSetConvergenceTest(mech_snes,FEM_mech_converged,PETSC_NULL_VEC,PETSC_NULL_FUNCTION,ierr)
   CHKERRQ(ierr)
-  call SNESSetTolerances(mech_snes,1.0,0.0,0.0,itmax,itmax,ierr)
+  call SNESSetTolerances(mech_snes,1.0,0.0,0.0,num%itmax,num%itmax,ierr)
   CHKERRQ(ierr)
   call SNESSetFromOptions(mech_snes,ierr); CHKERRQ(ierr)
 
@@ -268,7 +294,6 @@ type(tSolutionState) function FEM_mech_solution( &
   character(len=*), intent(in) :: &
     incInfoIn
 
-!--------------------------------------------------------------------------------------------------
   PetscErrorCode :: ierr
   SNESConvergedReason :: reason
 
@@ -286,15 +311,15 @@ type(tSolutionState) function FEM_mech_solution( &
 
   if (reason < 1) then                                                                              ! 0: still iterating (will not occur), negative -> convergence error
     FEM_mech_solution%converged = .false.
-    FEM_mech_solution%iterationsNeeded = itmax
+    FEM_mech_solution%iterationsNeeded = num%itmax
   else                                                                                              ! >= 1 proper convergence (or terminally ill)
     FEM_mech_solution%converged = .true.
     call SNESGetIterationNumber(mech_snes,FEM_mech_solution%iterationsNeeded,ierr)
     CHKERRQ(ierr)
   endif
 
-  write(6,'(/,a)') ' ==========================================================================='
-  flush(6)
+  print'(/,a)', ' ==========================================================================='
+  flush(IO_STDOUT)
 
 end function FEM_mech_solution
 
@@ -317,7 +342,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   PetscReal,  pointer,dimension(:)   :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
   PetscInt                           :: cellStart, cellEnd, cell, field, face, &
                                         qPt, basis, comp, cidx, &
-                                        numFields, depth ! < DEBUG
+                                        numFields
   PetscReal                          :: detFAvg
   PetscReal                          :: BMat(dimPlex*dimPlex,cellDof)
 
@@ -330,7 +355,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   allocate(pinvcellJ(dimPlex**2))
   allocate(x_scal(cellDof))
 
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
@@ -358,15 +383,8 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
 ! evaluate field derivatives
   do cell = cellStart, cellEnd-1                                                                    !< loop over all elements
     
-    ! BEGIN DEBUG
     call PetscSectionGetNumFields(section,numFields,ierr)
     CHKERRQ(ierr)
-    write(6,*) 'numFields', numFields
-    call DMPlexGetDepth(dm_local,depth,ierr)
-    CHKERRQ(ierr)
-    write(6,*) 'depth', depth
-    ! END DEBUG
-    
     call DMPlexVecGetClosure(dm_local,section,x_local,cell,x_scal,ierr)                             !< get Dofs belonging to element
     CHKERRQ(ierr)
     call  DMPlexComputeCellGeometryAffineFEM(dm_local,cell,pV0,pCellJ,pInvcellJ,detJ,ierr)
@@ -382,15 +400,15 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
+      homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
         reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     enddo
-    if (BBarStabilisation) then
-      detFAvg = math_det33(sum(materialpoint_F(1:3,1:3,1:nQuadrature,cell+1),dim=3)/real(nQuadrature))
+    if (num%BBarStabilisation) then
+      detFAvg = math_det33(sum(homogenization_F(1:3,1:3,1:nQuadrature,cell+1),dim=3)/real(nQuadrature))
       do qPt = 1, nQuadrature
-        materialpoint_F(1:dimPlex,1:dimPlex,qPt,cell+1) = &
-          materialpoint_F(1:dimPlex,1:dimPlex,qPt,cell+1)* &
-          (detFAvg/math_det33(materialpoint_F(1:3,1:3,qPt,cell+1)))**(1.0/real(dimPlex))
+        homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1) = &
+          homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1)* &
+          (detFAvg/math_det33(homogenization_F(1:3,1:3,qPt,cell+1)))**(1.0/real(dimPlex))
 
       enddo
     endif
@@ -425,7 +443,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
       enddo
       f_scal = f_scal + &
                matmul(transpose(BMat), &
-                      reshape(transpose(materialpoint_P(1:dimPlex,1:dimPlex,qPt+1,cell+1)), &
+                      reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,qPt+1,cell+1)), &
                               shape=[dimPlex*dimPlex]))*qWeights(qPt+1)
     enddo
     f_scal = f_scal*abs(detJ)
@@ -484,7 +502,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
-#if (PETSC_VERSION_MINOR < 11)
+#if (PETSC_VERSION_MINOR < 12)
   call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
 #else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
@@ -527,27 +545,27 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      MatA = matmul(reshape(reshape(materialpoint_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
+      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1)
-      if (BBarStabilisation) then
+      if (num%BBarStabilisation) then
         F(1:dimPlex,1:dimPlex) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex])
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0/real(dimPlex))
         K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1), &
+               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1), &
                                                shape=[dimPlex*dimPlex,1]), &
                                        matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
                                                       shape=[1,dimPlex*dimPlex],order=[2,1]),BMat))),MatA)
         MatB = MatB + &
-               matmul(reshape(materialpoint_F(1:dimPlex,1:dimPlex,qPt+1,cell+1),shape=[1,dimPlex*dimPlex]),MatA)
+               matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1),shape=[1,dimPlex*dimPlex]),MatA)
         FAvg = FAvg + F
         BMatAvg = BMatAvg + BMat
       else
         K_eA = K_eA + matmul(transpose(BMat),MatA)
       endif
     enddo
-    if (BBarStabilisation) then
+    if (num%BBarStabilisation) then
       FInv = math_inv33(FAvg)
       K_e = K_eA*math_det33(FAvg/real(nQuadrature))**(1.0/real(dimPlex)) + &
             (matmul(matmul(transpose(BMatAvg), &
@@ -556,7 +574,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
     else
       K_e = K_eA
     endif
-    K_e = (K_e + eps*math_identity2nd(cellDof)) * abs(detJ)
+    K_e = (K_e + eps*math_eye(cellDof)) * abs(detJ)
 #ifndef __INTEL_COMPILER
     pK_e(1:cellDOF**2) => K_e
 #else
@@ -576,7 +594,11 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! apply boundary conditions
+#if (PETSC_VERSION_MINOR < 14)
   call DMPlexCreateRigidBody(dm_local,matnull,ierr); CHKERRQ(ierr)
+#else
+  call DMPlexCreateRigidBody(dm_local,0,matnull,ierr); CHKERRQ(ierr)
+#endif
   call MatSetNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
   call MatSetNearNullSpace(Jac,matnull,ierr); CHKERRQ(ierr)
   call MatNullSpaceDestroy(matnull,ierr); CHKERRQ(ierr)
@@ -608,7 +630,7 @@ subroutine FEM_mech_forward(guess,timeinc,timeinc_old,fieldBC)
 ! forward last inc
   if (guess .and. .not. cutBack) then
     ForwardData = .True.
-    materialpoint_F0 = materialpoint_F
+    homogenization_F0 = homogenization_F
     call SNESGetDM(mech_snes,dm_local,ierr); CHKERRQ(ierr)                                          !< retrieve mesh info from mech_snes into dm_local
     call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
     call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
@@ -657,16 +679,16 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
 
 !--------------------------------------------------------------------------------------------------
 ! report
-  divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*err_struct_tolRel,err_struct_tolAbs)
+  divTol = max(maxval(abs(P_av(1:dimPlex,1:dimPlex)))*num%eps_struct_rtol,num%eps_struct_atol)
   call SNESConvergedDefault(snes_local,PETScIter,xnorm,snorm,fnorm/divTol,reason,dummy,ierr)
   CHKERRQ(ierr)
   if (terminallyIll) reason = SNES_DIVERGED_FUNCTION_DOMAIN
-  write(6,'(1/,1x,a,a,i0,a,i0,f0.3)') trim(incInfo), &
+  print'(/,1x,a,a,i0,a,i0,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
                                                   int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
-  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
+  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
                                                         transpose(P_av)*1.e-6_pReal
-  flush(6)
+  flush(IO_STDOUT)
 
 end subroutine FEM_mech_converged
 

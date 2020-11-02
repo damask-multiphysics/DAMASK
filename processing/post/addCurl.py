@@ -43,7 +43,7 @@ if options.labels is None: parser.error('no data column specified.')
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    table = damask.Table.from_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
 
     for label in options.labels:
@@ -51,8 +51,8 @@ for name in filenames:
         shape = (3,) if np.prod(field.shape)//np.prod(grid) == 3 else (3,3)                         # vector or tensor
         field = field.reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+shape)
         curl  = damask.grid_filters.curl(size,field)
-        table.add('curlFFT({})'.format(label),
-                  curl.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape),order='F'),
-                  scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('curlFFT({})'.format(label),
+                          curl.reshape(tuple(grid)+(-1,)).reshape(-1,np.prod(shape),order='F'),
+                          scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.to_ASCII(sys.stdout if name is None else name)
+    table.save((sys.stdout if name is None else name), legacy=True)

@@ -5,11 +5,10 @@
 module thermal_adiabatic
   use prec
   use config
-  use numerics
   use material
   use results
-  use source_thermal_dissipation
-  use source_thermal_externalheat
+  use constitutive
+  use YAML_types
   use crystallite
   use lattice
 
@@ -41,32 +40,44 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_init
  
-  integer :: maxNinstance,h,NofMyHomog   
- 
-  write(6,'(/,a)') ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'; flush(6)
-  
-  maxNinstance = count(thermal_type == THERMAL_adiabatic_ID)
-  if (maxNinstance == 0) return
-  
-  allocate(param(maxNinstance))
-  
-  do h = 1, size(thermal_type)
-    if (thermal_type(h) /= THERMAL_adiabatic_ID) cycle
-    associate(prm => param(thermal_typeInstance(h)),config => config_homogenization(h))
-              
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+  integer :: maxNinstances,h,Nmaterialpoints
+  class(tNode), pointer :: &
+    material_homogenization, &
+    homog, &
+    homogThermal
 
-    NofMyHomog=count(material_homogenizationAt==h)
+  print'(/,a)', ' <<<+-  thermal_adiabatic init  -+>>>'; flush(6)
+  
+  maxNinstances = count(thermal_type == THERMAL_adiabatic_ID)
+  if (maxNinstances == 0) return
+  
+  allocate(param(maxNinstances))
+  
+  material_homogenization => config_material%get('homogenization')
+  do h = 1, size(material_name_homogenization)
+    if (thermal_type(h) /= THERMAL_adiabatic_ID) cycle
+    homog => material_homogenization%get(h)
+    homogThermal => homog%get('thermal')
+ 
+    associate(prm => param(thermal_typeInstance(h)))
+
+#if defined (__GFORTRAN__)
+    prm%output = output_asStrings(homogThermal)
+#else
+    prm%output = homogThermal%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
+
+    Nmaterialpoints=count(material_homogenizationAt==h)
     thermalState(h)%sizeState = 1
-    allocate(thermalState(h)%state0   (1,NofMyHomog), source=thermal_initialT(h))
-    allocate(thermalState(h)%subState0(1,NofMyHomog), source=thermal_initialT(h))
-    allocate(thermalState(h)%state    (1,NofMyHomog), source=thermal_initialT(h))
+    allocate(thermalState(h)%state0   (1,Nmaterialpoints), source=thermal_initialT(h))
+    allocate(thermalState(h)%subState0(1,Nmaterialpoints), source=thermal_initialT(h))
+    allocate(thermalState(h)%state    (1,Nmaterialpoints), source=thermal_initialT(h))
  
     thermalMapping(h)%p => material_homogenizationMemberAt
     deallocate(temperature(h)%p)
     temperature(h)%p => thermalState(h)%state(1,:)
     deallocate(temperatureRate(h)%p)
-    allocate  (temperatureRate(h)%p(NofMyHomog), source=0.0_pReal)
+    allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
   
     end associate
   enddo
@@ -101,9 +112,9 @@ function thermal_adiabatic_updateState(subdt, ip, el)
   T = T + subdt*Tdot/(thermal_adiabatic_getSpecificHeat(ip,el)*thermal_adiabatic_getMassDensity(ip,el))
   
   thermal_adiabatic_updateState = [     abs(T - thermalState(homog)%state(1,offset)) &
-                                     <= err_thermal_tolAbs &
+                                     <= 1.0e-2_pReal &
                                    .or. abs(T - thermalState(homog)%state(1,offset)) &
-                                     <= err_thermal_tolRel*abs(thermalState(homog)%state(1,offset)), &
+                                     <= 1.0e-6_pReal*abs(thermalState(homog)%state(1,offset)), &
                                    .true.]
  
   temperature    (homog)%p(thermalMapping(homog)%p(ip,el)) = T  
@@ -125,48 +136,17 @@ subroutine thermal_adiabatic_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
     T
   real(pReal), intent(out) :: &
     Tdot, dTdot_dT
- 
-  real(pReal) :: &
-    my_Tdot, my_dTdot_dT
   integer :: &
-    phase, &
-    homog, &
-    instance, &
-    grain, &
-    source, &
-    constituent
-    
-  homog  = material_homogenizationAt(el)
-  instance = thermal_typeInstance(homog)
-   
+    homog
+ 
   Tdot = 0.0_pReal
   dTdot_dT = 0.0_pReal
-  do grain = 1, homogenization_Ngrains(homog)
-    phase = material_phaseAt(grain,el)
-    constituent = material_phasememberAt(grain,ip,el)
-    do source = 1, phase_Nsources(phase)
-      select case(phase_source(source,phase))                                                   
-        case (SOURCE_thermal_dissipation_ID)
-         call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                              crystallite_S(1:3,1:3,grain,ip,el), &
-                                                              crystallite_Lp(1:3,1:3,grain,ip,el), &
-                                                              phase)
  
-        case (SOURCE_thermal_externalheat_ID)
-         call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                               phase, constituent)
- 
-        case default
-         my_Tdot = 0.0_pReal
-         my_dTdot_dT = 0.0_pReal
-      end select
-      Tdot = Tdot + my_Tdot
-      dTdot_dT = dTdot_dT + my_dTdot_dT
-    enddo  
-  enddo
-  
-  Tdot = Tdot/real(homogenization_Ngrains(homog),pReal)
-  dTdot_dT = dTdot_dT/real(homogenization_Ngrains(homog),pReal)
+  homog  = material_homogenizationAt(el)
+  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, crystallite_S, crystallite_Lp, ip, el)
+
+  Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
+  dTdot_dT = dTdot_dT/real(homogenization_Nconstituents(homog),pReal)
  
 end subroutine thermal_adiabatic_getSourceAndItsTangent
 
@@ -187,13 +167,13 @@ function thermal_adiabatic_getSpecificHeat(ip,el)
    
   thermal_adiabatic_getSpecificHeat = 0.0_pReal
   
-  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
+  do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
     thermal_adiabatic_getSpecificHeat = thermal_adiabatic_getSpecificHeat & 
-                                      + lattice_specificHeat(material_phaseAt(grain,el))
+                                      + lattice_c_p(material_phaseAt(grain,el))
   enddo
  
   thermal_adiabatic_getSpecificHeat = thermal_adiabatic_getSpecificHeat &
-                                    / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+                                    / real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
   
 end function thermal_adiabatic_getSpecificHeat
  
@@ -213,13 +193,13 @@ function thermal_adiabatic_getMassDensity(ip,el)
    
   thermal_adiabatic_getMassDensity = 0.0_pReal
  
-  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
+  do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
     thermal_adiabatic_getMassDensity = thermal_adiabatic_getMassDensity &
-                                     + lattice_massDensity(material_phaseAt(grain,el))
+                                     + lattice_rho(material_phaseAt(grain,el))
   enddo
  
   thermal_adiabatic_getMassDensity = thermal_adiabatic_getMassDensity &
-                                   / real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+                                   / real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
  
 end function thermal_adiabatic_getMassDensity
 
@@ -237,7 +217,7 @@ subroutine thermal_adiabatic_results(homog,group)
   associate(prm => param(damage_typeInstance(homog)))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('temperature')                                                                           ! ToDo: should be 'T'
+      case('T') 
         call results_writeDataset(group,temperature(homog)%p,'T',&
                                   'temperature','K')
     end select

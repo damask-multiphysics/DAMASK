@@ -1,8 +1,8 @@
 import setuptools
-import os
+from pathlib import Path
 import re
 
-with open(os.path.join(os.path.dirname(__file__),'damask/VERSION')) as f:
+with open(Path(__file__).parent/'damask/VERSION') as f:
   version = re.sub(r'(-([^-]*)).*$',r'.\2',re.sub(r'^v(\d+\.\d+(\.\d+)?)',r'\1',f.readline().strip()))
 
 setuptools.setup(
@@ -16,10 +16,12 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires = [
-        "pandas",
+        "pandas",                                                                                   # requires numpy
         "scipy",
-        "h5py",
+        "h5py",                                                                                     # requires numpy
         "vtk",
+        "matplotlib",                                                                               # requires numpy, pillow
+        "pyaml"
     ],
     classifiers = [
         "Intended Audience :: Science/Research",

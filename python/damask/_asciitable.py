@@ -157,7 +157,7 @@ class ASCIItable():
   def head_write(self,
                  header = True):
     """Write current header information (info + labels)."""
-    head = ['{}\theader'.format(len(self.info)+self.__IO__['labeled'])] if header else []
+    head = [f"{len(self.info)+self.__IO__['labeled']}\theader"] if header else []
     head.append(self.info)
     if self.__IO__['labeled']:
       head.append('\t'.join(map(self._quote,self.tags)))
@@ -209,7 +209,7 @@ class ASCIItable():
           labelList.append(tags[id])
         else:
           label = tags[id][2:]                                                                    # get label
-          while id < len(tags) and tags[id] == '{}_{}'.format(dim,label):                         # check successors
+          while id < len(tags) and tags[id] == f'{dim}_{label}':                                  # check successors
             id  += 1                                                                              # next label...
             dim += 1                                                                              # ...should be one higher dimension
           labelList.append(label)                                                                 # reached end --> store

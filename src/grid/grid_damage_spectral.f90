@@ -11,40 +11,49 @@ module grid_damage_spectral
   use PETScsnes
 
   use prec
+  use parallelization
+  use IO
   use spectral_utilities
   use discretization_grid
   use damage_nonlocal
-  use numerics
+  use YAML_types
+  use config
  
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-! derived types
-  type(tSolutionParams), private :: params
+  type :: tNumerics
+    integer :: &
+      itmax                                                                                         !< maximum number of iterations
+    real(pReal) :: &
+      residualStiffness, &                                                                          !< non-zero residual damage
+      eps_damage_atol, &                                                                            !< absolute tolerance for damage evolution
+      eps_damage_rtol                                                                               !< relative tolerance for damage evolution
+  end type tNumerics
 
+  type(tNumerics) :: num
+
+  type(tSolutionParams) :: params
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  SNES, private :: damage_snes
-  Vec,  private :: solution_vec
-  PetscInt, private :: xstart, xend, ystart, yend, zstart, zend
-  real(pReal), private, dimension(:,:,:), allocatable :: &
+  SNES :: damage_snes
+  Vec  :: solution_vec
+  PetscInt :: xstart, xend, ystart, yend, zstart, zend
+  real(pReal), dimension(:,:,:), allocatable :: &
     phi_current, &                                                                                  !< field of current damage
     phi_lastInc, &                                                                                  !< field of previous damage
     phi_stagInc                                                                                     !< field of staggered damage
  
 !--------------------------------------------------------------------------------------------------
 ! reference diffusion tensor, mobility etc. 
-  integer,                     private :: totalIter = 0                                             !< total iteration in current increment
-  real(pReal), dimension(3,3), private :: K_ref
-  real(pReal), private                 :: mu_ref
+  integer                     :: totalIter = 0                                                      !< total iteration in current increment
+  real(pReal), dimension(3,3) :: K_ref
+  real(pReal)                 :: mu_ref
   
   public :: &
     grid_damage_spectral_init, &
     grid_damage_spectral_solution, &
     grid_damage_spectral_forward
-  private :: &
-    formResidual
 
 contains
 
@@ -58,19 +67,38 @@ subroutine grid_damage_spectral_init
   DM :: damage_grid
   Vec :: uBound, lBound
   PetscErrorCode :: ierr
-  character(len=pStringLen) :: snes_type
+  class(tNode), pointer :: &
+    num_grid, &
+    num_generic
+  character(len=pStringLen) :: &
+    snes_type
  
-  write(6,'(/,a)') ' <<<+-  grid_spectral_damage init  -+>>>'
+  print'(/,a)', ' <<<+-  grid_spectral_damage init  -+>>>'
 
-  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
  
+!-------------------------------------------------------------------------------------------------
+! read numerical parameters and do sanity checks
+  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
+  num%eps_damage_atol = num_grid%get_asFloat ('eps_damage_atol',defaultVal=1.0e-2_pReal)
+  num%eps_damage_rtol = num_grid%get_asFloat ('eps_damage_rtol',defaultVal=1.0e-6_pReal)
+ 
+  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
+  num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
+ 
+  if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
+  if (num%itmax <= 1)                      call IO_error(301,ext_msg='itmax')
+  if (num%eps_damage_atol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_atol')
+  if (num%eps_damage_rtol <= 0.0_pReal)    call IO_error(301,ext_msg='eps_damage_rtol')
+
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-damage_snes_type newtonls -damage_snes_mf &
                                &-damage_snes_ksp_ew -damage_ksp_type fgmres',ierr)
  CHKERRQ(ierr)
- call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+ call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
  CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -120,8 +148,6 @@ subroutine grid_damage_spectral_init
   allocate(phi_stagInc(grid(1),grid(2),grid3), source=1.0_pReal)
   call VecSet(solution_vec,1.0_pReal,ierr); CHKERRQ(ierr)
 
-!--------------------------------------------------------------------------------------------------
-! damage reference diffusion update
   call updateReference
 
 end subroutine grid_damage_spectral_init
@@ -130,11 +156,10 @@ end subroutine grid_damage_spectral_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the spectral damage scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
+function grid_damage_spectral_solution(timeinc) result(solution)
  
   real(pReal), intent(in) :: &
-    timeinc, &                                                                                      !< increment in time for current solution
-    timeinc_old                                                                                     !< increment in time of last increment
+    timeinc                                                                                         !< increment in time for current solution
   integer :: i, j, k, cell
   type(tSolutionState) :: solution
   PetscInt  :: devNull
@@ -148,14 +173,13 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data 
   params%timeinc = timeinc
-  params%timeincOld = timeinc_old
  
   call SNESSolve(damage_snes,PETSC_NULL_VEC,solution_vec,ierr); CHKERRQ(ierr)
   call SNESGetConvergedReason(damage_snes,reason,ierr); CHKERRQ(ierr)
  
   if (reason < 1) then
     solution%converged = .false.
-    solution%iterationsNeeded = itmax
+    solution%iterationsNeeded = num%itmax
   else
     solution%converged = .true.
     solution%iterationsNeeded = totalIter
@@ -165,7 +189,7 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   call MPI_Allreduce(MPI_IN_PLACE,stagNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   call MPI_Allreduce(MPI_IN_PLACE,solnNorm,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD,ierr)
   phi_stagInc = phi_current
-  solution%stagConverged = stagNorm < max(err_damage_tolAbs, err_damage_tolRel*solnNorm)
+  solution%stagConverged = stagNorm < max(num%eps_damage_atol, num%eps_damage_rtol*solnNorm)
 
 !--------------------------------------------------------------------------------------------------
 ! updating damage state 
@@ -178,11 +202,11 @@ function grid_damage_spectral_solution(timeinc,timeinc_old) result(solution)
   call VecMin(solution_vec,devNull,phi_min,ierr); CHKERRQ(ierr)
   call VecMax(solution_vec,devNull,phi_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
-    write(6,'(/,a)') ' ... nonlocal damage converged .....................................'
-  write(6,'(/,a,f8.6,2x,f8.6,2x,f8.6,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
-                                                        phi_min, phi_max, stagNorm
-  write(6,'(/,a)') ' ==========================================================================='
-  flush(6) 
+    print'(/,a)', ' ... nonlocal damage converged .....................................'
+  write(IO_STDOUT,'(/,a,f8.6,2x,f8.6,2x,e11.4,/)',advance='no') ' Minimum|Maximum|Delta Damage      = ',&
+                                                          phi_min, phi_max, stagNorm
+  print'(/,a)', ' ==========================================================================='
+  flush(IO_STDOUT) 
 
 end function grid_damage_spectral_solution
 
@@ -237,7 +261,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscErrorCode :: ierr
   integer :: i, j, k, cell
   real(pReal)   :: phiDot, dPhiDot_dPhi, mobility
- 
+
   phi_current = x_scal 
 !--------------------------------------------------------------------------------------------------
 ! evaluate polarization field
@@ -272,8 +296,8 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   call utilities_FFTscalarBackward
   where(scalarField_real(1:grid(1),1:grid(2),1:grid3) > phi_lastInc) &
         scalarField_real(1:grid(1),1:grid(2),1:grid3) = phi_lastInc
-  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < residualStiffness) &
-        scalarField_real(1:grid(1),1:grid(2),1:grid3) = residualStiffness
+  where(scalarField_real(1:grid(1),1:grid(2),1:grid3) < num%residualStiffness) &
+        scalarField_real(1:grid(1),1:grid(2),1:grid3) = num%residualStiffness
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual

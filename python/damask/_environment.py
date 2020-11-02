@@ -1,36 +1,50 @@
 import os
-import tkinter
+from pathlib import Path
 
 class Environment:
 
     def __init__(self):
-        """Read and provide values of DAMASK configuration."""
-        self.options = self._get_options()
+        """Do Nothing."""
+        pass
+
+    @property
+    def screen_size(self):
+        width  = 1024
+        height =  768
         try:
-            tk = tkinter.Tk()
-            self.screen_width  = tk.winfo_screenwidth()
-            self.screen_height = tk.winfo_screenheight()
-            tk.destroy()
-        except tkinter.TclError:
-            self.screen_width  = 1024
-            self.screen_height =  768
-
-    def relPath(self,relative = '.'):
-        """Return absolute path from path relative to DAMASK root."""
-        return os.path.join(self.rootDir(),relative)
-
-
-    def rootDir(self):
-        """Return DAMASK root path."""
-        return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
+            import wx
+            _ = wx.App(False)                                                                       # noqa
+            width, height = wx.GetDisplaySize()
+        except ImportError:
+            try:
+                import tkinter
+                tk = tkinter.Tk()
+                width  = tk.winfo_screenwidth()
+                height = tk.winfo_screenheight()
+                tk.destroy()
+            except Exception as e:
+                pass
+        return (width,height)
 
 
-    def _get_options(self):
+    @property
+    def options(self):
         options = {}
         for item in ['DAMASK_NUM_THREADS',
                      'MSC_ROOT',
-                     'MARC_VERSION',
+                     'MSC_VERSION',
                      ]:
             options[item] = os.environ[item] if item in os.environ else None
 
         return options
+
+
+    @property
+    def root_dir(self):
+        """Return DAMASK root path."""
+        return Path(__file__).parents[2]
+
+
+    # for compatibility
+    def rootDir(self):
+        return str(self.root_dir)

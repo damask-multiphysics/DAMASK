@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "zlib.h"
 
 /* http://stackoverflow.com/questions/30279228/is-there-an-alternative-to-getcwd-in-fortran-2003-2008 */
 
@@ -57,4 +57,18 @@ void signalusr1_c(void (*handler)(int)){
 
 void signalusr2_c(void (*handler)(int)){
   signal(SIGUSR2, handler);
+}
+
+void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte deflated[], Byte inflated[]){
+  /* make writable copy, uncompress will write to it */
+  uLong s_inflated_,i;
+  s_inflated_ = *s_inflated;
+
+  if(uncompress((Bytef *)inflated, &s_inflated_, (Bytef *)deflated, *s_deflated) == Z_OK)
+    return;
+  else{
+    for(i=0;i<*s_inflated;i++){
+      inflated[i] = 0;
+    }
+  }
 }

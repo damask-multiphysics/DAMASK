@@ -38,26 +38,26 @@ for filename in options.filenames:
     N_digits = int(np.floor(np.log10(int(results.increments[-1][3:]))))+1
     N_digits = 5 # hack to keep test intact
     for inc in damask.util.show_progress(results.iterate('increments'),len(results.increments)):
-        table = damask.Table(np.ones(np.product(results.grid),dtype=int)*int(inc[3:]),{'inc':(1,)})
-        table.add('pos',coords.reshape(-1,3))
+        table = damask.Table(np.ones(np.product(results.grid),dtype=int)*int(inc[3:]),{'inc':(1,)})\
+                      .add('pos',coords.reshape(-1,3))
 
         results.pick('materialpoints',False)
         results.pick('constituents',  True)
         for label in options.con:
             x = results.get_dataset_location(label)
             if len(x) != 0:
-                table.add(label,results.read_dataset(x,0,plain=True).reshape(results.grid.prod(),-1))
+                table = table.add(label,results.read_dataset(x,0,plain=True).reshape(results.grid.prod(),-1))
 
         results.pick('constituents',  False)
         results.pick('materialpoints',True)
         for label in options.mat:
             x = results.get_dataset_location(label)
             if len(x) != 0:
-                table.add(label,results.read_dataset(x,0,plain=True).reshape(results.grid.prod(),-1))
+                table = table.add(label,results.read_dataset(x,0,plain=True).reshape(results.grid.prod(),-1))
 
         dirname  = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
         if not os.path.isdir(dirname):
             os.mkdir(dirname,0o755)
         file_out = '{}_inc{}.txt'.format(os.path.splitext(os.path.split(filename)[-1])[0],
                                          inc[3:].zfill(N_digits))
-        table.to_ASCII(os.path.join(dirname,file_out))
+        table.save(os.path.join(dirname,file_out),legacy=True)

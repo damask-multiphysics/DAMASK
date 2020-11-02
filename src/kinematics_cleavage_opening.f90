@@ -4,37 +4,24 @@
 !> @brief material subroutine incorporating kinematics resulting from opening of cleavage planes
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module kinematics_cleavage_opening
-  use prec
-  use IO
-  use config
-  use debug
-  use math
-  use lattice
-  use material
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage) kinematics_cleavage_opening
 
   integer, dimension(:), allocatable :: kinematics_cleavage_opening_instance
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     integer :: &
-      sum_N_cl
+      sum_N_cl                                                                                      !< total number of cleavage planes
     real(pReal) :: &
-      sdot0, &
-      n
+      dot_o, &                                                                                      !< opening rate of cleavage planes
+      q                                                                                             !< damage rate sensitivity
     real(pReal),   dimension(:),   allocatable :: &
-      critLoad
+      g_crit
     real(pReal), dimension(:,:,:,:), allocatable :: &
       cleavage_systems
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
-  public :: &
-    kinematics_cleavage_opening_init, &
-    kinematics_cleavage_opening_LiAndItsTangent
 
 contains
 
@@ -43,61 +30,78 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_cleavage_opening_init
+module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
+ 
+  integer, intent(in)                  :: kinematics_length  
+  logical, dimension(:,:), allocatable :: myKinematics
 
-  integer :: Ninstance,p
+  integer :: Ninstances,p,k
   integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
   character(len=pStringLen) :: extmsg = ''
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    pl, &
+    kinematics, &
+    kinematic_type 
+       
+  print'(/,a)', ' <<<+-  kinematics_cleavage_opening init  -+>>>'
 
-  write(6,'(/,a)') ' <<<+-  kinematics_'//KINEMATICS_CLEAVAGE_OPENING_LABEL//' init  -+>>>'; flush(6)
+  myKinematics = kinematics_active('cleavage_opening',kinematics_length)
+  Ninstances = count(myKinematics)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
-  Ninstance = count(phase_kinematics == KINEMATICS_CLEAVAGE_OPENING_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  phases => config_material%get('phase')
+  allocate(param(Ninstances))
+  allocate(kinematics_cleavage_opening_instance(phases%length), source=0)
 
-  allocate(kinematics_cleavage_opening_instance(size(config_phase)), source=0)
-  allocate(param(Ninstance))
+  do p = 1, phases%length
+    if(any(myKinematics(:,p))) kinematics_cleavage_opening_instance(p) = count(myKinematics(:,1:p))
+    phase => phases%get(p) 
+    pl => phase%get('plasticity')
+    if(count(myKinematics(:,p)) == 0) cycle
+    kinematics => phase%get('kinematics')
+    do k = 1, kinematics%length
+      if(myKinematics(k,p)) then
+        associate(prm  => param(kinematics_cleavage_opening_instance(p)))
+        kinematic_type => kinematics%get(k) 
 
-  do p = 1, size(config_phase)
-    kinematics_cleavage_opening_instance(p) = count(phase_kinematics(:,1:p) == KINEMATICS_CLEAVAGE_OPENING_ID)
-    if (all(phase_kinematics(:,p) /= KINEMATICS_CLEAVAGE_OPENING_ID)) cycle
+        N_cl = kinematic_type%get_asInts('N_cl')
+        prm%sum_N_cl = sum(abs(N_cl))
 
-    associate(prm => param(kinematics_cleavage_opening_instance(p)), &
-              config => config_phase(p))
+        prm%q       = kinematic_type%get_asFloat('q')
+        prm%dot_o   = kinematic_type%get_asFloat('dot_o')
 
-    N_cl = config%getInts('ncleavage')
-    prm%sum_N_cl = sum(abs(N_cl))
+        prm%g_crit  = kinematic_type%get_asFloats('g_crit',requiredSize=size(N_cl))
 
-    prm%n         = config%getFloat('anisobrittle_ratesensitivity')
-    prm%sdot0     = config%getFloat('anisobrittle_sdot0')
+        prm%cleavage_systems  = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
+                                                        phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
-    prm%critLoad  = config%getFloats('anisobrittle_criticalload',requiredSize=size(N_cl))
+  ! expand: family => system
+        prm%g_crit = math_expand(prm%g_crit,N_cl)
 
-    prm%cleavage_systems  = lattice_SchmidMatrix_cleavage(N_cl,config%getString('lattice_structure'),&
-                                                          config%getFloat('c/a',defaultVal=0.0_pReal))
-
-    ! expand: family => system
-    prm%critLoad = math_expand(prm%critLoad,N_cl)
-
-    ! sanity checks
-    if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_n'
-    if (prm%sdot0        <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_sdot0'
-    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critLoad'
+  ! sanity checks
+        if (prm%q          <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
+        if (prm%dot_o      <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
+        if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//KINEMATICS_CLEAVAGE_OPENING_LABEL//')')
-
-    end associate
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(cleavage_opening)')
+        end associate
+      endif
+    enddo
   enddo
 
-end subroutine kinematics_cleavage_opening_init
+
+end function kinematics_cleavage_opening_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< grain number
@@ -124,13 +128,13 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
   dLd_dTstar = 0.0_pReal
   associate(prm => param(kinematics_cleavage_opening_instance(material_phaseAt(ipc,el))))
   do i = 1,prm%sum_N_cl
-    traction_crit = prm%critLoad(i)* damage(homog)%p(damageOffset)**2.0_pReal
+    traction_crit = prm%g_crit(i)* damage(homog)%p(damageOffset)**2.0_pReal
 
     traction_d = math_tensordot(S,prm%cleavage_systems(1:3,1:3,1,i))
     if (abs(traction_d) > traction_crit + tol_math_check) then
-      udotd = sign(1.0_pReal,traction_d)* prm%sdot0 * ((abs(traction_d) - traction_crit)/traction_crit)**prm%n
+      udotd = sign(1.0_pReal,traction_d)* prm%dot_o * ((abs(traction_d) - traction_crit)/traction_crit)**prm%q
       Ld = Ld + udotd*prm%cleavage_systems(1:3,1:3,1,i)
-      dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%n / (abs(traction_d) - traction_crit)
+      dudotd_dt = sign(1.0_pReal,traction_d)*udotd*prm%q / (abs(traction_d) - traction_crit)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
                             + dudotd_dt*prm%cleavage_systems(k,l,1,i) * prm%cleavage_systems(m,n,1,i)
@@ -138,9 +142,9 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
 
     traction_t = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
     if (abs(traction_t) > traction_crit + tol_math_check) then
-      udott = sign(1.0_pReal,traction_t)* prm%sdot0 * ((abs(traction_t) - traction_crit)/traction_crit)**prm%n
+      udott = sign(1.0_pReal,traction_t)* prm%dot_o * ((abs(traction_t) - traction_crit)/traction_crit)**prm%q
       Ld = Ld + udott*prm%cleavage_systems(1:3,1:3,2,i)
-      dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%n / (abs(traction_t) - traction_crit)
+      dudott_dt = sign(1.0_pReal,traction_t)*udott*prm%q / (abs(traction_t) - traction_crit)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
                             + dudott_dt*prm%cleavage_systems(k,l,2,i) * prm%cleavage_systems(m,n,2,i)
@@ -148,9 +152,9 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
 
     traction_n = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
     if (abs(traction_n) > traction_crit + tol_math_check) then
-      udotn = sign(1.0_pReal,traction_n)* prm%sdot0 * ((abs(traction_n) - traction_crit)/traction_crit)**prm%n
+      udotn = sign(1.0_pReal,traction_n)* prm%dot_o * ((abs(traction_n) - traction_crit)/traction_crit)**prm%q
       Ld = Ld + udotn*prm%cleavage_systems(1:3,1:3,3,i)
-      dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%n / (abs(traction_n) - traction_crit)
+      dudotn_dt = sign(1.0_pReal,traction_n)*udotn*prm%q / (abs(traction_n) - traction_crit)
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
         dLd_dTstar(k,l,m,n) = dLd_dTstar(k,l,m,n) &
                             + dudotn_dt*prm%cleavage_systems(k,l,3,i) * prm%cleavage_systems(m,n,3,i)
@@ -160,4 +164,4 @@ subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, i
 
 end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
-end module kinematics_cleavage_opening
+end submodule kinematics_cleavage_opening

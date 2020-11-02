@@ -4,39 +4,20 @@
 !> @brief material subroutine incoprorating isotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_damage_isoBrittle
-  use prec
-  use debug
-  use IO
-  use math
-  use discretization
-  use material
-  use config
-  use results
-
-  implicit none
-  private
+submodule(constitutive:constitutive_damage) source_damage_isoBrittle
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_isoBrittle_offset, &
     source_damage_isoBrittle_instance
 
-  type, private :: tParameters                                                                      !< container type for internal constitutive parameters
+  type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      critStrainEnergy, &
-      N
+      W_crit                                                                                        !< critical elastic strain energy
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
-
-
-  public :: &
-    source_damage_isoBrittle_init, &
-    source_damage_isoBrittle_deltaState, &
-    source_damage_isoBrittle_getRateAndItsTangent, &
-    source_damage_isoBrittle_results
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
 contains
 
@@ -45,63 +26,75 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_init
+module function source_damage_isoBrittle_init(source_length) result(mySources)
 
-  integer :: Ninstance,sourceOffset,NipcMyPhase,p
+  integer, intent(in)                  :: source_length  
+  logical, dimension(:,:), allocatable :: mySources
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    sources, &
+    src
+  integer :: Ninstances,sourceOffset,Nconstituents,p
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  source_damage_isoBrittle init  -+>>>'
 
-  Ninstance = count(phase_source == SOURCE_DAMAGE_ISOBRITTLE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  mySources = source_active('damage_isoBrittle',source_length)
+  Ninstances = count(mySources)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
-  allocate(source_damage_isoBrittle_offset  (size(config_phase)), source=0)
-  allocate(source_damage_isoBrittle_instance(size(config_phase)), source=0)
-  allocate(param(Ninstance))
+  phases => config_material%get('phase')
+  allocate(param(Ninstances))
+  allocate(source_damage_isoBrittle_offset  (phases%length), source=0)
+  allocate(source_damage_isoBrittle_instance(phases%length), source=0)
 
-  do p = 1, size(config_phase)
-    source_damage_isoBrittle_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ISOBRITTLE_ID)
-    do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_DAMAGE_ISOBRITTLE_ID) then
+  do p = 1, phases%length
+    phase => phases%get(p) 
+    if(any(mySources(:,p))) source_damage_isoBrittle_instance(p) = count(mySources(:,1:p))
+    if(count(mySources(:,p)) == 0) cycle
+    sources => phase%get('source')
+    do sourceOffset = 1, sources%length
+      if(mySources(sourceOffset,p)) then
         source_damage_isoBrittle_offset(p) = sourceOffset
-        exit
-      endif
-    enddo
+        associate(prm  => param(source_damage_isoBrittle_instance(p)))
+        src => sources%get(sourceOffset) 
 
-    if (all(phase_source(:,p) /= SOURCE_DAMAGE_ISOBRITTLE_ID)) cycle
-    associate(prm => param(source_damage_isoBrittle_instance(p)), &
-              config => config_phase(p))
+        prm%W_crit = src%get_asFloat('W_crit')
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+#if defined (__GFORTRAN__)
+        prm%output = output_asStrings(src)
+#else
+        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
+ 
+        ! sanity checks
+        if (prm%W_crit <= 0.0_pReal) extmsg = trim(extmsg)//' W_crit'
 
-    prm%N                = config%getFloat('isobrittle_n')
-    prm%critStrainEnergy = config%getFloat('isobrittle_criticalstrainenergy')
+        Nconstituents = count(material_phaseAt==p) * discretization_nIPs
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),Nconstituents,1,1,1)
+        sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('isoBrittle_atol',defaultVal=1.0e-3_pReal)
+        if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
 
-    ! sanity checks
-    if (prm%N                <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_n'
-    if (prm%critStrainEnergy <= 0.0_pReal) extmsg = trim(extmsg)//' isobrittle_criticalstrainenergy'
-
-    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,1)
-    sourceState(p)%p(sourceOffset)%atol = config%getFloat('isobrittle_atol',defaultVal=1.0e-3_pReal)
-    if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isobrittle_atol'
-
-    end associate
+        end associate
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ISOBRITTLE_LABEL//')')
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_isoBrittle)')
+      endif
+    enddo
+  enddo
 
-enddo
 
-end subroutine source_damage_isoBrittle_init
+end function source_damage_isoBrittle_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
+module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -128,8 +121,8 @@ subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)
 
   associate(prm => param(source_damage_isoBrittle_instance(phase)))
-  strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%critStrainEnergy
-  ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/param(instance)%critStrainEnergy
+  strainenergy = 2.0_pReal*sum(strain*matmul(C,strain))/prm%W_crit
+  ! ToDo: check strainenergy = 2.0_pReal*dot_product(strain,matmul(C,strain))/prm%W_crit
 
   if (strainenergy > sourceState(phase)%p(sourceOffset)%subState0(1,constituent)) then
     sourceState(phase)%p(sourceOffset)%deltaState(1,constituent) = &
@@ -147,7 +140,7 @@ end subroutine source_damage_isoBrittle_deltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
   integer, intent(in) :: &
     phase, &
@@ -164,10 +157,9 @@ subroutine source_damage_isoBrittle_getRateAndItsTangent(localphiDot, dLocalphiD
   sourceOffset = source_damage_isoBrittle_offset(phase)
 
   associate(prm => param(source_damage_isoBrittle_instance(phase)))
-  localphiDot = (1.0_pReal - phi)**(prm%n - 1.0_pReal) &
+  localphiDot = 1.0_pReal &
               - phi*sourceState(phase)%p(sourceOffset)%state(1,constituent)
-  dLocalphiDot_dPhi = - (prm%n - 1.0_pReal)* (1.0_pReal - phi)**max(0.0_pReal,prm%n - 2.0_pReal) &
-                      - sourceState(phase)%p(sourceOffset)%state(1,constituent)
+  dLocalphiDot_dPhi = - sourceState(phase)%p(sourceOffset)%state(1,constituent)
   end associate
 
 end subroutine source_damage_isoBrittle_getRateAndItsTangent
@@ -176,7 +168,7 @@ end subroutine source_damage_isoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_isoBrittle_results(phase,group)
+module subroutine source_damage_isoBrittle_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -187,12 +179,12 @@ subroutine source_damage_isoBrittle_results(phase,group)
             stt => sourceState(phase)%p(source_damage_isoBrittle_offset(phase))%state)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case ('isobrittle_drivingforce')
-        call results_writeDataset(group,stt,'tbd','driving force','tbd')
+      case ('f_phi')
+        call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
     end select
   enddo outputsLoop
   end associate
 
 end subroutine source_damage_isoBrittle_results
 
-end module source_damage_isoBrittle
+end submodule source_damage_isoBrittle

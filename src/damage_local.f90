@@ -4,13 +4,11 @@
 !--------------------------------------------------------------------------------------------------
 module damage_local
   use prec
+  use IO
   use material
   use config
-  use numerics
-  use source_damage_isoBrittle
-  use source_damage_isoDuctile
-  use source_damage_anisoBrittle
-  use source_damage_anisoDuctile
+  use YAML_types
+  use constitutive
   use results
 
   implicit none
@@ -21,8 +19,15 @@ module damage_local
       output
   end type tParameters
 
+  type, private :: tNumerics
+    real(pReal) :: &
+      residualStiffness                                                                             !< non-zero residual damage
+  end type tNumerics
+
   type(tparameters),             dimension(:),   allocatable :: &
     param
+
+  type(tNumerics), private :: num  
 
   public :: &
     damage_local_init, &
@@ -37,24 +42,42 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_init
 
-  integer :: Ninstance,NofMyHomog,h
+  integer :: Ninstances,Nmaterialpoints,h
+  class(tNode), pointer :: &
+    num_generic, &
+    material_homogenization, &
+    homog, &
+    homogDamage
 
-  write(6,'(/,a)') ' <<<+-  damage_'//DAMAGE_local_label//' init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  damage_local init  -+>>>'; flush(IO_STDOUT)
 
-  Ninstance = count(damage_type == DAMAGE_local_ID)
-  allocate(param(Ninstance))
+!----------------------------------------------------------------------------------------------
+! read numerics parameter and do sanity check
+  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
+  num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
+  if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
 
-  do h = 1, size(config_homogenization)
+  Ninstances = count(damage_type == DAMAGE_local_ID)
+  allocate(param(Ninstances))
+
+  material_homogenization => config_material%get('homogenization')
+  do h = 1, material_homogenization%length
     if (damage_type(h) /= DAMAGE_LOCAL_ID) cycle
-    associate(prm => param(damage_typeInstance(h)),config => config_homogenization(h))
+    homog => material_homogenization%get(h)
+    homogDamage => homog%get('damage')
+    associate(prm => param(damage_typeInstance(h)))
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+#if defined (__GFORTRAN__)
+    prm%output = output_asStrings(homogDamage)
+#else
+    prm%output = homogDamage%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
 
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     damageState(h)%sizeState = 1
-    allocate(damageState(h)%state0   (1,NofMyHomog), source=damage_initialPhi(h))
-    allocate(damageState(h)%subState0(1,NofMyHomog), source=damage_initialPhi(h))
-    allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%state0   (1,Nmaterialpoints), source=damage_initialPhi(h))
+    allocate(damageState(h)%subState0(1,Nmaterialpoints), source=damage_initialPhi(h))
+    allocate(damageState(h)%state    (1,Nmaterialpoints), source=damage_initialPhi(h))
 
     nullify(damageMapping(h)%p)
     damageMapping(h)%p => material_homogenizationMemberAt
@@ -89,12 +112,12 @@ function damage_local_updateState(subdt, ip, el)
   offset = material_homogenizationMemberAt(ip,el)
   phi = damageState(homog)%subState0(1,offset)
   call damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el)
-  phi = max(residualStiffness,min(1.0_pReal,phi + subdt*phiDot))
+  phi = max(num%residualStiffness,min(1.0_pReal,phi + subdt*phiDot))
 
   damage_local_updateState = [     abs(phi - damageState(homog)%state(1,offset)) &
-                                <= err_damage_tolAbs &
+                                <= 1.0e-2_pReal &
                               .or. abs(phi - damageState(homog)%state(1,offset)) &
-                                <= err_damage_tolRel*abs(damageState(homog)%state(1,offset)), &
+                                <= 1.0e-6_pReal*abs(damageState(homog)%state(1,offset)), &
                               .true.]
 
   damageState(homog)%state(1,offset) = phi
@@ -112,45 +135,16 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
     el                                                                                              !< element number
   real(pReal),   intent(in) :: &
     phi
-  integer :: &
-    phase, &
-    grain, &
-    source, &
-    constituent
   real(pReal) :: &
-    phiDot, dPhiDot_dPhi, localphiDot, dLocalphiDot_dPhi
+    phiDot, dPhiDot_dPhi
 
   phiDot = 0.0_pReal
   dPhiDot_dPhi = 0.0_pReal
-  do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
-    phase = material_phaseAt(grain,el)
-    constituent = material_phasememberAt(grain,ip,el)
-    do source = 1, phase_Nsources(phase)
-      select case(phase_source(source,phase))
-        case (SOURCE_damage_isoBrittle_ID)
-         call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+ 
+  call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
 
-        case (SOURCE_damage_isoDuctile_ID)
-         call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
-        case (SOURCE_damage_anisoBrittle_ID)
-         call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
-        case (SOURCE_damage_anisoDuctile_ID)
-         call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
-
-        case default
-         localphiDot = 0.0_pReal
-         dLocalphiDot_dPhi = 0.0_pReal
-
-      end select
-      phiDot = phiDot + localphiDot
-      dPhiDot_dPhi = dPhiDot_dPhi + dLocalphiDot_dPhi
-    enddo
-  enddo
-
-  phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
+  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
 
 end subroutine damage_local_getSourceAndItsTangent
 
@@ -168,8 +162,8 @@ subroutine damage_local_results(homog,group)
   associate(prm => param(damage_typeInstance(homog)))
   outputsLoop: do o = 1,size(prm%output)
     select case(prm%output(o))
-      case ('damage')
-        call results_writeDataset(group,damage(homog)%p,'phi',&
+      case ('phi')
+        call results_writeDataset(group,damage(homog)%p,prm%output(o),&
                                   'damage indicator','-')
     end select
   enddo outputsLoop

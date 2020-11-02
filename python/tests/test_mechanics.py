@@ -187,25 +187,25 @@ class TestMechanics:
         assert np.allclose(np.matmul(R,U),
                            np.matmul(V,R))
 
-    def test_strain_tensor_no_rotation(self):
+    @pytest.mark.parametrize('m',[0.0,np.random.random()*10.,np.random.random()*-10.])
+    def test_strain_tensor_no_rotation(self,m):
         """Ensure that left and right stretch give same results for no rotation."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
-        m = np.random.random()*20.0-10.0
         assert np.allclose(mechanics.strain_tensor(F,'U',m),
                            mechanics.strain_tensor(F,'V',m))
 
-    def test_strain_tensor_rotation_equivalence(self):
+    @pytest.mark.parametrize('m',[0.0,np.random.random()*2.5,np.random.random()*-2.5])
+    def test_strain_tensor_rotation_equivalence(self,m):
         """Ensure that left and right strain differ only by a rotation."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3]) + (np.random.rand(self.n,3,3)*0.5 - 0.25)
-        m = np.random.random()*5.0-2.5
         assert np.allclose(np.linalg.det(mechanics.strain_tensor(F,'U',m)),
                            np.linalg.det(mechanics.strain_tensor(F,'V',m)))
 
-    def test_strain_tensor_rotation(self):
+    @pytest.mark.parametrize('m',[0.0,np.random.random(),np.random.random()*-1.])
+    @pytest.mark.parametrize('t',['V','U'])
+    def test_strain_tensor_rotation(self,m,t):
         """Ensure that pure rotation results in no strain."""
         F = mechanics.rotational_part(np.random.rand(self.n,3,3))
-        t = ['V','U'][np.random.randint(0,2)]
-        m = np.random.random()*2.0 - 1.0
         assert np.allclose(mechanics.strain_tensor(F,t,m),
                            0.0)
 

@@ -2,4 +2,3 @@
 omit = tests/*
        damask/_asciitable.py
        damask/_test.py
-       damask/config/*

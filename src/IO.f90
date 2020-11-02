@@ -3,30 +3,34 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief  input/output functions, partly depending on chosen solver
+!> @brief  input/output functions
 !--------------------------------------------------------------------------------------------------
 module IO
+  use, intrinsic :: ISO_fortran_env, only: &
+    IO_STDOUT => OUTPUT_UNIT, &
+    IO_STDERR => ERROR_UNIT
+
   use prec
 
   implicit none
   private
+
   character(len=*), parameter, public :: &
-    IO_EOF = '#EOF#', &                                                                             !< end of file string
     IO_WHITESPACE = achar(44)//achar(32)//achar(9)//achar(10)//achar(13)                            !< whitespace characters
   character, parameter, public :: &
     IO_EOL = new_line('DAMASK'), &                                                                  !< end of line character
     IO_COMMENT = '#'
-  character(len=*), parameter, private :: &
+  character(len=*), parameter :: &
     IO_DIVIDER = '───────────────────'//&
                  '───────────────────'//&
                  '───────────────────'//&
                  '────────────'
+
   public :: &
     IO_init, &
-    IO_read_ASCII, &
-    IO_open_binary, &
+    IO_read, &
+    IO_readlines, &
     IO_isBlank, &
-    IO_getTag, &
     IO_stringPos, &
     IO_stringValue, &
     IO_intValue, &
@@ -37,27 +41,28 @@ module IO
     IO_stringAsFloat, &
     IO_stringAsBool, &
     IO_error, &
-    IO_warning
+    IO_warning, &
+    IO_STDOUT
 
 contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief does nothing.
+!> @brief Do self test.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
 
-  write(6,'(/,a)') ' <<<+-  IO init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  IO init  -+>>>'; flush(IO_STDOUT)
 
-  call unitTest
+  call selfTest
 
 end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads an entire ASCII file into an array
+!> @brief Read ASCII file and split at EOL.
 !--------------------------------------------------------------------------------------------------
-function IO_read_ASCII(fileName) result(fileContent)
+function IO_readlines(fileName) result(fileContent)
 
   character(len=*),          intent(in)                :: fileName
 
@@ -65,43 +70,28 @@ function IO_read_ASCII(fileName) result(fileContent)
   character(len=pStringLen)                            :: line
   character(len=:),                        allocatable :: rawData
   integer ::  &
-    fileLength, &
-    fileUnit, &
     startPos, endPos, &
-    myTotalLines, &                                                                                 !< # lines read from file
-    l, &
-    myStat
+    N_lines, &                                                                                      !< # lines in file
+    l
   logical :: warned
 
-!--------------------------------------------------------------------------------------------------
-! read data as stream
-  inquire(file = fileName, size=fileLength)
-  if (fileLength == 0) then
-    allocate(fileContent(0))
-    return
-  endif
-  open(newunit=fileUnit, file=fileName, access='stream',&
-       status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
-  allocate(character(len=fileLength)::rawData)
-  read(fileUnit) rawData
-  close(fileUnit)
+  rawData = IO_read(fileName)
 
 !--------------------------------------------------------------------------------------------------
 ! count lines to allocate string array
-  myTotalLines = 1
+  N_lines = 0
   do l=1, len(rawData)
-    if (rawData(l:l) == IO_EOL) myTotalLines = myTotalLines+1
+    if (rawData(l:l) == IO_EOL) N_lines = N_lines+1
   enddo
-  allocate(fileContent(myTotalLines))
+  allocate(fileContent(N_lines))
 
 !--------------------------------------------------------------------------------------------------
 ! split raw data at end of line
   warned = .false.
   startPos = 1
   l = 1
-  do while (l <= myTotalLines)
-    endPos = merge(startPos + scan(rawData(startPos:),IO_EOL) - 2,len(rawData),l /= myTotalLines)
+  do while (l <= N_lines)
+    endPos = startPos + scan(rawData(startPos:),IO_EOL) - 2
     if (endPos - startPos > pStringLen-1) then
       line = rawData(startPos:startPos+pStringLen-1)
       if (.not. warned) then
@@ -113,48 +103,47 @@ function IO_read_ASCII(fileName) result(fileContent)
     endif
     startPos = endPos + 2                                                                           ! jump to next line start
 
-    fileContent(l) = line
+    fileContent(l) = trim(line)//''
     l = l + 1
   enddo
 
-end function IO_read_ASCII
+end function IO_readlines
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens an existing file for reading or a new file for writing.
-!> @details replaces an existing file when writing
+!> @brief Read whole file.
+!> @details ensures that the string ends with a new line (expected UNIX behavior)
 !--------------------------------------------------------------------------------------------------
-integer function IO_open_binary(fileName,mode)
+function IO_read(fileName) result(fileContent)
 
-  character(len=*), intent(in)           :: fileName
-  character,        intent(in), optional :: mode
+  character(len=*),  intent(in) :: fileName
+  character(len=:), allocatable :: fileContent
+  integer ::  &
+    fileLength, &
+    fileUnit, &
+    myStat
 
-  character :: m
-  integer   :: ierr
-
-  if (present(mode)) then
-    m = mode
-  else
-    m = 'r'
+  inquire(file = fileName, size=fileLength)
+  open(newunit=fileUnit, file=fileName, access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(fileName))
+  allocate(character(len=fileLength)::fileContent)
+  if(fileLength==0) then
+    close(fileUnit)
+    return
   endif
 
-  if    (m == 'w') then
-    open(newunit=IO_open_binary, file=trim(fileName),&
-         status='replace',access='stream',action='write',iostat=ierr)
-    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (w): '//trim(fileName))
-  elseif(m == 'r') then
-    open(newunit=IO_open_binary, file=trim(fileName),&
-         status='old',    access='stream',action='read', iostat=ierr)
-    if (ierr /= 0) call IO_error(100,ext_msg='could not open file (r): '//trim(fileName))
-  else
-    call IO_error(100,ext_msg='unknown access mode: '//m)
-  endif
+  read(fileUnit,iostat=myStat) fileContent
+  if(myStat /= 0) call IO_error(102,ext_msg=trim(fileName))
+  close(fileUnit)
 
-end function IO_open_binary
+  if(fileContent(fileLength:fileLength) /= IO_EOL) fileContent = fileContent//IO_EOL                ! ensure EOL@EOF
+
+end function IO_read
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief identifies strings without content
+!> @brief Identifiy strings without content.
 !--------------------------------------------------------------------------------------------------
 logical pure function IO_isBlank(string)
 
@@ -169,34 +158,8 @@ end function IO_isBlank
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief get tagged content of string
-!--------------------------------------------------------------------------------------------------
-pure function IO_getTag(string,openChar,closeChar)
-
-  character(len=*), intent(in)  :: string                                                           !< string to check for tag
-  character,        intent(in)  :: openChar, &                                                      !< indicates beginning of tag
-                                   closeChar                                                        !< indicates end of tag
-  character(len=:), allocatable :: IO_getTag
-
-  integer :: left,right
-
-  left  = scan(string,openChar)
-  right = merge(scan(string,closeChar), &
-                left + merge(scan(string(left+1:),openChar),0,len(string) > left), &
-                openChar /= closeChar)
-
-  foundTag: if (left == verify(string,IO_WHITESPACE) .and. right > left) then
-    IO_getTag = string(left+1:right-1)
-  else foundTag
-    IO_getTag = ''
-  endif foundTag
-
-end function IO_getTag
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief locates all whitespace-separated chunks in given string and returns array containing
-!! number them and the left/right position to be used by IO_xxxVal
+!> @brief Locate all whitespace-separated chunks in given string and returns array containing
+!! number them and the left/right position to be used by IO_xxxVal.
 !! Array size is dynamically adjusted to number of chunks found in string
 !! IMPORTANT: first element contains number of chunks!
 !--------------------------------------------------------------------------------------------------
@@ -226,7 +189,7 @@ end function IO_stringPos
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads string value at myChunk from string
+!> @brief Read string value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 function IO_stringValue(string,chunkPos,myChunk)
 
@@ -246,7 +209,7 @@ end function IO_stringValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads integer value at myChunk from string
+!> @brief Read integer value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 integer function IO_intValue(string,chunkPos,myChunk)
 
@@ -260,7 +223,7 @@ end function IO_intValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reads float value at myChunk from string
+!> @brief Read float value at myChunk from string.
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_floatValue(string,chunkPos,myChunk)
 
@@ -274,7 +237,7 @@ end function IO_floatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief changes characters in string to lower case
+!> @brief Convert characters in string to lower case.
 !--------------------------------------------------------------------------------------------------
 pure function IO_lc(string)
 
@@ -299,7 +262,7 @@ end function IO_lc
 
 
 !--------------------------------------------------------------------------------------------------
-! @brief Remove comments (characters beyond '#') and trailing space
+! @brief Remove comments (characters beyond '#') and trailing space.
 ! ToDo: Discuss name (the trim aspect is not clear)
 !--------------------------------------------------------------------------------------------------
 function IO_rmComment(line)
@@ -320,7 +283,7 @@ end function IO_rmComment
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified integer value in given string
+!> @brief Return integer value from given string.
 !--------------------------------------------------------------------------------------------------
 integer function IO_stringAsInt(string)
 
@@ -341,7 +304,7 @@ end function IO_stringAsInt
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified float value in given string
+!> @brief Return float value from given string.
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_stringAsFloat(string)
 
@@ -362,15 +325,15 @@ end function IO_stringAsFloat
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief return verified logical value in given string
+!> @brief Return logical value from given string.
 !--------------------------------------------------------------------------------------------------
 logical function IO_stringAsBool(string)
 
   character(len=*), intent(in) :: string                                                            !< string for conversion to int value
 
-  if     (trim(adjustl(string)) == 'True') then
+  if     (trim(adjustl(string)) == 'True' .or.  trim(adjustl(string)) == 'true') then
     IO_stringAsBool = .true.
-  elseif (trim(adjustl(string)) == 'False') then
+  elseif (trim(adjustl(string)) == 'False' .or. trim(adjustl(string)) == 'false') then
     IO_stringAsBool = .false.
   else
     IO_stringAsBool = .false.
@@ -381,7 +344,7 @@ end function IO_stringAsBool
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
+!> @brief Write error statements to standard out and terminate the run with exit #9xxx
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
@@ -389,9 +352,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   integer,          optional, intent(in) :: el,ip,g,instance
   character(len=*), optional, intent(in) :: ext_msg
 
-  external                               :: quit
-  character(len=pStringLen)              :: msg
-  character(len=pStringLen)              :: formatString
+  external                      :: quit
+  character(len=:), allocatable :: msg
+  character(len=pStringLen)     :: formatString
 
   select case (error_ID)
 
@@ -408,8 +371,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'write error for file:'
     case (102)
       msg = 'could not read file:'
-    case (103)
-      msg = 'could not assemble input files'
     case (106)
       msg = 'working directory does not exist:'
 
@@ -423,6 +384,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'invalid character for float:'
     case (113)
       msg = 'invalid character for logical:'
+    case (114)
+      msg = 'cannot decode base64 string:'
+
 !--------------------------------------------------------------------------------------------------
 ! lattice error messages
     case (130)
@@ -445,7 +409,7 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'not enough interaction parameters given'
 
 !--------------------------------------------------------------------------------------------------
-! errors related to the parsing of material.config
+! errors related to the parsing of material.yaml
     case (140)
       msg = 'key not found'
     case (141)
@@ -460,35 +424,21 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'too many systems requested'
     case (146)
       msg = 'number of values does not match'
-    case (147)
-      msg = 'not supported anymore'
     case (148)
-      msg = 'Nconstituents mismatch between homogenization and microstructure'
+      msg = 'Nconstituents mismatch between homogenization and material'
 
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
     case (150)
       msg = 'index out of bounds'
     case (151)
-      msg = 'microstructure has no constituents'
+      msg = 'material has no constituents'
     case (153)
       msg = 'sum of phase fractions differs from 1'
-    case (154)
-      msg = 'homogenization index out of bounds'
     case (155)
-      msg = 'microstructure index out of bounds'
-    case (157)
-      msg = 'invalid texture transformation specified'
-    case (160)
-      msg = 'no entries in config part'
-    case (161)
-      msg = 'config part found twice'
-    case (165)
-      msg = 'homogenization configuration'
-    case (170)
-      msg = 'no homogenization specified via State Variable 2'
+      msg = 'material index out of bounds'
     case (180)
-      msg = 'no microstructure specified via State Variable 3'
+      msg = 'missing/invalid material definition via State Variable 2'
     case (190)
       msg = 'unknown element type:'
     case (191)
@@ -501,15 +451,13 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (201)
       msg = 'unknown plasticity specified:'
 
-    case (210)
-      msg = 'unknown material parameter:'
     case (211)
       msg = 'material parameter out of bounds:'
+    case (212)
+      msg = 'nonlocal model not supported'
 
 !--------------------------------------------------------------------------------------------------
 ! numerics error messages
-    case (300)
-      msg = 'unknown numerics parameter:'
     case (301)
       msg = 'numerics parameter out of bounds:'
 
@@ -529,12 +477,25 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !--------------------------------------------------------------------------------------------------
 ! user errors
-    case (600)
-      msg = 'Ping-Pong not possible when using non-DAMASK elements'
-    case (601)
-      msg = 'Ping-Pong needed when using non-local plasticity'
     case (602)
       msg = 'invalid selection for debug'
+
+!------------------------------------------------------------------------------------------------
+! errors related to YAML data
+    case (701)
+      msg = 'Incorrect indent/Null value not allowed'
+    case (702)
+      msg = 'Invalid use of flow yaml'
+    case (704)
+      msg = 'Space expected after a colon for <key>: <value> pair'
+    case (705)
+      msg = 'Unsupported feature'
+    case (706)
+      msg = 'Type mismatch in YAML data node'
+    case (707)
+      msg = 'Abrupt end of file'
+    case (708)
+      msg = '--- expected after YAML file header'
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
@@ -563,7 +524,9 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
     case (842)
       msg = 'incomplete information in grid mesh header'
     case (843)
-      msg = 'microstructure count mismatch'
+      msg = 'material count mismatch'
+    case (844)
+      msg = 'invalid VTR file'
     case (846)
       msg = 'rotation for load case rotation ill-defined (R:RT != I)'
     case (891)
@@ -582,29 +545,29 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
   end select
 
   !$OMP CRITICAL (write2out)
-  write(0,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(0,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
-  write(0,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
-  write(0,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(IO_STDERR,'(a,24x,a,40x,a)')      ' │','error',                                             '│'
+  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',error_ID,                                            '│'
+  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
-  write(0,formatString)            '│ ',trim(msg),                                          '│'
+  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
     write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(0,formatString)          '│ ',trim(ext_msg),                                      '│'
+    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
   if (present(g)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
   if (present(instance)) &
-    write(0,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
-  write(0,'(a,69x,a)')            ' │',                                                     '│'
-  write(0,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(0)
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at instance   ',instance,                             '│'
+  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
+  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(IO_STDERR)
   call quit(9000+error_ID)
   !$OMP END CRITICAL (write2out)
 
@@ -612,7 +575,7 @@ end subroutine IO_error
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief writes warning statement to standard out
+!> @brief Write warning statement to standard out.
 !--------------------------------------------------------------------------------------------------
 subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
 
@@ -620,8 +583,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   integer,          optional, intent(in) :: el,ip,g
   character(len=*), optional, intent(in) :: ext_msg
 
-  character(len=pStringLen)              :: msg
-  character(len=pStringLen)              :: formatString
+  character(len=:), allocatable :: msg
+  character(len=pStringLen)     :: formatString
 
   select case (warning_ID)
     case (1)
@@ -660,6 +623,9 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
       msg = 'polar decomposition failed'
     case (700)
       msg = 'unknown crystal symmetry'
+    case (709)
+      msg = 'read only the first document'
+ 
     case (850)
       msg = 'max number of cut back exceeded, terminating'
     case default
@@ -667,84 +633,84 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
     end select
 
   !$OMP CRITICAL (write2out)
-  write(6,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
-  write(6,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
-  write(6,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
-  write(6,'(a)')                  ' ├'//IO_DIVIDER//'┤'
+  write(IO_STDERR,'(/,a)')                ' ┌'//IO_DIVIDER//'┐'
+  write(IO_STDERR,'(a,24x,a,38x,a)')      ' │','warning',                                           '│'
+  write(IO_STDERR,'(a,24x,i3,42x,a)')     ' │',warning_ID,                                          '│'
+  write(IO_STDERR,'(a)')                  ' ├'//IO_DIVIDER//'┤'
   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(msg)),',',&
                                                      max(1,72-len_trim(msg)-4),'x,a)'
-  write(6,formatString)            '│ ',trim(msg),                                          '│'
+  write(IO_STDERR,formatString)            '│ ',trim(msg),                                          '│'
   if (present(ext_msg)) then
     write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a4,a',max(1,len_trim(ext_msg)),',',&
                                                        max(1,72-len_trim(ext_msg)-4),'x,a)'
-    write(6,formatString)          '│ ',trim(ext_msg),                                      '│'
+    write(IO_STDERR,formatString)          '│ ',trim(ext_msg),                                      '│'
   endif
   if (present(el)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at element    ',el,                                   '│'
   if (present(ip)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at IP         ',ip,                                   '│'
   if (present(g)) &
-    write(6,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
-  write(6,'(a,69x,a)')            ' │',                                                     '│'
-  write(6,'(a)')                  ' └'//IO_DIVIDER//'┘'
-  flush(6)
+    write(IO_STDERR,'(a19,1x,i9,44x,a3)') ' │ at constituent',g,                                    '│'
+  write(IO_STDERR,'(a,69x,a)')            ' │',                                                     '│'
+  write(IO_STDERR,'(a)')                  ' └'//IO_DIVIDER//'┘'
+  flush(IO_STDERR)
   !$OMP END CRITICAL (write2out)
 
 end subroutine IO_warning
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some IO functions
+!> @brief Check correctness of some IO functions.
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   integer, dimension(:), allocatable :: chunkPos
   character(len=:),      allocatable :: str
 
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
-  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      call IO_error(0,ext_msg='IO_stringAsFloat')
-  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     call IO_error(0,ext_msg='IO_stringAsFloat')
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1.0')))      error stop 'IO_stringAsFloat'
+  if(dNeq(1.0_pReal, IO_stringAsFloat('1e0')))      error stop 'IO_stringAsFloat'
+  if(dNeq(0.1_pReal, IO_stringAsFloat('1e-1')))     error stop 'IO_stringAsFloat'
 
-  if(3112019  /= IO_stringAsInt( '3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(3112019  /= IO_stringAsInt(' 3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(-3112019 /= IO_stringAsInt('-3112019'))        call IO_error(0,ext_msg='IO_stringAsInt')
-  if(3112019  /= IO_stringAsInt('+3112019 '))       call IO_error(0,ext_msg='IO_stringAsInt')
+  if(3112019  /= IO_stringAsInt( '3112019'))        error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt(' 3112019'))        error stop 'IO_stringAsInt'
+  if(-3112019 /= IO_stringAsInt('-3112019'))        error stop 'IO_stringAsInt'
+  if(3112019  /= IO_stringAsInt('+3112019 '))       error stop 'IO_stringAsInt'
 
-  if(.not. IO_stringAsBool(' True'))                call IO_error(0,ext_msg='IO_stringAsBool')
-  if(.not. IO_stringAsBool(' True '))               call IO_error(0,ext_msg='IO_stringAsBool')
-  if(      IO_stringAsBool(' False'))               call IO_error(0,ext_msg='IO_stringAsBool')
-  if(      IO_stringAsBool('False'))                call IO_error(0,ext_msg='IO_stringAsBool')
+  if(.not. IO_stringAsBool(' true'))                error stop 'IO_stringAsBool'
+  if(.not. IO_stringAsBool(' True '))               error stop 'IO_stringAsBool'
+  if(      IO_stringAsBool(' false'))               error stop 'IO_stringAsBool'
+  if(      IO_stringAsBool('False'))                error stop 'IO_stringAsBool'
 
-  if(any([1,1,1]     /= IO_stringPos('a')))         call IO_error(0,ext_msg='IO_stringPos')
-  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     call IO_error(0,ext_msg='IO_stringPos')
+  if(any([1,1,1]     /= IO_stringPos('a')))         error stop 'IO_stringPos'
+  if(any([2,2,3,5,5] /= IO_stringPos(' aa b')))     error stop 'IO_stringPos'
 
   str=' 1.0 xxx'
   chunkPos = IO_stringPos(str)
-  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) call IO_error(0,ext_msg='IO_floatValue')
+  if(dNeq(1.0_pReal,IO_floatValue(str,chunkPos,1))) error stop 'IO_floatValue'
 
   str='M 3112019 F'
   chunkPos = IO_stringPos(str)
-  if(3112019 /= IO_intValue(str,chunkPos,2))        call IO_error(0,ext_msg='IO_intValue')
+  if(3112019 /= IO_intValue(str,chunkPos,2))        error stop 'IO_intValue'
 
-  if(.not. IO_isBlank('  '))                        call IO_error(0,ext_msg='IO_isBlank/1')
-  if(.not. IO_isBlank('  #isBlank'))                call IO_error(0,ext_msg='IO_isBlank/2')
-  if(      IO_isBlank('  i#s'))                     call IO_error(0,ext_msg='IO_isBlank/3')
+  if(.not. IO_isBlank('  '))                        error stop 'IO_isBlank/1'
+  if(.not. IO_isBlank('  #isBlank'))                error stop 'IO_isBlank/2'
+  if(      IO_isBlank('  i#s'))                     error stop 'IO_isBlank/3'
 
   str = IO_rmComment('#')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/1')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/1'
   str = IO_rmComment(' #')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/2')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/2'
   str = IO_rmComment(' # ')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/3')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/3'
   str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/4')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/4'
   str = IO_rmComment(' # a')
-  if (str /= ''   .or. len(str) /= 0)               call IO_error(0,ext_msg='IO_rmComment/5')
+  if (str /= ''   .or. len(str) /= 0)               error stop 'IO_rmComment/5'
   str = IO_rmComment(' a#')
-  if (str /= ' a' .or. len(str) /= 2)               call IO_error(0,ext_msg='IO_rmComment/6')
+  if (str /= ' a' .or. len(str) /= 2)               error stop 'IO_rmComment/6'
   str = IO_rmComment(' ab #')
-  if (str /= ' ab'.or. len(str) /= 3)               call IO_error(0,ext_msg='IO_rmComment/7')
+  if (str /= ' ab'.or. len(str) /= 3)               error stop 'IO_rmComment/7'
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module IO

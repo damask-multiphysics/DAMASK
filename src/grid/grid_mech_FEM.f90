@@ -11,59 +11,70 @@ module grid_mech_FEM
   use PETScsnes
 
   use prec
+  use parallelization
   use DAMASK_interface
   use HDF5_utilities
   use math
   use spectral_utilities
   use FEsolving
-  use numerics
+  use config
   use homogenization
   use discretization
   use discretization_grid
-  use debug
 
   implicit none
   private
 
-!--------------------------------------------------------------------------------------------------
-! derived types
-  type(tSolutionParams), private :: params
+  type(tSolutionParams) :: params
+
+  type :: tNumerics
+    integer :: &
+      itmin, &                                                                                        !< minimum number of iterations
+      itmax                                                                                           !< maximum number of iterations
+    real(pReal) :: &
+      eps_div_atol, &                                                                                 !< absolute tolerance for equilibrium
+      eps_div_rtol, &                                                                                 !< relative tolerance for equilibrium
+      eps_stress_atol, &                                                                              !< absolute tolerance for fullfillment of stress BC
+      eps_stress_rtol                                                                                 !< relative tolerance for fullfillment of stress BC
+  end type tNumerics
+
+  type(tNumerics) :: num                                                                              ! numerics parameters. Better name?
+
+  logical :: debugRotation
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  DM,   private :: mech_grid
-  SNES, private :: mech_snes
-  Vec,  private :: solution_current, solution_lastInc, solution_rate
+  DM   :: mech_grid
+  SNES :: mech_snes
+  Vec  :: solution_current, solution_lastInc, solution_rate
 
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F, P_current, F_lastInc
-  real(pReal), private :: detJ
-  real(pReal), private, dimension(3)   :: delta
-  real(pReal), private, dimension(3,8) :: BMat
-  real(pReal), private, dimension(8,8) :: HGMat
-  PetscInt,    private :: xstart,ystart,zstart,xend,yend,zend
+  real(pReal), dimension(:,:,:,:,:), allocatable :: F, P_current, F_lastInc
+  real(pReal) :: detJ
+  real(pReal), dimension(3)   :: delta
+  real(pReal), dimension(3,8) :: BMat
+  real(pReal), dimension(8,8) :: HGMat
+  PetscInt :: xstart,ystart,zstart,xend,yend,zend
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
-  real(pReal), private, dimension(3,3) :: &
+  real(pReal), dimension(3,3) :: &
     F_aimDot = 0.0_pReal, &                                                                         !< assumed rate of average deformation gradient
     F_aim = math_I3, &                                                                              !< current prescribed deformation gradient
-    F_aim_lastIter = math_I3, &
     F_aim_lastInc  = math_I3, &                                                                     !< previous average deformation gradient
-    P_av = 0.0_pReal                                                                                !< average 1st Piola--Kirchhoff stress
-
-  character(len=pStringLen), private :: incInfo                                                     !< time and increment information
-
-  real(pReal), private, dimension(3,3,3,3) :: &
+    P_av = 0.0_pReal, &                                                                             !< average 1st Piola--Kirchhoff stress
+    P_aim = 0.0_pReal
+  character(len=:), allocatable :: incInfo                                                          !< time and increment information
+  real(pReal), dimension(3,3,3,3) :: &
     C_volAvg = 0.0_pReal, &                                                                         !< current volume average stiffness
     C_volAvgLastInc = 0.0_pReal, &                                                                  !< previous volume average stiffness
     S = 0.0_pReal                                                                                   !< current compliance (filled up with zeros)
 
-  real(pReal), private :: &
+  real(pReal) :: &
     err_BC                                                                                          !< deviation from stress BC
 
-  integer, private :: &
+  integer :: &
     totalIter = 0                                                                                   !< total iteration in current increment
 
   public :: &
@@ -81,7 +92,6 @@ contains
 subroutine grid_mech_FEM_init
 
   real(pReal) :: HGCoeff = 0.0e-2_pReal
-  PetscInt, dimension(0:worldsize-1) :: localK
   real(pReal), dimension(3,3) :: &
     temp33_Real = 0.0_pReal
   real(pReal), dimension(4,8) :: &
@@ -93,21 +103,48 @@ subroutine grid_mech_FEM_init
                       -1.0_pReal, 1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal,-1.0_pReal,-1.0_pReal,-1.0_pReal, &
                        1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal], [4,8])
-  PetscErrorCode :: ierr
-  integer(HID_T) :: fileHandle, groupHandle
-  character(len=pStringLen) :: fileName
   real(pReal), dimension(3,3,3,3) :: devNull
+  PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
-  u_current,u_lastInc
+    u_current,u_lastInc
+  PetscInt, dimension(0:worldsize-1) :: localK
+  integer(HID_T) :: fileHandle, groupHandle
+  character(len=pStringLen) :: &
+    fileName
+  class(tNode), pointer :: &
+    num_grid, &
+    debug_grid
 
-  write(6,'(/,a)') ' <<<+-  grid_mech_FEM init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  grid_mech_FEM init  -+>>>'; flush(IO_STDOUT)
+
+!-------------------------------------------------------------------------------------------------
+! debugging options
+  debug_grid => config_debug%get('grid', defaultVal=emptyList)
+  debugRotation = debug_grid%contains('rotation')
+
+!-------------------------------------------------------------------------------------------------
+! read numerical parameters and do sanity checks
+  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
+  num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid%get_asFloat('eps_div_rtol',   defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=1.0e-3_pReal)
+  num%itmin           = num_grid%get_asInt  ('itmin',          defaultVal=1)
+  num%itmax           = num_grid%get_asInt  ('itmax',          defaultVal=250)
+
+  if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
+  if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
+  if (num%eps_stress_atol <= 0.0_pReal)          call IO_error(301,ext_msg='eps_stress_atol')
+  if (num%eps_stress_rtol < 0.0_pReal)           call IO_error(301,ext_msg='eps_stress_rtol')
+  if (num%itmax <= 1)                            call IO_error(301,ext_msg='itmax')
+  if (num%itmin > num%itmax .or. num%itmin < 1)  call IO_error(301,ext_msg='itmin')
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type newtonls -mech_ksp_type fgmres &
                                 &-mech_ksp_max_it 25 -mech_pc_type ml -mech_mg_levels_ksp_type chebyshev',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -180,7 +217,7 @@ subroutine grid_mech_FEM_init
 !--------------------------------------------------------------------------------------------------
 ! init fields
   restartRead: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading restart data of increment ', interface_restartInc, ' from file'
+    print'(/,a,i0,a)', ' reading restart data of increment ', interface_restartInc, ' from file'
 
     write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
     fileHandle  = HDF5_openFile(fileName)
@@ -198,7 +235,8 @@ subroutine grid_mech_FEM_init
     F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)                         ! initialize to identity
     F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
   endif restartRead
-  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+
+  homogenization_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,temp33_Real,C_volAvg,devNull, &                     ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
@@ -209,7 +247,7 @@ subroutine grid_mech_FEM_init
   CHKERRQ(ierr)
 
   restartRead2: if (interface_restartInc > 0) then
-    write(6,'(/,a,i0,a)') ' reading more restart data of increment ', interface_restartInc, ' from file'
+    print'(a,i0,a)', ' reading more restart data of increment ', interface_restartInc, ' from file'
     call HDF5_read(groupHandle,C_volAvg,       'C_volAvg')
     call HDF5_read(groupHandle,C_volAvgLastInc,'C_volAvgLastInc')
 
@@ -224,19 +262,12 @@ end subroutine grid_mech_FEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the FEM scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation_BC) result(solution)
+function grid_mech_FEM_solution(incInfoIn) result(solution)
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
   character(len=*),            intent(in) :: &
     incInfoIn
-  real(pReal),                 intent(in) :: &
-    timeinc, &                                                                                      !< time increment of current solution
-    timeinc_old                                                                                     !< time increment of last successful increment
-  type(tBoundaryCondition),    intent(in) :: &
-    stress_BC
-  type(rotation),              intent(in) :: &
-    rotation_BC
   type(tSolutionState)                    :: &
     solution
 !--------------------------------------------------------------------------------------------------
@@ -248,22 +279,15 @@ function grid_mech_FEM_solution(incInfoIn,timeinc,timeinc_old,stress_BC,rotation
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
-  S = utilities_maskedCompliance(rotation_BC,stress_BC%maskLogical,C_volAvg)
-!--------------------------------------------------------------------------------------------------
-! set module wide available data
-  params%stress_mask = stress_BC%maskFloat
-  params%stress_BC   = stress_BC%values
-  params%rotation_BC = rotation_BC
-  params%timeinc     = timeinc
-  params%timeincOld  = timeinc_old
+  S = utilities_maskedCompliance(params%rotation_BC,params%stress_mask,C_volAvg)
 
 !--------------------------------------------------------------------------------------------------
 ! solve BVP
-  call SNESsolve(mech_snes,PETSC_NULL_VEC,solution_current,ierr);CHKERRQ(ierr)
+  call SNESsolve(mech_snes,PETSC_NULL_VEC,solution_current,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! check convergence
-  call SNESGetConvergedReason(mech_snes,reason,ierr);CHKERRQ(ierr)
+  call SNESGetConvergedReason(mech_snes,reason,ierr); CHKERRQ(ierr)
 
   solution%converged = reason > 0
   solution%iterationsNeeded = totalIter
@@ -297,6 +321,14 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     u_current,u_lastInc
 
+!--------------------------------------------------------------------------------------------------
+! set module wide available data
+  params%stress_mask = stress_BC%mask
+  params%rotation_BC = rotation_BC
+  params%timeinc     = timeinc
+  params%timeincOld  = timeinc_old
+
+
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
@@ -305,20 +337,20 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
   else
     C_volAvgLastInc    = C_volAvg
 
-    F_aimDot = merge(stress_BC%maskFloat*(F_aim-F_aim_lastInc)/timeinc_old, 0.0_pReal, guess)
+    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/timeinc_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)
     F_aim_lastInc = F_aim
 
-    !--------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! calculate rate for aim
-    if     (deformation_BC%myType=='l') then                                                        ! calculate F_aimDot from given L and current F
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * matmul(deformation_BC%values, F_aim_lastInc)
-    elseif(deformation_BC%myType=='fdot') then                                                      ! F_aimDot is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * deformation_BC%values
-    elseif (deformation_BC%myType=='f') then                                                        ! aim at end of load case is prescribed
-      F_aimDot = &
-      F_aimDot + deformation_BC%maskFloat * (deformation_BC%values - F_aim_lastInc)/loadCaseTime
+    if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
+      F_aimDot = F_aimDot &
+               + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
+    elseif(deformation_BC%myType=='dot_F') then                                                     ! F_aimDot is prescribed
+      F_aimDot = F_aimDot & 
+               + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
+    elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
+      F_aimDot = F_aimDot &
+               + merge((deformation_BC%values - F_aim_lastInc)/loadCaseTime,.0_pReal,deformation_BC%mask)
     endif
 
     if (guess) then
@@ -332,12 +364,18 @@ subroutine grid_mech_FEM_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,
 
     F_lastInc = F
 
-    materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
   F_aim = F_aim_lastInc + F_aimDot * timeinc
+  if     (stress_BC%myType=='P') then
+    P_aim = P_aim + merge((stress_BC%values - P_aim)/loadCaseTime*timeinc,.0_pReal,stress_BC%mask)
+  elseif (stress_BC%myType=='dot_P') then !UNTESTED
+    P_aim = P_aim + merge(stress_BC%values*timeinc,.0_pReal,stress_BC%mask)
+  endif
+
   call VecAXPY(solution_current,timeinc,solution_rate,ierr); CHKERRQ(ierr)
 
   call DMDAVecRestoreArrayF90(mech_grid,solution_current,u_current,ierr);CHKERRQ(ierr)
@@ -369,7 +407,7 @@ subroutine grid_mech_FEM_restartWrite
   call DMDAVecGetArrayF90(mech_grid,solution_current,u_current,ierr); CHKERRQ(ierr)
   call DMDAVecGetArrayF90(mech_grid,solution_lastInc,u_lastInc,ierr); CHKERRQ(ierr)
 
-  write(6,'(a)') ' writing solver data required for restart to file'; flush(6)
+  print*, 'writing solver data required for restart to file'; flush(IO_STDOUT)
 
   write(fileName,'(a,a,i0,a)') trim(getSolverJobName()),'_',worldrank,'.hdf5'
   fileHandle  = HDF5_openFile(fileName,'w')
@@ -415,15 +453,15 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
     BCTol
 
   err_div = fnorm*sqrt(wgt)*geomSize(1)/scaledGeomSize(1)/detJ
-  divTol = max(maxval(abs(P_av))*err_div_tolRel   ,err_div_tolAbs)
-  BCTol  = max(maxval(abs(P_av))*err_stress_tolRel,err_stress_tolAbs)
+  divTol = max(maxval(abs(P_av))*num%eps_div_rtol   ,num%eps_div_atol)
+  BCTol  = max(maxval(abs(P_av))*num%eps_stress_rtol,num%eps_stress_atol)
 
-  if ((totalIter >= itmin .and. &
+  if ((totalIter >= num%itmin .and. &
                             all([ err_div/divTol, &
                                   err_BC /BCTol       ] < 1.0_pReal)) &
               .or.    terminallyIll) then
     reason = 1
-  elseif (totalIter >= itmax) then
+  elseif (totalIter >= num%itmax) then
     reason = -1
   else
     reason = 0
@@ -431,13 +469,13 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,fnorm,reason,dummy,i
 
 !--------------------------------------------------------------------------------------------------
 ! report
-  write(6,'(1/,a)') ' ... reporting .............................................................'
-  write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+  print'(1/,a)', ' ... reporting .............................................................'
+  print'(1/,a,f12.2,a,es8.2,a,es9.2,a)', ' error divergence = ', &
           err_div/divTol,  ' (',err_div,' / m, tol = ',divTol,')'
-  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')    ' error stress BC  = ', &
+  print'(a,f12.2,a,es8.2,a,es9.2,a)',    ' error stress BC  = ', &
           err_BC/BCTol,    ' (',err_BC, ' Pa,  tol = ',BCTol,')'
-  write(6,'(/,a)') ' ==========================================================================='
-  flush(6)
+  print'(/,a)', ' ==========================================================================='
+  flush(IO_STDOUT)
 
 end subroutine converged
 
@@ -453,15 +491,12 @@ subroutine formResidual(da_local,x_local, &
   PetscScalar, pointer,dimension(:,:,:,:) :: x_scal, f_scal
   PetscScalar, dimension(8,3) :: x_elem,  f_elem
   PetscInt             :: i, ii, j, jj, k, kk, ctr, ele
-  real(pReal), dimension(3,3) :: &
-    deltaF_aim
   PetscInt :: &
     PETScIter, &
     nfuncs
   PetscObject :: dummy
   PetscErrorCode :: ierr
   real(pReal), dimension(3,3,3,3) :: devNull
-
 
   call SNESGetNumberFunctionEvals(mech_snes,nfuncs,ierr); CHKERRQ(ierr)
   call SNESGetIterationNumber(mech_snes,PETScIter,ierr); CHKERRQ(ierr)
@@ -472,13 +507,13 @@ subroutine formResidual(da_local,x_local, &
 ! begin of new iteration
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
-    write(6,'(1x,a,3(a,i0))') trim(incInfo), ' @ Iteration ', itmin, '≤',totalIter+1, '≤', itmax
-    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-      write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+    print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter+1, '≤', num%itmax
+    if (debugRotation) &
+      write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
+    write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
               ' deformation gradient aim       =', transpose(F_aim)
-    flush(6)
+    flush(IO_STDOUT)
   endif newIteration
 
 !--------------------------------------------------------------------------------------------------
@@ -497,17 +532,15 @@ subroutine formResidual(da_local,x_local, &
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-  call Utilities_constitutiveResponse(P_current,&
+  call utilities_constitutiveResponse(P_current,&
                                       P_av,C_volAvg,devNull, &
                                       F,params%timeinc,params%rotation_BC)
   call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-  F_aim_lastIter = F_aim
-  deltaF_aim = math_mul3333xx33(S, P_av - params%stress_BC)
-  F_aim = F_aim - deltaF_aim
-  err_BC = maxval(abs(params%stress_mask * (P_av - params%stress_BC)))                              ! mask = 0.0 when no stress bc
+  F_aim = F_aim - math_mul3333xx33(S, P_av - P_aim)                                                 ! S = 0.0 for no bc
+  err_BC = maxval(abs(merge(P_av - P_aim,.0_pReal,params%stress_mask)))
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
@@ -524,9 +557,9 @@ subroutine formResidual(da_local,x_local, &
     ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
     ele = ele + 1
     f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,ii,jj,kk)))*detJ + &
-             matmul(HGMat,x_elem)*(materialpoint_dPdF(1,1,1,1,1,ele) + &
-                                   materialpoint_dPdF(2,2,2,2,1,ele) + &
-                                   materialpoint_dPdF(3,3,3,3,1,ele))/3.0_pReal
+             matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,1,ele) + &
+                                   homogenization_dPdF(2,2,2,2,1,ele) + &
+                                   homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
     ctr = 0
     do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
       ctr = ctr + 1
@@ -603,18 +636,18 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
     row = col
     ele = ele + 1
     K_ele = 0.0
-    K_ele(1 :8 ,1 :8 ) = HGMat*(materialpoint_dPdF(1,1,1,1,1,ele) + &
-                                materialpoint_dPdF(2,2,2,2,1,ele) + &
-                                materialpoint_dPdF(3,3,3,3,1,ele))/3.0_pReal
-    K_ele(9 :16,9 :16) = HGMat*(materialpoint_dPdF(1,1,1,1,1,ele) + &
-                                materialpoint_dPdF(2,2,2,2,1,ele) + &
-                                materialpoint_dPdF(3,3,3,3,1,ele))/3.0_pReal
-    K_ele(17:24,17:24) = HGMat*(materialpoint_dPdF(1,1,1,1,1,ele) + &
-                                materialpoint_dPdF(2,2,2,2,1,ele) + &
-                                materialpoint_dPdF(3,3,3,3,1,ele))/3.0_pReal
+    K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,1,ele) + &
+                                homogenization_dPdF(2,2,2,2,1,ele) + &
+                                homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
+    K_ele(9 :16,9 :16) = HGMat*(homogenization_dPdF(1,1,1,1,1,ele) + &
+                                homogenization_dPdF(2,2,2,2,1,ele) + &
+                                homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
+    K_ele(17:24,17:24) = HGMat*(homogenization_dPdF(1,1,1,1,1,ele) + &
+                                homogenization_dPdF(2,2,2,2,1,ele) + &
+                                homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
     K_ele = K_ele + &
             matmul(transpose(BMatFull), &
-                   matmul(reshape(reshape(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,ele), &
+                   matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,1,ele), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
     call MatSetValuesStencil(Jac,24,row,24,col,K_ele,ADD_VALUES,ierr)
     CHKERRQ(ierr)

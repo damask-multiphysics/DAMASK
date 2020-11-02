@@ -9,11 +9,13 @@ module discretization_grid
   use PETScsys
 
   use prec
+  use parallelization
   use system_routines
+  use base64
+  use zlib
   use DAMASK_interface
   use IO
-  use debug
-  use numerics
+  use config
   use results
   use discretization
   use geometry_plastic_nonlocal
@@ -42,7 +44,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief reads the geometry file to obtain information on discretization
 !--------------------------------------------------------------------------------------------------
-subroutine discretization_grid_init
+subroutine discretization_grid_init(restart)
+
+  logical, intent(in) :: restart
 
   include 'fftw3-mpi.f03'
   real(pReal), dimension(3) :: &
@@ -52,16 +56,22 @@ subroutine discretization_grid_init
     myGrid                                                                                          !< domain grid of this process
 
   integer,     dimension(:),   allocatable :: &
-    microstructureAt, &
-    homogenizationAt
+    materialAt
 
-  integer :: j
+  integer :: &
+    j, &
+    debug_element, &
+    debug_ip
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
 
-  write(6,'(/,a)') ' <<<+-  discretization_grid init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
-  call readGeom(grid,geomSize,origin,microstructureAt,homogenizationAt)
+  call readVTR(grid,geomSize,origin,materialAt)
+
+  print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
+  print'(a,3(es12.5))',   ' size     x y z: ', geomSize
+  print'(a,3(es12.5))',   ' origin   x y z: ', origin
 
 !--------------------------------------------------------------------------------------------------
 ! grid solver specific quantities
@@ -81,31 +91,35 @@ subroutine discretization_grid_init
   myGrid = [grid(1:2),grid3]
   mySize = [geomSize(1:2),size3]
 
+!-------------------------------------------------------------------------------------------------
+! debug parameters
+  debug_element = config_debug%get_asInt('element',defaultVal=1)
+  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
+
 !--------------------------------------------------------------------------------------------------
 ! general discretization
-  microstructureAt = microstructureAt(product(grid(1:2))*grid3Offset+1: &
-                                      product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
-  homogenizationAt = homogenizationAt(product(grid(1:2))*grid3Offset+1: &
-                                      product(grid(1:2))*(grid3Offset+grid3))                       ! reallocate/shrink in case of MPI
+  materialAt = materialAt(product(grid(1:2))*grid3Offset+1:product(grid(1:2))*(grid3Offset+grid3))  ! reallocate/shrink in case of MPI
 
-  call discretization_init(homogenizationAt,microstructureAt, &
+  call discretization_init(materialAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
                            Nodes0(myGrid,mySize,grid3Offset),&
-                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write bottom layer
-                                 (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! do not write bottom layer (is top of rank-1)
-                                 worldrank<1))
+                           merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write top layer...
+                                 (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! ...unless not last process
+                                 worldrank+1==worldsize))
 
   FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
   FEsolving_execIP   = [1,1]                                                                        ! parallel loop bounds set to comprise the only IP
 
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing
-  call results_openJobFile
-  call results_closeGroup(results_addGroup('geometry'))
-  call results_addAttribute('grid',  grid,    'geometry')
-  call results_addAttribute('size',  geomSize,'geometry')
-  call results_addAttribute('origin',origin,  'geometry')
-  call results_closeJobFile
+  if(.not. restart) then
+    call results_openJobFile
+    call results_closeGroup(results_addGroup('geometry'))
+    call results_addAttribute('grid',  grid,    'geometry')
+    call results_addAttribute('size',  geomSize,'geometry')
+    call results_addAttribute('origin',origin,  'geometry')
+    call results_closeJobFile
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! geometry information required by the nonlocal CP model
@@ -117,8 +131,8 @@ subroutine discretization_grid_init
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks for debugging
-  if (debug_e < 1 .or. debug_e > product(myGrid)) call IO_error(602,ext_msg='element')              ! selected element does not exist
-  if (debug_i /= 1)                               call IO_error(602,ext_msg='IP')                   ! selected IP does not exist
+  if (debug_element < 1 .or. debug_element > product(myGrid)) call IO_error(602,ext_msg='element')  ! selected element does not exist
+  if (debug_ip /= 1)                                          call IO_error(602,ext_msg='IP')       ! selected IP does not exist
 
 end subroutine discretization_grid_init
 
@@ -128,29 +142,27 @@ end subroutine discretization_grid_init
 !> @details important variables have an implicit "save" attribute. Therefore, this function is
 ! supposed to be called only once!
 !--------------------------------------------------------------------------------------------------
-subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
+subroutine readGeom(grid,geomSize,origin,material)
 
   integer,     dimension(3), intent(out) :: &
-    grid                                                                                            ! grid (for all processes!)
+    grid                                                                                            ! grid   (across all processes!)
   real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! size (for all processes!)
-    origin                                                                                          ! origin (for all processes!)
+    geomSize, &                                                                                     ! size   (across all processes!)
+    origin                                                                                          ! origin (across all processes!)
   integer,     dimension(:), intent(out), allocatable :: &
-    microstructure, &
-    homogenization
+    material
 
   character(len=:),      allocatable :: rawData
   character(len=65536)               :: line
   integer, allocatable, dimension(:) :: chunkPos
   integer :: &
-    h =- 1, &
     headerLength = -1, &                                                                            !< length of header (in lines)
     fileLength, &                                                                                   !< length of the geom file (in characters)
     fileUnit, &
     startPos, endPos, &
     myStat, &
     l, &                                                                                            !< line counter
-    c, &                                                                                            !< counter for # microstructures in line
+    c, &                                                                                            !< counter for # materials in line
     o, &                                                                                            !< order of "to" packing
     e, &                                                                                            !< "element", i.e. spectral collocation point
     i, j
@@ -160,10 +172,10 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
 
 !--------------------------------------------------------------------------------------------------
 ! read raw data as stream
-  inquire(file = trim(geometryFile), size=fileLength)
-  open(newunit=fileUnit, file=trim(geometryFile), access='stream',&
+  inquire(file = trim(interface_geomFile), size=fileLength)
+  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
        status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(geometryFile))
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
   allocate(character(len=fileLength)::rawData)
   read(fileUnit) rawData
   close(fileUnit)
@@ -182,7 +194,7 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
   endif
 
 !--------------------------------------------------------------------------------------------------
-! read and interprete header
+! read and interpret header
   origin = 0.0_pReal
   l = 0
   do while (l < headerLength .and. startPos < len(rawData))
@@ -238,24 +250,18 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
           enddo
         endif
 
-      case ('homogenization')
-        if (chunkPos(1) > 1) h = IO_intValue(line,chunkPos,2)
-
     end select
 
   enddo
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
-  if(h < 1) &
-    call IO_error(error_ID = 842, ext_msg='homogenization (readGeom)')
   if(any(grid < 1)) &
     call IO_error(error_ID = 842, ext_msg='grid (readGeom)')
   if(any(geomSize < 0.0_pReal)) &
     call IO_error(error_ID = 842, ext_msg='size (readGeom)')
 
-  allocate(microstructure(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
-  allocate(homogenization(product(grid)), source = h)                                               ! too large in case of MPI (shrink later, not very elegant)
+  allocate(material(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
 
 !--------------------------------------------------------------------------------------------------
 ! read and interpret content
@@ -270,18 +276,18 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
 
     noCompression: if (chunkPos(1) /= 3) then
       c = chunkPos(1)
-      microstructure(e:e+c-1) =  [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
+      material(e:e+c-1) =  [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
     else noCompression
       compression: if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'of') then
         c = IO_intValue(line,chunkPos,1)
-        microstructure(e:e+c-1) = [(IO_intValue(line,chunkPos,3),i = 1,IO_intValue(line,chunkPos,1))]
+        material(e:e+c-1) = [(IO_intValue(line,chunkPos,3),i = 1,IO_intValue(line,chunkPos,1))]
       else         if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then compression
         c = abs(IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1)) + 1
         o = merge(+1, -1, IO_intValue(line,chunkPos,3) > IO_intValue(line,chunkPos,1))
-        microstructure(e:e+c-1) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
+        material(e:e+c-1) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
       else compression
         c = chunkPos(1)
-        microstructure(e:e+c-1) = [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
+        material(e:e+c-1) = [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
       endif compression
     endif noCompression
 
@@ -291,6 +297,360 @@ subroutine readGeom(grid,geomSize,origin,microstructure,homogenization)
   if (e-1 /= product(grid)) call IO_error(error_ID = 843, el=e)
 
 end subroutine readGeom
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Parse vtk rectilinear grid (.vtr)
+!> @details https://vtk.org/Wiki/VTK_XML_Formats
+!--------------------------------------------------------------------------------------------------
+subroutine readVTR(grid,geomSize,origin,material)
+
+  integer,     dimension(3), intent(out) :: &
+    grid                                                                                            ! grid   (across all processes!)
+  real(pReal), dimension(3), intent(out) :: &
+    geomSize, &                                                                                     ! size   (across all processes!)
+    origin                                                                                          ! origin (across all processes!)
+  integer,     dimension(:), intent(out), allocatable :: &
+    material
+
+  character(len=:), allocatable :: fileContent, dataType, headerType
+  logical :: inFile,inGrid,gotCoordinates,gotCellData,compressed
+  integer :: fileUnit, myStat, coord
+  integer(pI64) :: &
+    fileLength, &                                                                                   !< length of the geom file (in characters)
+    startPos, endPos, &
+    s
+
+  grid = -1
+  geomSize = -1.0_pReal
+
+!--------------------------------------------------------------------------------------------------
+! read raw data as stream
+  inquire(file = trim(interface_geomFile), size=fileLength)
+  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
+       status='old', position='rewind', action='read',iostat=myStat)
+  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
+  allocate(character(len=fileLength)::fileContent)
+  read(fileUnit) fileContent
+  close(fileUnit)
+
+  inFile         = .false.
+  inGrid         = .false.
+  gotCoordinates = .false.
+  gotCelldata    = .false.
+
+!--------------------------------------------------------------------------------------------------
+! interpret XML file
+  startPos = 1_pI64
+  do while (startPos < len(fileContent,kind=pI64))
+    endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+    if (endPos < startPos) endPos = len(fileContent,kind=pI64)                                      ! end of file without new line
+
+    if(.not. inFile) then
+      if(index(fileContent(startPos:endPos),'<VTKFile',kind=pI64) /= 0_pI64) then
+        inFile = .true.
+        if(.not. fileFormatOk(fileContent(startPos:endPos))) call IO_error(error_ID = 844, ext_msg='file format')
+        headerType = merge('UInt64','UInt32',getXMLValue(fileContent(startPos:endPos),'header_type')=='UInt64')
+        compressed  = getXMLValue(fileContent(startPos:endPos),'compressor') == 'vtkZLibDataCompressor'
+      endif
+    else
+      if(.not. inGrid) then
+        if(index(fileContent(startPos:endPos),'<RectilinearGrid',kind=pI64) /= 0_pI64) inGrid = .true.
+      else
+        if(index(fileContent(startPos:endPos),'<CellData>',kind=pI64) /= 0_pI64) then
+          gotCellData = .true.
+          do while (index(fileContent(startPos:endPos),'</CellData>',kind=pI64) == 0_pI64)
+            if(index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64 .and. &
+                 getXMLValue(fileContent(startPos:endPos),'Name') == 'material' ) then
+
+              if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
+                call IO_error(error_ID = 844, ext_msg='format (materialpoint)')
+              dataType = getXMLValue(fileContent(startPos:endPos),'type')
+
+              startPos = endPos + 2_pI64
+              endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+              s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
+              material = as_Int(fileContent(s:endPos),headerType,compressed,dataType)
+              exit
+            endif
+            startPos = endPos + 2_pI64
+            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+          enddo
+        elseif(index(fileContent(startPos:endPos),'<Coordinates>',kind=pI64) /= 0_pI64) then
+          gotCoordinates = .true.
+          startPos = endPos + 2_pI64
+
+          coord = 0
+          do while (startPos<fileLength)
+            endPos = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+            if(index(fileContent(startPos:endPos),'<DataArray',kind=pI64) /= 0_pI64) then
+
+              if(getXMLValue(fileContent(startPos:endPos),'format') /= 'binary') &
+                call IO_error(error_ID = 844, ext_msg='format (coordinates)')
+              dataType = getXMLValue(fileContent(startPos:endPos),'type')
+
+              startPos = endPos + 2_pI64
+              endPos  = startPos + index(fileContent(startPos:),IO_EOL,kind=pI64) - 2_pI64
+              s = startPos + verify(fileContent(startPos:endPos),IO_WHITESPACE,kind=pI64) -1_pI64   ! start (no leading whitespace)
+
+              coord = coord + 1
+
+              call gridSizeOrigin(fileContent(s:endPos),headerType,compressed,dataType,coord)
+            endif
+            if(index(fileContent(startPos:endPos),'</Coordinates>',kind=pI64) /= 0_pI64) exit
+            startPos = endPos + 2_pI64
+          enddo
+        endif
+      endif
+    endif
+
+    if(gotCellData .and. gotCoordinates) exit
+    startPos = endPos + 2_pI64
+
+  end do
+  material = material + 1
+  if(.not. allocated(material))       call IO_error(error_ID = 844, ext_msg='material data not found')
+  if(size(material) /= product(grid)) call IO_error(error_ID = 844, ext_msg='size(material)')
+  if(any(geomSize<=0))                call IO_error(error_ID = 844, ext_msg='size')
+  if(any(grid<1))                     call IO_error(error_ID = 844, ext_msg='grid')
+  if(any(material<0))                 call IO_error(error_ID = 844, ext_msg='material ID < 0')
+
+  contains
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief determine size and origin from coordinates
+  !------------------------------------------------------------------------------------------------
+  subroutine gridSizeOrigin(base64_str,headerType,compressed,dataType,direction)
+
+    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string of 1D coordinates
+                                    headerType, &                                                   ! header type (UInt32 or Uint64)
+                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
+    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+    integer,          intent(in) :: direction                                                       ! direction (1=x,2=y,3=z)
+
+    real(pReal), dimension(:), allocatable :: coords,delta
+
+    coords = as_pReal(base64_str,headerType,compressed,dataType)
+
+    delta = coords(2:) - coords(:size(coords)-1)
+    if(any(delta<0.0_pReal) .or. dNeq(maxval(delta),minval(delta),1.0e-8_pReal*maxval(abs(coords)))) &
+      call IO_error(error_ID = 844, ext_msg = 'grid spacing')
+
+    grid(direction)     = size(coords)-1
+    origin(direction)   = coords(1)
+    geomSize(direction) = coords(size(coords)) - coords(1)
+
+  end subroutine
+
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief Interpret Base64 string in vtk XML file as integer of default kind
+  !------------------------------------------------------------------------------------------------
+  function as_Int(base64_str,headerType,compressed,dataType)
+
+    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                    headerType, &                                                   ! header type (UInt32 or Uint64)
+                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
+    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+
+    integer, dimension(:), allocatable :: as_Int
+
+    select case(dataType)
+      case('Int32')
+        as_Int = int(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)))
+      case('Int64')
+        as_Int = int(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)))
+      case('Float32')
+        as_Int = int(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)))
+      case('Float64')
+        as_Int = int(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)))
+      case default
+        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
+    end select
+
+  end function as_Int
+
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief Interpret Base64 string in vtk XML file as integer of pReal kind
+  !------------------------------------------------------------------------------------------------
+  function as_pReal(base64_str,headerType,compressed,dataType)
+
+    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                    headerType, &                                                   ! header type (UInt32 or Uint64)
+                                    dataType                                                        ! data type (Int32, Int64, Float32, Float64)
+    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+
+    real(pReal), dimension(:), allocatable :: as_pReal
+
+    select case(dataType)
+      case('Int32')
+        as_pReal = real(prec_bytesToC_INT32_T(asBytes(base64_str,headerType,compressed)),pReal)
+      case('Int64')
+        as_pReal = real(prec_bytesToC_INT64_T(asBytes(base64_str,headerType,compressed)),pReal)
+      case('Float32')
+        as_pReal = real(prec_bytesToC_FLOAT  (asBytes(base64_str,headerType,compressed)),pReal)
+      case('Float64')
+        as_pReal = real(prec_bytesToC_DOUBLE (asBytes(base64_str,headerType,compressed)),pReal)
+      case default
+        call IO_error(844_pInt,ext_msg='unknown data type: '//trim(dataType))
+    end select
+
+  end function as_pReal
+
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief Interpret Base64 string in vtk XML file as bytes
+  !------------------------------------------------------------------------------------------------
+  function asBytes(base64_str,headerType,compressed) result(bytes)
+
+    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                    headerType                                                      ! header type (UInt32 or Uint64)
+    logical,          intent(in) :: compressed                                                      ! indicate whether data is zlib compressed
+
+    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
+
+    if(compressed) then
+      bytes = asBytes_compressed(base64_str,headerType)
+    else
+      bytes = asBytes_uncompressed(base64_str,headerType)
+    endif
+
+  end function asBytes
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief Interpret compressed Base64 string in vtk XML file as bytes
+  !> @details A compressed Base64 string consists of a header block and a data block
+  ! [#blocks/#u-size/#p-size/#c-size-1/#c-size-2/.../#c-size-#blocks][DATA-1/DATA-2...]
+  ! #blocks = Number of blocks
+  ! #u-size = Block size before compression
+  ! #p-size = Size of last partial block (zero if it not needed)
+  ! #c-size-i = Size in bytes of block i after compression
+  !------------------------------------------------------------------------------------------------
+  function asBytes_compressed(base64_str,headerType) result(bytes)
+
+    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                    headerType                                                      ! header type (UInt32 or Uint64)
+
+    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes, bytes_inflated
+
+    integer(pI64), dimension(:), allocatable :: temp, size_inflated, size_deflated
+    integer(pI64) :: headerLen, nBlock, b,s,e
+
+    if    (headerType == 'UInt32') then
+      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(4_pI64)))),pI64)
+      nBlock = int(temp(1),pI64)
+      headerLen = 4_pI64 * (3_pI64 + nBlock)
+      temp = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+    elseif(headerType == 'UInt64') then
+      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(8_pI64)))),pI64)
+      nBlock = int(temp(1),pI64)
+      headerLen = 8_pI64 * (3_pI64 + nBlock)
+      temp = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(:base64_nChar(headerLen)))),pI64)
+    endif
+
+    allocate(size_inflated(nBlock),source=temp(2))
+    size_inflated(nBlock) = merge(temp(3),temp(2),temp(3)/=0_pI64)
+    size_deflated = temp(4:)
+    bytes_inflated = base64_to_bytes(base64_str(base64_nChar(headerLen)+1_pI64:))
+
+    allocate(bytes(0))
+    e = 0_pI64
+    do b = 1, nBlock
+      s = e + 1_pI64
+      e = s + size_deflated(b) - 1_pI64
+      bytes = [bytes,zlib_inflate(bytes_inflated(s:e),size_inflated(b))]
+    enddo
+
+  end function asBytes_compressed
+
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief Interprete uncompressed Base64 string in vtk XML file as bytes
+  !> @details An uncompressed Base64 string consists of N headers blocks and a N data blocks
+  ![#bytes-1/DATA-1][#bytes-2/DATA-2]...
+  !------------------------------------------------------------------------------------------------
+  function asBytes_uncompressed(base64_str,headerType) result(bytes)
+
+    character(len=*), intent(in) :: base64_str, &                                                   ! base64 encoded string
+                                    headerType                                                      ! header type (UInt32 or Uint64)
+
+    integer(pI64) :: s
+    integer(pI64), dimension(1) :: nByte
+
+    integer(C_SIGNED_CHAR), dimension(:), allocatable :: bytes
+    allocate(bytes(0))
+
+    s=0_pI64
+    if    (headerType == 'UInt32') then
+      do while(s+base64_nChar(4_pI64)<(len(base64_str,pI64)))
+        nByte = int(prec_bytesToC_INT32_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64)))),pI64)
+        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(4_pI64+nByte(1))),5_pI64)]
+        s = s + base64_nChar(4_pI64+nByte(1))
+      enddo
+    elseif(headerType == 'UInt64') then
+      do while(s+base64_nChar(8_pI64)<(len(base64_str,pI64)))
+        nByte = int(prec_bytesToC_INT64_T(base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64)))),pI64)
+        bytes = [bytes,base64_to_bytes(base64_str(s+1_pI64:s+base64_nChar(8_pI64+nByte(1))),9_pI64)]
+        s = s + base64_nChar(8_pI64+nByte(1))
+      enddo
+    endif
+
+  end function asBytes_uncompressed
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief Get XML string value for given key
+  !------------------------------------------------------------------------------------------------
+  pure function getXMLValue(line,key)
+
+    character(len=*), intent(in)  :: line, key
+
+    character(len=:), allocatable :: getXMLValue
+
+    integer :: s,e
+#ifdef __INTEL_COMPILER
+    character :: q
+#endif
+
+    s = index(line," "//key,back=.true.)
+    if(s==0) then
+      getXMLValue = ''
+    else
+      e = s + 1 + scan(line(s+1:),"'"//'"')
+      if(scan(line(s:e-2),'=') == 0) then
+        getXMLValue = ''
+      else
+        s = e
+! https://community.intel.com/t5/Intel-Fortran-Compiler/ICE-for-merge-with-strings/m-p/1207204#M151657
+#ifdef __INTEL_COMPILER
+        q = line(s-1:s-1)
+        e = s + index(line(s:),q) - 1
+#else
+        e = s + index(line(s:),merge("'",'"',line(s-1:s-1)=="'")) - 1
+#endif
+        getXMLValue = line(s:e-1)
+      endif
+    endif
+
+  end function
+
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief check for supported file format
+  !------------------------------------------------------------------------------------------------
+  pure function fileFormatOk(line)
+
+    character(len=*),intent(in) :: line
+    logical :: fileFormatOk
+
+    fileFormatOk = getXMLValue(line,'type')       == 'RectilinearGrid' .and. &
+                   getXMLValue(line,'byte_order') == 'LittleEndian' .and. &
+                   getXMLValue(line,'compressor') /= 'vtkLZ4DataCompressor' .and. &
+                   getXMLValue(line,'compressor') /= 'vtkLZMADataCompressor'
+
+  end function fileFormatOk
+
+end subroutine readVTR
 
 
 !---------------------------------------------------------------------------------------------------

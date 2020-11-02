@@ -10,13 +10,11 @@ module spectral_utilities
 
   use prec
   use DAMASK_interface
+  use parallelization
   use math
   use rotations
   use IO
   use discretization_grid
-  use numerics
-  use debug
-  use config
   use discretization
   use homogenization
 
@@ -49,15 +47,15 @@ module spectral_utilities
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:,:),       pointer     :: vectorField_fourier   !< vector field fourier representation for fftw
   real(C_DOUBLE),           public,  dimension(:,:,:),         pointer     :: scalarField_real      !< scalar field real representation for fftw
   complex(C_DOUBLE_COMPLEX),public,  dimension(:,:,:),         pointer     :: scalarField_fourier   !< scalar field fourier representation for fftw
-  complex(pReal),           private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat             !< gamma operator (field) for spectral method
-  complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
-  complex(pReal),           private, dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
-  real(pReal),              private, dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
+  complex(pReal),                    dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat             !< gamma operator (field) for spectral method
+  complex(pReal),                    dimension(:,:,:,:),       allocatable :: xi1st                 !< wave vector field for first derivatives
+  complex(pReal),                    dimension(:,:,:,:),       allocatable :: xi2nd                 !< wave vector field for second derivatives
+  real(pReal),                       dimension(3,3,3,3)                    :: C_ref                 !< mechanic reference stiffness
 
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
-  type(C_PTR),   private :: &
+  type(C_PTR) :: &
     planTensorForth, &                                                                              !< FFTW MPI plan P(x) to P(k)
     planTensorBack, &                                                                               !< FFTW MPI plan F(k) to F(x)
     planVectorForth, &                                                                              !< FFTW MPI plan v(x) to v(k)
@@ -67,7 +65,7 @@ module spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
-  logical, private :: &
+  logical :: &
     debugGeneral, &                                                                                 !< general debugging of spectral solver
     debugRotation, &                                                                                !< also printing out results in lab frame
     debugPETSc                                                                                      !< use some in debug defined options for more verbose PETSc solution
@@ -84,43 +82,36 @@ module spectral_utilities
   end type tSolutionState
 
   type, public :: tBoundaryCondition                                                                !< set of parameters defining a boundary condition
-    real(pReal), dimension(3,3) :: values      = 0.0_pReal, &
-                                   maskFloat   = 0.0_pReal
-    logical,     dimension(3,3) :: maskLogical = .false.
-    character(len=pStringLen)   :: myType      = 'None'
+    real(pReal), dimension(3,3)   :: values = 0.0_pReal
+    logical,     dimension(3,3)   :: mask   = .false.
+    character(len=:), allocatable :: myType
   end type tBoundaryCondition
 
   type, public :: tLoadCase
     type(rotation)               :: rot                                                             !< rotation of BC
     type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
-                                    deformation                                                     !< deformation BC (Fdot or L)
-    real(pReal) ::                  time                   = 0.0_pReal                              !< length of increment
-    integer ::                      incs                   = 0, &                                   !< number of increments
-                                    outputfrequency        = 1, &                                   !< frequency of result writes
-                                    restartfrequency       = huge(0), &                             !< frequency of restart writes
-                                    logscale               = 0                                      !< linear/logarithmic time inc flag
-    logical ::                      followFormerTrajectory = .true.                                 !< follow trajectory of former loadcase
+                                    deformation                                                     !< deformation BC (dot_F, F, or L)
+    real(pReal) ::                  time                                                            !< length of increment
+    integer ::                      incs, &                                                         !< number of increments
+                                    outputfrequency, &                                              !< frequency of result writes
+                                    restartfrequency                                                !< frequency of restart writes
+    logical ::                      followFormerTrajectory, &                                       !< follow trajectory of former loadcase
+                                    logscale                                                        !< logarithmic time inc flag
     integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
   end type tLoadCase
 
-  type, public :: tSolutionParams                                                                   !< @todo use here the type definition for a full loadcase
-    real(pReal), dimension(3,3) :: stress_mask, stress_BC
+  type, public :: tSolutionParams
+    real(pReal), dimension(3,3) :: stress_BC
+    logical, dimension(3,3)     :: stress_mask
     type(rotation)              :: rotation_BC
-    real(pReal) :: timeinc
-    real(pReal) :: timeincOld
+    real(pReal) :: timeinc, timeincOld
   end type tSolutionParams
 
-  type, private :: tNumerics
-    real(pReal) :: &
-      FFTW_timelimit                                                                                !< timelimit for FFTW plan creation, see www.fftw.org
+  type :: tNumerics
     integer :: &
       divergence_correction                                                                         !< scale divergence/curl calculation: [0: no correction, 1: size scaled to 1, 2: size scaled to Npoints]
     logical :: &
       memory_efficient                                                                              !< calculate gamma operator on the fly
-    character(len=pStringLen) :: &
-      spectral_derivative, &                                                                        !< approximation used for derivatives in Fourier space
-      FFTW_plan_mode, &                                                                             !< FFTW plan mode, see www.fftw.org
-      PETSc_options
   end type tNumerics
 
   type(tNumerics) :: num                                                                            ! numerics parameters. Better name?
@@ -135,7 +126,7 @@ module spectral_utilities
     spectral_derivative_ID
 
   public :: &
-    utilities_init, &
+    spectral_utilities_init, &
     utilities_updateGamma, &
     utilities_FFTtensorForward, &
     utilities_FFTtensorBackward, &
@@ -172,7 +163,7 @@ contains
 !> level chosen.
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_init
+subroutine spectral_utilities_init
 
   PetscErrorCode :: ierr
   integer        :: i, j, k, &
@@ -188,63 +179,67 @@ subroutine utilities_init
     scalarSize = 1_C_INTPTR_T, &
     vecSize    = 3_C_INTPTR_T, &
     tensorSize = 9_C_INTPTR_T
+  character(len=*), parameter :: &
+    PETSCDEBUG = ' -snes_view -snes_monitor '
+  class(tNode) , pointer :: &
+    num_grid, &
+    debug_grid                                                                                      ! pointer to grid  debug options
 
-  write(6,'(/,a)') ' <<<+-  spectral_utilities init  -+>>>'
+  print'(/,a)', ' <<<+-  spectral_utilities init  -+>>>'
 
-  write(6,'(/,a)') ' Diehl, Diploma Thesis TU München, 2010'
-  write(6,'(a)')   ' https://doi.org/10.13140/2.1.3234.3840'
+  print*, 'Diehl, Diploma Thesis TU München, 2010'
+  print*, 'https://doi.org/10.13140/2.1.3234.3840'//IO_EOL
 
-  write(6,'(/,a)') ' Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2012.09.012'
+  print*, 'Eisenlohr et al., International Journal of Plasticity 46:37–53, 2013'
+  print*, 'https://doi.org/10.1016/j.ijplas.2012.09.012'//IO_EOL
 
-  write(6,'(/,a)') ' Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.ijplas.2014.02.006'
+  print*, 'Shanthraj et al., International Journal of Plasticity 66:31–45, 2015'
+  print*, 'https://doi.org/10.1016/j.ijplas.2014.02.006'//IO_EOL
 
-  write(6,'(/,a)') ' Shanthraj et al., Handbook of Mechanics of Materials, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1007/978-981-10-6855-3_80'
+  print*, 'Shanthraj et al., Handbook of Mechanics of Materials, 2019'
+  print*, 'https://doi.org/10.1007/978-981-10-6855-3_80'
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
-  debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
-  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
-  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
+  debug_grid      => config_debug%get('grid',defaultVal=emptyList)
+  debugGeneral    =  debug_grid%contains('basic')
+  debugRotation   =  debug_grid%contains('rotation')
+  debugPETSc      =  debug_grid%contains('petsc')
 
-  if(debugPETSc) write(6,'(3(/,a),/)') &
+
+  if(debugPETSc) print'(3(/,a),/)', &
                  ' Initializing PETSc with debug options: ', &
                  trim(PETScDebug), &
-                 ' add more using the PETSc_Options keyword in numerics.config '; flush(6)
+                 ' add more using the PETSc_Options keyword in numerics.yaml '; flush(IO_STDOUT)
+
+  num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
   call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
   if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(petsc_options),ierr)
+  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,&
+                                num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
   grid1Red = grid(1)/2 + 1
   wgt = 1.0/real(product(grid),pReal)
 
-  write(6,'(/,a,3(i12  ))')  ' grid     a b c: ', grid
-  write(6,'(a,3(es12.5))')   ' size     x y z: ', geomSize
-
-  num%memory_efficient      = config_numerics%getInt   ('memory_efficient',       defaultVal=1) > 0
-  num%FFTW_timelimit        = config_numerics%getFloat ('fftw_timelimit',         defaultVal=-1.0_pReal)
-  num%divergence_correction = config_numerics%getInt   ('divergence_correction',  defaultVal=2)
-  num%spectral_derivative   = config_numerics%getString('spectral_derivative',    defaultVal='continuous')
-  num%FFTW_plan_mode        = config_numerics%getString('fftw_plan_mode',         defaultVal='FFTW_MEASURE')
+  num%memory_efficient      = num_grid%get_asInt('memory_efficient',      defaultVal=1) > 0         ! ToDo: should be logical in YAML file
+  num%divergence_correction = num_grid%get_asInt('divergence_correction', defaultVal=2)
 
   if (num%divergence_correction < 0 .or. num%divergence_correction > 2) &
     call IO_error(301,ext_msg='divergence_correction')
 
-  select case (num%spectral_derivative)
+  select case (num_grid%get_asString('derivative',defaultVal='continuous'))
     case ('continuous')
       spectral_derivative_ID = DERIVATIVE_CONTINUOUS_ID
     case ('central_difference')
       spectral_derivative_ID = DERIVATIVE_CENTRAL_DIFF_ID
-    case ('fwbw_difference')
+    case ('FWBW_difference')
       spectral_derivative_ID = DERIVATIVE_FWBW_DIFF_ID
     case default
-      call IO_error(892,ext_msg=trim(num%spectral_derivative))
+      call IO_error(892,ext_msg=trim(num_grid%get_asString('derivative')))
   end select
 
 !--------------------------------------------------------------------------------------------------
@@ -265,8 +260,7 @@ subroutine utilities_init
     scaledGeomSize = geomSize
   endif
 
-
-  select case(IO_lc(num%FFTW_plan_mode))                                                            ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+  select case(IO_lc(num_grid%get_asString('fftw_plan_mode',defaultVal='FFTW_MEASURE')))
     case('fftw_estimate')                                                                           ! ordered from slow execution (but fast plan creation) to fast execution
       FFTW_planner_flag = FFTW_ESTIMATE
     case('fftw_measure')
@@ -276,16 +270,16 @@ subroutine utilities_init
     case('fftw_exhaustive')
       FFTW_planner_flag = FFTW_EXHAUSTIVE
     case default
-      call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num%FFTW_plan_mode)))
+      call IO_warning(warning_ID=47,ext_msg=trim(IO_lc(num_grid%get_asString('fftw_plan_mode'))))
       FFTW_planner_flag = FFTW_MEASURE
   end select
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
-  if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) call IO_error(0,ext_msg='Fortran to C')              ! check for correct precision in C
-  call fftw_set_timelimit(num%FFTW_timelimit)                                                       ! set timelimit for plan creation
+  if (pReal /= C_DOUBLE .or. kind(1) /= C_INT) error stop 'C and Fortran datatypes do not match'
+  call fftw_set_timelimit(num_grid%get_asFloat('fftw_timelimit',defaultVal=-1.0_pReal))
 
-  if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'; flush(6)
+  print*, 'FFTW initialized'; flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
@@ -377,7 +371,7 @@ subroutine utilities_init
     allocate (gamma_hat(3,3,3,3,grid1Red,grid(2),grid3), source = cmplx(0.0_pReal,0.0_pReal,pReal))
   endif
 
-end subroutine utilities_init
+end subroutine spectral_utilities_init
 
 
 !---------------------------------------------------------------------------------------------------
@@ -511,8 +505,8 @@ subroutine utilities_fourierGammaConvolution(fieldAim)
   logical :: err
 
 
-  write(6,'(/,a)') ' ... doing gamma convolution ...............................................'
-  flush(6)
+  print'(/,a)', ' ... doing gamma convolution ...............................................'
+  flush(IO_STDOUT)
 
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
@@ -581,8 +575,8 @@ real(pReal) function utilities_divergenceRMS()
   integer :: i, j, k, ierr
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  write(6,'(/,a)') ' ... calculating divergence ................................................'
-  flush(6)
+  print'(/,a)', ' ... calculating divergence ................................................'
+  flush(IO_STDOUT)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
 
@@ -625,8 +619,8 @@ real(pReal) function utilities_curlRMS()
   complex(pReal), dimension(3,3) :: curl_fourier
   complex(pReal), dimension(3)   :: rescaledGeom
 
-  write(6,'(/,a)') ' ... calculating curl ......................................................'
-  flush(6)
+  print'(/,a)', ' ... calculating curl ......................................................'
+  flush(IO_STDOUT)
 
   rescaledGeom = cmplx(geomSize/scaledGeomSize,0.0_pReal)
 
@@ -705,10 +699,10 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     temp99_real = math_3333to99(rot_BC%rotate(C))
 
     if(debugGeneral) then
-      write(6,'(/,a)') ' ... updating masked compliance ............................................'
-      write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
+      print'(/,a)', ' ... updating masked compliance ............................................'
+      write(IO_STDOUT,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
                                                    transpose(temp99_Real)*1.0e-9_pReal
-      flush(6)
+      flush(IO_STDOUT)
     endif
 
     do i = 1,9; do j = 1,9
@@ -724,13 +718,13 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 !--------------------------------------------------------------------------------------------------
 ! check if inversion was successful
     sTimesC = matmul(c_reduced,s_reduced)
-    errmatinv = errmatinv .or. any(dNeq(sTimesC,math_identity2nd(size_reduced),1.0e-12_pReal))
+    errmatinv = errmatinv .or. any(dNeq(sTimesC,math_eye(size_reduced),1.0e-12_pReal))
     if (debugGeneral .or. errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-      write(6,trim(formatString),advance='no') ' C * S (load) ', &
+      write(IO_STDOUT,trim(formatString),advance='no') ' C * S (load) ', &
                                                              transpose(matmul(c_reduced,s_reduced))
-      write(6,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
+      write(IO_STDOUT,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
       if(errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
     endif
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
@@ -741,9 +735,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   utilities_maskedCompliance = math_99to3333(temp99_Real)
 
   if(debugGeneral) then
-    write(6,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
+    write(IO_STDOUT,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
       ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
-    flush(6)
+    flush(IO_STDOUT)
   endif
 
 end function utilities_maskedCompliance
@@ -808,7 +802,7 @@ end subroutine utilities_fourierTensorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate constitutive response from materialpoint_F0 to F during timeinc
+!> @brief calculate constitutive response from homogenization_F0 to F during timeinc
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,timeinc,rotation_BC)
@@ -827,37 +821,37 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   real(pReal)                     :: dPdF_norm_max, dPdF_norm_min
   real(pReal), dimension(2) :: valueAndRank                                                         !< pair of min/max norm of dPdF to synchronize min/max of dPdF
 
-  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
-  flush(6)
+  print'(/,a)', ' ... evaluating constitutive response ......................................'
+  flush(IO_STDOUT)
 
-  materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
+  homogenization_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
 
-  call materialpoint_stressAndItsTangent(.true.,timeinc)                                            ! calculate P field
+  call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
 
-  P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
+  P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                   ! average of P
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   if (debugRotation) &
-  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
+  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
   if(present(rotation_BC)) &
     P_av = rotation_BC%rotate(P_av)
-  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
+  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
                                                       transpose(P_av)*1.e-6_pReal
-  flush(6)
+  flush(IO_STDOUT)
 
   dPdF_max = 0.0_pReal
   dPdF_norm_max = 0.0_pReal
   dPdF_min = huge(1.0_pReal)
   dPdF_norm_min = huge(1.0_pReal)
   do i = 1, product(grid(1:2))*grid3
-    if (dPdF_norm_max < sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_max = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_max = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
+      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
     endif
-    if (dPdF_norm_min > sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_min = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_min = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
+      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
     endif
   end do
 
@@ -875,7 +869,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
 
-  C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5)
+  C_volAvg = sum(sum(homogenization_dPdF,dim=6),dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   C_volAvg = C_volAvg * wgt
 
@@ -1097,11 +1091,13 @@ end subroutine utilities_updateCoords
 subroutine utilities_saveReferenceStiffness
 
   integer :: &
-    fileUnit
+    fileUnit,ierr
 
   if (worldrank == 0) then
-    write(6,'(a)') ' writing reference stiffness data required for restart to file'; flush(6)
-    fileUnit = IO_open_binary(trim(getSolverJobName())//'.C_ref','w')
+    print'(a)', ' writing reference stiffness data required for restart to file'; flush(IO_STDOUT)
+    open(newunit=fileUnit, file=getSolverJobName()//'.C_ref',&
+         status='replace',access='stream',action='write',iostat=ierr)
+    if(ierr /=0) call IO_error(100,ext_msg='could not open file '//getSolverJobName()//'.C_ref')
     write(fileUnit) C_ref
     close(fileUnit)
   endif

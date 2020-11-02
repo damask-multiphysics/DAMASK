@@ -53,7 +53,7 @@ class Test:
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
 
     self.parser = OptionParser(option_class=damask.extendableOption,
-                               description = '{} (Test class version: {})'.format(self.description,damask.version),
+                               description = f'{self.description} (Test class version: {damask.version})',
                                usage = './test.py [options]')
     self.parser.add_option("-k", "--keep",
                            action = "store_true",
@@ -93,7 +93,7 @@ class Test:
     for variant,object in enumerate(self.variants):
       name = self.variantName(variant)
       if self.options.show:
-        logging.critical('{}: {}'.format(variant+1,name))
+        logging.critical(f'{variant+1}: {name}')
       elif self.options.select is not None \
            and not (name in self.options.select or str(variant+1) in self.options.select):
         pass
@@ -106,12 +106,12 @@ class Test:
           self.postprocess(variant)
 
           if self.options.update:
-            if self.update(variant) != 0: logging.critical('update for "{}" failed.'.format(name))
+            if self.update(variant) != 0: logging.critical(f'update for "{name}" failed.')
           elif not (self.options.accept or self.compare(variant)):                                    # no update, do comparison
             return variant+1                                                                          # return culprit
 
         except Exception as e:
-          logging.critical('exception during variant execution: "{}"'.format(str(e)))
+          logging.critical(f'exception during variant execution: "{e}"')
           return variant+1                                                                            # return culprit
     return 0
 
@@ -124,13 +124,13 @@ class Test:
     try:
       shutil.rmtree(self.dirCurrent())
     except FileNotFoundError:
-      logging.warning('removal of directory "{}" not possible...'.format(self.dirCurrent()))
+      logging.warning(f'removal of directory "{self.dirCurrent()}" not possible...')
 
     try:
       os.mkdir(self.dirCurrent())
       return True
     except FileExistsError:
-      logging.critical('creation of directory "{}" failed.'.format(self.dirCurrent()))
+      logging.critical(f'creation of directory "{self.dirCurrent()}" failed.')
       return False
 
   def prepareAll(self):
@@ -180,7 +180,7 @@ class Test:
 
   def fileInRoot(self,dir,file):
     """Path to a file in the root directory of DAMASK."""
-    return os.path.join(damask.Environment().rootDir(),dir,file)
+    return str(damask.environment.root_dir/dir/file)
 
 
   def fileInReference(self,file):
@@ -211,7 +211,7 @@ class Test:
       try:
         shutil.copy2(source,target)
       except FileNotFoundError:
-        logging.critical('error copying {} to {}'.format(source,target))
+        logging.critical(f'error copying {source} to {target}')
         raise FileNotFoundError
 
 
@@ -222,20 +222,20 @@ class Test:
       try:
         shutil.copy2(self.fileInReference(f),self.fileInCurrent(targetfiles[i]))
       except FileNotFoundError:
-        logging.critical('Reference2Current: Unable to copy file "{}"'.format(f))
+        logging.critical(f'Reference2Current: Unable to copy file "{f}"')
         raise FileNotFoundError
 
 
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
 
-    source=os.path.normpath(os.path.join(self.dirBase,'../../..',sourceDir))
+    source = os.path.normpath(os.path.join(self.dirBase,'../../..',sourceDir))
     if len(targetfiles) == 0: targetfiles = sourcefiles
     for i,f in enumerate(sourcefiles):
       try:
         shutil.copy2(os.path.join(source,f),self.fileInCurrent(targetfiles[i]))
       except FileNotFoundError:
         logging.error(os.path.join(source,f))
-        logging.critical('Base2Current: Unable to copy file "{}"'.format(f))
+        logging.critical(f'Base2Current: Unable to copy file "{f}"')
         raise FileNotFoundError
 
 
@@ -246,7 +246,7 @@ class Test:
       try:
         shutil.copy2(self.fileInCurrent(f),self.fileInReference(targetfiles[i]))
       except FileNotFoundError:
-        logging.critical('Current2Reference: Unable to copy file "{}"'.format(f))
+        logging.critical(f'Current2Reference: Unable to copy file "{f}"')
         raise FileNotFoundError
 
 
@@ -257,7 +257,7 @@ class Test:
       try:
         shutil.copy2(self.fileInProof(f),self.fileInCurrent(targetfiles[i]))
       except FileNotFoundError:
-        logging.critical('Proof2Current: Unable to copy file "{}"'.format(f))
+        logging.critical(f'Proof2Current: Unable to copy file "{f}"')
         raise FileNotFoundError
 
 
@@ -267,7 +267,7 @@ class Test:
       try:
         shutil.copy2(self.fileInReference(f),self.fileInCurrent(targetfiles[i]))
       except FileNotFoundError:
-        logging.critical('Current2Current: Unable to copy file "{}"'.format(f))
+        logging.critical(f'Current2Current: Unable to copy file "{f}"')
         raise FileNotFoundError
 
 
@@ -287,32 +287,30 @@ class Test:
 
     import numpy as np
     logging.info('\n '.join(['comparing',File1,File2]))
-    table = damask.Table.from_ASCII(File1)
-    len1=len(table.comments)+2
-    table = damask.Table.from_ASCII(File2)
-    len2=len(table.comments)+2
+    table = damask.Table.load(File1)
+    len1 = len(table.comments)+2
+    table = damask.Table.load(File2)
+    len2 = len(table.comments)+2
 
     refArray = np.nan_to_num(np.genfromtxt(File1,missing_values='n/a',skip_header = len1,autostrip=True))
     curArray = np.nan_to_num(np.genfromtxt(File2,missing_values='n/a',skip_header = len2,autostrip=True))
 
     if len(curArray) == len(refArray):
       refArrayNonZero = refArray[refArray.nonzero()]
-      curArray = curArray[refArray.nonzero()]
-      max_err=np.max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
-      max_loc=np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      curArray        = curArray[refArray.nonzero()]
+      max_err = np.   max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      max_loc = np.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
-      curArray = curArray[curArray.nonzero()]
-      print(' ********\n * maximum relative error {} between {} and {}\n ********'.format(max_err,
-                                                                                          refArrayNonZero[max_loc],
-                                                                                          curArray[max_loc]))
+      curArray        = curArray[curArray.nonzero()]
+      print(f' ********\n * maximum relative error {max_err} between {refArrayNonZero[max_loc]} and {curArray[max_loc]}\n ********')
       return max_err
     else:
-       raise Exception('mismatch in array size to compare')
+       raise Exception(f'mismatch in array sizes ({len(refArray)} and {len(curArray)}) to compare')
 
 
   def compare_ArrayRefCur(self,ref,cur=''):
 
-    if cur =='': cur = ref
+    if cur == '': cur = ref
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
     return self.compare_Array(refName,curName)
@@ -333,7 +331,7 @@ class Test:
     logging.info('\n '.join(['comparing ASCII Tables',file0,file1]))
     if normHeadings == '': normHeadings = headings0
 
-# check if comparison is possible and determine lenght of columns
+# check if comparison is possible and determine length of columns
     if len(headings0) == len(headings1) == len(normHeadings):
       dataLength = len(headings0)
       length       = [1   for i in range(dataLength)]
@@ -350,7 +348,7 @@ class Test:
 
       for i in range(dataLength):
         if headings0[i]['shape'] != headings1[i]['shape']:
-          raise Exception('shape mismatch between {} and {} '.format(headings0[i]['label'],headings1[i]['label']))
+          raise Exception(f"shape mismatch between {headings0[i]['label']} and {headings1[i]['label']}")
         shape[i] = headings0[i]['shape']
         for j in range(np.shape(shape[i])[0]):
           length[i] *= shape[i][j]
@@ -358,9 +356,7 @@ class Test:
         for j in range(np.shape(normShape[i])[0]):
           normLength[i] *= normShape[i][j]
     else:
-      raise Exception('trying to compare {} with {} normed by {} data sets'.format(len(headings0),
-                                                                                   len(headings1),
-                                                                                   len(normHeadings)))
+      raise Exception(f'trying to compare {len(headings0)} with {len(headings1)} normed by {len(normHeadings)} data sets')
 
     table0 = damask.ASCIItable(name=file0,readonly=True)
     table0.head_read()
@@ -372,11 +368,11 @@ class Test:
       key1    = ('1_' if     length[i]>1 else '') +    headings1[i]['label']
       normKey = ('1_' if normLength[i]>1 else '') + normHeadings[i]['label']
       if key0 not in table0.labels(raw = True):
-        raise Exception('column "{}" not found in first table...\n'.format(key0))
+        raise Exception(f'column "{key0}" not found in first table...')
       elif key1 not in table1.labels(raw = True):
-        raise Exception('column "{}" not found in second table...\n'.format(key1))
+        raise Exception(f'column "{key1}" not found in second table...')
       elif normKey not in table0.labels(raw = True):
-        raise Exception('column "{}" not found in first table...\n'.format(normKey))
+        raise Exception(f'column "{normKey}" not found in first table...')
       else:
         column[0][i]  = table0.label_index(key0)
         column[1][i]  = table1.label_index(key1)
@@ -403,10 +399,8 @@ class Test:
       if any(norm[i]) == 0.0 or absTol[i]:
         norm[i] = [1.0 for j in range(line0-len(skipLines))]
         absTol[i] = True
-        if perLine:
-          logging.warning('At least one norm of "{}" in first table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
-        else:
-          logging.warning('Maximum norm of "{}" in first table is 0.0, using absolute tolerance'.format(headings0[i]['label']))
+        logging.warning(f'''{"At least one" if perLine else "Maximum"} norm of
+                            "{headings0[i]['label']}" in first table is 0.0, using absolute tolerance''')
 
     line1 = 0
     while table1.data_read():                                                  # read next data line of ASCII table
@@ -418,28 +412,22 @@ class Test:
                                                                                    norm[i][line1-len(skipLines)])
       line1 +=1
 
-    if (line0 != line1): raise Exception('found {} lines in first table but {} in second table'.format(line0,line1))
+    if (line0 != line1): raise Exception(f'found {line0} lines in first table but {line1} in second table')
 
     logging.info(' ********')
     for i in range(dataLength):
-      if absTol[i]:
-        logging.info(' * maximum absolute error {} between {} and {}'.format(maxError[i],
-                                                                             headings0[i]['label'],
-                                                                             headings1[i]['label']))
-      else:
-        logging.info(' * maximum relative error {} between {} and {}'.format(maxError[i],
-                                                                             headings0[i]['label'],
-                                                                             headings1[i]['label']))
+      logging.info(f''' * maximum {'absolute' if absTol[i] else 'relative'} error {maxError[i]}
+                       between {headings0[i]['label']} and {headings1[i]['label']}''')
     logging.info(' ********')
     return maxError
 
 
   def compare_TablesStatistically(self,
-                     files = [None,None],                                      # list of file names
-                     columns = [None],                                         # list of list of column labels (per file)
-                     meanTol = 1.0e-4,
-                     stdTol = 1.0e-6,
-                     preFilter = 1.0e-9):
+                                  files = [None,None],                                      # list of file names
+                                  columns = [None],                                         # list of list of column labels (per file)
+                                  meanTol = 1.0e-4,
+                                  stdTol = 1.0e-6,
+                                  preFilter = 1.0e-9):
     """
     Calculate statistics of tables.
 
@@ -448,9 +436,9 @@ class Test:
     if not (isinstance(files, Iterable) and not isinstance(files, str)):       # check whether list of files is requested
       files = [str(files)]
 
-    tables = [damask.Table.from_ASCII(filename) for filename in files]
+    tables = [damask.Table.load(filename) for filename in files]
     for table in tables:
-      table._label_flat()
+      table._label_discrete()
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files
@@ -470,7 +458,7 @@ class Test:
 
     data = []
     for table,labels in zip(tables,columns):
-      table._label_condensed()
+      table._label_uniform()
       data.append(np.hstack(list(table.get(label) for label in labels)))
 
 
@@ -479,12 +467,11 @@ class Test:
       normBy = (np.abs(data[i]) + np.abs(data[i-1]))*0.5
       normedDelta = np.where(normBy>preFilter,delta/normBy,0.0)
       mean = np.amax(np.abs(np.mean(normedDelta,0)))
-      std = np.amax(np.std(normedDelta,0))
-      logging.info('mean: {:f}'.format(mean))
-      logging.info('std:  {:f}'.format(std))
+      std  = np.amax(np.std(normedDelta,0))
+      logging.info(f'mean: {mean:f}')
+      logging.info(f'std:  {std:f}')
 
-    return (mean<meanTol) & (std < stdTol)
-
+    return (mean < meanTol) & (std < stdTol)
 
 
   def compare_Tables(self,
@@ -499,7 +486,7 @@ class Test:
 
     if len(files) < 2: return True                                             # single table is always close to itself...
 
-    tables = [damask.Table.from_ASCII(filename) for filename in files]
+    tables = [damask.Table.load(filename) for filename in files]
 
     columns += [columns[0]]*(len(files)-len(columns))                          # extend to same length as files
     columns = columns[:len(files)]                                             # truncate to same length as files
@@ -521,7 +508,7 @@ class Test:
 
     for i,(table,labels) in enumerate(zip(tables,columns)):
       if np.any(dimensions != [np.prod(table.shapes[c]) for c in labels]):     # check data object consistency
-        logging.critical('Table {} differs in data layout.'.format(files[i]))
+        logging.critical(f'Table {files[i]} differs in data layout.')
         return False
       data.append(np.hstack(list(table.get(label) for label in labels)).astype(np.float))           # store
 
@@ -537,19 +524,19 @@ class Test:
 
     for i in range(len(data)):
       data[i] /= maximum                                                       # normalize each table
-      logging.info('shape of data {}: {}'.format(i,data[i].shape))
+      logging.info(f'shape of data {i}: {data[i].shape}')
 
     if debug:
       violators = np.absolute(data[0]-data[1]) > atol + rtol*np.absolute(data[1])
-      logging.info('shape of violators: {}'.format(violators.shape))
+      logging.info(f'shape of violators: {violators.shape}')
       for j,culprits in enumerate(violators):
         goodguys = np.logical_not(culprits)
         if culprits.any():
-          logging.info('{} has {}'.format(j,np.sum(culprits)))
-          logging.info('deviation: {}'.format(np.absolute(data[0][j]-data[1][j])[culprits]))
-          logging.info('data     : {}'.format(np.absolute(data[1][j])[culprits]))
-          logging.info('deviation: {}'.format(np.absolute(data[0][j]-data[1][j])[goodguys]))
-          logging.info('data     : {}'.format(np.absolute(data[1][j])[goodguys]))
+          logging.info(f'{j} has {np.sum(culprits)}')
+          logging.info(f'deviation: {np.absolute(data[0][j]-data[1][j])[culprits]}')
+          logging.info(f'data     : {np.absolute(data[1][j])[culprits]}')
+          logging.info(f'deviation: {np.absolute(data[0][j]-data[1][j])[goodguys]}')
+          logging.info(f'data     : {np.absolute(data[1][j])[goodguys]}')
 
     allclose = True                                                            # start optimistic
     for i in range(1,len(data)):
@@ -588,12 +575,12 @@ class Test:
 
     if culprit == 0:
       count = len(self.variants) if self.options.select is None else len(self.options.select)
-      msg = 'Test passed.' if count == 1 else 'All {} tests passed.'.format(count)
+      msg = ('Test passed.' if count == 1 else f'All {count} tests passed.') + '\a\a\a'
     elif culprit == -1:
       msg = 'Warning: could not start test...'
       ret = 0
     else:
-      msg = 'Test "{}" failed.'.format(self.variantName(culprit-1))
+      msg = f'Test "{self.variantName(culprit-1)}" failed.'
 
     logging.critical('\n'.join(['*'*40,msg,'*'*40]) + '\n')
     return ret

@@ -1,21 +1,25 @@
-import multiprocessing
+import multiprocessing as mp
 import re
 import glob
 import os
+import datetime
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
+from pathlib import Path
 from functools import partial
 
 import h5py
 import numpy as np
+from numpy.lib import recfunctions as rfn
 
+import damask
 from . import VTK
 from . import Table
 from . import Rotation
 from . import Orientation
-from . import Environment
 from . import grid_filters
 from . import mechanics
 from . import util
-from . import version
 
 
 class Result:
@@ -32,7 +36,7 @@ class Result:
         Parameters
         ----------
         fname : str
-            name of the DADF5 file to be openend.
+            name of the DADF5 file to be opened.
 
         """
         with h5py.File(fname,'r') as f:
@@ -44,9 +48,8 @@ class Result:
                 self.version_major = f.attrs['DADF5-major']
                 self.version_minor = f.attrs['DADF5-minor']
 
-            if self.version_major != 0 or not 2 <= self.version_minor <= 6:
-                raise TypeError('Unsupported DADF5 version {}.{} '.format(self.version_major,
-                                                                          self.version_minor))
+            if self.version_major != 0 or not 2 <= self.version_minor <= 7:
+                raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
 
@@ -65,6 +68,10 @@ class Result:
             self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
             self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
 
+            # faster, but does not work with (deprecated) DADF5_postResults
+            #self.materialpoints  = [m for m in f['inc0/materialpoint']]
+            #self.constituents    = [c for c in f['inc0/constituent']]
+
             self.con_physics = []
             for c in self.constituents:
                 self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
@@ -80,7 +87,9 @@ class Result:
                           'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
                          }
 
-        self.fname = fname
+        self.fname = Path(fname).absolute()
+
+        self._allow_modification = False
 
 
     def __repr__(self):
@@ -96,7 +105,7 @@ class Result:
         self.pick('increments',all_selected_increments)
 
         in_between = '' if len(all_selected_increments) < 3 else \
-                     ''.join(['\n{}\n  ...\n'.format(inc) for inc in all_selected_increments[1:-2]])
+                     ''.join([f'\n{inc}\n  ...\n' for inc in all_selected_increments[1:-2]])
 
         return util.srepr(first + in_between + last)
 
@@ -117,7 +126,7 @@ class Result:
 
         """
         # allow True/False and string arguments
-        if datasets is True:
+        if  datasets is True:
             datasets = ['*']
         elif datasets is False:
             datasets = []
@@ -126,7 +135,7 @@ class Result:
 
         if   what == 'increments':
             choice = [c if isinstance(c,str) and c.startswith('inc') else
-                      'inc{}'.format(c) for c in choice]
+                      f'inc{c}' for c in choice]
         elif what == 'times':
             what = 'increments'
             if choice == ['*']:
@@ -136,6 +145,7 @@ class Result:
                 choice = []
                 for c in iterator:
                     idx = np.searchsorted(self.times,c)
+                    if idx >= len(self.times): continue
                     if   np.isclose(c,self.times[idx]):
                         choice.append(self.increments[idx])
                     elif np.isclose(c,self.times[idx+1]):
@@ -154,6 +164,16 @@ class Result:
             diff = existing.difference(valid)
             diff_sorted = sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
             self.selection[what] = diff_sorted
+
+
+    def allow_modification(self):
+        print(util.bcolors().WARNING+util.bcolors().BOLD+
+              'Warning: Modification of existing datasets allowed!'+
+              util.bcolors().ENDC)
+        self._allow_modification = True
+
+    def disallow_modification(self):
+        self._allow_modification = False
 
 
     def incs_in_range(self,start,end):
@@ -242,6 +262,30 @@ class Result:
         """
         self._manage_selection('del',what,datasets)
 
+
+    def rename(self,name_old,name_new):
+        """
+        Rename datasets.
+
+        Parameters
+        ----------
+        name_old : str
+            name of the datasets to be renamed
+        name_new : str
+            new name of the datasets
+
+        """
+        if self._allow_modification:
+            with h5py.File(self.fname,'a') as f:
+                for path_old in self.get_dataset_location(name_old):
+                    path_new = os.path.join(os.path.dirname(path_old),name_new)
+                    f[path_new] = f[path_old]
+                    f[path_new].attrs['Renamed'] = 'Original name: {}'.encode()
+                    del f[path_old]
+        else:
+            raise PermissionError('Rename operation not permitted')
+
+
   # def datamerger(regular expression to filter groups into one copy)
 
 
@@ -316,9 +360,10 @@ class Result:
         Return groups that contain all requested datasets.
 
         Only groups within
-          - inc?????/constituent/*_*/*
-          - inc?????/materialpoint/*_*/*
-          - inc?????/geometry/*
+          - inc*/constituent/*/*
+          - inc*/materialpoint/*/*
+          - inc*/geometry/*
+
         are considered as they contain user-relevant data.
         Single strings will be treated as list with one entry.
 
@@ -355,8 +400,9 @@ class Result:
                             if sets is True:
                                 groups.append(group)
                             else:
-                                match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
-                                if len(set(match)) == len(sets): groups.append(group)
+                                if group in f.keys():
+                                    match = [e for e_ in [glob.fnmatch.filter(f[group].keys(),s) for s in sets] for e in e_]
+                                    if len(set(match)) == len(sets): groups.append(group)
         return groups
 
 
@@ -365,18 +411,20 @@ class Result:
         message = ''
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
-                message += '\n{} ({}s)\n'.format(i,self.times[self.increments.index(i)])
+                message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
                 for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                    message += f'  {o[:-1]}\n'
                     for oo in self.iterate(o):
-                        message += '  {}\n'.format(oo)
+                        message += f'    {oo}\n'
                         for pp in self.iterate(p):
-                            message += '    {}\n'.format(pp)
+                            message += f'      {pp}\n'
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    message += '      {} / ({}): {}\n'.\
-                                               format(d,dataset.attrs['Unit'].decode(),dataset.attrs['Description'].decode())
+                                    unit  = f" / {dataset.attrs['Unit'].decode()}" if 'Unit' in dataset.attrs else ''
+                                    description = dataset.attrs['Description'].decode()
+                                    message += f'        {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
         return message
@@ -418,6 +466,11 @@ class Result:
             return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
 
 
+    def enable_user_function(self,func):
+        globals()[func.__name__]=func
+        print(f'Function {func.__name__} enabled in add_calculation.')
+
+
     def read_dataset(self,path,c=0,plain=False):
         """
         Dataset for all points/cells.
@@ -456,7 +509,7 @@ class Result:
         else:
             return dataset
 
-
+    @property
     def cell_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
@@ -465,6 +518,7 @@ class Result:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
+    @property
     def node_coordinates(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
@@ -478,11 +532,11 @@ class Result:
     def _add_absolute(x):
         return {
                 'data':  np.abs(x['data']),
-                'label': '|{}|'.format(x['label']),
+                'label': f'|{x["label"]}|',
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
-                          'Description': 'Absolute value of {} ({})'.format(x['label'],x['meta']['Description']),
-                          'Creator':     'result.py:add_abs v{}'.format(version)
+                          'Description': f"Absolute value of {x['label']} ({x['meta']['Description']})",
+                          'Creator':     'add_absolute'
                           }
                  }
     def add_absolute(self,x):
@@ -502,18 +556,18 @@ class Result:
     def _add_calculation(**kwargs):
         formula = kwargs['formula']
         for d in re.findall(r'#(.*?)#',formula):
-            formula = formula.replace('#{}#'.format(d),"kwargs['{}']['data']".format(d))
+            formula = formula.replace(f'#{d}#',f"kwargs['{d}']['data']")
 
         return {
                 'data':  eval(formula),
                 'label': kwargs['label'],
                 'meta':  {
                           'Unit':        kwargs['unit'],
-                          'Description': '{} (formula: {})'.format(kwargs['description'],kwargs['formula']),
-                          'Creator':     'result.py:add_calculation v{}'.format(version)
+                          'Description': f"{kwargs['description']} (formula: {kwargs['formula']})",
+                          'Creator':     'add_calculation'
                           }
                  }
-    def add_calculation(self,label,formula,unit='n/a',description=None,vectorized=True):
+    def add_calculation(self,label,formula,unit='n/a',description=None):
         """
         Add result of a general formula.
 
@@ -527,13 +581,8 @@ class Result:
             Physical unit of the result.
         description : str, optional
             Human-readable description of the result.
-        vectorized : bool, optional
-            Indicate whether the formula can be used in vectorized form. Defaults to ‘True’.
 
         """
-        if not vectorized:
-            raise NotImplementedError
-
         dataset_mapping  = {d:d for d in set(re.findall(r'#(.*?)#',formula))}                       # datasets used in the formula
         args             = {'formula':formula,'label':label,'unit':unit,'description':description}
         self._add_generic_pointwise(self._add_calculation,dataset_mapping,args)
@@ -546,10 +595,10 @@ class Result:
                 'label': 'sigma',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
-                          'Description': 'Cauchy stress calculated from {} ({}) '.format(P['label'],
-                                                                                         P['meta']['Description'])+\
-                                         'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_Cauchy v{}'.format(version)
+                          'Description': "Cauchy stress calculated "
+                                         f"from {P['label']} ({P['meta']['Description']})"
+                                         f" and {F['label']} ({F['meta']['Description']})",
+                          'Creator':     'add_Cauchy'
                           }
                 }
     def add_Cauchy(self,P='P',F='F'):
@@ -571,11 +620,11 @@ class Result:
     def _add_determinant(T):
         return {
                 'data':  np.linalg.det(T['data']),
-                'label': 'det({})'.format(T['label']),
+                'label': f"det({T['label']})",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
-                          'Description': 'Determinant of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'result.py:add_determinant v{}'.format(version)
+                          'Description': f"Determinant of tensor {T['label']} ({T['meta']['Description']})",
+                          'Creator':     'add_determinant'
                           }
                 }
     def add_determinant(self,T):
@@ -593,16 +642,13 @@ class Result:
 
     @staticmethod
     def _add_deviator(T):
-        if not T['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
                 'data':  mechanics.deviatoric_part(T['data']),
-                'label': 's_{}'.format(T['label']),
+                'label': f"s_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
-                          'Description': 'Deviator of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'result.py:add_deviator v{}'.format(version)
+                          'Description': f"Deviator of tensor {T['label']} ({T['meta']['Description']})",
+                          'Creator':     'add_deviator'
                           }
                  }
     def add_deviator(self,T):
@@ -619,17 +665,24 @@ class Result:
 
 
     @staticmethod
-    def _add_eigenvalue(T_sym):
+    def _add_eigenvalue(T_sym,eigenvalue):
+        if   eigenvalue == 'max':
+            label,p = 'Maximum',2
+        elif eigenvalue == 'mid':
+            label,p = 'Intermediate',1
+        elif eigenvalue == 'min':
+            label,p = 'Minimum',0
+
         return {
-                'data': mechanics.eigenvalues(T_sym['data']),
-                'label': 'lambda({})'.format(T_sym['label']),
+                'data': mechanics.eigenvalues(T_sym['data'])[:,p],
+                'label': f"lambda_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
-                          'Description': 'Eigenvalues of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_eigenvalues v{}'.format(version)
+                          'Description': f"{label} eigenvalue of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Creator':     'add_eigenvalue'
                          }
                 }
-    def add_eigenvalues(self,T_sym):
+    def add_eigenvalue(self,T_sym,eigenvalue='max'):
         """
         Add eigenvalues of symmetric tensor.
 
@@ -637,59 +690,65 @@ class Result:
         ----------
         T_sym : str
             Label of symmetric tensor dataset.
+        eigenvalue : str, optional
+            Eigenvalue. Select from ‘max’, ‘mid’, ‘min’. Defaults to ‘max’.
 
         """
-        self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym})
+        self._add_generic_pointwise(self._add_eigenvalue,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
 
 
     @staticmethod
-    def _add_eigenvector(T_sym):
+    def _add_eigenvector(T_sym,eigenvalue):
+        if   eigenvalue == 'max':
+            label,p = 'maximum',2
+        elif eigenvalue == 'mid':
+            label,p = 'intermediate',1
+        elif eigenvalue == 'min':
+            label,p = 'minimum',0
         return {
-                'data': mechanics.eigenvectors(T_sym['data']),
-                'label': 'v({})'.format(T_sym['label']),
+                'data': mechanics.eigenvectors(T_sym['data'])[:,p],
+                'label': f"v_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':        '1',
-                          'Description': 'Eigenvectors of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_eigenvectors v{}'.format(version)
+                          'Description': f"Eigenvector corresponding to {label} eigenvalue"
+                                         f" of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Creator':     'add_eigenvector'
                          }
-                }
-    def add_eigenvectors(self,T_sym):
+               }
+    def add_eigenvector(self,T_sym,eigenvalue='max'):
         """
-        Add eigenvectors of symmetric tensor.
+        Add eigenvector of symmetric tensor.
 
         Parameters
         ----------
         T_sym : str
             Label of symmetric tensor dataset.
+        eigenvalue : str, optional
+            Eigenvalue to which the eigenvector corresponds. Select from
+            ‘max’, ‘mid’, ‘min’. Defaults to ‘max’.
 
         """
-        self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym})
+        self._add_generic_pointwise(self._add_eigenvector,{'T_sym':T_sym},{'eigenvalue':eigenvalue})
 
 
     @staticmethod
-    def _add_IPFcolor(q,l):
-        d      = np.array(l)
-        d_unit = d/np.linalg.norm(d)
-        m      = util.scale_to_coprime(d)
-        colors = np.empty((len(q['data']),3),np.uint8)
+    def _add_IPF_color(q,l):
+        m = util.scale_to_coprime(np.array(l))
 
-        lattice   = q['meta']['Lattice']
-
-        for i,qu in enumerate(q['data']):
-            o = Orientation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]),lattice).reduced()
-            colors[i] = np.uint8(o.IPFcolor(d_unit)*255)
+        o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
+                        lattice = q['meta']['Lattice'])
 
         return {
-                'data': colors,
+                'data': np.uint8(o.IPF_color(l)*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
-                          'Unit':        'RGB (8bit)',
-                          'Lattice':     lattice,
+                          'Unit':        '8-bit RGB',
+                          'Lattice':     q['meta']['Lattice'],
                           'Description': 'Inverse Pole Figure (IPF) colors along sample direction [{} {} {}]'.format(*m),
-                          'Creator':     'result.py:add_IPFcolor v{}'.format(version)
+                          'Creator':     'add_IPF_color'
                          }
                }
-    def add_IPFcolor(self,q,l):
+    def add_IPF_color(self,q,l):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
@@ -701,18 +760,18 @@ class Result:
             Lab frame direction for inverse pole figure.
 
         """
-        self._add_generic_pointwise(self._add_IPFcolor,{'q':q},{'l':l})
+        self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})
 
 
     @staticmethod
     def _add_maximum_shear(T_sym):
         return {
                 'data':  mechanics.maximum_shear(T_sym['data']),
-                'label': 'max_shear({})'.format(T_sym['label']),
+                'label': f"max_shear({T_sym['label']})",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': 'Maximum shear component of {} ({})'.format(T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_maximum_shear v{}'.format(version)
+                          'Description': f"Maximum shear component of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Creator':     'add_maximum_shear'
                           }
                  }
     def add_maximum_shear(self,T_sym):
@@ -734,12 +793,12 @@ class Result:
             'stress'
 
         return {
-                'data':  mechanics.Mises_strain(T_sym['data']) if t=='strain' else mechanics.Mises_stress(T_sym['data']),
-                'label': '{}_vM'.format(T_sym['label']),
+                'data':  (mechanics.Mises_strain if t=='strain' else mechanics.Mises_stress)(T_sym['data']),
+                'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': 'Mises equivalent {} of {} ({})'.format(t,T_sym['label'],T_sym['meta']['Description']),
-                          'Creator':     'result.py:add_Mises v{}'.format(version)
+                          'Description': f"Mises equivalent {t} of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Creator':     'add_Mises'
                           }
                 }
     def add_Mises(self,T_sym):
@@ -771,11 +830,11 @@ class Result:
 
         return {
                 'data':  np.linalg.norm(x['data'],ord=o,axis=axis,keepdims=True),
-                'label': '|{}|_{}'.format(x['label'],o),
+                'label': f"|{x['label']}|_{o}",
                 'meta':  {
                           'Unit':        x['meta']['Unit'],
-                          'Description': '{}-norm of {} {} ({})'.format(o,t,x['label'],x['meta']['Description']),
-                          'Creator':     'result.py:add_norm v{}'.format(version)
+                          'Description': f"{o}-norm of {t} {x['label']} ({x['meta']['Description']})",
+                          'Creator':     'add_norm'
                           }
                  }
     def add_norm(self,x,ord=None):
@@ -800,20 +859,20 @@ class Result:
                 'label': 'S',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
-                          'Description': '2. Kirchhoff stress calculated from {} ({}) '.format(P['label'],
-                                                                                               P['meta']['Description'])+\
-                                         'and {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_PK2 v{}'.format(version)
+                          'Description': "2. Piola-Kirchhoff stress calculated "
+                                         f"from {P['label']} ({P['meta']['Description']})"
+                                         f" and {F['label']} ({F['meta']['Description']})",
+                          'Creator':     'add_PK2'
                           }
                 }
     def add_PK2(self,P='P',F='F'):
         """
-        Add second Piola-Kirchhoff calculated from first Piola-Kirchhoff stress and deformation gradient.
+        Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
         Parameters
         ----------
         P : str, optional
-            Label first  Piola-Kirchhoff stress dataset. Defaults to ‘P’.
+            Label of first Piola-Kirchhoff stress dataset. Defaults to ‘P’.
         F : str, optional
             Label of deformation gradient dataset. Defaults to ‘F’.
 
@@ -826,22 +885,20 @@ class Result:
         pole      = np.array(p)
         unit_pole = pole/np.linalg.norm(pole)
         m         = util.scale_to_coprime(pole)
-        coords    = np.empty((len(q['data']),2))
+        rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
 
-        for i,qu in enumerate(q['data']):
-            o = Rotation(np.array([qu['w'],qu['x'],qu['y'],qu['z']]))
-            rotatedPole = o*unit_pole                                                               # rotate pole according to crystal orientation
-            (x,y) = rotatedPole[0:2]/(1.+abs(unit_pole[2]))                                         # stereographic projection
-            coords[i] = [np.sqrt(x*x+y*y),np.arctan2(y,x)] if polar else [x,y]
-
+        rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
+        xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
+        coords = xy if not polar else \
+                 np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
         return {
                 'data': coords,
                 'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
                 'meta' : {
-                          'Unit': '1',
+                          'Unit':        '1',
                           'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
                                          .format('Polar' if polar else 'Cartesian'),
-                          'Creator' : 'result.py:add_pole v{}'.format(version)
+                          'Creator':     'add_pole'
                          }
                }
     def add_pole(self,q,p,polar=False):
@@ -863,15 +920,13 @@ class Result:
 
     @staticmethod
     def _add_rotational_part(F):
-        if not F['data'].shape[1:] == (3,3):
-            raise ValueError
         return {
                 'data':  mechanics.rotational_part(F['data']),
-                'label': 'R({})'.format(F['label']),
+                'label': f"R({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
-                          'Description': 'Rotational part of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_rotational_part v{}'.format(version)
+                          'Description': f"Rotational part of {F['label']} ({F['meta']['Description']})",
+                          'Creator':     'add_rotational_part'
                           }
                  }
     def add_rotational_part(self,F):
@@ -889,16 +944,13 @@ class Result:
 
     @staticmethod
     def _add_spherical(T):
-        if not T['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
                 'data':  mechanics.spherical_part(T['data']),
-                'label': 'p_{}'.format(T['label']),
+                'label': f"p_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
-                          'Description': 'Spherical component of tensor {} ({})'.format(T['label'],T['meta']['Description']),
-                          'Creator':     'result.py:add_spherical v{}'.format(version)
+                          'Description': f"Spherical component of tensor {T['label']} ({T['meta']['Description']})",
+                          'Creator':     'add_spherical'
                           }
                  }
     def add_spherical(self,T):
@@ -916,16 +968,13 @@ class Result:
 
     @staticmethod
     def _add_strain_tensor(F,t,m):
-        if not F['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
                 'data':  mechanics.strain_tensor(F['data'],t,m),
-                'label': 'epsilon_{}^{}({})'.format(t,m,F['label']),
+                'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
-                          'Description': 'Strain tensor of {} ({})'.format(F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_strain_tensor v{}'.format(version)
+                          'Description': f"Strain tensor of {F['label']} ({F['meta']['Description']})",
+                          'Creator':     'add_strain_tensor'
                           }
                  }
     def add_strain_tensor(self,F='F',t='V',m=0.0):
@@ -950,17 +999,14 @@ class Result:
 
     @staticmethod
     def _add_stretch_tensor(F,t):
-        if not F['data'].shape[1:] == (3,3):
-            raise ValueError
-
         return {
-                'data':  mechanics.left_stretch(F['data']) if t == 'V' else mechanics.right_stretch(F['data']),
-                'label': '{}({})'.format(t,F['label']),
+                'data':  (mechanics.left_stretch if t.upper() == 'V' else mechanics.right_stretch)(F['data']),
+                'label': f"{t}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
-                          'Description': '{} stretch tensor of {} ({})'.format('Left' if t == 'V' else 'Right',
+                          'Description': '{} stretch tensor of {} ({})'.format('Left' if t.upper() == 'V' else 'Right',
                                                                                F['label'],F['meta']['Description']),
-                          'Creator':     'result.py:add_stretch_tensor v{}'.format(version)
+                          'Creator':     'add_stretch_tensor'
                           }
                  }
     def add_stretch_tensor(self,F='F',t='V'):
@@ -994,7 +1040,7 @@ class Result:
             r = func(**datasets_in,**args)
             return [group,r]
         except Exception as err:
-            print('Error during calculation: {}.'.format(err))
+            print(f'Error during calculation: {err}.')
             return None
 
 
@@ -1005,17 +1051,24 @@ class Result:
         Parameters
         ----------
         func : function
-            Callback function that calculates a new dataset from one or more datasets per HDF5 group.
+            Callback function that calculates a new dataset from one or
+            more datasets per HDF5 group.
         datasets : dictionary
-            Details of the datasets to be used: label (in HDF5 file) and arg (argument to which the data is parsed in func).
+            Details of the datasets to be used: label (in HDF5 file) and
+            arg (argument to which the data is parsed in func).
         args : dictionary, optional
             Arguments parsed to func.
 
         """
-        pool = multiprocessing.Pool(int(Environment().options['DAMASK_NUM_THREADS']))
-        lock = multiprocessing.Manager().Lock()
+        num_threads = damask.environment.options['DAMASK_NUM_THREADS']
+        pool = mp.Pool(int(num_threads) if num_threads is not None else None)
+        lock = mp.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
+        if len(groups) == 0:
+            print('No matching dataset found, no data was added.')
+            return
+
         default_arg = partial(self._job,func=func,datasets=datasets,args=args,lock=lock)
 
         for result in util.show_progress(pool.imap_unordered(default_arg,groups),len(groups)):
@@ -1023,19 +1076,127 @@ class Result:
                 continue
             lock.acquire()
             with h5py.File(self.fname, 'a') as f:
-                try:                                                                                # ToDo: Replace if exists?
-                    dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                try:
+                    if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
+                        dataset = f[result[0]+'/'+result[1]['label']]
+                        dataset[...] = result[1]['data']
+                        dataset.attrs['Overwritten'] = 'Yes'.encode()
+                    else:
+                        dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+
+                    now = datetime.datetime.now().astimezone()
+                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+
                     for l,v in result[1]['meta'].items():
                         dataset.attrs[l]=v.encode()
-                except OSError as err:
-                    print('Could not add dataset: {}.'.format(err))
+                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{damask.version}"
+                    dataset.attrs['Creator'] = creator.encode()
+
+                except (OSError,RuntimeError) as err:
+                    print(f'Could not add dataset: {err}.')
             lock.release()
 
         pool.close()
         pool.join()
 
 
-    def to_vtk(self,labels=[],mode='cell'):
+    def save_XDMF(self):
+        """
+        Write XDMF file to directly visualize data in DADF5 file.
+
+        This works only for scalar, 3-vector and 3x3-tensor data.
+        Selection is not taken into account.
+        """
+        if len(self.constituents) != 1 or not self.structured:
+            raise NotImplementedError('XDMF only available for grid results with 1 constituent.')
+
+        xdmf=ET.Element('Xdmf')
+        xdmf.attrib={'Version':  '2.0',
+                     'xmlns:xi': 'http://www.w3.org/2001/XInclude'}
+
+        domain=ET.SubElement(xdmf, 'Domain')
+
+        collection = ET.SubElement(domain, 'Grid')
+        collection.attrib={'GridType':       'Collection',
+                           'CollectionType': 'Temporal'}
+
+        time = ET.SubElement(collection, 'Time')
+        time.attrib={'TimeType': 'List'}
+
+        time_data = ET.SubElement(time, 'DataItem')
+        time_data.attrib={'Format':     'XML',
+                          'NumberType': 'Float',
+                          'Dimensions': f'{len(self.times)}'}
+        time_data.text = ' '.join(map(str,self.times))
+
+        attributes = []
+        data_items = []
+
+        for inc in self.increments:
+
+            grid=ET.SubElement(collection,'Grid')
+            grid.attrib = {'GridType': 'Uniform',
+                           'Name':      inc}
+
+            topology=ET.SubElement(grid, 'Topology')
+            topology.attrib={'TopologyType': '3DCoRectMesh',
+                             'Dimensions':   '{} {} {}'.format(*self.grid+1)}
+
+            geometry=ET.SubElement(grid, 'Geometry')
+            geometry.attrib={'GeometryType':'Origin_DxDyDz'}
+
+            origin=ET.SubElement(geometry, 'DataItem')
+            origin.attrib={'Format':     'XML',
+                           'NumberType': 'Float',
+                           'Dimensions': '3'}
+            origin.text="{} {} {}".format(*self.origin)
+
+            delta=ET.SubElement(geometry, 'DataItem')
+            delta.attrib={'Format':     'XML',
+                          'NumberType': 'Float',
+                          'Dimensions': '3'}
+            delta.text="{} {} {}".format(*(self.size/self.grid))
+
+
+            with h5py.File(self.fname,'r') as f:
+                attributes.append(ET.SubElement(grid, 'Attribute'))
+                attributes[-1].attrib={'Name':          'u',
+                                       'Center':        'Node',
+                                       'AttributeType': 'Vector'}
+                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
+                data_items[-1].attrib={'Format':     'HDF',
+                                       'Precision':  '8',
+                                       'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
+                data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
+
+                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                    for oo in getattr(self,o):
+                        for pp in getattr(self,p):
+                            g = '/'.join([inc,o[:-1],oo,pp])
+                            for l in f[g]:
+                                name = '/'.join([g,l])
+                                shape = f[name].shape[1:]
+                                dtype = f[name].dtype
+                                prec  = f[name].dtype.itemsize
+
+                                if (shape not in [(1,), (3,), (3,3)]) or dtype != np.float64: continue
+
+                                attributes.append(ET.SubElement(grid, 'Attribute'))
+                                attributes[-1].attrib={'Name':          name.split('/',2)[2],
+                                                       'Center':        'Cell',
+                                                       'AttributeType': 'Tensor'}
+                                data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
+                                data_items[-1].attrib={'Format':     'HDF',
+                                                       'NumberType': 'Float',
+                                                       'Precision':  f'{prec}',
+                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
+                                data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
+
+        with open(self.fname.with_suffix('.xdmf').name,'w') as f:
+            f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
+
+
+    def save_vtk(self,labels=[],mode='cell'):
         """
         Export to vtk cell/point data.
 
@@ -1051,16 +1212,16 @@ class Result:
         if mode.lower()=='cell':
 
             if self.structured:
-                v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+                v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
             else:
                 with h5py.File(self.fname,'r') as f:
-                    v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
-                                                  f['/geometry/T_c'][()]-1,
-                                                  f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+                    v = VTK.from_unstructured_grid(f['/geometry/x_n'][()],
+                                                   f['/geometry/T_c'][()]-1,
+                                                   f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-            v = VTK.from_polyData(self.cell_coordinates())
+            v = VTK.from_poly_data(self.cell_coordinates)
 
-        N_digits = int(np.floor(np.log10(int(self.increments[-1][3:]))))+1
+        N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 
         for inc in util.show_progress(self.iterate('increments'),len(self.selection['increments'])):
 
@@ -1107,32 +1268,4 @@ class Result:
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')
 
-            file_out = '{}_inc{}'.format(os.path.splitext(os.path.basename(self.fname))[0],
-                                            inc[3:].zfill(N_digits))
-
-            v.write(file_out)
-
-###################################################################################################
-# BEGIN DEPRECATED
-
-    def _time_to_inc(self,start,end):
-        selected = []
-        for i,time in enumerate(self.times):
-            if start <= time <= end:
-                selected.append(self.increments[i])
-        return selected
-
-
-    def set_by_time(self,start,end):
-        """
-        Set active increments based on start and end time.
-
-        Parameters
-        ----------
-        start : float
-          start time (included)
-        end : float
-          end time (included)
-
-        """
-        self._manage_selection('set','increments',self._time_to_inc(start,end))
+            v.save(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')

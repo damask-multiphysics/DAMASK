@@ -4,19 +4,7 @@
 !> @brief material subroutine incorporating anisotropic brittle damage source mechanism
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module source_damage_anisoBrittle
-  use prec
-  use debug
-  use IO
-  use math
-  use discretization
-  use material
-  use config
-  use lattice
-  use results
-
-  implicit none
-  private
+submodule (constitutive:constitutive_damage) source_damage_anisoBrittle
 
   integer,                       dimension(:),           allocatable :: &
     source_damage_anisoBrittle_offset, &                                                            !< which source is my current source mechanism?
@@ -24,27 +12,21 @@ module source_damage_anisoBrittle
 
   type :: tParameters                                                                               !< container type for internal constitutive parameters
     real(pReal) :: &
-      sdot_0, &
-      n
+      dot_o, &                                                                                      !< opening rate of cleavage planes
+      q                                                                                             !< damage rate sensitivity
     real(pReal), dimension(:), allocatable :: &
-      critDisp, &
-      critLoad
+      s_crit, &                                                                                     !< critical displacement 
+      g_crit                                                                                        !< critical load
     real(pReal), dimension(:,:,:,:), allocatable :: &
       cleavage_systems
     integer :: &
-      sum_N_cl
+      sum_N_cl                                                                                      !< total number of cleavage planes
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
-
-  public :: &
-    source_damage_anisoBrittle_init, &
-    source_damage_anisoBrittle_dotState, &
-    source_damage_anisobrittle_getRateAndItsTangent, &
-    source_damage_anisoBrittle_results
 
 contains
 
@@ -53,79 +35,92 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_init
+module function source_damage_anisoBrittle_init(source_length) result(mySources)
 
-  integer :: Ninstance,sourceOffset,NipcMyPhase,p
+  integer, intent(in)                  :: source_length  
+  logical, dimension(:,:), allocatable :: mySources
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    sources, &
+    src
+  integer :: Ninstances,sourceOffset,Nconstituents,p
   integer, dimension(:), allocatable :: N_cl
   character(len=pStringLen) :: extmsg = ''
 
-  write(6,'(/,a)') ' <<<+-  source_'//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//' init  -+>>>'; flush(6)
+  print'(/,a)', ' <<<+-  source_damage_anisoBrittle init  -+>>>'
 
-  Ninstance = count(phase_source == SOURCE_DAMAGE_ANISOBRITTLE_ID)
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0) &
-    write(6,'(a16,1x,i5,/)') '# instances:',Ninstance
+  mySources = source_active('damage_anisoBrittle',source_length)
+  Ninstances = count(mySources)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
-  allocate(source_damage_anisoBrittle_offset  (size(config_phase)), source=0)
-  allocate(source_damage_anisoBrittle_instance(size(config_phase)), source=0)
-  allocate(param(Ninstance))
+  phases => config_material%get('phase')
+  allocate(param(Ninstances))
+  allocate(source_damage_anisoBrittle_offset  (phases%length), source=0)
+  allocate(source_damage_anisoBrittle_instance(phases%length), source=0)
 
-  do p = 1, size(config_phase)
-    source_damage_anisoBrittle_instance(p) = count(phase_source(:,1:p) == SOURCE_DAMAGE_ANISOBRITTLE_ID)
-    do sourceOffset = 1, phase_Nsources(p)
-      if (phase_source(sourceOffset,p) == SOURCE_DAMAGE_ANISOBRITTLE_ID) then
+  do p = 1, phases%length
+    phase => phases%get(p) 
+    if(any(mySources(:,p))) source_damage_anisoBrittle_instance(p) = count(mySources(:,1:p))
+    if(count(mySources(:,p)) == 0) cycle
+    sources => phase%get('source')
+    do sourceOffset = 1, sources%length
+      if(mySources(sourceOffset,p)) then
         source_damage_anisoBrittle_offset(p) = sourceOffset
-        exit
-      endif
-    enddo
+        associate(prm  => param(source_damage_anisoBrittle_instance(p)))
+        src => sources%get(sourceOffset) 
+  
+        N_cl = src%get_asInts('N_cl',defaultVal=emptyIntArray)
+        prm%sum_N_cl = sum(abs(N_cl))
+  
+        prm%q       = src%get_asFloat('q')
+        prm%dot_o   = src%get_asFloat('dot_o')
+  
+        prm%s_crit  = src%get_asFloats('s_crit',  requiredSize=size(N_cl))
+        prm%g_crit  = src%get_asFloats('g_crit',  requiredSize=size(N_cl))
+  
+        prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,phase%get_asString('lattice'),&
+                                                             phase%get_asFloat('c/a',defaultVal=0.0_pReal))
+  
+        ! expand: family => system
+        prm%s_crit = math_expand(prm%s_crit,N_cl)
+        prm%g_crit = math_expand(prm%g_crit,N_cl)
 
-    if (all(phase_source(:,p) /= SOURCE_DAMAGE_ANISOBRITTLE_ID)) cycle
-    associate(prm => param(source_damage_anisoBrittle_instance(p)), &
-              config => config_phase(p))
+#if defined (__GFORTRAN__)
+        prm%output = output_asStrings(src)
+#else
+        prm%output = src%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
+ 
+          ! sanity checks
+        if (prm%q          <= 0.0_pReal)  extmsg = trim(extmsg)//' q'
+        if (prm%dot_o      <= 0.0_pReal)  extmsg = trim(extmsg)//' dot_o'
+        if (any(prm%g_crit <  0.0_pReal)) extmsg = trim(extmsg)//' g_crit'
+        if (any(prm%s_crit <  0.0_pReal)) extmsg = trim(extmsg)//' s_crit'
 
-    prm%output = config%getStrings('(output)',defaultVal=emptyStringArray)
+        Nconstituents = count(material_phaseAt==p) * discretization_nIPs
+        call constitutive_allocateState(sourceState(p)%p(sourceOffset),Nconstituents,1,1,0)
+        sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
+        if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
 
-    N_cl = config%getInts('ncleavage',defaultVal=emptyIntArray)
-    prm%sum_N_cl = sum(abs(N_cl))
-
-    prm%n         = config%getFloat('anisobrittle_ratesensitivity')
-    prm%sdot_0    = config%getFloat('anisobrittle_sdot0')
-
-    prm%critDisp  = config%getFloats('anisobrittle_criticaldisplacement',requiredSize=size(N_cl))
-    prm%critLoad  = config%getFloats('anisobrittle_criticalload',        requiredSize=size(N_cl))
-
-    prm%cleavage_systems = lattice_SchmidMatrix_cleavage(N_cl,config%getString('lattice_structure'),&
-                                                         config%getFloat('c/a',defaultVal=0.0_pReal))
-
-    ! expand: family => system
-    prm%critDisp = math_expand(prm%critDisp,N_cl)
-    prm%critLoad = math_expand(prm%critLoad,N_cl)
-
-    ! sanity checks
-    if (prm%n            <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_n'
-    if (prm%sdot_0       <= 0.0_pReal)  extmsg = trim(extmsg)//' anisobrittle_sdot0'
-    if (any(prm%critLoad <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critLoad'
-    if (any(prm%critDisp <  0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_critDisp'
-
-    NipcMyPhase = count(material_phaseAt==p) * discretization_nIP
-    call material_allocateState(sourceState(p)%p(sourceOffset),NipcMyPhase,1,1,0)
-    sourceState(p)%p(sourceOffset)%atol = config%getFloat('anisobrittle_atol',defaultVal=1.0e-3_pReal)
-    if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' anisobrittle_atol'
-
-    end associate
+        end associate
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'('//SOURCE_DAMAGE_ANISOBRITTLE_LABEL//')')
+        if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(damage_anisoBrittle)')
+      endif
+    enddo
+  enddo
 
-enddo
-
-end subroutine source_damage_anisoBrittle_init
+end function source_damage_anisoBrittle_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
+module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -157,14 +152,14 @@ subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
     traction_t    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,2,i))
     traction_n    = math_tensordot(S,prm%cleavage_systems(1:3,1:3,3,i))
 
-    traction_crit = prm%critLoad(i)*damage(homog)%p(damageOffset)**2.0_pReal
+    traction_crit = prm%g_crit(i)*damage(homog)%p(damageOffset)**2.0_pReal
 
     sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
     = sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &
-    + prm%sdot_0 / prm%critDisp(i) &
-      * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%n + &
-         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%n + &
-         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%n)
+    + prm%dot_o / prm%s_crit(i) &
+      * ((max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**prm%q + &
+         (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**prm%q + &
+         (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**prm%q)
   enddo
   end associate
 
@@ -174,7 +169,7 @@ end subroutine source_damage_anisoBrittle_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local part of nonlocal damage driving force
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
+module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
   integer, intent(in) :: &
     phase, &
@@ -201,7 +196,7 @@ end subroutine source_damage_anisoBrittle_getRateAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief writes results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine source_damage_anisoBrittle_results(phase,group)
+module subroutine source_damage_anisoBrittle_results(phase,group)
 
   integer,          intent(in) :: phase
   character(len=*), intent(in) :: group
@@ -212,12 +207,12 @@ subroutine source_damage_anisoBrittle_results(phase,group)
             stt => sourceState(phase)%p(source_damage_anisoBrittle_offset(phase))%state)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case ('anisobrittle_drivingforce')
-        call results_writeDataset(group,stt,'tbd','driving force','tbd')
+      case ('f_phi')
+        call results_writeDataset(group,stt,trim(prm%output(o)),'driving force','J/m³')
     end select
   enddo outputsLoop
   end associate
 
 end subroutine source_damage_anisoBrittle_results
 
-end module source_damage_anisoBrittle
+end submodule source_damage_anisoBrittle

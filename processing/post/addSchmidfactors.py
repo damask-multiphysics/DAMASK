@@ -2,6 +2,7 @@
 
 import os
 import sys
+from io import StringIO
 from optparse import OptionParser
 
 import numpy as np
@@ -15,91 +16,82 @@ scriptID   = ' '.join([scriptName,damask.version])
 slipSystems = {
 'fcc':
     np.array([
-    # Slip direction     Plane normal
-     [ 0, 1,-1,     1, 1, 1, ],
-     [-1, 0, 1,     1, 1, 1, ],
-     [ 1,-1, 0,     1, 1, 1, ],
-     [ 0,-1,-1,    -1,-1, 1, ],
-     [ 1, 0, 1,    -1,-1, 1, ],
-     [-1, 1, 0,    -1,-1, 1, ],
-     [ 0,-1, 1,     1,-1,-1, ],
-     [-1, 0,-1,     1,-1,-1, ],
-     [ 1, 1, 0,     1,-1,-1, ],
-     [ 0, 1, 1,    -1, 1,-1, ],
-     [ 1, 0,-1,    -1, 1,-1, ],
-     [-1,-1, 0,    -1, 1,-1, ],
-    ],'f'),
+    [+0,+1,-1 , +1,+1,+1],
+    [-1,+0,+1 , +1,+1,+1],
+    [+1,-1,+0 , +1,+1,+1],
+    [+0,-1,-1 , -1,-1,+1],
+    [+1,+0,+1 , -1,-1,+1],
+    [-1,+1,+0 , -1,-1,+1],
+    [+0,-1,+1 , +1,-1,-1],
+    [-1,+0,-1 , +1,-1,-1],
+    [+1,+1,+0 , +1,-1,-1],
+    [+0,+1,+1 , -1,+1,-1],
+    [+1,+0,-1 , -1,+1,-1],
+    [-1,-1,+0 , -1,+1,-1],
+   ],'d'),
 'bcc':
     np.array([
-    # Slip system <111>{110} 
-     [ 1,-1, 1,     0, 1, 1, ],
-     [-1,-1, 1,     0, 1, 1, ],
-     [ 1, 1, 1,     0,-1, 1, ],
-     [-1, 1, 1,     0,-1, 1, ],
-     [-1, 1, 1,     1, 0, 1, ],
-     [-1,-1, 1,     1, 0, 1, ],
-     [ 1, 1, 1,    -1, 0, 1, ],
-     [ 1,-1, 1,    -1, 0, 1, ],
-     [-1, 1, 1,     1, 1, 0, ],
-     [-1, 1,-1,     1, 1, 0, ],
-     [ 1, 1, 1,    -1, 1, 0, ],
-     [ 1, 1,-1,    -1, 1, 0, ],
-    # Slip system <111>{112}
-     [-1, 1, 1,     2, 1, 1, ],
-     [ 1, 1, 1,    -2, 1, 1, ],
-     [ 1, 1,-1,     2,-1, 1, ],
-     [ 1,-1, 1,     2, 1,-1, ],
-     [ 1,-1, 1,     1, 2, 1, ],
-     [ 1, 1,-1,    -1, 2, 1, ],
-     [ 1, 1, 1,     1,-2, 1, ],
-     [-1, 1, 1,     1, 2,-1, ],
-     [ 1, 1,-1,     1, 1, 2, ],
-     [ 1,-1, 1,    -1, 1, 2, ],
-     [-1, 1, 1,     1,-1, 2, ],
-     [ 1, 1, 1,     1, 1,-2, ],
-    ],'f'),
+    [+1,-1,+1 , +0,+1,+1],
+    [-1,-1,+1 , +0,+1,+1],
+    [+1,+1,+1 , +0,-1,+1],
+    [-1,+1,+1 , +0,-1,+1],
+    [-1,+1,+1 , +1,+0,+1],
+    [-1,-1,+1 , +1,+0,+1],
+    [+1,+1,+1 , -1,+0,+1],
+    [+1,-1,+1 , -1,+0,+1],
+    [-1,+1,+1 , +1,+1,+0],
+    [-1,+1,-1 , +1,+1,+0],
+    [+1,+1,+1 , -1,+1,+0],
+    [+1,+1,-1 , -1,+1,+0],
+    [-1,+1,+1 , +2,+1,+1],
+    [+1,+1,+1 , -2,+1,+1],
+    [+1,+1,-1 , +2,-1,+1],
+    [+1,-1,+1 , +2,+1,-1],
+    [+1,-1,+1 , +1,+2,+1],
+    [+1,+1,-1 , -1,+2,+1],
+    [+1,+1,+1 , +1,-2,+1],
+    [-1,+1,+1 , +1,+2,-1],
+    [+1,+1,-1 , +1,+1,+2],
+    [+1,-1,+1 , -1,+1,+2],
+    [-1,+1,+1 , +1,-1,+2],
+    [+1,+1,+1 , +1,+1,-2],
+   ],'d'),
 'hex':
     np.array([
-    # Basal systems <11.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
-     [ 2, -1, -1,  0,     0,  0,  0,  1, ],
-     [-1,  2, -1,  0,     0,  0,  0,  1, ],
-     [-1, -1,  2,  0,     0,  0,  0,  1, ],
-    # 1st type prismatic systems <11.0>{10.0}  (independent of c/a-ratio)
-     [ 2, -1, -1,  0,     0,  1, -1,  0, ],
-     [-1,  2, -1,  0,    -1,  0,  1,  0, ],
-     [-1, -1,  2,  0,     1, -1,  0,  0, ],
-    # 2nd type prismatic systems <10.0>{11.0} -- a slip; plane normals independent of c/a-ratio
-     [ 0,  1,  -1, 0,     2, -1, -1,  0, ],
-     [-1,  0,  1,  0,    -1,  2, -1,  0, ],
-     [ 1, -1,  0,  0,    -1, -1,  2,  0, ],
-    # 1st type 1st order pyramidal systems <11.0>{-11.1} -- plane normals depend on the c/a-ratio
-     [ 2, -1, -1,  0,     0,  1, -1,  1, ],
-     [-1,  2, -1,  0,    -1,  0,  1,  1, ],
-     [-1, -1,  2,  0,     1, -1,  0,  1, ],
-     [ 1,  1, -2,  0,    -1,  1,  0,  1, ],
-     [-2,  1,  1,  0,     0, -1,  1,  1, ],
-     [ 1, -2,  1,  0,     1,  0, -1,  1, ],
-    # pyramidal system: c+a slip <11.3>{-10.1} -- plane normals depend on the c/a-ratio
-     [ 2, -1, -1,  3,    -1,  1,  0,  1, ],
-     [ 1, -2,  1,  3,    -1,  1,  0,  1, ],
-     [-1, -1,  2,  3,     1,  0, -1,  1, ],
-     [-2,  1,  1,  3,     1,  0, -1,  1, ],
-     [-1,  2, -1,  3,     0, -1,  1,  1, ],
-     [ 1,  1, -2,  3,     0, -1,  1,  1, ],
-     [-2,  1,  1,  3,     1, -1,  0,  1, ],
-     [-1,  2, -1,  3,     1, -1,  0,  1, ],
-     [ 1,  1, -2,  3,    -1,  0,  1,  1, ],
-     [ 2, -1, -1,  3,    -1,  0,  1,  1, ],
-     [ 1, -2,  1,  3,     0,  1, -1,  1, ],
-     [-1, -1,  2,  3,     0,  1, -1,  1, ],
-    # pyramidal system: c+a slip <11.3>{-1-1.2} -- as for hexagonal ice (Castelnau et al. 1996, similar to twin system found below) 
-     [ 2, -1, -1,  3,    -2,  1,  1,  2, ], # sorted according to similar twin system
-     [-1,  2, -1,  3,     1, -2,  1,  2, ], # <11.3>{-1-1.2} shear = 2((c/a)^2-2)/(3 c/a)
-     [-1, -1,  2,  3,     1,  1, -2,  2, ],
-     [-2,  1,  1,  3,     2, -1, -1,  2, ],
-     [ 1, -2,  1,  3,    -1,  2, -1,  2, ],
-     [ 1,  1, -2,  3,    -1, -1,  2,  2, ],
-     ],'f'),
+    [+2,-1,-1,+0 , +0,+0,+0,+1],
+    [-1,+2,-1,+0 , +0,+0,+0,+1],
+    [-1,-1,+2,+0 , +0,+0,+0,+1],
+    [+2,-1,-1,+0 , +0,+1,-1,+0],
+    [-1,+2,-1,+0 , -1,+0,+1,+0],
+    [-1,-1,+2,+0 , +1,-1,+0,+0],
+    [-1,+1,+0,+0 , +1,+1,-2,+0],
+    [+0,-1,+1,+0 , -2,+1,+1,+0],
+    [+1,+0,-1,+0 , +1,-2,+1,+0],
+    [-1,+2,-1,+0 , +1,+0,-1,+1],
+    [-2,+1,+1,+0 , +0,+1,-1,+1],
+    [-1,-1,+2,+0 , -1,+1,+0,+1],
+    [+1,-2,+1,+0 , -1,+0,+1,+1],
+    [+2,-1,-1,+0 , +0,-1,+1,+1],
+    [+1,+1,-2,+0 , +1,-1,+0,+1],
+    [-2,+1,+1,+3 , +1,+0,-1,+1],
+    [-1,-1,+2,+3 , +1,+0,-1,+1],
+    [-1,-1,+2,+3 , +0,+1,-1,+1],
+    [+1,-2,+1,+3 , +0,+1,-1,+1],
+    [+1,-2,+1,+3 , -1,+1,+0,+1],
+    [+2,-1,-1,+3 , -1,+1,+0,+1],
+    [+2,-1,-1,+3 , -1,+0,+1,+1],
+    [+1,+1,-2,+3 , -1,+0,+1,+1],
+    [+1,+1,-2,+3 , +0,-1,+1,+1],
+    [-1,+2,-1,+3 , +0,-1,+1,+1],
+    [-1,+2,-1,+3 , +1,-1,+0,+1],
+    [-2,+1,+1,+3 , +1,-1,+0,+1],
+    [-1,-1,+2,+3 , +1,+1,-2,+2],
+    [+1,-2,+1,+3 , -1,+2,-1,+2],
+    [+2,-1,-1,+3 , -2,+1,+1,+2],
+    [+1,+1,-2,+3 , -1,-1,+2,+2],
+    [-1,+2,-1,+3 , +1,-2,+1,+2],
+    [-2,+1,+1,+3 , +2,-1,-1,+2],
+   ],'d'),
 }
 
 # --------------------------------------------------------------------
@@ -111,11 +103,11 @@ Add columns listing Schmid factors (and optional trace vector of selected system
 
 """, version = scriptID)
 
-latticeChoices = ('fcc','bcc','hex')
+lattice_choices = list(slipSystems.keys())
 parser.add_option('-l',
                   '--lattice',
-                  dest = 'lattice', type = 'choice', choices = latticeChoices, metavar='string',
-                  help = 'type of lattice structure [%default] {}'.format(latticeChoices))
+                  dest = 'lattice', type = 'choice', choices = lattice_choices, metavar='string',
+                  help = 'type of lattice structure [%default] {}'.format(lattice_choices))
 parser.add_option('--covera',
                   dest = 'CoverA', type = 'float', metavar = 'float',
                   help = 'C over A ratio for hexagonal systems [%default]')
@@ -138,88 +130,63 @@ parser.add_option('-o',
 parser.set_defaults(force = (0.0,0.0,1.0),
                     quaternion='orientation',
                     normal = None,
-                    lattice = latticeChoices[0],
+                    lattice = lattice_choices[0],
                     CoverA = np.sqrt(8./3.),
                    )
 
 (options, filenames) = parser.parse_args()
-
-force = np.array(options.force)
-force /= np.linalg.norm(force)
-
-if options.normal is not None:
-  normal = np.array(options.normal)
-  normal /= np.linalg.norm(normal)
-  if abs(np.dot(force,normal)) > 1e-3:
-    parser.error('stress plane normal not orthogonal to force direction')
-else:
-  normal = force
-
-slip_direction = np.zeros((len(slipSystems[options.lattice]),3),'f')
-slip_normal    = np.zeros_like(slip_direction)
-
-
-if options.lattice in latticeChoices[:2]:
-  slip_direction = slipSystems[options.lattice][:,:3]
-  slip_normal    = slipSystems[options.lattice][:,3:]
-elif options.lattice == latticeChoices[2]:
-  # convert 4 Miller index notation of hex to orthogonal 3 Miller index notation
-  for i in range(len(slip_direction)):
-    slip_direction[i] = np.array([slipSystems['hex'][i,0]*1.5,
-                              (slipSystems['hex'][i,0] + 2.*slipSystems['hex'][i,1])*0.5*np.sqrt(3),
-                               slipSystems['hex'][i,3]*options.CoverA,
-                              ])
-    slip_normal[i]    = np.array([slipSystems['hex'][i,4],
-                              (slipSystems['hex'][i,4] + 2.*slipSystems['hex'][i,5])/np.sqrt(3),
-                               slipSystems['hex'][i,7]/options.CoverA,
-                              ])
-
-slip_direction /= np.tile(np.linalg.norm(slip_direction,axis=1),(3,1)).T
-slip_normal    /= np.tile(np.linalg.norm(slip_normal   ,axis=1),(3,1)).T
-
-# --- loop over input files ------------------------------------------------------------------------
-
 if filenames == []: filenames = [None]
 
+force = np.array(options.force)/np.linalg.norm(options.force)
+
+if options.normal is not None:
+    normal = np.array(options.normal)/np.linalg.norm(options.ormal)
+    if abs(np.dot(force,normal)) > 1e-3:
+          parser.error('stress plane normal not orthogonal to force direction')
+else:
+    normal = force
+
+
+if   options.lattice in ['bcc','fcc']:
+    slip_direction = slipSystems[options.lattice][:,:3]
+    slip_normal    = slipSystems[options.lattice][:,3:]
+elif options.lattice == 'hex':
+    slip_direction = np.zeros((len(slipSystems['hex']),3),'d')
+    slip_normal    = np.zeros_like(slip_direction)
+    # convert 4 Miller index notation of hex to orthogonal 3 Miller index notation
+    for i in range(len(slip_direction)):
+        slip_direction[i] = np.array([slipSystems['hex'][i,0]*1.5,
+                                      (slipSystems['hex'][i,0] + 2.*slipSystems['hex'][i,1])*0.5*np.sqrt(3),
+                                      slipSystems['hex'][i,3]*options.CoverA,
+                                     ])
+        slip_normal[i]    = np.array([slipSystems['hex'][i,4],
+                                      (slipSystems['hex'][i,4] + 2.*slipSystems['hex'][i,5])/np.sqrt(3),
+                                      slipSystems['hex'][i,7]/options.CoverA,
+                                     ])
+
+slip_direction /= np.linalg.norm(slip_direction,axis=1,keepdims=True)
+slip_normal    /= np.linalg.norm(slip_normal,   axis=1,keepdims=True)
+
+labels = ['S[{direction[0]:.1g}_{direction[1]:.1g}_{direction[2]:.1g}]'
+           '({normal[0]:.1g}_{normal[1]:.1g}_{normal[2]:.1g})'\
+           .format(normal = theNormal, direction = theDirection,
+           ) for theNormal,theDirection in zip(slip_normal,slip_direction)]
+
 for name in filenames:
-  try:
-    table = damask.ASCIItable(name = name)
-  except IOError:
-    continue
-  damask.util.report(scriptName,name)
+    damask.util.report(scriptName,name)
 
-# ------------------------------------------ read header ------------------------------------------
+    table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  table.head_read()
+    o = damask.Rotation.from_quaternion(table.get(options.quaternion))
 
-# ------------------------------------------ sanity checks ----------------------------------------
-  if not table.label_dimension(options.quaternion) == 4:
-    damask.util.croak('input {} does not have dimension 4.'.format(options.quaternion))
-    table.close(dismiss = True)                                                                     # close ASCIItable and remove empty file
-    continue
+    force  = np.broadcast_to(force, o.shape+(3,))
+    normal = np.broadcast_to(normal,o.shape+(3,))
+    slip_direction = np.broadcast_to(slip_direction,o.shape+slip_direction.shape)
+    slip_normal    = np.broadcast_to(slip_normal,   o.shape+slip_normal.shape)
+    S = np.abs(np.einsum('ijk,ik->ij',slip_direction,(o@force))*
+               np.einsum('ijk,ik->ij',slip_normal,   (o@normal)))
 
-  column = table.label_index(options.quaternion)
+    for i,label in enumerate(labels):
+        table = table.add(label,S[:,i],scriptID+' '+' '.join(sys.argv[1:]))
 
-# ------------------------------------------ assemble header ---------------------------------------
-
-  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
-  table.labels_append(['S[{direction[0]:.1g}_{direction[1]:.1g}_{direction[2]:.1g}]'
-                       '({normal[0]:.1g}_{normal[1]:.1g}_{normal[2]:.1g})'\
-                       .format(normal = theNormal,
-                               direction = theDirection,
-                              ) for theNormal,theDirection in zip(slip_normal,slip_direction)])
-  table.head_write()
-
-# ------------------------------------------ process data ------------------------------------------
-
-  outputAlive = True
-  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    o = damask.Rotation(np.array(list(map(float,table.data[column:column+4]))))
-
-    table.data_append(  np.abs(  np.sum(slip_direction * (o * force) ,axis=1) \
-                               * np.sum(slip_normal    * (o * normal),axis=1)))
-    outputAlive = table.data_write()                                                                # output processed line
-
-# ------------------------------------------ output finalization -----------------------------------  
-
-  table.close()                                                                                     # close ASCII tables
+    table.save((sys.stdout if name is None else name), legacy=True)

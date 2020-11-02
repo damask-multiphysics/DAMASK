@@ -30,8 +30,8 @@ class TestGridFilters:
          grid   = np.random.randint(8,32,(3))
          size   = np.random.random(3)
          origin = np.random.random(3)
-         coord0 = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))                     # noqa
-         _grid,_size,_origin = eval('grid_filters.{}_coord0_gridSizeOrigin(coord0.reshape(-1,3,order="F"))'.format(mode))
+         coord0 = eval(f'grid_filters.{mode}_coord0(grid,size,origin)')                     # noqa
+         _grid,_size,_origin = eval(f'grid_filters.{mode}_coord0_gridSizeOrigin(coord0.reshape(-1,3,order="F"))')
          assert np.allclose(grid,_grid) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
     def test_displacement_fluct_equivalence(self):
@@ -42,20 +42,33 @@ class TestGridFilters:
          assert np.allclose(grid_filters.node_displacement_fluct(size,F),
                             grid_filters.cell_2_node(grid_filters.cell_displacement_fluct(size,F)))
 
-    def test_interpolation_nonperiodic(self):
+    def test_interpolation_to_node(self):
          size = np.random.random(3)
          grid = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(grid)+(3,3))
-         assert np.allclose(grid_filters.node_coord(size,F) [1:-1,1:-1,1:-1],grid_filters.cell_2_node(
-                            grid_filters.cell_coord(size,F))[1:-1,1:-1,1:-1])
+         assert np.allclose(grid_filters.node_coord(size,F) [1:-1,1:-1,1:-1],
+                            grid_filters.cell_2_node(grid_filters.cell_coord(size,F))[1:-1,1:-1,1:-1])
+
+    def test_interpolation_to_cell(self):
+         grid = np.random.randint(1,30,(3))
+
+         node_coord_x = np.linspace(0,np.pi*2,num=grid[0]+1)
+         node_field_x = np.cos(node_coord_x)
+         node_field   = np.broadcast_to(node_field_x.reshape(-1,1,1),grid+1)
+
+         cell_coord_x = node_coord_x[:-1]+node_coord_x[1]*.5
+         cell_field_x = np.interp(cell_coord_x,node_coord_x,node_field_x,period=np.pi*2.)
+         cell_field   = np.broadcast_to(cell_field_x.reshape(-1,1,1),grid)
+
+         assert np.allclose(cell_field,grid_filters.node_2_cell(node_field))
 
     @pytest.mark.parametrize('mode',['cell','node'])
     def test_coord0_origin(self,mode):
          origin= np.random.random(3)
          size  = np.random.random(3)                                                                # noqa
          grid  = np.random.randint(8,32,(3))
-         shifted   = eval('grid_filters.{}_coord0(grid,size,origin)'.format(mode))
-         unshifted = eval('grid_filters.{}_coord0(grid,size)'.format(mode))
+         shifted   = eval(f'grid_filters.{mode}_coord0(grid,size,origin)')
+         unshifted = eval(f'grid_filters.{mode}_coord0(grid,size)')
          if   mode == 'cell':
             assert  np.allclose(shifted,unshifted+np.broadcast_to(origin,tuple(grid)  +(3,)))
          elif mode == 'node':

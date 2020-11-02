@@ -8,7 +8,8 @@
 module math
   use prec
   use IO
-  use numerics
+  use config
+  use YAML_types
   use LAPACK_interface
 
   implicit none
@@ -17,8 +18,7 @@ module math
   ! do not make use associated entities available to other modules
   private :: &
     prec, &
-    IO, &
-    numerics
+    IO
 #endif
 
   real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
@@ -72,14 +72,9 @@ module math
       3,3  &
       ],shape(MAPPLAIN))                                                                            !< arrangement in Plain notation
 
-  interface math_eye
-    module procedure math_identity2nd
-  end interface math_eye
-
-
 !---------------------------------------------------------------------------------------------------
  private :: &
-   unitTest
+   selfTest
 
 contains
 
@@ -89,11 +84,18 @@ contains
 subroutine math_init
 
   real(pReal), dimension(4) :: randTest
-  integer :: randSize
+  integer :: &
+    randSize, &
+    randomSeed                                                                                      !< fixed seeding for pseudo-random number generator, Default 0: use random seed
   integer, dimension(:), allocatable :: randInit
+  class(tNode), pointer :: &
+    num_generic
+ 
+  print'(/,a)', ' <<<+-  math init  -+>>>'; flush(IO_STDOUT)
 
-  write(6,'(/,a)') ' <<<+-  math init  -+>>>'; flush(6)
-
+  num_generic => config_numerics%get('generic',defaultVal=emptyDict)
+  randomSeed  = num_generic%get_asInt('random_seed', defaultVal = 0)
+ 
   call random_seed(size=randSize)
   allocate(randInit(randSize))
   if (randomSeed > 0) then
@@ -107,23 +109,24 @@ subroutine math_init
   call random_seed(put = randInit)
   call random_number(randTest)
 
-  write(6,'(a,i2)')                ' size  of random seed:     ', randSize
-  write(6,'(a,i0)')                ' value of random seed:     ', randInit(1)
-  write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
+  print'(a,i2)',                ' size  of random seed:     ', randSize
+  print'(a,i0)',                ' value of random seed:     ', randInit(1)
+  print'(a,4(/,26x,f17.14),/)', ' start of random sequence: ', randTest
 
   call random_seed(put = randInit)
 
-  call unitTest
+  call selfTest
 
 end subroutine math_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Quicksort algorithm for two-dimensional integer arrays
-! Sorting is done with respect to array(sort,:) and keeps array(/=sort,:) linked to it.
-! default: sort=1
+!> @brief Sorting of two-dimensional integer arrays
+!> @details Based on quicksort.
+!  Sorting is done with respect to array(sortDim,:) and keeps array(/=sortDim,:) linked to it.
+!  Default: sortDim=1
 !--------------------------------------------------------------------------------------------------
-recursive subroutine math_sort(a, istart, iend, sortDim)
+pure recursive subroutine math_sort(a, istart, iend, sortDim)
 
   integer, dimension(:,:), intent(inout) :: a
   integer, intent(in),optional :: istart,iend, sortDim
@@ -148,7 +151,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   endif
 
   if (s < e) then
-    ipivot = qsort_partition(a,s, e, d)
+    call qsort_partition(a,ipivot, s,e, d)
     call math_sort(a, s, ipivot-1, d)
     call math_sort(a, ipivot+1, e, d)
   endif
@@ -159,9 +162,10 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
   !-------------------------------------------------------------------------------------------------
   !> @brief Partitioning required for quicksort
   !-------------------------------------------------------------------------------------------------
-  integer function qsort_partition(a, istart, iend, sort)
+  pure subroutine qsort_partition(a,p, istart, iend, sort)
 
     integer, dimension(:,:), intent(inout) :: a
+    integer,                 intent(out)   :: p                                                     ! Pivot element
     integer,                 intent(in)    :: istart,iend,sort
     integer, dimension(size(a,1))          :: tmp
     integer :: i,j
@@ -179,7 +183,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
         tmp         = a(:,istart)
         a(:,istart) = a(:,j)
         a(:,j)      = tmp
-        qsort_partition = j
+        p           = j
         return
       else cross              ! exchange values
         tmp    = a(:,i)
@@ -188,7 +192,7 @@ recursive subroutine math_sort(a, istart, iend, sortDim)
       endif cross
     enddo
 
-  end function qsort_partition
+  end subroutine qsort_partition
 
 end subroutine math_sort
 
@@ -231,18 +235,18 @@ end function math_range
 !--------------------------------------------------------------------------------------------------
 !> @brief second rank identity tensor of specified dimension
 !--------------------------------------------------------------------------------------------------
-pure function math_identity2nd(d)
+pure function math_eye(d)
 
   integer, intent(in) :: d                                                                          !< tensor dimension
   integer :: i
-  real(pReal), dimension(d,d) :: math_identity2nd
+  real(pReal), dimension(d,d) :: math_eye
 
-  math_identity2nd = 0.0_pReal
+  math_eye = 0.0_pReal
   do i=1,d
-    math_identity2nd(i,i) = 1.0_pReal
+    math_eye(i,i) = 1.0_pReal
   enddo
 
-end function math_identity2nd
+end function math_eye
 
 
 !--------------------------------------------------------------------------------------------------
@@ -256,7 +260,7 @@ pure function math_identity4th(d)
   real(pReal), dimension(d,d,d,d) :: math_identity4th
   real(pReal), dimension(d,d)     :: identity2nd
 
-  identity2nd = math_identity2nd(d)
+  identity2nd = math_eye(d)
   do i=1,d; do j=1,d; do k=1,d; do l=1,d
     math_identity4th(i,j,k,l) = 0.5_pReal &
                               *(identity2nd(i,k)*identity2nd(j,l)+identity2nd(i,l)*identity2nd(j,k))
@@ -868,15 +872,14 @@ end function math_sampleGaussVar
 
 !--------------------------------------------------------------------------------------------------
 !> @brief eigenvalues and eigenvectors of symmetric matrix
-! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh(m,w,v,error)
+subroutine math_eigh(w,v,error,m)
 
   real(pReal), dimension(:,:),                  intent(in)  :: m                                    !< quadratic matrix to compute eigenvectors and values of
   real(pReal), dimension(size(m,1)),            intent(out) :: w                                    !< eigenvalues
   real(pReal), dimension(size(m,1),size(m,1)),  intent(out) :: v                                    !< eigenvectors
-
-  logical, intent(out) :: error
+  logical,                                      intent(out) :: error
+  
   integer :: ierr
   real(pReal), dimension(size(m,1)**2) :: work
 
@@ -893,9 +896,8 @@ end subroutine math_eigh
 !> @author Joachim Kopp, Max-Planck-Institut für Kernphysik, Heidelberg (Copyright (C) 2006)
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @details See http://arxiv.org/abs/physics/0610206 (DSYEVH3)
-! ToDo: has wrong oder of arguments
 !--------------------------------------------------------------------------------------------------
-subroutine math_eigh33(m,w,v)
+subroutine math_eigh33(w,v,m)
 
   real(pReal), dimension(3,3),intent(in)  :: m                                                      !< 3x3 matrix to compute eigenvectors and values of
   real(pReal), dimension(3),  intent(out) :: w                                                      !< eigenvalues
@@ -919,7 +921,7 @@ subroutine math_eigh33(m,w,v)
               (m(1,1) - w(1)) * (m(2,2) - w(1)) - v(3,2)]
   norm = norm2(v(1:3, 1))
   fallback1: if(norm < threshold) then
-    call math_eigh(m,w,v,error)
+    call math_eigh(w,v,error,m)
   else fallback1
     v(1:3,1) = v(1:3, 1) / norm
     v(1:3,2) = [ v(1,2) + m(1, 3) * w(2), &
@@ -927,7 +929,7 @@ subroutine math_eigh33(m,w,v)
                 (m(1,1) - w(2)) * (m(2,2) - w(2)) - v(3,2)]
     norm = norm2(v(1:3, 2))
     fallback2: if(norm < threshold) then
-      call math_eigh(m,w,v,error)
+      call math_eigh(w,v,error,m)
     else fallback2
       v(1:3,2) = v(1:3, 2) / norm
       v(1:3,3) = math_cross(v(1:3,1),v(1:3,2))
@@ -937,87 +939,49 @@ subroutine math_eigh33(m,w,v)
 end subroutine math_eigh33
 
 
-
-
 !--------------------------------------------------------------------------------------------------
-!> @brief rotational part from polar decomposition of 3x3 tensor
+!> @brief Calculate rotational part of a deformation gradient
+!> @details https://www.jstor.org/stable/43637254
+!!          https://www.jstor.org/stable/43637372
+!!          https://doi.org/10.1023/A:1007407802076
 !--------------------------------------------------------------------------------------------------
-function math_rotationalPart(m)
+pure function math_rotationalPart(F) result(R)
 
-  real(pReal), intent(in), dimension(3,3) :: m
-  real(pReal), dimension(3,3) :: math_rotationalPart
-  real(pReal), dimension(3,3) :: U , Uinv
+  real(pReal), dimension(3,3), intent(in) :: &
+    F                                                                                               ! deformation gradient
+  real(pReal), dimension(3,3) :: &
+    C, &                                                                                            ! right Cauchy-Green tensor
+    R                                                                                               ! rotational part
+  real(pReal), dimension(3) :: &
+    lambda, &                                                                                       ! principal stretches
+    I_C, &                                                                                          ! invariants of C
+    I_U                                                                                             ! invariants of U
+  real(pReal), dimension(2) :: &
+    I_F                                                                                             ! first two invariants of F
+  real(pReal) :: x,Phi
 
-  U = eigenvectorBasis(matmul(transpose(m),m))
-  Uinv = math_inv33(U)
+  C = matmul(transpose(F),F)
+  I_C = math_invariantsSym33(C)
+  I_F = [math_trace33(F), 0.5*(math_trace33(F)**2 - math_trace33(matmul(F,F)))]
 
-  inversionFailed: if (all(dEq0(Uinv))) then
-    math_rotationalPart = math_I3
-    call IO_warning(650)
-  else inversionFailed
-    math_rotationalPart = matmul(m,Uinv)
-  endif inversionFailed
+  x = math_clip(I_C(1)**2 -3.0_pReal*I_C(2),0.0_pReal)**(3.0_pReal/2.0_pReal)
+  if(dNeq0(x)) then
+    Phi = acos(math_clip((I_C(1)**3 -4.5_pReal*I_C(1)*I_C(2) +13.5_pReal*I_C(3))/x,-1.0_pReal,1.0_pReal))
+    lambda = I_C(1) +(2.0_pReal * sqrt(math_clip(I_C(1)**2-3.0_pReal*I_C(2),0.0_pReal))) &
+                    *cos((Phi-2.0_pReal * PI*[1.0_pReal,2.0_pReal,3.0_pReal])/3.0_pReal)
+    lambda = sqrt(math_clip(lambda,0.0_pReal)/3.0_pReal)
+  else
+    lambda = sqrt(I_C(1)/3.0_pReal)
+  endif
 
-contains
-  !--------------------------------------------------------------------------------------------------
-  !> @brief eigenvector basis of positive-definite 3x3 matrix
-  !--------------------------------------------------------------------------------------------------
-  pure function eigenvectorBasis(m)
+  I_U = [sum(lambda), lambda(1)*lambda(2)+lambda(2)*lambda(3)+lambda(3)*lambda(1), product(lambda)]
 
-    real(pReal), dimension(3,3)             :: eigenvectorBasis
-    real(pReal), dimension(3,3), intent(in) :: m                                                      !< positive-definite matrix of which the basis is computed
-
-    real(pReal), dimension(3)               :: I, v
-    real(pReal) :: P, Q, rho, phi
-    real(pReal), parameter :: TOL=1.e-14_pReal
-    real(pReal), dimension(3,3,3) :: N, EB
-
-    I = math_invariantsSym33(m)
-
-    P = I(2)-I(1)**2.0_pReal/3.0_pReal
-    Q = -2.0_pReal/27.0_pReal*I(1)**3.0_pReal+product(I(1:2))/3.0_pReal-I(3)
-
-    threeSimilarEigVals: if(all(abs([P,Q]) < TOL)) then
-      v = I(1)/3.0_pReal
-      ! this is not really correct, but at least the basis is correct
-      EB = 0.0_pReal
-      EB(1,1,1)=1.0_pReal
-      EB(2,2,2)=1.0_pReal
-      EB(3,3,3)=1.0_pReal
-    else threeSimilarEigVals
-      rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
-      phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
-      v = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* [cos((phi             )/3.0_pReal), &
-                                                 cos((phi+2.0_pReal*PI)/3.0_pReal), &
-                                                 cos((phi+4.0_pReal*PI)/3.0_pReal) &
-                                                ] + I(1)/3.0_pReal
-      N(1:3,1:3,1) = m-v(1)*math_I3
-      N(1:3,1:3,2) = m-v(2)*math_I3
-      N(1:3,1:3,3) = m-v(3)*math_I3
-      twoSimilarEigVals: if(abs(v(1)-v(2)) < TOL) then
-        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
-        EB(1:3,1:3,1) = math_I3-EB(1:3,1:3,3)
-        EB(1:3,1:3,2) = 0.0_pReal
-      elseif               (abs(v(2)-v(3)) < TOL) then twoSimilarEigVals
-        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
-        EB(1:3,1:3,2) = math_I3-EB(1:3,1:3,1)
-        EB(1:3,1:3,3) = 0.0_pReal
-      elseif               (abs(v(3)-v(1)) < TOL) then twoSimilarEigVals
-        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
-        EB(1:3,1:3,3) = math_I3-EB(1:3,1:3,2)
-        EB(1:3,1:3,1) = 0.0_pReal
-      else twoSimilarEigVals
-        EB(1:3,1:3,1) = matmul(N(1:3,1:3,2),N(1:3,1:3,3))/((v(1)-v(2))*(v(1)-v(3)))
-        EB(1:3,1:3,2) = matmul(N(1:3,1:3,3),N(1:3,1:3,1))/((v(2)-v(3))*(v(2)-v(1)))
-        EB(1:3,1:3,3) = matmul(N(1:3,1:3,1),N(1:3,1:3,2))/((v(3)-v(1))*(v(3)-v(2)))
-      endif twoSimilarEigVals
-    endif threeSimilarEigVals
-
-   eigenvectorBasis = sqrt(v(1)) * EB(1:3,1:3,1) &
-                    + sqrt(v(2)) * EB(1:3,1:3,2) &
-                    + sqrt(v(3)) * EB(1:3,1:3,3)
-
-  end function eigenvectorBasis
+  R = I_U(1)*I_F(2) * math_I3 &
+    +(I_U(1)**2-I_U(2)) * F &
+    - I_U(1)*I_F(1) * transpose(F) &
+    + I_U(1) * transpose(matmul(F,F)) &
+    - matmul(F,C)
+  R = R /(I_U(1)*I_U(2)-I_U(3))
 
 end function math_rotationalPart
 
@@ -1069,7 +1033,7 @@ function math_eigvalsh33(m)
     rho=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
     phi=acos(math_clip(-Q/rho*0.5_pReal,-1.0_pReal,1.0_pReal))
     math_eigvalsh33 = 2.0_pReal*rho**(1.0_pReal/3.0_pReal)* &
-                                                            [cos(phi/3.0_pReal), &
+                                                            [cos( phi              /3.0_pReal), &
                                                              cos((phi+2.0_pReal*PI)/3.0_pReal), &
                                                              cos((phi+4.0_pReal*PI)/3.0_pReal) &
                                                             ] &
@@ -1190,9 +1154,9 @@ end function math_clip
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some math functions
+!> @brief Check correctness of some math functions.
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+subroutine selfTest
 
   integer, dimension(2,4) :: &
     sort_in_   = reshape([+1,+5,  +5,+6,  -1,-1,  +3,-2],[2,4])
@@ -1217,47 +1181,47 @@ subroutine unitTest
 
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,3.0_pReal,3.0_pReal,3.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2,3,0])) > tol_math_check)) &
-    call IO_error(0,ext_msg='math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]')
+    error stop 'math_expand [1,2,3] by [1,2,3,0] => [1,2,2,3,3,3]'
 
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal,3.0_pReal],[1,2])) > tol_math_check)) &
-    call IO_error(0,ext_msg='math_expand [1,2,3] by [1,2] => [1,2,2]')
+    error stop 'math_expand [1,2,3] by [1,2] => [1,2,2]'
 
   if (any(abs([1.0_pReal,2.0_pReal,2.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal] - &
               math_expand([1.0_pReal,2.0_pReal],[1,2,3])) > tol_math_check)) &
-    call IO_error(0,ext_msg='math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]')
+    error stop 'math_expand [1,2] by [1,2,3] => [1,2,2,1,1,1]'
 
   call math_sort(sort_in_,1,3,2)
   if(any(sort_in_ /= sort_out_)) &
-    call IO_error(0,ext_msg='math_sort')
+    error stop 'math_sort'
 
   if(any(math_range(5) /= range_out_)) &
-    call IO_error(0,ext_msg='math_range')
+    error stop 'math_range'
 
-   if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
-    call IO_error(0,ext_msg='math_exp33(math_I3,1)')
+  if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
+    error stop 'math_exp33(math_I3,1)'
   if(any(dNeq(math_exp33(math_I3,256),exp(1.0_pReal)*math_I3))) &
-    call IO_error(0,ext_msg='math_exp33(math_I3,256)')
+    error stop 'math_exp33(math_I3,256)'
 
   call random_number(v9)
   if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
-    call IO_error(0,ext_msg='math_33to9/math_9to33')
+    error stop 'math_33to9/math_9to33'
 
   call random_number(t99)
   if(any(dNeq(math_3333to99(math_99to3333(t99)),t99))) &
-    call IO_error(0,ext_msg='math_3333to99/math_99to3333')
+    error stop 'math_3333to99/math_99to3333'
 
   call random_number(v6)
   if(any(dNeq(math_sym33to6(math_6toSym33(v6)),v6))) &
-    call IO_error(0,ext_msg='math_sym33to6/math_6toSym33')
+    error stop 'math_sym33to6/math_6toSym33'
 
   call random_number(t66)
   if(any(dNeq(math_sym3333to66(math_66toSym3333(t66)),t66))) &
-    call IO_error(0,ext_msg='math_sym3333to66/math_66toSym3333')
+    error stop 'math_sym3333to66/math_66toSym3333'
 
   call random_number(v6)
   if(any(dNeq0(math_6toSym33(v6) - math_symmetric33(math_6toSym33(v6))))) &
-    call IO_error(0,ext_msg='math_symmetric33')
+    error stop 'math_symmetric33'
 
   call random_number(v3_1)
   call random_number(v3_2)
@@ -1266,30 +1230,30 @@ subroutine unitTest
 
   if(dNeq(abs(dot_product(math_cross(v3_1-v3_4,v3_2-v3_4),v3_3-v3_4))/6.0, &
           math_volTetrahedron(v3_1,v3_2,v3_3,v3_4),tol=1.0e-12_pReal)) &
-  call IO_error(0,ext_msg='math_volTetrahedron')
+    error stop 'math_volTetrahedron'
 
   call random_number(t33)
   if(dNeq(math_det33(math_symmetric33(t33)),math_detSym33(math_symmetric33(t33)),tol=1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='math_det33/math_detSym33')
+    error stop 'math_det33/math_detSym33'
 
-  if(any(dNeq0(math_identity2nd(3),math_inv33(math_I3)))) &
-    call IO_error(0,ext_msg='math_inv33(math_I3)')
+  if(any(dNeq0(math_eye(3),math_inv33(math_I3)))) &
+    error stop 'math_inv33(math_I3)'
 
   do while(abs(math_det33(t33))<1.0e-9_pReal)
     call random_number(t33)
   enddo
-  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_identity2nd(3),tol=1.0e-9_pReal))) &
-    call IO_error(0,ext_msg='math_inv33')
+  if(any(dNeq0(matmul(t33,math_inv33(t33)) - math_eye(3),tol=1.0e-9_pReal))) &
+    error stop 'math_inv33'
 
   call math_invert33(t33_2,det,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
-    call IO_error(0,ext_msg='math_invert33: T:T^-1 != I')
+  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
+    error stop 'math_invert33: T:T^-1 != I'
   if(dNeq(det,math_det33(t33),tol=1.0e-12_pReal)) &
-    call IO_error(0,ext_msg='math_invert33 (determinant)')
+    error stop 'math_invert33 (determinant)'
 
   call math_invert(t33_2,e,t33)
-  if(any(dNeq0(matmul(t33,t33_2) - math_identity2nd(3),tol=1.0e-9_pReal)) .or. e) &
-    call IO_error(0,ext_msg='math_invert t33')
+  if(any(dNeq0(matmul(t33,t33_2) - math_eye(3),tol=1.0e-9_pReal)) .or. e) &
+    error stop 'math_invert t33'
 
   do while(math_det33(t33)<1.0e-2_pReal)                                                            ! O(det(F)) = 1
     call random_number(t33)
@@ -1297,39 +1261,39 @@ subroutine unitTest
   t33_2 = math_rotationalPart(transpose(t33))
   t33   = math_rotationalPart(t33)
   if(any(dNeq0(matmul(t33_2,t33) - math_I3,tol=1.0e-10_pReal))) &
-    call IO_error(0,ext_msg='math_rotationalPart')
+    error stop 'math_rotationalPart'
 
   call random_number(r)
   d = int(r*5.0_pReal) + 1
-  txx = math_identity2nd(d)
+  txx = math_eye(d)
   allocate(txx_2(d,d))
   call math_invert(txx_2,e,txx)
   if(any(dNeq0(txx_2,txx) .or. e)) &
-    call IO_error(0,ext_msg='math_invert(txx)/math_identity2nd')
+    error stop 'math_invert(txx)/math_eye'
 
   call math_invert(t99_2,e,t99) ! not sure how likely it is that we get a singular matrix
-  if(any(dNeq0(matmul(t99_2,t99)-math_identity2nd(9),tol=1.0e-9_pReal)) .or. e) &
-    call IO_error(0,ext_msg='math_invert(t99)')
+  if(any(dNeq0(matmul(t99_2,t99)-math_eye(9),tol=1.0e-9_pReal)) .or. e) &
+    error stop 'math_invert(t99)'
 
   if(any(dNeq(math_clip([4.0_pReal,9.0_pReal],5.0_pReal,6.5_pReal),[5.0_pReal,6.5_pReal]))) &
-    call IO_error(0,ext_msg='math_clip')
+    error stop 'math_clip'
 
   if(math_factorial(10) /= 3628800) &
-    call IO_error(0,ext_msg='math_factorial')
+    error stop 'math_factorial'
 
   if(math_binomial(49,6) /= 13983816) &
-    call IO_error(0,ext_msg='math_binomial')
+    error stop 'math_binomial'
 
   ijk = cshift([1,2,3],int(r*1.0e2_pReal))
   if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),+1.0_pReal)) &
-    call IO_error(0,ext_msg='math_LeviCivita(even)')
+    error stop 'math_LeviCivita(even)'
   ijk = cshift([3,2,1],int(r*2.0e2_pReal))
   if(dNeq(math_LeviCivita(ijk(1),ijk(2),ijk(3)),-1.0_pReal)) &
-    call IO_error(0,ext_msg='math_LeviCivita(odd)')
+    error stop 'math_LeviCivita(odd)'
   ijk = cshift([2,2,1],int(r*2.0e2_pReal))
-  if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3))))&
-    call IO_error(0,ext_msg='math_LeviCivita')
+  if(dNeq0(math_LeviCivita(ijk(1),ijk(2),ijk(3)))) &
+    error stop 'math_LeviCivita'
 
-end subroutine unitTest
+end subroutine selfTest
 
 end module math

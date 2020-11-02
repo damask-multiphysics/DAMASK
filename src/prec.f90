@@ -8,18 +8,20 @@
 !--------------------------------------------------------------------------------------------------
 module prec
   use, intrinsic :: IEEE_arithmetic
+  use, intrinsic :: ISO_C_binding
 
   implicit none
   public
 
   ! https://software.intel.com/en-us/blogs/2017/03/27/doctor-fortran-in-it-takes-all-kinds
   integer,     parameter :: pReal      = IEEE_selected_real_kind(15,307)                            !< number with 15 significant digits, up to 1e+-307 (typically 64 bit)
+  integer,     parameter :: pI32       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
+  integer,     parameter :: pI64       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
 #if(INT==8)
-  integer,     parameter :: pInt       = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
+  integer,     parameter :: pInt       = pI64
 #else
-  integer,     parameter :: pInt       = selected_int_kind(9)                                       !< number with at least up to +-1e9 (typically 32 bit)
+  integer,     parameter :: pInt       = pI32
 #endif
-  integer,     parameter :: pLongInt   = selected_int_kind(18)                                      !< number with at least up to +-1e18 (typically 64 bit)
   integer,     parameter :: pStringLen = 256                                                        !< default string length
   integer,     parameter :: pPathLen   = 4096                                                       !< maximum length of a path name on linux
 
@@ -45,7 +47,7 @@ module prec
       dotState, &                                                                                   !< rate of state change
       deltaState                                                                                    !< increment of state change
     real(pReal), allocatable, dimension(:,:) :: &
-      partionedState0, &
+      partitionedState0, &
       subState0
   end type
 
@@ -75,32 +77,32 @@ module prec
     emptyStringArray = [character(len=pStringLen)::]
 
   private :: &
-    unitTest
+    selfTest
 
 contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief reporting precision
+!> @brief report precision and do self test
 !--------------------------------------------------------------------------------------------------
 subroutine prec_init
 
-  write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
+  print'(/,a)', ' <<<+-  prec init  -+>>>'
 
-  write(6,'(a,i3)')    ' Size of integer in bit: ',bit_size(0)
-  write(6,'(a,i19)')   '   Maximum value:        ',huge(0)
-  write(6,'(/,a,i3)')  ' Size of float in bit:   ',storage_size(0.0_pReal)
-  write(6,'(a,e10.3)') '   Maximum value:        ',huge(0.0_pReal)
-  write(6,'(a,e10.3)') '   Minimum value:        ',tiny(0.0_pReal)
-  write(6,'(a,i3)')    '   Decimal precision:    ',precision(0.0_pReal)
+  print'(a,i3)',    ' Size of integer in bit: ',bit_size(0)
+  print'(a,i19)',   '   Maximum value:        ',huge(0)
+  print'(/,a,i3)',  ' Size of float in bit:   ',storage_size(0.0_pReal)
+  print'(a,e10.3)', '   Maximum value:        ',huge(0.0_pReal)
+  print'(a,e10.3)', '   Minimum value:        ',tiny(0.0_pReal)
+  print'(a,i3)',    '   Decimal precision:    ',precision(0.0_pReal)
 
-  call unitTest
+  call selfTest
 
 end subroutine prec_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for float with double precision
+!> @brief Test floating point numbers with double precision for equality.
 ! replaces "==" but for certain (relative) tolerance. Counterpart to dNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative
@@ -123,7 +125,7 @@ end function dEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for float with double precision
+!> @brief Test floating point numbers with double precision for inequality.
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to dEq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! AlmostEqualRelative NOT
@@ -143,7 +145,7 @@ end function dNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality to 0 comparison for float with double precision
+!> @brief Test floating point number with double precision for equality to 0.
 ! replaces "==0" but everything not representable as a normal number is treated as 0. Counterpart to dNeq0
 ! https://de.mathworks.com/help/matlab/ref/realmin.html
 ! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
@@ -166,7 +168,7 @@ end function dEq0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality to 0 comparison for float with double precision
+!> @brief Test floating point number with double precision for inequality to 0.
 ! replaces "!=0" but everything not representable as a normal number is treated as 0. Counterpart to dEq0
 ! https://de.mathworks.com/help/matlab/ref/realmin.html
 ! https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
@@ -186,7 +188,7 @@ end function dNeq0
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief equality comparison for complex with double precision
+!> @brief Test complex floating point numbers with double precision for equality.
 ! replaces "==" but for certain (relative) tolerance. Counterpart to cNeq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
@@ -210,7 +212,7 @@ end function cEq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief inequality comparison for complex with double precision
+!> @brief Test complex floating point numbers with double precision for inequality.
 ! replaces "!=" but for certain (relative) tolerance. Counterpart to cEq
 ! https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ! probably a component wise comparison would be more accurate than the comparsion of the absolute
@@ -231,24 +233,94 @@ end function cNeq
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some prec functions
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_FLOAT array (4 byte float).
 !--------------------------------------------------------------------------------------------------
-subroutine unitTest
+pure function prec_bytesToC_FLOAT(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_FLOAT array
+  real(C_FLOAT), dimension(size(bytes,kind=pI64)/(storage_size(0._C_FLOAT,pI64)/8_pI64)) :: &
+    prec_bytesToC_FLOAT
+
+  prec_bytesToC_FLOAT = transfer(bytes,prec_bytesToC_FLOAT,size(prec_bytesToC_FLOAT))
+
+end function prec_bytesToC_FLOAT
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_DOUBLE array (8 byte float).
+!--------------------------------------------------------------------------------------------------
+pure function prec_bytesToC_DOUBLE(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_DOUBLE array
+  real(C_DOUBLE), dimension(size(bytes,kind=pI64)/(storage_size(0._C_DOUBLE,pI64)/8_pI64)) :: &
+    prec_bytesToC_DOUBLE
+
+  prec_bytesToC_DOUBLE = transfer(bytes,prec_bytesToC_DOUBLE,size(prec_bytesToC_DOUBLE))
+
+end function prec_bytesToC_DOUBLE
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_INT32_T array (4 byte signed integer).
+!--------------------------------------------------------------------------------------------------
+pure function prec_bytesToC_INT32_T(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_INT32_T array
+  integer(C_INT32_T), dimension(size(bytes,kind=pI64)/(storage_size(0_C_INT32_T,pI64)/8_pI64)) :: &
+    prec_bytesToC_INT32_T
+
+  prec_bytesToC_INT32_T = transfer(bytes,prec_bytesToC_INT32_T,size(prec_bytesToC_INT32_T))
+
+end function prec_bytesToC_INT32_T
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Decode byte array (C_SIGNED_CHAR) as C_INT64_T array (8 byte signed integer).
+!--------------------------------------------------------------------------------------------------
+pure function prec_bytesToC_INT64_T(bytes)
+
+  integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_INT64_T array
+  integer(C_INT64_T), dimension(size(bytes,kind=pI64)/(storage_size(0_C_INT64_T,pI64)/8_pI64)) :: &
+     prec_bytesToC_INT64_T
+
+  prec_bytesToC_INT64_T = transfer(bytes,prec_bytesToC_INT64_T,size(prec_bytesToC_INT64_T))
+
+end function prec_bytesToC_INT64_T
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of some prec functions.
+!--------------------------------------------------------------------------------------------------
+subroutine selfTest
 
   integer, allocatable, dimension(:) :: realloc_lhs_test
-  real(pReal), dimension(2) :: r
-  external :: &
-    quit
+  real(pReal),   dimension(1) :: f
+  integer(pInt), dimension(1) :: i
+  real(pReal),   dimension(2) :: r
+
+  realloc_lhs_test = [1,2]
+  if (any(realloc_lhs_test/=[1,2]))        error stop 'LHS allocation'
 
   call random_number(r)
   r = r/minval(r)
-  if(.not. all(dEq(r,r+PREAL_EPSILON)))    call quit(9000)
-  if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) call quit(9000)
-  if(.not. all(dEq0(r-(r+PREAL_MIN))))     call quit(9000)
+  if(.not. all(dEq(r,r+PREAL_EPSILON)))    error stop 'dEq'
+  if(dEq(r(1),r(2)) .and. dNeq(r(1),r(2))) error stop 'dNeq'
+  if(.not. all(dEq0(r-(r+PREAL_MIN))))     error stop 'dEq0'
 
-  realloc_lhs_test = [1,2]
-  if (any(realloc_lhs_test/=[1,2])) call quit(9000)
+  ! https://www.binaryconvert.com
+  ! https://www.rapidtables.com/convert/number/binary-to-decimal.html
+  f = real(prec_bytesToC_FLOAT(int([-65,+11,-102,+75],C_SIGNED_CHAR)),pReal)
+  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_FLOAT'
 
-end subroutine unitTest
+  f = real(prec_bytesToC_DOUBLE(int([0,0,0,-32,+119,+65,+115,65],C_SIGNED_CHAR)),pReal)
+  if(dNeq(f(1),20191102.0_pReal,0.0_pReal)) error stop 'prec_bytesToC_DOUBLE'
+
+  i = int(prec_bytesToC_INT32_T(int([+126,+23,+52,+1],C_SIGNED_CHAR)),pInt)
+  if(i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT32_T'
+
+  i = int(prec_bytesToC_INT64_T(int([+126,+23,+52,+1,0,0,0,0],C_SIGNED_CHAR)),pInt)
+  if(i(1) /= 20191102_pInt)                 error stop 'prec_bytesToC_INT64_T'
+
+end subroutine selfTest
 
 end module prec

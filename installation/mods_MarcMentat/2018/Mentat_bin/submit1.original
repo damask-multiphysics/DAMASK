@@ -4,7 +4,7 @@
 # Normal exit status is 0.
 #
 
-DIR=/nethome/storage/raid3/f.roters/Software/MSC/Marc2018-RH7.1/marc2018
+DIR=/tmp/msc/marc2018
 if test $MARCDIR1
 then
  DIR=$MARCDIR1

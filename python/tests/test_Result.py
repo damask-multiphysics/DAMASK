@@ -1,25 +1,39 @@
+import time
 import shutil
 import os
+import sys
+from datetime import datetime
 
 import pytest
 import numpy as np
+import h5py
 
 from damask import Result
+from damask import Rotation
+from damask import Orientation
 from damask import mechanics
+from damask import grid_filters
 
 @pytest.fixture
 def default(tmp_path,reference_dir):
     """Small Result file in temp location for modification."""
     fname = '12grains6x7x8_tensionY.hdf5'
-    shutil.copy(os.path.join(reference_dir,fname),tmp_path)
-    f = Result(os.path.join(tmp_path,fname))
-    f.set_by_time(20.0,20.0)
+    shutil.copy(reference_dir/fname,tmp_path)
+    f = Result(tmp_path/fname)
+    f.pick('times',20.0)
     return f
+
+@pytest.fixture
+def single_phase(tmp_path,reference_dir):
+    """Single phase Result file in temp location for modification."""
+    fname = '6grains6x7x8_single_phase_tensionY.hdf5'
+    shutil.copy(reference_dir/fname,tmp_path)
+    return Result(tmp_path/fname)
 
 @pytest.fixture
 def reference_dir(reference_dir_base):
     """Directory containing reference results."""
-    return os.path.join(reference_dir_base,'Result')
+    return reference_dir_base/'Result'
 
 
 class TestResult:
@@ -28,12 +42,56 @@ class TestResult:
         print(default)
 
 
-    def test_time_increments(self,default):
-        shape = default.read_dataset(default.get_dataset_location('F'),0).shape
-        default.set_by_time(0.0,20.0)
-        for i in default.iterate('increments'):
-           assert shape == default.read_dataset(default.get_dataset_location('F'),0).shape
+    def test_pick_all(self,default):
+        default.pick('increments',True)
+        a = default.get_dataset_location('F')
+        default.pick('increments','*')
+        b = default.get_dataset_location('F')
+        default.pick('increments',default.incs_in_range(0,np.iinfo(int).max))
+        c = default.get_dataset_location('F')
 
+        default.pick('times',True)
+        d = default.get_dataset_location('F')
+        default.pick('times','*')
+        e = default.get_dataset_location('F')
+        default.pick('times',default.times_in_range(0.0,np.inf))
+        f = default.get_dataset_location('F')
+        assert a == b == c == d == e ==f
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_none(self,default,what):
+        default.pick(what,False)
+        a = default.get_dataset_location('F')
+        default.pick(what,[])
+        b = default.get_dataset_location('F')
+
+        assert a == b == []
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_more(self,default,what):
+        default.pick(what,False)
+        default.pick_more(what,'*')
+        a = default.get_dataset_location('F')
+
+        default.pick(what,True)
+        b = default.get_dataset_location('F')
+
+        assert a == b
+
+    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    def test_pick_less(self,default,what):
+        default.pick(what,True)
+        default.pick_less(what,'*')
+        a = default.get_dataset_location('F')
+
+        default.pick(what,False)
+        b = default.get_dataset_location('F')
+
+        assert a == b == []
+
+    def test_pick_invalid(self,default):
+        with pytest.raises(AttributeError):
+            default.pick('invalid',True)
 
     def test_add_absolute(self,default):
         default.add_absolute('Fe')
@@ -43,8 +101,19 @@ class TestResult:
         in_file   = default.read_dataset(loc['|Fe|'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_calculation(self,default):
-        default.add_calculation('x','2.0*np.abs(#F#)-1.0','-','my notes')
+    @pytest.mark.parametrize('mode',['direct','function'])
+    def test_add_calculation(self,default,tmp_path,mode):
+
+        if mode == 'direct':
+            default.add_calculation('x','2.0*np.abs(#F#)-1.0','-','my notes')
+        else:
+            with open(tmp_path/'f.py','w') as f:
+                f.write("import numpy as np\ndef my_func(field):\n  return 2.0*np.abs(field)-1.0\n")
+            sys.path.insert(0,str(tmp_path))
+            import f
+            default.enable_user_function(f.my_func)
+            default.add_calculation('x','my_func(#F#)','-','my notes')
+
         loc = {'F':    default.get_dataset_location('F'),
                'x':    default.get_dataset_location('x')}
         in_memory = 2.0*np.abs(default.read_dataset(loc['F'],0))-1.0
@@ -77,22 +146,38 @@ class TestResult:
         in_file   = default.read_dataset(loc['s_P'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_eigenvalues(self,default):
+    @pytest.mark.parametrize('eigenvalue,function',[('max',np.amax),('min',np.amin)])
+    def test_add_eigenvalue(self,default,eigenvalue,function):
         default.add_Cauchy('P','F')
-        default.add_eigenvalues('sigma')
-        loc = {'sigma'        :default.get_dataset_location('sigma'),
-               'lambda(sigma)':default.get_dataset_location('lambda(sigma)')}
-        in_memory = mechanics.eigenvalues(default.read_dataset(loc['sigma'],0))
-        in_file   = default.read_dataset(loc['lambda(sigma)'],0)
+        default.add_eigenvalue('sigma',eigenvalue)
+        loc = {'sigma' :default.get_dataset_location('sigma'),
+               'lambda':default.get_dataset_location(f'lambda_{eigenvalue}(sigma)')}
+        in_memory = function(mechanics.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
+        in_file   = default.read_dataset(loc['lambda'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_eigenvectors(self,default):
+    @pytest.mark.parametrize('eigenvalue,idx',[('max',2),('mid',1),('min',0)])
+    def test_add_eigenvector(self,default,eigenvalue,idx):
         default.add_Cauchy('P','F')
-        default.add_eigenvectors('sigma')
+        default.add_eigenvector('sigma',eigenvalue)
         loc = {'sigma'   :default.get_dataset_location('sigma'),
-               'v(sigma)':default.get_dataset_location('v(sigma)')}
-        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))
+               'v(sigma)':default.get_dataset_location(f'v_{eigenvalue}(sigma)')}
+        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
         in_file   = default.read_dataset(loc['v(sigma)'],0)
+        assert np.allclose(in_memory,in_file)
+
+    @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
+    def test_add_IPF_color(self,default,d):
+        default.add_IPF_color('orientation',d)
+        loc = {'orientation': default.get_dataset_location('orientation'),
+               'color':       default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
+        qu = default.read_dataset(loc['orientation']).view(np.double).reshape(-1,4)
+        crystal_structure = default.get_crystal_structure()
+        in_memory = np.empty((qu.shape[0],3),np.uint8)
+        for i,q in enumerate(qu):
+            o = Orientation(q,crystal_structure).reduced
+            in_memory[i] = np.uint8(o.IPF_color(np.array(d))*255)
+        in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 
     def test_add_maximum_shear(self,default):
@@ -108,7 +193,7 @@ class TestResult:
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
         default.add_strain_tensor('F',t,m)
-        label = 'epsilon_{}^{}(F)'.format(t,m)
+        label = f'epsilon_{t}^{m}(F)'
         default.add_Mises(label)
         loc = {label      :default.get_dataset_location(label),
                label+'_vM':default.get_dataset_location(label+'_vM')}
@@ -143,6 +228,20 @@ class TestResult:
         in_file   = default.read_dataset(loc['S'],0)
         assert np.allclose(in_memory,in_file)
 
+    @pytest.mark.parametrize('polar',[True,False])
+    def test_add_pole(self,default,polar):
+        pole = np.array([1.,0.,0.])
+        default.add_pole('orientation',pole,polar)
+        loc = {'orientation': default.get_dataset_location('orientation'),
+               'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
+        rot = Rotation(default.read_dataset(loc['orientation']).view(np.double))
+        rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
+        xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
+        in_memory = xy if not polar else \
+                    np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
+        in_file = default.read_dataset(loc['pole'])
+        assert np.allclose(in_memory,in_file)
+
     def test_add_rotational_part(self,default):
         default.add_rotational_part('F')
         loc = {'F':    default.get_dataset_location('F'),
@@ -163,7 +262,7 @@ class TestResult:
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
         default.add_strain_tensor('F',t,m)
-        label = 'epsilon_{}^{}(F)'.format(t,m)
+        label = f'epsilon_{t}^{m}(F)'
         loc = {'F':   default.get_dataset_location('F'),
                label: default.get_dataset_location(label)}
         in_memory = mechanics.strain_tensor(default.read_dataset(loc['F'],0),t,m)
@@ -185,3 +284,68 @@ class TestResult:
         in_memory = mechanics.left_stretch(default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['V(F)'],0)
         assert np.allclose(in_memory,in_file)
+
+    def test_add_invalid(self,default):
+        with pytest.raises(TypeError):
+            default.add_calculation('#invalid#*2')
+
+    @pytest.mark.parametrize('overwrite',['off','on'])
+    def test_add_overwrite(self,default,overwrite):
+        default.pick('times',default.times_in_range(0,np.inf)[-1])
+
+        default.add_Cauchy()
+        loc = default.get_dataset_location('sigma')
+        with h5py.File(default.fname,'r') as f:
+            created_first = f[loc[0]].attrs['Created'].decode()
+        created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
+
+        if overwrite == 'on':
+            default.allow_modification()
+        else:
+            default.disallow_modification()
+
+        time.sleep(2.)
+        default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        with h5py.File(default.fname,'r') as f:
+            created_second = f[loc[0]].attrs['Created'].decode()
+        created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
+        if overwrite == 'on':
+            assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
+        else:
+            assert created_first == created_second and not np.allclose(default.read_dataset(loc),311.)
+
+    @pytest.mark.parametrize('allowed',['off','on'])
+    def test_rename(self,default,allowed):
+        if allowed == 'on':
+            F = default.read_dataset(default.get_dataset_location('F'))
+            default.allow_modification()
+            default.rename('F','new_name')
+            assert np.all(F == default.read_dataset(default.get_dataset_location('new_name')))
+            default.disallow_modification()
+
+        with pytest.raises(PermissionError):
+            default.rename('P','another_new_name')
+
+    @pytest.mark.parametrize('mode',['cell','node'])
+    def test_coordinates(self,default,mode):
+         if   mode == 'cell':
+             a = grid_filters.cell_coord0(default.grid,default.size,default.origin)
+             b = default.cell_coordinates.reshape(tuple(default.grid)+(3,),order='F')
+         elif mode == 'node':
+             a = grid_filters.node_coord0(default.grid,default.size,default.origin)
+             b = default.node_coordinates.reshape(tuple(default.grid+1)+(3,),order='F')
+         assert np.allclose(a,b)
+
+    @pytest.mark.parametrize('output',['F',[],['F','P']])
+    def test_vtk(self,tmp_path,default,output):
+        os.chdir(tmp_path)
+        default.save_vtk(output)
+
+    @pytest.mark.parametrize('mode',['point','cell'])
+    def test_vtk_mode(self,tmp_path,single_phase,mode):
+        os.chdir(tmp_path)
+        single_phase.save_vtk(mode=mode)
+
+    def test_XDMF(self,tmp_path,single_phase):
+        os.chdir(tmp_path)
+        single_phase.save_XDMF()

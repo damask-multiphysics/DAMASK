@@ -6,41 +6,40 @@
 !> @brief    Interfacing between the PETSc-based solvers and the material subroutines provided
 !!           by DAMASK
 !> @details  Interfacing between the PETSc-based solvers and the material subroutines provided
-!>           by DAMASK. Interpretating the command line arguments to get load case, geometry file,
+!>           by DAMASK. Interpreting the command line arguments to get load case, geometry file,
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
-#define GCC_MIN 6
-#define INTEL_MIN 1700
 #define PETSC_MAJOR 3
 #define PETSC_MINOR_MIN 10
-#define PETSC_MINOR_MAX 13
+#define PETSC_MINOR_MAX 14
 
 module DAMASK_interface
-  use, intrinsic :: iso_fortran_env
+  use, intrinsic :: ISO_fortran_env
 
   use PETScSys
 
   use prec
+  use parallelization
   use system_routines
-  
+
   implicit none
   private
   logical,          volatile,    public, protected :: &
-    SIGTERM, &                                                                                      !< termination signal 
-    SIGUSR1, &                                                                                      !< 1. user-defined signal
-    SIGUSR2                                                                                         !< 2. user-defined signal
+    interface_SIGTERM, &                                                                            !< termination signal
+    interface_SIGUSR1, &                                                                            !< 1. user-defined signal
+    interface_SIGUSR2                                                                               !< 2. user-defined signal
   integer,                       public, protected :: &
     interface_restartInc = 0                                                                        !< Increment at which calculation starts
   character(len=:), allocatable, public, protected :: &
-    geometryFile, &                                                                                 !< parameter given for geometry file
-    loadCaseFile                                                                                    !< parameter given for load case file
+    interface_geomFile, &                                                                           !< parameter given for geometry file
+    interface_loadFile                                                                              !< parameter given for load case file
 
   public :: &
     getSolverJobName, &
     DAMASK_interface_init, &
-    setSIGTERM, &
-    setSIGUSR1, &
-    setSIGUSR2
+    interface_setSIGTERM, &
+    interface_setSIGUSR1, &
+    interface_setSIGUSR2
 
 contains
 
@@ -50,29 +49,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
 #include <petsc/finclude/petscsys.h>
-#if defined(__GFORTRAN__) &&  __GNUC__<GCC_MIN
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-===============   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ======================
-==================   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ===================
-=====================   THIS VERSION OF DAMASK REQUIRES A NEWER gfortran VERSION   ================
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-#endif
-
-#if defined(__INTEL_COMPILER) && __INTEL_COMPILER<INTEL_MIN
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-=================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   =======================
-====================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   ====================
-=======================   THIS VERSION OF DAMASK REQUIRES A NEWER ifort VERSION   =================
-===================================================================================================
-   -----  WRONG COMPILER VERSION ----- WRONG COMPILER VERSION ----- WRONG COMPILER VERSION -----
-===================================================================================================
-#endif
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
 ===================================================================================================
@@ -97,195 +73,145 @@ subroutine DAMASK_interface_init
     userName                                                                                        !< name of user calling the executable
   integer :: &
     stat, &
-    i, &
-#ifdef _OPENMP
-    threadLevel, &
-#endif
-    worldrank = 0, &
-    worldsize = 0, &
-    typeSize
+    i
   integer, dimension(8) :: &
     dateAndTime
-  integer        :: mpi_err
-  PetscErrorCode :: petsc_err
+  integer        :: err
   external :: &
     quit
 
-  open(6, encoding='UTF-8')                                                                         ! for special characters in output
+  print'(/,a)', ' <<<+-  DAMASK_interface init  -+>>>'
 
-!--------------------------------------------------------------------------------------------------
-! PETSc Init
-#ifdef _OPENMP
-  ! If openMP is enabled, check if the MPI libary supports it and initialize accordingly.
-  ! Otherwise, the first call to PETSc will do the initialization.
-  call MPI_Init_Thread(MPI_THREAD_FUNNELED,threadLevel,mpi_err)
-  if (mpi_err /= 0) call quit(1)
-  if (threadLevel<MPI_THREAD_FUNNELED) then
-    write(6,'(/,a)') ' ERROR: MPI library does not support OpenMP'
-    call quit(1)
-  endif
+  if(worldrank == 0) open(OUTPUT_UNIT, encoding='UTF-8')                                            ! for special characters in output
+
+ ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK%203
+#ifdef DEBUG
+  print*, achar(27)//'[31m'
+  print'(a,/)', ' debug version - debug version - debug version - debug version - debug version'
+#else
+  print*, achar(27)//'[94m'
 #endif
-  call PETScInitializeNoArguments(petsc_err)                                                        ! according to PETSc manual, that should be the first line in the code
-  CHKERRQ(petsc_err)                                                                                ! this is a macro definition, it is case sensitive
+  print*, '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/    _/_/_/'
+  print*, '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/            _/'
+  print*, '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/          _/_/'
+  print*, '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/            _/'
+  print*, ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/    _/_/_/'
+#ifdef DEBUG
+  print'(/,a)', ' debug version - debug version - debug version - debug version - debug version'
+#endif
+  print*, achar(27)//'[0m'
 
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,mpi_err)
-  if (mpi_err /= 0) call quit(1)
-  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,mpi_err)
-  if (mpi_err /= 0) call quit(1)
+  print*, 'Roters et al., Computational Materials Science 158:420–478, 2019'
+  print*, 'https://doi.org/10.1016/j.commatsci.2018.04.030'
 
-  mainProcess: if (worldrank == 0) then
-    if (output_unit /= 6) then
-      write(output_unit,'(/,a)') ' ERROR: STDOUT != 6'
-      call quit(1)
-    endif
-    if (error_unit /= 0) then
-      write(output_unit,'(/,a)') ' ERROR: STDERR != 0'
-      call quit(1)
-    endif
-  else mainProcess
-    close(6)                                                                                        ! disable output for non-master processes (open 6 to rank specific file for debug)
-    open(6,file='/dev/null',status='replace')                                                       ! close(6) alone will leave some temp files in cwd
-  endif mainProcess
-
-  write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
-
- ! http://patorjk.com/software/taag/#p=display&f=Lean&t=DAMASK
-  write(6,*) achar(27)//'[94m'
-  write(6,*) '     _/_/_/      _/_/    _/      _/    _/_/      _/_/_/  _/    _/'
-  write(6,*) '    _/    _/  _/    _/  _/_/  _/_/  _/    _/  _/        _/  _/'
-  write(6,*) '   _/    _/  _/_/_/_/  _/  _/  _/  _/_/_/_/    _/_/    _/_/'
-  write(6,*) '  _/    _/  _/    _/  _/      _/  _/    _/        _/  _/  _/'
-  write(6,*) ' _/_/_/    _/    _/  _/      _/  _/    _/  _/_/_/    _/    _/'
-  write(6,*) achar(27)//'[0m'
-
-  write(6,'(/,a)') ' Roters et al., Computational Materials Science 158:420–478, 2019'
-  write(6,'(a)')   ' https://doi.org/10.1016/j.commatsci.2018.04.030'
-
-  write(6,'(/,a)') ' Version: '//DAMASKVERSION
+  print'(/,a)', ' Version: '//DAMASKVERSION
 
   ! https://github.com/jeffhammond/HPCInfo/blob/master/docs/Preprocessor-Macros.md
-#if defined(__GFORTRAN__) || __INTEL_COMPILER >= 1800
-  write(6,'(/,a)') ' Compiled with: '//compiler_version()
-  write(6,'(a)')   ' Compiler options: '//compiler_options()
-#elif defined(__INTEL_COMPILER)
-  write(6,'(/,a,i4.4,a,i8.8)') ' Compiled with Intel fortran version :', __INTEL_COMPILER,&
-                                                       ', build date :', __INTEL_COMPILER_BUILD_DATE
-#elif defined(__PGI)
-  write(6,'(a,i4.4,a,i8.8)')   ' Compiled with PGI fortran version :', __PGIC__,&
-                                                                  '.', __PGIC_MINOR__
+#if defined(__PGI)
+  print'(/,a,i4.4,a,i8.8)',   ' Compiled with PGI fortran version :', __PGIC__,&
+                                                                    '.', __PGIC_MINOR__
+#else
+  print'(/,a)', ' Compiled with: '//compiler_version()
+  print'(a)',   ' Compiler options: '//compiler_options()
 #endif
 
-  write(6,'(/,a)') ' Compiled on: '//__DATE__//' at '//__TIME__
+  print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
 
   call date_and_time(values = dateAndTime)
-  write(6,'(/,a,2(i2.2,a),i4.4)') ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
-  write(6,'(a,2(i2.2,a),i2.2)')   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
-
-  call MPI_Type_size(MPI_INTEGER,typeSize,mpi_err)
-  if (mpi_err /= 0) call quit(1)
-  if (typeSize*8 /= bit_size(0)) then
-    write(6,'(a)') ' Mismatch between MPI and DAMASK integer' 
-    call quit(1)
-  endif
-
-  call MPI_Type_size(MPI_DOUBLE,typeSize,mpi_err)
-  if (mpi_err /= 0) call quit(1)
-  if (typeSize*8 /= storage_size(0.0_pReal)) then
-    write(6,'(a)') ' Mismatch between MPI and DAMASK real' 
-    call quit(1)
-  endif
+  print'(/,a,2(i2.2,a),i4.4)', ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
+  print'(a,2(i2.2,a),i2.2)',   ' Time: ',dateAndTime(5),':', dateAndTime(6),':', dateAndTime(7)
 
   do i = 1, command_argument_count()
-    call get_command_argument(i,arg)
+    call get_command_argument(i,arg,status=err)
+    if (err /= 0) call quit(1)
     select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
-        write(6,'(a)')  ' #######################################################################'
-        write(6,'(a)')  ' DAMASK Command Line Interface:'
-        write(6,'(a)')  ' For PETSc-based solvers for the Düsseldorf Advanced Material Simulation Kit'
-        write(6,'(a,/)')' #######################################################################'
-        write(6,'(a,/)')' Valid command line switches:'
-        write(6,'(a)')  '    --geom         (-g, --geometry)'
-        write(6,'(a)')  '    --load         (-l, --loadcase)'
-        write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
-        write(6,'(a)')  '    --restart      (-r, --rs)'
-        write(6,'(a)')  '    --help         (-h)'
-        write(6,'(/,a)')' -----------------------------------------------------------------------'
-        write(6,'(a)')  ' Mandatory arguments:'
-        write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom'
-        write(6,'(a)')  '        Specifies the location of the geometry definition file.'
-        write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile'
-        write(6,'(a)')  '        Specifies the location of the load case definition file.'
-        write(6,'(/,a)')' -----------------------------------------------------------------------'
-        write(6,'(a)')  ' Optional arguments:'
-        write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
-        write(6,'(a)')  '        Specifies the working directory and overwrites the default ./'
-        write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-        write(6,'(a)')  '            directory.'
-        write(6,'(a)')  '        For further configuration place "numerics.config"'
-        write(6,'(a)')'            and "debug.config" in that directory.'
-        write(6,'(/,a)')'   --restart XX'
-        write(6,'(a)')  '        Reads in increment XX and continues with calculating'
-        write(6,'(a)')  '            increment XX+1 based on this.'
-        write(6,'(a)')  '        Appends to existing results file'
-        write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile".'
-        write(6,'(a)')  '        Works only if the restart information for increment XX'
-        write(6,'(a)')  '            is available in the working directory.'
-        write(6,'(/,a)')' -----------------------------------------------------------------------'
-        write(6,'(a)')  ' Help:'
-        write(6,'(/,a)')'   --help'
-        write(6,'(a,/)')'        Prints this message and exits'
+        print'(a)',  ' #######################################################################'
+        print'(a)',  ' DAMASK Command Line Interface:'
+        print'(a)',  ' For PETSc-based solvers for the Düsseldorf Advanced Material Simulation Kit'
+        print'(a,/)',' #######################################################################'
+        print'(a,/)',' Valid command line switches:'
+        print'(a)',  '    --geom         (-g, --geometry)'
+        print'(a)',  '    --load         (-l, --loadcase)'
+        print'(a)',  '    --workingdir   (-w, --wd, --workingdirectory)'
+        print'(a)',  '    --restart      (-r, --rs)'
+        print'(a)',  '    --help         (-h)'
+        print'(/,a)',' -----------------------------------------------------------------------'
+        print'(a)',  ' Mandatory arguments:'
+        print'(/,a)','   --geom PathToGeomFile/NameOfGeom'
+        print'(a)',  '        Specifies the location of the geometry definition file.'
+        print'(/,a)','   --load PathToLoadFile/NameOfLoadFile'
+        print'(a)',  '        Specifies the location of the load case definition file.'
+        print'(/,a)',' -----------------------------------------------------------------------'
+        print'(a)',  ' Optional arguments:'
+        print'(/,a)','   --workingdirectory PathToWorkingDirectory'
+        print'(a)',  '        Specifies the working directory and overwrites the default ./'
+        print'(a)',  '        Make sure the file "material.config" exists in the working'
+        print'(a)',  '            directory.'
+        print'(a)',  '        For further configuration place "numerics.config"'
+        print'(a)','            and "debug.config" in that directory.'
+        print'(/,a)','   --restart N'
+        print'(a)',  '        Reads in increment N and continues with calculating'
+        print'(a)',  '            increment N+1 based on this.'
+        print'(a)',  '        Appends to existing results file'
+        print'(a)',  '            "NameOfGeom_NameOfLoadFile.hdf5".'
+        print'(a)',  '        Works only if the restart information for increment N'
+        print'(a)',  '            is available in the working directory.'
+        print'(/,a)',' -----------------------------------------------------------------------'
+        print'(a)',  ' Help:'
+        print'(/,a)','   --help'
+        print'(a,/)','        Prints this message and exits'
         call quit(0)                                                                                ! normal Termination
       case ('-l', '--load', '--loadcase')
-        call get_command_argument(i+1,loadCaseArg)
+        call get_command_argument(i+1,loadCaseArg,status=err)
       case ('-g', '--geom', '--geometry')
-        call get_command_argument(i+1,geometryArg)
-      case ('-w', '-d', '--wd', '--directory', '--workingdir', '--workingdirectory')
-        call get_command_argument(i+1,workingDirArg)
+        call get_command_argument(i+1,geometryArg,status=err)
+      case ('-w', '--wd', '--workingdir', '--workingdirectory')
+        call get_command_argument(i+1,workingDirArg,status=err)
       case ('-r', '--rs', '--restart')
-        call get_command_argument(i+1,arg)
+        call get_command_argument(i+1,arg,status=err)
         read(arg,*,iostat=stat) interface_restartInc
         if (interface_restartInc < 0 .or. stat /=0) then
-          write(6,'(/,a)') ' ERROR: Could not parse restart increment: '//trim(arg)
+          print'(/,a)', ' ERROR: Could not parse restart increment: '//trim(arg)
           call quit(1)
         endif
     end select
+    if (err /= 0) call quit(1)
   enddo
 
   if (len_trim(loadcaseArg) == 0 .or. len_trim(geometryArg) == 0) then
-    write(6,'(/,a)') ' ERROR: Please specify geometry AND load case (-h for help)'
+    print'(/,a)', ' ERROR: Please specify geometry AND load case (-h for help)'
     call quit(1)
   endif
 
   if (len_trim(workingDirArg) > 0) call setWorkingDirectory(trim(workingDirArg))
-  geometryFile = getGeometryFile(geometryArg)
-  loadCaseFile = getLoadCaseFile(loadCaseArg)
+  interface_geomFile = getGeometryFile(geometryArg)
+  interface_loadFile = getLoadCaseFile(loadCaseArg)
 
   call get_command(commandLine)
   call get_environment_variable('USER',userName)
   ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
-  write(6,'(/,a,i4.1)') ' MPI processes: ',worldsize
-  write(6,'(a,a)')      ' Host name: ', trim(getHostName())
-  write(6,'(a,a)')      ' User name: ', trim(userName)
+  print'(a)',        ' Host name: '//trim(getHostName())
+  print'(a)',        ' User name: '//trim(userName)
 
-  write(6,'(/a,a)')     ' Command line call:      ', trim(commandLine)
+  print'(/a)',       ' Command line call:      '//trim(commandLine)
   if (len_trim(workingDirArg) > 0) &
-    write(6,'(a,a)')    ' Working dir argument:   ', trim(workingDirArg)
-  write(6,'(a,a)')      ' Geometry argument:      ', trim(geometryArg)
-  write(6,'(a,a)')      ' Load case argument:     ', trim(loadcaseArg)
-  write(6,'(a,a)')      ' Working directory:      ', getCWD()
-  write(6,'(a,a)')      ' Geometry file:          ', geometryFile
-  write(6,'(a,a)')      ' Loadcase file:          ', loadCaseFile
-  write(6,'(a,a)')      ' Solver job name:        ', getSolverJobName()
+    print'(a)',      ' Working dir argument:   '//trim(workingDirArg)
+  print'(a)',        ' Geometry argument:      '//trim(geometryArg)
+  print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
+  print'(a)',        ' Working directory:      '//getCWD()
+  print'(a)',        ' Geometry file:          '//interface_geomFile
+  print'(a)',        ' Loadcase file:          '//interface_loadFile
+  print'(a)',        ' Solver job name:        '//getSolverJobName()
   if (interface_restartInc > 0) &
-    write(6,'(a,i6.6)') ' Restart from increment: ', interface_restartInc
+    print'(a,i6.6)', ' Restart from increment: ', interface_restartInc
 
   !call signalterm_c(c_funloc(catchSIGTERM))
   call signalusr1_c(c_funloc(catchSIGUSR1))
   call signalusr2_c(c_funloc(catchSIGUSR2))
-  call setSIGTERM(.false.)
-  call setSIGUSR1(.false.)
-  call setSIGUSR2(.false.)
-
+  call interface_setSIGTERM(.false.)
+  call interface_setSIGUSR1(.false.)
+  call interface_setSIGUSR2(.false.)
 
 end subroutine DAMASK_interface_init
 
@@ -311,7 +237,7 @@ subroutine setWorkingDirectory(workingDirectoryArg)
   workingDirectory = trim(rectifyPath(workingDirectory))
   error = setCWD(trim(workingDirectory))
   if(error) then
-    write(6,'(/,a)') ' ERROR: Invalid Working directory: '//trim(workingDirectory)
+    print*, 'ERROR: Invalid Working directory: '//trim(workingDirectory)
     call quit(1)
   endif
 
@@ -326,15 +252,15 @@ function getSolverJobName()
   character(len=:), allocatable :: getSolverJobName
   integer :: posExt,posSep
 
-  posExt = scan(geometryFile,'.',back=.true.)
-  posSep = scan(geometryFile,'/',back=.true.)
+  posExt = scan(interface_geomFile,'.',back=.true.)
+  posSep = scan(interface_geomFile,'/',back=.true.)
 
-  getSolverJobName = geometryFile(posSep+1:posExt-1)
+  getSolverJobName = interface_geomFile(posSep+1:posExt-1)
 
-  posExt = scan(loadCaseFile,'.',back=.true.)
-  posSep = scan(loadCaseFile,'/',back=.true.)
+  posExt = scan(interface_loadFile,'.',back=.true.)
+  posSep = scan(interface_loadFile,'/',back=.true.)
 
-  getSolverJobName = getSolverJobName//'_'//loadCaseFile(posSep+1:posExt-1)
+  getSolverJobName = getSolverJobName//'_'//interface_loadFile(posSep+1:posExt-1)
 
 end function getSolverJobName
 
@@ -355,7 +281,7 @@ function getGeometryFile(geometryParameter)
 
   inquire(file=getGeometryFile, exist=file_exists)
   if (.not. file_exists) then
-    write(6,'(/,a)') ' ERROR: Geometry file does not exists ('//trim(getGeometryFile)//')'
+    print*, 'ERROR: Geometry file does not exists: '//trim(getGeometryFile)
     call quit(1)
   endif
 
@@ -363,7 +289,7 @@ end function getGeometryFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief relative path of loadcase from command line arguments
+!> @brief relative path of load case from command line arguments
 !--------------------------------------------------------------------------------------------------
 function getLoadCaseFile(loadCaseParameter)
 
@@ -378,7 +304,7 @@ function getLoadCaseFile(loadCaseParameter)
 
   inquire(file=getLoadCaseFile, exist=file_exists)
   if (.not. file_exists) then
-    write(6,'(/,a)') ' ERROR: Load case file does not exists ('//trim(getLoadCaseFile)//')'
+    print*, 'ERROR: Load case file does not exists: '//trim(getLoadCaseFile)
     call quit(1)
   endif
 
@@ -447,7 +373,7 @@ function makeRelativePath(a,b)
   a_cleaned = rectifyPath(trim(a)//'/')
   b_cleaned = rectifyPath(b)
 
-  do i = 1, min(1024,len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
+  do i = 1, min(len_trim(a_cleaned),len_trim(rectifyPath(b_cleaned)))
     if (a_cleaned(i:i) /= b_cleaned(i:i)) exit
     if (a_cleaned(i:i) == '/') posLastCommonSlash = i
   enddo
@@ -461,75 +387,78 @@ end function makeRelativePath
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGTERM to .true.
+!> @brief Set global variable interface_SIGTERM to .true.
+!> @details This function can be registered to catch signals send to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGTERM(signal) bind(C)
 
   integer(C_INT), value :: signal
-  SIGTERM = .true.
+  interface_SIGTERM = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGTERM'
+  print'(a,i0,a)', ' received signal ',signal, ', set SIGTERM=TRUE'
 
 end subroutine catchSIGTERM
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGTERM
+!> @brief Set global variable interface_SIGTERM.
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGTERM(state)
+subroutine interface_setSIGTERM(state)
 
   logical, intent(in) :: state
-  SIGTERM = state
+  interface_SIGTERM = state
 
-end subroutine setSIGTERM
+end subroutine interface_setSIGTERM
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR1 to .true.
+!> @brief Set global variable interface_SIGUSR1 to .true.
+!> @details This function can be registered to catch signals send to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR1(signal) bind(C)
 
   integer(C_INT), value :: signal
-  SIGUSR1 = .true.
+  interface_SIGUSR1 = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR1'
+  print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR1=TRUE'
 
 end subroutine catchSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR1
+!> @brief Set global variable interface_SIGUSR.
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGUSR1(state)
+subroutine interface_setSIGUSR1(state)
 
   logical, intent(in) :: state
-  SIGUSR1 = state
+  interface_SIGUSR1 = state
 
-end subroutine setSIGUSR1
+end subroutine interface_setSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR2 to .true. if program receives SIGUSR2
+!> @brief Set global variable interface_SIGUSR2 to .true.
+!> @details This function can be registered to catch signals send to the executable.
 !--------------------------------------------------------------------------------------------------
 subroutine catchSIGUSR2(signal) bind(C)
 
   integer(C_INT), value :: signal
-  SIGUSR2 = .true.
+  interface_SIGUSR2 = .true.
 
-  write(6,'(a,i2.2,a)') ' received signal ',signal, ', set SIGUSR2'
+  print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR2=TRUE'
 
 end subroutine catchSIGUSR2
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets global variable SIGUSR2
+!> @brief Set global variable interface_SIGUSR2.
 !--------------------------------------------------------------------------------------------------
-subroutine setSIGUSR2(state)
+subroutine interface_setSIGUSR2(state)
 
   logical, intent(in) :: state
-  SIGUSR2 = state
+  interface_SIGUSR2 = state
 
-end subroutine setSIGUSR2
+end subroutine interface_setSIGUSR2
 
 
 end module
