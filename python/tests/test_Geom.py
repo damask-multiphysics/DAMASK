@@ -209,7 +209,7 @@ class TestGeom:
         grid = np.random.randint(5,20,3)
         m = Geom(np.random.randint(1,20,grid)*3,np.ones(3)).sort().material.flatten(order='F')
         for i,v in enumerate(m):
-            assert v > m[:i+1].max() or v in m[:i+1]
+            assert i==0 or v > m[:i].max() or v in m[:i]
 
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
                                            np.array([1,0,0,175]),np.array([0,-1,0,178]),np.array([0,0,1,180])])
