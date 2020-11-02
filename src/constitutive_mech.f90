@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all plasticity constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(constitutive) constitutive_plastic
+submodule(constitutive) constitutive_mech
 
   interface
 
@@ -205,7 +205,7 @@ module subroutine mech_init
     elastic, &
     stiffDegradation
 
-  print'(/,a)', ' <<<+-  constitutive_plastic init  -+>>>'
+  print'(/,a)', ' <<<+-  constitutive_mech init  -+>>>'
 
 !-------------------------------------------------------------------------------------------------
 ! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
@@ -243,6 +243,7 @@ module subroutine mech_init
   endif
 
 
+! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
   allocate(phase_plasticityInstance(phases%length),source = 0)
@@ -260,7 +261,6 @@ module subroutine mech_init
     phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
     phase_plasticityInstance(p) = count(phase_plasticity(1:p) == phase_plasticity(p))
   enddo
-
 
 end subroutine mech_init
 
@@ -313,7 +313,6 @@ module subroutine constitutive_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, i
     dS_dFi                                                                                          !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
 
   call constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
-
 
 end subroutine constitutive_SandItsTangents
 
@@ -513,6 +512,5 @@ module subroutine plastic_results
 
 end subroutine plastic_results
 
-
-end submodule constitutive_plastic
+end submodule constitutive_mech
 

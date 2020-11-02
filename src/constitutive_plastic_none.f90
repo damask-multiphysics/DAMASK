@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Dummy plasticity for purely elastic material
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_plastic) plastic_none
+submodule(constitutive:constitutive_mech) plastic_none
 
 contains
 
