@@ -785,7 +785,7 @@ class Geom:
         """
         def mp(entry,mapper):
             return mapper[entry] if entry in mapper else entry
-       
+
         mp = np.vectorize(mp)
         mapper = dict(zip(from_material,to_material))
 
@@ -836,13 +836,9 @@ class Geom:
         def tainted_neighborhood(stencil,trigger):
 
             me = stencil[stencil.shape[0]//2]
-            if len(trigger) == 0:
-                return np.any(stencil != me)
-            if me in trigger:
-                trigger = set(trigger)
-                trigger.remove(me)
-                trigger = list(trigger)
-            return np.any(np.in1d(stencil,np.array(trigger)))
+            return np.any(stencil != me
+                          if len(trigger) == 0 else
+                          np.in1d(stencil,np.array(list(set(trigger) - {me}))))
 
         offset_ = np.nanmax(self.material) if offset is None else offset
         mask = ndimage.filters.generic_filter(self.material,
