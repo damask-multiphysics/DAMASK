@@ -110,7 +110,7 @@ phase:
   Aluminum:
     elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
     generic:
-      output: [F, P, Fe, Fp, Lp, O]
+      output: [F, P, F_e, F_p, L_p, O]
     lattice: fcc
     plasticity:
       N_sl: [12]
