@@ -749,23 +749,23 @@ subroutine crystallite_results
           selected_tensors = select_tensors(crystallite_partitionedF,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'deformation gradient','1')
-        case('Fe')
+        case('F_e')
           selected_tensors = select_tensors(crystallite_Fe,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'elastic deformation gradient','1')
-        case('Fp')
+        case('F_p')
           selected_tensors = select_tensors(crystallite_Fp,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic deformation gradient','1')
-        case('Fi')
+        case('F_i')
           selected_tensors = select_tensors(crystallite_Fi,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic deformation gradient','1')
-        case('Lp')
+        case('L_p')
           selected_tensors = select_tensors(crystallite_Lp,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic velocity gradient','1/s')
-        case('Li')
+        case('L_i')
           selected_tensors = select_tensors(crystallite_Li,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic velocity gradient','1/s')
@@ -1547,11 +1547,11 @@ subroutine crystallite_restartWrite
   fileHandle = HDF5_openFile(fileName,'a')
 
   call HDF5_write(fileHandle,crystallite_partitionedF,'F')
-  call HDF5_write(fileHandle,crystallite_Fp,        'Fp')
-  call HDF5_write(fileHandle,crystallite_Fi,        'Fi')
-  call HDF5_write(fileHandle,crystallite_Lp,        'Lp')
-  call HDF5_write(fileHandle,crystallite_Li,        'Li')
-  call HDF5_write(fileHandle,crystallite_S,         'S')
+  call HDF5_write(fileHandle,crystallite_Fp,        'F_p')
+  call HDF5_write(fileHandle,crystallite_Fi,        'F_i')
+  call HDF5_write(fileHandle,crystallite_Lp,        'L_p')
+  call HDF5_write(fileHandle,crystallite_Li,        'L_i')
+  call HDF5_write(fileHandle,crystallite_S,           'S')
 
   groupHandle = HDF5_addGroup(fileHandle,'constituent')
   do i = 1,size(material_name_phase)
@@ -1588,10 +1588,10 @@ subroutine crystallite_restartRead
   fileHandle = HDF5_openFile(fileName)
 
   call HDF5_read(fileHandle,crystallite_F0, 'F')
-  call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
-  call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
-  call HDF5_read(fileHandle,crystallite_Lp0,'Lp')
-  call HDF5_read(fileHandle,crystallite_Li0,'Li')
+  call HDF5_read(fileHandle,crystallite_Fp0,'F_p')
+  call HDF5_read(fileHandle,crystallite_Fi0,'F_i')
+  call HDF5_read(fileHandle,crystallite_Lp0,'L_p')
+  call HDF5_read(fileHandle,crystallite_Li0,'L_i')
   call HDF5_read(fileHandle,crystallite_S0, 'S')
 
   groupHandle = HDF5_openGroup(fileHandle,'constituent')
