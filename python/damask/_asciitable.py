@@ -385,38 +385,3 @@ class ASCIItable():
     self.data = np.loadtxt(self.__IO__['in'],usecols=use,ndmin=2)
 
     return labels_missing
-
-# ------------------------------------------------------------------
-  def data_write(self):
-    """Write current data array and report alive output back."""
-    if len(self.data) == 0: return True
-
-    if isinstance(self.data[0],list):
-      return self.output_write(['\t'.join(map(self._quote,items)) for items in self.data])
-    else:
-      return self.output_write( '\t'.join(map(self._quote,self.data)))
-
-# ------------------------------------------------------------------
-  def data_writeArray(self):
-    """Write whole numpy array data."""
-    for row in self.data:
-      try:
-        output = list(map(repr,row))
-      except Exception:
-        output = [repr(row)]
-
-      try:
-        self.__IO__['out'].write('\t'.join(output) + '\n')
-      except Exception:
-        pass
-
-# ------------------------------------------------------------------
-  def data_append(self,
-                  what):
-    if isinstance(what, str):
-      self.data += [what]
-    else:
-      try:
-        for item in what: self.data_append(item)
-      except TypeError:
-        self.data += [str(what)]
