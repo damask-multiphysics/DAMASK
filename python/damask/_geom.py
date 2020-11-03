@@ -840,7 +840,7 @@ class Geom:
                           if len(trigger) == 0 else
                           np.in1d(stencil,np.array(list(set(trigger) - {me}))))
 
-        offset_ = np.nanmax(self.material) if offset is None else offset
+        offset_ = np.nanmax(self.material)+1 if offset is None else offset
         mask = ndimage.filters.generic_filter(self.material,
                                               tainted_neighborhood,
                                               size=1+2*vicinity,
