@@ -85,6 +85,12 @@ class TestVTK:
         assert(False)
 
 
+    @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])
+    def test_filename_variations(self,tmp_path,fname):
+        points = np.random.rand(102,3)
+        v = VTK.from_poly_data(points)
+        v.save(tmp_path/fname)
+
     @pytest.mark.parametrize('name,dataset_type',[('this_file_does_not_exist.vtk', None),
                                                   ('this_file_does_not_exist.vtk','vtk'),
                                                   ('this_file_does_not_exist.vtx', None)])
