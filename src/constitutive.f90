@@ -19,7 +19,7 @@ module constitutive
   implicit none
   private
 
-  integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable :: &
+  integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable :: &                      !ToDo: old intel compiler complains about protected
     phase_elasticity                                                                                !< elasticity of each phase
 
   integer(kind(PLASTICITY_undefined_ID)),     dimension(:),   allocatable :: &                      !ToDo: old intel compiler complains about protected
