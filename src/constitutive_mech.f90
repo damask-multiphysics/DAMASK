@@ -294,34 +294,9 @@ end function plastic_active
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
-!> the elastic/intermediate deformation gradients depending on the selected elastic law
-!! (so far no case switch because only Hooke is implemented)
-!--------------------------------------------------------------------------------------------------
-module subroutine constitutive_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
-
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-  real(pReal),   intent(in),  dimension(3,3) :: &
-    Fe, &                                                                                           !< elastic deformation gradient
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),   intent(out), dimension(3,3) :: &
-    S                                                                                               !< 2nd Piola-Kirchhoff stress tensor
-  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-    dS_dFe, &                                                                                       !< derivative of 2nd P-K stress with respect to elastic deformation gradient
-    dS_dFi                                                                                          !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
-
-  call constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
-
-end subroutine constitutive_SandItsTangents
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
+module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, ipc, ip, el)
 
   integer, intent(in) :: &
