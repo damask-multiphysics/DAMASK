@@ -309,7 +309,10 @@ class TestResult:
             default.disallow_modification()
 
         time.sleep(2.)
-        default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        try:
+            default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        except ValueError:
+            pass
         with h5py.File(default.fname,'r') as f:
             # h5py3 compatibility
             try:
