@@ -21,6 +21,7 @@ from . import grid_filters
 from . import mechanics
 from . import util
 
+h5py3 = h5py.__version__[0] == '3'
 
 class Result:
     """
