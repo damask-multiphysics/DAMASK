@@ -296,7 +296,11 @@ class TestResult:
         default.add_Cauchy()
         loc = default.get_dataset_location('sigma')
         with h5py.File(default.fname,'r') as f:
-            created_first = f[loc[0]].attrs['Created'].decode()
+            # h5py3 compatibility
+            try:
+                created_first = f[loc[0]].attrs['Created'].decode()
+            except AttributeError:
+                created_first = f[loc[0]].attrs['Created']
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
@@ -307,7 +311,11 @@ class TestResult:
         time.sleep(2.)
         default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
         with h5py.File(default.fname,'r') as f:
-            created_second = f[loc[0]].attrs['Created'].decode()
+            # h5py3 compatibility
+            try:
+                created_second = f[loc[0]].attrs['Created'].decode()
+            except AttributeError:
+                created_second = f[loc[0]].attrs['Created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
         if overwrite == 'on':
             assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)

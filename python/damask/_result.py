@@ -21,6 +21,7 @@ from . import grid_filters
 from . import mechanics
 from . import util
 
+h5py3 = h5py.__version__[0] == '3'
 
 class Result:
     """
@@ -280,7 +281,8 @@ class Result:
                 for path_old in self.get_dataset_location(name_old):
                     path_new = os.path.join(os.path.dirname(path_old),name_new)
                     f[path_new] = f[path_old]
-                    f[path_new].attrs['Renamed'] = 'Original name: {}'.encode()
+                    f[path_new].attrs['Renamed'] = f'Original name: {name_old}' if h5py3 else \
+                                                   f'Original name: {name_old}'.decode()
                     del f[path_old]
         else:
             raise PermissionError('Rename operation not permitted')
@@ -422,8 +424,13 @@ class Result:
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    unit  = f" / {dataset.attrs['Unit'].decode()}" if 'Unit' in dataset.attrs else ''
-                                    description = dataset.attrs['Description'].decode()
+                                    if 'Unit' in dataset.attrs:
+                                        unit = f" / {dataset.attrs['Unit']}" if h5py3 else \
+                                               f" / {dataset.attrs['Unit'].decode()}"
+                                    else:
+                                        unit = ''
+                                    description = dataset.attrs['Description'] if h5py3 else \
+                                                  dataset.attrs['Description'].decode()
                                     message += f'        {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
@@ -1035,7 +1042,7 @@ class Result:
                     loc  = f[group+'/'+label]
                     datasets_in[arg]={'data' :loc[()],
                                       'label':label,
-                                      'meta': {k:v.decode() for k,v in loc.attrs.items()}}
+                                      'meta': {k:(v if h5py3 else v.decode()) for k,v in loc.attrs.items()}}
             lock.release()
             r = func(**datasets_in,**args)
             return [group,r]
@@ -1080,17 +1087,21 @@ class Result:
                     if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
                         dataset = f[result[0]+'/'+result[1]['label']]
                         dataset[...] = result[1]['data']
-                        dataset.attrs['Overwritten'] = 'Yes'.encode()
+                        dataset.attrs['Overwritten'] = 'Yes' if h5py3 else \
+                                                       'Yes'.encode()
                     else:
                         dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
 
                     now = datetime.datetime.now().astimezone()
-                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
+                                               now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                     for l,v in result[1]['meta'].items():
-                        dataset.attrs[l]=v.encode()
-                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{damask.version}"
-                    dataset.attrs['Creator'] = creator.encode()
+                        dataset.attrs[l]=v if h5py3 else v.encode()
+                    creator = dataset.attrs['Creator'] if h5py3 else \
+                              dataset.attrs['Creator'].decode()
+                    dataset.attrs['Creator'] = f"damask.Result.{creator} v{damask.version}" if h5py3 else \
+                                               f"damask.Result.{creator} v{damask.version}".encode()
 
                 except (OSError,RuntimeError) as err:
                     print(f'Could not add dataset: {err}.')
