@@ -305,7 +305,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
     p = '.'
   endif
 
-  attrValue_ = attrValue//C_NULL_CHAR
+  attrValue_ = trim(attrValue)//C_NULL_CHAR
   ptr(1) = c_loc(attrValue_)
 
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)

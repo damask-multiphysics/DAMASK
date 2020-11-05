@@ -94,11 +94,11 @@ class TestResult:
             default.pick('invalid',True)
 
     def test_add_absolute(self,default):
-        default.add_absolute('Fe')
-        loc = {'Fe':   default.get_dataset_location('Fe'),
-               '|Fe|': default.get_dataset_location('|Fe|')}
-        in_memory = np.abs(default.read_dataset(loc['Fe'],0))
-        in_file   = default.read_dataset(loc['|Fe|'],0)
+        default.add_absolute('F_e')
+        loc = {'F_e':   default.get_dataset_location('F_e'),
+               '|F_e|': default.get_dataset_location('|F_e|')}
+        in_memory = np.abs(default.read_dataset(loc['F_e'],0))
+        in_file   = default.read_dataset(loc['|F_e|'],0)
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('mode',['direct','function'])
@@ -168,8 +168,8 @@ class TestResult:
 
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
     def test_add_IPF_color(self,default,d):
-        default.add_IPF_color('orientation',d)
-        loc = {'orientation': default.get_dataset_location('orientation'),
+        default.add_IPF_color('O',d)
+        loc = {'orientation': default.get_dataset_location('O'),
                'color':       default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
         qu = default.read_dataset(loc['orientation']).view(np.double).reshape(-1,4)
         crystal_structure = default.get_crystal_structure()
@@ -231,8 +231,8 @@ class TestResult:
     @pytest.mark.parametrize('polar',[True,False])
     def test_add_pole(self,default,polar):
         pole = np.array([1.,0.,0.])
-        default.add_pole('orientation',pole,polar)
-        loc = {'orientation': default.get_dataset_location('orientation'),
+        default.add_pole('O',pole,polar)
+        loc = {'orientation': default.get_dataset_location('O'),
                'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
         rot = Rotation(default.read_dataset(loc['orientation']).view(np.double))
         rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))

@@ -470,7 +470,8 @@ class Result:
     def get_crystal_structure(self):                                                                # ToDo: extension to multi constituents/phase
         """Info about the crystal structure."""
         with h5py.File(self.fname,'r') as f:
-            return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
+            return f[self.get_dataset_location('O')[0]].attrs['Lattice'] if h5py3 else \
+                   f[self.get_dataset_location('O')[0]].attrs['Lattice'].decode()
 
 
     def enable_user_function(self,func):

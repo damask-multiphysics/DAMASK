@@ -1,1 +1,14 @@
-fdot * 0 0 0 1.0e-3 0  0 0 *  stress  0 * *   * * *   * * 0  time 20  incs 40 freq 4
+---
+
+step:
+  - discretization:
+      t: 20
+      N: 40
+      f_out: 4
+    mech:
+      dot_F: [x, 0,      0,
+              0, 1.0e-3, 0,
+              0, 0,      x]
+      P: [0, x, x,
+          x, x, x,
+          x, x, 0]
