@@ -282,7 +282,7 @@ class Result:
                     path_new = os.path.join(os.path.dirname(path_old),name_new)
                     f[path_new] = f[path_old]
                     f[path_new].attrs['Renamed'] = f'Original name: {name_old}' if h5py3 else \
-                                                   f'Original name: {name_old}'.decode()
+                                                   f'Original name: {name_old}'.encode()
                     del f[path_old]
         else:
             raise PermissionError('Rename operation not permitted')
