@@ -803,7 +803,7 @@ class Result:
                 'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': f"Mises equivalent {t} of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     'add_Mises'
                           }
                 }
