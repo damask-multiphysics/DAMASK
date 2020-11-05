@@ -790,7 +790,8 @@ class Result:
 
     @staticmethod
     def _add_Mises(T_sym,kind):
-        if kind is None:
+        k = kind
+        if k is None:
             if T_sym['meta']['Unit'] == '1':
                 k = 'strain'
             elif T_sym['meta']['Unit'] == 'Pa':
