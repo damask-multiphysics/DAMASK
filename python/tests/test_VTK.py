@@ -98,9 +98,10 @@ class TestVTK:
         with pytest.raises(TypeError):
             VTK.load(name,dataset_type)
 
-    def test_invalid_extension_write(self,default):
-        with pytest.raises(ValueError):
-            default.save('default.txt')
+    def test_add_extension(self,tmp_path,default):
+        default.save(tmp_path/'default.txt',parallel=False)
+        assert os.path.isfile(tmp_path/'default.txt.vtr')
+
 
     def test_invalid_get(self,default):
         with pytest.raises(ValueError):

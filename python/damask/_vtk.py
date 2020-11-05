@@ -199,7 +199,7 @@ class VTK:
 
         default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
-        writer.SetFileName(str(fname)+default_ext if default_ext != ext else '')
+        writer.SetFileName(str(fname)+(default_ext if default_ext != ext else ''))
 
         if compress:
             writer.SetCompressorTypeToZLib()
