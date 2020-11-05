@@ -307,6 +307,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
 
   attrValue_ = attrValue//C_NULL_CHAR
   ptr(1) = c_loc(attrValue_)
+
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5screate_f')
   call h5tcopy_f(H5T_STRING, type_id, hdferr)
@@ -319,7 +320,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   endif
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5acreate_f')
-  call h5awrite_f(attr_id, type_id, ptr, hdferr)
+  call h5awrite_f(attr_id, type_id, c_loc(ptr(1)), hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5awrite_f')
   call h5aclose_f(attr_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5aclose_f')
