@@ -191,7 +191,8 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize constitutive models for plasticity
+!> @brief Initialize mechanical field related constitutive models
+!> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
 module subroutine mech_init
 
@@ -223,7 +224,7 @@ module subroutine mech_init
     else
       call IO_error(200,ext_msg=elastic%get_asString('type'))
     endif
-    stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)     ! check for stiffness degradation mechanisms
+    stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)                      ! check for stiffness degradation mechanisms
     phase_NstiffnessDegradations(p) = stiffDegradation%length
   enddo
 
