@@ -94,7 +94,7 @@ class Result:
 
 
     def __repr__(self):
-        """Show selected data."""
+        """Show summary of file content."""
         all_selected_increments = self.selection['increments']
 
         self.pick('increments',all_selected_increments[0:1])
@@ -281,7 +281,7 @@ class Result:
                 for path_old in self.get_dataset_location(name_old):
                     path_new = os.path.join(os.path.dirname(path_old),name_new)
                     f[path_new] = f[path_old]
-                    f[path_new].attrs['Renamed'] = 'Original name: {}'.encode()
+                    f[path_new].attrs['Renamed'] = f'Original name: {name_old}'.encode()
                     del f[path_old]
         else:
             raise PermissionError('Rename operation not permitted')
