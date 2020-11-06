@@ -94,7 +94,7 @@ class Result:
 
 
     def __repr__(self):
-        """Show selected data."""
+        """Show summary of file content."""
         all_selected_increments = self.selection['increments']
 
         self.pick('increments',all_selected_increments[0:1])
@@ -796,20 +796,26 @@ class Result:
 
 
     @staticmethod
-    def _add_Mises(T_sym):
-        t = 'strain' if T_sym['meta']['Unit'] == '1' else \
-            'stress'
+    def _add_Mises(T_sym,kind):
+        k = kind
+        if k is None:
+            if T_sym['meta']['Unit'] == '1':
+                k = 'strain'
+            elif T_sym['meta']['Unit'] == 'Pa':
+                k = 'stress'
+        if k not in ['stress', 'strain']:
+            raise ValueError('invalid von Mises kind {kind}')
 
         return {
-                'data':  (mechanics.Mises_strain if t=='strain' else mechanics.Mises_stress)(T_sym['data']),
+                'data':  (mechanics.Mises_strain if k=='strain' else mechanics.Mises_stress)(T_sym['data']),
                 'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': f"Mises equivalent {t} of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     'add_Mises'
                           }
                 }
-    def add_Mises(self,T_sym):
+    def add_Mises(self,T_sym,kind=None):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
@@ -817,9 +823,12 @@ class Result:
         ----------
         T_sym : str
             Label of symmetric tensorial stress or strain dataset.
+        kind : {'stress', 'strain', None}, optional
+            Kind of the von Mises equivalent. Defaults to None, in which case
+            it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress').
 
         """
-        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym})
+        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym},{'kind':kind})
 
 
     @staticmethod

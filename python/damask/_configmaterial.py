@@ -24,6 +24,20 @@ class ConfigMaterial(Config):
         super().save(fname,**kwargs)
 
 
+    @classmethod
+    def load(cls,fname='material.yaml'):
+        """
+        Load from yaml file.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path, optional
+            Filename or file for writing. Defaults to 'material.yaml'.
+
+        """
+        return super(ConfigMaterial,cls).load(fname)
+
+
     @staticmethod
     def from_table(table,constituents={},**kwargs):
         """

@@ -209,6 +209,22 @@ class TestResult:
         in_memory = mechanics.Mises_stress(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['sigma_vM'],0)
         assert np.allclose(in_memory,in_file)
+    
+    def test_add_Mises_invalid(self,default):
+        default.add_Cauchy('P','F')
+        default.add_calculation('sigma_y','#sigma#',unit='y')
+        default.add_Mises('sigma_y')
+        assert default.get_dataset_location('sigma_y_vM') == []
+
+    def test_add_Mises_stress_strain(self,default):
+        default.add_Cauchy('P','F')
+        default.add_calculation('sigma_y','#sigma#',unit='y')
+        default.add_calculation('sigma_x','#sigma#',unit='x')
+        default.add_Mises('sigma_y',kind='strain')
+        default.add_Mises('sigma_x',kind='stress')
+        loc = {'y' :default.get_dataset_location('sigma_y_vM'),
+               'x' :default.get_dataset_location('sigma_x_vM')}
+        assert not np.allclose(default.read_dataset(loc['y'],0),default.read_dataset(loc['x'],0))
 
     def test_add_norm(self,default):
         default.add_norm('F',1)
