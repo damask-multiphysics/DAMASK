@@ -297,7 +297,7 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   integer        :: hdferr
   character(len=:), allocatable :: p
   character(len=:,kind=C_CHAR), allocatable,target :: attrValue_
-  type(c_ptr),target,dimension(1) :: ptr
+  type(c_ptr), target, dimension(1) :: ptr
 
   if (present(path)) then
     p = trim(path)
