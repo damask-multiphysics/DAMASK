@@ -296,6 +296,8 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
   logical        :: attrExists
   integer        :: hdferr
   character(len=:), allocatable :: p
+  character(len=:,kind=C_CHAR), allocatable,target :: attrValue_
+  type(c_ptr), target, dimension(1) :: ptr
 
   if (present(path)) then
     p = trim(path)
@@ -303,21 +305,22 @@ subroutine HDF5_addAttribute_str(loc_id,attrLabel,attrValue,path)
     p = '.'
   endif
 
+  attrValue_ = trim(attrValue)//C_NULL_CHAR
+  ptr(1) = c_loc(attrValue_)
+
   call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5screate_f')
-  call h5tcopy_f(H5T_NATIVE_CHARACTER, type_id, hdferr)
+  call h5tcopy_f(H5T_STRING, type_id, hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5tcopy_f')
-  call h5tset_size_f(type_id, int(len_trim(attrValue),HSIZE_T), hdferr)
-  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5tset_size_f')
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5aexists_by_name_f')
   if (attrExists) then
-    call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
-    if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5adelete_by_name_f')
+  call h5adelete_by_name_f(loc_id, trim(p), attrLabel, hdferr)
+  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5adelete_by_name_f')
   endif
   call h5acreate_by_name_f(loc_id,trim(p),trim(attrLabel),type_id,space_id,attr_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5acreate_f')
-  call h5awrite_f(attr_id, type_id, trim(attrValue), int([1],HSIZE_T), hdferr)
+  call h5awrite_f(attr_id, type_id, c_loc(ptr(1)), hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5awrite_f')
   call h5aclose_f(attr_id,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_str: h5aclose_f')
@@ -436,7 +439,7 @@ subroutine HDF5_addAttribute_int_array(loc_id,attrLabel,attrValue,path)
   array_size = size(attrValue,kind=HSIZE_T)
 
   call h5screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5screate_f')
+  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5screate_simple_f')
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5aexists_by_name_f')
   if (attrExists) then
@@ -480,7 +483,7 @@ subroutine HDF5_addAttribute_real_array(loc_id,attrLabel,attrValue,path)
   array_size = size(attrValue,kind=HSIZE_T)
 
   call h5screate_simple_f(1, array_size, space_id, hdferr, array_size)
-  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5screate_f')
+  if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5screate_simple_f')
   call h5aexists_by_name_f(loc_id,trim(p),attrLabel,attrExists,hdferr)
   if (hdferr < 0) call IO_error(1,ext_msg='HDF5_addAttribute_int_array: h5aexists_by_name_f')
   if (attrExists) then

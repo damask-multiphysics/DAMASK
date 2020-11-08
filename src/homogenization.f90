@@ -529,7 +529,7 @@ subroutine homogenization_results
     material_homogenization_type => homogenization_type
 
   integer :: p
-  character(len=pStringLen) :: group_base,group
+  character(len=:), allocatable :: group_base,group
 
   !real(pReal), dimension(:,:,:), allocatable :: temp
 
