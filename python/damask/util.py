@@ -3,6 +3,7 @@ import datetime
 import os
 import subprocess
 import shlex
+import re
 import fractions
 from functools import reduce
 from optparse import Option
@@ -20,10 +21,13 @@ __all__=[
          'execute',
          'show_progress',
          'scale_to_coprime',
+         'project_stereographic',
          'hybrid_IA',
          'return_message',
          'extendableOption',
-         'execution_stamp'
+         'execution_stamp',
+         'shapeshifter',
+         'shapeblender',
         ]
 
 ####################################################################################################
@@ -182,6 +186,28 @@ def scale_to_coprime(v):
     return m
 
 
+def project_stereographic(vector,normalize=False):
+    """
+    Apply stereographic projection to vector.
+
+    Parameters
+    ----------
+    vector : numpy.ndarray of shape (...,3)
+        Vector coordinates to be projected.
+    normalize : bool
+        Ensure unit length for vector. Defaults to False.
+
+    Returns
+    -------
+    coordinates : numpy.ndarray of shape (...,2)
+        Projected coordinates.
+
+    """
+    v_ = vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector
+    return np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),
+                     np.zeros_like(v_[...,2:3])])
+
+
 def execution_stamp(class_name,function_name=None):
     """Timestamp the execution of a (function within a) class."""
     now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
@@ -201,6 +227,77 @@ def hybrid_IA(dist,N,seed=None):
                                   (scale_,0.5*(scale_ + scale), 1.0)
 
     return np.repeat(np.arange(len(dist)),repeats)[np.random.default_rng(seed).permutation(N_inv_samples)[:N]]
+
+
+def shapeshifter(fro,to,mode='left',keep_ones=False):
+    """
+    Return a tuple that reshapes 'fro' to become broadcastable to 'to'.
+
+    Parameters
+    ----------
+    fro : tuple
+        Original shape of array.
+    to : tuple
+        Target shape of array after broadcasting.
+        len(to) cannot be less than len(fro).
+    mode : str, optional
+        Indicates whether new axes are preferably added to
+        either 'left' or 'right' of the original shape.
+        Defaults to 'left'.
+    keep_ones : bool, optional
+        Treat '1' in fro as literal value instead of dimensional placeholder.
+        Defaults to False.
+
+    """
+    beg = dict(left ='(^.*\\b)',
+               right='(^.*?\\b)')
+    sep = dict(left ='(.*\\b)',
+               right='(.*?\\b)')
+    end = dict(left ='(.*?$)',
+               right='(.*$)')
+    fro = (1,) if not len(fro) else fro
+    to  = (1,) if not len(to)  else to
+    try:
+        grp = re.match(beg[mode]
+                      +f',{sep[mode]}'.join(map(lambda x: f'{x}'
+                                                          if x>1 or (keep_ones and len(fro)>1) else
+                                                          '\\d+',fro))
+                      +f',{end[mode]}',
+                       ','.join(map(str,to))+',').groups()
+    except AttributeError:
+        raise ValueError(f'Shapes can not be shifted {fro} --> {to}')
+    fill = ()
+    for g,d in zip(grp,fro+(None,)):
+        fill += (1,)*g.count(',')+(d,)
+    return fill[:-1]
+
+
+def shapeblender(a,b):
+    """
+    Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
+
+    Parameters
+    ----------
+    a : tuple
+        Shape of first array.
+    b : tuple
+        Shape of second array.
+
+    Examples
+    --------
+    >>> shapeblender((4,4,3),(3,2,1))
+        (4,4,3,2,1)
+    >>> shapeblender((1,2),(1,2,3))
+        (1,2,3)
+    >>> shapeblender((1,),(2,2,1))
+        (1,2,2,1)
+    >>> shapeblender((3,2),(3,2))
+        (3,2)
+
+    """
+    i = min(len(a),len(b))
+    while i > 0 and a[-i:] != b[:i]: i -= 1
+    return a + b[i:]
 
 
 ####################################################################################################

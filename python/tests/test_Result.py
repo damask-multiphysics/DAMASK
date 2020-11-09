@@ -168,15 +168,16 @@ class TestResult:
 
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
     def test_add_IPF_color(self,default,d):
-        default.add_IPF_color('O',d)
-        loc = {'orientation': default.get_dataset_location('O'),
-               'color':       default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
-        qu = default.read_dataset(loc['orientation']).view(np.double).reshape(-1,4)
+        default.add_IPF_color('O',np.array(d))
+        loc = {'O':     default.get_dataset_location('O'),
+               'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
+        qu = default.read_dataset(loc['O']).view(np.double).squeeze()
         crystal_structure = default.get_crystal_structure()
-        in_memory = np.empty((qu.shape[0],3),np.uint8)
-        for i,q in enumerate(qu):
-            o = Orientation(q,crystal_structure).reduced
-            in_memory[i] = np.uint8(o.IPF_color(np.array(d))*255)
+        c = Orientation(rotation=qu,
+                        lattice={'fcc':'cF',
+                                 'bcc':'cI',
+                                 'hex':'hP'}[crystal_structure])
+        in_memory = np.uint8(c.IPF_color(c.to_SST(np.array(d)))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 
@@ -244,13 +245,14 @@ class TestResult:
         in_file   = default.read_dataset(loc['S'],0)
         assert np.allclose(in_memory,in_file)
 
+    @pytest.mark.skip(reason='requires rework of lattice.f90')
     @pytest.mark.parametrize('polar',[True,False])
     def test_add_pole(self,default,polar):
         pole = np.array([1.,0.,0.])
         default.add_pole('O',pole,polar)
-        loc = {'orientation': default.get_dataset_location('O'),
-               'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
-        rot = Rotation(default.read_dataset(loc['orientation']).view(np.double))
+        loc = {'O':    default.get_dataset_location('O'),
+               'pole': default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
+        rot = Rotation(default.read_dataset(loc['O']).view(np.double))
         rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
         xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
         in_memory = xy if not polar else \

@@ -15,12 +15,12 @@ from .                 import seeds            # noqa
 from .                 import mechanics        # noqa
 from .                 import solver           # noqa
 from .                 import grid_filters     # noqa
-from ._lattice         import Symmetry, Lattice# noqa
-from ._table           import Table            # noqa
+from .                 import lattice          # noqa
 from ._rotation        import Rotation         # noqa
+from ._orientation     import Orientation      # noqa
+from ._table           import Table            # noqa
 from ._vtk             import VTK              # noqa
 from ._colormap        import Colormap         # noqa
-from ._orientation     import Orientation      # noqa
 from ._config          import Config           # noqa
 from ._configmaterial  import ConfigMaterial   # noqa
 from ._geom            import Geom             # noqa
