@@ -53,7 +53,7 @@ subroutine parallelization_init
   call PetscInitializeNoArguments(petsc_err)                                                        ! first line in the code according to PETSc manual
   CHKERRQ(petsc_err)
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(__INTEL_COMPILER)
   call PetscSetFPTrap(PETSC_FP_TRAP_ON,petsc_err)
 #else
   call PetscSetFPTrap(PETSC_FP_TRAP_OFF,petsc_err)
