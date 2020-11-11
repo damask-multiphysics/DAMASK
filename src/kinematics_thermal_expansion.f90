@@ -34,7 +34,6 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
   class(tNode), pointer :: &
     phases, &
     phase, &
-    pl, &
     kinematics, &
     kinematic_type 
  
@@ -52,7 +51,6 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p) 
-    pl => phase%get('plasticity')
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length

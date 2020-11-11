@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------------------
 !> @brief internal microstructure state for all plasticity constitutive models
 !----------------------------------------------------------------------------------------------------
-submodule(constitutive) constitutive_plastic
+submodule(constitutive) constitutive_mech
 
   interface
 
@@ -191,17 +191,60 @@ contains
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initialize constitutive models for plasticity
+!> @brief Initialize mechanical field related constitutive models
+!> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_init
+module subroutine mech_init
 
-  integer :: p
-  class(tNode), pointer :: phases
+  integer :: &
+    p, &
+    stiffDegradationCtr
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    mech, &
+    elastic, &
+    stiffDegradation
 
-  print'(/,a)', ' <<<+-  constitutive_plastic init  -+>>>'
+  print'(/,a)', ' <<<+-  constitutive_mech init  -+>>>'
 
+!-------------------------------------------------------------------------------------------------
+! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
   phases => config_material%get('phase')
+  allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
+  allocate(phase_elasticityInstance(phases%length), source = 0)
+  allocate(phase_NstiffnessDegradations(phases%length),source=0)
 
+  do p = 1, phases%length
+    phase   => phases%get(p)
+    mech    => phase%get('mech')
+    elastic => mech%get('elasticity')
+    if(elastic%get_asString('type') == 'hooke') then
+      phase_elasticity(p) = ELASTICITY_HOOKE_ID
+    else
+      call IO_error(200,ext_msg=elastic%get_asString('type'))
+    endif
+    stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)                      ! check for stiffness degradation mechanisms
+    phase_NstiffnessDegradations(p) = stiffDegradation%length
+  enddo
+
+  allocate(phase_stiffnessDegradation(maxval(phase_NstiffnessDegradations),phases%length), &
+                        source=STIFFNESS_DEGRADATION_undefined_ID)
+
+  if(maxVal(phase_NstiffnessDegradations)/=0) then
+    do p = 1, phases%length
+      phase => phases%get(p)
+      mech    => phase%get('mech')
+      stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)
+      do stiffDegradationCtr = 1, stiffDegradation%length
+        if(stiffDegradation%get_asString(stiffDegradationCtr) == 'damage') &
+            phase_stiffnessDegradation(stiffDegradationCtr,p) = STIFFNESS_DEGRADATION_damage_ID
+      enddo
+    enddo
+  endif
+
+
+! initialize plasticity
   allocate(plasticState(phases%length))
   allocate(phase_plasticity(phases%length),source = PLASTICITY_undefined_ID)
   allocate(phase_plasticityInstance(phases%length),source = 0)
@@ -216,11 +259,11 @@ module subroutine plastic_init
   where(plastic_nonlocal_init())          phase_plasticity = PLASTICITY_NONLOCAL_ID
 
   do p = 1, phases%length
+    phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
     phase_plasticityInstance(p) = count(phase_plasticity(1:p) == phase_plasticity(p))
   enddo
 
-
-end subroutine plastic_init
+end subroutine mech_init
 
 
 !--------------------------------------------------------------------------------------------------
@@ -234,6 +277,7 @@ module function plastic_active(plastic_label)  result(active_plastic)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
   integer :: p
 
@@ -241,11 +285,60 @@ module function plastic_active(plastic_label)  result(active_plastic)
   allocate(active_plastic(phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    pl => phase%get('plasticity')
+    mech  => phase%get('mech')
+    pl    => mech%get('plasticity')
     if(pl%get_asString('type') == plastic_label) active_plastic(p) = .true.
   enddo
 
 end function plastic_active
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
+!> the elastic and intermediate deformation gradients using Hooke's law
+!--------------------------------------------------------------------------------------------------
+module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
+                                              Fe, Fi, ipc, ip, el)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+  real(pReal),   intent(in),  dimension(3,3) :: &
+    Fe, &                                                                                           !< elastic deformation gradient
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),   intent(out), dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola-Kirchhoff stress tensor in lattice configuration
+  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+    dS_dFe, &                                                                                       !< derivative of 2nd P-K stress with respect to elastic deformation gradient
+    dS_dFi                                                                                          !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
+  real(pReal), dimension(3,3) :: E
+  real(pReal), dimension(3,3,3,3) :: C
+  integer :: &
+    ho, &                                                                                           !< homogenization
+    d                                                                                               !< counter in degradation loop
+  integer :: &
+    i, j
+
+  ho = material_homogenizationAt(el)
+  C = math_66toSym3333(constitutive_homogenizedC(ipc,ip,el))
+
+  DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(ipc,el))
+    degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(ipc,el)))
+      case (STIFFNESS_DEGRADATION_damage_ID) degradationType
+        C = C * damage(ho)%p(damageMapping(ho)%p(ip,el))**2
+    end select degradationType
+  enddo DegradationLoop
+
+  E = 0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)                                                  !< Green-Lagrange strain in unloaded configuration
+  S = math_mul3333xx33(C,matmul(matmul(transpose(Fi),E),Fi))                                        !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
+
+  do i =1, 3;do j=1,3
+    dS_dFe(i,j,1:3,1:3) = matmul(Fe,matmul(matmul(Fi,C(i,j,1:3,1:3)),transpose(Fi)))                !< dS_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
+    dS_dFi(i,j,1:3,1:3) = 2.0_pReal*matmul(matmul(E,Fi),C(i,j,1:3,1:3))                             !< dS_ij/dFi_kl = C_ijln * E_km * Fe_mn
+  enddo; enddo
+
+end subroutine constitutive_hooke_SandItsTangents
 
 
 !--------------------------------------------------------------------------------------------------
@@ -395,6 +488,5 @@ module subroutine plastic_results
 
 end subroutine plastic_results
 
-
-end submodule constitutive_plastic
+end submodule constitutive_mech
 

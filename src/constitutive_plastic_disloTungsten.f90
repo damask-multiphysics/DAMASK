@@ -5,7 +5,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief crystal plasticity model for bcc metals, especially Tungsten
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_plastic) plastic_disloTungsten
+submodule(constitutive:constitutive_mech) plastic_disloTungsten
 
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
@@ -94,6 +94,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
 
   print'(/,a)', ' <<<+-  plastic_dislotungsten init  -+>>>'
@@ -115,14 +116,14 @@ module function plastic_disloTungsten_init() result(myPlasticity)
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
-
+    mech  => phase%get('mech')
     if(.not. myPlasticity(p)) cycle
     i = i + 1
     associate(prm => param(i), &
               dot => dotState(i), &
               stt => state(i), &
               dst => dependentState(i))
-    pl  => phase%get('plasticity')
+    pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
