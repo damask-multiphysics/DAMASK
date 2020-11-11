@@ -53,7 +53,14 @@ subroutine parallelization_init
   call PETScInitializeNoArguments(petsc_err)                                                        ! first line in the code according to PETSc manual
   CHKERRQ(petsc_err)
 
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
+#ifdef DEBUG
+  call PetscSetFPTrap(PETSC_FP_TRAP_ON,petsc_err)
+#else
+  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,petsc_err)
+#endif
+  CHKERRQ(petsc_err)
+
+call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
   if (err /= 0)                              error stop 'Could not determine worldrank'
 
   if (worldrank == 0) print'(/,a)',  ' <<<+-  parallelization init  -+>>>'
