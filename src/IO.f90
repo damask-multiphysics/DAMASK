@@ -499,10 +499,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
-    case (809)
-      msg = 'initializing FFTW'
-    case (810)
-      msg = 'FFTW plan creation'
     case (831)
       msg = 'mask consistency violated in grid load case'
     case (832)
