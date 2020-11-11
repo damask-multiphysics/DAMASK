@@ -771,6 +771,53 @@ class TestRotation:
     def test_random(self,shape):
         Rotation.from_random(shape)
 
+    def test_equal(self):
+        r = Rotation.from_random(seed=0)
+        assert r == r
+
+    def test_unequal(self):
+        r = Rotation.from_random(seed=0)
+        assert not (r != r)
+
+    def test_inversion(self):
+        r = Rotation.from_random(seed=0)
+        assert r == ~~r
+
+    @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1)])
+    def test_shape(self,shape):
+        r = Rotation.from_random(shape=shape)
+        assert r.shape == (shape if isinstance(shape,tuple) else (shape,) if shape else ())
+
+    @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(3,3,2)])
+    def test_append(self,shape):
+        r = Rotation.from_random(shape=shape)
+        p = Rotation.from_random(shape=shape)
+        s = r.append(p)
+        print(f'append 2x {shape} --> {s.shape}')
+        assert s[0,...] == r[0,...] and s[-1,...] == p[-1,...]
+
+    @pytest.mark.parametrize('quat,standardized',[
+                                                  ([-1,0,0,0],[1,0,0,0]),
+                                                  ([-0.5,-0.5,-0.5,-0.5],[0.5,0.5,0.5,0.5]),
+                                                 ])
+    def test_standardization(self,quat,standardized):
+        assert Rotation(quat)._standardize() == Rotation(standardized)
+
+    @pytest.mark.parametrize('shape,length',[
+                                          ((2,3,4),2),
+                                          (4,4),
+                                          ((),0)
+                                         ])
+    def test_len(self,shape,length):
+        r = Rotation.from_random(shape=shape)
+        assert len(r) == length
+
+    @pytest.mark.parametrize('shape',[(4,6),(2,3,4),(3,3,3)])
+    @pytest.mark.parametrize('order',['C','F'])
+    def test_flatten_reshape(self,shape,order):
+        r = Rotation.from_random(shape=shape)
+        assert r == r.flatten(order).reshape(shape,order)
+
     @pytest.mark.parametrize('function',[Rotation.from_quaternion,
                                          Rotation.from_Eulers,
                                          Rotation.from_axis_angle,
@@ -848,7 +895,8 @@ class TestRotation:
                                      np.random.rand(3,3,3,3)])
     def test_rotate_identity(self,data):
         R = Rotation()
-        assert np.allclose(data,R*data)
+        print(R,data)
+        assert np.allclose(data,R@data)
 
     @pytest.mark.parametrize('data',[np.random.rand(3),
                                      np.random.rand(3,3),
@@ -859,6 +907,16 @@ class TestRotation:
         R_1 = Rotation.from_Eulers(np.array([phi_1,0.,0.]))
         R_2 = Rotation.from_Eulers(np.array([0.,0.,phi_2]))
         assert np.allclose(data,R_2@(R_1@data))
+
+    @pytest.mark.parametrize('pwr',[-10,0,1,2.5,np.pi,np.random.random()])
+    def test_rotate_power(self,pwr):
+        R = Rotation.from_random()
+        axis_angle = R.as_axis_angle()
+        axis_angle[ 3] = (pwr*axis_angle[-1])%(2.*np.pi)
+        if axis_angle[3] > np.pi:
+            axis_angle[3] -= 2.*np.pi
+            axis_angle    *= -1
+        assert R**pwr == Rotation.from_axis_angle(axis_angle)
 
     def test_rotate_inverse(self):
         R = Rotation.from_random()
@@ -877,7 +935,7 @@ class TestRotation:
     def test_rotate_invalid_shape(self,data):
         R = Rotation.from_random()
         with pytest.raises(ValueError):
-            R*data
+            R@data
 
     @pytest.mark.parametrize('data',['does_not_work',
                                      (1,2),
@@ -885,7 +943,7 @@ class TestRotation:
     def test_rotate_invalid_type(self,data):
         R = Rotation.from_random()
         with pytest.raises(TypeError):
-            R*data
+            R@data
 
     def test_misorientation(self):
         R = Rotation.from_random()
@@ -898,9 +956,8 @@ class TestRotation:
 
     @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
     def test_average(self,angle):
-        R_1 = Rotation.from_axis_angle([0,0,1,10],degrees=True)
-        R_2 = Rotation.from_axis_angle([0,0,1,angle],degrees=True)
-        avg_angle = R_1.average(R_2).as_axis_angle(degrees=True,pair=True)[1]
+        R = Rotation.from_axis_angle([[0,0,1,10],[0,0,1,angle]],degrees=True)
+        avg_angle = R.average().as_axis_angle(degrees=True,pair=True)[1]
         assert np.isclose(avg_angle,10+(angle-10)/2.)
 
 

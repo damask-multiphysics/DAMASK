@@ -15,7 +15,6 @@ from numpy.lib import recfunctions as rfn
 import damask
 from . import VTK
 from . import Table
-from . import Rotation
 from . import Orientation
 from . import grid_filters
 from . import mechanics
@@ -743,11 +742,13 @@ class Result:
     def _add_IPF_color(q,l):
         m = util.scale_to_coprime(np.array(l))
 
-        o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
-                        lattice = q['meta']['Lattice'])
+        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),
+                        lattice  = {'fcc':'cF',
+                                    'bcc':'cI',
+                                    'hex':'hP'}[q['meta']['Lattice']])
 
         return {
-                'data': np.uint8(o.IPF_color(l)*255),
+                'data': np.uint8(o.IPF_color(o.to_SST(l))*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
                           'Unit':        '8-bit RGB',
@@ -897,42 +898,47 @@ class Result:
         self._add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
 
 
-    @staticmethod
-    def _add_pole(q,p,polar):
-        pole      = np.array(p)
-        unit_pole = pole/np.linalg.norm(pole)
-        m         = util.scale_to_coprime(pole)
-        rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
+# The add_pole functionality needs discussion.
+# The new Crystal object can perform such a calculation but the outcome depends on the lattice parameters
+# as well as on whether a direction or plane is concerned (see the DAMASK_examples/pole_figure notebook).
+# Below code appears to be too simplistic.
 
-        rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
-        xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
-        coords = xy if not polar else \
-                 np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
-        return {
-                'data': coords,
-                'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
-                'meta' : {
-                          'Unit':        '1',
-                          'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
-                                         .format('Polar' if polar else 'Cartesian'),
-                          'Creator':     'add_pole'
-                         }
-               }
-    def add_pole(self,q,p,polar=False):
-        """
-        Add coordinates of stereographic projection of given pole in crystal frame.
-
-        Parameters
-        ----------
-        q : str
-            Label of the dataset containing the crystallographic orientation as quaternions.
-        p : numpy.array of shape (3)
-            Crystallographic direction or plane.
-        polar : bool, optional
-            Give pole in polar coordinates. Defaults to False.
-
-        """
-        self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
+    # @staticmethod
+    # def _add_pole(q,p,polar):
+    #     pole      = np.array(p)
+    #     unit_pole = pole/np.linalg.norm(pole)
+    #     m         = util.scale_to_coprime(pole)
+    #     rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
+    #
+    #     rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
+    #     xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
+    #     coords = xy if not polar else \
+    #              np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
+    #     return {
+    #             'data': coords,
+    #             'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
+    #             'meta' : {
+    #                       'Unit':        '1',
+    #                       'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
+    #                                      .format('Polar' if polar else 'Cartesian'),
+    #                       'Creator':     'add_pole'
+    #                      }
+    #            }
+    # def add_pole(self,q,p,polar=False):
+    #     """
+    #     Add coordinates of stereographic projection of given pole in crystal frame.
+    #
+    #     Parameters
+    #     ----------
+    #     q : str
+    #         Label of the dataset containing the crystallographic orientation as quaternions.
+    #     p : numpy.array of shape (3)
+    #         Crystallographic direction or plane.
+    #     polar : bool, optional
+    #         Give pole in polar coordinates. Defaults to False.
+    #
+    #     """
+    #     self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
 
 
     @staticmethod
