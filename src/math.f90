@@ -1200,8 +1200,8 @@ subroutine selfTest
 
   if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
     error stop 'math_exp33(math_I3,1)'
-  if(any(dNeq(math_exp33(math_I3,256),exp(1.0_pReal)*math_I3))) &
-    error stop 'math_exp33(math_I3,256)'
+  if(any(dNeq(math_exp33(math_I3,128),exp(1.0_pReal)*math_I3))) &
+    error stop 'math_exp33(math_I3,128)'
 
   call random_number(v9)
   if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
