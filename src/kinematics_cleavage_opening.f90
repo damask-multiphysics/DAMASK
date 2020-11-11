@@ -41,7 +41,6 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
   class(tNode), pointer :: &
     phases, &
     phase, &
-    pl, &
     kinematics, &
     kinematic_type 
        
@@ -58,8 +57,7 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
 
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_cleavage_opening_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p) 
-    pl => phase%get('plasticity')
+    phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length

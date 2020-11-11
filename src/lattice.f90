@@ -455,6 +455,7 @@ subroutine lattice_init
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     elasticity
  
   print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
@@ -475,7 +476,8 @@ subroutine lattice_init
 
   do p = 1, phases%length
     phase => phases%get(p)
-    elasticity => phase%get('elasticity')
+    mech  => phase%get('mech')
+    elasticity => mech%get('elasticity')
     lattice_C66(1,1,p) = elasticity%get_asFloat('C_11')
     lattice_C66(1,2,p) = elasticity%get_asFloat('C_12')
 
