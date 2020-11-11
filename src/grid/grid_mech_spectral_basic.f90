@@ -13,6 +13,7 @@ module grid_mech_spectral_basic
   use prec
   use parallelization
   use DAMASK_interface
+  use IO
   use HDF5_utilities
   use math
   use spectral_utilities
