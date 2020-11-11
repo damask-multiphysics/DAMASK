@@ -588,9 +588,6 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
       4  &
       ],[HEX_NTWIN])                                                                                ! indicator to formulas below
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_characteristicShear_Twin: '//trim(structure))
-
   a = 0
   myFamilies: do f = 1,size(Ntwin,1)
     mySystems: do s = 1,Ntwin(f)
@@ -635,9 +632,6 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
   real(pReal), dimension(3,3,sum(Ntwin)):: coordinateSystem
   type(rotation)                        :: R
   integer                               :: i
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_C66_twin: '//trim(structure))
 
   select case(structure)
     case('fcc')
@@ -966,9 +960,6 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
   ],shape(BCT_INTERACTIONSLIPSLIP))
 
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_interaction_SlipBySlip: '//trim(structure))
-
   select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONSLIPSLIP
@@ -1070,9 +1061,6 @@ function lattice_interaction_TwinByTwin(Ntwin,interactionValues,structure) resul
       20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16  &
       ],shape(HEX_INTERACTIONTWINTWIN))                                                             !< Twin-twin interaction types for hex
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_interaction_TwinByTwin: '//trim(structure))
-
   select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONTWINTWIN
@@ -1121,9 +1109,6 @@ function lattice_interaction_TransByTrans(Ntrans,interactionValues,structure) re
       2,2,2,2,2,2,2,2,2,1,1,1, &
       2,2,2,2,2,2,2,2,2,1,1,1  &
       ],shape(FCC_INTERACTIONTRANSTRANS))                                                           !< Trans-trans interaction types for fcc
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_interaction_TransByTrans: '//trim(structure))
 
   if(structure == 'fcc') then
     interactionTypes = FCC_INTERACTIONTRANSTRANS
@@ -1252,9 +1237,6 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,structure)
      !
       ],shape(HEX_INTERACTIONSLIPTWIN))                                                             !< Slip-twin interaction types for hex
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_interaction_SlipByTwin: '//trim(structure))
-
   select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONSLIPTWIN
@@ -1315,9 +1297,6 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,structur
       4,4,4,4,4,4,4,4,4,4,4,4, &
       4,4,4,4,4,4,4,4,4,4,4,4  &
       ],shape(FCC_INTERACTIONSLIPTRANS))                                                            !< Slip-trans interaction types for fcc
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_interaction_SlipByTrans: '//trim(structure))
 
   select case(structure)
     case('fcc')
@@ -1386,9 +1365,6 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,structure)
        4, 4, 4,   8, 8, 8,  12,12,12,  16,16,16,16,16,16,  20,20,20,20,20,20,20,20,20,20,20,20,  24,24,24,24,24,24  &
       ],shape(HEX_INTERACTIONTWINSLIP))                                                             !< Twin-slip interaction types for hex
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_interaction_TwinBySlip: '//trim(structure))
-
   select case(structure)
     case('fcc')
       interactionTypes = FCC_INTERACTIONTWINSLIP
@@ -1426,9 +1402,6 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
   real(pReal), dimension(:,:),           allocatable :: slipSystems
   integer,     dimension(:),             allocatable :: NslipMax
   integer                                            :: i
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_SchmidMatrix_slip: '//trim(structure))
 
   select case(structure)
     case('fcc')
@@ -1479,9 +1452,6 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
   real(pReal), dimension(:,:),           allocatable :: twinSystems
   integer,     dimension(:),             allocatable :: NtwinMax
   integer                                            :: i
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_SchmidMatrix_twin: '//trim(structure))
 
   select case(structure)
     case('fcc')
@@ -1559,9 +1529,6 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
   real(pReal), dimension(:,:),               allocatable :: cleavageSystems
   integer,     dimension(:),                 allocatable :: NcleavageMax
   integer                                                :: i
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_SchmidMatrix_cleavage: '//trim(structure))
 
   select case(structure)
     case('ort')
@@ -1662,9 +1629,6 @@ function lattice_labels_slip(Nslip,structure) result(labels)
   real(pReal),      dimension(:,:), allocatable :: slipSystems
   integer,          dimension(:),   allocatable :: NslipMax
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_labels_slip: '//trim(structure))
-
   select case(structure)
     case('fcc')
       NslipMax    = FCC_NSLIPSYSTEM
@@ -1706,9 +1670,6 @@ function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
 
   T_sym = 0.0_pReal
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_applyLatticeSymmetry33: '//trim(structure))
-
   select case(structure)
     case('iso','fcc','bcc')
       do k=1,3
@@ -1743,9 +1704,6 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
   integer :: j,k
 
   C66_sym = 0.0_pReal
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='applyLatticeSymmetryC66: '//trim(structure))
 
   select case(structure)
     case ('iso')
@@ -1823,9 +1781,6 @@ function lattice_labels_twin(Ntwin,structure) result(labels)
 
   real(pReal),      dimension(:,:), allocatable :: twinSystems
   integer,          dimension(:),   allocatable :: NtwinMax
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='lattice_labels_twin: '//trim(structure))
 
   select case(structure)
     case('fcc')
@@ -1912,9 +1867,6 @@ function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
 
   real(pReal), dimension(:,:), allocatable :: slipSystems
   integer,     dimension(:),   allocatable :: NslipMax
-
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='coordinateSystem_slip: '//trim(structure))
 
   select case(structure)
     case('fcc')
