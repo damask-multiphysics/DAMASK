@@ -140,9 +140,9 @@ subroutine grid_mech_spectral_basic_init
    
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------

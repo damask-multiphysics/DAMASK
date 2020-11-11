@@ -214,11 +214,11 @@ subroutine spectral_utilities_init
 
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
-  call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
+  call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
-  if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
+  if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,&
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
                                 num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
