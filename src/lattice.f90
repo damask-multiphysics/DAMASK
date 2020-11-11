@@ -2209,11 +2209,11 @@ function equivalent_nu(C,assumption) result(nu)
       / 9.0_pReal
   elseif(IO_lc(assumption) == 'reuss') then
     call math_invert(S,error,C)
-    if(error) call IO_error(0)
+    if(error) error stop 'matrix inversion failed'
     K = 1.0_pReal &
       / (S(1,1)+S(2,2)+S(3,3) +2.0_pReal*(S(1,2)+S(2,3)+S(1,3)))
   else
-    call IO_error(0)
+    error stop 'invalid assumption'
     K = 0.0_pReal
   endif
 
@@ -2241,11 +2241,11 @@ function equivalent_mu(C,assumption) result(mu)
        / 15.0_pReal
   elseif(IO_lc(assumption) == 'reuss') then
     call math_invert(S,error,C)
-    if(error) call IO_error(0)
+    if(error) error stop 'matrix inversion failed'
     mu = 15.0_pReal &
        / (4.0_pReal*(S(1,1)+S(2,2)+S(3,3)) -4.0_pReal*(S(1,2)+S(2,3)+S(1,3)) +3.0_pReal*(S(4,4)+S(5,5)+S(6,6)))
   else
-    call IO_error(0)
+    error stop 'invalid assumption'
     mu = 0.0_pReal
   endif
 

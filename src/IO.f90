@@ -463,10 +463,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !--------------------------------------------------------------------------------------------------
 ! math errors
-    case (400)
-      msg = 'matrix inversion error'
-    case (401)
-      msg = 'error in Eigenvalue calculation'
     case (402)
       msg = 'invalid orientation specified'
 

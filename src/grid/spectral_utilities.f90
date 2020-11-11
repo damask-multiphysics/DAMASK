@@ -713,7 +713,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     allocate(s_reduced,mold = c_reduced)
     call math_invert(s_reduced, errmatinv, c_reduced)                                               ! invert reduced stiffness
     if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
-    if (errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
 
 !--------------------------------------------------------------------------------------------------
 ! check if inversion was successful
@@ -725,7 +724,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
       write(IO_STDOUT,trim(formatString),advance='no') ' C * S (load) ', &
                                                              transpose(matmul(c_reduced,s_reduced))
       write(IO_STDOUT,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
-      if(errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
+      if(errmatinv) error stop 'matrix inversion error'
     endif
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
   else
