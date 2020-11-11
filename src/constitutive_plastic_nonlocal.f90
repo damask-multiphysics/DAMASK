@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for plasticity including dislocation flux
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_plastic) plastic_nonlocal
+submodule(constitutive:constitutive_mech) plastic_nonlocal
   use geometry_plastic_nonlocal, only: &
     nIPneighbors    => geometry_plastic_nonlocal_nIPneighbors, &
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
@@ -183,6 +183,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
 
   print'(/,a)', ' <<<+-  plastic_nonlocal init  -+>>>'
@@ -212,7 +213,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
-
+    mech  => phase%get('mech')
     if(.not. myPlasticity(p)) cycle
     i = i + 1
     associate(prm => param(i), &
@@ -221,7 +222,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
               st0 => state0(i), &
               del => deltaState(i), &
               dst => microstructure(i))
-    pl  => phase%get('plasticity')
+    pl  => mech%get('plasticity')
 
     phase_localPlasticity(p)    = .not. pl%contains('nonlocal')
 

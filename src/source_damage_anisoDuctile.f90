@@ -36,6 +36,7 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl, &
     sources, &
     src
@@ -56,11 +57,12 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
   allocate(source_damage_anisoDuctile_instance(phases%length), source=0)
 
   do p = 1, phases%length
-    phase => phases%get(p) 
+    phase => phases%get(p)
     if(any(mySources(:,p))) source_damage_anisoDuctile_instance(p) = count(mySources(:,1:p))
     if(count(mySources(:,p)) == 0) cycle
+    mech  => phase%get('mech')
+    pl    => mech%get('plasticity')
     sources => phase%get('source')
-    pl => phase%get('plasticity')
     do sourceOffset = 1, sources%length
       if(mySources(sourceOffset,p)) then
         source_damage_anisoDuctile_offset(p) = sourceOffset

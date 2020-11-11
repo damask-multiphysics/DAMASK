@@ -44,6 +44,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl, &
     kinematics, &
     kinematic_type 
@@ -61,8 +62,9 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
 
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_slipplane_opening_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p) 
-    pl => phase%get('plasticity')
+    phase => phases%get(p)
+    mech  => phase%get('mech')
+    pl    => mech%get('plasticity')
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length
