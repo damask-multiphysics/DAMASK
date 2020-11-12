@@ -84,7 +84,7 @@ subroutine discretization_grid_init(restart)
                                    PETSC_COMM_WORLD, &
                                    z, &                                                             ! domain grid size along z
                                    z_offset)                                                        ! domain grid offset along z
-  if(z==0_C_INTPTR_T) call IO_error(894, ext_msg='invalid number of threads')
+  if(z==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
 
   grid3       = int(z)
   grid3Offset = int(z_offset)

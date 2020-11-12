@@ -606,7 +606,6 @@ real(pReal) function utilities_divergenceRMS()
   if(ierr /=0) error stop 'MPI error'
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
 
-
 end function utilities_divergenceRMS
 
 
