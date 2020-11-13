@@ -499,7 +499,7 @@ function math_invSym3333(A)
   call dgetrf(6,6,temp66,6,ipiv6,ierr_i)
   call dgetri(6,temp66,6,ipiv6,work,size(work,1),ierr_f)
   if (ierr_i /= 0 .or. ierr_f /= 0) then
-    call IO_error(400, ext_msg = 'math_invSym3333')
+    error stop 'matrix inversion error'
   else
     math_invSym3333 = math_66toSym3333(temp66)
   endif
@@ -1200,8 +1200,8 @@ subroutine selfTest
 
   if(any(dNeq(math_exp33(math_I3,0),math_I3))) &
     error stop 'math_exp33(math_I3,1)'
-  if(any(dNeq(math_exp33(math_I3,256),exp(1.0_pReal)*math_I3))) &
-    error stop 'math_exp33(math_I3,256)'
+  if(any(dNeq(math_exp33(math_I3,128),exp(1.0_pReal)*math_I3))) &
+    error stop 'math_exp33(math_I3,128)'
 
   call random_number(v9)
   if(any(dNeq(math_33to9(math_9to33(v9)),v9))) &
