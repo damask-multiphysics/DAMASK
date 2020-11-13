@@ -274,22 +274,6 @@ Nonlocal_Damage_DetectChanges:
     - master
     - release
 
-grid_all_restart:
-  stage: grid
-  script: grid_all_restart/test.py
-  except:
-    - master
-    - release
-
-grid_all_restartMPI:
-  stage: grid
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - grid_all_restartMPI/test.py
-  except:
-    - master
-    - release
-
 Plasticity_DetectChanges:
   stage: grid
   script: Plasticity_DetectChanges/test.py
