@@ -265,12 +265,12 @@ class TestGeom:
     @pytest.mark.parametrize('inverse',[True,False])
     @pytest.mark.parametrize('periodic',[True,False])
     def test_add_primitive_rotation(self,center,inverse,periodic):
-        """Rotation should not change result for sphere (except for discretization errors)."""
-        g = np.array([32,32,32])
+        """Rotation should not change result for sphere."""
+        g = np.random.randint(8,32,(3))
+        s = np.random.random(3)+.5
         fill = np.random.randint(10)+2
-        eu=np.array([np.random.randint(4),np.random.randint(2),np.random.randint(4)])*.5*np.pi
-        G_1 = Geom(np.ones(g,'i'),[1.,1.,1.]).add_primitive(.3,center,1,fill,inverse=inverse,periodic=periodic)
-        G_2 = Geom(np.ones(g,'i'),[1.,1.,1.]).add_primitive(.3,center,1,fill,Rotation.from_Eulers(eu),inverse,periodic=periodic)
+        G_1 = Geom(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,inverse=inverse,periodic=periodic)
+        G_2 = Geom(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,Rotation.from_random(),inverse,periodic=periodic)
         assert geom_equal(G_1,G_2)
 
 
