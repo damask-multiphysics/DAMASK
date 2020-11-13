@@ -564,14 +564,14 @@ class Geom:
             If given as floats, coordinates are addressed.
         center : int or float numpy.ndarray of shape (3)
             Center of the primitive. If given as integers, grid point
-            locations (cell centers) are addressed.
-            If given as floats, coordinates are addressed.
+            coordinates (cell centers) are addressed.
+            If given as floats, coordinates in space are addressed.
         exponent : numpy.ndarray of shape (3) or float
             Exponents for the three axes.
             0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1)
             1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1)
         fill : int, optional
-            Fill value for primitive. Defaults to material.max() + 1.
+            Fill value for primitive. Defaults to material.max()+1.
         R : damask.Rotation, optional
             Rotation of primitive. Defaults to no rotation.
         inverse : Boolean, optional
@@ -581,25 +581,27 @@ class Geom:
             Repeat primitive over boundaries. Defaults to True.
 
         """
-        # normalized 'radius' and center
-        r = np.array(dimension)/self.grid/2.0 if np.array(dimension).dtype in np.sctypes['int'] else \
-            np.array(dimension)/self.size/2.0
-        c = (np.array(center) + .5)/self.grid if np.array(center).dtype in np.sctypes['int'] else \
-            (np.array(center) - self.origin)/self.size
+        # radius and center
+        r = np.array(dimension)/2.0*self.size/self.grid if np.array(dimension).dtype in np.sctypes['int'] else \
+            np.array(dimension)/2.0
+        c = (np.array(center) + .5)*self.size/self.grid if np.array(center).dtype    in np.sctypes['int'] else \
+            (np.array(center) - self.origin)
 
-        coords = grid_filters.cell_coord0(self.grid,np.ones(3)) \
-               - ((np.ones(3)-(1./self.grid if np.array(center).dtype in np.sctypes['int'] else 0))*0.5 if periodic else c)  # periodic center is always at CoG
+        coords = grid_filters.cell_coord0(self.grid,self.size,
+                                          -(0.5*(self.size + (self.size/self.grid
+                                                              if np.array(center).dtype in np.sctypes['int'] else
+                                                              0)) if periodic else c))
         coords_rot = R.broadcast_to(tuple(self.grid))@coords
 
         with np.errstate(all='ignore'):
             mask = np.sum(np.power(coords_rot/r,2.0**np.array(exponent)),axis=-1) > 1.0
 
         if periodic:                                                                                # translate back to center
-            mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
+            mask = np.roll(mask,((c/self.size-0.5)*self.grid).round().astype(int),(0,1,2))
 
-        fill_ = np.full_like(self.material,np.nanmax(self.material)+1 if fill is None else fill)
-
-        return Geom(material = np.where(np.logical_not(mask) if inverse else mask, self.material,fill_),
+        return Geom(material = np.where(np.logical_not(mask) if inverse else mask,
+                                        self.material,
+                                        np.nanmax(self.material)+1 if fill is None else fill),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','add_primitive')],
