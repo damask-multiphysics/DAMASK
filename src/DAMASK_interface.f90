@@ -69,8 +69,6 @@ subroutine DAMASK_interface_init
     loadCaseArg   = '', &                                                                           !< -l argument given to the executable
     geometryArg   = '', &                                                                           !< -g argument given to the executable
     workingDirArg = ''                                                                              !< -w argument given to the executable
-  character(len=pStringLen) :: &
-    userName                                                                                        !< name of user calling the executable
   integer :: &
     stat, &
     i
@@ -116,6 +114,9 @@ subroutine DAMASK_interface_init
 #endif
 
   print'(/,a)', ' Compiled on: '//__DATE__//' at '//__TIME__
+
+  print'(/,a,i0,a,i0,a,i0)', &
+                ' PETSc version: ',PETSC_VERSION_MAJOR,'.',PETSC_VERSION_MINOR,'.',PETSC_VERSION_SUBMINOR
 
   call date_and_time(values = dateAndTime)
   print'(/,a,2(i2.2,a),i4.4)', ' Date: ',dateAndTime(3),'/',dateAndTime(2),'/', dateAndTime(1)
@@ -189,17 +190,15 @@ subroutine DAMASK_interface_init
   interface_loadFile = getLoadCaseFile(loadCaseArg)
 
   call get_command(commandLine)
-  call get_environment_variable('USER',userName)
-  ! ToDo: https://stackoverflow.com/questions/8953424/how-to-get-the-username-in-c-c-in-linux
-  print'(a)',        ' Host name: '//trim(getHostName())
-  print'(a)',        ' User name: '//trim(userName)
+  print'(/,a)',      ' Host name: '//getHostName()
+  print'(a)',        ' User name: '//getUserName()
 
   print'(/a)',       ' Command line call:      '//trim(commandLine)
   if (len_trim(workingDirArg) > 0) &
     print'(a)',      ' Working dir argument:   '//trim(workingDirArg)
   print'(a)',        ' Geometry argument:      '//trim(geometryArg)
-  print'(a)',        ' Load case argument:     '//trim(loadcaseArg)
-  print'(a)',        ' Working directory:      '//getCWD()
+  print'(a)',        ' Loadcase argument:      '//trim(loadcaseArg)
+  print'(/,a)',      ' Working directory:      '//getCWD()
   print'(a)',        ' Geometry file:          '//interface_geomFile
   print'(a)',        ' Loadcase file:          '//interface_loadFile
   print'(a)',        ' Solver job name:        '//getSolverJobName()
@@ -222,8 +221,8 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 subroutine setWorkingDirectory(workingDirectoryArg)
 
-  character(len=*),  intent(in) :: workingDirectoryArg                                              !< working directory argument
-  character(len=pPathLen)       :: workingDirectory
+  character(len=*), intent(in)  :: workingDirectoryArg                                              !< working directory argument
+  character(len=:), allocatable :: workingDirectory
   logical                       :: error
   external                      :: quit
 
@@ -359,12 +358,12 @@ end function rectifyPath
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief relative path from absolute a to absolute b
+!> @brief Determine relative path from absolute a to absolute b
 !--------------------------------------------------------------------------------------------------
 function makeRelativePath(a,b)
 
-  character (len=*), intent(in) :: a,b
-  character (len=pPathLen)      :: a_cleaned,b_cleaned
+  character(len=*), intent(in)  :: a,b
+  character(len=pPathLen)       :: a_cleaned,b_cleaned
   character(len=:), allocatable :: makeRelativePath
   integer :: i,posLastCommonSlash,remainingSlashes
 
