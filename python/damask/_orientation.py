@@ -4,7 +4,7 @@ from . import Rotation
 from . import util
 from . import mechanics
 
-__parameter_doc__ = \
+_parameter_doc = \
        """lattice : str
             Either a crystal family  out of [triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic]
             or a     Bravais lattice out of [aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF].
@@ -25,22 +25,6 @@ __parameter_doc__ = \
             Angles are given in degrees. Defaults to False.
 
        """
-
-
-def extend_docstring():
-       """Decorator: Append Orientation parameter documentation to function's docstring."""
-       def _decorator(func):
-           func.__doc__ += __parameter_doc__
-           return func
-       return _decorator
-
-
-def extended_docstring(f):
-       """Decorator: Combine Orientation parameter documentation with another function's docstring."""
-       def _decorator(func):
-           func.__doc__ = f.__doc__ + __parameter_doc__
-           return func
-       return _decorator
 
 
 class Orientation(Rotation):
@@ -128,7 +112,7 @@ class Orientation(Rotation):
                }
 
 
-    @extend_docstring()
+    @util.extend_docstring(_parameter_doc)
     def __init__(self,
                  rotation = None,
                  lattice = None,
@@ -279,73 +263,73 @@ class Orientation(Rotation):
 
 
     @classmethod
-    @extended_docstring(Rotation.from_random)
+    @util.extended_docstring(Rotation.from_random,_parameter_doc)
     def from_random(cls,**kwargs):
         return cls(rotation=Rotation.from_random(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_quaternion)
+    @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
     def from_quaternion(cls,**kwargs):
         return cls(rotation=Rotation.from_quaternion(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_Eulers)
+    @util.extended_docstring(Rotation.from_Eulers,_parameter_doc)
     def from_Eulers(cls,**kwargs):
         return cls(rotation=Rotation.from_Eulers(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_axis_angle)
+    @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
     def from_axis_angle(cls,**kwargs):
         return cls(rotation=Rotation.from_axis_angle(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_basis)
+    @util.extended_docstring(Rotation.from_basis,_parameter_doc)
     def from_basis(cls,**kwargs):
         return cls(rotation=Rotation.from_basis(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_matrix)
+    @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
     def from_matrix(cls,**kwargs):
         return cls(rotation=Rotation.from_matrix(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_Rodrigues)
+    @util.extended_docstring(Rotation.from_Rodrigues,_parameter_doc)
     def from_Rodrigues(cls,**kwargs):
         return cls(rotation=Rotation.from_Rodrigues(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_homochoric)
+    @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
     def from_homochoric(cls,**kwargs):
         return cls(rotation=Rotation.from_homochoric(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_cubochoric)
+    @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
     def from_cubochoric(cls,**kwargs):
         return cls(rotation=Rotation.from_cubochoric(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_spherical_component)
+    @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
     def from_spherical_component(cls,**kwargs):
         return cls(rotation=Rotation.from_spherical_component(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_fiber_component)
+    @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
     def from_fiber_component(cls,**kwargs):
         return cls(rotation=Rotation.from_fiber_component(**kwargs),**kwargs)
 
 
     @classmethod
-    @extend_docstring()
+    @util.extend_docstring(_parameter_doc)
     def from_directions(cls,uvw,hkl,**kwargs):
         """
         Initialize orientation object from two crystallographic directions.

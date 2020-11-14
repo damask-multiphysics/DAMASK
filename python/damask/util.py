@@ -26,8 +26,8 @@ __all__=[
          'return_message',
          'extendableOption',
          'execution_stamp',
-         'shapeshifter',
-         'shapeblender',
+         'shapeshifter', 'shapeblender',
+         'extend_docstring', 'extended_docstring'
         ]
 
 ####################################################################################################
@@ -300,6 +300,22 @@ def shapeblender(a,b):
     i = min(len(a),len(b))
     while i > 0 and a[-i:] != b[:i]: i -= 1
     return a + b[i:]
+
+
+def extend_docstring(general):
+       """Decorator: Append Orientation parameter documentation to function's docstring."""
+       def _decorator(func):
+           func.__doc__ += general
+           return func
+       return _decorator
+
+
+def extended_docstring(f,general):
+       """Decorator: Combine Orientation parameter documentation with another function's docstring."""
+       def _decorator(func):
+           func.__doc__ = f.__doc__ + general
+           return func
+       return _decorator
 
 
 ####################################################################################################
