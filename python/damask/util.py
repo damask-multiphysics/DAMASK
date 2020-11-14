@@ -56,6 +56,8 @@ def croak(what, newline = True):
     """
     Write formated to stderr.
 
+    DEPRECATED
+
     Parameters
     ----------
     what : str or iterable
@@ -392,17 +394,6 @@ class bcolors:
     DIM       = '\033[2m'
     UNDERLINE = '\033[4m'
     CROSSOUT  = '\033[9m'
-
-    def disable(self):
-        self.HEADER = ''
-        self.OKBLUE = ''
-        self.OKGREEN = ''
-        self.WARNING = ''
-        self.FAIL = ''
-        self.ENDC = ''
-        self.BOLD = ''
-        self.UNDERLINE = ''
-        self.CROSSOUT = ''
 
 
 class return_message:
