@@ -226,13 +226,13 @@ class ConfigMaterial(Config):
         return dup
 
 
-    def material_add(self,constituents,**kwargs):
+    def material_add(self,constituents=None,**kwargs):
         """
         Add material entries.
 
         Parameters
         ----------
-        constituents : dict
+        constituents : dict, optional
             Entries for 'constituents' as key-value pair.
         **kwargs
             Key-value pairs.
@@ -263,13 +263,26 @@ class ConfigMaterial(Config):
             homogenization: SX
 
         """
-        c = [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
+        length = -1
+        for v in kwargs.values():
+            if hasattr(v,'__len__') and not isinstance(v,str):
+                if length != -1 and len(v) != length:
+                    raise ValueError('Cannot add entries of different length')
+                else:
+                    length = len(v)
+        length = max(1,length)
+
+        c = [{} for _ in range(length)] if constituents is None else \
+            [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
+        if len(c) == 1: c = [copy.deepcopy(c[0]) for _ in range(length)]
+
+        if length != 1 and length != len(c):
+            raise ValueError('Cannot add entries of different length')
+
         for k,v in kwargs.items():
             if hasattr(v,'__len__') and not isinstance(v,str):
-                if len(v) != len(c):
-                    raise ValueError('Cannot add entries of different length')
                 for i,vv in enumerate(v):
-                    c[i][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
+                    c[i][k] = vv.item() if isinstance(vv,np.generic) else vv
             else:
                 for i in range(len(c)):
                     c[i][k] = v
@@ -293,7 +306,7 @@ class ConfigMaterial(Config):
                     if len(v) != N_material:
                         raise ValueError('Cannot add entries of different length')
                     for i,vv in enumerate(np.array(v)):
-                        m[i][0][k] = [w.item() for w in vv] if isinstance(vv,np.ndarray) else vv.item()
+                        m[i][0][k] = vv.item() if isinstance(vv,np.generic) else vv
                 else:
                     for i in range(N_material):
                         m[i][0][k] = v
