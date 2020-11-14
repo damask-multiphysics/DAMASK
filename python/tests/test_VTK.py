@@ -84,6 +84,15 @@ class TestVTK:
             time.sleep(.5)
         assert(False)
 
+    def test_compress(self,tmp_path):
+        points = np.random.rand(102,3)
+        v = VTK.from_poly_data(points)
+        fname_c = tmp_path/'compreesed.vtp'
+        fname_p = tmp_path/'plain.vtp'
+        v.save(fname_c,parallel=False,compress=False)
+        v.save(fname_p,parallel=False,compress=True)
+        assert(VTK.load(fname_c).__repr__() == VTK.load(fname_p).__repr__())
+
 
     @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])
     def test_filename_variations(self,tmp_path,fname):

@@ -2,6 +2,7 @@ import copy
 import multiprocessing as mp
 from functools import partial
 from os import path
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -188,12 +189,16 @@ class Geom:
         """
         Read a geom file.
 
+        Storing geometry files in ASCII format is deprecated.
+        This function will be removed in a future version of DAMASK.
+
         Parameters
         ----------
         fname : str, pathlib.Path, or file handle
             Geometry file to read.
 
         """
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
         try:
             f = open(fname)
         except TypeError:
@@ -245,7 +250,6 @@ class Geom:
             material = material.astype('int')
 
         return Geom(material.reshape(grid,order='F'),size,origin,comments)
-
 
 
     @staticmethod
@@ -523,6 +527,9 @@ class Geom:
         """
         Write a geom file.
 
+        Storing geometry files in ASCII format is deprecated.
+        This function will be removed in a future version of DAMASK.
+
         Parameters
         ----------
         fname : str or file handle
@@ -531,6 +538,7 @@ class Geom:
             Compress geometry with 'x of y' and 'a to b'.
 
         """
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
         header =  [f'{len(self.comments)+4} header'] + self.comments \
                 + ['grid   a {} b {} c {}'.format(*self.grid),
                    'size   x {} y {} z {}'.format(*self.size),
