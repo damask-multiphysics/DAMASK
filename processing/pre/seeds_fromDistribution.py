@@ -164,7 +164,7 @@ class myThread (threading.Thread):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(usage='%prog options [file[s]]', description = """
 Monte Carlo simulation to produce seed file that gives same size distribution like given geometry file.
 
 """, version = scriptID)

@@ -17,7 +17,7 @@ minimal_surfaces = list(damask.Geom._minimal_surface.keys())
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [geomfile]', description = """
+parser = OptionParser(usage='%prog options [geomfile]', description = """
 Generate a bicontinuous structure of given type.
 
 """, version = scriptID)
