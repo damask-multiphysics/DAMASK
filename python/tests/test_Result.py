@@ -94,11 +94,11 @@ class TestResult:
             default.pick('invalid',True)
 
     def test_add_absolute(self,default):
-        default.add_absolute('Fe')
-        loc = {'Fe':   default.get_dataset_location('Fe'),
-               '|Fe|': default.get_dataset_location('|Fe|')}
-        in_memory = np.abs(default.read_dataset(loc['Fe'],0))
-        in_file   = default.read_dataset(loc['|Fe|'],0)
+        default.add_absolute('F_e')
+        loc = {'F_e':   default.get_dataset_location('F_e'),
+               '|F_e|': default.get_dataset_location('|F_e|')}
+        in_memory = np.abs(default.read_dataset(loc['F_e'],0))
+        in_file   = default.read_dataset(loc['|F_e|'],0)
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('mode',['direct','function'])
@@ -168,15 +168,16 @@ class TestResult:
 
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
     def test_add_IPF_color(self,default,d):
-        default.add_IPF_color('orientation',d)
-        loc = {'orientation': default.get_dataset_location('orientation'),
-               'color':       default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
-        qu = default.read_dataset(loc['orientation']).view(np.double).reshape(-1,4)
+        default.add_IPF_color('O',np.array(d))
+        loc = {'O':     default.get_dataset_location('O'),
+               'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
+        qu = default.read_dataset(loc['O']).view(np.double).squeeze()
         crystal_structure = default.get_crystal_structure()
-        in_memory = np.empty((qu.shape[0],3),np.uint8)
-        for i,q in enumerate(qu):
-            o = Orientation(q,crystal_structure).reduced
-            in_memory[i] = np.uint8(o.IPF_color(np.array(d))*255)
+        c = Orientation(rotation=qu,
+                        lattice={'fcc':'cF',
+                                 'bcc':'cI',
+                                 'hex':'hP'}[crystal_structure])
+        in_memory = np.uint8(c.IPF_color(c.to_SST(np.array(d)))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 
@@ -209,6 +210,22 @@ class TestResult:
         in_memory = mechanics.Mises_stress(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['sigma_vM'],0)
         assert np.allclose(in_memory,in_file)
+    
+    def test_add_Mises_invalid(self,default):
+        default.add_Cauchy('P','F')
+        default.add_calculation('sigma_y','#sigma#',unit='y')
+        default.add_Mises('sigma_y')
+        assert default.get_dataset_location('sigma_y_vM') == []
+
+    def test_add_Mises_stress_strain(self,default):
+        default.add_Cauchy('P','F')
+        default.add_calculation('sigma_y','#sigma#',unit='y')
+        default.add_calculation('sigma_x','#sigma#',unit='x')
+        default.add_Mises('sigma_y',kind='strain')
+        default.add_Mises('sigma_x',kind='stress')
+        loc = {'y' :default.get_dataset_location('sigma_y_vM'),
+               'x' :default.get_dataset_location('sigma_x_vM')}
+        assert not np.allclose(default.read_dataset(loc['y'],0),default.read_dataset(loc['x'],0))
 
     def test_add_norm(self,default):
         default.add_norm('F',1)
@@ -228,13 +245,14 @@ class TestResult:
         in_file   = default.read_dataset(loc['S'],0)
         assert np.allclose(in_memory,in_file)
 
+    @pytest.mark.skip(reason='requires rework of lattice.f90')
     @pytest.mark.parametrize('polar',[True,False])
     def test_add_pole(self,default,polar):
         pole = np.array([1.,0.,0.])
-        default.add_pole('orientation',pole,polar)
-        loc = {'orientation': default.get_dataset_location('orientation'),
-               'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
-        rot = Rotation(default.read_dataset(loc['orientation']).view(np.double))
+        default.add_pole('O',pole,polar)
+        loc = {'O':    default.get_dataset_location('O'),
+               'pole': default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
+        rot = Rotation(default.read_dataset(loc['O']).view(np.double))
         rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
         xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
         in_memory = xy if not polar else \
@@ -296,7 +314,11 @@ class TestResult:
         default.add_Cauchy()
         loc = default.get_dataset_location('sigma')
         with h5py.File(default.fname,'r') as f:
-            created_first = f[loc[0]].attrs['Created'].decode()
+            # h5py3 compatibility
+            try:
+                created_first = f[loc[0]].attrs['Created'].decode()
+            except AttributeError:
+                created_first = f[loc[0]].attrs['Created']
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
@@ -305,9 +327,16 @@ class TestResult:
             default.disallow_modification()
 
         time.sleep(2.)
-        default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        try:
+            default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        except ValueError:
+            pass
         with h5py.File(default.fname,'r') as f:
-            created_second = f[loc[0]].attrs['Created'].decode()
+            # h5py3 compatibility
+            try:
+                created_second = f[loc[0]].attrs['Created'].decode()
+            except AttributeError:
+                created_second = f[loc[0]].attrs['Created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
         if overwrite == 'on':
             assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)

@@ -23,7 +23,7 @@ subroutine quit(stop_id)
   call h5close_f(error)
   if (error /= 0) write(6,'(a,i5)') ' Error in h5close_f ',error
  
-  call PETScFinalize(ierr)
+  call PetscFinalize(ierr)
   CHKERRQ(ierr)
  
 #ifdef _OPENMP

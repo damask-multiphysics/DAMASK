@@ -85,6 +85,12 @@ class TestVTK:
         assert(False)
 
 
+    @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])
+    def test_filename_variations(self,tmp_path,fname):
+        points = np.random.rand(102,3)
+        v = VTK.from_poly_data(points)
+        v.save(tmp_path/fname)
+
     @pytest.mark.parametrize('name,dataset_type',[('this_file_does_not_exist.vtk', None),
                                                   ('this_file_does_not_exist.vtk','vtk'),
                                                   ('this_file_does_not_exist.vtx', None)])
@@ -92,9 +98,10 @@ class TestVTK:
         with pytest.raises(TypeError):
             VTK.load(name,dataset_type)
 
-    def test_invalid_extension_write(self,default):
-        with pytest.raises(ValueError):
-            default.save('default.txt')
+    def test_add_extension(self,tmp_path,default):
+        default.save(tmp_path/'default.txt',parallel=False)
+        assert os.path.isfile(tmp_path/'default.txt.vtr')
+
 
     def test_invalid_get(self,default):
         with pytest.raises(ValueError):

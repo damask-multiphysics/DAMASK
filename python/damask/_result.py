@@ -15,12 +15,12 @@ from numpy.lib import recfunctions as rfn
 import damask
 from . import VTK
 from . import Table
-from . import Rotation
 from . import Orientation
 from . import grid_filters
 from . import mechanics
 from . import util
 
+h5py3 = h5py.__version__[0] == '3'
 
 class Result:
     """
@@ -93,7 +93,7 @@ class Result:
 
 
     def __repr__(self):
-        """Show selected data."""
+        """Show summary of file content."""
         all_selected_increments = self.selection['increments']
 
         self.pick('increments',all_selected_increments[0:1])
@@ -280,7 +280,8 @@ class Result:
                 for path_old in self.get_dataset_location(name_old):
                     path_new = os.path.join(os.path.dirname(path_old),name_new)
                     f[path_new] = f[path_old]
-                    f[path_new].attrs['Renamed'] = 'Original name: {}'.encode()
+                    f[path_new].attrs['Renamed'] = f'Original name: {name_old}' if h5py3 else \
+                                                   f'Original name: {name_old}'.encode()
                     del f[path_old]
         else:
             raise PermissionError('Rename operation not permitted')
@@ -422,8 +423,13 @@ class Result:
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    unit  = f" / {dataset.attrs['Unit'].decode()}" if 'Unit' in dataset.attrs else ''
-                                    description = dataset.attrs['Description'].decode()
+                                    if 'Unit' in dataset.attrs:
+                                        unit = f" / {dataset.attrs['Unit']}" if h5py3 else \
+                                               f" / {dataset.attrs['Unit'].decode()}"
+                                    else:
+                                        unit = ''
+                                    description = dataset.attrs['Description'] if h5py3 else \
+                                                  dataset.attrs['Description'].decode()
                                     message += f'        {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
@@ -463,7 +469,8 @@ class Result:
     def get_crystal_structure(self):                                                                # ToDo: extension to multi constituents/phase
         """Info about the crystal structure."""
         with h5py.File(self.fname,'r') as f:
-            return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
+            return f[self.get_dataset_location('O')[0]].attrs['Lattice'] if h5py3 else \
+                   f[self.get_dataset_location('O')[0]].attrs['Lattice'].decode()
 
 
     def enable_user_function(self,func):
@@ -735,11 +742,13 @@ class Result:
     def _add_IPF_color(q,l):
         m = util.scale_to_coprime(np.array(l))
 
-        o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
-                        lattice = q['meta']['Lattice'])
+        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),
+                        lattice  = {'fcc':'cF',
+                                    'bcc':'cI',
+                                    'hex':'hP'}[q['meta']['Lattice']])
 
         return {
-                'data': np.uint8(o.IPF_color(l)*255),
+                'data': np.uint8(o.IPF_color(o.to_SST(l))*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
                           'Unit':        '8-bit RGB',
@@ -788,20 +797,26 @@ class Result:
 
 
     @staticmethod
-    def _add_Mises(T_sym):
-        t = 'strain' if T_sym['meta']['Unit'] == '1' else \
-            'stress'
+    def _add_Mises(T_sym,kind):
+        k = kind
+        if k is None:
+            if T_sym['meta']['Unit'] == '1':
+                k = 'strain'
+            elif T_sym['meta']['Unit'] == 'Pa':
+                k = 'stress'
+        if k not in ['stress', 'strain']:
+            raise ValueError('invalid von Mises kind {kind}')
 
         return {
-                'data':  (mechanics.Mises_strain if t=='strain' else mechanics.Mises_stress)(T_sym['data']),
+                'data':  (mechanics.Mises_strain if k=='strain' else mechanics.Mises_stress)(T_sym['data']),
                 'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': f"Mises equivalent {t} of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     'add_Mises'
                           }
                 }
-    def add_Mises(self,T_sym):
+    def add_Mises(self,T_sym,kind=None):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
@@ -809,9 +824,12 @@ class Result:
         ----------
         T_sym : str
             Label of symmetric tensorial stress or strain dataset.
+        kind : {'stress', 'strain', None}, optional
+            Kind of the von Mises equivalent. Defaults to None, in which case
+            it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress').
 
         """
-        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym})
+        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym},{'kind':kind})
 
 
     @staticmethod
@@ -880,42 +898,47 @@ class Result:
         self._add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
 
 
-    @staticmethod
-    def _add_pole(q,p,polar):
-        pole      = np.array(p)
-        unit_pole = pole/np.linalg.norm(pole)
-        m         = util.scale_to_coprime(pole)
-        rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
+# The add_pole functionality needs discussion.
+# The new Crystal object can perform such a calculation but the outcome depends on the lattice parameters
+# as well as on whether a direction or plane is concerned (see the DAMASK_examples/pole_figure notebook).
+# Below code appears to be too simplistic.
 
-        rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
-        xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
-        coords = xy if not polar else \
-                 np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
-        return {
-                'data': coords,
-                'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
-                'meta' : {
-                          'Unit':        '1',
-                          'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
-                                         .format('Polar' if polar else 'Cartesian'),
-                          'Creator':     'add_pole'
-                         }
-               }
-    def add_pole(self,q,p,polar=False):
-        """
-        Add coordinates of stereographic projection of given pole in crystal frame.
-
-        Parameters
-        ----------
-        q : str
-            Label of the dataset containing the crystallographic orientation as quaternions.
-        p : numpy.array of shape (3)
-            Crystallographic direction or plane.
-        polar : bool, optional
-            Give pole in polar coordinates. Defaults to False.
-
-        """
-        self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
+    # @staticmethod
+    # def _add_pole(q,p,polar):
+    #     pole      = np.array(p)
+    #     unit_pole = pole/np.linalg.norm(pole)
+    #     m         = util.scale_to_coprime(pole)
+    #     rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
+    #
+    #     rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
+    #     xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
+    #     coords = xy if not polar else \
+    #              np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
+    #     return {
+    #             'data': coords,
+    #             'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
+    #             'meta' : {
+    #                       'Unit':        '1',
+    #                       'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
+    #                                      .format('Polar' if polar else 'Cartesian'),
+    #                       'Creator':     'add_pole'
+    #                      }
+    #            }
+    # def add_pole(self,q,p,polar=False):
+    #     """
+    #     Add coordinates of stereographic projection of given pole in crystal frame.
+    #
+    #     Parameters
+    #     ----------
+    #     q : str
+    #         Label of the dataset containing the crystallographic orientation as quaternions.
+    #     p : numpy.array of shape (3)
+    #         Crystallographic direction or plane.
+    #     polar : bool, optional
+    #         Give pole in polar coordinates. Defaults to False.
+    #
+    #     """
+    #     self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
 
 
     @staticmethod
@@ -1035,7 +1058,7 @@ class Result:
                     loc  = f[group+'/'+label]
                     datasets_in[arg]={'data' :loc[()],
                                       'label':label,
-                                      'meta': {k:v.decode() for k,v in loc.attrs.items()}}
+                                      'meta': {k:(v if h5py3 else v.decode()) for k,v in loc.attrs.items()}}
             lock.release()
             r = func(**datasets_in,**args)
             return [group,r]
@@ -1080,17 +1103,21 @@ class Result:
                     if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
                         dataset = f[result[0]+'/'+result[1]['label']]
                         dataset[...] = result[1]['data']
-                        dataset.attrs['Overwritten'] = 'Yes'.encode()
+                        dataset.attrs['Overwritten'] = 'Yes' if h5py3 else \
+                                                       'Yes'.encode()
                     else:
                         dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
 
                     now = datetime.datetime.now().astimezone()
-                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
+                                               now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                     for l,v in result[1]['meta'].items():
-                        dataset.attrs[l]=v.encode()
-                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{damask.version}"
-                    dataset.attrs['Creator'] = creator.encode()
+                        dataset.attrs[l]=v if h5py3 else v.encode()
+                    creator = dataset.attrs['Creator'] if h5py3 else \
+                              dataset.attrs['Creator'].decode()
+                    dataset.attrs['Creator'] = f"damask.Result.{creator} v{damask.version}" if h5py3 else \
+                                               f"damask.Result.{creator} v{damask.version}".encode()
 
                 except (OSError,RuntimeError) as err:
                     print(f'Could not add dataset: {err}.')

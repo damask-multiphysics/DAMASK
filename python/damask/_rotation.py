@@ -13,18 +13,18 @@ _R1   = (3.*np.pi/4.)**(1./3.)
 
 class Rotation:
     u"""
-    Orientation stored with functionality for conversion to different representations.
+    Rotation with functionality for conversion between different representations.
 
     The following conventions apply:
 
-    - coordinate frames are right-handed.
-    - a rotation angle ω is taken to be positive for a counterclockwise rotation
+    - Coordinate frames are right-handed.
+    - A rotation angle ω is taken to be positive for a counterclockwise rotation
       when viewing from the end point of the rotation axis towards the origin.
-    - rotations will be interpreted in the passive sense.
+    - Rotations will be interpreted in the passive sense.
     - Euler angle triplets are implemented using the Bunge convention,
-      with the angular ranges as [0,2π], [0,π], [0,2π].
-    - the rotation angle ω is limited to the interval [0,π].
-    - the real part of a quaternion is positive, Re(q) > 0
+      with angular ranges of [0,2π], [0,π], [0,2π].
+    - The rotation angle ω is limited to the interval [0,π].
+    - The real part of a quaternion is positive, Re(q) > 0
     - P = -1 (as default).
 
     Examples
@@ -33,7 +33,7 @@ class Rotation:
     coordinates "b" expressed in system "B":
 
     - b = Q @ a
-    - b = np.dot(Q.asMatrix(),a)
+    - b = np.dot(Q.as_matrix(),a)
 
     References
     ----------
@@ -44,20 +44,83 @@ class Rotation:
 
     __slots__ = ['quaternion']
 
-    def __init__(self,quaternion = np.array([1.0,0.0,0.0,0.0])):
+    def __init__(self,rotation = np.array([1.0,0.0,0.0,0.0])):
         """
-        Initializes to identity unless specified.
+        Initialize rotation object.
 
         Parameters
         ----------
-        quaternion : numpy.ndarray, optional
+        rotation : list, numpy.ndarray, Rotation, optional
             Unit quaternion in positive real hemisphere.
             Use .from_quaternion to perform a sanity check.
+            Defaults to no rotation.
 
         """
-        if quaternion.shape[-1] != 4:
-            raise ValueError('Not a quaternion')
-        self.quaternion = quaternion.copy()
+        if isinstance(rotation,Rotation):
+            self.quaternion = rotation.quaternion.copy()
+        elif np.array(rotation).shape[-1] == 4:
+            self.quaternion = np.array(rotation)
+        else:
+            raise ValueError('"rotation" is neither a Rotation nor a quaternion')
+
+
+    def __repr__(self):
+        """Represent rotation as unit quaternion, rotation matrix, and Bunge-Euler angles."""
+        return 'Quaternions:\n'+str(self.quaternion) \
+               if self.quaternion.shape != (4,) else \
+               '\n'.join([
+               'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
+               'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
+               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
+                ])
+
+
+    # ToDo: Check difference __copy__ vs __deepcopy__
+    def __copy__(self,**kwargs):
+        """Copy."""
+        return self.__class__(rotation=kwargs['rotation'] if 'rotation' in kwargs else self.quaternion)
+
+    copy = __copy__
+
+
+    def __getitem__(self,item):
+        """Return slice according to item."""
+        return self.copy() \
+               if self.shape == () else \
+               self.copy(rotation=self.quaternion[item+(slice(None),)] if isinstance(item,tuple) else self.quaternion[item])
+
+
+    def __eq__(self,other):
+        """
+        Equal to other.
+
+        Equality is determined taking limited floating point precision into
+        account. See numpy.allclose for details.
+
+        Parameters
+        ----------
+        other : Rotation
+            Rotation to check for equality.
+
+        """
+        return      np.prod(self.shape,dtype=int) == np.prod(other.shape,dtype=int) \
+                and np.allclose(self.quaternion,other.quaternion)
+
+
+    def __neq__(self,other):
+        """
+        Not Equal to other.
+
+        Equality is determined taking limited floating point precision into
+        account. See numpy.allclose for details.
+
+        Parameters
+        ----------
+        other : Rotation
+            Rotation to check for inequality.
+
+        """
+        return not self.__eq__(other)
 
 
     @property
@@ -65,39 +128,36 @@ class Rotation:
         return self.quaternion.shape[:-1]
 
 
-    # ToDo: Check difference __copy__ vs __deepcopy__
-    def __copy__(self):
-        """Copy."""
-        return self.__class__(self.quaternion)
-
-    copy = __copy__
-
-
-    def __repr__(self):
-        """Orientation displayed as unit quaternion, rotation matrix, and Bunge-Euler angles."""
-        if self.quaternion.shape != (4,):
-            return 'Quaternions:\n'+str(self.quaternion) # ToDo: could be nicer ...
-        return '\n'.join([
-               'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
-               'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
-               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
-                ])
-
-
-    def __getitem__(self,item):
-        """Iterate over leading/leftmost dimension of Rotation array."""
-        if self.shape == (): return self.copy()
-        if isinstance(item,tuple) and len(item) >= len(self):
-            raise IndexError('Too many indices')
-        return self.__class__(self.quaternion[item])
-
-
     def __len__(self):
         """Length of leading/leftmost dimension of Rotation array."""
         return 0 if self.shape == () else self.shape[0]
 
 
-    def __matmul__(self, other):
+    def __invert__(self):
+        """Inverse rotation (backward rotation)."""
+        dup = self.copy()
+        dup.quaternion[...,1:] *= -1
+        return dup
+
+
+    def __pow__(self,pwr):
+        """
+        Raise quaternion to power.
+
+        Equivalent to performing the rotation 'pwr' times.
+
+        Parameters
+        ----------
+        pwr : float
+            Power to raise quaternion to.
+
+        """
+        phi = np.arccos(self.quaternion[...,0:1])
+        p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
+        return self.copy(rotation=Rotation(np.block([np.cos(pwr*phi),np.sin(pwr*phi)*p]))._standardize())
+
+
+    def __matmul__(self,other):
         """
         Rotation of vector, second or fourth order tensor, or rotation object.
 
@@ -112,14 +172,14 @@ class Rotation:
             Rotated vector, second or fourth order tensor, or rotation object.
 
         """
-        if isinstance(other, Rotation):
+        if isinstance(other,Rotation):
             q_m = self.quaternion[...,0:1]
             p_m = self.quaternion[...,1:]
             q_o = other.quaternion[...,0:1]
             p_o = other.quaternion[...,1:]
             q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
             p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
-            return self.__class__(np.block([q,p]))._standardize()
+            return Rotation(np.block([q,p]))._standardize()
 
         elif isinstance(other,np.ndarray):
             if self.shape + (3,) == other.shape:
@@ -146,27 +206,89 @@ class Rotation:
 
 
     def _standardize(self):
-        """Standardize (ensure positive real hemisphere)."""
+        """Standardize quaternion (ensure positive real hemisphere)."""
         self.quaternion[self.quaternion[...,0] < 0.0] *= -1
         return self
 
-    def inverse(self):
-        """In-place inverse rotation (backward rotation)."""
-        self.quaternion[...,1:] *= -1
-        return self
 
-    def __invert__(self):
-        """Inverse rotation (backward rotation)."""
-        return self.copy().inverse()
+    def append(self,other):
+        """Extend rotation array along first dimension with other array."""
+        return self.copy(rotation=np.vstack((self.quaternion,other.quaternion)))
 
-    def inversed(self):
-        """Inverse rotation (backward rotation)."""
-        return ~ self
+
+    def flatten(self,order = 'C'):
+        """Flatten quaternion array."""
+        return self.copy(rotation=self.quaternion.reshape((-1,4),order=order))
+
+
+    def reshape(self,shape,order = 'C'):
+        """Reshape quaternion array."""
+        if isinstance(shape,(int,np.integer)): shape = (shape,)
+        return self.copy(rotation=self.quaternion.reshape(tuple(shape)+(4,),order=order))
+
+
+    def broadcast_to(self,shape,mode = 'right'):
+        """
+        Broadcast quaternion array to shape.
+
+        Parameters
+        ----------
+        shape : tuple
+            Shape of broadcasted array.
+        mode : str, optional
+            Where to preferentially locate missing dimensions.
+            Either 'left' or 'right' (default).
+
+        """
+        if isinstance(shape,(int,np.integer)): shape = (shape,)
+        return self.copy(rotation=np.broadcast_to(self.quaternion.reshape(util.shapeshifter(self.shape,shape,mode)+(4,)),
+                                                  shape+(4,)))
+
+
+    def average(self,weights = None):
+        """
+        Average rotations along last dimension.
+
+        Parameters
+        ----------
+        weights : list of floats, optional
+            Relative weight of each rotation.
+
+        Returns
+        -------
+        average : Rotation
+            Weighted average of original Rotation field.
+
+        References
+        ----------
+        Quaternion averaging
+        F. Landis Markley, Yang Cheng, John L. Crassidis, Yaakov Oshman
+        Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
+        10.2514/1.28949
+
+        """
+        def _M(quat):
+            """Intermediate representation supporting quaternion averaging."""
+            return np.einsum('...i,...j',quat,quat)
+
+        if not weights:
+            weights = np.ones(self.shape,dtype=float)
+
+        eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights[...,np.newaxis,np.newaxis],axis=-3) \
+                                /np.sum(                      weights[...,np.newaxis,np.newaxis],axis=-3))
+
+        return Rotation.from_quaternion(np.real(
+                                        np.squeeze(
+                                        np.take_along_axis(vec,
+                                                           eig.argmax(axis=-1)[...,np.newaxis,np.newaxis],
+                                                           axis=-1),
+                                        axis=-1)),
+                                        accept_homomorph = True)
 
 
     def misorientation(self,other):
         """
-        Get Misorientation.
+        Calculate misorientation from self to other Rotation.
 
         Parameters
         ----------
@@ -175,33 +297,6 @@ class Rotation:
 
         """
         return other@~self
-
-
-    def broadcast_to(self,shape):
-        if isinstance(shape,(int,np.integer)): shape = (shape,)
-        if self.shape == ():
-            q = np.broadcast_to(self.quaternion,shape+(4,))
-        else:
-            q = np.block([np.broadcast_to(self.quaternion[...,0:1],shape).reshape(shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,1:2],shape).reshape(shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,2:3],shape).reshape(shape+(1,)),
-                          np.broadcast_to(self.quaternion[...,3:4],shape).reshape(shape+(1,))])
-        return self.__class__(q)
-
-
-    def average(self,other): #ToDo: discuss calling for vectors
-        """
-        Calculate the average rotation.
-
-        Parameters
-        ----------
-        other : Rotation
-            Rotation from which the average is rotated.
-
-        """
-        if self.quaternion.shape != (4,) or other.quaternion.shape != (4,):
-            raise NotImplementedError('Support for multiple rotations missing')
-        return Rotation.from_average([self,other])
 
 
     ################################################################################################
@@ -326,20 +421,6 @@ class Rotation:
         """
         return Rotation._qu2cu(self.quaternion)
 
-    @property
-    def M(self): # ToDo not sure about the name: as_M or M? we do not have a from_M
-        """
-        Intermediate representation supporting quaternion averaging.
-
-        References
-        ----------
-        F. Landis Markley et al., Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
-        https://doi.org/10.2514/1.28949
-
-        """
-        return np.einsum('...i,...j',self.quaternion,self.quaternion)
-
-
     ################################################################################################
     # Static constructors. The input data needs to follow the conventions, options allow to
     # relax the conventions.
@@ -347,7 +428,7 @@ class Rotation:
     def from_quaternion(q,
                         accept_homomorph = False,
                         P = -1,
-                        acceptHomomorph = None): # old name (for compatibility)
+                        **kwargs):
         """
         Initialize from quaternion.
 
@@ -363,15 +444,13 @@ class Rotation:
             Convention used. Defaults to -1.
 
         """
-        if acceptHomomorph is not None:
-            accept_homomorph = acceptHomomorph # for compatibility
         qu = np.array(q,dtype=float)
         if qu.shape[:-2:-1] != (4,):
             raise ValueError('Invalid shape.')
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
-        if P == 1: qu[...,1:4] *= -1
+        qu[...,1:4] *= -P
         if accept_homomorph:
             qu[qu[...,0] < 0.0] *= -1
         else:
@@ -384,7 +463,8 @@ class Rotation:
 
     @staticmethod
     def from_Eulers(phi,
-                    degrees = False):
+                    degrees = False,
+                    **kwargs):
         """
         Initialize from Bunge-Euler angles.
 
@@ -411,7 +491,8 @@ class Rotation:
     def from_axis_angle(axis_angle,
                         degrees = False,
                         normalize = False,
-                        P = -1):
+                        P = -1,
+                        **kwargs):
         """
         Initialize from Axis angle pair.
 
@@ -434,7 +515,7 @@ class Rotation:
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
-        if P == 1:    ax[...,0:3] *= -1
+        ax[...,0:3] *= -P
         if degrees:   ax[...,  3]  = np.radians(ax[...,3])
         if normalize: ax[...,0:3] /= np.linalg.norm(ax[...,0:3],axis=-1,keepdims=True)
         if np.any(ax[...,3] < 0.0) or np.any(ax[...,3] > np.pi):
@@ -448,14 +529,15 @@ class Rotation:
     @staticmethod
     def from_basis(basis,
                    orthonormal = True,
-                   reciprocal = False):
+                   reciprocal = False,
+                   **kwargs):
         """
         Initialize from lattice basis vectors.
 
         Parameters
         ----------
         basis : numpy.ndarray of shape (...,3,3)
-            Three lattice basis vectors in three dimensions.
+            Three three-dimensional lattice basis vectors.
         orthonormal : boolean, optional
             Basis is strictly orthonormal, i.e. is free of stretch components. Defaults to True.
         reciprocal : boolean, optional
@@ -463,7 +545,7 @@ class Rotation:
 
         """
         om = np.array(basis,dtype=float)
-        if om.shape[:-3:-1] != (3,3):
+        if om.shape[-2:] != (3,3):
             raise ValueError('Invalid shape.')
 
         if reciprocal:
@@ -482,7 +564,7 @@ class Rotation:
         return Rotation(Rotation._om2qu(om))
 
     @staticmethod
-    def from_matrix(R):
+    def from_matrix(R,**kwargs):
         """
         Initialize from rotation matrix.
 
@@ -495,9 +577,39 @@ class Rotation:
         return Rotation.from_basis(R)
 
     @staticmethod
+    def from_parallel(a,b,
+                      **kwargs):
+        """
+        Initialize from pairs of two orthogonal lattice basis vectors.
+
+        Parameters
+        ----------
+        a : numpy.ndarray of shape (...,2,3)
+            Two three-dimensional lattice vectors of first orthogonal basis.
+        b : numpy.ndarray of shape (...,2,3)
+            Corresponding three-dimensional lattice vectors of second basis.
+
+        """
+        a_ = np.array(a)
+        b_ = np.array(b)
+        if a_.shape[-2:] != (2,3) or b_.shape[-2:] != (2,3) or a_.shape != b_.shape:
+            raise ValueError('Invalid shape.')
+        am = np.stack([          a_[...,0,:],
+                                             a_[...,1,:],
+                        np.cross(a_[...,0,:],a_[...,1,:]) ],axis=-2)
+        bm = np.stack([          b_[...,0,:],
+                                             b_[...,1,:],
+                        np.cross(b_[...,0,:],b_[...,1,:]) ],axis=-2)
+
+        return              Rotation.from_basis(np.swapaxes(am/np.linalg.norm(am,axis=-1,keepdims=True),-1,-2))\
+            .misorientation(Rotation.from_basis(np.swapaxes(bm/np.linalg.norm(bm,axis=-1,keepdims=True),-1,-2)))
+
+
+    @staticmethod
     def from_Rodrigues(rho,
                        normalize = False,
-                       P = -1):
+                       P = -1,
+                       **kwargs):
         """
         Initialize from Rodrigues-Frank vector.
 
@@ -518,7 +630,7 @@ class Rotation:
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
-        if P == 1:    ro[...,0:3] *= -1
+        ro[...,0:3] *= -P
         if normalize: ro[...,0:3] /= np.linalg.norm(ro[...,0:3],axis=-1,keepdims=True)
         if np.any(ro[...,3] < 0.0):
             raise ValueError('Rodrigues vector rotation angle not positive.')
@@ -529,7 +641,8 @@ class Rotation:
 
     @staticmethod
     def from_homochoric(h,
-                        P = -1):
+                        P = -1,
+                        **kwargs):
         """
         Initialize from homochoric vector.
 
@@ -547,7 +660,7 @@ class Rotation:
         if abs(P) != 1:
             raise ValueError('P ∉ {-1,1}')
 
-        if P == 1: ho *= -1
+        ho *= -P
 
         if np.any(np.linalg.norm(ho,axis=-1) >_R1+1e-9):
             raise ValueError('Homochoric coordinate outside of the sphere.')
@@ -556,7 +669,8 @@ class Rotation:
 
     @staticmethod
     def from_cubochoric(c,
-                        P = -1):
+                        P = -1,
+                        **kwargs):
         """
         Initialize from cubochoric vector.
 
@@ -577,46 +691,15 @@ class Rotation:
         if np.abs(np.max(cu)) > np.pi**(2./3.) * 0.5+1e-9:
             raise ValueError('Cubochoric coordinate outside of the cube.')
 
-        ho = Rotation._cu2ho(cu)
-        if P == 1: ho *= -1
+        ho = -P * Rotation._cu2ho(cu)
 
         return Rotation(Rotation._ho2qu(ho))
 
 
     @staticmethod
-    def from_average(rotations,weights = None):
-        """
-        Average rotation.
-
-        References
-        ----------
-        F. Landis Markley et al., Journal of Guidance, Control, and Dynamics 30(4):1193-1197, 2007
-        https://doi.org/10.2514/1.28949
-
-        Parameters
-        ----------
-        rotations : list of Rotations
-            Rotations to average from
-        weights : list of floats, optional
-            Weights for each rotation used for averaging
-
-        """
-        if not all(isinstance(item, Rotation) for item in rotations):
-            raise TypeError('Only instances of Rotation can be averaged.')
-
-        N = len(rotations)
-        if not weights:
-            weights = np.ones(N,dtype='i')
-
-        for i,(r,n) in enumerate(zip(rotations,weights)):
-            M =          r.M * n if i == 0 \
-                else M + r.M * n                                                                    # noqa add (multiples) of this rotation to average noqa
-        eig, vec = np.linalg.eig(M/N)
-
-        return Rotation.from_quaternion(np.real(vec.T[eig.argmax()]),accept_homomorph = True)
-
-    @staticmethod
-    def from_random(shape=None,seed=None):
+    def from_random(shape = None,
+                    seed = None,
+                    **kwargs):
         """
         Draw random rotation.
 
@@ -633,12 +716,7 @@ class Rotation:
 
         """
         rng = np.random.default_rng(seed)
-        if shape is None:
-            r = rng.random(3)
-        elif hasattr(shape, '__iter__'):
-            r = rng.random(tuple(shape)+(3,))
-        else:
-            r = rng.random((shape,3))
+        r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3))
 
         A = np.sqrt(r[...,2])
         B = np.sqrt(1.0-r[...,2])
@@ -647,14 +725,17 @@ class Rotation:
                       np.cos(2.0*np.pi*r[...,1])*B,
                       np.sin(2.0*np.pi*r[...,0])*A],axis=-1)
 
-        return Rotation(q.reshape(r.shape[:-1]+(4,)) if shape is not None else q)._standardize()
-
-    # for compatibility
-    __mul__        = __matmul__
+        return Rotation(q if shape is None else q.reshape(r.shape[:-1]+(4,)))._standardize()
 
 
     @staticmethod
-    def from_ODF(weights,Eulers,N=500,degrees=True,fractions=True,seed=None):
+    def from_ODF(weights,
+                 Eulers,
+                 N = 500,
+                 degrees = True,
+                 fractions = True,
+                 seed = None,
+                 **kwargs):
         """
         Sample discrete values from a binned ODF.
 
@@ -707,7 +788,12 @@ class Rotation:
 
 
     @staticmethod
-    def from_spherical_component(center,sigma,N=500,degrees=True,seed=None):
+    def from_spherical_component(center,
+                                 sigma,
+                                 N = 500,
+                                 degrees = True,
+                                 seed = None,
+                                 **kwargs):
         """
         Calculate set of rotations with Gaussian distribution around center.
 
@@ -738,7 +824,13 @@ class Rotation:
 
 
     @staticmethod
-    def from_fiber_component(alpha,beta,sigma=0.0,N=500,degrees=True,seed=None):
+    def from_fiber_component(alpha,
+                             beta,
+                             sigma = 0.0,
+                             N = 500,
+                             degrees = True,
+                             seed = None,
+                             **kwargs):
         """
         Calculate set of rotations with Gaussian distribution around direction.
 

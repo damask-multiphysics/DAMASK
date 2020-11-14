@@ -150,7 +150,7 @@ subroutine crystallite_init
     debug_crystallite, &                                                                            ! pointer to debug options for crystallite
     phases, &
     phase, &
-    generic_param
+    mech
 
   print'(/,a)', ' <<<+-  crystallite init  -+>>>'
 
@@ -240,11 +240,11 @@ subroutine crystallite_init
   allocate(output_constituent(phases%length))
   do c = 1, phases%length
     phase => phases%get(c)
-    generic_param  => phase%get('generic',defaultVal = emptyDict)
+    mech  => phase%get('mech',defaultVal = emptyDict)
 #if defined(__GFORTRAN__)
-    output_constituent(c)%label  = output_asStrings(generic_param)
+    output_constituent(c)%label  = output_asStrings(mech)
 #else
-    output_constituent(c)%label  = generic_param%get_asStrings('output',defaultVal=emptyStringArray)
+    output_constituent(c)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
@@ -736,7 +736,7 @@ subroutine crystallite_results
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
-  character(len=pStringLen)                     :: group,structureLabel
+  character(len=:), allocatable                 :: group,structureLabel
 
   do p=1,size(material_name_phase)
     group = trim('current/constituent')//'/'//trim(material_name_phase(p))//'/generic'

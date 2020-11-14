@@ -3,8 +3,8 @@ import copy
 import numpy as np
 
 from . import Config
-from . import Lattice
 from . import Rotation
+from . import Orientation
 
 class ConfigMaterial(Config):
     """Material configuration."""
@@ -22,6 +22,20 @@ class ConfigMaterial(Config):
 
         """
         super().save(fname,**kwargs)
+
+
+    @classmethod
+    def load(cls,fname='material.yaml'):
+        """
+        Load from yaml file.
+
+        Parameters
+        ----------
+        fname : file, str, or pathlib.Path, optional
+            Filename or file for writing. Defaults to 'material.yaml'.
+
+        """
+        return super(ConfigMaterial,cls).load(fname)
 
 
     @staticmethod
@@ -138,7 +152,7 @@ class ConfigMaterial(Config):
             for k,v in self['phase'].items():
                 if 'lattice' in v:
                     try:
-                        Lattice(v['lattice'])
+                        Orientation(lattice=v['lattice'])
                     except KeyError:
                         s = v['lattice']
                         print(f"Invalid lattice: '{s}' in phase '{k}'")

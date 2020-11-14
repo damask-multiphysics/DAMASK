@@ -197,11 +197,10 @@ class VTK:
         elif isinstance(self.vtk_data,vtk.vtkPolyData):
             writer = vtk.vtkXMLPolyDataWriter()
 
-        default_ext = writer.GetDefaultFileExtension()
+        default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
-        if ext and ext != '.'+default_ext:
-            raise ValueError(f'Given extension "{ext}" does not match default ".{default_ext}"')
-        writer.SetFileName(str(Path(fname).with_suffix('.'+default_ext)))
+        writer.SetFileName(str(fname)+(default_ext if default_ext != ext else ''))
+
         if compress:
             writer.SetCompressorTypeToZLib()
         else:

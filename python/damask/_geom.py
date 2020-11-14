@@ -20,7 +20,7 @@ class Geom:
 
     def __init__(self,material,size,origin=[0.0,0.0,0.0],comments=[]):
         """
-        New geometry definition from array of material, size, and origin.
+        New geometry definition from array of materials, size, and origin.
 
         Parameters
         ----------
@@ -34,28 +34,10 @@ class Geom:
             Comment lines.
 
         """
-        if len(material.shape) != 3:
-            raise ValueError(f'Invalid material shape {material.shape}.')
-        elif material.dtype not in np.sctypes['float'] + np.sctypes['int']:
-            raise TypeError(f'Invalid material data type {material.dtype}.')
-        else:
-            self.material = np.copy(material)
-
-            if self.material.dtype in np.sctypes['float'] and \
-               np.all(self.material == self.material.astype(int).astype(float)):
-                self.material = self.material.astype(int)
-
-        if len(size) != 3 or any(np.array(size) <= 0):
-            raise ValueError(f'Invalid size {size}.')
-        else:
-            self.size = np.array(size)
-
-        if len(origin) != 3:
-            raise ValueError(f'Invalid origin {origin}.')
-        else:
-            self.origin = np.array(origin)
-
-        self.comments = [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
+        self.material = material
+        self.size     = size
+        self.origin   = origin
+        self.comments = comments
 
 
     def __repr__(self):
@@ -114,12 +96,67 @@ class Geom:
 
 
     @property
+    def material(self):
+        """Material indices."""
+        return self._material
+
+    @material.setter
+    def material(self,material):
+        if len(material.shape) != 3:
+            raise ValueError(f'Invalid material shape {material.shape}.')
+        elif material.dtype not in np.sctypes['float'] + np.sctypes['int']:
+            raise TypeError(f'Invalid material data type {material.dtype}.')
+        else:
+            self._material = np.copy(material)
+
+            if self.material.dtype in np.sctypes['float'] and \
+               np.all(self.material == self.material.astype(int).astype(float)):
+                self._material = self.material.astype(int)
+
+
+    @property
+    def size(self):
+        """Physical size of geometry in meter."""
+        return self._size
+
+    @size.setter
+    def size(self,size):
+        if len(size) != 3 or any(np.array(size) <= 0):
+            raise ValueError(f'Invalid size {size}.')
+        else:
+            self._size = np.array(size)
+
+    @property
+    def origin(self):
+        """Coordinates of geometry origin in meter."""
+        return self._origin
+
+    @origin.setter
+    def origin(self,origin):
+        if len(origin) != 3:
+            raise ValueError(f'Invalid origin {origin}.')
+        else:
+            self._origin = np.array(origin)
+
+    @property
+    def comments(self):
+        """Comments/history of geometry."""
+        return self._comments
+
+    @comments.setter
+    def comments(self,comments):
+        self._comments = [str(c) for c in comments] if isinstance(comments,list) else [str(comments)]
+
+
+    @property
     def grid(self):
+        """Grid dimension of geometry."""
         return np.asarray(self.material.shape)
 
 
     @property
     def N_materials(self):
+        """Number of (unique) material indices within geometry."""
         return np.unique(self.material).size
 
 
@@ -132,7 +169,7 @@ class Geom:
         ----------
         fname : str or or pathlib.Path
             Geometry file to read.
-            Valid extension is .vtr, it will be appended if not given.
+            Valid extension is .vtr, which will be appended if not given.
 
         """
         v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
@@ -153,7 +190,7 @@ class Geom:
 
         Parameters
         ----------
-        fname : str or file handle
+        fname : str, pathlib.Path, or file handle
             Geometry file to read.
 
         """
@@ -221,26 +258,26 @@ class Geom:
         fname : str
             Filename of the DREAM.3D file
         base_group : str
-            Name of the group (folder) below 'DataContainers'. For example
-            'SyntheticVolumeDataContainer'.
+            Name of the group (folder) below 'DataContainers',
+            for example 'SyntheticVolumeDataContainer'.
         point_data : str, optional
-            Name of the group (folder) containing the point wise material data,
-            for example 'CellData'. Defaults to None, in which case points consecutively numbered.
+            Name of the group (folder) containing the pointwise material data,
+            for example 'CellData'. Defaults to None, in which case points are consecutively numbered.
         material : str, optional
-            Name of the dataset containing the material ID. Defaults to
-            'FeatureIds'.
+            Name of the dataset containing the material ID.
+            Defaults to 'FeatureIds'.
 
         """
         root_dir ='DataContainers'
         f = h5py.File(fname, 'r')
         g = path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
-        size   = f[path.join(g,'DIMENSIONS')][()] * f[path.join(g,'SPACING')][()]
         grid   = f[path.join(g,'DIMENSIONS')][()]
+        size   = f[path.join(g,'SPACING')][()] * grid
         origin = f[path.join(g,'ORIGIN')][()]
-        group_pointwise = path.join(root_dir,base_group,point_data)
 
-        ma = np.arange(1,np.product(grid)+1,dtype=int) if point_data is None else \
-             np.reshape(f[path.join(group_pointwise,material)],grid.prod())
+        ma = np.arange(grid.prod(),dtype=int) \
+             if point_data is None else \
+             np.reshape(f[path.join(root_dir,base_group,point_data,material)],grid.prod())
 
         return Geom(ma.reshape(grid,order='F'),size,origin,util.execution_stamp('Geom','load_DREAM3D'))
 
@@ -248,18 +285,18 @@ class Geom:
     @staticmethod
     def from_table(table,coordinates,labels):
         """
-        Load an ASCII table.
+        Derive geometry from an ASCII table.
 
         Parameters
         ----------
         table : damask.Table
             Table that contains material information.
         coordinates : str
-            Label of the column containing the vector of spatial coordinates.
+            Label of the vector column containing the spatial coordinates.
             Need to be ordered (1./x fast, 3./z slow).
         labels : str or list of str
             Label(s) of the columns containing the material definition.
-            Each unique combintation of values results in a material.
+            Each unique combintation of values results in one material ID.
 
         """
         grid,size,origin = grid_filters.cell_coord0_gridSizeOrigin(table.get(coordinates))
@@ -293,8 +330,8 @@ class Geom:
         weights : numpy.ndarray of shape (seeds.shape[0])
             Weights of the seeds. Setting all weights to 1.0 gives a standard Voronoi tessellation.
         material : numpy.ndarray of shape (seeds.shape[0]), optional
-            Material ID of the seeds. Defaults to None, in which case materials are
-            consecutively numbered.
+            Material ID of the seeds.
+            Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
             Perform a periodic tessellation. Defaults to True.
 
@@ -342,8 +379,8 @@ class Geom:
         seeds : numpy.ndarray of shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         material : numpy.ndarray of shape (seeds.shape[0]), optional
-            Material ID of the seeds. Defaults to None, in which case materials are
-            consecutively numbered.
+            Material ID of the seeds.
+            Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
             Perform a periodic tessellation. Defaults to True.
 
@@ -438,19 +475,19 @@ class Geom:
 
         References
         ----------
-        Surface curvature in triply-periodic minimal surface architectures as
-        a distinct design parameter in preparing advanced tissue engineering scaffolds
         Sébastien B G Blanquer, Maike Werner, Markus Hannula, Shahriar Sharifi,
         Guillaume P R Lajoinie, David Eglin, Jari Hyttinen, André A Poot, and Dirk W Grijpma
-        10.1088/1758-5090/aa6553
+        Surface curvature in triply-periodic minimal surface architectures as
+        a distinct design parameter in preparing advanced tissue engineering scaffolds
+        https://doi.org/10.1088/1758-5090/aa6553
 
-        Triply Periodic Bicontinuous Cubic Microdomain Morphologies by Symmetries
         Meinhard Wohlgemuth, Nataliya Yufa, James Hoffman, and Edwin L. Thomas
-        10.1021/ma0019499
+        Triply Periodic Bicontinuous Cubic Microdomain Morphologies by Symmetries
+        https://doi.org/10.1021/ma0019499
 
-        Minisurf – A minimal surface generator for finite element modeling and additive manufacturing
         Meng-Ting Hsieh, Lorenzo Valdevit
-        10.1016/j.simpa.2020.100026
+        Minisurf – A minimal surface generator for finite element modeling and additive manufacturing
+        https://doi.org/10.1016/j.simpa.2020.100026
 
         """
         x,y,z = np.meshgrid(periods*2.0*np.pi*(np.arange(grid[0])+0.5)/grid[0],
@@ -465,7 +502,7 @@ class Geom:
 
     def save(self,fname,compress=True):
         """
-        Store as vtk rectilinear grid.
+        Store as VTK rectilinear grid.
 
         Parameters
         ----------
@@ -521,20 +558,20 @@ class Geom:
 
         Parameters
         ----------
-        dimension : int or float numpy.ndarray of shape(3)
+        dimension : int or float numpy.ndarray of shape (3)
             Dimension (diameter/side length) of the primitive. If given as
             integers, grid point locations (cell centers) are addressed.
             If given as floats, coordinates are addressed.
-        center : int or float numpy.ndarray of shape(3)
+        center : int or float numpy.ndarray of shape (3)
             Center of the primitive. If given as integers, grid point
-            locations (cell centers) are addressed.
-            If given as floats, coordinates are addressed.
-        exponent : numpy.ndarray of shape(3) or float
+            coordinates (cell centers) are addressed.
+            If given as floats, coordinates in space are addressed.
+        exponent : numpy.ndarray of shape (3) or float
             Exponents for the three axes.
             0 gives octahedron (ǀxǀ^(2^0) + ǀyǀ^(2^0) + ǀzǀ^(2^0) < 1)
             1 gives sphere     (ǀxǀ^(2^1) + ǀyǀ^(2^1) + ǀzǀ^(2^1) < 1)
         fill : int, optional
-            Fill value for primitive. Defaults to material.max() + 1.
+            Fill value for primitive. Defaults to material.max()+1.
         R : damask.Rotation, optional
             Rotation of primitive. Defaults to no rotation.
         inverse : Boolean, optional
@@ -544,25 +581,27 @@ class Geom:
             Repeat primitive over boundaries. Defaults to True.
 
         """
-        # normalized 'radius' and center
-        r = np.array(dimension)/self.grid/2.0 if np.array(dimension).dtype in np.sctypes['int'] else \
-            np.array(dimension)/self.size/2.0
-        c = (np.array(center) + .5)/self.grid if np.array(center).dtype in np.sctypes['int'] else \
-            (np.array(center) - self.origin)/self.size
+        # radius and center
+        r = np.array(dimension)/2.0*self.size/self.grid if np.array(dimension).dtype in np.sctypes['int'] else \
+            np.array(dimension)/2.0
+        c = (np.array(center) + .5)*self.size/self.grid if np.array(center).dtype    in np.sctypes['int'] else \
+            (np.array(center) - self.origin)
 
-        coords = grid_filters.cell_coord0(self.grid,np.ones(3)) \
-               - ((np.ones(3)-(1./self.grid if np.array(center).dtype in np.sctypes['int'] else 0))*0.5 if periodic else c)  # periodic center is always at CoG
+        coords = grid_filters.cell_coord0(self.grid,self.size,
+                                          -(0.5*(self.size + (self.size/self.grid
+                                                              if np.array(center).dtype in np.sctypes['int'] else
+                                                              0)) if periodic else c))
         coords_rot = R.broadcast_to(tuple(self.grid))@coords
 
         with np.errstate(all='ignore'):
             mask = np.sum(np.power(coords_rot/r,2.0**np.array(exponent)),axis=-1) > 1.0
 
         if periodic:                                                                                # translate back to center
-            mask = np.roll(mask,((c-np.ones(3)*.5)*self.grid).astype(int),(0,1,2))
+            mask = np.roll(mask,((c/self.size-0.5)*self.grid).round().astype(int),(0,1,2))
 
-        fill_ = np.full_like(self.material,np.nanmax(self.material)+1 if fill is None else fill)
-
-        return Geom(material = np.where(np.logical_not(mask) if inverse else mask, self.material,fill_),
+        return Geom(material = np.where(np.logical_not(mask) if inverse else mask,
+                                        self.material,
+                                        np.nanmax(self.material)+1 if fill is None else fill),
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','add_primitive')],
@@ -689,7 +728,7 @@ class Geom:
 
 
     def renumber(self):
-        """Renumber sorted material indices to 0,...,N-1."""
+        """Renumber sorted material indices as 0,...,N-1."""
         _,renumbered = np.unique(self.material,return_inverse=True)
 
         return Geom(material = renumbered.reshape(self.grid),
@@ -785,7 +824,7 @@ class Geom:
         """
         def mp(entry,mapper):
             return mapper[entry] if entry in mapper else entry
-       
+
         mp = np.vectorize(mp)
         mapper = dict(zip(from_material,to_material))
 
@@ -793,6 +832,20 @@ class Geom:
                     size     = self.size,
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','substitute')],
+                   )
+
+
+    def sort(self):
+        """Sort material indices such that min(material) is located at (0,0,0)."""
+        a = self.material.flatten(order='F')
+        from_ma = pd.unique(a)
+        sort_idx = np.argsort(from_ma)
+        ma = np.unique(a)[sort_idx][np.searchsorted(from_ma,a,sorter = sort_idx)]
+
+        return Geom(material = ma.reshape(self.grid,order='F'),
+                    size     = self.size,
+                    origin   = self.origin,
+                    comments = self.comments+[util.execution_stamp('Geom','sort')],
                    )
 
 
@@ -811,7 +864,7 @@ class Geom:
             Defaults to 1.
         offset : int, optional
             Offset (positive or negative) to tag material indices,
-            defaults to material.max() + 1.
+            defaults to material.max()+1.
         trigger : list of ints, optional
             List of material indices that trigger a change.
             Defaults to [], meaning that any different neighbor triggers a change.
@@ -822,15 +875,11 @@ class Geom:
         def tainted_neighborhood(stencil,trigger):
 
             me = stencil[stencil.shape[0]//2]
-            if len(trigger) == 0:
-                return np.any(stencil != me)
-            if me in trigger:
-                trigger = set(trigger)
-                trigger.remove(me)
-                trigger = list(trigger)
-            return np.any(np.in1d(stencil,np.array(trigger)))
+            return np.any(stencil != me
+                          if len(trigger) == 0 else
+                          np.in1d(stencil,np.array(list(set(trigger) - {me}))))
 
-        offset_ = np.nanmax(self.material) if offset is None else offset
+        offset_ = np.nanmax(self.material)+1 if offset is None else offset
         mask = ndimage.filters.generic_filter(self.material,
                                               tainted_neighborhood,
                                               size=1+2*vicinity,

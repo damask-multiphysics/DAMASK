@@ -175,7 +175,7 @@ class Table:
 
     @property
     def labels(self):
-        return list(self.shapes.keys())
+        return list(self.shapes)
 
 
     def get(self,label):

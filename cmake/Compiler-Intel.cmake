@@ -98,11 +98,12 @@ set (DEBUG_FLAGS "${DEBUG_FLAGS} -ftrapuv")
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -fpe-all=0")
 #   ... capture all floating-point exceptions, sets -ftz automatically
 
-set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
+# disable due to compiler bug https://community.intel.com/t5/Intel-Fortran-Compiler/false-positive-stand-f18-and-IEEE-SELECTED-REAL-KIND/m-p/1227336
+#set (DEBUG_FLAGS "${DEBUG_FLAGS} -warn")
 # enables warnings ...
-set (DEBUG_FLAGS "${DEBUG_FLAGS} errors")
+#set (DEBUG_FLAGS "${DEBUG_FLAGS} errors")
 #   ... warnings are changed to errors
-set (DEBUG_FLAGS "${DEBUG_FLAGS},stderrors")
+#set (DEBUG_FLAGS "${DEBUG_FLAGS},stderrors")
 #   ... warnings about Fortran standard violations are changed to errors
 
 set (DEBUG_FLAGS "${DEBUG_FLAGS} -debug-parameters all")
