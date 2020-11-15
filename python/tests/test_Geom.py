@@ -34,7 +34,7 @@ def reference_dir(reference_dir_base):
 class TestGeom:
 
     @pytest.fixture(autouse=True)
-    def _execution_stamp(self, execution_stamp):
+    def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
 
     def test_diff_equal(self,default):

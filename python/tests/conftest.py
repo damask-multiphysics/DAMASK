@@ -26,7 +26,7 @@ def patch_datetime_now(monkeypatch):
     monkeypatch.setattr(datetime, 'datetime', mydatetime)
 
 @pytest.fixture
-def execution_stamp(monkeypatch):
+def patch_execution_stamp(monkeypatch):
     """Set damask.util.execution_stamp for reproducible tests results."""
     def execution_stamp(class_name,function_name=None):
         _function_name = '' if function_name is None else f'.{function_name}'
