@@ -2,7 +2,7 @@ import numpy as np
 
 from . import Rotation
 from . import util
-from . import mechanics
+from . import tensor
 
 __parameter_doc__ = \
        """lattice : str
@@ -362,7 +362,7 @@ class Orientation(Rotation):
         x = o.to_frame(uvw=uvw)
         z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)
-        return o.copy(rotation=Rotation.from_matrix(mechanics.transpose(om/np.linalg.norm(om,axis=-1,keepdims=True))))
+        return o.copy(rotation=Rotation.from_matrix(tensor.transpose(om/np.linalg.norm(om,axis=-1,keepdims=True))))
 
 
     @property

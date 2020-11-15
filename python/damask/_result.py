@@ -18,6 +18,7 @@ from . import Table
 from . import Orientation
 from . import grid_filters
 from . import mechanics
+from . import tensor
 from . import util
 
 h5py3 = h5py.__version__[0] == '3'
@@ -681,7 +682,7 @@ class Result:
             label,p = 'Minimum',0
 
         return {
-                'data': mechanics.eigenvalues(T_sym['data'])[:,p],
+                'data': tensor.eigenvalues(T_sym['data'])[:,p],
                 'label': f"lambda_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
@@ -713,7 +714,7 @@ class Result:
         elif eigenvalue == 'min':
             label,p = 'minimum',0
         return {
-                'data': mechanics.eigenvectors(T_sym['data'])[:,p],
+                'data': tensor.eigenvectors(T_sym['data'])[:,p],
                 'label': f"v_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':        '1',

@@ -1,4 +1,9 @@
+"""Finite-strain continuum mechanics."""
+
+from . import tensor
+
 import numpy as _np
+
 
 def Cauchy(P,F):
     """
@@ -15,7 +20,7 @@ def Cauchy(P,F):
 
     """
     sigma = _np.einsum('...,...ij,...kj->...ik',1.0/_np.linalg.det(F),P,F)
-    return symmetric(sigma)
+    return tensor.symmetric(sigma)
 
 
 def deviatoric_part(T):
@@ -29,43 +34,6 @@ def deviatoric_part(T):
 
     """
     return T - _np.einsum('...ij,...->...ij',_np.eye(3),spherical_part(T))
-
-
-def eigenvalues(T_sym):
-    """
-    Return the eigenvalues, i.e. principal components, of a symmetric tensor.
-
-    The eigenvalues are sorted in ascending order, each repeated according to
-    its multiplicity.
-
-    Parameters
-    ----------
-    T_sym : numpy.ndarray of shape (...,3,3)
-        Symmetric tensor of which the eigenvalues are computed.
-
-    """
-    return _np.linalg.eigvalsh(symmetric(T_sym))
-
-
-def eigenvectors(T_sym,RHS=False):
-    """
-    Return eigenvectors of a symmetric tensor.
-
-    The eigenvalues are sorted in ascending order of their associated eigenvalues.
-
-    Parameters
-    ----------
-    T_sym : numpy.ndarray of shape (...,3,3)
-        Symmetric tensor of which the eigenvectors are computed.
-    RHS: bool, optional
-        Enforce right-handed coordinate system. Default is False.
-
-    """
-    (u,v) = _np.linalg.eigh(symmetric(T_sym))
-
-    if RHS:
-        v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
-    return v
 
 
 def left_stretch(T):
@@ -91,7 +59,7 @@ def maximum_shear(T_sym):
         Symmetric tensor of which the maximum shear is computed.
 
     """
-    w = eigenvalues(T_sym)
+    w = tensor.eigenvalues(T_sym)
     return (w[...,0] - w[...,2])*0.5
 
 
@@ -134,7 +102,7 @@ def PK2(P,F):
 
     """
     S = _np.einsum('...jk,...kl->...jl',_np.linalg.inv(F),P)
-    return symmetric(S)
+    return tensor.symmetric(S)
 
 
 def right_stretch(T):
@@ -197,16 +165,16 @@ def strain_tensor(F,t,m):
 
     """
     if   t == 'V':
-        B   = _np.matmul(F,transpose(F))
+        B   = _np.matmul(F,tensor.transpose(F))
         w,n = _np.linalg.eigh(B)
     elif t == 'U':
-        C   = _np.matmul(transpose(F),F)
+        C   = _np.matmul(tensor.transpose(F),F)
         w,n = _np.linalg.eigh(C)
 
     if   m > 0.0:
         eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
                                   - _np.einsum('...jk->...jk',_np.eye(3)))
-        
+
     elif m < 0.0:
         eps = 1.0/(2.0*abs(m)) * (- _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
                                   + _np.einsum('...jk->...jk',_np.eye(3)))
@@ -214,32 +182,6 @@ def strain_tensor(F,t,m):
         eps = _np.matmul(n,_np.einsum('...j,...kj->...jk',0.5*_np.log(w),n))
 
     return eps
-
-
-def symmetric(T):
-    """
-    Return the symmetrized tensor.
-
-    Parameters
-    ----------
-    T : numpy.ndarray of shape (...,3,3)
-        Tensor of which the symmetrized values are computed.
-
-    """
-    return (T+transpose(T))*0.5
-
-
-def transpose(T):
-    """
-    Return the transpose of a tensor.
-
-    Parameters
-    ----------
-    T : numpy.ndarray of shape (...,3,3)
-        Tensor of which the transpose is computed.
-
-    """
-    return _np.swapaxes(T,axis2=-2,axis1=-1)
 
 
 def _polar_decomposition(T,requested):

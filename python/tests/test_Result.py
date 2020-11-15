@@ -11,6 +11,7 @@ import h5py
 from damask import Result
 from damask import Rotation
 from damask import Orientation
+from damask import tensor
 from damask import mechanics
 from damask import grid_filters
 
@@ -152,7 +153,7 @@ class TestResult:
         default.add_eigenvalue('sigma',eigenvalue)
         loc = {'sigma' :default.get_dataset_location('sigma'),
                'lambda':default.get_dataset_location(f'lambda_{eigenvalue}(sigma)')}
-        in_memory = function(mechanics.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
+        in_memory = function(tensor.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
         in_file   = default.read_dataset(loc['lambda'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -162,7 +163,7 @@ class TestResult:
         default.add_eigenvector('sigma',eigenvalue)
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'v(sigma)':default.get_dataset_location(f'v_{eigenvalue}(sigma)')}
-        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
+        in_memory = tensor.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
         in_file   = default.read_dataset(loc['v(sigma)'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -210,7 +211,7 @@ class TestResult:
         in_memory = mechanics.Mises_stress(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['sigma_vM'],0)
         assert np.allclose(in_memory,in_file)
-    
+
     def test_add_Mises_invalid(self,default):
         default.add_Cauchy('P','F')
         default.add_calculation('sigma_y','#sigma#',unit='y')

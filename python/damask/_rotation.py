@@ -1,6 +1,6 @@
 import numpy as np
 
-from . import mechanics
+from . import tensor
 from . import util
 from . import grid_filters
 
@@ -549,7 +549,7 @@ class Rotation:
             raise ValueError('Invalid shape.')
 
         if reciprocal:
-            om = np.linalg.inv(mechanics.transpose(om)/np.pi)                                       # transform reciprocal basis set
+            om = np.linalg.inv(tensor.transpose(om)/np.pi)                                          # transform reciprocal basis set
             orthonormal = False                                                                     # contains stretch
         if not orthonormal:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
