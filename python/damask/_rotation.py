@@ -404,7 +404,7 @@ class Rotation:
         Returns
         -------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < 1/2*π^(2/3).
+            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < (3/4*π)^(1/3).
 
         """
         return Rotation._qu2ho(self.quaternion)
