@@ -107,22 +107,6 @@ class Rotation:
                 and np.allclose(self.quaternion,other.quaternion)
 
 
-    def __neq__(self,other):
-        """
-        Not Equal to other.
-
-        Equality is determined taking limited floating point precision into
-        account. See numpy.allclose for details.
-
-        Parameters
-        ----------
-        other : Rotation
-            Rotation to check for inequality.
-
-        """
-        return not self.__eq__(other)
-
-
     @property
     def shape(self):
         return self.quaternion.shape[:-1]

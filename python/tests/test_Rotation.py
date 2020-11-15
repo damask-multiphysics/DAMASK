@@ -769,15 +769,16 @@ class TestRotation:
 
     @pytest.mark.parametrize('shape',[None,1,(4,4)])
     def test_random(self,shape):
-        Rotation.from_random(shape)
+        r = Rotation.from_random(shape)
+        if shape is None:
+            assert r.shape == ()
+        elif shape == 1:
+            assert r.shape == (1,)
+        else:
+            assert r.shape == shape
 
     def test_equal(self):
-        r = Rotation.from_random()
-        assert r == r
-
-    def test_unequal(self):
-        r = Rotation.from_random()
-        assert not (r != r)
+        assert Rotation.from_random(seed=1) == Rotation.from_random(seed=1)
 
     def test_inversion(self):
         r = Rotation.from_random()
