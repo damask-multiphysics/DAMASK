@@ -36,6 +36,17 @@ class Colormap(mpl.colors.ListedColormap):
         """Return inverted colormap."""
         return self.reversed()
 
+    def __repr__(self):
+        """Show colormap as matplotlib figure."""
+        fig = plt.figure(figsize=(5,.5))
+        ax1 = fig.add_axes([0, 0, 1, 1])
+        ax1.set_axis_off()
+        ax1.imshow(np.linspace(0,1,self.N).reshape(1,-1),
+                   aspect='auto', cmap=self, interpolation='nearest')
+        plt.show(block = False)
+        return self.name
+
+
     @staticmethod
     def from_range(low,high,name='DAMASK colormap',N=256,model='rgb'):
         """
@@ -201,18 +212,6 @@ class Colormap(mpl.colors.ListedColormap):
                       )*255
             ).astype(np.uint8),
             mode='RGBA')
-
-
-    def show(self,aspect=10,vertical=False):
-        """Show colormap as matplotlib figure."""
-        fig = plt.figure(figsize=(5/aspect,5) if vertical else (5,5/aspect))
-        ax1 = fig.add_axes([0, 0, 1, 1])
-        ax1.set_axis_off()
-        ax1.imshow(np.linspace(1 if vertical else 0,
-                               0 if vertical else 1,
-                               self.N).reshape((-1,1) if vertical else (1,-1)),
-                   aspect='auto', cmap=self, interpolation='nearest')
-        plt.show()
 
 
     def reversed(self,name=None):

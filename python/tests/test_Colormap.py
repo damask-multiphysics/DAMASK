@@ -20,6 +20,9 @@ class TestColormap:
     def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
 
+    def test_repr(self,patch_plt_show):
+        print(Colormap.from_predefined('stress'))
+
     def test_conversion(self):
         specials = np.array([[0.,0.,0.],
                              [1.,0.,0.],

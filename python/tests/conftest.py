@@ -1,8 +1,13 @@
 from pathlib import Path
 import datetime
+import os
 
 import numpy as np
 import pytest
+import matplotlib as mpl
+if os.name == 'posix' and 'DISPLAY' not in os.environ:
+    mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 import damask
 
@@ -12,7 +17,6 @@ patched_version = '99.99.99-9999-pytest'
 def patch_damask_version(monkeypatch):
     """Set damask.version for reproducible tests results."""
     monkeypatch.setattr(damask, 'version', patched_version)
-
 
 patched_date = datetime.datetime(2019, 11, 2, 11, 58, 0)
 @pytest.fixture
@@ -33,6 +37,12 @@ def patch_execution_stamp(monkeypatch):
         return f'damask.{class_name}{_function_name} v{patched_version} ({patched_date})'
 
     monkeypatch.setattr(damask.util, 'execution_stamp', execution_stamp)
+
+@pytest.fixture
+def patch_plt_show(monkeypatch):
+    def _None(block=None):
+        pass
+    monkeypatch.setattr(plt, 'show', _None, raising=True)
 
 
 def pytest_addoption(parser):

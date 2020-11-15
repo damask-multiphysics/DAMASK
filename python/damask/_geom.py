@@ -555,8 +555,7 @@ class Geom:
 
     def show(self):
         """Show on screen."""
-        v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
-        v.show()
+        VTK.from_rectilinear_grid(self.grid,self.size,self.origin).show()
 
 
     def add_primitive(self,dimension,center,exponent,
