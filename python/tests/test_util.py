@@ -98,6 +98,6 @@ class TestUtil:
     def test_shapeblender(self,a,b,answer):
         assert util.shapeblender(a,b) == answer
 
-    @pytest.mark.parametrize('style',[util.emph,util.deemph,util.delete,util.strikeout])
+    @pytest.mark.parametrize('style',[util.emph,util.deemph,util.warn,util.strikeout])
     def test_decorate(self,style):
         assert 'DAMASK' in style('DAMASK')

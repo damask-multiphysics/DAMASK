@@ -17,7 +17,7 @@ __all__=[
          'srepr',
          'croak',
          'report',
-         'emph','deemph','delete','strikeout',
+         'emph','deemph','warn','strikeout',
          'execute',
          'show_progress',
          'scale_to_coprime',
@@ -74,7 +74,7 @@ def croak(what, newline = True):
 def report(who = None,
            what = None):
     """
-    Reports script and file name.
+    Report script and file name.
 
     DEPRECATED
 
@@ -86,16 +86,13 @@ def emph(what):
     """Formats string with emphasis."""
     return bcolors.BOLD+srepr(what)+bcolors.ENDC
 
-
 def deemph(what):
     """Formats string with deemphasis."""
     return bcolors.DIM+srepr(what)+bcolors.ENDC
 
-
-def delete(what):
-    """Formats string as deleted."""
-    return bcolors.DIM+srepr(what)+bcolors.ENDC
-
+def warn(what):
+    """Formats string for warning."""
+    return bcolors.WARNING+emph(what)+bcolors.ENDC
 
 def strikeout(what):
     """Formats string as strikeout."""
@@ -302,20 +299,38 @@ def shapeblender(a,b):
     return a + b[i:]
 
 
-def extend_docstring(general):
-       """Decorator: Append Orientation parameter documentation to function's docstring."""
-       def _decorator(func):
-           func.__doc__ += general
-           return func
-       return _decorator
+def extend_docstring(extra_docstring):
+    """
+    Decorator: Append to function's docstring.
+
+    Parameters
+    ----------
+    extra_docstring : str
+       Docstring to append.
+
+    """
+    def _decorator(func):
+        func.__doc__ += extra_docstring
+        return func
+    return _decorator
 
 
-def extended_docstring(f,general):
-       """Decorator: Combine Orientation parameter documentation with another function's docstring."""
-       def _decorator(func):
-           func.__doc__ = f.__doc__ + general
-           return func
-       return _decorator
+def extended_docstring(f,extra_docstring):
+    """
+    Decorator: Combine another function's docstring with a given docstring.
+
+    Parameters
+    ----------
+    f : function
+       Function of which the docstring is taken.
+    extra_docstring : str
+       Docstring to append.
+
+    """
+    def _decorator(func):
+        func.__doc__ = f.__doc__ + extra_docstring
+        return func
+    return _decorator
 
 
 ####################################################################################################

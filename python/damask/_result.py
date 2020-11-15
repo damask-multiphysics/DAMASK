@@ -167,9 +167,7 @@ class Result:
 
 
     def allow_modification(self):
-        print(util.bcolors().WARNING+util.bcolors().BOLD+
-              'Warning: Modification of existing datasets allowed!'+
-              util.bcolors().ENDC)
+        print(util.warn('Warning: Modification of existing datasets allowed!'))
         self._allow_modification = True
 
     def disallow_modification(self):

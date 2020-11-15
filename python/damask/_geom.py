@@ -74,23 +74,23 @@ class Geom:
         """
         message = []
         if np.any(other.grid != self.grid):
-            message.append(util.delete(f'grid     a b c:     {util.srepr(other.grid," x ")}'))
+            message.append(util.deemph(f'grid     a b c:     {util.srepr(other.grid," x ")}'))
             message.append(util.emph(  f'grid     a b c:     {util.srepr( self.grid," x ")}'))
 
         if not np.allclose(other.size,self.size):
-            message.append(util.delete(f'size     x y z:     {util.srepr(other.size," x ")}'))
+            message.append(util.deemph(f'size     x y z:     {util.srepr(other.size," x ")}'))
             message.append(util.emph(  f'size     x y z:     {util.srepr( self.size," x ")}'))
 
         if not np.allclose(other.origin,self.origin):
-            message.append(util.delete(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
+            message.append(util.deemph(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
             message.append(util.emph(  f'origin   x y z:     {util.srepr( self.origin,"   ")}'))
 
         if other.N_materials != self.N_materials:
-            message.append(util.delete(f'# materials:        {other.N_materials}'))
+            message.append(util.deemph(f'# materials:        {other.N_materials}'))
             message.append(util.emph(  f'# materials:        { self.N_materials}'))
 
         if np.nanmax(other.material) != np.nanmax(self.material):
-            message.append(util.delete(f'max material:       {np.nanmax(other.material)}'))
+            message.append(util.deemph(f'max material:       {np.nanmax(other.material)}'))
             message.append(util.emph(  f'max material:       {np.nanmax( self.material)}'))
 
         return util.return_message(message)

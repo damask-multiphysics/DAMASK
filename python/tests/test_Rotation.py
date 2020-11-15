@@ -772,15 +772,15 @@ class TestRotation:
         Rotation.from_random(shape)
 
     def test_equal(self):
-        r = Rotation.from_random(seed=0)
+        r = Rotation.from_random()
         assert r == r
 
     def test_unequal(self):
-        r = Rotation.from_random(seed=0)
+        r = Rotation.from_random()
         assert not (r != r)
 
     def test_inversion(self):
-        r = Rotation.from_random(seed=0)
+        r = Rotation.from_random()
         assert r == ~~r
 
     @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1)])
