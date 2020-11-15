@@ -126,9 +126,9 @@ subroutine DAMASK_interface_init
     if (err /= 0) call quit(1)
     select case(trim(arg))                                                                          ! extract key
       case ('-h','--help')
-        print'(a)',  ' #######################################################################'
+        print'(/,a)',' #######################################################################'
         print'(a)',  ' DAMASK Command Line Interface:'
-        print'(a)',  ' For PETSc-based solvers for the Düsseldorf Advanced Material Simulation Kit'
+        print'(a)',  ' Düsseldorf Advanced Material Simulation Kit with PETSc-based solvers'
         print'(a,/)',' #######################################################################'
         print'(a,/)',' Valid command line switches:'
         print'(a)',  '    --geom         (-g, --geometry)'
