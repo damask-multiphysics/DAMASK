@@ -5,7 +5,7 @@ from . import util
 from . import grid_filters
 
 
-def from_random(size,N_seeds,grid=None,seed=None):
+def from_random(size,N_seeds,grid=None,rng_seed=None):
     """
     Random seeding in space.
 
@@ -18,12 +18,12 @@ def from_random(size,N_seeds,grid=None,seed=None):
     grid : numpy.ndarray of shape (3), optional.
         If given, ensures that all seeds initiate one grain if using a
         standard Voronoi tessellation.
-    seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+    rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
 
     """
-    rng = _np.random.default_rng(seed)
+    rng = _np.random.default_rng(rng_seed)
     if grid is None:
         coords = rng.random((N_seeds,3)) * size
     else:
@@ -34,7 +34,7 @@ def from_random(size,N_seeds,grid=None,seed=None):
     return coords
 
 
-def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,seed=None):
+def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=None):
     """
     Seeding in space according to a Poisson disc distribution.
 
@@ -50,12 +50,12 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,seed=None
         Minimum acceptable distance to other seeds.
     periodic : boolean, optional
         Calculate minimum distance for periodically repeated grid.
-    seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+    rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
 
     """
-    rng = _np.random.default_rng(seed)
+    rng = _np.random.default_rng(rng_seed)
     coords = _np.empty((N_seeds,3))
     coords[0] = rng.random(3) * size
 

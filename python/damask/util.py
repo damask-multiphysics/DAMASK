@@ -42,7 +42,7 @@ def srepr(arg,glue = '\n'):
     arg : iterable
         Items to join.
     glue : str, optional
-        Defaults to \n.
+        Glue used for joining operation. Defaults to \n.
 
     """
     if (not hasattr(arg, "strip") and
@@ -163,7 +163,15 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
 
 
 def scale_to_coprime(v):
-    """Scale vector to co-prime (relatively prime) integers."""
+    """
+    Scale vector to co-prime (relatively prime) integers.
+
+    Parameters
+    ----------
+    v : numpy.ndarray of shape (:)
+        Vector to scale.
+
+    """
     MAX_DENOMINATOR = 1000000
 
     def get_square_denominator(x):
@@ -214,7 +222,21 @@ def execution_stamp(class_name,function_name=None):
     return f'damask.{class_name}{_function_name} v{version} ({now})'
 
 
-def hybrid_IA(dist,N,seed=None):
+def hybrid_IA(dist,N,rng_seed=None):
+    """
+    Hybrid integer approximation.
+
+    Parameters
+    ----------
+    dist : numpy.ndarray
+        Distribution to be approximated
+    N : int
+        Number of samples to draw.
+    rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+        A seed to initialize the BitGenerator. Defaults to None.
+        If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+    """
     N_opt_samples,N_inv_samples = (max(np.count_nonzero(dist),N),0)                                 # random subsampling if too little samples requested
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
@@ -225,7 +247,7 @@ def hybrid_IA(dist,N,seed=None):
                                    if N_inv_samples < N_opt_samples else \
                                   (scale_,0.5*(scale_ + scale), 1.0)
 
-    return np.repeat(np.arange(len(dist)),repeats)[np.random.default_rng(seed).permutation(N_inv_samples)[:N]]
+    return np.repeat(np.arange(len(dist)),repeats)[np.random.default_rng(rng_seed).permutation(N_inv_samples)[:N]]
 
 
 def shapeshifter(fro,to,mode='left',keep_ones=False):

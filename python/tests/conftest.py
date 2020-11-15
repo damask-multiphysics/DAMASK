@@ -18,6 +18,7 @@ def patch_damask_version(monkeypatch):
     """Set damask.version for reproducible tests results."""
     monkeypatch.setattr(damask, 'version', patched_version)
 
+
 patched_date = datetime.datetime(2019, 11, 2, 11, 58, 0)
 @pytest.fixture
 def patch_datetime_now(monkeypatch):
@@ -29,6 +30,7 @@ def patch_datetime_now(monkeypatch):
 
     monkeypatch.setattr(datetime, 'datetime', mydatetime)
 
+
 @pytest.fixture
 def patch_execution_stamp(monkeypatch):
     """Set damask.util.execution_stamp for reproducible tests results."""
@@ -37,6 +39,7 @@ def patch_execution_stamp(monkeypatch):
         return f'damask.{class_name}{_function_name} v{patched_version} ({patched_date})'
 
     monkeypatch.setattr(damask.util, 'execution_stamp', execution_stamp)
+
 
 @pytest.fixture
 def patch_plt_show(monkeypatch):
@@ -50,15 +53,18 @@ def pytest_addoption(parser):
                      action="store_true",
                      default=False)
 
+
 @pytest.fixture
 def update(request):
     """Store current results as new reference results."""
     return request.config.getoption("--update")
 
+
 @pytest.fixture
 def reference_dir_base():
     """Directory containing reference results."""
     return Path(__file__).parent/'reference'
+
 
 @pytest.fixture
 def set_of_quaternions():

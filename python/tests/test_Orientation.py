@@ -125,9 +125,9 @@ class TestOrientation:
 
     def test_from_fiber_component(self):
         r = Rotation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
-                                          sigma=0.0,N=1,seed=0)
+                                          sigma=0.0,N=1,rng_seed=0)
         assert np.all(Orientation.from_fiber_component(alpha=np.zeros(2),beta=np.zeros(2),
-                                                       sigma=0.0,N=1,seed=0,lattice='triclinic').quaternion
+                                                       sigma=0.0,N=1,rng_seed=0,lattice='triclinic').quaternion
                    == r.quaternion)
 
     @pytest.mark.parametrize('kwargs',[
@@ -175,8 +175,8 @@ class TestOrientation:
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     @pytest.mark.parametrize('N',[1,8,32])
     def test_disorientation(self,lattice,N):
-        o = Orientation.from_random(lattice=lattice,shape=N,seed=0)
-        p = Orientation.from_random(lattice=lattice,shape=N,seed=1)
+        o = Orientation.from_random(lattice=lattice,shape=N)
+        p = Orientation.from_random(lattice=lattice,shape=N)
 
         d,ops = o.disorientation(p,return_operators=True)
 
@@ -198,8 +198,8 @@ class TestOrientation:
                                     (None,None),
                                    ])
     def test_disorientation_blending(self,lattice,a,b):
-        o = Orientation.from_random(lattice=lattice,shape=a,seed=0)
-        p = Orientation.from_random(lattice=lattice,shape=b,seed=1)
+        o = Orientation.from_random(lattice=lattice,shape=a)
+        p = Orientation.from_random(lattice=lattice,shape=b)
         blend = util.shapeblender(o.shape,p.shape)
         for loc in np.random.randint(0,blend,(10,len(blend))):
             assert o[tuple(loc[:len(o.shape)])].disorientation(p[tuple(loc[-len(p.shape):])]) \
@@ -214,7 +214,7 @@ class TestOrientation:
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
     def test_reduced_vectorization(self,lattice,shape):
-        o = Orientation.from_random(lattice=lattice,shape=shape,seed=0)
+        o = Orientation.from_random(lattice=lattice,shape=shape)
         for r, theO in zip(o.reduced.flatten(),o.flatten()):
             assert r == theO.reduced
 
@@ -223,7 +223,7 @@ class TestOrientation:
     @pytest.mark.parametrize('vector',np.array([[1,0,0],[1,2,3],[-1,1,-1]]))
     @pytest.mark.parametrize('proper',[True,False])
     def test_to_SST_vectorization(self,lattice,shape,vector,proper):
-        o = Orientation.from_random(lattice=lattice,shape=shape,seed=0)
+        o = Orientation.from_random(lattice=lattice,shape=shape)
         for r, theO in zip(o.to_SST(vector=vector,proper=proper).reshape((-1,3)),o.flatten()):
             assert np.allclose(r,theO.to_SST(vector=vector,proper=proper))
 
@@ -232,7 +232,7 @@ class TestOrientation:
     @pytest.mark.parametrize('vector',np.array([[1,0,0],[1,2,3],[-1,1,-1]]))
     @pytest.mark.parametrize('proper',[True,False])
     def test_IPF_color_vectorization(self,lattice,shape,vector,proper):
-        o = Orientation.from_random(lattice=lattice,shape=shape,seed=0)
+        o = Orientation.from_random(lattice=lattice,shape=shape)
         poles = o.to_SST(vector=vector,proper=proper)
         for r, theO in zip(o.IPF_color(poles,proper=proper).reshape((-1,3)),o.flatten()):
             assert np.allclose(r,theO.IPF_color(theO.to_SST(vector=vector,proper=proper),proper=proper))
@@ -245,7 +245,7 @@ class TestOrientation:
                                     (None,(3,)),
                                    ])
     def test_to_SST_blending(self,lattice,a,b):
-        o = Orientation.from_random(lattice=lattice,shape=a,seed=0)
+        o = Orientation.from_random(lattice=lattice,shape=a)
         v = np.random.random(b+(3,))
         blend = util.shapeblender(o.shape,b)
         for loc in np.random.randint(0,blend,(10,len(blend))):

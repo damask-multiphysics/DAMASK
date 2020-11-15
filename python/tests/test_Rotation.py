@@ -778,7 +778,7 @@ class TestRotation:
             assert r.shape == shape
 
     def test_equal(self):
-        assert Rotation.from_random(seed=1) == Rotation.from_random(seed=1)
+        assert Rotation.from_random(rng_seed=1) == Rotation.from_random(rng_seed=1)
 
     def test_inversion(self):
         r = Rotation.from_random()

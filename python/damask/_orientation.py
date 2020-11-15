@@ -1233,6 +1233,7 @@ class Orientation(Rotation):
         array([[ 0.000,  0.000,  0.000],
                [ 0.577, -0.000,  0.816],
                [ 0.000,  0.000,  0.000]])
+
         """
         d = self.to_frame(uvw=self.kinematics[mode]['direction'],with_symmetry=False)
         p = self.to_frame(hkl=self.kinematics[mode]['plane']    ,with_symmetry=False)
