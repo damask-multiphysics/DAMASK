@@ -51,7 +51,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def __repr__(self):
         """Show colormap as matplotlib figure."""
-        fig = plt.figure(figsize=(5,.5))
+        fig = plt.figure(self.name,figsize=(5,.5))
         ax1 = fig.add_axes([0, 0, 1, 1])
         ax1.set_axis_off()
         ax1.imshow(np.linspace(0,1,self.N).reshape(1,-1),
