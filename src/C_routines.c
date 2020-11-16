@@ -4,25 +4,24 @@
 #include <dirent.h>
 #include <string.h>
 #include <signal.h>
+#include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "zlib.h"
 
-/* http://stackoverflow.com/questions/30279228/is-there-an-alternative-to-getcwd-in-fortran-2003-2008 */
+#define PATHLEN 4096
+#define STRLEN   256
 
 
-int isdirectory_c(const char *dir){
-  struct stat statbuf;
-  if(stat(dir, &statbuf) != 0)                                                                      /* error */
-    return 0;                                                                                       /* return "NO, this is not a directory" */
-  return S_ISDIR(statbuf.st_mode);                                                                  /* 1 => is directory, 0 => this is NOT a directory */
+int setcwd_c(const char *cwd){
+  return chdir(cwd);
 }
 
 
-void getcurrentworkdir_c(char cwd[], int *stat ){
-  char cwd_tmp[4096];
-  if(getcwd(cwd_tmp, sizeof(cwd_tmp)) == cwd_tmp){
-    strcpy(cwd,cwd_tmp);
+void getcwd_c(char cwd[], int *stat ){
+  char cwd_tmp[PATHLEN+1];
+  if(getcwd(cwd_tmp, sizeof(cwd_tmp))){
+    strcpy(cwd,cwd_tmp); // getcwd guarantees a NULL-terminated string
     *stat = 0;
   }
   else{
@@ -32,9 +31,9 @@ void getcurrentworkdir_c(char cwd[], int *stat ){
 
 
 void gethostname_c(char hostname[], int *stat){
-  char hostname_tmp[4096];
+  char hostname_tmp[STRLEN];
   if(gethostname(hostname_tmp, sizeof(hostname_tmp)) == 0){
-    strcpy(hostname,hostname_tmp);
+    strncpy(hostname,hostname_tmp,sizeof(hostname_tmp)+1); // gethostname does not guarantee a NULL-terminated string
     *stat = 0;
   }
   else{
@@ -43,9 +42,17 @@ void gethostname_c(char hostname[], int *stat){
 }
 
 
-int chdir_c(const char *dir){
-  return chdir(dir);
+void getusername_c(char username[], int *stat){
+  struct passwd *pw = getpwuid(geteuid());
+  if(pw && strlen(pw->pw_name) <= STRLEN){
+    strncpy(username,pw->pw_name,STRLEN+1);
+    *stat = 0;
+  }
+  else{
+    *stat = 1;
+  }
 }
+
 
 void signalterm_c(void (*handler)(int)){
   signal(SIGTERM, handler);
@@ -58,6 +65,7 @@ void signalusr1_c(void (*handler)(int)){
 void signalusr2_c(void (*handler)(int)){
   signal(SIGUSR2, handler);
 }
+
 
 void inflate_c(const uLong *s_deflated, const uLong *s_inflated, const Byte deflated[], Byte inflated[]){
   /* make writable copy, uncompress will write to it */
