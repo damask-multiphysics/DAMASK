@@ -87,7 +87,7 @@ class TestVTK:
     def test_compress(self,tmp_path):
         points = np.random.rand(102,3)
         v = VTK.from_poly_data(points)
-        fname_c = tmp_path/'compreesed.vtp'
+        fname_c = tmp_path/'compressed.vtp'
         fname_p = tmp_path/'plain.vtp'
         v.save(fname_c,parallel=False,compress=False)
         v.save(fname_p,parallel=False,compress=True)
