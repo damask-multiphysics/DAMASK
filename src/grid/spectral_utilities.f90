@@ -993,12 +993,11 @@ subroutine utilities_updateCoords(F)
   real(pReal),   dimension(3,  grid(1)+1,grid(2)+1,grid3+1)       :: nodeCoords
   integer :: &
     i,j,k,n, &
-    rank_t, &
-    rank_b, &
-    c, r, &
+    rank_t, rank_b, &
+    c, &
     ierr
-  integer, dimension(MPI_STATUS_SIZE) :: &
-    s
+  integer, dimension(4) :: request
+  integer, dimension(MPI_STATUS_SIZE,4) :: status
   real(pReal),   dimension(3)   :: step
   real(pReal),   dimension(3,3) :: Favg
   integer,       dimension(3) :: me
@@ -1044,20 +1043,20 @@ subroutine utilities_updateCoords(F)
   rank_b = modulo(worldrank-1,worldsize)
 
   ! send bottom layer to process below
-  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,request(1),ierr)
   if(ierr /=0) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
-  if(ierr /=0) error stop 'MPI error'
-  call MPI_Wait(r,s,ierr)
+  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,request(2),ierr)
   if(ierr /=0) error stop 'MPI error'
 
   ! send top layer to process above
-  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
+  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,1,PETSC_COMM_WORLD,request(3),ierr)
   if(ierr /=0) error stop 'MPI error'
-  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
+  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,1,PETSC_COMM_WORLD,request(4),ierr)
   if(ierr /=0) error stop 'MPI error'
-  call MPI_Wait(r,s,ierr)
+
+  call MPI_Waitall(4,request,status,ierr)
   if(ierr /=0) error stop 'MPI error'
+  if(any(status(MPI_ERROR,:) /= 0)) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
  ! calculate nodal displacements
