@@ -141,8 +141,8 @@ class TestColormap:
             diff = ImageChops.difference(img_reference.convert('RGB'),img_current.convert('RGB'))
             assert not diff.getbbox()
 
-    def test_list(self):
-        Colormap.list_predefined()
+    def test_predefined(self):
+        assert (isinstance(Colormap.predefined,dict))
 
     @pytest.mark.parametrize('format,ext',[('ASCII','.txt'),
                                            ('paraview','.json'),
