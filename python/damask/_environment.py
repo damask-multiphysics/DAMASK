@@ -3,10 +3,6 @@ from pathlib import Path
 
 class Environment:
 
-    def __init__(self):
-        """Do Nothing."""
-        pass
-
     @property
     def screen_size(self):
         try:
@@ -43,8 +39,3 @@ class Environment:
     def root_dir(self):
         """Return DAMASK root path."""
         return Path(__file__).parents[2]
-
-
-    # for compatibility
-    def rootDir(self):
-        return str(self.root_dir)
