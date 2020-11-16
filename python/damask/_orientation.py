@@ -1103,7 +1103,7 @@ class Orientation(Rotation):
                       (np.array(hkil),np.array([[1,0,0,0],
                                                 [0,1,0,0],
                                                 [0,0,0,1]]))
-        return np.einsum('il,...l->...i',basis,axis)
+        return np.einsum('il,...l',basis,axis)
 
 
     @classmethod
@@ -1133,7 +1133,7 @@ class Orientation(Rotation):
                                                [ 0, 1, 0],
                                                [-1,-1, 0],
                                                [ 0, 0, 1]]))
-        return np.einsum('il,...l->...i',basis,axis)
+        return np.einsum('il,...l',basis,axis)
 
 
     def to_lattice(self,direction=None,plane=None):
@@ -1157,7 +1157,7 @@ class Orientation(Rotation):
         axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
                       if plane is None else \
                       (np.array(plane),self.basis_real.T)
-        return np.einsum('il,...l->...i',basis,axis)
+        return np.einsum('il,...l',basis,axis)
 
 
     def to_frame(self,uvw=None,hkl=None,with_symmetry=False):
@@ -1183,9 +1183,9 @@ class Orientation(Rotation):
                       if hkl is None else \
                       (np.array(hkl),self.basis_reciprocal)
         return (self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+axis.shape[:-1],mode='right')
-              @ np.broadcast_to(np.einsum('il,...l->...i',basis,axis),self.symmetry_operations.shape+axis.shape)
+              @ np.broadcast_to(np.einsum('il,...l',basis,axis),self.symmetry_operations.shape+axis.shape)
                 if with_symmetry else
-                np.einsum('il,...l->...i',basis,axis))
+                np.einsum('il,...l',basis,axis))
 
 
     def to_pole(self,uvw=None,hkl=None,with_symmetry=False):
@@ -1227,8 +1227,8 @@ class Orientation(Rotation):
         """
         d = self.to_frame(uvw=self.kinematics[mode]['direction'],with_symmetry=False)
         p = self.to_frame(hkl=self.kinematics[mode]['plane']    ,with_symmetry=False)
-        P = np.einsum('...i,...j->...ij',d/np.linalg.norm(d,axis=-1,keepdims=True),
-                                         p/np.linalg.norm(p,axis=-1,keepdims=True))
+        P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
+                                  p/np.linalg.norm(p,axis=-1,keepdims=True))
 
         return ~self.broadcast_to( self.shape+P.shape[:-2],mode='right') \
                @ np.broadcast_to(P,self.shape+P.shape)

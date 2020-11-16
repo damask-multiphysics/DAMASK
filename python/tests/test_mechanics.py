@@ -127,9 +127,8 @@ class TestMechanics:
         for i,v in enumerate(np.reshape(vectorized(epsilon_vec),vectorized(epsilon).shape)):
             assert np.allclose(single(epsilon[i]),v)
 
-    @pytest.mark.parametrize('vectorized,single',[
-        (mechanics.Cauchy,Cauchy),
-        (mechanics.PK2   ,PK2   )
+    @pytest.mark.parametrize('vectorized,single',[(mechanics.Cauchy,Cauchy),
+                                                  (mechanics.PK2   ,PK2   )
                                                  ])
     def test_vectorize_2_arg(self,vectorized,single):
         P     = np.random.rand(self.n,3,3)
@@ -227,7 +226,7 @@ class TestMechanics:
                            scalar**3.0)
 
     def test_spherical_Mises(self):
-        """Ensure that Mises equivalent strrain of spherical strain is 0."""
+        """Ensure that Mises equivalent strain of spherical strain is 0."""
         x = np.random.rand(self.n,3,3)
         sph = mechanics.spherical_part(x,True)
         assert np.allclose(mechanics.Mises_strain(sph),

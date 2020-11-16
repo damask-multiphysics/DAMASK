@@ -553,7 +553,7 @@ class Rotation:
             orthonormal = False                                                                     # contains stretch
         if not orthonormal:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
-            om = np.einsum('...ij,...jl->...il',U,Vh)
+            om = np.einsum('...ij,...jl',U,Vh)
         if not np.all(np.isclose(np.linalg.det(om),1.0)):
             raise ValueError('Orientation matrix has determinant ≠ 1.')
         if    not np.all(np.isclose(np.einsum('...i,...i',om[...,0],om[...,1]), 0.0)) \

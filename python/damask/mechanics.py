@@ -60,7 +60,7 @@ def Cauchy(P,F):
         Cauchy stress.
 
     """
-    sigma = _np.einsum('...,...ij,...kj->...ik',1.0/_np.linalg.det(F),P,F)
+    sigma = _np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F)
     return tensor.symmetric(sigma)
 
 
@@ -79,7 +79,7 @@ def deviatoric_part(T):
         Deviatoric part of T.
 
     """
-    return T - _np.einsum('...ij,...->...ij',_np.eye(3),spherical_part(T))
+    return T - _np.einsum('...ij,...',_np.eye(3),spherical_part(T))
 
 
 def maximum_shear(T_sym):
@@ -157,7 +157,7 @@ def PK2(P,F):
         Second Piola-Kirchhoff stress.
 
     """
-    S = _np.einsum('...jk,...kl->...jl',_np.linalg.inv(F),P)
+    S = _np.einsum('...jk,...kl',_np.linalg.inv(F),P)
     return tensor.symmetric(S)
 
 
@@ -199,7 +199,7 @@ def spherical_part(T,tensor=False):
 
     """
     sph = _np.trace(T,axis2=-2,axis1=-1)/3.0
-    return _np.einsum('...jk,...->...jk',_np.eye(3),sph) if tensor else sph
+    return _np.einsum('...jk,...',_np.eye(3),sph) if tensor else sph
 
 
 def strain(F,t,m):
@@ -231,14 +231,12 @@ def strain(F,t,m):
         w,n = _np.linalg.eigh(Cauchy_Green_deformation_right(F))
 
     if   m > 0.0:
-        eps = 1.0/(2.0*abs(m)) * (+ _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
-                                  - _np.einsum('...jk->...jk',_np.eye(3)))
+        eps = 1.0/(2.0*abs(m)) * (+ _np.einsum('...j,...kj,...lj',w**m,n,n) - _np.eye(3))
 
     elif m < 0.0:
-        eps = 1.0/(2.0*abs(m)) * (- _np.matmul(n,_np.einsum('...j,...kj->...jk',w**m,n))
-                                  + _np.einsum('...jk->...jk',_np.eye(3)))
+        eps = 1.0/(2.0*abs(m)) * (- _np.einsum('...j,...kj,...lj',w**m,n,n) + _np.eye(3))
     else:
-        eps = _np.matmul(n,_np.einsum('...j,...kj->...jk',0.5*_np.log(w),n))
+        eps = _np.einsum('...j,...kj,...lj',0.5*_np.log(w),n,n)
 
     return eps
 
@@ -293,22 +291,22 @@ def _polar_decomposition(T,requested):
 
     """
     u, _, vh = _np.linalg.svd(T)
-    R = _np.einsum('...ij,...jk->...ik',u,vh)
+    R = _np.einsum('...ij,...jk',u,vh)
 
     output = []
     if 'R' in requested:
         output.append(R)
     if 'V' in requested:
-        output.append(_np.einsum('...ij,...kj->...ik',T,R))
+        output.append(_np.einsum('...ij,...kj',T,R))
     if 'U' in requested:
-        output.append(_np.einsum('...ji,...jk->...ik',R,T))
+        output.append(_np.einsum('...ji,...jk',R,T))
 
     return tuple(output)
 
 
 def _Mises(T_sym,s):
     """
-    Base equation for Mises equivalent of a stres or strain tensor.
+    Base equation for Mises equivalent of a stress or strain tensor.
 
     Parameters
     ----------
@@ -319,7 +317,7 @@ def _Mises(T_sym,s):
 
     """
     d = deviatoric_part(T_sym)
-    return _np.sqrt(s*_np.einsum('...jk->...',d**2.0))
+    return _np.sqrt(s*_np.sum(d**2.0,axis=(-1,-2)))
 
 
 # for compatibility
