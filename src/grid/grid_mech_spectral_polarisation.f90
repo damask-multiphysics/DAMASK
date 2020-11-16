@@ -497,7 +497,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
   print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error stress BC         = ', &
+  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error stress BC  = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
   print'(/,a)', ' ==========================================================================='
   flush(IO_STDOUT)
