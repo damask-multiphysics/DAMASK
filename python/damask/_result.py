@@ -1024,7 +1024,7 @@ class Result:
     @staticmethod
     def _add_stretch_tensor(F,t):
         return {
-                'data':  (mechanics.left_stretch if t.upper() == 'V' else mechanics.right_stretch)(F['data']),
+                'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
                 'label': f"{t}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],

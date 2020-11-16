@@ -13,12 +13,17 @@ import numpy as _np
 
 def symmetric(T):
     """
-    Return the symmetrized tensor.
+    Symmetrize tensor.
 
     Parameters
     ----------
     T : numpy.ndarray of shape (...,3,3)
         Tensor of which the symmetrized values are computed.
+
+    Returns
+    -------
+    T_sym : numpy.ndarray of shape (...,3,3)
+        Symmetrized tensor T.
 
     """
     return (T+transpose(T))*0.5
@@ -26,12 +31,17 @@ def symmetric(T):
 
 def transpose(T):
     """
-    Return the transpose of a tensor.
+    Transpose tensor.
 
     Parameters
     ----------
     T : numpy.ndarray of shape (...,3,3)
         Tensor of which the transpose is computed.
+
+    Returns
+    -------
+    T.T : numpy.ndarray of shape (...,3,3)
+        Transpose of tensor T.
 
     """
     return _np.swapaxes(T,axis2=-2,axis1=-1)
@@ -39,15 +49,18 @@ def transpose(T):
 
 def eigenvalues(T_sym):
     """
-    Return the eigenvalues, i.e. principal components, of a symmetric tensor.
-
-    The eigenvalues are sorted in ascending order, each repeated according to
-    its multiplicity.
+    Eigenvalues, i.e. principal components, of a symmetric tensor.
 
     Parameters
     ----------
     T_sym : numpy.ndarray of shape (...,3,3)
         Symmetric tensor of which the eigenvalues are computed.
+
+    Returns
+    -------
+    lambda : numpy.ndarray of shape (...,3)
+        Eigenvalues of T_sym sorted in ascending order, each repeated
+        according to its multiplicity.
 
     """
     return _np.linalg.eigvalsh(symmetric(T_sym))
@@ -55,16 +68,20 @@ def eigenvalues(T_sym):
 
 def eigenvectors(T_sym,RHS=False):
     """
-    Return eigenvectors of a symmetric tensor.
-
-    The eigenvalues are sorted in ascending order of their associated eigenvalues.
+    Eigenvectors of a symmetric tensor.
 
     Parameters
     ----------
     T_sym : numpy.ndarray of shape (...,3,3)
         Symmetric tensor of which the eigenvectors are computed.
     RHS: bool, optional
-        Enforce right-handed coordinate system. Default is False.
+        Enforce right-handed coordinate system. Defaults to False.
+
+    Returns
+    -------
+    x : numpy.ndarray of shape (...,3,3)
+        Eigenvectors of T_sym sorted in ascending order of their
+        associated eigenvalues.
 
     """
     (u,v) = _np.linalg.eigh(symmetric(T_sym))

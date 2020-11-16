@@ -292,7 +292,7 @@ class TestResult:
         default.add_stretch_tensor('F','U')
         loc = {'F':    default.get_dataset_location('F'),
                'U(F)': default.get_dataset_location('U(F)')}
-        in_memory = mechanics.right_stretch(default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stretch_right(default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['U(F)'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -300,7 +300,7 @@ class TestResult:
         default.add_stretch_tensor('F','V')
         loc = {'F':    default.get_dataset_location('F'),
                'V(F)': default.get_dataset_location('V(F)')}
-        in_memory = mechanics.left_stretch(default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stretch_left(default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['V(F)'],0)
         assert np.allclose(in_memory,in_file)
 

@@ -17,10 +17,6 @@ def eigenvalues(T_sym):
     return np.linalg.eigvalsh(symmetric(T_sym))
 
 
-def left_stretch(T):
-    return polar_decomposition(T,'V')[0]
-
-
 def maximum_shear(T_sym):
     w = eigenvalues(T_sym)
     return (w[0] - w[2])*0.5
@@ -37,10 +33,6 @@ def Mises_stress(sigma):
 def PK2(P,F):
     S = np.dot(np.linalg.inv(F),P)
     return symmetric(S)
-
-
-def right_stretch(T):
-    return polar_decomposition(T,'U')[0]
 
 
 def rotational_part(T):
@@ -71,6 +63,14 @@ def strain_tensor(F,t,m):
         eps = np.matmul(n,np.einsum('j,kj->jk',0.5*np.log(w),n))
 
     return eps
+
+
+def stretch_left(T):
+    return polar_decomposition(T,'V')[0]
+
+
+def stretch_right(T):
+    return polar_decomposition(T,'U')[0]
 
 
 def symmetric(T):
@@ -113,13 +113,13 @@ class TestMechanics:
             assert np.allclose(single(test_data_flat[i]),v)
 
     @pytest.mark.parametrize('vectorized,single',[(mechanics.deviatoric_part, deviatoric_part),
-                                                  (mechanics.left_stretch   , left_stretch   ),
                                                   (mechanics.maximum_shear  , maximum_shear  ),
                                                   (mechanics.Mises_strain   , Mises_strain   ),
                                                   (mechanics.Mises_stress   , Mises_stress   ),
-                                                  (mechanics.right_stretch  , right_stretch  ),
                                                   (mechanics.rotational_part, rotational_part),
                                                   (mechanics.spherical_part , spherical_part ),
+                                                  (mechanics.stretch_left   , stretch_left   ),
+                                                  (mechanics.stretch_right  , stretch_right  ),
                                                  ])
     def test_vectorize_1_arg(self,vectorized,single):
         epsilon     = np.random.rand(self.n,3,3)
@@ -166,8 +166,8 @@ class TestMechanics:
         """F = RU = VR."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
         R = mechanics.rotational_part(F)
-        V = mechanics.left_stretch(F)
-        U = mechanics.right_stretch(F)
+        V = mechanics.stretch_left(F)
+        U = mechanics.stretch_right(F)
         assert np.allclose(np.matmul(R,U),
                            np.matmul(V,R))
 
