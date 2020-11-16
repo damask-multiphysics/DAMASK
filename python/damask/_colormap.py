@@ -23,6 +23,8 @@ _ref_white = np.array([.95047, 1.00000, 1.08883])                               
 
 class Colormap(mpl.colors.ListedColormap):
     """
+    Enhance matplotlib colormap functionality to be used within DAMASK.
+
     References
     ----------
     [1] DAMASK colormap theory
@@ -31,6 +33,7 @@ class Colormap(mpl.colors.ListedColormap):
       https://doi.org/10.1016/j.ijplas.2012.09.012
     [3] Matplotlib colormaps overview
       https://matplotlib.org/tutorials/colors/colormaps.html
+
     """
 
     def __add__(self,other):
@@ -153,7 +156,7 @@ class Colormap(mpl.colors.ListedColormap):
                                      if isinstance(colormap,mpl.colors.LinearSegmentedColormap) else
                                      colormap.colors),
                             name=name)
-        except:
+        except KeyError:
             # DAMASK presets
             definition = Colormap._predefined_DAMASK[name]
             return Colormap.from_range(definition['low'],definition['high'],name,N)
