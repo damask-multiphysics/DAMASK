@@ -40,9 +40,10 @@ def Cauchy_Green_deformation_right(F):
     """
     return _np.matmul(tensor.transpose(F),F)
 
+
 def Cauchy(P,F):
     """
-    Calculate the Cauchy (true) stress.
+    Calculate the Cauchy stress (true stress).
 
     Resulting tensor is symmetrized as the Cauchy stress needs to be symmetric.
 
@@ -201,9 +202,9 @@ def spherical_part(T,tensor=False):
     return _np.einsum('...jk,...->...jk',_np.eye(3),sph) if tensor else sph
 
 
-def strain_tensor(F,t,m):
+def strain(F,t,m):
     """
-    Calculate strain tensor from deformation gradient.
+    Calculate strain tensor (Seth–Hill family).
 
     For details refer to https://en.wikipedia.org/wiki/Finite_strain_theory and
     https://de.wikipedia.org/wiki/Verzerrungstensor
@@ -319,3 +320,7 @@ def _Mises(T_sym,s):
     """
     d = deviatoric_part(T_sym)
     return _np.sqrt(s*_np.einsum('...jk->...',d**2.0))
+
+
+# for compatibility
+strain_tensor = strain

@@ -991,21 +991,21 @@ class Result:
 
 
     @staticmethod
-    def _add_strain_tensor(F,t,m):
+    def _add_strain(F,t,m):
         return {
-                'data':  mechanics.strain_tensor(F['data'],t,m),
+                'data':  mechanics.strain(F['data'],t,m),
                 'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Strain tensor of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_strain_tensor'
+                          'Creator':     'add_strain'
                           }
                  }
-    def add_strain_tensor(self,F='F',t='V',m=0.0):
+    def add_strain(self,F='F',t='V',m=0.0):
         """
         Add strain tensor of a deformation gradient.
 
-        For details refer to damask.mechanics.strain_tensor
+        For details refer to damask.mechanics.strain
 
         Parameters
         ----------
@@ -1018,7 +1018,7 @@ class Result:
             Order of the strain calculation. Defaults to ‘0.0’.
 
         """
-        self._add_generic_pointwise(self._add_strain_tensor,{'F':F},{'t':t,'m':m})
+        self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
 
 
     @staticmethod

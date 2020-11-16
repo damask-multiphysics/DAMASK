@@ -194,7 +194,7 @@ class TestResult:
     def test_add_Mises_strain(self,default):
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
-        default.add_strain_tensor('F',t,m)
+        default.add_strain('F',t,m)
         label = f'epsilon_{t}^{m}(F)'
         default.add_Mises(label)
         loc = {label      :default.get_dataset_location(label),
@@ -280,11 +280,11 @@ class TestResult:
     def test_add_strain(self,default):
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
-        default.add_strain_tensor('F',t,m)
+        default.add_strain('F',t,m)
         label = f'epsilon_{t}^{m}(F)'
         loc = {'F':   default.get_dataset_location('F'),
                label: default.get_dataset_location(label)}
-        in_memory = mechanics.strain_tensor(default.read_dataset(loc['F'],0),t,m)
+        in_memory = mechanics.strain(default.read_dataset(loc['F'],0),t,m)
         in_file   = default.read_dataset(loc[label],0)
         assert np.allclose(in_memory,in_file)
 
