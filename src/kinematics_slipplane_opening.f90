@@ -63,7 +63,7 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_slipplane_opening_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p)
-    mech  => phase%get('mech')
+    mech  => phase%get('mechanics')
     pl    => mech%get('plasticity')
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')

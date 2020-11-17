@@ -176,7 +176,7 @@ program DAMASK_grid
 
     load_step => load_steps%get(l)
 
-    step_mech => load_step%get('mech')
+    step_mech => load_step%get('mechanics')
     loadCases(l)%stress%myType='P'
     readMech: do m = 1, step_mech%length
       select case (step_mech%getKey(m))

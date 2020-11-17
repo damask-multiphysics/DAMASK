@@ -240,7 +240,7 @@ subroutine crystallite_init
   allocate(output_constituent(phases%length))
   do c = 1, phases%length
     phase => phases%get(c)
-    mech  => phase%get('mech',defaultVal = emptyDict)
+    mech  => phase%get('mechanics',defaultVal = emptyDict)
 #if defined(__GFORTRAN__)
     output_constituent(c)%label  = output_asStrings(mech)
 #else
@@ -739,7 +739,7 @@ subroutine crystallite_results
   character(len=:), allocatable                 :: group,structureLabel
 
   do p=1,size(material_name_phase)
-    group = trim('current/constituent')//'/'//trim(material_name_phase(p))//'/generic'
+    group = trim('current/constituent')//'/'//trim(material_name_phase(p))//'/mechanics'
 
     call results_closeGroup(results_addGroup(group))
 
