@@ -86,8 +86,8 @@ class Orientation(Rotation):
     >>> damask.Orientation.from_random(shape=(3,5),lattice='tetragonal').reduced
 
     Disorientation between two specific orientations of hexagonal symmetry:
-    >>> a = damask.Orientation.from_Eulers(phi=[123,32,21],degrees=True,lattice='hexagonal')
-    >>> b = damask.Orientation.from_Eulers(phi=[104,11,87],degrees=True,lattice='hexagonal')
+    >>> a = damask.Orientation.from_Euler_angles(phi=[123,32,21],degrees=True,lattice='hexagonal')
+    >>> b = damask.Orientation.from_Euler_angles(phi=[104,11,87],degrees=True,lattice='hexagonal')
     >>> a.disorientation(b)
 
     Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
@@ -95,7 +95,7 @@ class Orientation(Rotation):
     >>> o.IPF_color(o.to_SST(np.array([0,0,1])))
 
     Schmid matrix (in lab frame) of slip systems of a face-centered cubic crystal in "Goss" orientation:
-    >>> damask.Orientation.from_Eulers(phi=[0,45,0],degrees=True,lattice='cF').Schmid('slip')
+    >>> damask.Orientation.from_Euler_angles(phi=[0,45,0],degrees=True,lattice='cF').Schmid('slip')
 
     """
 
@@ -291,9 +291,9 @@ class Orientation(Rotation):
 
 
     @classmethod
-    @extended_docstring(Rotation.from_Eulers)
-    def from_Eulers(cls,**kwargs):
-        return cls(rotation=Rotation.from_Eulers(**kwargs),**kwargs)
+    @extended_docstring(Rotation.from_Euler_angles)
+    def from_Euler_angles(cls,**kwargs):
+        return cls(rotation=Rotation.from_Euler_angles(**kwargs),**kwargs)
 
 
     @classmethod
@@ -315,9 +315,9 @@ class Orientation(Rotation):
 
 
     @classmethod
-    @extended_docstring(Rotation.from_Rodrigues)
-    def from_Rodrigues(cls,**kwargs):
-        return cls(rotation=Rotation.from_Rodrigues(**kwargs),**kwargs)
+    @extended_docstring(Rotation.from_Rodrigues_vector)
+    def from_Rodrigues_vector(cls,**kwargs):
+        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs),**kwargs)
 
 
     @classmethod
@@ -496,7 +496,7 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho_abs = np.abs(self.as_Rodrigues(vector=True))
+        rho_abs = np.abs(self.as_Rodrigues_vector(vector=True))
 
         with np.errstate(invalid='ignore'):
             # using '*'/prod for 'and'
@@ -539,7 +539,7 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho = self.as_Rodrigues(vector=True)
+        rho = self.as_Rodrigues_vector(vector=True)
 
         with np.errstate(invalid='ignore'):
             if   self.family == 'cubic':

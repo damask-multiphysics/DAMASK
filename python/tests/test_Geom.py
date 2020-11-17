@@ -223,7 +223,7 @@ class TestGeom:
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
     def test_rotate(self,default,update,reference_dir,Eulers):
-        modified = default.rotate(Rotation.from_Eulers(Eulers,degrees=True))
+        modified = default.rotate(Rotation.from_Euler_angles(Eulers,degrees=True))
         tag = f'Eulers_{util.srepr(Eulers,"-")}'
         reference = reference_dir/f'rotate_{tag}.vtr'
         if update: modified.save(reference)

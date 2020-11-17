@@ -753,7 +753,7 @@ class Geom:
         if fill is None: fill = np.nanmax(self.material) + 1
         dtype = float if np.isnan(fill) or int(fill) != fill or self.material.dtype==np.float else int
 
-        Eulers = R.as_Eulers(degrees=True)
+        Eulers = R.as_Euler_angles(degrees=True)
         material_in = self.material.copy()
 
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')

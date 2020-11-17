@@ -121,13 +121,13 @@ class TestResult:
         in_file   = default.read_dataset(loc['x'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_Cauchy(self,default):
-        default.add_Cauchy('P','F')
+    def test_add_stress_Cauchy(self,default):
+        default.add_stress_Cauchy('P','F')
         loc = {'F':    default.get_dataset_location('F'),
                'P':    default.get_dataset_location('P'),
                'sigma':default.get_dataset_location('sigma')}
-        in_memory = mechanics.Cauchy(default.read_dataset(loc['P'],0),
-                                     default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stress_Cauchy(default.read_dataset(loc['P'],0),
+                                            default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['sigma'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -149,7 +149,7 @@ class TestResult:
 
     @pytest.mark.parametrize('eigenvalue,function',[('max',np.amax),('min',np.amin)])
     def test_add_eigenvalue(self,default,eigenvalue,function):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_eigenvalue('sigma',eigenvalue)
         loc = {'sigma' :default.get_dataset_location('sigma'),
                'lambda':default.get_dataset_location(f'lambda_{eigenvalue}(sigma)')}
@@ -159,7 +159,7 @@ class TestResult:
 
     @pytest.mark.parametrize('eigenvalue,idx',[('max',2),('mid',1),('min',0)])
     def test_add_eigenvector(self,default,eigenvalue,idx):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_eigenvector('sigma',eigenvalue)
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'v(sigma)':default.get_dataset_location(f'v_{eigenvalue}(sigma)')}
@@ -183,7 +183,7 @@ class TestResult:
         assert np.allclose(in_memory,in_file)
 
     def test_add_maximum_shear(self,default):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_maximum_shear('sigma')
         loc = {'sigma'           :default.get_dataset_location('sigma'),
                'max_shear(sigma)':default.get_dataset_location('max_shear(sigma)')}
@@ -196,34 +196,34 @@ class TestResult:
         m = np.random.random()*2.0 - 1.0
         default.add_strain('F',t,m)
         label = f'epsilon_{t}^{m}(F)'
-        default.add_Mises(label)
+        default.add_equivalent_Mises(label)
         loc = {label      :default.get_dataset_location(label),
                label+'_vM':default.get_dataset_location(label+'_vM')}
-        in_memory = mechanics.Mises_strain(default.read_dataset(loc[label],0)).reshape(-1,1)
+        in_memory = mechanics.equivalent_strain_Mises(default.read_dataset(loc[label],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc[label+'_vM'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_Mises_stress(self,default):
-        default.add_Cauchy('P','F')
-        default.add_Mises('sigma')
+        default.add_stress_Cauchy('P','F')
+        default.add_equivalent_Mises('sigma')
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'sigma_vM':default.get_dataset_location('sigma_vM')}
-        in_memory = mechanics.Mises_stress(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
+        in_memory = mechanics.equivalent_stress_Mises(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['sigma_vM'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_Mises_invalid(self,default):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_calculation('sigma_y','#sigma#',unit='y')
-        default.add_Mises('sigma_y')
+        default.add_equivalent_Mises('sigma_y')
         assert default.get_dataset_location('sigma_y_vM') == []
 
     def test_add_Mises_stress_strain(self,default):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_calculation('sigma_y','#sigma#',unit='y')
         default.add_calculation('sigma_x','#sigma#',unit='x')
-        default.add_Mises('sigma_y',kind='strain')
-        default.add_Mises('sigma_x',kind='stress')
+        default.add_equivalent_Mises('sigma_y',kind='strain')
+        default.add_equivalent_Mises('sigma_x',kind='stress')
         loc = {'y' :default.get_dataset_location('sigma_y_vM'),
                'x' :default.get_dataset_location('sigma_x_vM')}
         assert not np.allclose(default.read_dataset(loc['y'],0),default.read_dataset(loc['x'],0))
@@ -236,13 +236,13 @@ class TestResult:
         in_file   = default.read_dataset(loc['|F|_1'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_PK2(self,default):
-        default.add_PK2('P','F')
+    def test_add_stress_second_Piola_Kirchhoff(self,default):
+        default.add_stress_second_Piola_Kirchhoff('P','F')
         loc = {'F':default.get_dataset_location('F'),
                'P':default.get_dataset_location('P'),
                'S':default.get_dataset_location('S')}
-        in_memory = mechanics.PK2(default.read_dataset(loc['P'],0),
-                                  default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stress_second_Piola_Kirchhoff(default.read_dataset(loc['P'],0),
+                                                            default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['S'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -312,7 +312,7 @@ class TestResult:
     def test_add_overwrite(self,default,overwrite):
         default.pick('times',default.times_in_range(0,np.inf)[-1])
 
-        default.add_Cauchy()
+        default.add_stress_Cauchy()
         loc = default.get_dataset_location('sigma')
         with h5py.File(default.fname,'r') as f:
             # h5py3 compatibility

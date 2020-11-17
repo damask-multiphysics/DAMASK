@@ -597,19 +597,19 @@ class Result:
 
 
     @staticmethod
-    def _add_Cauchy(P,F):
+    def _add_stress_Cauchy(P,F):
         return {
-                'data':  mechanics.Cauchy(P['data'],F['data']),
+                'data':  mechanics.stress_Cauchy(P['data'],F['data']),
                 'label': 'sigma',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
                           'Description': "Cauchy stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_Cauchy'
+                          'Creator':     'add_stress_Cauchy'
                           }
                 }
-    def add_Cauchy(self,P='P',F='F'):
+    def add_stress_Cauchy(self,P='P',F='F'):
         """
         Add Cauchy stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
@@ -621,7 +621,7 @@ class Result:
             Label of the dataset containing the deformation gradient. Defaults to ‘F’.
 
         """
-        self._add_generic_pointwise(self._add_Cauchy,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
 
 
     @staticmethod
@@ -798,7 +798,7 @@ class Result:
 
 
     @staticmethod
-    def _add_Mises(T_sym,kind):
+    def _add_equivalent_Mises(T_sym,kind):
         k = kind
         if k is None:
             if T_sym['meta']['Unit'] == '1':
@@ -809,7 +809,8 @@ class Result:
             raise ValueError('invalid von Mises kind {kind}')
 
         return {
-                'data':  (mechanics.Mises_strain if k=='strain' else mechanics.Mises_stress)(T_sym['data']),
+                'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
+                          mechanics.equivalent_stress_Mises)(T_sym['data']),
                 'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
@@ -817,7 +818,7 @@ class Result:
                           'Creator':     'add_Mises'
                           }
                 }
-    def add_Mises(self,T_sym,kind=None):
+    def add_equivalent_Mises(self,T_sym,kind=None):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
@@ -830,7 +831,7 @@ class Result:
             it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress').
 
         """
-        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym},{'kind':kind})
+        self._add_generic_pointwise(self._add_equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
 
 
     @staticmethod
@@ -872,19 +873,19 @@ class Result:
 
 
     @staticmethod
-    def _add_PK2(P,F):
+    def _add_stress_second_Piola_Kirchhoff(P,F):
         return {
-                'data':  mechanics.PK2(P['data'],F['data']),
+                'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
                 'label': 'S',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
                           'Description': "2. Piola-Kirchhoff stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_PK2'
+                          'Creator':     'add_stress_second_Piola_Kirchhoff'
                           }
                 }
-    def add_PK2(self,P='P',F='F'):
+    def add_stress_second_Piola_Kirchhoff(self,P='P',F='F'):
         """
         Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
@@ -896,7 +897,7 @@ class Result:
             Label of deformation gradient dataset. Defaults to ‘F’.
 
         """
-        self._add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
 
 
 # The add_pole functionality needs discussion.
@@ -1297,3 +1298,6 @@ class Result:
             v.add(u,'u')
 
             v.save(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')
+
+
+Result.add_PK2 = Result.add_stress_second_Piola_Kirchhoff

@@ -4,7 +4,7 @@ import numpy as np
 from damask import tensor
 from damask import mechanics
 
-def Cauchy(P,F):
+def stress_Cauchy(P,F):
     sigma = 1.0/np.linalg.det(F) * np.dot(P,F.T)
     return symmetric(sigma)
 
@@ -22,15 +22,15 @@ def maximum_shear(T_sym):
     return (w[0] - w[2])*0.5
 
 
-def Mises_strain(epsilon):
-    return Mises(epsilon,2.0/3.0)
+def equivalent_strain_Mises(epsilon):
+    return equivalent_Mises(epsilon,2.0/3.0)
 
 
-def Mises_stress(sigma):
-    return Mises(sigma,3.0/2.0)
+def equivalent_stress_Mises(sigma):
+    return equivalent_Mises(sigma,3.0/2.0)
 
 
-def PK2(P,F):
+def stress_second_Piola_Kirchhoff(P,F):
     S = np.dot(np.linalg.inv(F),P)
     return symmetric(S)
 
@@ -91,9 +91,8 @@ def polar_decomposition(T,requested):
 
     return tuple(output)
 
-def Mises(T_sym,s):
-    d = deviatoric_part(T_sym)
-    return np.sqrt(s*(np.sum(d**2.0)))
+def equivalent_Mises(T_sym,s):
+    return np.sqrt(s*(np.sum(deviatoric_part(T_sym)**2.0)))
 
 
 class TestMechanics:
@@ -112,14 +111,14 @@ class TestMechanics:
         for i,v in enumerate(np.reshape(vectorized(test_data),vectorized(test_data_flat).shape)):
             assert np.allclose(single(test_data_flat[i]),v)
 
-    @pytest.mark.parametrize('vectorized,single',[(mechanics.deviatoric_part, deviatoric_part),
-                                                  (mechanics.maximum_shear  , maximum_shear  ),
-                                                  (mechanics.Mises_strain   , Mises_strain   ),
-                                                  (mechanics.Mises_stress   , Mises_stress   ),
-                                                  (mechanics.rotational_part, rotational_part),
-                                                  (mechanics.spherical_part , spherical_part ),
-                                                  (mechanics.stretch_left   , stretch_left   ),
-                                                  (mechanics.stretch_right  , stretch_right  ),
+    @pytest.mark.parametrize('vectorized,single',[(mechanics.deviatoric_part,         deviatoric_part),
+                                                  (mechanics.maximum_shear,           maximum_shear),
+                                                  (mechanics.equivalent_stress_Mises, equivalent_stress_Mises),
+                                                  (mechanics.equivalent_strain_Mises, equivalent_strain_Mises),
+                                                  (mechanics.rotational_part,         rotational_part),
+                                                  (mechanics.spherical_part,          spherical_part),
+                                                  (mechanics.stretch_left,            stretch_left),
+                                                  (mechanics.stretch_right,           stretch_right),
                                                  ])
     def test_vectorize_1_arg(self,vectorized,single):
         epsilon     = np.random.rand(self.n,3,3)
@@ -127,8 +126,8 @@ class TestMechanics:
         for i,v in enumerate(np.reshape(vectorized(epsilon_vec),vectorized(epsilon).shape)):
             assert np.allclose(single(epsilon[i]),v)
 
-    @pytest.mark.parametrize('vectorized,single',[(mechanics.Cauchy,Cauchy),
-                                                  (mechanics.PK2   ,PK2   )
+    @pytest.mark.parametrize('vectorized,single',[(mechanics.stress_Cauchy,                 stress_Cauchy),
+                                                  (mechanics.stress_second_Piola_Kirchhoff, stress_second_Piola_Kirchhoff)
                                                  ])
     def test_vectorize_2_arg(self,vectorized,single):
         P     = np.random.rand(self.n,3,3)
@@ -148,8 +147,8 @@ class TestMechanics:
         for i,v in enumerate(np.reshape(vectorized(F_vec,t,m),vectorized(F,t,m).shape)):
             assert np.allclose(single(F[i],t,m),v)
 
-    @pytest.mark.parametrize('function',[mechanics.Cauchy,
-                                         mechanics.PK2,
+    @pytest.mark.parametrize('function',[mechanics.stress_Cauchy,
+                                         mechanics.stress_second_Piola_Kirchhoff,
                                         ])
     def test_stress_measures(self,function):
         """Ensure that all stress measures are equivalent for no deformation."""
@@ -212,8 +211,8 @@ class TestMechanics:
     def test_deviatoric_Mises(self):
         """Ensure that Mises equivalent stress depends only on deviatoric part."""
         x = np.random.rand(self.n,3,3)
-        full = mechanics.Mises_stress(x)
-        dev  = mechanics.Mises_stress(mechanics.deviatoric_part(x))
+        full = mechanics.equivalent_stress_Mises(x)
+        dev  = mechanics.equivalent_stress_Mises(mechanics.deviatoric_part(x))
         assert np.allclose(full,
                            dev)
 
@@ -229,14 +228,14 @@ class TestMechanics:
         """Ensure that Mises equivalent strain of spherical strain is 0."""
         x = np.random.rand(self.n,3,3)
         sph = mechanics.spherical_part(x,True)
-        assert np.allclose(mechanics.Mises_strain(sph),
+        assert np.allclose(mechanics.equivalent_strain_Mises(sph),
                            0.0)
 
 
     def test_Mises(self):
         """Ensure that equivalent stress is 3/2 of equivalent strain."""
         x = np.random.rand(self.n,3,3)
-        assert np.allclose(mechanics.Mises_stress(x)/mechanics.Mises_strain(x),
+        assert np.allclose(mechanics.equivalent_stress_Mises(x)/mechanics.equivalent_strain_Mises(x),
                            1.5)
 
     def test_spherical_no_shear(self):

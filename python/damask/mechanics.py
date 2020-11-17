@@ -5,7 +5,7 @@ from . import tensor
 import numpy as _np
 
 
-def Cauchy_Green_deformation_left(F):
+def deformation_Cauchy_Green_left(F):
     """
     Calculate left Cauchy-Green deformation tensor (Finger deformation tensor).
 
@@ -23,7 +23,7 @@ def Cauchy_Green_deformation_left(F):
     return _np.matmul(F,tensor.transpose(F))
 
 
-def Cauchy_Green_deformation_right(F):
+def deformation_Cauchy_Green_right(F):
     """
     Calculate right Cauchy-Green deformation tensor.
 
@@ -41,7 +41,7 @@ def Cauchy_Green_deformation_right(F):
     return _np.matmul(tensor.transpose(F),F)
 
 
-def Cauchy(P,F):
+def stress_Cauchy(P,F):
     """
     Calculate the Cauchy stress (true stress).
 
@@ -101,7 +101,7 @@ def maximum_shear(T_sym):
     return (w[...,0] - w[...,2])*0.5
 
 
-def Mises_strain(epsilon):
+def equivalent_strain_Mises(epsilon):
     """
     Calculate the Mises equivalent of a strain tensor.
 
@@ -116,10 +116,10 @@ def Mises_strain(epsilon):
         Von Mises equivalent strain of epsilon.
 
     """
-    return _Mises(epsilon,2.0/3.0)
+    return _equivalent_Mises(epsilon,2.0/3.0)
 
 
-def Mises_stress(sigma):
+def equivalent_stress_Mises(sigma):
     """
     Calculate the Mises equivalent of a stress tensor.
 
@@ -134,10 +134,10 @@ def Mises_stress(sigma):
         Von Mises equivalent stress of sigma.
 
     """
-    return _Mises(sigma,3.0/2.0)
+    return _equivalent_Mises(sigma,3.0/2.0)
 
 
-def PK2(P,F):
+def stress_second_Piola_Kirchhoff(P,F):
     """
     Calculate the second Piola-Kirchhoff stress.
 
@@ -226,9 +226,9 @@ def strain(F,t,m):
 
     """
     if   t == 'V':
-        w,n = _np.linalg.eigh(Cauchy_Green_deformation_left(F))
+        w,n = _np.linalg.eigh(deformation_Cauchy_Green_left(F))
     elif t == 'U':
-        w,n = _np.linalg.eigh(Cauchy_Green_deformation_right(F))
+        w,n = _np.linalg.eigh(deformation_Cauchy_Green_right(F))
 
     if   m > 0.0:
         eps = 1.0/(2.0*abs(m)) * (+ _np.einsum('...j,...kj,...lj',w**m,n,n) - _np.eye(3))
@@ -304,7 +304,7 @@ def _polar_decomposition(T,requested):
     return tuple(output)
 
 
-def _Mises(T_sym,s):
+def _equivalent_Mises(T_sym,s):
     """
     Base equation for Mises equivalent of a stress or strain tensor.
 

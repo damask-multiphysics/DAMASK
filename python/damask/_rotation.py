@@ -66,12 +66,12 @@ class Rotation:
 
     def __repr__(self):
         """Represent rotation as unit quaternion, rotation matrix, and Bunge-Euler angles."""
-        return 'Quaternions:\n'+str(self.quaternion) \
+        return 'As quaternions:\n'+str(self.quaternion) \
                if self.quaternion.shape != (4,) else \
                '\n'.join([
                'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
                'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
-               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
+               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Euler_angles(degrees=True)),
                 ])
 
 
@@ -314,7 +314,7 @@ class Rotation:
         """
         return self.quaternion.copy()
 
-    def as_Eulers(self,
+    def as_Euler_angles(self,
                   degrees = False):
         """
         Represent as Bunge-Euler angles.
@@ -372,7 +372,7 @@ class Rotation:
         """
         return Rotation._qu2om(self.quaternion)
 
-    def as_Rodrigues(self,
+    def as_Rodrigues_vector(self,
                      vector = False):
         """
         Represent as Rodrigues-Frank vector with separated axis and angle argument.
@@ -462,7 +462,7 @@ class Rotation:
         return Rotation(qu)
 
     @staticmethod
-    def from_Eulers(phi,
+    def from_Euler_angles(phi,
                     degrees = False,
                     **kwargs):
         """
@@ -606,7 +606,7 @@ class Rotation:
 
 
     @staticmethod
-    def from_Rodrigues(rho,
+    def from_Rodrigues_vector(rho,
                        normalize = False,
                        P = -1,
                        **kwargs):
@@ -784,7 +784,7 @@ class Rotation:
         dg = 1.0 if fractions else _dg(Eulers,degrees)
         dV_V = dg * np.maximum(0.0,weights.squeeze())
 
-        return Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,seed)],degrees)
+        return Rotation.from_Euler_angles(Eulers[util.hybrid_IA(dV_V,N,seed)],degrees)
 
 
     @staticmethod
