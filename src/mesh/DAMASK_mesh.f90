@@ -20,7 +20,7 @@ program DAMASK_mesh
   use discretization_mesh
   use FEM_Utilities
   use mesh_mech_FEM
-  
+
   implicit none
 
 !--------------------------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ program DAMASK_mesh
     totalIncsCounter = 0, &                                                                         !< total # of increments
     statUnit = 0, &                                                                                 !< file unit for statistics output
     stagIter, &
-    component  
+    component
   class(tNode), pointer :: &
     num_mesh
   character(len=pStringLen), dimension(:), allocatable :: fileContent
@@ -80,7 +80,7 @@ program DAMASK_mesh
   call CPFEM_initAll
   print'(/,a)', ' <<<+-  DAMASK_mesh init  -+>>>'; flush(IO_STDOUT)
 
-!--------------------------------------------------------------------- 
+!---------------------------------------------------------------------
 ! reading field information from numerics file and do sanity checks
   num_mesh => config_numerics%get('mesh', defaultVal=emptyDict)
   stagItMax  = num_mesh%get_asInt('maxStaggeredIter',defaultVal=10)
@@ -100,7 +100,7 @@ program DAMASK_mesh
   do l = 1, size(fileContent)
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
- 
+
     chunkPos = IO_stringPos(line)
     do i = 1, chunkPos(1)                                                                           ! reading compulsory parameters for loadcase
       select case (IO_lc(IO_stringValue(line,chunkPos,i)))
@@ -109,15 +109,16 @@ program DAMASK_mesh
       end select
     enddo                                                                                           ! count all identifiers to allocate memory and do sanity check
   enddo
- 
-  allocate (loadCases(N_def))         
- 
+
+  if(N_def < 1) call IO_error(error_ID = 837)
+  allocate(loadCases(N_def))
+
   do i = 1, size(loadCases)
     allocate(loadCases(i)%fieldBC(nActiveFields))
     field = 1
     loadCases(i)%fieldBC(field)%ID = FIELD_MECH_ID
   enddo
- 
+
   do i = 1, size(loadCases)
     do field = 1, nActiveFields
       select case (loadCases(i)%fieldBC(field)%ID)
@@ -133,21 +134,21 @@ program DAMASK_mesh
               case (3)
                 loadCases(i)%fieldBC(field)%componentBC(component)%ID = COMPONENT_MECH_Z_ID
             end select
-          enddo  
+          enddo
       end select
       do component = 1, loadCases(i)%fieldBC(field)%nComponents
         allocate(loadCases(i)%fieldBC(field)%componentBC(component)%Value(mesh_Nboundaries), source = 0.0_pReal)
         allocate(loadCases(i)%fieldBC(field)%componentBC(component)%Mask (mesh_Nboundaries), source = .false.)
       enddo
-    enddo       
-  enddo   
+    enddo
+  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
   do l = 1, size(fileContent)
     line = fileContent(l)
     if (IO_isBlank(line)) cycle                                                                     ! skip empty lines
- 
+
     chunkPos = IO_stringPos(line)
     do i = 1, chunkPos(1)
       select case (IO_lc(IO_stringValue(line,chunkPos,i)))
@@ -161,7 +162,7 @@ program DAMASK_mesh
           do faceSet = 1, mesh_Nboundaries
             if (mesh_boundaries(faceSet) == currentFace) currentFaceSet = faceSet
           enddo
-          if (currentFaceSet < 0) call IO_error(error_ID = errorID, ext_msg = 'invalid BC')  
+          if (currentFaceSet < 0) call IO_error(error_ID = 837, ext_msg = 'invalid BC')
         case('t','time','delta')                                                                    ! increment time
           loadCases(currentLoadCase)%time = IO_floatValue(line,chunkPos,i+1)
         case('n','incs','increments','steps')                                                       ! number of increments
@@ -170,7 +171,7 @@ program DAMASK_mesh
           loadCases(currentLoadCase)%incs = IO_intValue(line,chunkPos,i+1)
           loadCases(currentLoadCase)%logscale = 1
         case('freq','frequency','outputfreq')                                                       ! frequency of result writings
-          loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,chunkPos,i+1)                
+          loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,chunkPos,i+1)
         case('guessreset','dropguessing')
           loadCases(currentLoadCase)%followFormerTrajectory = .false.                                ! do not continue to predict deformation along former trajectory
 
@@ -185,7 +186,7 @@ program DAMASK_mesh
             case('z')
               ID = COMPONENT_MECH_Z_ID
            end select
-          
+
            do field = 1, nActiveFields
              if (loadCases(currentLoadCase)%fieldBC(field)%ID == FIELD_MECH_ID) then
                do component = 1, loadcases(currentLoadCase)%fieldBC(field)%nComponents
@@ -197,11 +198,11 @@ program DAMASK_mesh
                  endif
                enddo
              endif
-           enddo  
+           enddo
       end select
     enddo
   enddo
- 
+
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
   loadCases(1)%followFormerTrajectory = .false.                                                      ! cannot guess along trajectory for first inc of first currentLoadCase
@@ -215,17 +216,17 @@ program DAMASK_mesh
       select case (loadCases(currentLoadCase)%fieldBC(field)%ID)
         case(FIELD_MECH_ID)
           print'(a)', '  Field '//trim(FIELD_MECH_label)
-      
+
       end select
       do faceSet = 1, mesh_Nboundaries
          do component = 1, loadCases(currentLoadCase)%fieldBC(field)%nComponents
            if (loadCases(currentLoadCase)%fieldBC(field)%componentBC(component)%Mask(faceSet)) &
              print'(a,i2,a,i2,a,f12.7)', '    Face  ', mesh_boundaries(faceSet), &
-                                               ' Component ', component, & 
+                                               ' Component ', component, &
                                                ' Value ', loadCases(currentLoadCase)%fieldBC(field)% &
                                                             componentBC(component)%Value(faceSet)
          enddo
-       enddo       
+       enddo
     enddo
     print'(a,f12.6)', '  time:       ', loadCases(currentLoadCase)%time
     if (loadCases(currentLoadCase)%incs < 1)             errorID = 835                            ! non-positive incs count
@@ -244,7 +245,7 @@ program DAMASK_mesh
       case(FIELD_MECH_ID)
         call FEM_mech_init(loadCases(1)%fieldBC(field))
     end select
-  enddo   
+  enddo
 
   if (worldrank == 0) then
     open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
@@ -254,9 +255,9 @@ program DAMASK_mesh
   loadCaseLooping: do currentLoadCase = 1, size(loadCases)
     time0 = time                                                                                    ! load case start time
     guess = loadCases(currentLoadCase)%followFormerTrajectory                                       ! change of load case? homogeneous guess for the first inc
- 
+
     incLooping: do inc = 1, loadCases(currentLoadCase)%incs
-      totalIncsCounter = totalIncsCounter + 1                                                 
+      totalIncsCounter = totalIncsCounter + 1
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
@@ -266,7 +267,7 @@ program DAMASK_mesh
       else
         if (currentLoadCase == 1) then                                                              ! 1st load case of logarithmic scale
           if (inc == 1) then                                                                        ! 1st inc of 1st load case of logarithmic scale
-            timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))           ! assume 1st inc is equal to 2nd 
+            timeinc = loadCases(1)%time*(2.0_pReal**real(    1-loadCases(1)%incs ,pReal))           ! assume 1st inc is equal to 2nd
           else                                                                                      ! not-1st inc of 1st load case of logarithmic scale
             timeinc = loadCases(1)%time*(2.0_pReal**real(inc-1-loadCases(1)%incs ,pReal))
           endif
@@ -287,7 +288,7 @@ program DAMASK_mesh
         remainingLoadCaseTime = loadCases(currentLoadCase)%time+time0 - time
         time = time + timeinc                                                                     ! forward target time
         stepFraction = stepFraction + 1                                                           ! count step
-         
+
 !--------------------------------------------------------------------------------------------------
 ! report begin of new step
         print'(/,a)', ' ###########################################################################'
@@ -310,8 +311,8 @@ program DAMASK_mesh
                   guess,timeinc,timeIncOld,loadCases(currentLoadCase)%fieldBC(field))
 
          end select
-        enddo       
-         
+        enddo
+
 !--------------------------------------------------------------------------------------------------
 ! solve fields
         stagIter = 0
@@ -332,10 +333,10 @@ program DAMASK_mesh
           stagIterate =            stagIter < stagItMax &
                        .and.       all(solres(:)%converged) &
                        .and. .not. all(solres(:)%stagConverged)                                     ! stationary with respect to staggered iteration
-        enddo     
-         
-! check solution 
-        cutBack = .False.                                                                   
+        enddo
+
+! check solution
+        cutBack = .False.
         if(.not. all(solres(:)%converged .and. solres(:)%stagConverged)) then                       ! no solution found
           if (cutBackLevel < maxCutBack) then                                                       ! do cut back
             print'(/,a)', ' cut back detected'
@@ -344,7 +345,7 @@ program DAMASK_mesh
             cutBackLevel = cutBackLevel + 1
             time    = time - timeinc                                                                ! rewind time
             timeinc = timeinc/2.0_pReal
-          else                                                                                      ! default behavior, exit if spectral solver does not converge                                
+          else                                                                                      ! default behavior, exit if spectral solver does not converge
             call IO_warning(850)
             call quit(1)                                                                            ! quit
           endif
@@ -374,8 +375,8 @@ program DAMASK_mesh
     enddo incLooping
 
   enddo loadCaseLooping
- 
- 
+
+
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
   print'(/,a)', ' ###########################################################################'

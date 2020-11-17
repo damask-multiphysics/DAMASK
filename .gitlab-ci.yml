@@ -187,8 +187,6 @@ grid_mech_compile_Intel:
   stage: compilePETSc
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cp -r grid_mech_compile grid_mech_compile_Intel
-    - grid_mech_compile_Intel/test.py
     - cd pytest
     - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
@@ -199,8 +197,6 @@ Compile_FEM_Intel:
   stage: compilePETSc
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cp -r FEM_compile FEM_compile_Intel
-    - FEM_compile_Intel/test.py
     - cd pytest
     - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
@@ -211,8 +207,6 @@ grid_mech_compile_GNU:
   stage: compilePETSc
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
-    - cp -r grid_mech_compile grid_mech_compile_GNU
-    - grid_mech_compile_GNU/test.py
     - cd pytest
     - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
@@ -223,8 +217,6 @@ Compile_FEM_GNU:
   stage: compilePETSc
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
-    - cp -r FEM_compile FEM_compile_GNU
-    - FEM_compile_GNU/test.py
     - cd pytest
     - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
@@ -270,22 +262,6 @@ grid_parsingArguments:
 Nonlocal_Damage_DetectChanges:
   stage: grid
   script: Nonlocal_Damage_DetectChanges/test.py
-  except:
-    - master
-    - release
-
-grid_all_restart:
-  stage: grid
-  script: grid_all_restart/test.py
-  except:
-    - master
-    - release
-
-grid_all_restartMPI:
-  stage: grid
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - grid_all_restartMPI/test.py
   except:
     - master
     - release
