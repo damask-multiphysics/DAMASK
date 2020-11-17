@@ -16,7 +16,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(usage='%prog options [file[s]]', description = """
 Create seeds file by poking at 45 degree through given geom file.
 Mimics APS Beamline 34-ID-E DAXM poking.
 

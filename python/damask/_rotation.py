@@ -107,22 +107,6 @@ class Rotation:
                 and np.allclose(self.quaternion,other.quaternion)
 
 
-    def __neq__(self,other):
-        """
-        Not Equal to other.
-
-        Equality is determined taking limited floating point precision into
-        account. See numpy.allclose for details.
-
-        Parameters
-        ----------
-        other : Rotation
-            Rotation to check for inequality.
-
-        """
-        return not self.__eq__(other)
-
-
     @property
     def shape(self):
         return self.quaternion.shape[:-1]
@@ -404,7 +388,7 @@ class Rotation:
         Returns
         -------
         h : numpy.ndarray of shape (...,3)
-            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < 1/2*π^(2/3).
+            Homochoric vector: (h_1, h_2, h_3), ǀhǀ < (3/4*π)^(1/3).
 
         """
         return Rotation._qu2ho(self.quaternion)
@@ -698,7 +682,7 @@ class Rotation:
 
     @staticmethod
     def from_random(shape = None,
-                    seed = None,
+                    rng_seed = None,
                     **kwargs):
         """
         Draw random rotation.
@@ -710,12 +694,12 @@ class Rotation:
         shape : tuple of ints, optional
             Shape of the sample. Defaults to None which gives a
             single rotation
-        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator. Defaults to None.
             If None, then fresh, unpredictable entropy will be pulled from the OS.
 
         """
-        rng = np.random.default_rng(seed)
+        rng = np.random.default_rng(rng_seed)
         r = rng.random(3 if shape is None else tuple(shape)+(3,) if hasattr(shape, '__iter__') else (shape,3))
 
         A = np.sqrt(r[...,2])
@@ -734,7 +718,7 @@ class Rotation:
                  N = 500,
                  degrees = True,
                  fractions = True,
-                 seed = None,
+                 rng_seed = None,
                  **kwargs):
         """
         Sample discrete values from a binned ODF.
@@ -753,7 +737,7 @@ class Rotation:
         fractions : boolean, optional
             ODF values correspond to volume fractions, not probability density.
             Defaults to True.
-        seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+        rng_seed: {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
             will be pulled from the OS.
 
@@ -784,7 +768,7 @@ class Rotation:
         dg = 1.0 if fractions else _dg(Eulers,degrees)
         dV_V = dg * np.maximum(0.0,weights.squeeze())
 
-        return Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,seed)],degrees)
+        return Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,rng_seed)],degrees)
 
 
     @staticmethod
@@ -792,7 +776,7 @@ class Rotation:
                                  sigma,
                                  N = 500,
                                  degrees = True,
-                                 seed = None,
+                                 rng_seed = None,
                                  **kwargs):
         """
         Calculate set of rotations with Gaussian distribution around center.
@@ -807,12 +791,12 @@ class Rotation:
             Number of samples, defaults to 500.
         degrees : boolean, optional
             sigma is given in degrees.
-        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
             will be pulled from the OS.
 
         """
-        rng = np.random.default_rng(seed)
+        rng = np.random.default_rng(rng_seed)
         sigma = np.radians(sigma) if degrees else sigma
         u,Theta  = (rng.random((N,2)) * 2.0 * np.array([1,np.pi]) - np.array([1.0, 0])).T
         omega = abs(rng.normal(scale=sigma,size=N))
@@ -829,7 +813,7 @@ class Rotation:
                              sigma = 0.0,
                              N = 500,
                              degrees = True,
-                             seed = None,
+                             rng_seed = None,
                              **kwargs):
         """
         Calculate set of rotations with Gaussian distribution around direction.
@@ -847,12 +831,12 @@ class Rotation:
             Number of samples, defaults to 500.
         degrees : boolean, optional
             sigma, alpha, and beta are given in degrees.
-        seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+        rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
             A seed to initialize the BitGenerator. Defaults to None, i.e. unpredictable entropy
             will be pulled from the OS.
 
         """
-        rng = np.random.default_rng(seed)
+        rng = np.random.default_rng(rng_seed)
         sigma_,alpha_,beta_ = map(np.radians,(sigma,alpha,beta)) if degrees else (sigma,alpha,beta)
 
         d_cr  = np.array([np.sin(alpha_[0])*np.cos(alpha_[1]), np.sin(alpha_[0])*np.sin(alpha_[1]), np.cos(alpha_[0])])

@@ -5,8 +5,6 @@ class Environment:
 
     @property
     def screen_size(self):
-        width  = 1024
-        height =  768
         try:
             import wx
             _ = wx.App(False)                                                                       # noqa
@@ -19,7 +17,9 @@ class Environment:
                 height = tk.winfo_screenheight()
                 tk.destroy()
             except Exception as e:
-                pass
+                width  = 1024
+                height =  768
+
         return (width,height)
 
 

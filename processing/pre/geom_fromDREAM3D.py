@@ -14,7 +14,7 @@ scriptID   = ' '.join([scriptName,damask.version])
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [DREAM.3Dfile(s)]', description = """
+parser = OptionParser(usage='%prog options [DREAM.3Dfile(s)]', description = """
 Converts DREAM.3D file. Input can be cell data (direct pointwise takeover) or grain data (individual
 grains are segmented). Requires orientation data as quaternion.
 

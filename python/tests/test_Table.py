@@ -17,6 +17,12 @@ def reference_dir(reference_dir_base):
 
 class TestTable:
 
+    def test_repr(self,default):
+        print(default)
+
+    def test_len(self):
+        len(Table(np.random.rand(7,3),{'X':3})) == 7
+
     def test_get_scalar(self,default):
         d = default.get('s')
         assert np.allclose(d,1.0) and d.shape[1:] == (1,)

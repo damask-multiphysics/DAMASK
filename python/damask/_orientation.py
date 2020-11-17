@@ -4,7 +4,7 @@ from . import Rotation
 from . import util
 from . import mechanics
 
-__parameter_doc__ = \
+_parameter_doc = \
        """lattice : str
             Either a crystal family  out of [triclinic, monoclinic, orthorhombic, tetragonal, hexagonal, cubic]
             or a     Bravais lattice out of [aP, mP, mS, oP, oS, oI, oF, tP, tI, hP, cP, cI, cF].
@@ -25,22 +25,6 @@ __parameter_doc__ = \
             Angles are given in degrees. Defaults to False.
 
        """
-
-
-def extend_docstring():
-       """Decorator: Append Orientation parameter documentation to function's docstring."""
-       def _decorator(func):
-           func.__doc__ += __parameter_doc__
-           return func
-       return _decorator
-
-
-def extended_docstring(f):
-       """Decorator: Combine Orientation parameter documentation with another function's docstring."""
-       def _decorator(func):
-           func.__doc__ = f.__doc__ + __parameter_doc__
-           return func
-       return _decorator
 
 
 class Orientation(Rotation):
@@ -85,18 +69,6 @@ class Orientation(Rotation):
     An array of 3 x 5 random orientations reduced to the fundamental zone of tetragonal symmetry:
     >>> damask.Orientation.from_random(shape=(3,5),lattice='tetragonal').reduced
 
-    Disorientation between two specific orientations of hexagonal symmetry:
-    >>> a = damask.Orientation.from_Eulers(phi=[123,32,21],degrees=True,lattice='hexagonal')
-    >>> b = damask.Orientation.from_Eulers(phi=[104,11,87],degrees=True,lattice='hexagonal')
-    >>> a.disorientation(b)
-
-    Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
-    >>> o = damask.Orientation(lattice='cubic')
-    >>> o.IPF_color(o.to_SST(np.array([0,0,1])))
-
-    Schmid matrix (in lab frame) of slip systems of a face-centered cubic crystal in "Goss" orientation:
-    >>> damask.Orientation.from_Eulers(phi=[0,45,0],degrees=True,lattice='cF').Schmid('slip')
-
     """
 
     crystal_families = ['triclinic',
@@ -128,7 +100,7 @@ class Orientation(Rotation):
                }
 
 
-    @extend_docstring()
+    @util.extend_docstring(_parameter_doc)
     def __init__(self,
                  rotation = None,
                  lattice = None,
@@ -279,73 +251,73 @@ class Orientation(Rotation):
 
 
     @classmethod
-    @extended_docstring(Rotation.from_random)
+    @util.extended_docstring(Rotation.from_random,_parameter_doc)
     def from_random(cls,**kwargs):
         return cls(rotation=Rotation.from_random(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_quaternion)
+    @util.extended_docstring(Rotation.from_quaternion,_parameter_doc)
     def from_quaternion(cls,**kwargs):
         return cls(rotation=Rotation.from_quaternion(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_Eulers)
+    @util.extended_docstring(Rotation.from_Eulers,_parameter_doc)
     def from_Eulers(cls,**kwargs):
         return cls(rotation=Rotation.from_Eulers(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_axis_angle)
+    @util.extended_docstring(Rotation.from_axis_angle,_parameter_doc)
     def from_axis_angle(cls,**kwargs):
         return cls(rotation=Rotation.from_axis_angle(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_basis)
+    @util.extended_docstring(Rotation.from_basis,_parameter_doc)
     def from_basis(cls,**kwargs):
         return cls(rotation=Rotation.from_basis(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_matrix)
+    @util.extended_docstring(Rotation.from_matrix,_parameter_doc)
     def from_matrix(cls,**kwargs):
         return cls(rotation=Rotation.from_matrix(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_Rodrigues)
+    @util.extended_docstring(Rotation.from_Rodrigues,_parameter_doc)
     def from_Rodrigues(cls,**kwargs):
         return cls(rotation=Rotation.from_Rodrigues(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_homochoric)
+    @util.extended_docstring(Rotation.from_homochoric,_parameter_doc)
     def from_homochoric(cls,**kwargs):
         return cls(rotation=Rotation.from_homochoric(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_cubochoric)
+    @util.extended_docstring(Rotation.from_cubochoric,_parameter_doc)
     def from_cubochoric(cls,**kwargs):
         return cls(rotation=Rotation.from_cubochoric(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_spherical_component)
+    @util.extended_docstring(Rotation.from_spherical_component,_parameter_doc)
     def from_spherical_component(cls,**kwargs):
         return cls(rotation=Rotation.from_spherical_component(**kwargs),**kwargs)
 
 
     @classmethod
-    @extended_docstring(Rotation.from_fiber_component)
+    @util.extended_docstring(Rotation.from_fiber_component,_parameter_doc)
     def from_fiber_component(cls,**kwargs):
         return cls(rotation=Rotation.from_fiber_component(**kwargs),**kwargs)
 
 
     @classmethod
-    @extend_docstring()
+    @util.extend_docstring(_parameter_doc)
     def from_directions(cls,uvw,hkl,**kwargs):
         """
         Initialize orientation object from two crystallographic directions.
@@ -847,6 +819,14 @@ class Orientation(Rotation):
         rgb : numpy.ndarray of shape (...,3)
            RGB array of IPF colors.
 
+        Examples
+        --------
+        Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
+
+        >>> o = damask.Orientation(lattice='cubic')
+        >>> o.IPF_color(o.to_SST([0,0,1]))
+        array([1., 0., 0.])
+
         References
         ----------
         Bases are computed from
@@ -867,7 +847,8 @@ class Orientation(Rotation):
         ...    }
 
         """
-        if vector.shape[-1] != 3:
+        vector_ = np.array(vector)
+        if vector_.shape[-1] != 3:
             raise ValueError('Input is not a field of three-dimensional vectors.')
 
         if self.family == 'cubic':
@@ -903,23 +884,23 @@ class Orientation(Rotation):
                                            [ 0., 1., 0.] ]),
                     }
         else:                                                                                       # direct exit for unspecified symmetry
-            return np.zeros_like(vector)
+            return np.zeros_like(vector_)
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['proper'], vector.shape+(3,)),
-                                                      vector), 12)
+                                                      np.broadcast_to(basis['proper'], vector_.shape+(3,)),
+                                                      vector_), 12)
             components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['improper'], vector.shape+(3,)),
-                                                      vector), 12)
+                                                      np.broadcast_to(basis['improper'], vector_.shape+(3,)),
+                                                      vector_), 12)
             in_SST = np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
             components = np.where((in_SST & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(basis['improper'], vector.shape+(3,)),
-                                             np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
+                                             np.broadcast_to(basis['improper'], vector_.shape+(3,)),
+                                             np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
             in_SST = np.all(components >= 0.0,axis=-1)
 
@@ -956,6 +937,22 @@ class Orientation(Rotation):
         -----
         Currently requires same crystal family for both orientations.
         For extension to cases with differing symmetry see  A. Heinz and P. Neumann 1991 and 10.1107/S0021889808016373.
+
+        Examples
+        --------
+        Disorientation between two specific orientations of hexagonal symmetry:
+
+        >>> import damask
+        >>> a = damask.Orientation.from_Eulers(phi=[123,32,21],degrees=True,lattice='hexagonal')
+        >>> b = damask.Orientation.from_Eulers(phi=[104,11,87],degrees=True,lattice='hexagonal')
+        >>> a.disorientation(b)
+        Crystal family hexagonal
+        Quaternion: (real=0.976, imag=<+0.189, +0.018, +0.103>)
+        Matrix:
+        [[ 0.97831006  0.20710935  0.00389135]
+         [-0.19363288  0.90765544  0.37238141]
+         [ 0.07359167 -0.36505797  0.92807163]]
+        Bunge Eulers / deg: (11.40, 21.86, 0.60)
 
         """
         if self.family is None or other.family is None:
@@ -1065,8 +1062,8 @@ class Orientation(Rotation):
             raise ValueError('Missing crystal symmetry')
 
         eq  = self.equivalent
-        blend = util.shapeblender(eq.shape,vector.shape[:-1])
-        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(vector,blend+(3,))
+        blend = util.shapeblender(eq.shape,np.array(vector).shape[:-1])
+        poles = eq.broadcast_to(blend,mode='right') @ np.broadcast_to(np.array(vector),blend+(3,))
         ok    = self.in_SST(poles,proper=proper)
         ok   &= np.cumsum(ok,axis=0) == 1
         loc   = np.where(ok)
@@ -1085,12 +1082,12 @@ class Orientation(Rotation):
 
         Parameters
         ----------
-        uvtw | hkil : numpy.ndarray of shape (...,4)
+        uvtw|hkil : numpy.ndarray of shape (...,4)
             Miller–Bravais indices of crystallographic direction [uvtw] or plane normal (hkil).
 
         Returns
         -------
-        uvw | hkl : numpy.ndarray of shape (...,3)
+        uvw|hkl : numpy.ndarray of shape (...,3)
             Miller indices of [uvw] direction or (hkl) plane normal.
 
         """
@@ -1113,12 +1110,12 @@ class Orientation(Rotation):
 
         Parameters
         ----------
-        uvw | hkl : numpy.ndarray of shape (...,3)
+        uvw|hkl : numpy.ndarray of shape (...,3)
             Miller indices of crystallographic direction [uvw] or plane normal (hkl).
 
         Returns
         -------
-        uvtw | hkil : numpy.ndarray of shape (...,4)
+        uvtw|hkil : numpy.ndarray of shape (...,4)
             Miller–Bravais indices of [uvtw] direction or (hkil) plane normal.
 
         """
@@ -1142,7 +1139,7 @@ class Orientation(Rotation):
 
         Parameters
         ----------
-        direction | normal : numpy.ndarray of shape (...,3)
+        direction|normal : numpy.ndarray of shape (...,3)
             Vector along direction or plane normal.
 
         Returns
@@ -1166,7 +1163,7 @@ class Orientation(Rotation):
 
         Parameters
         ----------
-        uvw | hkl : numpy.ndarray of shape (...,3)
+        uvw|hkl : numpy.ndarray of shape (...,3)
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
@@ -1194,7 +1191,7 @@ class Orientation(Rotation):
 
         Parameters
         ----------
-        uvw | hkl : numpy.ndarray of shape (...,3)
+        uvw|hkl : numpy.ndarray of shape (...,3)
             Miller indices of crystallographic direction or plane normal.
         with_symmetry : bool, optional
             Calculate all N symmetrically equivalent vectors.
@@ -1217,12 +1214,25 @@ class Orientation(Rotation):
         Parameters
         ----------
         mode : str
-            Type of kinematics, e.g. 'slip' or 'twin'.
+            Type of kinematics, i.e. 'slip' or 'twin'.
 
         Returns
         -------
         P : numpy.ndarray of shape (...,N,3,3)
             Schmid matrix for each of the N deformation systems.
+
+        Examples
+        --------
+        Schmid matrix (in lab frame) of slip systems of a face-centered
+        cubic crystal in "Goss" orientation.
+
+        >>> import damask
+        >>> import numpy as np
+        >>> np.set_printoptions(3,suppress=True,floatmode='fixed')
+        >>> damask.Orientation.from_Eulers(phi=[0,45,0],degrees=True,lattice='cF').Schmid('slip')[0]
+        array([[ 0.000,  0.000,  0.000],
+               [ 0.577, -0.000,  0.816],
+               [ 0.000,  0.000,  0.000]])
 
         """
         d = self.to_frame(uvw=self.kinematics[mode]['direction'],with_symmetry=False)

@@ -1,8 +1,13 @@
 from pathlib import Path
 import datetime
+import os
 
 import numpy as np
 import pytest
+import matplotlib as mpl
+if os.name == 'posix' and 'DISPLAY' not in os.environ:
+    mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 import damask
 
@@ -25,8 +30,9 @@ def patch_datetime_now(monkeypatch):
 
     monkeypatch.setattr(datetime, 'datetime', mydatetime)
 
+
 @pytest.fixture
-def execution_stamp(monkeypatch):
+def patch_execution_stamp(monkeypatch):
     """Set damask.util.execution_stamp for reproducible tests results."""
     def execution_stamp(class_name,function_name=None):
         _function_name = '' if function_name is None else f'.{function_name}'
@@ -35,20 +41,30 @@ def execution_stamp(monkeypatch):
     monkeypatch.setattr(damask.util, 'execution_stamp', execution_stamp)
 
 
+@pytest.fixture
+def patch_plt_show(monkeypatch):
+    def _None(block=None):
+        pass
+    monkeypatch.setattr(plt, 'show', _None, raising=True)
+
+
 def pytest_addoption(parser):
     parser.addoption("--update",
                      action="store_true",
                      default=False)
+
 
 @pytest.fixture
 def update(request):
     """Store current results as new reference results."""
     return request.config.getoption("--update")
 
+
 @pytest.fixture
 def reference_dir_base():
     """Directory containing reference results."""
     return Path(__file__).parent/'reference'
+
 
 @pytest.fixture
 def set_of_quaternions():

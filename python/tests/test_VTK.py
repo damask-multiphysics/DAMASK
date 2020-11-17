@@ -23,7 +23,7 @@ def default():
 class TestVTK:
 
     @pytest.fixture(autouse=True)
-    def _execution_stamp(self, execution_stamp):
+    def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
 
     def test_rectilinearGrid(self,tmp_path):
@@ -83,6 +83,15 @@ class TestVTK:
                 return
             time.sleep(.5)
         assert(False)
+
+    def test_compress(self,tmp_path):
+        points = np.random.rand(102,3)
+        v = VTK.from_poly_data(points)
+        fname_c = tmp_path/'compressed.vtp'
+        fname_p = tmp_path/'plain.vtp'
+        v.save(fname_c,parallel=False,compress=False)
+        v.save(fname_p,parallel=False,compress=True)
+        assert(VTK.load(fname_c).__repr__() == VTK.load(fname_p).__repr__())
 
 
     @pytest.mark.parametrize('fname',['a','a.vtp','a.b','a.b.vtp'])
