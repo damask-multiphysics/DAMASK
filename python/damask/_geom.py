@@ -913,6 +913,7 @@ class Geom:
         v.vtk_data.SetPolys(cells)
         v.save('GrainBoundaries') 
                                   
+
     def ShowGBoptimized(self,periodic=False,across=[[0],[1],[2],[0,1],[1,2],[0,2],[0,1,2]]):
         """
         Create an extra VTK file to show grain boundaries as feature edges.
