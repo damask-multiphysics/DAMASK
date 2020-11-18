@@ -1198,17 +1198,18 @@ class Result:
                                 dtype = f[name].dtype
                                 prec  = f[name].dtype.itemsize
 
-                                if (shape not in [(1,), (3,), (3,3)]) or dtype != np.float64: continue
+                                if (shape not in [(), (3,), (3,3)]) or dtype != np.float64: continue
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
                                 attributes[-1].attrib={'Name':          name.split('/',2)[2],
                                                        'Center':        'Cell',
-                                                       'AttributeType': 'Tensor'}
+                                                       'AttributeType': {():'Scalar',(3):'Vector',(3,3):'Tensor'}[shape]}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                                 data_items[-1].attrib={'Format':     'HDF',
                                                        'NumberType': 'Float',
                                                        'Precision':  f'{prec}',
-                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
+                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,1 if shape == () else
+                                                                                                     np.prod(shape))}
                                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
 
         with open(self.fname.with_suffix('.xdmf').name,'w') as f:
