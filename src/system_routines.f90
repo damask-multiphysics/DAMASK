@@ -8,79 +8,65 @@ module system_routines
   use prec
 
   implicit none
+  private
 
   public :: &
-    signalterm_C, &
-    signalusr1_C, &
-    signalusr2_C, &
-    isDirectory, &
+    setCWD, &
     getCWD, &
     getHostName, &
-    setCWD
+    getUserName, &
+    signalterm_C, &
+    signalusr1_C, &
+    signalusr2_C
+
 
   interface
 
-  function isDirectory_C(path) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_INT, &
-      C_CHAR
+  function setCWD_C(cwd) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
+    
+    integer(C_INT) :: setCWD_C
+    character(kind=C_CHAR), dimension(*), intent(in) :: cwd
+  end function setCWD_C
 
+  subroutine getCWD_C(cwd, stat) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
     use prec
 
-    integer(C_INT) :: isDirectory_C
-    character(kind=C_CHAR), dimension(pPathLen), intent(in) :: path                                 ! C string is an array
-  end function isDirectory_C
-
-  subroutine getCurrentWorkDir_C(path, stat) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_INT, &
-      C_CHAR
-
-    use prec
-
-    character(kind=C_CHAR), dimension(pPathLen), intent(out) :: path                                ! C string is an array
-    integer(C_INT),                              intent(out) :: stat
-  end subroutine getCurrentWorkDir_C
-
-  subroutine getHostName_C(str, stat) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_INT, &
-      C_CHAR
-
-    use prec
-
-    character(kind=C_CHAR), dimension(pStringLen), intent(out) :: str                               ! C string is an array
+    character(kind=C_CHAR), dimension(pPathLen+1), intent(out) :: cwd                               ! NULL-terminated array
     integer(C_INT),                                intent(out) :: stat
+  end subroutine getCWD_C
+
+  subroutine getHostName_C(hostname, stat) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
+    use prec
+
+    character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: hostname                        ! NULL-terminated array
+    integer(C_INT),                                  intent(out) :: stat
   end subroutine getHostName_C
 
-  function chdir_C(path) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_INT, &
-      C_CHAR
-
+  subroutine getUserName_C(username, stat) bind(C)
+    use, intrinsic :: ISO_C_Binding, only: C_INT, C_CHAR
     use prec
 
-    integer(C_INT) :: chdir_C
-    character(kind=C_CHAR), dimension(pPathLen), intent(in) :: path                                 ! C string is an array
-  end function chdir_C
+    character(kind=C_CHAR), dimension(pStringLen+1), intent(out) :: username                        ! NULL-terminated array
+    integer(C_INT),                                  intent(out) :: stat
+  end subroutine getUserName_C
 
   subroutine signalterm_C(handler) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_FUNPTR
+    use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
 
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalterm_C
 
   subroutine signalusr1_C(handler) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_FUNPTR
+    use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
 
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalusr1_C
 
   subroutine signalusr2_C(handler) bind(C)
-    use, intrinsic :: ISO_C_Binding, only: &
-      C_FUNPTR
+    use, intrinsic :: ISO_C_Binding, only: C_FUNPTR
 
     type(C_FUNPTR), intent(in), value :: handler
   end subroutine signalusr2_C
@@ -89,45 +75,48 @@ module system_routines
 
 contains
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief figures out if a given path is a directory (and not an ordinary file)
+!> @brief set the current working directory
 !--------------------------------------------------------------------------------------------------
-logical function isDirectory(path)
+logical function setCWD(path)
 
   character(len=*), intent(in) :: path
-  
-  isDirectory=merge(.True.,.False.,isDirectory_C(f_c_string(path)) /= 0_C_INT)
 
-end function isDirectory
+  setCWD=merge(.True.,.False.,setCWD_C(f_c_string(path)) /= 0_C_INT)
+
+end function setCWD
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets the current working directory
+!> @brief get the current working directory
 !--------------------------------------------------------------------------------------------------
 function getCWD()
 
-  character(kind=C_CHAR), dimension(pPathLen) :: getCWD_Cstring
-  character(len=:),       allocatable         :: getCWD
+  character(len=:), allocatable :: getCWD
+
+  character(kind=C_CHAR), dimension(pPathLen+1) :: getCWD_Cstring
   integer(C_INT) :: stat
 
-  call getCurrentWorkDir_C(getCWD_Cstring,stat)
+  call getCWD_C(getCWD_Cstring,stat)
 
   if(stat == 0) then
     getCWD = c_f_string(getCWD_Cstring)
   else
-    getCWD = 'Error occured when getting currend working directory'
+    error stop 'invalid working directory'
   endif
 
 end function getCWD
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief gets the current host name
+!> @brief get the host name
 !--------------------------------------------------------------------------------------------------
 function getHostName()
 
-  character(kind=C_CHAR), dimension(pPathLen) :: getHostName_Cstring
-  character(len=:),       allocatable         :: getHostName
+  character(len=:), allocatable :: getHostName
+
+  character(kind=C_CHAR), dimension(pStringLen+1) :: getHostName_Cstring
   integer(C_INT) :: stat
 
   call getHostName_C(getHostName_Cstring,stat)
@@ -135,22 +124,31 @@ function getHostName()
   if(stat == 0) then
     getHostName = c_f_string(getHostName_Cstring)
   else
-    getHostName = 'Error occured when getting host name'
+    getHostName = 'n/a (Error!)'
   endif
 
 end function getHostName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief changes the current working directory
+!> @brief get the user name
 !--------------------------------------------------------------------------------------------------
-logical function setCWD(path)
+function getUserName()
 
-  character(len=*), intent(in) :: path
+  character(len=:), allocatable :: getUserName
 
-  setCWD=merge(.True.,.False.,chdir_C(f_c_string(path)) /= 0_C_INT)
+  character(kind=C_CHAR), dimension(pStringLen+1) :: getUserName_Cstring
+  integer(C_INT) :: stat
 
-end function setCWD
+  call getUserName_C(getUserName_Cstring,stat)
+
+  if(stat == 0) then
+    getUserName = c_f_string(getUserName_Cstring)
+  else
+    getUserName = 'n/a (Error!)'
+  endif
+
+end function getUserName
 
 
 !--------------------------------------------------------------------------------------------------
@@ -182,14 +180,14 @@ end function c_f_string
 !--------------------------------------------------------------------------------------------------
 pure function f_c_string(f_string) result(c_string)
 
-  character(len=*), intent(in)                       :: f_string
-  character(kind=C_CHAR), dimension(len(f_string)+1) :: c_string
+  character(len=*), intent(in)                            :: f_string
+  character(kind=C_CHAR), dimension(len_trim(f_string)+1) :: c_string
   integer :: i
 
-  do i=1,len(f_string)
+  do i=1,len_trim(f_string)
     c_string(i)=f_string(i:i)
   enddo
-  c_string(i) = C_NULL_CHAR
+  c_string(len_trim(f_string)+1) = C_NULL_CHAR
 
 end function f_c_string
 

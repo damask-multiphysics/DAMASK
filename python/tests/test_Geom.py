@@ -34,7 +34,7 @@ def reference_dir(reference_dir_base):
 class TestGeom:
 
     @pytest.fixture(autouse=True)
-    def _execution_stamp(self, execution_stamp):
+    def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
 
     def test_diff_equal(self,default):
@@ -45,6 +45,8 @@ class TestGeom:
         new = Geom(default.material[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
         assert str(default.diff(new)) != ''
 
+    def test_repr(self,default):
+        print(default)
 
     def test_read_write_vtr(self,default,tmp_path):
         default.save(tmp_path/'default')
@@ -70,6 +72,9 @@ class TestGeom:
             Geom(default.material[1:,1:,1:],
                  size=np.ones(2))
 
+    def test_save_load_ASCII(self,default,tmp_path):
+        default.save_ASCII(tmp_path/'ASCII')
+        assert geom_equal(Geom.load_ASCII(tmp_path/'ASCII'),default)
 
     def test_invalid_origin(self,default):
         with pytest.raises(ValueError):

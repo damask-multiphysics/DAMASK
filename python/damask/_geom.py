@@ -2,6 +2,7 @@ import copy
 import multiprocessing as mp
 from functools import partial
 from os import path
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -73,23 +74,23 @@ class Geom:
         """
         message = []
         if np.any(other.grid != self.grid):
-            message.append(util.delete(f'grid     a b c:     {util.srepr(other.grid," x ")}'))
+            message.append(util.deemph(f'grid     a b c:     {util.srepr(other.grid," x ")}'))
             message.append(util.emph(  f'grid     a b c:     {util.srepr( self.grid," x ")}'))
 
         if not np.allclose(other.size,self.size):
-            message.append(util.delete(f'size     x y z:     {util.srepr(other.size," x ")}'))
+            message.append(util.deemph(f'size     x y z:     {util.srepr(other.size," x ")}'))
             message.append(util.emph(  f'size     x y z:     {util.srepr( self.size," x ")}'))
 
         if not np.allclose(other.origin,self.origin):
-            message.append(util.delete(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
+            message.append(util.deemph(f'origin   x y z:     {util.srepr(other.origin,"   ")}'))
             message.append(util.emph(  f'origin   x y z:     {util.srepr( self.origin,"   ")}'))
 
         if other.N_materials != self.N_materials:
-            message.append(util.delete(f'# materials:        {other.N_materials}'))
+            message.append(util.deemph(f'# materials:        {other.N_materials}'))
             message.append(util.emph(  f'# materials:        { self.N_materials}'))
 
         if np.nanmax(other.material) != np.nanmax(self.material):
-            message.append(util.delete(f'max material:       {np.nanmax(other.material)}'))
+            message.append(util.deemph(f'max material:       {np.nanmax(other.material)}'))
             message.append(util.emph(  f'max material:       {np.nanmax( self.material)}'))
 
         return util.return_message(message)
@@ -188,12 +189,16 @@ class Geom:
         """
         Read a geom file.
 
+        Storing geometry files in ASCII format is deprecated.
+        This function will be removed in a future version of DAMASK.
+
         Parameters
         ----------
         fname : str, pathlib.Path, or file handle
             Geometry file to read.
 
         """
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
         try:
             f = open(fname)
         except TypeError:
@@ -245,7 +250,6 @@ class Geom:
             material = material.astype('int')
 
         return Geom(material.reshape(grid,order='F'),size,origin,comments)
-
 
 
     @staticmethod
@@ -523,6 +527,9 @@ class Geom:
         """
         Write a geom file.
 
+        Storing geometry files in ASCII format is deprecated.
+        This function will be removed in a future version of DAMASK.
+
         Parameters
         ----------
         fname : str or file handle
@@ -531,6 +538,7 @@ class Geom:
             Compress geometry with 'x of y' and 'a to b'.
 
         """
+        warnings.warn('Support for ASCII-based geom format will be removed in DAMASK 3.1.0', DeprecationWarning)
         header =  [f'{len(self.comments)+4} header'] + self.comments \
                 + ['grid   a {} b {} c {}'.format(*self.grid),
                    'size   x {} y {} z {}'.format(*self.size),
@@ -547,8 +555,7 @@ class Geom:
 
     def show(self):
         """Show on screen."""
-        v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
-        v.show()
+        VTK.from_rectilinear_grid(self.grid,self.size,self.origin).show()
 
 
     def add_primitive(self,dimension,center,exponent,

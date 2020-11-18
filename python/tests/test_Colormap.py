@@ -17,8 +17,11 @@ def reference_dir(reference_dir_base):
 class TestColormap:
 
     @pytest.fixture(autouse=True)
-    def _execution_stamp(self, execution_stamp):
+    def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
+
+    def test_repr(self,patch_plt_show):
+        print(Colormap.from_predefined('stress'))
 
     def test_conversion(self):
         specials = np.array([[0.,0.,0.],
@@ -138,8 +141,8 @@ class TestColormap:
             diff = ImageChops.difference(img_reference.convert('RGB'),img_current.convert('RGB'))
             assert not diff.getbbox()
 
-    def test_list(self):
-        Colormap.list_predefined()
+    def test_predefined(self):
+        assert (isinstance(Colormap.predefined,dict))
 
     @pytest.mark.parametrize('format,ext',[('ASCII','.txt'),
                                            ('paraview','.json'),

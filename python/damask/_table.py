@@ -31,7 +31,7 @@ class Table:
 
     def __repr__(self):
         """Brief overview."""
-        return util.srepr(self.comments)+'\n'+self.data.__repr__()
+        return '\n'.join(['# '+c for c in self.comments])+'\n'+self.data.__repr__()
 
     def __len__(self):
         """Number of rows."""
@@ -159,7 +159,7 @@ class Table:
         comments = [util.execution_stamp('Table','from_ang')]
         for line in content:
             if line.startswith('#'):
-                comments.append(line.strip())
+                comments.append(line.split('#',1)[1].strip())
             else:
                 break
 
@@ -221,6 +221,7 @@ class Table:
         else:
             dup.data[label]       = data.reshape(dup.data[label].shape)
         return dup
+
 
     def add(self,label,data,info=None):
         """

@@ -17,6 +17,7 @@ module discretization_mesh
   use IO
   use config
   use discretization
+  use results
   use FEsolving
   use FEM_quadrature
   use YAML_types
@@ -181,6 +182,10 @@ subroutine discretization_mesh_init(restart)
   call discretization_init(materialAt,&
                            reshape(mesh_ipCoordinates,[3,mesh_maxNips*mesh_NcpElems]), &
                            mesh_node0)
+
+  call results_openJobFile
+  call results_closeGroup(results_addGroup('geometry'))
+  call results_closeJobFile
 
 end subroutine discretization_mesh_init
 

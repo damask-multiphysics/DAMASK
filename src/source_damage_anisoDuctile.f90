@@ -60,7 +60,7 @@ module function source_damage_anisoDuctile_init(source_length) result(mySources)
     phase => phases%get(p)
     if(any(mySources(:,p))) source_damage_anisoDuctile_instance(p) = count(mySources(:,1:p))
     if(count(mySources(:,p)) == 0) cycle
-    mech  => phase%get('mech')
+    mech  => phase%get('mechanics')
     pl    => mech%get('plasticity')
     sources => phase%get('source')
     do sourceOffset = 1, sources%length

@@ -168,7 +168,7 @@ def initial_conditions(material):
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(usage='%prog options [file[s]]', description = """
 Generate MSC.Marc FE hexahedral mesh from geom file.
 
 """, version = scriptID)
