@@ -300,7 +300,7 @@ class Result:
           constituent : int
               Constituent to consider for phase data
           tagged : bool
-              tag Table.column name with '#component'
+              tag Table.column name with '#constituent'
               defaults to False
           split : bool
               split Table by increment and return dictionary of Tables
@@ -309,7 +309,7 @@ class Result:
         """
         sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
               [datasets]
-        tag = f'#{component}' if tagged else ''
+        tag = f'#{constituent}' if tagged else ''
         tbl = {} if split else None
         inGeom = {}
         inData = {}
@@ -323,8 +323,8 @@ class Result:
                         if prop == 'geometry':
                             inGeom[key] = inData[key] = np.arange(self.N_materialpoints)
                         elif prop == 'phase':
-                            inGeom[key] = np.where(f['mapping/phase'][:,component]['Name'] == str.encode(name))[0]
-                            inData[key] =          f['mapping/phase'][inGeom[key],component]['Position']
+                            inGeom[key] = np.where(f['mapping/phase'][:,constituent]['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/phase'][inGeom[key],constituent]['Position']
                         elif prop == 'homogenization':
                             inGeom[key] = np.where(f['mapping/homogenization']['Name'] == str.encode(name))[0]
                             inData[key] =          f['mapping/homogenization'][inGeom[key].tolist()]['Position']
@@ -1237,6 +1237,7 @@ class Result:
                 with h5py.File(self.fname,'r') as f:
                     v = VTK.from_unstructured_grid(f['/geometry/x_n'][()],
                                                    f['/geometry/T_c'][()]-1,
+                                                   f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
                                                    f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
             v = VTK.from_poly_data(self.cell_coordinates)
@@ -1249,27 +1250,29 @@ class Result:
             self.pick('homogenizations',False)
             for label in (labels if isinstance(labels,list) else [labels]):
                 for o in self.iterate('out_type_ph'):
-                    if o != 'mechanics':
-                        for c in self.iterate('phases'):
-                            path = self.get_dataset_location(label)
-                            if len(path) == 0:
+                    for c in range(self.N_constituents):
+                        prefix = '' if self.N_constituents == 1 else f'constituent{c}/'
+                        if o != 'mechanics':
+                            for _ in self.iterate('phases'):
+                                path = self.get_dataset_location(label)
+                                if len(path) == 0:
+                                    continue
+                                array = self.read_dataset(path,c)
+                                v.add(array,prefix+path[0].split('/',1)[1])
+                        else:
+                            paths = self.get_dataset_location(label)
+                            if len(paths) == 0:
                                 continue
-                            array = self.read_dataset(path,0)
-                            v.add(array,'1_'+path[0].split('/',1)[1]) #ToDo: hard coded 1!
-                    else:
-                        paths = self.get_dataset_location(label)
-                        if len(paths) == 0:
-                            continue
-                        array = self.read_dataset(paths,0)
-                        ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')                 # identify  phase name
-                        dset_name = '1_' + re.sub(ph_name,r'',paths[0].split('/',1)[1])                 # removing phase name
-                        v.add(array,dset_name)
+                            array = self.read_dataset(paths,c)
+                            ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')              # identify  phase name
+                            dset_name = prefix+re.sub(ph_name,r'',paths[0].split('/',1)[1])          # remove phase name
+                            v.add(array,dset_name)
             self.pick('homogenizations',picked_backup_ho)
 
             picked_backup_ph = self.selection['phases'].copy()
             self.pick('phases',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for o in self.iterate('out_type_ho'):
+                for _ in self.iterate('out_type_ho'):
                     paths = self.get_dataset_location(label)
                     if len(paths) == 0:
                         continue
