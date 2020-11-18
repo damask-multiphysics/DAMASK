@@ -60,8 +60,7 @@ def stress_Cauchy(P,F):
         Cauchy stress.
 
     """
-    sigma = _np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F)
-    return tensor.symmetric(sigma)
+    return tensor.symmetric(_np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F))
 
 
 def deviatoric_part(T):
@@ -79,7 +78,7 @@ def deviatoric_part(T):
         Deviatoric part of T.
 
     """
-    return T - _np.einsum('...ij,...',_np.eye(3),spherical_part(T))
+    return T - spherical_part(T,tensor=True)
 
 
 def maximum_shear(T_sym):
@@ -157,8 +156,7 @@ def stress_second_Piola_Kirchhoff(P,F):
         Second Piola-Kirchhoff stress.
 
     """
-    S = _np.einsum('...jk,...kl',_np.linalg.inv(F),P)
-    return tensor.symmetric(S)
+    return tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
 
 
 def rotational_part(T):
