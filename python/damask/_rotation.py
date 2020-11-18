@@ -463,8 +463,8 @@ class Rotation:
 
     @staticmethod
     def from_Euler_angles(phi,
-                    degrees = False,
-                    **kwargs):
+                          degrees = False,
+                          **kwargs):
         """
         Initialize from Bunge-Euler angles.
 
@@ -607,9 +607,9 @@ class Rotation:
 
     @staticmethod
     def from_Rodrigues_vector(rho,
-                       normalize = False,
-                       P = -1,
-                       **kwargs):
+                              normalize = False,
+                              P = -1,
+                              **kwargs):
         """
         Initialize from Rodrigues-Frank vector.
 
@@ -1440,3 +1440,9 @@ class Rotation:
                      np.where(np.maximum(np.abs(xyz[...,1]),np.abs(xyz[...,2])) <= np.abs(xyz[...,0]),1,2))
 
         return order[direction][p]
+
+
+# for compatibility with deprecated tests
+Rotation.from_Eulers = Rotation.from_Euler_angles
+Rotation.as_Eulers   = Rotation.as_Euler_angles
+Rotation.from_Rodrigues = Rotation.from_Rodrigues_vector
