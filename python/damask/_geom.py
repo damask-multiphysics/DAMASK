@@ -934,10 +934,10 @@ class Geom:
              [0, 1,                        self.grid[0]+1+1,                        self.grid[0]+1]]
          
         for d_s in [0,1,2]:
-            mask = np.where(self.material==np.roll(self.material,1,d_s),False,True)
+            mask = self.material != np.roll(self.material,1,d_s)
             for d in [0,1,2]:
-                mask = np.concatenate((mask,np.take(mask,[0],d)),d) if d_s == d else \
-                       np.concatenate((mask,np.logical_and(np.take(mask,[0],d),False)),d)
+                extra_layer = np.take(mask,[0],d) if d_s == d else np.zeros_like(np.take(mask,[0],d),bool)
+                mask = np.concatenate((mask,extra_layer),d)
             if d_s == 0 and periodic: mask[0,:,:] = mask[-1,:,:] = False
             if d_s == 1 and periodic: mask[:,0,:] = mask[:,-1,:] = False
             if d_s == 2 and periodic: mask[:,:,0] = mask[:,:,-1] = False
