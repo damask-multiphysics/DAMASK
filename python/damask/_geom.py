@@ -926,7 +926,6 @@ class Geom:
             Show grain boundaries only across certain axis. [X=0,Y=1,Z=2]. Defaults to all possible. 
 
         """
-
         if across in [[0],[1],[2],[0,1],[1,2],[0,2],[0,1,2]]:
             pass 
         elif across == [[0],[1],[2],[0,1],[1,2],[0,2],[0,1,2]]:
