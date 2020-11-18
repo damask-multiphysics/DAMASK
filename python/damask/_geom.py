@@ -247,7 +247,7 @@ class Geom:
             raise TypeError(f'Invalid file: expected {grid.prod()} entries, found {i}')
 
         if not np.any(np.mod(material,1) != 0.0):                                             # no float present
-            material = material.astype('int')
+            material = material.astype('int') - (1 if material.min() > 0 else 0)
 
         return Geom(material.reshape(grid,order='F'),size,origin,comments)
 
