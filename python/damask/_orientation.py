@@ -802,7 +802,7 @@ class Orientation(Rotation):
             return np.all(components >= 0.0,axis=-1)
 
 
-    def IPF_color(self,vector,proper=False):
+    def IPF_color(self,vector,in_SST=True,proper=False):
         """
         Map vector to RGB color within standard stereographic triangle of own symmetry.
 
@@ -810,6 +810,9 @@ class Orientation(Rotation):
         ----------
         vector : numpy.ndarray of shape (...,3)
             Vector to colorize.
+        in_SST : bool, optional
+            Consider symmetrically equivalent orientations such that poles are located in SST.
+            Defaults to True.
         proper : bool, optional
             Consider only vectors with z >= 0, hence combine two neighboring SSTs (with mirrored colors).
             Defaults to False.
@@ -824,7 +827,7 @@ class Orientation(Rotation):
         Inverse pole figure color of the e_3 direction for a crystal in "Cube" orientation with cubic symmetry:
 
         >>> o = damask.Orientation(lattice='cubic')
-        >>> o.IPF_color(o.to_SST([0,0,1]))
+        >>> o.IPF_color([0,0,1])
         array([1., 0., 0.])
 
         References
@@ -847,9 +850,12 @@ class Orientation(Rotation):
         ...    }
 
         """
-        vector_ = np.array(vector)
-        if vector_.shape[-1] != 3:
+        if np.array(vector).shape[-1] != 3:
             raise ValueError('Input is not a field of three-dimensional vectors.')
+
+        vector_ = self.to_SST(vector,proper) if in_SST else \
+                  self @ np.broadcast_to(vector,self.shape+(3,))
+
 
         if self.family == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
@@ -1076,7 +1082,7 @@ class Orientation(Rotation):
 
 
     @classmethod
-    def Bravais_to_Miller(cls,uvtw=None,hkil=None):
+    def Bravais_to_Miller(cls,*,uvtw=None,hkil=None):
         """
         Transform 4 Miller–Bravais indices to 3 Miller indices of crystal direction [uvw] or plane normal (hkl).
 
@@ -1104,7 +1110,7 @@ class Orientation(Rotation):
 
 
     @classmethod
-    def Miller_to_Bravais(cls,uvw=None,hkl=None):
+    def Miller_to_Bravais(cls,*,uvw=None,hkl=None):
         """
         Transform 3 Miller indices to 4 Miller–Bravais indices of crystal direction [uvtw] or plane normal (hkil).
 
@@ -1133,7 +1139,7 @@ class Orientation(Rotation):
         return np.einsum('il,...l->...i',basis,axis)
 
 
-    def to_lattice(self,direction=None,plane=None):
+    def to_lattice(self,*,direction=None,plane=None):
         """
         Calculate lattice vector corresponding to crystal frame direction or plane normal.
 
@@ -1157,7 +1163,7 @@ class Orientation(Rotation):
         return np.einsum('il,...l->...i',basis,axis)
 
 
-    def to_frame(self,uvw=None,hkl=None,with_symmetry=False):
+    def to_frame(self,*,uvw=None,hkl=None,with_symmetry=False):
         """
         Calculate crystal frame vector along lattice direction [uvw] or plane normal (hkl).
 
@@ -1185,7 +1191,7 @@ class Orientation(Rotation):
                 np.einsum('il,...l->...i',basis,axis))
 
 
-    def to_pole(self,uvw=None,hkl=None,with_symmetry=False):
+    def to_pole(self,*,uvw=None,hkl=None,with_symmetry=False):
         """
         Calculate lab frame vector along lattice direction [uvw] or plane normal (hkl).
 

@@ -231,11 +231,11 @@ class TestOrientation:
     @pytest.mark.parametrize('shape',[(1),(2,3),(4,3,2)])
     @pytest.mark.parametrize('vector',np.array([[1,0,0],[1,2,3],[-1,1,-1]]))
     @pytest.mark.parametrize('proper',[True,False])
-    def test_IPF_color_vectorization(self,lattice,shape,vector,proper):
+    @pytest.mark.parametrize('in_SST',[True,False])
+    def test_IPF_color_vectorization(self,lattice,shape,vector,proper,in_SST):
         o = Orientation.from_random(lattice=lattice,shape=shape)
-        poles = o.to_SST(vector=vector,proper=proper)
-        for r, theO in zip(o.IPF_color(poles,proper=proper).reshape((-1,3)),o.flatten()):
-            assert np.allclose(r,theO.IPF_color(theO.to_SST(vector=vector,proper=proper),proper=proper))
+        for r, theO in zip(o.IPF_color(vector,in_SST=in_SST,proper=proper).reshape((-1,3)),o.flatten()):
+            assert np.allclose(r,theO.IPF_color(vector,in_SST=in_SST,proper=proper))
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     @pytest.mark.parametrize('a,b',[
@@ -263,14 +263,14 @@ class TestOrientation:
         cube = Orientation(lattice='cubic')
         for direction in set(permutations(np.array(color['direction']))):
             assert np.allclose(np.array(color['RGB']),
-                               cube.IPF_color(cube.to_SST(vector=np.array(direction),proper=proper),proper=proper))
+                               cube.IPF_color(vector=np.array(direction),proper=proper))
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     @pytest.mark.parametrize('proper',[True,False])
     def test_IPF_equivalent(self,set_of_quaternions,lattice,proper):
         direction = np.random.random(3)*2.0-1.0
         o = Orientation(rotation=set_of_quaternions,lattice=lattice).equivalent
-        color = o.IPF_color(o.to_SST(vector=direction,proper=proper),proper=proper)
+        color = o.IPF_color(vector=direction,proper=proper)
         assert np.allclose(np.broadcast_to(color[0,...],color.shape),color)
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
