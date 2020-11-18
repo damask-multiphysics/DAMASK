@@ -217,7 +217,7 @@ module subroutine mech_init
 
   do p = 1, phases%length
     phase   => phases%get(p)
-    mech    => phase%get('mech')
+    mech    => phase%get('mechanics')
     elastic => mech%get('elasticity')
     if(elastic%get_asString('type') == 'hooke') then
       phase_elasticity(p) = ELASTICITY_HOOKE_ID
@@ -234,7 +234,7 @@ module subroutine mech_init
   if(maxVal(phase_NstiffnessDegradations)/=0) then
     do p = 1, phases%length
       phase => phases%get(p)
-      mech    => phase%get('mech')
+      mech    => phase%get('mechanics')
       stiffDegradation => mech%get('stiffness_degradation',defaultVal=emptyList)
       do stiffDegradationCtr = 1, stiffDegradation%length
         if(stiffDegradation%get_asString(stiffDegradationCtr) == 'damage') &
@@ -285,7 +285,7 @@ module function plastic_active(plastic_label)  result(active_plastic)
   allocate(active_plastic(phases%length), source = .false. )
   do p = 1, phases%length
     phase => phases%get(p)
-    mech  => phase%get('mech')
+    mech  => phase%get('mechanics')
     pl    => mech%get('plasticity')
     if(pl%get_asString('type') == plastic_label) active_plastic(p) = .true.
   enddo
