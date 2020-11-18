@@ -857,7 +857,7 @@ class Geom:
         
         index={}
         nodes={}
-        nodes_PBC={}
+        nodes_PBC={} 
         if periodic:
             nodes_PBC['0']=np.array([])
             nodes_PBC['1']=np.array([])
@@ -909,8 +909,118 @@ class Geom:
             q.GetPointIds().SetId(2, p+(self.grid[0]+1)+1)
             q.GetPointIds().SetId(3, p+(self.grid[0]+1))
             cells.InsertNextCell(q)
-
+        
         v.vtk_data.SetPolys(cells)
         v.save('GrainBoundaries') 
+
+    def ShowGBoptimized(self,periodic=False,across=[[0],[1],[2],[0,1],[1,2],[0,2],[0,1,2]]):
+        """
+        Create an extra VTK file to show grain boundaries as feature edges.
+
+        Parameters
+        ----------
+        periodic : Boolean, optional
+            Show boundaries at periodic nodes too. Defaults to False.
+        across : list of lists
+            Show grain boundaries only across certain axis. [X=0,Y=1,Z=2]. Defaults to all possible. 
+
+        """
+
+        if across in [[0],[1],[2],[0,1],[1,2],[0,2],[0,1,2]]:
+            pass 
+        elif across == [[0],[1],[2],[0,1],[1,2],[0,2],[0,1,2]]:
+            pass
+        else:
+            print('across list not valid, it must be in [[0],[1],[2],[1,2],[2,3],[1,3],[1,2,3]]')
+
+        coord=grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
+        index={}
+        nodes={}
+        nodes_PBC={}
+        if periodic:
+            nodes_PBC['0']=np.array([])
+            nodes_PBC['1']=np.array([])
+            nodes_PBC['2']=np.array([])
+        else:
+            nodes_PBC['0']=np.concatenate((
+                        np.arange(0                                        , np.prod(self.grid+1)     , (self.grid[0]+1) ),
+                        np.arange(self.grid[0]                             , np.prod(self.grid+1)     , (self.grid[0]+1) )  ))
+            nodes_PBC['2']=np.concatenate((  
+                        np.arange(0                                        , np.prod(self.grid[:2]+1) , 1                ), 
+                        np.arange(np.prod(self.grid+1) - np.prod(self.grid[:2]+1), \
+                                                    np.prod(self.grid+1)     , 1                )  ))
+            nodes_PBC['1']=np.concatenate((   
+                        np.concatenate([np.arange((i)*np.prod(self.grid[:2]+1), \
+                                       (i)*np.prod(self.grid[:2]+1)+ (self.grid[0]+1)) for i in range(self.grid[2]+1)]) ,
+                        np.concatenate([np.arange( (i+1)*np.prod(self.grid[:2]+1)-(self.grid[0]+1),\
+                                                (i+1)*np.prod(self.grid[:2]+1))  for i in range(self.grid[2]+1)])  ))
+        
+        for d_s in [0,1,2]:
+            base_nodes = np.where(self.material==np.roll(self.material,1,d_s),False,True)
+            for d in [0,1,2]:
+                if d_s == d:
+                    base_nodes = np.concatenate((base_nodes,np.take(base_nodes,[0],d)),d)
+                else:
+                    base_nodes = np.concatenate((base_nodes,np.logical_and(np.take(base_nodes,[0],d),False)),d)
+            nodes['{}'.format(d_s)]= np.argwhere(base_nodes.flatten(order='F'))[:,0]
+            index['{}'.format(d_s)]=np.isin(nodes['{}'.format(d_s)],nodes_PBC['{}'.format(d_s)],assume_unique=True,invert=True)
+
+        nodes_x=nodes['0'][index['0']]
+        coord_x=np.concatenate(( [[coord[p], \
+         coord[p+(self.grid[0]+1)], \
+         coord[p+np.prod(self.grid[:2]+1)+(self.grid[0]+1)], \
+         coord[p +np.prod(self.grid[:2]+1)]] for p in nodes_x] ))
+
+        nodes_y=nodes['1'][index['1']]
+        coord_y=np.concatenate(( [[coord[p], \
+         coord[p+np.prod(self.grid[:2]+1)], \
+         coord[p+np.prod(self.grid[:2]+1)+1], \
+         coord[p +1]] for p in nodes_y] ))
+
+        nodes_z=nodes['2'][index['2']]
+        coord_z=np.concatenate(( [[coord[p], \
+         coord[p+1], \
+         coord[p+(self.grid[0]+1)+1], \
+         coord[p+(self.grid[0]+1)]] for p in nodes_z] ))
+
+
+        if [0] in across:
+            connectivity_x=np.array([[p,p+1,p+2,p+3] for p in range(0,nodes_x.shape[0],4)])
+            vtk_x=VTK.from_unstructuredGrid(coord_x,connectivity_x,'QUAD')
+            vtk_x.save('GrainBoundariesX') 
+        if [1] in across:
+            connectivity_y=np.array([[p,p+1,p+2,p+3] for p in range(0,nodes_y.shape[0],4)])
+            vtk_y=VTK.from_unstructuredGrid(coord_y,connectivity_y,'QUAD')
+            vtk_y.save('GrainBoundariesY') 
+        if [2] in across:
+            connectivity_z=np.array([[p,p+1,p+2,p+3] for p in range(0,nodes_z.shape[0],4)])
+            vtk_z=VTK.from_unstructuredGrid(coord_z,connectivity_z,'QUAD')
+            vtk_y.save('GrainBoundariesZ') 
+       
+        if [0,1] in across:
+            connectivity_xy=np.array([[p,p+1,p+2,p+3] for p in range(0,4*(nodes_x.shape[0]+nodes_y.shape[0]),4)])
+            nodes_vXY=np.concatenate(( coord_x, coord_y ))
+            vtk_xy=VTK.from_unstructuredGrid(nodes_vXY,connectivity_xy,'QUAD')
+            vtk_xy.save('GrainBoundariesXY') 
+       
+        if [0,2] in across:
+            connectivity_xz=np.array([[p,p+1,p+2,p+3] for p in range(0,4*(nodes_x.shape[0]+nodes_z.shape[0]),4)])
+            nodes_vXZ=np.concatenate(( coord_x, coord_z ))
+            vtk_xz=VTK.from_unstructuredGrid(nodes_vXZ,connectivity_xz,'QUAD')
+            vtk_xz.save('GrainBoundariesXZ') 
+       
+        if [1,2] in across:
+            connectivity_yz=np.array([[p,p+1,p+2,p+3] for p in range(0,4*(nodes_y.shape[0]+nodes_z.shape[0]),4)])
+            nodes_vYZ=np.concatenate(( coord_y, coord_z ))
+            vtk_yz=VTK.from_unstructuredGrid(nodes_vYZ,connectivity_yz,'QUAD')
+            vtk_yz.save('GrainBoundariesYZ') 
+
+        if [0,1,2] in across:
+            connectivity_xyz=np.array([[p,p+1,p+2,p+3] for p in range(0,nodes_x.shape[0]+nodes_y.shape[0]+nodes_z.shape[0],4)])
+            nodes_vXYZ=np.concatenate(( coord_x, coord_y, coord_z ))
+            vtk_xyz=VTK.from_unstructuredGrid(nodes_vXYZ,connectivity_xyz,'QUAD')
+            vtk_xyz.save('GrainBoundariesXYZ') 
+        else:
+            pass
 
 
