@@ -995,7 +995,7 @@ class Geom:
         if [2] in across:
             connectivity_z=np.array([[p,p+1,p+2,p+3] for p in range(0,nodes_z.shape[0],4)])
             vtk_z=VTK.from_unstructuredGrid(coord_z,connectivity_z,'QUAD')
-            vtk_y.save('GrainBoundariesZ') 
+            vtk_z.save('GrainBoundariesZ') 
        
         if [0,1] in across:
             connectivity_xy=np.array([[p,p+1,p+2,p+3] for p in range(0,4*(nodes_x.shape[0]+nodes_y.shape[0]),4)])
