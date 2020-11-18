@@ -177,7 +177,7 @@ class TestResult:
                         lattice={'fcc':'cF',
                                  'bcc':'cI',
                                  'hex':'hP'}[crystal_structure])
-        in_memory = np.uint8(c.IPF_color(c.to_SST(np.array(d)))*255)
+        in_memory = np.uint8(c.IPF_color(np.array(d))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 
@@ -210,7 +210,7 @@ class TestResult:
         in_memory = mechanics.Mises_stress(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['sigma_vM'],0)
         assert np.allclose(in_memory,in_file)
-    
+
     def test_add_Mises_invalid(self,default):
         default.add_Cauchy('P','F')
         default.add_calculation('sigma_y','#sigma#',unit='y')

@@ -740,7 +740,7 @@ class Result:
                                     'hex':'hP'}[q['meta']['Lattice']])
 
         return {
-                'data': np.uint8(o.IPF_color(o.to_SST(l))*255),
+                'data': np.uint8(o.IPF_color(l)*255),
                 'label': 'IPFcolor_[{} {} {}]'.format(*m),
                 'meta' : {
                           'Unit':        '8-bit RGB',
