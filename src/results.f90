@@ -74,12 +74,11 @@ subroutine results_init(restart)
   if(.not. restart) then
     resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
     call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',7)
+    call results_addAttribute('DADF5_version_minor',8)
     call results_addAttribute('DAMASK_version',DAMASKVERSION)
     call get_command(commandLine)
     call results_addAttribute('call',trim(commandLine))
     call results_closeGroup(results_addGroup('mapping'))
-    call results_closeGroup(results_addGroup('mapping/cellResults'))
     call results_closeJobFile
   endif
 
@@ -121,12 +120,6 @@ subroutine results_addIncrement(inc,time)
   call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
   call results_closeGroup(results_addGroup('current/phase'))
   call results_closeGroup(results_addGroup('current/homogenization'))
-
-  ! for backward compatibility
-  call results_setLink(trim('/inc'//trim(adjustl(incChar)))//'/phase',&
-                       trim('/inc'//trim(adjustl(incChar)))//'/constituent')
-  call results_setLink(trim('/inc'//trim(adjustl(incChar)))//'/homogenization',&
-                       trim('/inc'//trim(adjustl(incChar)))//'/materialpoint')
 
 end subroutine results_addIncrement
 
@@ -656,9 +649,6 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(position_id, hdferr)
 
-  ! for backward compatibility
-  call results_setLink('/mapping/phase','/mapping/cellResults/constituent')
-
 end subroutine results_mapping_constituent
 
 
@@ -813,9 +803,6 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(position_id, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-
-  ! for backward compatibility
-  call results_setLink('/mapping/homogenization','/mapping/cellResults/materialpoint')
 
 end subroutine results_mapping_homogenization
 

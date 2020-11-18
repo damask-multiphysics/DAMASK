@@ -41,14 +41,10 @@ class Result:
         """
         with h5py.File(fname,'r') as f:
 
-            try:
-                self.version_major = f.attrs['DADF5_version_major']
-                self.version_minor = f.attrs['DADF5_version_minor']
-            except KeyError:
-                self.version_major = f.attrs['DADF5-major']
-                self.version_minor = f.attrs['DADF5-minor']
+            self.version_major = f.attrs['DADF5_version_major']
+            self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 2 <= self.version_minor <= 7:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 8:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -56,35 +52,33 @@ class Result:
             if self.structured:
                 self.grid   = f['geometry'].attrs['grid']
                 self.size   = f['geometry'].attrs['size']
-                self.origin = f['geometry'].attrs['origin'] if self.version_major == 0 and self.version_minor >= 5 else \
-                              np.zeros(3)
+                self.origin = f['geometry'].attrs['origin']
 
             r=re.compile('inc[0-9]+')
             increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
             self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
             self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
-            self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
-            self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
-            self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
+            self.N_materialpoints, self.N_constituents =   np.shape(f['mapping/phase'])
 
-            # faster, but does not work with (deprecated) DADF5_postResults
-            #self.materialpoints  = [m for m in f['inc0/materialpoint']]
-            #self.constituents    = [c for c in f['inc0/constituent']]
+            self.homogenizations  = [m.decode() for m in np.unique(f['mapping/homogenization']['Name'])]
+            self.phases           = [c.decode() for c in np.unique(f['mapping/phase']['Name'])]
 
-            self.con_physics = []
-            for c in self.constituents:
-                self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
-            self.con_physics = list(set(self.con_physics))                                          # make unique
+            self.out_type_ph = []
+            for c in self.phases:
+                self.out_type_ph += f['/'.join([self.increments[0],'phase',c])].keys()
+            self.out_type_ph = list(set(self.out_type_ph))                                          # make unique
 
-            self.mat_physics = []
-            for m in self.materialpoints:
-                self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
-            self.mat_physics = list(set(self.mat_physics))                                          # make unique
+            self.out_type_ho = []
+            for m in self.homogenizations:
+                self.out_type_ho += f['/'.join([self.increments[0],'homogenization',m])].keys()
+            self.out_type_ho = list(set(self.out_type_ho))                                          # make unique
 
-        self.selection = {'increments':     self.increments,
-                          'constituents':   self.constituents,'materialpoints': self.materialpoints,
-                          'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
+        self.selection = {'increments':      self.increments,
+                          'phases':          self.phases,
+                          'homogenizations': self.homogenizations,
+                          'out_type_ph':     self.out_type_ph,
+                          'out_type_ho':     self.out_type_ho
                          }
 
         self.fname = Path(fname).absolute()
@@ -295,16 +289,16 @@ class Result:
         Must not mix nodal end cell data.
 
         Only data within
-        - inc?????/constituent/*_*/*
-        - inc?????/materialpoint/*_*/*
-        - inc?????/geometry/*
+        - inc*/phase/*/*
+        - inc*/homogenization/*/*
+        - inc*/geometry/*
         are considered.
 
         Parameters
         ----------
           datasets : iterable or str
           component : int
-              homogenization component to consider for constituent data
+              Constituent to consider for phase data
           tagged : bool
               tag Table.column name with '#component'
               defaults to False
@@ -313,8 +307,8 @@ class Result:
               defaults to True
 
         """
-        sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) \
-         else [datasets]
+        sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
+              [datasets]
         tag = f'#{component}' if tagged else ''
         tbl = {} if split else None
         inGeom = {}
@@ -327,15 +321,15 @@ class Result:
                     key = '/'.join([prop,name+tag])
                     if key not in inGeom:
                         if prop == 'geometry':
-                            inGeom[key] = inData[key] = np.arange(self.Nmaterialpoints)
-                        elif prop == 'constituent':
-                            inGeom[key] = np.where(f['mapping/cellResults/constituent'][:,component]['Name'] == str.encode(name))[0]
-                            inData[key] =          f['mapping/cellResults/constituent'][inGeom[key],component]['Position']
-                        else:
-                            inGeom[key] = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(name))[0]
-                            inData[key] =          f['mapping/cellResults/materialpoint'][inGeom[key].tolist()]['Position']
+                            inGeom[key] = inData[key] = np.arange(self.N_materialpoints)
+                        elif prop == 'phase':
+                            inGeom[key] = np.where(f['mapping/phase'][:,component]['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/phase'][inGeom[key],component]['Position']
+                        elif prop == 'homogenization':
+                            inGeom[key] = np.where(f['mapping/homogenization']['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/homogenization'][inGeom[key].tolist()]['Position']
                     shape = np.shape(f[path])
-                    data = np.full((self.Nmaterialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
+                    data = np.full((self.N_materialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
                                    np.nan,
                                    dtype=np.dtype(f[path]))
                     data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
@@ -344,12 +338,12 @@ class Result:
                         try:
                             tbl[inc].add(path,data)
                         except KeyError:
-                            tbl[inc] = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                            tbl[inc] = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
                     else:
                         try:
                             tbl.add(path,data)
                         except AttributeError:
-                            tbl = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                            tbl = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
 
         return tbl
 
@@ -359,8 +353,8 @@ class Result:
         Return groups that contain all requested datasets.
 
         Only groups within
-          - inc*/constituent/*/*
-          - inc*/materialpoint/*/*
+          - inc*/phase/*/*
+          - inc*/homogenization/*/*
           - inc*/geometry/*
 
         are considered as they contain user-relevant data.
@@ -392,7 +386,7 @@ class Result:
 
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     for oo in self.iterate(o):
                         for pp in self.iterate(p):
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
@@ -411,7 +405,7 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
                 message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     message += f'  {o[:-1]}\n'
                     for oo in self.iterate(o):
                         message += f'    {oo}\n'
@@ -445,7 +439,7 @@ class Result:
                     path.append(k)
                 except KeyError:
                     pass
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     for oo in self.iterate(o):
                         for pp in self.iterate(p):
                             k = '/'.join([i,o[:-1],oo,pp,label])
@@ -460,7 +454,7 @@ class Result:
     def get_constituent_ID(self,c=0):
         """Pointwise constituent ID."""
         with h5py.File(self.fname,'r') as f:
-            names = f['/mapping/cellResults/constituent']['Name'][:,c].astype('str')
+            names = f['/mapping/phase']['Name'][:,c].astype('str')
         return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
 
 
@@ -483,7 +477,7 @@ class Result:
         If more than one path is given, the dataset is composed of the individual contributions.
         """
         with h5py.File(self.fname,'r') as f:
-            shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
+            shape = (self.N_materialpoints,) + np.shape(f[path[0]])[1:]
             if len(shape) == 1: shape = shape +(1,)
             dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
             for pa in path:
@@ -493,17 +487,17 @@ class Result:
                     dataset = np.array(f[pa])
                     continue
 
-                p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+                p = np.where(f['mapping/phase'][:,c]['Name'] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/cellResults/constituent']['Position'][p,c])
+                    u = (f['mapping/phase']['Position'][p,c])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
                     dataset[p,:] = a[u,:]
 
-                p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+                p = np.where(f['mapping/homogenization']['Name'] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
+                    u = (f['mapping/homogenization']['Position'][p.tolist()])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
@@ -1132,7 +1126,7 @@ class Result:
         This works only for scalar, 3-vector and 3x3-tensor data.
         Selection is not taken into account.
         """
-        if len(self.constituents) != 1 or not self.structured:
+        if self.N_constituents != 1 or not self.structured:
             raise NotImplementedError('XDMF only available for grid results with 1 constituent.')
 
         xdmf=ET.Element('Xdmf')
@@ -1194,7 +1188,7 @@ class Result:
                                        'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     for oo in getattr(self,o):
                         for pp in getattr(self,p):
                             g = '/'.join([inc,o[:-1],oo,pp])
@@ -1250,12 +1244,12 @@ class Result:
 
         for inc in util.show_progress(self.iterate('increments'),len(self.selection['increments'])):
 
-            materialpoints_backup = self.selection['materialpoints'].copy()
-            self.pick('materialpoints',False)
+            picked_backup_ho = self.selection['homogenizations'].copy()
+            self.pick('homogenizations',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for p in self.iterate('con_physics'):
+                for p in self.iterate('out_type_ph'):
                     if p != 'generic':
-                        for c in self.iterate('constituents'):
+                        for c in self.iterate('phases'):
                             x = self.get_dataset_location(label)
                             if len(x) == 0:
                                 continue
@@ -1266,17 +1260,17 @@ class Result:
                         if len(x) == 0:
                             continue
                         array = self.read_dataset(x,0)
-                        ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')             # identify  phase name
+                        ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(generic))')                   # identify  phase name
                         dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                 # removing phase name
                         v.add(array,dset_name)
-            self.pick('materialpoints',materialpoints_backup)
+            self.pick('homogenizations',picked_backup_ho)
 
-            constituents_backup = self.selection['constituents'].copy()
-            self.pick('constituents',False)
+            picked_backup_ph = self.selection['phases'].copy()
+            self.pick('phases',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for p in self.iterate('mat_physics'):
+                for p in self.iterate('out_type_ho'):
                     if p != 'generic':
-                        for m in self.iterate('materialpoints'):
+                        for m in self.iterate('homogenizations'):
                             x = self.get_dataset_location(label)
                             if len(x) == 0:
                                 continue
@@ -1288,7 +1282,7 @@ class Result:
                             continue
                         array = self.read_dataset(x,0)
                         v.add(array,'1_'+x[0].split('/',1)[1])
-            self.pick('constituents',constituents_backup)
+            self.pick('phases',picked_backup_ph)
 
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')

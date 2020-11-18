@@ -20,9 +20,9 @@ parser.add_argument('filenames', nargs='+',
 parser.add_argument('-d','--dir', dest='dir',default='postProc',metavar='string',
                     help='name of subdirectory relative to the location of the DADF5 file to hold output')
 parser.add_argument('--mat', nargs='+',
-                    help='labels for materialpoint',dest='mat')
+                    help='labels for homogenization',dest='mat')
 parser.add_argument('--con', nargs='+',
-                    help='labels for constituent',dest='con')
+                    help='labels for phase',dest='con')
 
 options = parser.parse_args()
 
@@ -41,15 +41,15 @@ for filename in options.filenames:
         table = damask.Table(np.ones(np.product(results.grid),dtype=int)*int(inc[3:]),{'inc':(1,)})\
                       .add('pos',coords.reshape(-1,3))
 
-        results.pick('materialpoints',False)
-        results.pick('constituents',  True)
+        results.pick('homogenizations',False)
+        results.pick('phases',True)
         for label in options.con:
             x = results.get_dataset_location(label)
             if len(x) != 0:
                 table = table.add(label,results.read_dataset(x,0,plain=True).reshape(results.grid.prod(),-1))
 
-        results.pick('constituents',  False)
-        results.pick('materialpoints',True)
+        results.pick('phases',False)
+        results.pick('homogenizations',True)
         for label in options.mat:
             x = results.get_dataset_location(label)
             if len(x) != 0:

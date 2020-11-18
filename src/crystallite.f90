@@ -739,7 +739,7 @@ subroutine crystallite_results
   character(len=:), allocatable                 :: group,structureLabel
 
   do p=1,size(material_name_phase)
-    group = trim('current/constituent')//'/'//trim(material_name_phase(p))//'/mechanics'
+    group = trim('current/phase')//'/'//trim(material_name_phase(p))//'/mechanics'
 
     call results_closeGroup(results_addGroup(group))
 
@@ -772,11 +772,11 @@ subroutine crystallite_results
         case('P')
           selected_tensors = select_tensors(crystallite_P,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'First Piola-Kirchoff stress','Pa')
+                                   'First Piola-Kirchhoff stress','Pa')
         case('S')
           selected_tensors = select_tensors(crystallite_S,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'Second Piola-Kirchoff stress','Pa')
+                                   'Second Piola-Kirchhoff stress','Pa')
         case('O')
           select case(lattice_structure(p))
             case(lattice_ISO_ID)
@@ -1553,16 +1553,16 @@ subroutine crystallite_restartWrite
   call HDF5_write(fileHandle,crystallite_Li,        'L_i')
   call HDF5_write(fileHandle,crystallite_S,           'S')
 
-  groupHandle = HDF5_addGroup(fileHandle,'constituent')
+  groupHandle = HDF5_addGroup(fileHandle,'phase')
   do i = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_write(groupHandle,plasticState(i)%state,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
-  groupHandle = HDF5_addGroup(fileHandle,'materialpoint')
+  groupHandle = HDF5_addGroup(fileHandle,'homogenization')
   do i = 1, size(material_name_homogenization)
-    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_write(groupHandle,homogState(i)%state,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
@@ -1594,16 +1594,16 @@ subroutine crystallite_restartRead
   call HDF5_read(fileHandle,crystallite_Li0,'L_i')
   call HDF5_read(fileHandle,crystallite_S0, 'S')
 
-  groupHandle = HDF5_openGroup(fileHandle,'constituent')
+  groupHandle = HDF5_openGroup(fileHandle,'phase')
   do i = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
-  groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
+  groupHandle = HDF5_openGroup(fileHandle,'homogenization')
   do i = 1,size(material_name_homogenization)
-    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
