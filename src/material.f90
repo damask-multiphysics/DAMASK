@@ -387,7 +387,7 @@ end subroutine sanityCheck
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Get all keys from a dictionary (currently with #_ prefix)
+!> @brief Get all keys from a dictionary
 !--------------------------------------------------------------------------------------------------
 function getKeys(dict)
 

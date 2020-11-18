@@ -282,7 +282,7 @@ class Result:
   # def datamerger(regular expression to filter groups into one copy)
 
 
-    def place(self,datasets,component=0,tagged=False,split=True):
+    def place(self,datasets,constituent=0,tagged=False,split=True):
         """
         Distribute datasets onto geometry and return Table or (split) dictionary of Tables.
 
@@ -297,7 +297,7 @@ class Result:
         Parameters
         ----------
           datasets : iterable or str
-          component : int
+          constituent : int
               Constituent to consider for phase data
           tagged : bool
               tag Table.column name with '#component'
