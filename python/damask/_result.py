@@ -1248,41 +1248,33 @@ class Result:
             picked_backup_ho = self.selection['homogenizations'].copy()
             self.pick('homogenizations',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for p in self.iterate('out_type_ph'):
-                    if p != 'mechanics':
+                for o in self.iterate('out_type_ph'):
+                    if o != 'mechanics':
                         for c in self.iterate('phases'):
-                            x = self.get_dataset_location(label)
-                            if len(x) == 0:
+                            path = self.get_dataset_location(label)
+                            if len(path) == 0:
                                 continue
-                            array = self.read_dataset(x,0)
-                            v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
+                            array = self.read_dataset(path,0)
+                            v.add(array,'1_'+path[0].split('/',1)[1]) #ToDo: hard coded 1!
                     else:
-                        x = self.get_dataset_location(label)
-                        if len(x) == 0:
+                        paths = self.get_dataset_location(label)
+                        if len(paths) == 0:
                             continue
-                        array = self.read_dataset(x,0)
+                        array = self.read_dataset(paths,0)
                         ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')                 # identify  phase name
-                        dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                 # removing phase name
+                        dset_name = '1_' + re.sub(ph_name,r'',paths[0].split('/',1)[1])                 # removing phase name
                         v.add(array,dset_name)
             self.pick('homogenizations',picked_backup_ho)
 
             picked_backup_ph = self.selection['phases'].copy()
             self.pick('phases',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for p in self.iterate('out_type_ho'):
-                    if p != 'mechanics':
-                        for m in self.iterate('homogenizations'):
-                            x = self.get_dataset_location(label)
-                            if len(x) == 0:
-                                continue
-                            array = self.read_dataset(x,0)
-                            v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
-                    else:
-                        x = self.get_dataset_location(label)
-                        if len(x) == 0:
-                            continue
-                        array = self.read_dataset(x,0)
-                        v.add(array,'1_'+x[0].split('/',1)[1])
+                for o in self.iterate('out_type_ho'):
+                    paths = self.get_dataset_location(label)
+                    if len(paths) == 0:
+                        continue
+                    array = self.read_dataset(paths)
+                    v.add(array,paths[0].split('/',1)[1])
             self.pick('phases',picked_backup_ph)
 
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
