@@ -1249,7 +1249,7 @@ class Result:
             self.pick('homogenizations',False)
             for label in (labels if isinstance(labels,list) else [labels]):
                 for p in self.iterate('out_type_ph'):
-                    if p != 'generic':
+                    if p != 'mechanics':
                         for c in self.iterate('phases'):
                             x = self.get_dataset_location(label)
                             if len(x) == 0:
@@ -1261,7 +1261,7 @@ class Result:
                         if len(x) == 0:
                             continue
                         array = self.read_dataset(x,0)
-                        ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(generic))')                   # identify  phase name
+                        ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')                 # identify  phase name
                         dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                 # removing phase name
                         v.add(array,dset_name)
             self.pick('homogenizations',picked_backup_ho)
@@ -1270,7 +1270,7 @@ class Result:
             self.pick('phases',False)
             for label in (labels if isinstance(labels,list) else [labels]):
                 for p in self.iterate('out_type_ho'):
-                    if p != 'generic':
+                    if p != 'mechanics':
                         for m in self.iterate('homogenizations'):
                             x = self.get_dataset_location(label)
                             if len(x) == 0:
