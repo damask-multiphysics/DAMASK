@@ -1,3 +1,4 @@
+import os
 import multiprocessing as mp
 from pathlib import Path
 
@@ -164,6 +165,9 @@ class VTK:
                 reader = vtk.vtkXMLPolyDataReader()
             else:
                 raise TypeError(f'Unknown file extension {ext}')
+
+            if not os.path.isfile(fname):
+                raise FileNotFoundError(f'No such file: {fname}')
 
             reader.SetFileName(str(fname))
             reader.Update()
