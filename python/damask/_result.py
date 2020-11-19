@@ -35,8 +35,8 @@ class Result:
 
         Parameters
         ----------
-        fname : str
-            name of the DADF5 file to be opened.
+        fname : str or pathlib.Path
+            Name of the DADF5 file to be opened.
 
         """
         with h5py.File(fname,'r') as f:
@@ -111,11 +111,11 @@ class Result:
         Parameters
         ----------
         action : str
-            select from 'set', 'add', and 'del'
+            Select from 'set', 'add', and 'del'
         what : str
-            attribute to change (must be from self.selection)
+            Attribute to change (must be from self.selection)
         datasets : list of str or bool
-           name of datasets as list, supports ? and * wildcards.
+            Name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
         """
@@ -160,15 +160,52 @@ class Result:
             self.selection[what] = diff_sorted
 
 
+    def _get_attribute(self,path,attr):
+        """
+        Get the attribute of a dataset.
+
+        Parameters
+        ----------
+        Path : str
+            Path to the dataset.
+        attr : str
+            Attribute to get
+
+        Returns:
+        --------
+        attr at path, str
+            The requested attribute, will be none if not found.
+
+        """
+        with h5py.File(self.fname,'r') as f:
+            try:
+                return f[path].attrs[attr] if h5py3 else f[path].attrs[attr].encode()
+            except KeyError:
+                return None
+
+
     def allow_modification(self):
+        """Allow to overwrite existing data."""
         print(util.warn('Warning: Modification of existing datasets allowed!'))
         self._allow_modification = True
 
     def disallow_modification(self):
+        """Disllow to overwrite existing data (default case)."""
         self._allow_modification = False
 
 
     def incs_in_range(self,start,end):
+        """
+        Select all increments within a given range.
+
+        Parameters
+        ----------
+        start : int or str
+            Start increment.
+        end : int or str
+            End increment.
+
+        """
         selected = []
         for i,inc in enumerate([int(i[3:]) for i in self.increments]):
             s,e = map(lambda x: int(x[3:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
@@ -178,6 +215,17 @@ class Result:
 
 
     def times_in_range(self,start,end):
+        """
+        Select all increments within a given time range.
+
+        Parameters
+        ----------
+        start : float
+            Time of start increment.
+        end : float
+            Time of end increment.
+
+        """
         selected = []
         for i,time in enumerate(self.times):
             if start <= time <= end:
@@ -192,7 +240,7 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.selection)
+            Attribute to change (must be from self.selection).
 
         """
         datasets = self.selection[what]
@@ -475,6 +523,18 @@ class Result:
         Dataset for all points/cells.
 
         If more than one path is given, the dataset is composed of the individual contributions.
+
+        Parameters
+        ----------
+        path : list of strings
+            The name of the datasets to consider.
+        c : int, optional
+            The constituent to consider. Defaults to 0.
+        plain: boolean, optional
+            Convert into plain numpy datatype.
+            Only relevant for compound datatype, e.g. the orientation.
+            Defaults to False.
+
         """
         with h5py.File(self.fname,'r') as f:
             shape = (self.N_materialpoints,) + np.shape(f[path[0]])[1:]
@@ -1179,7 +1239,7 @@ class Result:
 
             with h5py.File(self.fname,'r') as f:
                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                attributes[-1].attrib={'Name':          'u',
+                attributes[-1].attrib={'Name':          'u / m',
                                        'Center':        'Node',
                                        'AttributeType': 'Vector'}
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
@@ -1196,12 +1256,13 @@ class Result:
                                 name = '/'.join([g,l])
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
-                                prec  = f[name].dtype.itemsize
 
                                 if (shape not in [(), (3,), (3,3)]) or dtype != np.float64: continue
+                                prec = f[name].dtype.itemsize
+                                unit = f[name].attrs['Unit'] if h5py3 else f[name].attrs['Unit'].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                                attributes[-1].attrib={'Name':          name.split('/',2)[2],
+                                attributes[-1].attrib={'Name':          name.split('/',2)[2]+f' / {unit}',
                                                        'Center':        'Cell',
                                                        'AttributeType': {():'Scalar',(3):'Vector',(3,3):'Tensor'}[shape]}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
@@ -1258,7 +1319,7 @@ class Result:
                                 if len(path) == 0:
                                     continue
                                 array = self.read_dataset(path,c)
-                                v.add(array,prefix+path[0].split('/',1)[1])
+                                v.add(array,prefix+path[0].split('/',1)[1]+f' / {self._get_attribute(path[0],"Unit")}')
                         else:
                             paths = self.get_dataset_location(label)
                             if len(paths) == 0:
@@ -1266,7 +1327,7 @@ class Result:
                             array = self.read_dataset(paths,c)
                             ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')              # identify  phase name
                             dset_name = prefix+re.sub(ph_name,r'',paths[0].split('/',1)[1])          # remove phase name
-                            v.add(array,dset_name)
+                            v.add(array,dset_name+f' / {self._get_attribute(paths[0],"Unit")}')
             self.pick('homogenizations',picked_backup_ho)
 
             picked_backup_ph = self.selection['phases'].copy()
@@ -1277,7 +1338,7 @@ class Result:
                     if len(paths) == 0:
                         continue
                     array = self.read_dataset(paths)
-                    v.add(array,paths[0].split('/',1)[1])
+                    v.add(array,paths[0].split('/',1)[1]+f' / {self._get_attribute(paths[0],"Unit")}')
             self.pick('phases',picked_backup_ph)
 
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
