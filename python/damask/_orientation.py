@@ -469,7 +469,7 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho_abs = np.abs(self.as_Rodrigues_vector(vector=True))
+        rho_abs = np.abs(self.as_Rodrigues_vector(compact=True))
 
         with np.errstate(invalid='ignore'):
             # using '*'/prod for 'and'
@@ -512,7 +512,7 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho = self.as_Rodrigues_vector(vector=True)
+        rho = self.as_Rodrigues_vector(compact=True)
 
         with np.errstate(invalid='ignore'):
             if   self.family == 'cubic':

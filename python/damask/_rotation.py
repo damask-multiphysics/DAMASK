@@ -357,7 +357,7 @@ class Rotation:
         return Rotation._qu2om(self.quaternion)
 
     def as_Rodrigues_vector(self,
-                            vector = False):
+                            compact = False):
         """
         Represent as Rodrigues-Frank vector with separated axis and angle argument.
 
@@ -375,7 +375,7 @@ class Rotation:
 
         """
         ro = Rotation._qu2ro(self.quaternion)
-        if vector:
+        if compact:
             with np.errstate(invalid='ignore'):
                 return ro[...,:3]*ro[...,3:4]
         else:
@@ -595,13 +595,12 @@ class Rotation:
                               P = -1,
                               **kwargs):
         """
-        Initialize from Rodrigues-Frank vector.
+        Initialize from Rodrigues-Frank vector (angle separated from axis).
 
         Parameters
         ----------
         rho : numpy.ndarray of shape (...,4)
-            Rodrigues-Frank vector (angle separated from axis).
-            (n_1, n_2, n_3, tan(ω/2)), ǀnǀ = 1  and ω ∈ [0,π].
+            Rodrigues-Frank vector. (n_1, n_2, n_3, tan(ω/2)), ǀnǀ = 1  and ω ∈ [0,π].
         normalize : boolean, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
