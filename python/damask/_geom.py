@@ -228,7 +228,7 @@ class Geom:
             else:
                 comments.append(line.strip())
 
-        material = np.empty(grid.prod())                                                      # initialize as flat array
+        material = np.empty(grid.prod())                                                            # initialize as flat array
         i = 0
         for line in content[header_length:]:
             items = line.split('#')[0].split()
@@ -246,8 +246,8 @@ class Geom:
         if i != grid.prod():
             raise TypeError(f'Invalid file: expected {grid.prod()} entries, found {i}')
 
-        if not np.any(np.mod(material,1) != 0.0):                                             # no float present
-            material = material.astype('int')
+        if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
+            material = material.astype('int') - (1 if material.min() > 0 else 0)
 
         return Geom(material.reshape(grid,order='F'),size,origin,comments)
 
