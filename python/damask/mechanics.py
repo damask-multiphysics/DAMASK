@@ -1,6 +1,7 @@
 """Finite-strain continuum mechanics."""
 
 from . import tensor as _tensor
+from . import _rotation
 
 import numpy as _np
 
@@ -107,11 +108,11 @@ def rotational(T):
 
     Returns
     -------
-    R : numpy.ndarray of shape (...,3,3)
-        Rotational part.
+    R : damask.Rotation of shape (...)
+        Rotational part of the vector.
 
     """
-    return _polar_decomposition(T,'R')[0]
+    return _rotation.Rotation.from_matrix(_polar_decomposition(T,'R')[0])
 
 
 def strain(F,t,m):
@@ -260,7 +261,7 @@ def _polar_decomposition(T,requested):
         output.append(_np.einsum('...ji,...jk',R,T))
 
     if len(output) == 0:
-        raise ValueError('Output needs to be out of V,R,U')
+        raise ValueError('output needs to be out of V, R, U')
 
     return tuple(output)
 

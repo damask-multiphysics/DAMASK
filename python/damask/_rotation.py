@@ -61,18 +61,21 @@ class Rotation:
         elif np.array(rotation).shape[-1] == 4:
             self.quaternion = np.array(rotation)
         else:
-            raise ValueError('"rotation" is neither a Rotation nor a quaternion')
+            raise TypeError('"rotation" is neither a Rotation nor a quaternion')
 
 
     def __repr__(self):
         """Represent rotation as unit quaternion, rotation matrix, and Bunge-Euler angles."""
-        return 'As quaternions:\n'+str(self.quaternion) \
-               if self.quaternion.shape != (4,) else \
-               '\n'.join([
-               'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
-               'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
-               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Euler_angles(degrees=True)),
-                ])
+        if self == Rotation():
+           return 'Rotation()'
+        else:
+            return f'Quaternions {self.shape}:\n'+str(self.quaternion) \
+                   if self.quaternion.shape != (4,) else \
+                   '\n'.join([
+                   'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
+                   'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
+                   'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Euler_angles(degrees=True)),
+                    ])
 
 
     # ToDo: Check difference __copy__ vs __deepcopy__

@@ -944,7 +944,7 @@ class Result:
     @staticmethod
     def _add_rotational(F):
         return {
-                'data':  mechanics.rotational(F['data']),
+                'data':  mechanics.rotational(F['data']).as_matrix(),
                 'label': f"R({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],

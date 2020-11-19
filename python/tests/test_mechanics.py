@@ -3,6 +3,7 @@ import numpy as np
 
 from damask import tensor
 from damask import mechanics
+from damask import Rotation
 
 def stress_Cauchy(P,F):
     sigma = 1.0/np.linalg.det(F) * np.dot(P,F.T)
@@ -96,7 +97,6 @@ class TestMechanics:
     @pytest.mark.parametrize('vectorized,single',[(mechanics.maximum_shear,           maximum_shear),
                                                   (mechanics.equivalent_stress_Mises, equivalent_stress_Mises),
                                                   (mechanics.equivalent_strain_Mises, equivalent_strain_Mises),
-                                                  (mechanics.rotational,              rotational),
                                                   (mechanics.stretch_left,            stretch_left),
                                                   (mechanics.stretch_right,           stretch_right),
                                                  ])
@@ -105,6 +105,14 @@ class TestMechanics:
         epsilon_vec = np.reshape(epsilon,(self.n//10,10,3,3))
         for i,v in enumerate(np.reshape(vectorized(epsilon_vec),vectorized(epsilon).shape)):
             assert np.allclose(single(epsilon[i]),v)
+
+    def test_vectorize_rotation(self):
+        epsilon     = Rotation.from_random(self.n).as_matrix()
+        epsilon_vec = np.reshape(epsilon,(self.n//10,10,3,3))
+        for i,v in enumerate(np.reshape(mechanics.rotational(epsilon_vec).as_matrix(),
+                                        mechanics.rotational(epsilon).as_matrix().shape)):
+            assert np.allclose(rotational(epsilon[i]),v)
+
 
     @pytest.mark.parametrize('vectorized,single',[(mechanics.stress_Cauchy,                 stress_Cauchy),
                                                   (mechanics.stress_second_Piola_Kirchhoff, stress_second_Piola_Kirchhoff)
@@ -138,7 +146,7 @@ class TestMechanics:
     def test_polar_decomposition(self):
         """F = RU = VR."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
-        R = mechanics.rotational(F)
+        R = mechanics.rotational(F).as_matrix()
         V = mechanics.stretch_left(F)
         U = mechanics.stretch_right(F)
         assert np.allclose(np.matmul(R,U),
@@ -162,7 +170,7 @@ class TestMechanics:
     @pytest.mark.parametrize('t',['V','U'])
     def test_strain_rotation(self,m,t):
         """Ensure that pure rotation results in no strain."""
-        F = mechanics.rotational(np.random.rand(self.n,3,3))
+        F = Rotation.from_random(self.n).as_matrix()
         assert np.allclose(mechanics.strain(F,t,m),
                            0.0)
 
@@ -173,7 +181,7 @@ class TestMechanics:
         Should be +1, but random F might contain a reflection.
         """
         x = np.random.rand(self.n,3,3)
-        assert np.allclose(np.abs(np.linalg.det(mechanics.rotational(x))),
+        assert np.allclose(np.abs(np.linalg.det(mechanics._polar_decomposition(x,'R')[0])),
                            1.0)
 
     def test_deviatoric_Mises(self):
@@ -203,3 +211,7 @@ class TestMechanics:
         """Ensure that sherical stress has max shear of 0.0."""
         A = tensor.spherical(tensor.symmetric(np.random.rand(self.n,3,3)),True)
         assert np.allclose(mechanics.maximum_shear(A),0.0)
+
+    def test_invalid_decomposition(self):
+        with pytest.raises(ValueError):
+            mechanics._polar_decomposition(np.random.rand(10,3,3),'A')

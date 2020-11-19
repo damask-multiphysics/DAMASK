@@ -265,7 +265,7 @@ class TestResult:
         default.add_rotational('F')
         loc = {'F':    default.get_dataset_location('F'),
                'R(F)': default.get_dataset_location('R(F)')}
-        in_memory = mechanics.rotational(default.read_dataset(loc['F'],0))
+        in_memory = mechanics.rotational(default.read_dataset(loc['F'],0)).as_matrix()
         in_file   = default.read_dataset(loc['R(F)'],0)
         assert np.allclose(in_memory,in_file)
 

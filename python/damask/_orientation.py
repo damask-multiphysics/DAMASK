@@ -956,9 +956,9 @@ class Orientation(Rotation):
 
         """
         if self.family is None or other.family is None:
-            raise ValueError('Missing crystal symmetry')
+            raise ValueError('missing crystal symmetry')
         if self.family != other.family:
-            raise NotImplementedError('Disorientation between different crystal families not supported yet.')
+            raise NotImplementedError('disorientation between different crystal families')
 
         blend = util.shapeblender(self.shape,other.shape)
         s =  self.equivalent

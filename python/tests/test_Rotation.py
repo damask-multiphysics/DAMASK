@@ -682,6 +682,9 @@ class TestRotation:
         for v,o in zip(vec,ori):
             assert np.allclose(func(v,normalize=True).as_quaternion(),o.as_quaternion())
 
+    def test_invalid_init(self):
+        with pytest.raises(TypeError):
+            Rotation(np.ones(3))
 
     @pytest.mark.parametrize('degrees',[True,False])
     def test_Eulers(self,set_of_rotations,degrees):
@@ -830,6 +833,13 @@ class TestRotation:
         invalid_shape = np.random.random(np.random.randint(8,32,(3)))
         with pytest.raises(ValueError):
             function(invalid_shape)
+
+    def test_invalid_shape_parallel(self):
+        invalid_a = np.random.random(np.random.randint(8,32,(3)))
+        invalid_b = np.random.random(np.random.randint(8,32,(3)))
+        with pytest.raises(ValueError):
+            Rotation.from_parallel(invalid_a,invalid_b)
+
 
     @pytest.mark.parametrize('fr,to',[(Rotation.from_quaternion,'as_quaternion'),
                                       (Rotation.from_axis_angle,'as_axis_angle'),
