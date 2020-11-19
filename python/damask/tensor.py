@@ -77,7 +77,6 @@ def spherical(T,tensor=True):
     """
     Calculate spherical part of a tensor.
 
-
     Parameters
     ----------
     T : numpy.ndarray of shape (...,3,3)

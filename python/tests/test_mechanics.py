@@ -31,7 +31,7 @@ def stress_second_Piola_Kirchhoff(P,F):
     return symmetric(S)
 
 
-def rotational_part(T):
+def rotational(T):
     return polar_decomposition(T,'R')[0]
 
 
@@ -96,7 +96,7 @@ class TestMechanics:
     @pytest.mark.parametrize('vectorized,single',[(mechanics.maximum_shear,           maximum_shear),
                                                   (mechanics.equivalent_stress_Mises, equivalent_stress_Mises),
                                                   (mechanics.equivalent_strain_Mises, equivalent_strain_Mises),
-                                                  (mechanics.rotational_part,         rotational_part),
+                                                  (mechanics.rotational,              rotational),
                                                   (mechanics.stretch_left,            stretch_left),
                                                   (mechanics.stretch_right,           stretch_right),
                                                  ])
@@ -138,7 +138,7 @@ class TestMechanics:
     def test_polar_decomposition(self):
         """F = RU = VR."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
-        R = mechanics.rotational_part(F)
+        R = mechanics.rotational(F)
         V = mechanics.stretch_left(F)
         U = mechanics.stretch_right(F)
         assert np.allclose(np.matmul(R,U),
@@ -162,7 +162,7 @@ class TestMechanics:
     @pytest.mark.parametrize('t',['V','U'])
     def test_strain_rotation(self,m,t):
         """Ensure that pure rotation results in no strain."""
-        F = mechanics.rotational_part(np.random.rand(self.n,3,3))
+        F = mechanics.rotational(np.random.rand(self.n,3,3))
         assert np.allclose(mechanics.strain(F,t,m),
                            0.0)
 
@@ -173,7 +173,7 @@ class TestMechanics:
         Should be +1, but random F might contain a reflection.
         """
         x = np.random.rand(self.n,3,3)
-        assert np.allclose(np.abs(np.linalg.det(mechanics.rotational_part(x))),
+        assert np.allclose(np.abs(np.linalg.det(mechanics.rotational(x))),
                            1.0)
 
     def test_deviatoric_Mises(self):

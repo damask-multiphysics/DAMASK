@@ -96,7 +96,7 @@ def maximum_shear(T_sym):
     return (w[...,0] - w[...,2])*0.5
 
 
-def rotational_part(T):
+def rotational(T):
     """
     Calculate the rotational part of a tensor.
 
