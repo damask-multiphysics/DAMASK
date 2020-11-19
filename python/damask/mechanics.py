@@ -17,7 +17,7 @@ def deformation_Cauchy_Green_left(F):
     Returns
     -------
     B : numpy.ndarray of shape (...,3,3)
-        Left Cauchy-Green deformation _tensor.
+        Left Cauchy-Green deformation tensor.
 
     """
     return _np.matmul(F,_tensor.transpose(F))
@@ -35,28 +35,10 @@ def deformation_Cauchy_Green_right(F):
     Returns
     -------
     C : numpy.ndarray of shape (...,3,3)
-        Right Cauchy-Green deformation _tensor.
+        Right Cauchy-Green deformation tensor.
 
     """
     return _np.matmul(_tensor.transpose(F),F)
-
-
-def deviatoric_part(T):
-    """
-    Calculate deviatoric part of a tensor.
-
-    Parameters
-    ----------
-    T : numpy.ndarray of shape (...,3,3)
-        Tensor of which the deviatoric part is computed.
-
-    Returns
-    -------
-    T' : numpy.ndarray of shape (...,3,3)
-        Deviatoric part of T.
-
-    """
-    return T - spherical_part(T,tensor=True)
 
 
 def equivalent_strain_Mises(epsilon):
@@ -132,29 +114,6 @@ def rotational_part(T):
     return _polar_decomposition(T,'R')[0]
 
 
-def spherical_part(T,tensor=False):
-    """
-    Calculate spherical (hydrostatic) part of a tensor.
-
-    Parameters
-    ----------
-    T : numpy.ndarray of shape (...,3,3)
-        Tensor of which the hydrostatic part is computed.
-    tensor : bool, optional
-        Map spherical part onto identity _tensor. Defaults to false
-
-    Returns
-    -------
-    p : numpy.ndarray of shape (...)
-        unless tensor == True: shape (...,3,3)
-        Spherical part of tensor T, e.g. the hydrostatic part/pressure
-        of a stress _tensor.
-
-    """
-    sph = _np.trace(T,axis2=-2,axis1=-1)/3.0
-    return _np.einsum('...jk,...',_np.eye(3),sph) if tensor else sph
-
-
 def strain(F,t,m):
     """
     Calculate strain tensor (Seth–Hill family).
@@ -168,7 +127,7 @@ def strain(F,t,m):
         Deformation gradient.
     t : {‘V’, ‘U’}
         Type of the polar decomposition, ‘V’ for left stretch tensor
-        and ‘U’ for right stretch _tensor.
+        and ‘U’ for right stretch tensor.
     m : float
         Order of the strain.
 
@@ -242,7 +201,7 @@ def stress_second_Piola_Kirchhoff(P,F):
 
 def stretch_left(T):
     """
-    Calculate left stretch of a _tensor.
+    Calculate left stretch of a tensor.
 
     Parameters
     ----------
@@ -260,7 +219,7 @@ def stretch_left(T):
 
 def stretch_right(T):
     """
-    Calculate right stretch of a _tensor.
+    Calculate right stretch of a tensor.
 
     Parameters
     ----------
@@ -318,5 +277,5 @@ def _equivalent_Mises(T_sym,s):
         Scaling factor (2/3 for strain, 3/2 for stress).
 
     """
-    d = deviatoric_part(T_sym)
+    d = _tensor.deviatoric(T_sym)
     return _np.sqrt(s*_np.sum(d**2.0,axis=(-1,-2)))

@@ -9,10 +9,6 @@ def stress_Cauchy(P,F):
     return symmetric(sigma)
 
 
-def deviatoric_part(T):
-    return T - np.eye(3)*spherical_part(T)
-
-
 def eigenvalues(T_sym):
     return np.linalg.eigvalsh(symmetric(T_sym))
 
@@ -37,11 +33,6 @@ def stress_second_Piola_Kirchhoff(P,F):
 
 def rotational_part(T):
     return polar_decomposition(T,'R')[0]
-
-
-def spherical_part(T,tensor=False):
-    sph = np.trace(T)/3.0
-    return sph if not tensor else np.eye(3)*sph
 
 
 def strain(F,t,m):
@@ -92,31 +83,20 @@ def polar_decomposition(T,requested):
     return tuple(output)
 
 def equivalent_Mises(T_sym,s):
-    return np.sqrt(s*(np.sum(deviatoric_part(T_sym)**2.0)))
+    return np.sqrt(s*(np.sum(deviatoric(T_sym)**2.0)))
 
+def deviatoric(T):
+    return T - np.eye(3)*np.trace(T)/3.0
 
 class TestMechanics:
 
     n = 1000
     c = np.random.randint(n)
 
-
-    @pytest.mark.parametrize('vectorized,single',[(mechanics.deviatoric_part, deviatoric_part),
-                                                  (mechanics.spherical_part,  spherical_part)
-                                                 ])
-    def test_vectorize_1_arg_(self,vectorized,single):
-        print("done")
-        test_data_flat = np.random.rand(self.n,3,3)
-        test_data = np.reshape(test_data_flat,(self.n//10,10,3,3))
-        for i,v in enumerate(np.reshape(vectorized(test_data),vectorized(test_data_flat).shape)):
-            assert np.allclose(single(test_data_flat[i]),v)
-
-    @pytest.mark.parametrize('vectorized,single',[(mechanics.deviatoric_part,         deviatoric_part),
-                                                  (mechanics.maximum_shear,           maximum_shear),
+    @pytest.mark.parametrize('vectorized,single',[(mechanics.maximum_shear,           maximum_shear),
                                                   (mechanics.equivalent_stress_Mises, equivalent_stress_Mises),
                                                   (mechanics.equivalent_strain_Mises, equivalent_strain_Mises),
                                                   (mechanics.rotational_part,         rotational_part),
-                                                  (mechanics.spherical_part,          spherical_part),
                                                   (mechanics.stretch_left,            stretch_left),
                                                   (mechanics.stretch_right,           stretch_right),
                                                  ])
@@ -154,11 +134,6 @@ class TestMechanics:
         """Ensure that all stress measures are equivalent for no deformation."""
         P = np.random.rand(self.n,3,3)
         assert np.allclose(function(P,np.broadcast_to(np.eye(3),(self.n,3,3))),tensor.symmetric(P))
-
-    def test_deviatoric_part(self):
-        I_n = np.broadcast_to(np.eye(3),(self.n,3,3))
-        r   = np.logical_not(I_n)*np.random.rand(self.n,3,3)
-        assert np.allclose(mechanics.deviatoric_part(I_n+r),r)
 
     def test_polar_decomposition(self):
         """F = RU = VR."""
@@ -201,34 +176,20 @@ class TestMechanics:
         assert np.allclose(np.abs(np.linalg.det(mechanics.rotational_part(x))),
                            1.0)
 
-    def test_spherical_deviatoric_part(self):
-        """Ensure that full tensor is sum of spherical and deviatoric part."""
-        x = np.random.rand(self.n,3,3)
-        sph = mechanics.spherical_part(x,True)
-        assert np.allclose(sph + mechanics.deviatoric_part(x),
-                           x)
-
     def test_deviatoric_Mises(self):
         """Ensure that Mises equivalent stress depends only on deviatoric part."""
         x = np.random.rand(self.n,3,3)
         full = mechanics.equivalent_stress_Mises(x)
-        dev  = mechanics.equivalent_stress_Mises(mechanics.deviatoric_part(x))
+        dev  = mechanics.equivalent_stress_Mises(tensor.deviatoric(x))
         assert np.allclose(full,
                            dev)
 
-    def test_spherical_mapping(self):
-        """Ensure that mapping to tensor is correct."""
+    @pytest.mark.parametrize('Mises_equivalent',[mechanics.equivalent_strain_Mises,
+                                                 mechanics.equivalent_stress_Mises])
+    def test_spherical_Mises(self,Mises_equivalent):
+        """Ensure that Mises equivalent strain/stress of spherical strain is 0."""
         x = np.random.rand(self.n,3,3)
-        tnsr   = mechanics.spherical_part(x,True)
-        scalar = mechanics.spherical_part(x)
-        assert np.allclose(np.linalg.det(tnsr),
-                           scalar**3.0)
-
-    def test_spherical_Mises(self):
-        """Ensure that Mises equivalent strain of spherical strain is 0."""
-        x = np.random.rand(self.n,3,3)
-        sph = mechanics.spherical_part(x,True)
-        assert np.allclose(mechanics.equivalent_strain_Mises(sph),
+        assert np.allclose(Mises_equivalent(tensor.spherical(x,True)),
                            0.0)
 
 
@@ -240,5 +201,5 @@ class TestMechanics:
 
     def test_spherical_no_shear(self):
         """Ensure that sherical stress has max shear of 0.0."""
-        A = mechanics.spherical_part(tensor.symmetric(np.random.rand(self.n,3,3)),True)
+        A = tensor.spherical(tensor.symmetric(np.random.rand(self.n,3,3)),True)
         assert np.allclose(mechanics.maximum_shear(A),0.0)

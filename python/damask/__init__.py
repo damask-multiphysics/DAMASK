@@ -1,4 +1,12 @@
-"""Tools for pre and post processing of DAMASK simulations."""
+"""
+Tools for pre and post processing of DAMASK simulations.
+
+Modules that contain only one class (of the same name),
+are prefixed by a '_'. For example, '_colormap' contains
+a class called 'Colormap' which is imported as 'damask.Colormap'.
+
+"""
+
 from pathlib import Path as _Path
 import re as _re
 

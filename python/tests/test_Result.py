@@ -143,7 +143,7 @@ class TestResult:
         default.add_deviator('P')
         loc = {'P'  :default.get_dataset_location('P'),
                's_P':default.get_dataset_location('s_P')}
-        in_memory = mechanics.deviatoric_part(default.read_dataset(loc['P'],0))
+        in_memory = tensor.deviatoric(default.read_dataset(loc['P'],0))
         in_file   = default.read_dataset(loc['s_P'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -273,7 +273,7 @@ class TestResult:
         default.add_spherical('P')
         loc = {'P':   default.get_dataset_location('P'),
                'p_P': default.get_dataset_location('p_P')}
-        in_memory = mechanics.spherical_part(default.read_dataset(loc['P'],0)).reshape(-1,1)
+        in_memory = tensor.spherical(default.read_dataset(loc['P'],0),False).reshape(-1,1)
         in_file   = default.read_dataset(loc['p_P'],0)
         assert np.allclose(in_memory,in_file)
 

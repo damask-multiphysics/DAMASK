@@ -3,6 +3,8 @@ import numpy as np
 
 from damask import tensor
 
+def deviatoric(T):
+    return T - spherical(T)
 
 def eigenvalues(T_sym):
     return np.linalg.eigvalsh(symmetric(T_sym))
@@ -20,6 +22,10 @@ def symmetric(T):
 def transpose(T):
     return T.T
 
+def spherical(T,tensor=True):
+    sph = np.trace(T)/3.0
+    return sph if not tensor else np.eye(3)*sph
+
 
 class TestTensor:
 
@@ -27,10 +33,12 @@ class TestTensor:
     c = np.random.randint(n)
 
 
-    @pytest.mark.parametrize('vectorized,single',[(tensor.eigenvalues    , eigenvalues    ),
-                                                  (tensor.eigenvectors   , eigenvectors   ),
-                                                  (tensor.symmetric      , symmetric      ),
-                                                  (tensor.transpose      , transpose      ),
+    @pytest.mark.parametrize('vectorized,single',[(tensor.deviatoric,   deviatoric),
+                                                  (tensor.eigenvalues,  eigenvalues),
+                                                  (tensor.eigenvectors, eigenvectors),
+                                                  (tensor.symmetric,    symmetric),
+                                                  (tensor.transpose,    transpose),
+                                                  (tensor.spherical,    spherical),
                                         ])
     def test_vectorize_1_arg(self,vectorized,single):
         epsilon     = np.random.rand(self.n,3,3)
@@ -71,3 +79,21 @@ class TestTensor:
         LRHS = np.linalg.det(tensor.eigenvectors(A,RHS=False))
         RHS  = np.linalg.det(tensor.eigenvectors(A,RHS=True))
         assert np.allclose(np.abs(LRHS),RHS)
+
+    def test_spherical_deviatoric_part(self):
+        """Ensure that full tensor is sum of spherical and deviatoric part."""
+        x = np.random.rand(self.n,3,3)
+        assert np.allclose(tensor.spherical(x,True) + tensor.deviatoric(x),
+                           x)
+    def test_spherical_mapping(self):
+        """Ensure that mapping to tensor is correct."""
+        x = np.random.rand(self.n,3,3)
+        tnsr   = tensor.spherical(x,True)
+        scalar = tensor.spherical(x,False)
+        assert np.allclose(np.linalg.det(tnsr),
+                           scalar**3.0)
+
+    def test_deviatoric(self):
+        I_n = np.broadcast_to(np.eye(3),(self.n,3,3))
+        r   = np.logical_not(I_n)*np.random.rand(self.n,3,3)
+        assert np.allclose(tensor.deviatoric(I_n+r),r)

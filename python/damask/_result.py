@@ -649,7 +649,7 @@ class Result:
     @staticmethod
     def _add_deviator(T):
         return {
-                'data':  mechanics.deviatoric_part(T['data']),
+                'data':  tensor.deviatoric(T['data']),
                 'label': f"s_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
@@ -968,7 +968,7 @@ class Result:
     @staticmethod
     def _add_spherical(T):
         return {
-                'data':  mechanics.spherical_part(T['data']),
+                'data':  tensor.spherical(T['data'],False),
                 'label': f"p_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],

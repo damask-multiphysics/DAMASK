@@ -11,6 +11,24 @@ to operate on numpy.ndarrays of shape (...,3,3).
 import numpy as _np
 
 
+def deviatoric(T):
+    """
+    Calculate deviatoric part of a tensor.
+
+    Parameters
+    ----------
+    T : numpy.ndarray of shape (...,3,3)
+        Tensor of which the deviatoric part is computed.
+
+    Returns
+    -------
+    T' : numpy.ndarray of shape (...,3,3)
+        Deviatoric part of T.
+
+    """
+    return T - spherical(T,tensor=True)
+
+
 def eigenvalues(T_sym):
     """
     Eigenvalues, i.e. principal components, of a symmetric tensor.
@@ -53,6 +71,29 @@ def eigenvectors(T_sym,RHS=False):
     if RHS:
         v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
     return v
+
+
+def spherical(T,tensor=True):
+    """
+    Calculate spherical part of a tensor.
+
+
+    Parameters
+    ----------
+    T : numpy.ndarray of shape (...,3,3)
+        Tensor of which the spherical part is computed.
+    tensor : bool, optional
+        Map spherical part onto identity tensor. Defaults to True.
+
+    Returns
+    -------
+    p : numpy.ndarray of shape (...,3,3)
+        unless tensor == False: shape (...,)
+        Spherical part of tensor T. p is an isotropic tensor.
+
+    """
+    sph = _np.trace(T,axis2=-2,axis1=-1)/3.0
+    return _np.einsum('...jk,...',_np.eye(3),sph) if tensor else sph
 
 
 def symmetric(T):
