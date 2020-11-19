@@ -1,6 +1,6 @@
 """Finite-strain continuum mechanics."""
 
-from . import tensor
+from . import tensor as _tensor
 
 import numpy as _np
 
@@ -17,10 +17,10 @@ def deformation_Cauchy_Green_left(F):
     Returns
     -------
     B : numpy.ndarray of shape (...,3,3)
-        Left Cauchy-Green deformation tensor.
+        Left Cauchy-Green deformation _tensor.
 
     """
-    return _np.matmul(F,tensor.transpose(F))
+    return _np.matmul(F,_tensor.transpose(F))
 
 
 def deformation_Cauchy_Green_right(F):
@@ -35,32 +35,10 @@ def deformation_Cauchy_Green_right(F):
     Returns
     -------
     C : numpy.ndarray of shape (...,3,3)
-        Right Cauchy-Green deformation tensor.
+        Right Cauchy-Green deformation _tensor.
 
     """
-    return _np.matmul(tensor.transpose(F),F)
-
-
-def stress_Cauchy(P,F):
-    """
-    Calculate the Cauchy stress (true stress).
-
-    Resulting tensor is symmetrized as the Cauchy stress needs to be symmetric.
-
-    Parameters
-    ----------
-    P : numpy.ndarray of shape (...,3,3)
-        First Piola-Kirchhoff stress.
-    F : numpy.ndarray of shape (...,3,3)
-        Deformation gradient.
-
-    Returns
-    -------
-    sigma : numpy.ndarray of shape (...,3,3)
-        Cauchy stress.
-
-    """
-    return tensor.symmetric(_np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F))
+    return _np.matmul(_tensor.transpose(F),F)
 
 
 def deviatoric_part(T):
@@ -79,25 +57,6 @@ def deviatoric_part(T):
 
     """
     return T - spherical_part(T,tensor=True)
-
-
-def maximum_shear(T_sym):
-    """
-    Calculate the maximum shear component of a symmetric tensor.
-
-    Parameters
-    ----------
-    T_sym : numpy.ndarray of shape (...,3,3)
-        Symmetric tensor of which the maximum shear is computed.
-
-    Returns
-    -------
-    gamma_max : numpy.ndarray of shape (...)
-        Maximum shear of T_sym.
-
-    """
-    w = tensor.eigenvalues(T_sym)
-    return (w[...,0] - w[...,2])*0.5
 
 
 def equivalent_strain_Mises(epsilon):
@@ -136,27 +95,23 @@ def equivalent_stress_Mises(sigma):
     return _equivalent_Mises(sigma,3.0/2.0)
 
 
-def stress_second_Piola_Kirchhoff(P,F):
+def maximum_shear(T_sym):
     """
-    Calculate the second Piola-Kirchhoff stress.
-
-    Resulting tensor is symmetrized as the second Piola-Kirchhoff stress
-    needs to be symmetric.
+    Calculate the maximum shear component of a symmetric tensor.
 
     Parameters
     ----------
-    P : numpy.ndarray of shape (...,3,3)
-        First Piola-Kirchhoff stress.
-    F : numpy.ndarray of shape (...,3,3)
-        Deformation gradient.
+    T_sym : numpy.ndarray of shape (...,3,3)
+        Symmetric tensor of which the maximum shear is computed.
 
     Returns
     -------
-    S : numpy.ndarray of shape (...,3,3)
-        Second Piola-Kirchhoff stress.
+    gamma_max : numpy.ndarray of shape (...)
+        Maximum shear of T_sym.
 
     """
-    return tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
+    w = _tensor.eigenvalues(T_sym)
+    return (w[...,0] - w[...,2])*0.5
 
 
 def rotational_part(T):
@@ -186,14 +141,14 @@ def spherical_part(T,tensor=False):
     T : numpy.ndarray of shape (...,3,3)
         Tensor of which the hydrostatic part is computed.
     tensor : bool, optional
-        Map spherical part onto identity tensor. Defaults to false
+        Map spherical part onto identity _tensor. Defaults to false
 
     Returns
     -------
     p : numpy.ndarray of shape (...)
         unless tensor == True: shape (...,3,3)
         Spherical part of tensor T, e.g. the hydrostatic part/pressure
-        of a stress tensor.
+        of a stress _tensor.
 
     """
     sph = _np.trace(T,axis2=-2,axis1=-1)/3.0
@@ -213,7 +168,7 @@ def strain(F,t,m):
         Deformation gradient.
     t : {‘V’, ‘U’}
         Type of the polar decomposition, ‘V’ for left stretch tensor
-        and ‘U’ for right stretch tensor.
+        and ‘U’ for right stretch _tensor.
     m : float
         Order of the strain.
 
@@ -239,9 +194,55 @@ def strain(F,t,m):
     return eps
 
 
+
+def stress_Cauchy(P,F):
+    """
+    Calculate the Cauchy stress (true stress).
+
+    Resulting tensor is symmetrized as the Cauchy stress needs to be symmetric.
+
+    Parameters
+    ----------
+    P : numpy.ndarray of shape (...,3,3)
+        First Piola-Kirchhoff stress.
+    F : numpy.ndarray of shape (...,3,3)
+        Deformation gradient.
+
+    Returns
+    -------
+    sigma : numpy.ndarray of shape (...,3,3)
+        Cauchy stress.
+
+    """
+    return _tensor.symmetric(_np.einsum('...,...ij,...kj',1.0/_np.linalg.det(F),P,F))
+
+
+def stress_second_Piola_Kirchhoff(P,F):
+    """
+    Calculate the second Piola-Kirchhoff stress.
+
+    Resulting tensor is symmetrized as the second Piola-Kirchhoff stress
+    needs to be symmetric.
+
+    Parameters
+    ----------
+    P : numpy.ndarray of shape (...,3,3)
+        First Piola-Kirchhoff stress.
+    F : numpy.ndarray of shape (...,3,3)
+        Deformation gradient.
+
+    Returns
+    -------
+    S : numpy.ndarray of shape (...,3,3)
+        Second Piola-Kirchhoff stress.
+
+    """
+    return _tensor.symmetric(_np.einsum('...ij,...jk',_np.linalg.inv(F),P))
+
+
 def stretch_left(T):
     """
-    Calculate left stretch of a tensor.
+    Calculate left stretch of a _tensor.
 
     Parameters
     ----------
@@ -259,7 +260,7 @@ def stretch_left(T):
 
 def stretch_right(T):
     """
-    Calculate right stretch of a tensor.
+    Calculate right stretch of a _tensor.
 
     Parameters
     ----------

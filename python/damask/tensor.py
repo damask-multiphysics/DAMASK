@@ -11,42 +11,6 @@ to operate on numpy.ndarrays of shape (...,3,3).
 import numpy as _np
 
 
-def symmetric(T):
-    """
-    Symmetrize tensor.
-
-    Parameters
-    ----------
-    T : numpy.ndarray of shape (...,3,3)
-        Tensor of which the symmetrized values are computed.
-
-    Returns
-    -------
-    T_sym : numpy.ndarray of shape (...,3,3)
-        Symmetrized tensor T.
-
-    """
-    return (T+transpose(T))*0.5
-
-
-def transpose(T):
-    """
-    Transpose tensor.
-
-    Parameters
-    ----------
-    T : numpy.ndarray of shape (...,3,3)
-        Tensor of which the transpose is computed.
-
-    Returns
-    -------
-    T.T : numpy.ndarray of shape (...,3,3)
-        Transpose of tensor T.
-
-    """
-    return _np.swapaxes(T,axis2=-2,axis1=-1)
-
-
 def eigenvalues(T_sym):
     """
     Eigenvalues, i.e. principal components, of a symmetric tensor.
@@ -89,3 +53,39 @@ def eigenvectors(T_sym,RHS=False):
     if RHS:
         v[_np.linalg.det(v) < 0.0,:,2] *= -1.0
     return v
+
+
+def symmetric(T):
+    """
+    Symmetrize tensor.
+
+    Parameters
+    ----------
+    T : numpy.ndarray of shape (...,3,3)
+        Tensor of which the symmetrized values are computed.
+
+    Returns
+    -------
+    T_sym : numpy.ndarray of shape (...,3,3)
+        Symmetrized tensor T.
+
+    """
+    return (T+transpose(T))*0.5
+
+
+def transpose(T):
+    """
+    Transpose tensor.
+
+    Parameters
+    ----------
+    T : numpy.ndarray of shape (...,3,3)
+        Tensor of which the transpose is computed.
+
+    Returns
+    -------
+    T.T : numpy.ndarray of shape (...,3,3)
+        Transpose of tensor T.
+
+    """
+    return _np.swapaxes(T,axis2=-2,axis1=-1)
