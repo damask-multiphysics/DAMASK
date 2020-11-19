@@ -942,17 +942,17 @@ class Result:
 
 
     @staticmethod
-    def _add_rotational(F):
+    def _add_rotation(F):
         return {
-                'data':  mechanics.rotational(F['data']).as_matrix(),
+                'data':  mechanics.rotation(F['data']).as_matrix(),
                 'label': f"R({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Rotational part of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_rotational'
+                          'Creator':     'add_rotation'
                           }
                  }
-    def add_rotational(self,F):
+    def add_rotation(self,F):
         """
         Add rotational part of a deformation gradient.
 
@@ -962,7 +962,7 @@ class Result:
             Label of deformation gradient dataset.
 
         """
-        self._add_generic_pointwise(self._add_rotational,{'F':F})
+        self._add_generic_pointwise(self._add_rotation,{'F':F})
 
 
     @staticmethod

@@ -32,7 +32,7 @@ def stress_second_Piola_Kirchhoff(P,F):
     return symmetric(S)
 
 
-def rotational(T):
+def rotation(T):
     return polar_decomposition(T,'R')[0]
 
 
@@ -109,9 +109,9 @@ class TestMechanics:
     def test_vectorize_rotation(self):
         epsilon     = Rotation.from_random(self.n).as_matrix()
         epsilon_vec = np.reshape(epsilon,(self.n//10,10,3,3))
-        for i,v in enumerate(np.reshape(mechanics.rotational(epsilon_vec).as_matrix(),
-                                        mechanics.rotational(epsilon).as_matrix().shape)):
-            assert np.allclose(rotational(epsilon[i]),v)
+        for i,v in enumerate(np.reshape(mechanics.rotation(epsilon_vec).as_matrix(),
+                                        mechanics.rotation(epsilon).as_matrix().shape)):
+            assert np.allclose(rotation(epsilon[i]),v)
 
 
     @pytest.mark.parametrize('vectorized,single',[(mechanics.stress_Cauchy,                 stress_Cauchy),
@@ -146,7 +146,7 @@ class TestMechanics:
     def test_polar_decomposition(self):
         """F = RU = VR."""
         F = np.broadcast_to(np.eye(3),[self.n,3,3])*np.random.rand(self.n,3,3)
-        R = mechanics.rotational(F).as_matrix()
+        R = mechanics.rotation(F).as_matrix()
         V = mechanics.stretch_left(F)
         U = mechanics.stretch_right(F)
         assert np.allclose(np.matmul(R,U),

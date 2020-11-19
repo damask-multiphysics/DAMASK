@@ -261,11 +261,11 @@ class TestResult:
         in_file = default.read_dataset(loc['pole'])
         assert np.allclose(in_memory,in_file)
 
-    def test_add_rotational(self,default):
-        default.add_rotational('F')
+    def test_add_rotation(self,default):
+        default.add_rotation('F')
         loc = {'F':    default.get_dataset_location('F'),
                'R(F)': default.get_dataset_location('R(F)')}
-        in_memory = mechanics.rotational(default.read_dataset(loc['F'],0)).as_matrix()
+        in_memory = mechanics.rotation(default.read_dataset(loc['F'],0)).as_matrix()
         in_file   = default.read_dataset(loc['R(F)'],0)
         assert np.allclose(in_memory,in_file)
 
