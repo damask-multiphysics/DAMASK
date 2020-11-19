@@ -213,9 +213,8 @@ class Geom:
         if not keyword.startswith('head') or header_length < 3:
             raise TypeError('Header length information missing or invalid')
 
-        content = f.readlines()
-
         comments = []
+        content = f.readlines()
         for i,line in enumerate(content[:header_length]):
             items = line.split('#')[0].lower().strip().split()
             key = items[0] if items else ''
@@ -510,7 +509,7 @@ class Geom:
 
         Parameters
         ----------
-        fname : str or or pathlib.Path
+        fname : str or pathlib.Path
             Filename to write. Valid extension is .vtr, it will be appended if not given.
         compress : bool, optional
             Compress with zlib algorithm. Defaults to True.

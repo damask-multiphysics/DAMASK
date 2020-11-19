@@ -9,7 +9,6 @@ import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
-sys.path.append(str(damask.solver.Marc().library_path))
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
@@ -185,9 +184,10 @@ parser.set_defaults(port = None,
 
 if options.port is not None:
     try:
+        sys.path.append(str(damask.solver.Marc().library_path))
         import py_mentat
     except ImportError:
-        parser.error('no valid Mentat release found.')
+        parser.error('no valid Mentat release found')
 
 # --- loop over input files ------------------------------------------------------------------------
 
@@ -196,7 +196,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    geom = damask.Geom.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
     material = geom.material.flatten(order='F')
 
     cmds = [\
