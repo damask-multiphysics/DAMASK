@@ -139,6 +139,8 @@ class VTK:
             vtkUnstructuredGrid, and vtkPolyData.
 
         """
+        if not os.path.isfile(fname):                                                               # vtk has a strange error handling
+            raise FileNotFoundError(f'No such file: {fname}')
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
@@ -165,9 +167,6 @@ class VTK:
                 reader = vtk.vtkXMLPolyDataReader()
             else:
                 raise TypeError(f'Unknown file extension {ext}')
-
-            if not os.path.isfile(fname):
-                raise FileNotFoundError(f'No such file: {fname}')
 
             reader.SetFileName(str(fname))
             reader.Update()

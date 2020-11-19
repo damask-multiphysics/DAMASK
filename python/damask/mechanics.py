@@ -299,6 +299,9 @@ def _polar_decomposition(T,requested):
     if 'U' in requested:
         output.append(_np.einsum('...ji,...jk',R,T))
 
+    if len(output) == 0:
+        raise ValueError('Output needs to be out of V,R,U')
+
     return tuple(output)
 
 
