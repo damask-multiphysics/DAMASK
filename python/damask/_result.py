@@ -1296,6 +1296,3 @@ class Result:
             v.add(u,'u')
 
             v.save(f'{self.fname.stem}_inc{inc[3:].zfill(N_digits)}')
-
-
-Result.add_PK2 = Result.add_stress_second_Piola_Kirchhoff

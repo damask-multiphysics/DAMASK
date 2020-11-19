@@ -319,7 +319,3 @@ def _equivalent_Mises(T_sym,s):
     """
     d = deviatoric_part(T_sym)
     return _np.sqrt(s*_np.sum(d**2.0,axis=(-1,-2)))
-
-
-# for compatibility
-strain_tensor = strain
