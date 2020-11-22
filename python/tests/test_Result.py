@@ -178,7 +178,7 @@ class TestResult:
                         lattice={'fcc':'cF',
                                  'bcc':'cI',
                                  'hex':'hP'}[crystal_structure])
-        in_memory = np.uint8(c.IPF_color(c.to_SST(np.array(d)))*255)
+        in_memory = np.uint8(c.IPF_color(np.array(d))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 

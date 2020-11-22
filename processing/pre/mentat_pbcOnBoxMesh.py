@@ -11,8 +11,6 @@ import numpy as np
 
 import damask
 
-sys.path.append(str(damask.solver.Marc().library_path))
-
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
@@ -235,6 +233,7 @@ if remote and filenames != []:
 if filenames == []: filenames = [None]
 
 if remote:
+  sys.path.append(str(damask.solver.Marc().library_path))
   import py_mentat
 
   damask.util.report(scriptName, 'waiting to connect...')

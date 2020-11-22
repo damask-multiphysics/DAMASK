@@ -74,6 +74,7 @@ class TestGeom:
 
     def test_save_load_ASCII(self,default,tmp_path):
         default.save_ASCII(tmp_path/'ASCII')
+        default.material -= 1
         assert geom_equal(Geom.load_ASCII(tmp_path/'ASCII'),default)
 
     def test_invalid_origin(self,default):
