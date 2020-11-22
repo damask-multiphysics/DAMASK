@@ -854,6 +854,9 @@ class Orientation(Rotation):
         if vector.shape[-1] != 3:
             raise ValueError('Input is not a field of three-dimensional vectors.')
 
+        vector_ = self.to_SST(vector,proper) if in_SST else \
+                  self @ np.broadcast_to(vector,self.shape+(3,))
+
         if self.family == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                            [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
@@ -887,23 +890,23 @@ class Orientation(Rotation):
                                            [ 0., 1., 0.] ]),
                     }
         else:                                                                                       # direct exit for unspecified symmetry
-            return np.zeros_like(vector)
+            return np.zeros_like(vector_)
 
         if proper:
             components_proper   = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['proper'], vector.shape+(3,)),
-                                                      vector), 12)
+                                                      np.broadcast_to(basis['proper'], vector_.shape+(3,)),
+                                                      vector_), 12)
             components_improper = np.around(np.einsum('...ji,...i',
-                                                      np.broadcast_to(basis['improper'], vector.shape+(3,)),
-                                                      vector), 12)
+                                                      np.broadcast_to(basis['improper'], vector_.shape+(3,)),
+                                                      vector_), 12)
             in_SST = np.all(components_proper   >= 0.0,axis=-1) \
                    | np.all(components_improper >= 0.0,axis=-1)
             components = np.where((in_SST & np.all(components_proper   >= 0.0,axis=-1))[...,np.newaxis],
                                   components_proper,components_improper)
         else:
             components = np.around(np.einsum('...ji,...i',
-                                             np.broadcast_to(basis['improper'], vector.shape+(3,)),
-                                             np.block([vector[...,:2],np.abs(vector[...,2:3])])), 12)
+                                             np.broadcast_to(basis['improper'], vector_.shape+(3,)),
+                                             np.block([vector_[...,:2],np.abs(vector_[...,2:3])])), 12)
 
             in_SST = np.all(components >= 0.0,axis=-1)
 
