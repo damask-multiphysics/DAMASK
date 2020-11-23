@@ -111,9 +111,9 @@ class Result:
         Parameters
         ----------
         action : str
-            Select from 'set', 'add', and 'del'
+            Select from 'set', 'add', and 'del'.
         what : str
-            Attribute to change (must be from self.selection)
+            Attribute to change (must be from self.selection).
         datasets : list of str or bool
             Name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
@@ -169,12 +169,12 @@ class Result:
         Path : str
             Path to the dataset.
         attr : str
-            Attribute to get
+            Name of the attribute to get.
 
-        Returns:
-        --------
-        attr at path, str
-            The requested attribute, will be none if not found.
+        Returns
+        -------
+        attr at path, str or None.
+            The requested attribute, None if not found.
 
         """
         with h5py.File(self.fname,'r') as f:
