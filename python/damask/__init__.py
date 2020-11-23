@@ -15,6 +15,7 @@ with open(_Path(__file__).parent/_Path('VERSION')) as _f:
     version = _re.sub(r'^v','',_f.readline().strip())
     __version__ = version
 
+# make classes directly accessible as damask.Class
 from ._environment import Environment as _ # noqa
 environment = _()
 from .                 import util             # noqa
@@ -24,7 +25,6 @@ from .                 import mechanics        # noqa
 from .                 import solver           # noqa
 from .                 import grid_filters     # noqa
 from .                 import lattice          # noqa
-# make classes directly accessible as damask.Class
 from ._rotation        import Rotation         # noqa
 from ._orientation     import Orientation      # noqa
 from ._table           import Table            # noqa

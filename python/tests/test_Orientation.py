@@ -16,7 +16,7 @@ def reference_dir(reference_dir_base):
 
 @pytest.fixture
 def set_of_rodrigues(set_of_quaternions):
-    return Rotation(set_of_quaternions).as_Rodrigues_vector()[:200]
+    return Rotation(set_of_quaternions).as_Rodrigues_vector()
 
 
 class TestOrientation:
@@ -275,13 +275,13 @@ class TestOrientation:
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_in_FZ_vectorization(self,set_of_rodrigues,lattice):
-        result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((50,4,-1)),lattice=lattice).in_FZ.reshape(-1)
+        result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((-1,4,4)),lattice=lattice).in_FZ.reshape(-1)
         for r,rho in zip(result,set_of_rodrigues[:len(result)]):
             assert r == Orientation.from_Rodrigues_vector(rho=rho,lattice=lattice).in_FZ
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_in_disorientation_FZ_vectorization(self,set_of_rodrigues,lattice):
-        result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((50,4,-1)),
+        result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((-1,4,4)),
                                             lattice=lattice).in_disorientation_FZ.reshape(-1)
         for r,rho in zip(result,set_of_rodrigues[:len(result)]):
             assert r == Orientation.from_Rodrigues_vector(rho=rho,lattice=lattice).in_disorientation_FZ

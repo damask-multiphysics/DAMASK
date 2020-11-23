@@ -851,7 +851,7 @@ class Orientation(Rotation):
         ...    }
 
         """
-        if vector.shape[-1] != 3:
+        if np.array(vector).shape[-1] != 3:
             raise ValueError('Input is not a field of three-dimensional vectors.')
 
         vector_ = self.to_SST(vector,proper) if in_SST else \

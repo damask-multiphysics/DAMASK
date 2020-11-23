@@ -140,7 +140,7 @@ class VTK:
 
         """
         if not os.path.isfile(fname):                                                               # vtk has a strange error handling
-            raise FileNotFoundError(f'No such file: {fname}')
+            raise FileNotFoundError(f'no such file: {fname}')
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
