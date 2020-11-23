@@ -102,4 +102,4 @@ for name in filenames:
                       shapeMismatch.reshape(-1,1,order='F'),
                       scriptID+' '+' '.join(sys.argv[1:]))
 
-  table.save((sys.stdout if name is None else name), legacy=True)
+  table.save((sys.stdout if name is None else name))

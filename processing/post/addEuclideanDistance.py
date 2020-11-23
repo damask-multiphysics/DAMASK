@@ -184,4 +184,4 @@ for name in filenames:
                           distance[i,:],
                           scriptID+' '+' '.join(sys.argv[1:]))
 
-    table.save((sys.stdout if name is None else name), legacy=True)
+    table.save((sys.stdout if name is None else name))
