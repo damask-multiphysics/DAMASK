@@ -9,7 +9,6 @@ stages:
   - grid
   - compileMarc
   - marc
-  - example
   - performance
   - createPackage
   - createDocumentation
@@ -326,14 +325,6 @@ Marc_elementLib:
   script:
     - module load $IntelMarc $HDF5Marc $MSC
     - Marc_elementLib/test.py
-  except:
-    - master
-    - release
-
-###################################################################################################
-grid_all_example:
-  stage: example
-  script: grid_all_example/test.py
   except:
     - master
     - release
