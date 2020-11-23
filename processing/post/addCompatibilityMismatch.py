@@ -22,35 +22,16 @@ def shapeMismatch(size,F,nodes,centres):
   the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
   the initial volume element with the  current deformation gradient.
   """
-  sMismatch     = np.empty(F.shape[:3])
-
-#--------------------------------------------------------------------------------------------------
-# initial positions
   delta = size/grid*.5
-  coordsInitial = np.vstack((delta * np.array((-1,-1,-1)),
-                             delta * np.array((+1,-1,-1)),
-                             delta * np.array((+1,+1,-1)),
-                             delta * np.array((-1,+1,-1)),
-                             delta * np.array((-1,-1,+1)),
-                             delta * np.array((+1,-1,+1)),
-                             delta * np.array((+1,+1,+1)),
-                             delta * np.array((-1,+1,+1))))
 
-#--------------------------------------------------------------------------------------------------
-# compare deformed original and deformed positions to actual positions
-  for k in range(grid[0]):
-    for j in range(grid[1]):
-      for i in range(grid[2]):
-       sMismatch[k,j,i] = \
-         + np.linalg.norm(nodes[k,  j,  i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[0,0:3]))\
-         + np.linalg.norm(nodes[k+1,j,  i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[1,0:3]))\
-         + np.linalg.norm(nodes[k+1,j+1,i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[2,0:3]))\
-         + np.linalg.norm(nodes[k,  j+1,i  ,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[3,0:3]))\
-         + np.linalg.norm(nodes[k,  j,  i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[4,0:3]))\
-         + np.linalg.norm(nodes[k+1,j,  i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[5,0:3]))\
-         + np.linalg.norm(nodes[k+1,j+1,i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[6,0:3]))\
-         + np.linalg.norm(nodes[k  ,j+1,i+1,0:3] - centres[k,j,i,0:3] - np.dot(F[k,j,i,:,:], coordsInitial[7,0:3]))
-  return sMismatch
+  return + np.linalg.norm(nodes[:-1,:-1,:-1] -centres - np.dot(F,delta * np.array((-1,-1,-1))),axis=-1)\
+         + np.linalg.norm(nodes[+1:,:-1,:-1] -centres - np.dot(F,delta * np.array((+1,-1,-1))),axis=-1)\
+         + np.linalg.norm(nodes[+1:,+1:,:-1] -centres - np.dot(F,delta * np.array((+1,+1,-1))),axis=-1)\
+         + np.linalg.norm(nodes[:-1,+1:,:-1] -centres - np.dot(F,delta * np.array((-1,+1,-1))),axis=-1)\
+         + np.linalg.norm(nodes[:-1,:-1,+1:] -centres - np.dot(F,delta * np.array((-1,-1,+1))),axis=-1)\
+         + np.linalg.norm(nodes[+1:,:-1,+1:] -centres - np.dot(F,delta * np.array((+1,-1,+1))),axis=-1)\
+         + np.linalg.norm(nodes[+1:,+1:,+1:] -centres - np.dot(F,delta * np.array((+1,+1,+1))),axis=-1)\
+         + np.linalg.norm(nodes[:-1,+1:,+1:] -centres - np.dot(F,delta * np.array((-1,+1,+1))),axis=-1)
 
 
 # --------------------------------------------------------------------
