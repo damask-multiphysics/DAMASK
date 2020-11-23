@@ -225,7 +225,7 @@ module subroutine damage_results
   do p = 1, size(material_name_phase)
 
     sourceLoop: do i = 1, phase_Nsources(p)
-    group = trim('current/constituent')//'/'//trim(material_name_phase(p))
+    group = trim('current/phase')//'/'//trim(material_name_phase(p))
     group = trim(group)//'/sources'
     call results_closeGroup(results_addGroup(group))
 

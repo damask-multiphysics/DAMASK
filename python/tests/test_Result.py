@@ -59,7 +59,7 @@ class TestResult:
         f = default.get_dataset_location('F')
         assert a == b == c == d == e ==f
 
-    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_pick_none(self,default,what):
         default.pick(what,False)
         a = default.get_dataset_location('F')
@@ -68,7 +68,7 @@ class TestResult:
 
         assert a == b == []
 
-    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_pick_more(self,default,what):
         default.pick(what,False)
         default.pick_more(what,'*')
@@ -79,7 +79,7 @@ class TestResult:
 
         assert a == b
 
-    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_pick_less(self,default,what):
         default.pick(what,True)
         default.pick_less(what,'*')

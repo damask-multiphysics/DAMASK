@@ -457,7 +457,7 @@ module subroutine plastic_results
   character(len=pStringLen) :: group
 
   plasticityLoop:  do p=1,size(material_name_phase)
-    group = trim('current/constituent')//'/'//trim(material_name_phase(p))
+    group = trim('current/phase')//'/'//trim(material_name_phase(p))
     call results_closeGroup(results_addGroup(group))
 
     group = trim(group)//'/plastic'

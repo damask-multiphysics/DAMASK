@@ -387,7 +387,7 @@ end subroutine sanityCheck
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Get all keys from a dictionary (currently with #_ prefix)
+!> @brief Get all keys from a dictionary
 !--------------------------------------------------------------------------------------------------
 function getKeys(dict)
 
@@ -395,12 +395,10 @@ function getKeys(dict)
   character(len=pStringLen), dimension(:), allocatable :: getKeys
 
   integer :: i
-  character(len=pStringLen) :: sectionName
 
   allocate(getKeys(dict%length))
   do i=1, dict%length
-    write(sectionName,'(i0,a)') i,'_'
-    getKeys(i) = trim(adjustl(sectionName))//dict%getKey(i)                                         !ToDo: remove prefix
+    getKeys(i) = dict%getKey(i)
   enddo
 
 end function getKeys
