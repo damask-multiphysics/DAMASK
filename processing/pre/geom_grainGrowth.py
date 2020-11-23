@@ -15,8 +15,8 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-getInterfaceEnergy = lambda A,B: np.float32((A*B != 0)*(A != B)*1.0)                               # 1.0 if A & B are distinct & nonzero, 0.0 otherwise
-struc = ndimage.generate_binary_structure(3,1)                                                     # 3D von Neumann neighborhood
+getInterfaceEnergy = lambda A,B: np.float32((A != B)*1.0)                                           # 1.0 if A & B are distinct, 0.0 otherwise
+struc = ndimage.generate_binary_structure(3,1)                                                      # 3D von Neumann neighborhood
 
 
 #--------------------------------------------------------------------------------------------------
@@ -62,7 +62,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
 
-  geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  geom = damask.Geom.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   grid_original = geom.grid
   damask.util.croak(geom)
@@ -174,4 +174,4 @@ for name in filenames:
               origin    = geom.origin,
               comments  = geom.comments + [scriptID + ' ' + ' '.join(sys.argv[1:])],
              )\
-        .save_ASCII(sys.stdout if name is None else name)
+        .save(sys.stdout if name is None else name)
