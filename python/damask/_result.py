@@ -179,7 +179,7 @@ class Result:
         """
         with h5py.File(self.fname,'r') as f:
             try:
-                return f[path].attrs[attr] if h5py3 else f[path].attrs[attr].encode()
+                return f[path].attrs[attr] if h5py3 else f[path].attrs[attr].decode()
             except KeyError:
                 return None
 
