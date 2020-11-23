@@ -534,7 +534,7 @@ subroutine homogenization_results
   !real(pReal), dimension(:,:,:), allocatable :: temp
 
   do p=1,size(material_name_homogenization)
-    group_base = 'current/materialpoint/'//trim(material_name_homogenization(p))
+    group_base = 'current/homogenization/'//trim(material_name_homogenization(p))
     call results_closeGroup(results_addGroup(group_base))
 
     group = trim(group_base)//'/generic'
