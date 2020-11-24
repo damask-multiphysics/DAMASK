@@ -2,8 +2,7 @@
 stages:
   - prepareAll
   - python
-  - preprocessing
-  - postprocessing
+  - deprecated
   - compile
   - grid
   - marc
@@ -108,71 +107,70 @@ Pytest_python:
 
 ###################################################################################################
 Pre_SeedGeneration:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing_SeedGeneration/test.py
   except:
     - master
     - release
 
 Pre_GeomGeneration:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing_GeomGeneration/test.py
   except:
     - master
     - release
 
 Pre_GeomModification:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing_GeomModification/test.py
   except:
     - master
     - release
 
 Pre_General:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing/test.py
   except:
     - master
     - release
 
-###################################################################################################
 Post_General:
-  stage: postprocessing
+  stage: deprecated
   script: PostProcessing/test.py
   except:
     - master
     - release
 
 Post_GeometryReconstruction:
-  stage: postprocessing
+  stage: deprecated
   script: spectral_geometryReconstruction/test.py
   except:
     - master
     - release
 
 Post_addCurl:
-  stage: postprocessing
+  stage: deprecated
   script: addCurl/test.py
   except:
     - master
     - release
 
 Post_addDivergence:
-  stage: postprocessing
+  stage: deprecated
   script: addDivergence/test.py
   except:
     - master
     - release
 
 Post_addGradient:
-  stage: postprocessing
+  stage: deprecated
   script: addGradient/test.py
   except:
     - master
     - release
 
 Post_OrientationAverageMisorientation:
-  stage: postprocessing
+  stage: deprecated
   script:
     - OrientationAverageMisorientation/test.py
   except:
