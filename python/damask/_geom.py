@@ -938,11 +938,15 @@ class Geom:
             for d in [0,1,2]:
                 extra_layer = np.take(mask,[0],d) if d_s == d else np.zeros_like(np.take(mask,[0],d),bool)
                 mask = np.concatenate((mask,extra_layer),d)
+            eval(f"if periodic: mask[{'0' if d_s==0 else ':'}"+f",{'0' if d_s==1 else ':'}"+ f",{'0' if d_s==2 else ':'}]= \
+                 [] mask[{'-1' if d_s==0 else ':'}"+f",{'-1' if d_s==1 else ':'}"+ f",{'-1' if d_s==2 else ':'}]=False")
             if d_s == 0 and periodic: mask[0,:,:] = mask[-1,:,:] = False
             if d_s == 1 and periodic: mask[:,0,:] = mask[:,-1,:] = False
             if d_s == 2 and periodic: mask[:,:,0] = mask[:,:,-1] = False
+            #eval('if periodic: mask['+','.join(['0' if d_s==d else ':' for d in range(3)])+']=\
+                         #mask['+','.join(['-1' if d_s==d else ':' for d in range(3)])+']=False')
             base_nodes = np.argwhere(mask.flatten(order='F')).reshape(-1,1)
             connectivity = np.block([base_nodes + o[d_s][d] for d in range(4)])
-            vtk = VTK.from_unstructuredGrid(coord,connectivity,'QUAD')
+            vtk=VTK.from_unstructuredGrid(coord,connectivity,'QUAD')
             vtk.save(f'GrainBoundaries{d_s}') 
 
