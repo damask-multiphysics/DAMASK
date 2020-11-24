@@ -4,10 +4,8 @@ stages:
   - python
   - preprocessing
   - postprocessing
-  - compilePETSc
-  - prepareGrid
+  - compile
   - grid
-  - compileMarc
   - marc
   - performance
   - createPackage
@@ -182,8 +180,8 @@ Post_OrientationAverageMisorientation:
     - release
 
 ###################################################################################################
-grid_mech_compile_Intel:
-  stage: compilePETSc
+compile_grid_Intel:
+  stage: compile
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
@@ -192,8 +190,8 @@ grid_mech_compile_Intel:
     - master
     - release
 
-Compile_FEM_Intel:
-  stage: compilePETSc
+compile_mesh_Intel:
+  stage: compile
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
     - cd pytest
@@ -202,8 +200,8 @@ Compile_FEM_Intel:
     - master
     - release
 
-grid_mech_compile_GNU:
-  stage: compilePETSc
+compile_grid_GNU:
+  stage: compile
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - cd pytest
@@ -212,8 +210,8 @@ grid_mech_compile_GNU:
     - master
     - release
 
-Compile_FEM_GNU:
-  stage: compilePETSc
+compile_mesh_GNU:
+  stage: compile
   script:
     - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
     - cd pytest
@@ -222,13 +220,36 @@ Compile_FEM_GNU:
     - master
     - release
 
-###################################################################################################
-Compile_Intel_Prepare:
-  stage: prepareGrid
+compile_MARC:
+  stage: compile
+  script:
+    - module load $IntelMarc $HDF5Marc $MSC
+    - cd pytest
+    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
+  except:
+    - master
+    - release
+
+setup_grid:
+  stage: compile
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cd $DAMASKROOT
-    - make clean grid processing
+    - $BUILD_DIR=$(mktemp -d)
+    - cd ${BUILD_DIR}
+    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}/src
+    - make -j2 all install
+  except:
+    - master
+    - release
+
+setup_mesh:
+  stage: compile
+  script:
+    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - $BUILD_DIR=$(mktemp -d)
+    - cd ${BUILD_DIR}
+    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}/src
+    - make -j2 all install
   except:
     - master
     - release
@@ -272,16 +293,6 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-###################################################################################################
-Marc_compileIfort:
-  stage: compileMarc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - cd pytest
-    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
-  except:
-    - master
-    - release
 
 ###################################################################################################
 Hex_elastic:
