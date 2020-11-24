@@ -232,9 +232,9 @@ setup_grid:
   stage: compile
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - $BUILD_DIR=$(mktemp -d)
+    - BUILD_DIR=$(mktemp -d)
     - cd ${BUILD_DIR}
-    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}/src
+    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
   except:
     - master
@@ -244,9 +244,9 @@ setup_mesh:
   stage: compile
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - $BUILD_DIR=$(mktemp -d)
+    - Bcd ${BUILD_DIR}UILD_DIR=$(mktemp -d)
     - cd ${BUILD_DIR}
-    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}/src
+    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
   except:
     - master
