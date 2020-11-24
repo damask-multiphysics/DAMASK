@@ -2,7 +2,7 @@ import numpy as np
 
 from . import Rotation
 from . import util
-from . import mechanics
+from . import tensor
 
 _parameter_doc = \
        """lattice : str
@@ -67,6 +67,7 @@ class Orientation(Rotation):
     Examples
     --------
     An array of 3 x 5 random orientations reduced to the fundamental zone of tetragonal symmetry:
+
     >>> damask.Orientation.from_random(shape=(3,5),lattice='tetragonal').reduced
 
     """
@@ -263,9 +264,9 @@ class Orientation(Rotation):
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_Eulers,_parameter_doc)
-    def from_Eulers(cls,**kwargs):
-        return cls(rotation=Rotation.from_Eulers(**kwargs),**kwargs)
+    @util.extended_docstring(Rotation.from_Euler_angles,_parameter_doc)
+    def from_Euler_angles(cls,**kwargs):
+        return cls(rotation=Rotation.from_Euler_angles(**kwargs),**kwargs)
 
 
     @classmethod
@@ -287,9 +288,9 @@ class Orientation(Rotation):
 
 
     @classmethod
-    @util.extended_docstring(Rotation.from_Rodrigues,_parameter_doc)
-    def from_Rodrigues(cls,**kwargs):
-        return cls(rotation=Rotation.from_Rodrigues(**kwargs),**kwargs)
+    @util.extended_docstring(Rotation.from_Rodrigues_vector,_parameter_doc)
+    def from_Rodrigues_vector(cls,**kwargs):
+        return cls(rotation=Rotation.from_Rodrigues_vector(**kwargs),**kwargs)
 
 
     @classmethod
@@ -334,7 +335,7 @@ class Orientation(Rotation):
         x = o.to_frame(uvw=uvw)
         z = o.to_frame(hkl=hkl)
         om = np.stack([x,np.cross(z,x),z],axis=-2)
-        return o.copy(rotation=Rotation.from_matrix(mechanics.transpose(om/np.linalg.norm(om,axis=-1,keepdims=True))))
+        return o.copy(rotation=Rotation.from_matrix(tensor.transpose(om/np.linalg.norm(om,axis=-1,keepdims=True))))
 
 
     @property
@@ -468,7 +469,7 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho_abs = np.abs(self.as_Rodrigues(vector=True))
+        rho_abs = np.abs(self.as_Rodrigues_vector(compact=True))
 
         with np.errstate(invalid='ignore'):
             # using '*'/prod for 'and'
@@ -511,7 +512,7 @@ class Orientation(Rotation):
         if self.family is None:
             raise ValueError('Missing crystal symmetry')
 
-        rho = self.as_Rodrigues(vector=True)
+        rho = self.as_Rodrigues_vector(compact=True)
 
         with np.errstate(invalid='ignore'):
             if   self.family == 'cubic':
@@ -856,7 +857,6 @@ class Orientation(Rotation):
         vector_ = self.to_SST(vector,proper) if in_SST else \
                   self @ np.broadcast_to(vector,self.shape+(3,))
 
-
         if self.family == 'cubic':
             basis = {'improper':np.array([ [-1.            ,  0.            ,  1. ],
                                            [ np.sqrt(2.)   , -np.sqrt(2.)   ,  0. ],
@@ -962,9 +962,9 @@ class Orientation(Rotation):
 
         """
         if self.family is None or other.family is None:
-            raise ValueError('Missing crystal symmetry')
+            raise ValueError('missing crystal symmetry')
         if self.family != other.family:
-            raise NotImplementedError('Disorientation between different crystal families not supported yet.')
+            raise NotImplementedError('disorientation between different crystal families')
 
         blend = util.shapeblender(self.shape,other.shape)
         s =  self.equivalent
@@ -1106,7 +1106,7 @@ class Orientation(Rotation):
                       (np.array(hkil),np.array([[1,0,0,0],
                                                 [0,1,0,0],
                                                 [0,0,0,1]]))
-        return np.einsum('il,...l->...i',basis,axis)
+        return np.einsum('il,...l',basis,axis)
 
 
     @classmethod
@@ -1136,7 +1136,7 @@ class Orientation(Rotation):
                                                [ 0, 1, 0],
                                                [-1,-1, 0],
                                                [ 0, 0, 1]]))
-        return np.einsum('il,...l->...i',basis,axis)
+        return np.einsum('il,...l',basis,axis)
 
 
     def to_lattice(self,*,direction=None,plane=None):
@@ -1160,7 +1160,7 @@ class Orientation(Rotation):
         axis,basis  = (np.array(direction),self.basis_reciprocal.T) \
                       if plane is None else \
                       (np.array(plane),self.basis_real.T)
-        return np.einsum('il,...l->...i',basis,axis)
+        return np.einsum('il,...l',basis,axis)
 
 
     def to_frame(self,*,uvw=None,hkl=None,with_symmetry=False):
@@ -1186,9 +1186,9 @@ class Orientation(Rotation):
                       if hkl is None else \
                       (np.array(hkl),self.basis_reciprocal)
         return (self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+axis.shape[:-1],mode='right')
-              @ np.broadcast_to(np.einsum('il,...l->...i',basis,axis),self.symmetry_operations.shape+axis.shape)
+              @ np.broadcast_to(np.einsum('il,...l',basis,axis),self.symmetry_operations.shape+axis.shape)
                 if with_symmetry else
-                np.einsum('il,...l->...i',basis,axis))
+                np.einsum('il,...l',basis,axis))
 
 
     def to_pole(self,*,uvw=None,hkl=None,with_symmetry=False):
@@ -1243,8 +1243,8 @@ class Orientation(Rotation):
         """
         d = self.to_frame(uvw=self.kinematics[mode]['direction'],with_symmetry=False)
         p = self.to_frame(hkl=self.kinematics[mode]['plane']    ,with_symmetry=False)
-        P = np.einsum('...i,...j->...ij',d/np.linalg.norm(d,axis=-1,keepdims=True),
-                                         p/np.linalg.norm(p,axis=-1,keepdims=True))
+        P = np.einsum('...i,...j',d/np.linalg.norm(d,axis=-1,keepdims=True),
+                                  p/np.linalg.norm(p,axis=-1,keepdims=True))
 
         return ~self.broadcast_to( self.shape+P.shape[:-2],mode='right') \
                @ np.broadcast_to(P,self.shape+P.shape)

@@ -100,12 +100,17 @@ class TestVTK:
         v = VTK.from_poly_data(points)
         v.save(tmp_path/fname)
 
-    @pytest.mark.parametrize('name,dataset_type',[('this_file_does_not_exist.vtk', None),
-                                                  ('this_file_does_not_exist.vtk','vtk'),
-                                                  ('this_file_does_not_exist.vtx', None)])
-    def test_invalid_dataset_type(self,name,dataset_type):
+    @pytest.mark.parametrize('fname,dataset_type',[('a_file.vtk', None),
+                                                   ('a_file.vtk','vtk'),
+                                                   ('a_file.vtx', None)])
+    def test_invalid_dataset_type(self,tmp_path,fname,dataset_type):
+        open(tmp_path/fname,'a').close()
         with pytest.raises(TypeError):
-            VTK.load(name,dataset_type)
+            VTK.load(tmp_path/fname,dataset_type)
+
+    def test_file_not_found(self):
+        with pytest.raises(FileNotFoundError):
+            VTK.load('/dev/null')
 
     def test_add_extension(self,tmp_path,default):
         default.save(tmp_path/'default.txt',parallel=False)

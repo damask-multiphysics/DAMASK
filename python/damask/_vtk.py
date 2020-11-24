@@ -1,3 +1,4 @@
+import os
 import multiprocessing as mp
 from pathlib import Path
 
@@ -138,6 +139,8 @@ class VTK:
             vtkUnstructuredGrid, and vtkPolyData.
 
         """
+        if not os.path.isfile(fname):                                                               # vtk has a strange error handling
+            raise FileNotFoundError(f'no such file: {fname}')
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()

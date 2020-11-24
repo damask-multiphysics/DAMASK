@@ -1,6 +1,6 @@
 import numpy as np
 
-from . import mechanics
+from . import tensor
 from . import util
 from . import grid_filters
 
@@ -61,18 +61,21 @@ class Rotation:
         elif np.array(rotation).shape[-1] == 4:
             self.quaternion = np.array(rotation)
         else:
-            raise ValueError('"rotation" is neither a Rotation nor a quaternion')
+            raise TypeError('"rotation" is neither a Rotation nor a quaternion')
 
 
     def __repr__(self):
         """Represent rotation as unit quaternion, rotation matrix, and Bunge-Euler angles."""
-        return 'Quaternions:\n'+str(self.quaternion) \
-               if self.quaternion.shape != (4,) else \
-               '\n'.join([
-               'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
-               'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
-               'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Eulers(degrees=True)),
-                ])
+        if self == Rotation():
+           return 'Rotation()'
+        else:
+            return f'Quaternions {self.shape}:\n'+str(self.quaternion) \
+                   if self.quaternion.shape != (4,) else \
+                   '\n'.join([
+                   'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
+                   'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
+                   'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Euler_angles(degrees=True)),
+                    ])
 
 
     # ToDo: Check difference __copy__ vs __deepcopy__
@@ -298,8 +301,8 @@ class Rotation:
         """
         return self.quaternion.copy()
 
-    def as_Eulers(self,
-                  degrees = False):
+    def as_Euler_angles(self,
+                        degrees = False):
         """
         Represent as Bunge-Euler angles.
 
@@ -356,8 +359,8 @@ class Rotation:
         """
         return Rotation._qu2om(self.quaternion)
 
-    def as_Rodrigues(self,
-                     vector = False):
+    def as_Rodrigues_vector(self,
+                            compact = False):
         """
         Represent as Rodrigues-Frank vector with separated axis and angle argument.
 
@@ -375,7 +378,7 @@ class Rotation:
 
         """
         ro = Rotation._qu2ro(self.quaternion)
-        if vector:
+        if compact:
             with np.errstate(invalid='ignore'):
                 return ro[...,:3]*ro[...,3:4]
         else:
@@ -446,9 +449,9 @@ class Rotation:
         return Rotation(qu)
 
     @staticmethod
-    def from_Eulers(phi,
-                    degrees = False,
-                    **kwargs):
+    def from_Euler_angles(phi,
+                          degrees = False,
+                          **kwargs):
         """
         Initialize from Bunge-Euler angles.
 
@@ -533,11 +536,11 @@ class Rotation:
             raise ValueError('Invalid shape.')
 
         if reciprocal:
-            om = np.linalg.inv(mechanics.transpose(om)/np.pi)                                       # transform reciprocal basis set
+            om = np.linalg.inv(tensor.transpose(om)/np.pi)                                          # transform reciprocal basis set
             orthonormal = False                                                                     # contains stretch
         if not orthonormal:
             (U,S,Vh) = np.linalg.svd(om)                                                            # singular value decomposition
-            om = np.einsum('...ij,...jl->...il',U,Vh)
+            om = np.einsum('...ij,...jl',U,Vh)
         if not np.all(np.isclose(np.linalg.det(om),1.0)):
             raise ValueError('Orientation matrix has determinant ≠ 1.')
         if    not np.all(np.isclose(np.einsum('...i,...i',om[...,0],om[...,1]), 0.0)) \
@@ -590,18 +593,17 @@ class Rotation:
 
 
     @staticmethod
-    def from_Rodrigues(rho,
-                       normalize = False,
-                       P = -1,
-                       **kwargs):
+    def from_Rodrigues_vector(rho,
+                              normalize = False,
+                              P = -1,
+                              **kwargs):
         """
-        Initialize from Rodrigues-Frank vector.
+        Initialize from Rodrigues-Frank vector (angle separated from axis).
 
         Parameters
         ----------
         rho : numpy.ndarray of shape (...,4)
-            Rodrigues-Frank vector (angle separated from axis).
-            (n_1, n_2, n_3, tan(ω/2)), ǀnǀ = 1  and ω ∈ [0,π].
+            Rodrigues-Frank vector. (n_1, n_2, n_3, tan(ω/2)), ǀnǀ = 1  and ω ∈ [0,π].
         normalize : boolean, optional
             Allow ǀnǀ ≠ 1. Defaults to False.
         P : int ∈ {-1,1}, optional
@@ -714,7 +716,7 @@ class Rotation:
 
     @staticmethod
     def from_ODF(weights,
-                 Eulers,
+                 phi,
                  N = 500,
                  degrees = True,
                  fractions = True,
@@ -727,7 +729,7 @@ class Rotation:
         ----------
         weights : numpy.ndarray of shape (n)
             Texture intensity values (probability density or volume fraction) at Euler grid points.
-        Eulers : numpy.ndarray of shape (n,3)
+        phi : numpy.ndarray of shape (n,3)
             Grid coordinates in Euler space at which weights are defined.
         N : integer, optional
             Number of discrete orientations to be sampled from the given ODF.
@@ -760,15 +762,15 @@ class Rotation:
         """
         def _dg(eu,deg):
             """Return infinitesimal Euler space volume of bin(s)."""
-            Eulers_sorted = eu[np.lexsort((eu[:,0],eu[:,1],eu[:,2]))]
-            steps,size,_ = grid_filters.cell_coord0_gridSizeOrigin(Eulers_sorted)
+            phi_sorted = eu[np.lexsort((eu[:,0],eu[:,1],eu[:,2]))]
+            steps,size,_ = grid_filters.cell_coord0_gridSizeOrigin(phi_sorted)
             delta = np.radians(size/steps) if deg else size/steps
             return delta[0]*2.0*np.sin(delta[1]/2.0)*delta[2] / 8.0 / np.pi**2 * np.sin(np.radians(eu[:,1]) if deg else eu[:,1])
 
-        dg = 1.0 if fractions else _dg(Eulers,degrees)
+        dg = 1.0 if fractions else _dg(phi,degrees)
         dV_V = dg * np.maximum(0.0,weights.squeeze())
 
-        return Rotation.from_Eulers(Eulers[util.hybrid_IA(dV_V,N,rng_seed)],degrees)
+        return Rotation.from_Euler_angles(phi[util.hybrid_IA(dV_V,N,rng_seed)],degrees)
 
 
     @staticmethod

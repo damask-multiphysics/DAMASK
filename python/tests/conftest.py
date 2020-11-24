@@ -82,7 +82,7 @@ def set_of_quaternions():
 
         return qu
 
-    n = 1100
+    n = 600
     scatter=1.e-2
     specials = np.array([
                          [1.0, 0.0, 0.0, 0.0],

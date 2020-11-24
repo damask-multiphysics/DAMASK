@@ -1,3 +1,5 @@
+"""Functionality for generation of seed points for Voronoi or Laguerre tessellation."""
+
 from scipy import spatial as _spatial
 import numpy as _np
 

@@ -18,6 +18,7 @@ from . import Table
 from . import Orientation
 from . import grid_filters
 from . import mechanics
+from . import tensor
 from . import util
 
 h5py3 = h5py.__version__[0] == '3'
@@ -588,19 +589,19 @@ class Result:
 
 
     @staticmethod
-    def _add_Cauchy(P,F):
+    def _add_stress_Cauchy(P,F):
         return {
-                'data':  mechanics.Cauchy(P['data'],F['data']),
+                'data':  mechanics.stress_Cauchy(P['data'],F['data']),
                 'label': 'sigma',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
                           'Description': "Cauchy stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_Cauchy'
+                          'Creator':     'add_stress_Cauchy'
                           }
                 }
-    def add_Cauchy(self,P='P',F='F'):
+    def add_stress_Cauchy(self,P='P',F='F'):
         """
         Add Cauchy stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
@@ -612,7 +613,7 @@ class Result:
             Label of the dataset containing the deformation gradient. Defaults to ‘F’.
 
         """
-        self._add_generic_pointwise(self._add_Cauchy,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
 
 
     @staticmethod
@@ -642,7 +643,7 @@ class Result:
     @staticmethod
     def _add_deviator(T):
         return {
-                'data':  mechanics.deviatoric_part(T['data']),
+                'data':  tensor.deviatoric(T['data']),
                 'label': f"s_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
@@ -673,7 +674,7 @@ class Result:
             label,p = 'Minimum',0
 
         return {
-                'data': mechanics.eigenvalues(T_sym['data'])[:,p],
+                'data': tensor.eigenvalues(T_sym['data'])[:,p],
                 'label': f"lambda_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
@@ -705,7 +706,7 @@ class Result:
         elif eigenvalue == 'min':
             label,p = 'minimum',0
         return {
-                'data': mechanics.eigenvectors(T_sym['data'])[:,p],
+                'data': tensor.eigenvectors(T_sym['data'])[:,p],
                 'label': f"v_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':        '1',
@@ -789,7 +790,7 @@ class Result:
 
 
     @staticmethod
-    def _add_Mises(T_sym,kind):
+    def _add_equivalent_Mises(T_sym,kind):
         k = kind
         if k is None:
             if T_sym['meta']['Unit'] == '1':
@@ -800,7 +801,8 @@ class Result:
             raise ValueError('invalid von Mises kind {kind}')
 
         return {
-                'data':  (mechanics.Mises_strain if k=='strain' else mechanics.Mises_stress)(T_sym['data']),
+                'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
+                          mechanics.equivalent_stress_Mises)(T_sym['data']),
                 'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
@@ -808,7 +810,7 @@ class Result:
                           'Creator':     'add_Mises'
                           }
                 }
-    def add_Mises(self,T_sym,kind=None):
+    def add_equivalent_Mises(self,T_sym,kind=None):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
@@ -821,7 +823,7 @@ class Result:
             it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress').
 
         """
-        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym},{'kind':kind})
+        self._add_generic_pointwise(self._add_equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
 
 
     @staticmethod
@@ -863,19 +865,19 @@ class Result:
 
 
     @staticmethod
-    def _add_PK2(P,F):
+    def _add_stress_second_Piola_Kirchhoff(P,F):
         return {
-                'data':  mechanics.PK2(P['data'],F['data']),
+                'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
                 'label': 'S',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
                           'Description': "2. Piola-Kirchhoff stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_PK2'
+                          'Creator':     'add_stress_second_Piola_Kirchhoff'
                           }
                 }
-    def add_PK2(self,P='P',F='F'):
+    def add_stress_second_Piola_Kirchhoff(self,P='P',F='F'):
         """
         Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
@@ -887,7 +889,7 @@ class Result:
             Label of deformation gradient dataset. Defaults to ‘F’.
 
         """
-        self._add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
 
 
 # The add_pole functionality needs discussion.
@@ -934,17 +936,17 @@ class Result:
 
 
     @staticmethod
-    def _add_rotational_part(F):
+    def _add_rotation(F):
         return {
-                'data':  mechanics.rotational_part(F['data']),
+                'data':  mechanics.rotation(F['data']).as_matrix(),
                 'label': f"R({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Rotational part of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_rotational_part'
+                          'Creator':     'add_rotation'
                           }
                  }
-    def add_rotational_part(self,F):
+    def add_rotation(self,F):
         """
         Add rotational part of a deformation gradient.
 
@@ -954,13 +956,13 @@ class Result:
             Label of deformation gradient dataset.
 
         """
-        self._add_generic_pointwise(self._add_rotational_part,{'F':F})
+        self._add_generic_pointwise(self._add_rotation,{'F':F})
 
 
     @staticmethod
     def _add_spherical(T):
         return {
-                'data':  mechanics.spherical_part(T['data']),
+                'data':  tensor.spherical(T['data'],False),
                 'label': f"p_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
@@ -982,21 +984,21 @@ class Result:
 
 
     @staticmethod
-    def _add_strain_tensor(F,t,m):
+    def _add_strain(F,t,m):
         return {
-                'data':  mechanics.strain_tensor(F['data'],t,m),
+                'data':  mechanics.strain(F['data'],t,m),
                 'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Strain tensor of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_strain_tensor'
+                          'Creator':     'add_strain'
                           }
                  }
-    def add_strain_tensor(self,F='F',t='V',m=0.0):
+    def add_strain(self,F='F',t='V',m=0.0):
         """
         Add strain tensor of a deformation gradient.
 
-        For details refer to damask.mechanics.strain_tensor
+        For details refer to damask.mechanics.strain
 
         Parameters
         ----------
@@ -1009,13 +1011,13 @@ class Result:
             Order of the strain calculation. Defaults to ‘0.0’.
 
         """
-        self._add_generic_pointwise(self._add_strain_tensor,{'F':F},{'t':t,'m':m})
+        self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
 
 
     @staticmethod
     def _add_stretch_tensor(F,t):
         return {
-                'data':  (mechanics.left_stretch if t.upper() == 'V' else mechanics.right_stretch)(F['data']),
+                'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
                 'label': f"{t}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],

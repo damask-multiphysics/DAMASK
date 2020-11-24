@@ -16,7 +16,7 @@ def reference_dir(reference_dir_base):
 
 @pytest.fixture
 def set_of_rodrigues(set_of_quaternions):
-    return Rotation(set_of_quaternions).as_Rodrigues()[:200]
+    return Rotation(set_of_quaternions).as_Rodrigues_vector()
 
 
 class TestOrientation:
@@ -90,8 +90,8 @@ class TestOrientation:
         assert np.all(Orientation.from_quaternion(q=np.array([1,0,0,0]),lattice='triclinic').as_matrix()
                    == np.eye(3))
 
-    def test_from_Eulers(self):
-        assert np.all(Orientation.from_Eulers(phi=np.zeros(3),lattice='triclinic').as_matrix()
+    def test_from_Euler_angles(self):
+        assert np.all(Orientation.from_Euler_angles(phi=np.zeros(3),lattice='triclinic').as_matrix()
                    == np.eye(3))
 
     def test_from_axis_angle(self):
@@ -106,8 +106,8 @@ class TestOrientation:
         assert np.all(Orientation.from_matrix(R=np.eye(3),lattice='triclinic').as_matrix()
                    == np.eye(3))
 
-    def test_from_Rodrigues(self):
-        assert np.all(Orientation.from_Rodrigues(rho=np.array([0,0,1,0]),lattice='triclinic').as_matrix()
+    def test_from_Rodrigues_vector(self):
+        assert np.all(Orientation.from_Rodrigues_vector(rho=np.array([0,0,1,0]),lattice='triclinic').as_matrix()
                    == np.eye(3))
 
     def test_from_homochoric(self):
@@ -208,7 +208,7 @@ class TestOrientation:
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_disorientation360(self,lattice):
         o_1 = Orientation(Rotation(),lattice)
-        o_2 = Orientation.from_Eulers(lattice=lattice,phi=[360,0,0],degrees=True)
+        o_2 = Orientation.from_Euler_angles(lattice=lattice,phi=[360,0,0],degrees=True)
         assert np.allclose((o_1.disorientation(o_2)).as_matrix(),np.eye(3))
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
@@ -275,16 +275,16 @@ class TestOrientation:
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_in_FZ_vectorization(self,set_of_rodrigues,lattice):
-        result = Orientation.from_Rodrigues(rho=set_of_rodrigues.reshape((50,4,-1)),lattice=lattice).in_FZ.reshape(-1)
+        result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((-1,4,4)),lattice=lattice).in_FZ.reshape(-1)
         for r,rho in zip(result,set_of_rodrigues[:len(result)]):
-            assert r == Orientation.from_Rodrigues(rho=rho,lattice=lattice).in_FZ
+            assert r == Orientation.from_Rodrigues_vector(rho=rho,lattice=lattice).in_FZ
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     def test_in_disorientation_FZ_vectorization(self,set_of_rodrigues,lattice):
-        result = Orientation.from_Rodrigues(rho=set_of_rodrigues.reshape((50,4,-1)),
+        result = Orientation.from_Rodrigues_vector(rho=set_of_rodrigues.reshape((-1,4,4)),
                                             lattice=lattice).in_disorientation_FZ.reshape(-1)
         for r,rho in zip(result,set_of_rodrigues[:len(result)]):
-            assert r == Orientation.from_Rodrigues(rho=rho,lattice=lattice).in_disorientation_FZ
+            assert r == Orientation.from_Rodrigues_vector(rho=rho,lattice=lattice).in_disorientation_FZ
 
     @pytest.mark.parametrize('proper',[True,False])
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
@@ -417,7 +417,7 @@ class TestOrientation:
     def test_relationship_reference(self,update,reference_dir,model,lattice):
         reference = reference_dir/f'{lattice}_{model}.txt'
         o = Orientation(lattice=lattice)
-        eu = o.related(model).as_Eulers(degrees=True)
+        eu = o.related(model).as_Euler_angles(degrees=True)
         if update:
             coords = np.array([(1,i+1) for i,x in enumerate(eu)])
             Table(eu,{'Eulers':(3,)})\

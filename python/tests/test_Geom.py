@@ -55,7 +55,7 @@ class TestGeom:
 
     def test_invalid_vtr(self,tmp_path):
         v = VTK.from_rectilinear_grid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
-        v.save(tmp_path/'no_materialpoint.vtr')
+        v.save(tmp_path/'no_materialpoint.vtr',parallel=False)
         with pytest.raises(ValueError):
             Geom.load(tmp_path/'no_materialpoint.vtr')
 
@@ -229,7 +229,7 @@ class TestGeom:
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
     def test_rotate(self,default,update,reference_dir,Eulers):
-        modified = default.rotate(Rotation.from_Eulers(Eulers,degrees=True))
+        modified = default.rotate(Rotation.from_Euler_angles(Eulers,degrees=True))
         tag = f'Eulers_{util.srepr(Eulers,"-")}'
         reference = reference_dir/f'rotate_{tag}.vtr'
         if update: modified.save(reference)

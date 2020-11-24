@@ -115,10 +115,10 @@ for name in filenames:
     if   options.eulers is not None:
         label = options.eulers
         print(np.max(table.get(options.eulers),axis=0))
-        o = damask.Rotation.from_Eulers(table.get(options.eulers), options.degrees)
+        o = damask.Rotation.from_Euler_angles(table.get(options.eulers), options.degrees)
     elif options.rodrigues is not None:
         label = options.rodrigues
-        o = damask.Rotation.from_Rodrigues(table.get(options.rodrigues))
+        o = damask.Rotation.from_Rodrigues_vector(table.get(options.rodrigues))
     elif options.matrix is not None:
         label = options.matrix
         o = damask.Rotation.from_matrix(table.get(options.matrix).reshape(-1,3,3))
@@ -137,14 +137,14 @@ for name in filenames:
 
 
     if 'rodrigues' in options.output:
-        table = table.add('ro({})'.format(label),o.as_Rodrigues(),                scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('ro({})'.format(label),o.as_Rodrigues_vector(),           scriptID+' '+' '.join(sys.argv[1:]))
     if 'eulers' in options.output:
-        table = table.add('eu({})'.format(label),o.as_Eulers(options.degrees),    scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('eu({})'.format(label),o.as_Euler_angles(options.degrees),scriptID+' '+' '.join(sys.argv[1:]))
     if 'quaternion' in options.output:
-        table = table.add('qu({})'.format(label),o.as_quaternion(),               scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('qu({})'.format(label),o.as_quaternion(),                 scriptID+' '+' '.join(sys.argv[1:]))
     if 'matrix' in options.output:
-        table = table.add('om({})'.format(label),o.as_matrix(),                   scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('om({})'.format(label),o.as_matrix(),                     scriptID+' '+' '.join(sys.argv[1:]))
     if 'axisangle' in options.output:
-        table = table.add('om({})'.format(label),o.as_axisangle(options.degrees), scriptID+' '+' '.join(sys.argv[1:]))
+        table = table.add('om({})'.format(label),o.as_axis_angle(options.degrees),  scriptID+' '+' '.join(sys.argv[1:]))
 
     table.save((sys.stdout if name is None else name), legacy=True)
