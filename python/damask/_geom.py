@@ -914,16 +914,16 @@ class Geom:
         v.save('GrainBoundaries') 
                                   
 
-    def ShowGBoptimized(self,periodic=True,direction='xyz'):
+    def get_grain_boundaries(self,periodic=True,direction='xyz'):
         """
-        Create an VTK files to show grain boundaries as feature edges.
+        Create VTK files to show grain boundaries as feature edges.
 
         Parameters
         ----------
         periodic : Boolean, optional
-            Show boundaries at periodic nodes too. Defaults to False.
-        across : list of lists
-            Show grain boundaries only across certain axis. [X=0,Y=1,Z=2]. Defaults to all possible. 
+            Show boundaries at periodic nodes too. Defaults to True.
+        direction : string
+            Show grain boundaries only across certain directions. [X=0,Y=1,Z=2]. Defaults to all possible. 
 
         """
         coord=grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
@@ -933,7 +933,7 @@ class Geom:
              [0, np.prod(self.grid[:2]+1), np.prod(self.grid[:2]+1)+1,              1],
              [0, 1,                        self.grid[0]+1+1,                        self.grid[0]+1]]
          
-        for d_s in [0,1,2]:
+        for d_s in [ord(i)-120 for i in direction]:
             mask = self.material != np.roll(self.material,1,d_s)
             for d in [0,1,2]:
                 extra_layer = np.take(mask,[0],d) if d_s == d else np.zeros_like(np.take(mask,[0],d),bool)
