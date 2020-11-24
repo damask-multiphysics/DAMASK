@@ -244,7 +244,7 @@ setup_mesh:
   stage: compile
   script:
     - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - Bcd ${BUILD_DIR}UILD_DIR=$(mktemp -d)
+    - BUILD_DIR=$(mktemp -d)
     - cd ${BUILD_DIR}
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
     - make -j2 all install
