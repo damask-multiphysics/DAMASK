@@ -842,78 +842,6 @@ class Geom:
                     comments = self.comments+[util.execution_stamp('Geom','vicinity_offset')],
                    )
                    
-    def ShowGB(self,periodic=False):
-        """
-        Create an extra VTK file to show grain boundaries as feature edges.
-
-        Parameters
-        ----------
-        periodic : Boolean, optional
-            Show boundaries at periodic nodes too. Defaults to False.
-
-        """
-        v = VTK.from_polyData(grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F'))
-        cells = vtk.vtkCellArray()
-        
-        index={}
-        nodes={}
-        nodes_PBC={} 
-        if periodic:
-            nodes_PBC['0']=np.array([])
-            nodes_PBC['1']=np.array([])
-            nodes_PBC['2']=np.array([])
-        else:
-            nodes_PBC['0']=np.concatenate((
-                        np.arange(0                                        , np.prod(self.grid+1)     , (self.grid[0]+1) ),
-                        np.arange(self.grid[0]                             , np.prod(self.grid+1)     , (self.grid[0]+1) )  ))
-            nodes_PBC['2']=np.concatenate((  
-                        np.arange(0                                        , np.prod(self.grid[:2]+1) , 1                ), 
-                        np.arange(np.prod(self.grid+1) - np.prod(self.grid[:2]+1), \
-                                                    np.prod(self.grid+1)     , 1                )  ))
-            nodes_PBC['1']=np.concatenate((   
-                        np.concatenate([np.arange((i)*np.prod(self.grid[:2]+1), \
-                                       (i)*np.prod(self.grid[:2]+1)+ (self.grid[0]+1)) for i in range(self.grid[2]+1)]) ,
-                        np.concatenate([np.arange( (i+1)*np.prod(self.grid[:2]+1)-(self.grid[0]+1),\
-                                                (i+1)*np.prod(self.grid[:2]+1))  for i in range(self.grid[2]+1)])  ))
-          
-        for d_s in [0,1,2]:
-            base_nodes = np.where(self.material==np.roll(self.material,1,d_s),False,True)
-            for d in [0,1,2]:
-                if d_s == d:
-                    base_nodes = np.concatenate((base_nodes,np.take(base_nodes,[0],d)),d)
-                else:
-                    base_nodes = np.concatenate((base_nodes,np.logical_and(np.take(base_nodes,[0],d),False)),d)
-            nodes['{}'.format(d_s)]= np.argwhere(base_nodes.flatten(order='F'))[:,0]
-            index['{}'.format(d_s)]=np.isin(nodes['{}'.format(d_s)],nodes_PBC['{}'.format(d_s)],assume_unique=True,invert=True)
-
-        for p in nodes['0'][index['0']]:
-            q = vtk.vtkQuad()
-            q.GetPointIds().SetId(0, p)
-            q.GetPointIds().SetId(1, p+(self.grid[0]+1))
-            q.GetPointIds().SetId(2, p+np.prod(self.grid[:2]+1)+(self.grid[0]+1))
-            q.GetPointIds().SetId(3, p+np.prod(self.grid[:2]+1))
-            cells.InsertNextCell(q)
-
-        for p in nodes['1'][index['1']]:
-            q = vtk.vtkQuad()
-            q.GetPointIds().SetId(0, p)
-            q.GetPointIds().SetId(1, p+np.prod(self.grid[:2]+1))
-            q.GetPointIds().SetId(2, p+np.prod(self.grid[:2]+1)+1)
-            q.GetPointIds().SetId(3, p+1)
-            cells.InsertNextCell(q)
-
-        for p in nodes['2'][index['2']]:
-            q = vtk.vtkQuad()
-            q.GetPointIds().SetId(0, p)
-            q.GetPointIds().SetId(1, p+1)
-            q.GetPointIds().SetId(2, p+(self.grid[0]+1)+1)
-            q.GetPointIds().SetId(3, p+(self.grid[0]+1))
-            cells.InsertNextCell(q)
-        
-        v.vtk_data.SetPolys(cells)
-        v.save('GrainBoundaries') 
-                                  
-
     def get_grain_boundaries(self,periodic=True,direction='x'):
         """
         Create mesh in VTK to show grain boundaries as feature edges.
@@ -921,7 +849,7 @@ class Geom:
         Parameters
         ----------
         periodic : Boolean, optional
-            Show boundaries at periodic nodes too. Defaults to True.
+            Show boundaries across periodicity. Defaults to True.
         direction : string
             Show grain boundaries only across a certain direction. ['x','y','z']
 
@@ -938,9 +866,9 @@ class Geom:
         for d in [0,1,2]:
             extra_layer = np.take(mask,[0],d) if d_s == d else np.zeros_like(np.take(mask,[0],d),bool)
             mask = np.concatenate((mask,extra_layer),d)        
-        if d_s == 0 and periodic: mask[0,:,:] = mask[-1,:,:] = False
-        if d_s == 1 and periodic: mask[:,0,:] = mask[:,-1,:] = False
-        if d_s == 2 and periodic: mask[:,:,0] = mask[:,:,-1] = False
+        if d_s == 0 and not periodic: mask[0,:,:] = mask[-1,:,:] = False
+        if d_s == 1 and not periodic: mask[:,0,:] = mask[:,-1,:] = False
+        if d_s == 2 and not periodic: mask[:,:,0] = mask[:,:,-1] = False
         base_nodes = np.argwhere(mask.flatten(order='F')).reshape(-1,1)
         connectivity = np.block([base_nodes + o[d_s][d] for d in range(4)])
         return VTK.from_unstructuredGrid(coord,connectivity,'QUAD')
