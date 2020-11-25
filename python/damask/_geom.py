@@ -6,7 +6,6 @@ from os import path
 import numpy as np
 import h5py
 from scipy import ndimage,spatial
-import vtk
 
 from . import environment
 from . import VTK
