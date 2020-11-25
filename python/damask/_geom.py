@@ -914,16 +914,16 @@ class Geom:
         v.save('GrainBoundaries') 
                                   
 
-    def get_grain_boundaries(self,periodic=True,direction='xyz'):
+    def get_grain_boundaries(self,periodic=True,direction='x'):
         """
-        Create VTK files to show grain boundaries as feature edges.
+        Create mesh in VTK to show grain boundaries as feature edges.
 
         Parameters
         ----------
         periodic : Boolean, optional
             Show boundaries at periodic nodes too. Defaults to True.
         direction : string
-            Show grain boundaries only across certain directions. [X=0,Y=1,Z=2]. Defaults to all possible. 
+            Show grain boundaries only across a certain direction. ['x','y','z']
 
         """
         coord=grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
@@ -932,21 +932,17 @@ class Geom:
         o = [[0, self.grid[0]+1,           np.prod(self.grid[:2]+1)+self.grid[0]+1, np.prod(self.grid[:2]+1)],
              [0, np.prod(self.grid[:2]+1), np.prod(self.grid[:2]+1)+1,              1],
              [0, 1,                        self.grid[0]+1+1,                        self.grid[0]+1]]
-         
-        for d_s in [ord(i)-120 for i in direction]:
-            mask = self.material != np.roll(self.material,1,d_s)
-            for d in [0,1,2]:
-                extra_layer = np.take(mask,[0],d) if d_s == d else np.zeros_like(np.take(mask,[0],d),bool)
-                mask = np.concatenate((mask,extra_layer),d)
-            eval(f"if periodic: mask[{'0' if d_s==0 else ':'}"+f",{'0' if d_s==1 else ':'}"+ f",{'0' if d_s==2 else ':'}]= \
-                 [] mask[{'-1' if d_s==0 else ':'}"+f",{'-1' if d_s==1 else ':'}"+ f",{'-1' if d_s==2 else ':'}]=False")
-            if d_s == 0 and periodic: mask[0,:,:] = mask[-1,:,:] = False
-            if d_s == 1 and periodic: mask[:,0,:] = mask[:,-1,:] = False
-            if d_s == 2 and periodic: mask[:,:,0] = mask[:,:,-1] = False
-            #eval('if periodic: mask['+','.join(['0' if d_s==d else ':' for d in range(3)])+']=\
-                         #mask['+','.join(['-1' if d_s==d else ':' for d in range(3)])+']=False')
-            base_nodes = np.argwhere(mask.flatten(order='F')).reshape(-1,1)
-            connectivity = np.block([base_nodes + o[d_s][d] for d in range(4)])
-            vtk=VTK.from_unstructuredGrid(coord,connectivity,'QUAD')
-            vtk.save(f'GrainBoundaries{d_s}') 
+        
+        d_s=ord(direction)-120                                 # x=0, y=1, z=2
+        mask = self.material != np.roll(self.material,1,d_s)
+        for d in [0,1,2]:
+            extra_layer = np.take(mask,[0],d) if d_s == d else np.zeros_like(np.take(mask,[0],d),bool)
+            mask = np.concatenate((mask,extra_layer),d)        
+        if d_s == 0 and periodic: mask[0,:,:] = mask[-1,:,:] = False
+        if d_s == 1 and periodic: mask[:,0,:] = mask[:,-1,:] = False
+        if d_s == 2 and periodic: mask[:,:,0] = mask[:,:,-1] = False
+        base_nodes = np.argwhere(mask.flatten(order='F')).reshape(-1,1)
+        connectivity = np.block([base_nodes + o[d_s][d] for d in range(4)])
+        return VTK.from_unstructuredGrid(coord,connectivity,'QUAD')
+
 
