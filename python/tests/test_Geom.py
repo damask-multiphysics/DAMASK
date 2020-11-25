@@ -363,3 +363,12 @@ class TestGeom:
         grid = np.ones(3,dtype=int)*64
         geom = Geom.from_minimal_surface(grid,np.ones(3),surface,threshold)
         assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5,rtol=1e-3)
+
+    @pytest.mark.parametrize('periodic',[True,False])
+    @pytest.mark.parametrize('direction',['x','y','z'])
+    def test_get_grain_boundaries(self,periodic,direction,reference_dir):
+        geom=Geom.load(reference_dir/'get_grain_boundaries_4g12x15x20.vtr')
+        current=geom.get_grain_boundaries(periodic,direction)
+        reference=VTK.load(reference_dir/f'get_grain_boundaries_4g12x15x20_{direction}_per{periodic}.vtu')
+        assert current == reference
+
