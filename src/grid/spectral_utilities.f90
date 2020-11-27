@@ -87,19 +87,6 @@ module spectral_utilities
     character(len=:), allocatable :: myType
   end type tBoundaryCondition
 
-  type, public :: tLoadCase
-    type(rotation)               :: rot                                                             !< rotation of BC
-    type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
-                                    deformation                                                     !< deformation BC (dot_F, F, or L)
-    real(pReal) ::                  time                                                            !< length of increment
-    integer ::                      incs, &                                                         !< number of increments
-                                    outputfrequency, &                                              !< frequency of result writes
-                                    restartfrequency                                                !< frequency of restart writes
-    logical ::                      followFormerTrajectory, &                                       !< follow trajectory of former loadcase
-                                    logscale                                                        !< logarithmic time inc flag
-    integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
-  end type tLoadCase
-
   type, public :: tSolutionParams
     real(pReal), dimension(3,3) :: stress_BC
     logical, dimension(3,3)     :: stress_mask
