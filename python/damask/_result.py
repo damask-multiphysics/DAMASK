@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom
 from pathlib import Path
 from functools import partial
+from collections import defaultdict
 
 import h5py
 import numpy as np
@@ -1239,6 +1240,8 @@ class Result:
             delta.text="{} {} {}".format(*(self.size/self.grid))
 
 
+            type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
+
             with h5py.File(self.fname,'r') as f:
                 attributes.append(ET.SubElement(grid, 'Attribute'))
                 attributes[-1].attrib={'Name':          'u / m',
@@ -1259,14 +1262,14 @@ class Result:
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
 
-                                if (shape not in [(), (3,), (3,3)]) or dtype != np.float64: continue
+                                if dtype != np.float64: continue
                                 prec = f[name].dtype.itemsize
                                 unit = f[name].attrs['Unit'] if h5py3 else f[name].attrs['Unit'].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
                                 attributes[-1].attrib={'Name':          name.split('/',2)[2]+f' / {unit}',
-                                                       'Center':        'Cell',
-                                                       'AttributeType': {():'Scalar',(3):'Vector',(3,3):'Tensor'}[shape]}
+                                                       'Center':       'Cell',
+                                                       'AttributeType': type_map[shape]}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                                 data_items[-1].attrib={'Format':     'HDF',
                                                        'NumberType': 'Float',
