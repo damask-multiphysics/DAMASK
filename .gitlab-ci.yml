@@ -54,17 +54,17 @@ variables:
   IntelCompiler:                   "$IntelCompiler19_1"
   GNUCompiler:                     "$GNUCompiler10"
   # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IMPI2020Intel19_1:               "MPI/Intel/19.1/IntelMPI/2020"
+  IMPI2020Intel19_1:               "MPI/Intel/19.1.2/IntelMPI/2019"
   OMPI4_0GNU10:                    "MPI/GNU/10/OpenMPI/4.0.5"
   # ------------ Defaults ----------------------------------------------
   MPI_Intel:                       "$IMPI2020Intel19_1"
   MPI_GNU:                         "$OMPI4_0GNU10"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_14_0IMPI2020Intel19_1:    "Libraries/PETSc/3.14.0/Intel-19.1-IntelMPI-2020"
+  PETSc3_14_0IMPI2020Intel19_1:    "Libraries/PETSc/3.14.0/Intel-19.1.2-IntelMPI-2019"
   PETSc3_14_0OMPI4_0GNU10:         "Libraries/PETSc/3.14.0/GNU-10-OpenMPI-4.0.5"
   # ------------ Defaults ----------------------------------------------
-  PETSc_MPICH_Intel:               "$PETSc3_14_0IMPI2020Intel19_1"
-  PETSc_MPICH_GNU:                 "$PETSc3_14_0OMPI4_0GNU10"
+  PETSc_Intel:                     "$PETSc3_14_0IMPI2020Intel19_1"
+  PETSc_GNU:                       "$PETSc3_14_0OMPI4_0GNU10"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   MSC2020:                         "FEM/MSC/2020"
   # ------------ Defaults ----------------------------------------------
@@ -180,7 +180,7 @@ Post_OrientationAverageMisorientation:
 compile_grid_Intel:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
@@ -190,7 +190,7 @@ compile_grid_Intel:
 compile_mesh_Intel:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
@@ -200,7 +200,7 @@ compile_mesh_Intel:
 compile_grid_GNU:
   stage: compile
   script:
-    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
+    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
     - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
@@ -210,7 +210,7 @@ compile_grid_GNU:
 compile_mesh_GNU:
   stage: compile
   script:
-    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
+    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
     - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
@@ -230,7 +230,7 @@ compile_MARC:
 setup_grid:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)
     - cd ${BUILD_DIR}
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
@@ -242,7 +242,7 @@ setup_grid:
 setup_mesh:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)
     - cd ${BUILD_DIR}
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
@@ -255,7 +255,7 @@ setup_mesh:
 Pytest_grid:
   stage: grid
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
   except:
@@ -341,7 +341,7 @@ Marc_elementLib:
 SpectralRuntime:
   stage: performance
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $DAMASKROOT
     - make clean grid processing OPTIMIZATION=AGGRESSIVE
     - cd $LOCAL_HOME/performance                                                                    # location of old results
