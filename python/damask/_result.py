@@ -46,7 +46,7 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 8:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 9:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -501,20 +501,6 @@ class Result:
         return path
 
 
-    def get_constituent_ID(self,c=0):
-        """Pointwise constituent ID."""
-        with h5py.File(self.fname,'r') as f:
-            names = f['/mapping/phase']['Name'][:,c].astype('str')
-        return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
-
-
-    def get_crystal_structure(self):                                                                # ToDo: extension to multi constituents/phase
-        """Info about the crystal structure."""
-        with h5py.File(self.fname,'r') as f:
-            return f[self.get_dataset_location('O')[0]].attrs['Lattice'] if h5py3 else \
-                   f[self.get_dataset_location('O')[0]].attrs['Lattice'].decode()
-
-
     def enable_user_function(self,func):
         globals()[func.__name__]=func
         print(f'Function {func.__name__} enabled in add_calculation.')
@@ -795,11 +781,11 @@ class Result:
     @staticmethod
     def _add_IPF_color(q,l):
         m = util.scale_to_coprime(np.array(l))
-
-        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),
-                        lattice  = {'fcc':'cF',
-                                    'bcc':'cI',
-                                    'hex':'hP'}[q['meta']['Lattice']])
+        try:
+            lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
+        except KeyError:
+            lattice =  q['meta']['Lattice']
+        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),

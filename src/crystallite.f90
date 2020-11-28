@@ -780,17 +780,17 @@ subroutine crystallite_results
         case('O')
           select case(lattice_structure(p))
             case(lattice_ISO_ID)
-              structureLabel = 'iso'
+              structureLabel = 'aP'
             case(lattice_FCC_ID)
-              structureLabel = 'fcc'
+              structureLabel = 'cF'
             case(lattice_BCC_ID)
-              structureLabel = 'bcc'
+              structureLabel = 'cI'
             case(lattice_BCT_ID)
-              structureLabel = 'bct'
+              structureLabel = 'tI'
             case(lattice_HEX_ID)
-              structureLabel = 'hex'
+              structureLabel = 'hP'
             case(lattice_ORT_ID)
-              structureLabel = 'ort'
+              structureLabel = 'oP'
           end select
           selected_rotations = select_rotations(crystallite_orientation,p)
           call results_writeDataset(group,selected_rotations,output_constituent(p)%label(o),&
