@@ -50,7 +50,11 @@ subroutine parallelization_init
   if (threadLevel<MPI_THREAD_FUNNELED)       error stop 'MPI library does not support OpenMP'
 #endif
 
-  call PetscInitializeNoArguments(petsc_err)                                                        ! first line in the code according to PETSc manual
+#if defined(DEBUG)
+  call PetscInitialize(PETSC_NULL_CHARACTER,petsc_err)
+#else
+  call PetscInitializeNoArguments(petsc_err)
+#endif
   CHKERRQ(petsc_err)
 
 #if defined(DEBUG) && defined(__INTEL_COMPILER)
