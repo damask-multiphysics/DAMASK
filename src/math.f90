@@ -17,8 +17,8 @@ module math
 #if __INTEL_COMPILER >= 1900
   ! do not make use associated entities available to other modules
   private :: &
-    prec, &
-    IO
+    IO, &
+    config
 #endif
 
   real(pReal),    parameter :: PI = acos(-1.0_pReal)                                                !< ratio of a circle's circumference to its diameter
