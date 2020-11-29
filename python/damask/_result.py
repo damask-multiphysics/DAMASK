@@ -121,6 +121,10 @@ class Result:
             True is equivalent to [*], False is equivalent to []
 
         """
+        def natural_sort(key):
+            convert = lambda text: int(text) if text.isdigit() else text
+            return [ convert(c) for c in re.split('([0-9]+)', key) ]
+
         # allow True/False and string arguments
         if  datasets is True:
             datasets = ['*']
@@ -154,11 +158,11 @@ class Result:
             self.selection[what] = valid
         elif action == 'add':
             add = existing.union(valid)
-            add_sorted = sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            add_sorted = sorted(add, key=natural_sort)
             self.selection[what] = add_sorted
         elif action == 'del':
             diff = existing.difference(valid)
-            diff_sorted = sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            diff_sorted = sorted(diff, key=natural_sort)
             self.selection[what] = diff_sorted
 
 
@@ -327,9 +331,6 @@ class Result:
                     del f[path_old]
         else:
             raise PermissionError('Rename operation not permitted')
-
-
-  # def datamerger(regular expression to filter groups into one copy)
 
 
     def place(self,datasets,constituent=0,tagged=False,split=True):
