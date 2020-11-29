@@ -173,11 +173,8 @@ class TestResult:
         loc = {'O':     default.get_dataset_location('O'),
                'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
         qu = default.read_dataset(loc['O']).view(np.double).squeeze()
-        crystal_structure = default.get_crystal_structure()
-        c = Orientation(rotation=qu,
-                        lattice={'fcc':'cF',
-                                 'bcc':'cI',
-                                 'hex':'hP'}[crystal_structure])
+        crystal_structure = default._get_attribute(default.get_dataset_location('O')[0],'Lattice')
+        c = Orientation(rotation=qu,lattice=crystal_structure)
         in_memory = np.uint8(c.IPF_color(np.array(d))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
