@@ -301,7 +301,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%r    = math_expand(prm%r,N_tw)
 
       ! sanity checks
-      if (    prm%x_c_tw        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_twin'
+      if (    prm%x_c_tw        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_tw'
       if (    prm%L_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tw'
       if (    prm%i_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tw'
       if (any(prm%b_tw          < 0.0_pReal)) extmsg = trim(extmsg)//' b_tw'
@@ -332,15 +332,15 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%h_tr_tr = lattice_interaction_TransByTrans(N_tr,pl%get_asFloats('h_tr_tr'), &
                                                      phase%get_asString('lattice'))
 
-      prm%C66_tr  = lattice_C66_trans(N_tr,prm%C66,pl%get_asString('trans_lattice_structure'), &
+      prm%C66_tr  = lattice_C66_trans(N_tr,prm%C66,pl%get_asString('lattice_tr'), &
                                       0.0_pReal, &
-                                      pl%get_asFloat('a_bcc', defaultVal=0.0_pReal), &
-                                      pl%get_asFloat('a_fcc', defaultVal=0.0_pReal))
+                                      pl%get_asFloat('a_cI', defaultVal=0.0_pReal), &
+                                      pl%get_asFloat('a_cF', defaultVal=0.0_pReal))
 
-      prm%P_tr    = lattice_SchmidMatrix_trans(N_tr,pl%get_asString('trans_lattice_structure'), &
+      prm%P_tr    = lattice_SchmidMatrix_trans(N_tr,pl%get_asString('lattice_tr'), &
                                                0.0_pReal, &
-                                               pl%get_asFloat('a_bcc', defaultVal=0.0_pReal), &
-                                               pl%get_asFloat('a_fcc', defaultVal=0.0_pReal))
+                                               pl%get_asFloat('a_cI', defaultVal=0.0_pReal), &
+                                               pl%get_asFloat('a_cF', defaultVal=0.0_pReal))
 
       if (lattice_structure(p) /= lattice_FCC_ID) then
         prm%dot_N_0_tr = pl%get_asFloats('dot_N_0_tr')
@@ -352,7 +352,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%s    = math_expand(prm%s,N_tr)
 
       ! sanity checks
-      if (    prm%x_c_tr        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_trans'
+      if (    prm%x_c_tr        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_tr'
       if (    prm%L_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tr'
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'

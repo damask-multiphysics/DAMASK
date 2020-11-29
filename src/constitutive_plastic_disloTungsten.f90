@@ -5,7 +5,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief crystal plasticity model for bcc metals, especially Tungsten
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_mech) plastic_disloTungsten
+submodule(constitutive:constitutive_mech) plastic_dislotungsten
 
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
@@ -74,7 +74,7 @@ contains
 !> @brief Perform module initialization.
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-module function plastic_disloTungsten_init() result(myPlasticity)
+module function plastic_dislotungsten_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
@@ -99,7 +99,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
 
   print'(/,a)', ' <<<+-  plastic_dislotungsten init  -+>>>'
 
-  myPlasticity = plastic_active('disloTungsten')
+  myPlasticity = plastic_active('dislotungsten')
   Ninstances = count(myPlasticity)
   print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
   if(Ninstances == 0) return
@@ -142,7 +142,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
-      if(trim(phase%get_asString('lattice')) == 'bcc') then
+      if(trim(phase%get_asString('lattice')) == 'cI') then
         a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         prm%nonSchmid_pos = lattice_nonSchmidMatrix(N_sl,a,+1)
         prm%nonSchmid_neg = lattice_nonSchmidMatrix(N_sl,a,-1)
@@ -180,7 +180,7 @@ module function plastic_disloTungsten_init() result(myPlasticity)
       prm%f_at            = pl%get_asFloat('f_at')       * prm%b_sl**3.0_pReal
       prm%D_a             = pl%get_asFloat('D_a')        * prm%b_sl
 
-      prm%dipoleformation = pl%get_asBool('dipole_formation_factor', defaultVal = .true.)
+      prm%dipoleformation = .not. pl%get_asBool('no_dipole_formation', defaultVal = .false.)
 
       ! expand: family => system
       rho_mob_0          = math_expand(rho_mob_0,          N_sl)
@@ -262,17 +262,17 @@ module function plastic_disloTungsten_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 !  exit if any parameter is out of range
-    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(disloTungsten)')
+    if (extmsg /= '') call IO_error(211,ext_msg=trim(extmsg)//'(dislotungsten)')
 
   enddo
 
-end function plastic_disloTungsten_init
+end function plastic_dislotungsten_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate plastic velocity gradient and its tangent.
 !--------------------------------------------------------------------------------------------------
-pure module subroutine plastic_disloTungsten_LpAndItsTangent(Lp,dLp_dMp, &
+pure module subroutine plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp, &
                                                          Mp,T,instance,of)
   real(pReal), dimension(3,3),     intent(out) :: &
     Lp                                                                                              !< plastic velocity gradient
@@ -309,13 +309,13 @@ pure module subroutine plastic_disloTungsten_LpAndItsTangent(Lp,dLp_dMp, &
 
   end associate
 
-end subroutine plastic_disloTungsten_LpAndItsTangent
+end subroutine plastic_dislotungsten_LpAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate the rate of change of microstructure.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_disloTungsten_dotState(Mp,T,instance,of)
+module subroutine plastic_dislotungsten_dotState(Mp,T,instance,of)
 
   real(pReal), dimension(3,3),  intent(in) :: &
     Mp                                                                                              !< Mandel stress
@@ -369,13 +369,13 @@ module subroutine plastic_disloTungsten_dotState(Mp,T,instance,of)
 
   end associate
 
-end subroutine plastic_disloTungsten_dotState
+end subroutine plastic_dislotungsten_dotState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate derived quantities from state.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_disloTungsten_dependentState(instance,of)
+module subroutine plastic_dislotungsten_dependentState(instance,of)
 
   integer,      intent(in) :: &
     instance, &
@@ -394,13 +394,13 @@ module subroutine plastic_disloTungsten_dependentState(instance,of)
 
   end associate
 
-end subroutine plastic_disloTungsten_dependentState
+end subroutine plastic_dislotungsten_dependentState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write results to HDF5 output file.
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_disloTungsten_results(instance,group)
+module subroutine plastic_dislotungsten_results(instance,group)
 
   integer,          intent(in) :: instance
   character(len=*), intent(in) :: group
@@ -429,7 +429,7 @@ module subroutine plastic_disloTungsten_results(instance,group)
   enddo outputsLoop
   end associate
 
-end subroutine plastic_disloTungsten_results
+end subroutine plastic_dislotungsten_results
 
 
 !--------------------------------------------------------------------------------------------------
@@ -547,4 +547,4 @@ pure subroutine kinetics(Mp,T,instance,of, &
 
 end subroutine kinetics
 
-end submodule plastic_disloTungsten
+end submodule plastic_dislotungsten

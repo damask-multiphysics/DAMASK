@@ -244,7 +244,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       prm%Schmid = lattice_SchmidMatrix_slip(ini%N_sl,phase%get_asString('lattice'),&
                                              phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
-      if(trim(phase%get_asString('lattice')) == 'bcc') then
+      if(trim(phase%get_asString('lattice')) == 'cI') then
         a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(ini%N_sl,a,+1)
@@ -362,7 +362,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
       if (prm%nu_a                <=  0.0_pReal)  extmsg = trim(extmsg)//' nu_a'
       if (prm%w                   <=  0.0_pReal)  extmsg = trim(extmsg)//' w'
       if (prm%D_0                 <   0.0_pReal)  extmsg = trim(extmsg)//' D_0'
-      if (prm%V_at                <=  0.0_pReal)  extmsg = trim(extmsg)//' V_at'                   ! ToDo: in disloTungsten, the atomic volume is given as a factor
+      if (prm%V_at                <=  0.0_pReal)  extmsg = trim(extmsg)//' V_at'                   ! ToDo: in dislotungsten, the atomic volume is given as a factor
 
       if (prm%rho_min             <   0.0_pReal)  extmsg = trim(extmsg)//' rho_min'
       if (prm%rho_significant     <   0.0_pReal)  extmsg = trim(extmsg)//' rho_significant'
