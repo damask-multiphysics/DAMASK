@@ -13,6 +13,7 @@ module grid_mech_spectral_basic
   use prec
   use parallelization
   use DAMASK_interface
+  use IO
   use HDF5_utilities
   use math
   use spectral_utilities
@@ -140,9 +141,9 @@ subroutine grid_mech_spectral_basic_init
    
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -198,7 +199,7 @@ subroutine grid_mech_spectral_basic_init
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
   endif restartRead
 
-  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+  homogenization_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -324,7 +325,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
                                    rotation_BC%rotate(F_aimDot,active=.true.))
     F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
 
-    materialpoint_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------

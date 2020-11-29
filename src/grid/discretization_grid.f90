@@ -56,25 +56,33 @@ subroutine discretization_grid_init(restart)
     myGrid                                                                                          !< domain grid of this process
 
   integer,     dimension(:),   allocatable :: &
-    materialAt
+    materialAt, materialAt_global
 
   integer :: &
     j, &
-    debug_element, &
-    debug_ip
+    debug_element, debug_ip, &
+    ierr
   integer(C_INTPTR_T) :: &
     devNull, z, z_offset
+  integer, dimension(worldsize) :: &
+    displs, sendcounts
 
   print'(/,a)', ' <<<+-  discretization_grid init  -+>>>'; flush(IO_STDOUT)
 
-  call readVTR(grid,geomSize,origin,materialAt)
+  if(worldrank == 0) call readVTR(grid,geomSize,origin,materialAt_global)
+
+
+  call MPI_Bcast(grid,3,MPI_INTEGER,0,PETSC_COMM_WORLD, ierr)
+  if (ierr /= 0) error stop 'MPI error'
+  call MPI_Bcast(geomSize,3,MPI_DOUBLE,0,PETSC_COMM_WORLD, ierr)
+  if (ierr /= 0) error stop 'MPI error'
+  call MPI_Bcast(origin,3,MPI_DOUBLE,0,PETSC_COMM_WORLD, ierr)
+  if (ierr /= 0) error stop 'MPI error'
 
   print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
   print'(a,3(es12.5))',   ' size     x y z: ', geomSize
   print'(a,3(es12.5))',   ' origin   x y z: ', origin
 
-!--------------------------------------------------------------------------------------------------
-! grid solver specific quantities
   if(worldsize>grid(3)) call IO_error(894, ext_msg='number of processes exceeds grid(3)')
 
   call fftw_mpi_init
@@ -84,6 +92,8 @@ subroutine discretization_grid_init(restart)
                                    PETSC_COMM_WORLD, &
                                    z, &                                                             ! domain grid size along z
                                    z_offset)                                                        ! domain grid offset along z
+  if(z==0_C_INTPTR_T) call IO_error(894, ext_msg='Cannot distribute MPI processes')
+
   grid3       = int(z)
   grid3Offset = int(z_offset)
   size3       = geomSize(3)*real(grid3,pReal)      /real(grid(3),pReal)
@@ -91,14 +101,14 @@ subroutine discretization_grid_init(restart)
   myGrid = [grid(1:2),grid3]
   mySize = [geomSize(1:2),size3]
 
-!-------------------------------------------------------------------------------------------------
-! debug parameters
-  debug_element = config_debug%get_asInt('element',defaultVal=1)
-  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
+  call MPI_Gather(product(grid(1:2))*grid3Offset,1,MPI_INTEGER,displs,    1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  if (ierr /= 0) error stop 'MPI error'
+  call MPI_Gather(product(myGrid),               1,MPI_INTEGER,sendcounts,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  if (ierr /= 0) error stop 'MPI error'
 
-!--------------------------------------------------------------------------------------------------
-! general discretization
-  materialAt = materialAt(product(grid(1:2))*grid3Offset+1:product(grid(1:2))*(grid3Offset+grid3))  ! reallocate/shrink in case of MPI
+  allocate(materialAt(product(myGrid)))
+  call MPI_scatterv(materialAt_global,sendcounts,displs,MPI_INTEGER,materialAt,size(materialAt),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+  if (ierr /= 0) error stop 'MPI error'
 
   call discretization_init(materialAt, &
                            IPcoordinates0(myGrid,mySize,grid3Offset), &
@@ -129,10 +139,12 @@ subroutine discretization_grid_init(restart)
   call geometry_plastic_nonlocal_setIPareaNormal  (cellSurfaceNormal(product(myGrid)))
   call geometry_plastic_nonlocal_setIPneighborhood(IPneighborhood(myGrid))
 
-!--------------------------------------------------------------------------------------------------
-! sanity checks for debugging
-  if (debug_element < 1 .or. debug_element > product(myGrid)) call IO_error(602,ext_msg='element')  ! selected element does not exist
-  if (debug_ip /= 1)                                          call IO_error(602,ext_msg='IP')       ! selected IP does not exist
+!-------------------------------------------------------------------------------------------------
+! debug parameters
+  debug_element = config_debug%get_asInt('element',defaultVal=1)
+  if (debug_element < 1 .or. debug_element > product(myGrid)) call IO_error(602,ext_msg='element')
+  debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
+  if (debug_ip /= 1)                                          call IO_error(602,ext_msg='IP')
 
 end subroutine discretization_grid_init
 

@@ -135,7 +135,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
 
-  logical, dimension(discretization_nIP,discretization_nElem) :: devNull
+  logical, dimension(discretization_nIPs,discretization_Nelems) :: devNull
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
@@ -150,7 +150,7 @@ subroutine crystallite_init
     debug_crystallite, &                                                                            ! pointer to debug options for crystallite
     phases, &
     phase, &
-    generic_param
+    mech
 
   print'(/,a)', ' <<<+-  crystallite init  -+>>>'
 
@@ -162,9 +162,9 @@ subroutine crystallite_init
   debugCrystallite%ip        = config_debug%get_asInt('integrationpoint', defaultVal=1)
   debugCrystallite%grain     = config_debug%get_asInt('grain', defaultVal=1)
 
-  cMax = homogenization_maxNgrains
-  iMax = discretization_nIP
-  eMax = discretization_nElem
+  cMax = homogenization_maxNconstituents
+  iMax = discretization_nIPs
+  eMax = discretization_Nelems
 
   allocate(crystallite_partitionedF(3,3,cMax,iMax,eMax),source=0.0_pReal)
 
@@ -240,11 +240,11 @@ subroutine crystallite_init
   allocate(output_constituent(phases%length))
   do c = 1, phases%length
     phase => phases%get(c)
-    generic_param  => phase%get('generic',defaultVal = emptyDict)
+    mech  => phase%get('mechanics',defaultVal = emptyDict)
 #if defined(__GFORTRAN__)
-    output_constituent(c)%label  = output_asStrings(generic_param)
+    output_constituent(c)%label  = output_asStrings(mech)
 #else
-    output_constituent(c)%label  = generic_param%get_asStrings('output',defaultVal=emptyStringArray)
+    output_constituent(c)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
@@ -253,7 +253,7 @@ subroutine crystallite_init
 ! initialize
  !$OMP PARALLEL DO PRIVATE(i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Ngrains(material_homogenizationAt(e))
+    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Nconstituents(material_homogenizationAt(e))
       crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       crystallite_Fp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e) &
                                      / math_det33(crystallite_Fp0(1:3,1:3,c,i,e))**(1.0_pReal/3.0_pReal)
@@ -279,7 +279,7 @@ subroutine crystallite_init
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+      do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
         call constitutive_dependentState(crystallite_partitionedF0(1:3,1:3,c,i,e), &
                                          crystallite_partitionedFp0(1:3,1:3,c,i,e), &
                                          c,i,e)                                                     ! update dependent state variables to be consistent with basic states
@@ -307,7 +307,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 function crystallite_stress()
 
-  logical, dimension(discretization_nIP,discretization_nElem) :: crystallite_stress
+  logical, dimension(discretization_nIPs,discretization_Nelems) :: crystallite_stress
   real(pReal) :: &
     formerSubStep
   integer :: &
@@ -315,9 +315,8 @@ function crystallite_stress()
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
-    startIP, endIP, &
     s
-  logical, dimension(homogenization_maxNgrains,discretization_nIP,discretization_nElem) :: todo     !ToDo: need to set some values to false for different Ngrains
+  logical, dimension(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: todo     !ToDo: need to set some values to false for different Ngrains
   real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
     subLp0,&                                                                                        !< plastic velocity grad at start of crystallite inc
     subLi0                                                                                          !< intermediate velocity grad at start of crystallite inc
@@ -335,7 +334,7 @@ function crystallite_stress()
   crystallite_subStep = 0.0_pReal
   !$OMP PARALLEL DO
   elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+    do i = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
       homogenizationRequestsCalculation: if (crystallite_requested(c,i,e)) then
         plasticState    (material_phaseAt(c,e))%subState0(      :,material_phaseMemberAt(c,i,e)) = &
         plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phaseMemberAt(c,i,e))
@@ -356,17 +355,8 @@ function crystallite_stress()
   enddo elementLooping1
   !$OMP END PARALLEL DO
 
-  singleRun: if (FEsolving_execELem(1) == FEsolving_execElem(2) .and. &
-                 FEsolving_execIP  (1) == FEsolving_execIP  (2)) then
-    startIP = FEsolving_execIP(1)
-    endIP   = startIP
-  else singleRun
-    startIP = 1
-    endIP   = discretization_nIP
-  endif singleRun
-
   NiterationCrystallite = 0
-  cutbackLooping: do while (any(todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
+  cutbackLooping: do while (any(todo(:,FEsolving_execIP(1):FEsolving_execIP(2),FEsolving_execELem(1):FEsolving_execElem(2))))
     NiterationCrystallite = NiterationCrystallite + 1
 
 #ifdef DEBUG
@@ -376,7 +366,7 @@ function crystallite_stress()
     !$OMP PARALLEL DO PRIVATE(formerSubStep)
     elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       do i = FEsolving_execIP(1),FEsolving_execIP(2)
-        do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+        do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
 !--------------------------------------------------------------------------------------------------
 !  wind forward
           if (crystallite_converged(c,i,e)) then
@@ -428,9 +418,9 @@ function crystallite_stress()
             crystallite_subF(1:3,1:3,c,i,e) = crystallite_subF0(1:3,1:3,c,i,e) &
                                             + crystallite_subStep(c,i,e) *( crystallite_partitionedF (1:3,1:3,c,i,e) &
                                                                            -crystallite_partitionedF0(1:3,1:3,c,i,e))
-            crystallite_Fe(1:3,1:3,c,i,e) = matmul(matmul(crystallite_subF(1:3,1:3,c,i,e), &
-                                                          math_inv33(crystallite_Fp(1:3,1:3,c,i,e))), &
-                                                   math_inv33(crystallite_Fi(1:3,1:3,c,i,e)))
+            crystallite_Fe(1:3,1:3,c,i,e) = matmul(crystallite_subF(1:3,1:3,c,i,e), &
+                                                   math_inv33(matmul(crystallite_Fi(1:3,1:3,c,i,e), &
+                                                                     crystallite_Fp(1:3,1:3,c,i,e))))
             crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
             crystallite_converged(c,i,e) = .false.
             call integrateState(c,i,e)
@@ -472,7 +462,7 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     c, &                                                                                            !< constituent number
     s
 
-  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+  do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp0(1:3,1:3,c,i,e)
     crystallite_partitionedFi0(1:3,1:3,c,i,e) = crystallite_Fi0(1:3,1:3,c,i,e)
@@ -503,7 +493,7 @@ subroutine crystallite_windForward(i,e)
     c, &                                                                                            !< constituent number
     s
 
-  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+  do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     crystallite_partitionedF0 (1:3,1:3,c,i,e) = crystallite_partitionedF(1:3,1:3,c,i,e)
     crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp        (1:3,1:3,c,i,e)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp        (1:3,1:3,c,i,e)
@@ -536,7 +526,7 @@ subroutine crystallite_restore(i,e,includeL)
     c, &                                                                                            !< constituent number
     s
 
-  do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+  do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     if (includeL) then
       crystallite_Lp(1:3,1:3,c,i,e) = crystallite_partitionedLp0(1:3,1:3,c,i,e)
       crystallite_Li(1:3,1:3,c,i,e) = crystallite_partitionedLi0(1:3,1:3,c,i,e)
@@ -697,7 +687,7 @@ subroutine crystallite_orientations
   !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do c = 1,homogenization_Ngrains(material_homogenizationAt(e))
+      do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
         call crystallite_orientation(c,i,e)%fromMatrix(transpose(math_rotationalPart(crystallite_Fe(1:3,1:3,c,i,e))))
   enddo; enddo; enddo
   !$OMP END PARALLEL DO
@@ -746,10 +736,10 @@ subroutine crystallite_results
   integer :: p,o
   real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
   type(rotation), allocatable, dimension(:)     :: selected_rotations
-  character(len=pStringLen)                     :: group,structureLabel
+  character(len=:), allocatable                 :: group,structureLabel
 
   do p=1,size(material_name_phase)
-    group = trim('current/constituent')//'/'//trim(material_name_phase(p))//'/generic'
+    group = trim('current/phase')//'/'//trim(material_name_phase(p))//'/mechanics'
 
     call results_closeGroup(results_addGroup(group))
 
@@ -759,48 +749,48 @@ subroutine crystallite_results
           selected_tensors = select_tensors(crystallite_partitionedF,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'deformation gradient','1')
-        case('Fe')
+        case('F_e')
           selected_tensors = select_tensors(crystallite_Fe,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'elastic deformation gradient','1')
-        case('Fp')
+        case('F_p')
           selected_tensors = select_tensors(crystallite_Fp,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic deformation gradient','1')
-        case('Fi')
+        case('F_i')
           selected_tensors = select_tensors(crystallite_Fi,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic deformation gradient','1')
-        case('Lp')
+        case('L_p')
           selected_tensors = select_tensors(crystallite_Lp,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'plastic velocity gradient','1/s')
-        case('Li')
+        case('L_i')
           selected_tensors = select_tensors(crystallite_Li,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
                                    'inelastic velocity gradient','1/s')
         case('P')
           selected_tensors = select_tensors(crystallite_P,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'First Piola-Kirchoff stress','Pa')
+                                   'First Piola-Kirchhoff stress','Pa')
         case('S')
           selected_tensors = select_tensors(crystallite_S,p)
           call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'Second Piola-Kirchoff stress','Pa')
+                                   'Second Piola-Kirchhoff stress','Pa')
         case('O')
           select case(lattice_structure(p))
             case(lattice_ISO_ID)
-              structureLabel = 'iso'
+              structureLabel = 'aP'
             case(lattice_FCC_ID)
-              structureLabel = 'fcc'
+              structureLabel = 'cF'
             case(lattice_BCC_ID)
-              structureLabel = 'bcc'
+              structureLabel = 'cI'
             case(lattice_BCT_ID)
-              structureLabel = 'bct'
+              structureLabel = 'tI'
             case(lattice_HEX_ID)
-              structureLabel = 'hex'
+              structureLabel = 'hP'
             case(lattice_ORT_ID)
-              structureLabel = 'ort'
+              structureLabel = 'oP'
           end select
           selected_rotations = select_rotations(crystallite_orientation,p)
           call results_writeDataset(group,selected_rotations,output_constituent(p)%label(o),&
@@ -821,11 +811,11 @@ subroutine crystallite_results
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
     integer :: e,i,c,j
 
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIP))
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIPs))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIP
+      do i = 1, discretization_nIPs
         do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
           if (material_phaseAt(c,e) == instance) then
             j = j + 1
@@ -848,11 +838,11 @@ subroutine crystallite_results
     type(rotation), allocatable, dimension(:) :: select_rotations
     integer :: e,i,c,j
 
-    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNgrains*discretization_nIP))
+    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNconstituents*discretization_nIPs))
 
     j=0
     do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIP
+      do i = 1, discretization_nIPs
         do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
            if (material_phaseAt(c,e) == instance) then
              j = j + 1
@@ -1557,22 +1547,22 @@ subroutine crystallite_restartWrite
   fileHandle = HDF5_openFile(fileName,'a')
 
   call HDF5_write(fileHandle,crystallite_partitionedF,'F')
-  call HDF5_write(fileHandle,crystallite_Fp,        'Fp')
-  call HDF5_write(fileHandle,crystallite_Fi,        'Fi')
-  call HDF5_write(fileHandle,crystallite_Lp,        'Lp')
-  call HDF5_write(fileHandle,crystallite_Li,        'Li')
-  call HDF5_write(fileHandle,crystallite_S,         'S')
+  call HDF5_write(fileHandle,crystallite_Fp,        'F_p')
+  call HDF5_write(fileHandle,crystallite_Fi,        'F_i')
+  call HDF5_write(fileHandle,crystallite_Lp,        'L_p')
+  call HDF5_write(fileHandle,crystallite_Li,        'L_i')
+  call HDF5_write(fileHandle,crystallite_S,           'S')
 
-  groupHandle = HDF5_addGroup(fileHandle,'constituent')
+  groupHandle = HDF5_addGroup(fileHandle,'phase')
   do i = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_write(groupHandle,plasticState(i)%state,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
-  groupHandle = HDF5_addGroup(fileHandle,'materialpoint')
-  do i = 1, material_Nhomogenization
-    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+  groupHandle = HDF5_addGroup(fileHandle,'homogenization')
+  do i = 1, size(material_name_homogenization)
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_write(groupHandle,homogState(i)%state,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
@@ -1598,22 +1588,22 @@ subroutine crystallite_restartRead
   fileHandle = HDF5_openFile(fileName)
 
   call HDF5_read(fileHandle,crystallite_F0, 'F')
-  call HDF5_read(fileHandle,crystallite_Fp0,'Fp')
-  call HDF5_read(fileHandle,crystallite_Fi0,'Fi')
-  call HDF5_read(fileHandle,crystallite_Lp0,'Lp')
-  call HDF5_read(fileHandle,crystallite_Li0,'Li')
+  call HDF5_read(fileHandle,crystallite_Fp0,'F_p')
+  call HDF5_read(fileHandle,crystallite_Fi0,'F_i')
+  call HDF5_read(fileHandle,crystallite_Lp0,'L_p')
+  call HDF5_read(fileHandle,crystallite_Li0,'L_i')
   call HDF5_read(fileHandle,crystallite_S0, 'S')
 
-  groupHandle = HDF5_openGroup(fileHandle,'constituent')
+  groupHandle = HDF5_openGroup(fileHandle,'phase')
   do i = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') i,'_omega_plastic'
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
-  groupHandle = HDF5_openGroup(fileHandle,'materialpoint')
-  do i = 1, material_Nhomogenization
-    write(datasetName,'(i0,a)') i,'_omega_homogenization'
+  groupHandle = HDF5_openGroup(fileHandle,'homogenization')
+  do i = 1,size(material_name_homogenization)
+    write(datasetName,'(i0,a)') i,'_omega'
     call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
@@ -1645,7 +1635,7 @@ subroutine crystallite_forward
     do j = 1,phase_Nsources(i)
       sourceState(i)%p(j)%state0 = sourceState(i)%p(j)%state
   enddo; enddo
-  do i = 1, material_Nhomogenization
+  do i = 1,size(material_name_homogenization)
     homogState  (i)%state0 = homogState  (i)%state
     thermalState(i)%state0 = thermalState(i)%state
     damageState (i)%state0 = damageState (i)%state

@@ -11,29 +11,30 @@ import h5py
 from damask import Result
 from damask import Rotation
 from damask import Orientation
+from damask import tensor
 from damask import mechanics
 from damask import grid_filters
 
 @pytest.fixture
-def default(tmp_path,reference_dir):
+def default(tmp_path,ref_path):
     """Small Result file in temp location for modification."""
     fname = '12grains6x7x8_tensionY.hdf5'
-    shutil.copy(reference_dir/fname,tmp_path)
+    shutil.copy(ref_path/fname,tmp_path)
     f = Result(tmp_path/fname)
     f.pick('times',20.0)
     return f
 
 @pytest.fixture
-def single_phase(tmp_path,reference_dir):
+def single_phase(tmp_path,ref_path):
     """Single phase Result file in temp location for modification."""
     fname = '6grains6x7x8_single_phase_tensionY.hdf5'
-    shutil.copy(reference_dir/fname,tmp_path)
+    shutil.copy(ref_path/fname,tmp_path)
     return Result(tmp_path/fname)
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Result'
+    return ref_path_base/'Result'
 
 
 class TestResult:
@@ -58,7 +59,7 @@ class TestResult:
         f = default.get_dataset_location('F')
         assert a == b == c == d == e ==f
 
-    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_pick_none(self,default,what):
         default.pick(what,False)
         a = default.get_dataset_location('F')
@@ -67,7 +68,7 @@ class TestResult:
 
         assert a == b == []
 
-    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_pick_more(self,default,what):
         default.pick(what,False)
         default.pick_more(what,'*')
@@ -78,7 +79,7 @@ class TestResult:
 
         assert a == b
 
-    @pytest.mark.parametrize('what',['increments','times','constituents'])                          # ToDo: discuss materialpoints
+    @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
     def test_pick_less(self,default,what):
         default.pick(what,True)
         default.pick_less(what,'*')
@@ -94,11 +95,11 @@ class TestResult:
             default.pick('invalid',True)
 
     def test_add_absolute(self,default):
-        default.add_absolute('Fe')
-        loc = {'Fe':   default.get_dataset_location('Fe'),
-               '|Fe|': default.get_dataset_location('|Fe|')}
-        in_memory = np.abs(default.read_dataset(loc['Fe'],0))
-        in_file   = default.read_dataset(loc['|Fe|'],0)
+        default.add_absolute('F_e')
+        loc = {'F_e':   default.get_dataset_location('F_e'),
+               '|F_e|': default.get_dataset_location('|F_e|')}
+        in_memory = np.abs(default.read_dataset(loc['F_e'],0))
+        in_file   = default.read_dataset(loc['|F_e|'],0)
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('mode',['direct','function'])
@@ -120,13 +121,13 @@ class TestResult:
         in_file   = default.read_dataset(loc['x'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_Cauchy(self,default):
-        default.add_Cauchy('P','F')
+    def test_add_stress_Cauchy(self,default):
+        default.add_stress_Cauchy('P','F')
         loc = {'F':    default.get_dataset_location('F'),
                'P':    default.get_dataset_location('P'),
                'sigma':default.get_dataset_location('sigma')}
-        in_memory = mechanics.Cauchy(default.read_dataset(loc['P'],0),
-                                     default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stress_Cauchy(default.read_dataset(loc['P'],0),
+                                            default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['sigma'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -142,46 +143,44 @@ class TestResult:
         default.add_deviator('P')
         loc = {'P'  :default.get_dataset_location('P'),
                's_P':default.get_dataset_location('s_P')}
-        in_memory = mechanics.deviatoric_part(default.read_dataset(loc['P'],0))
+        in_memory = tensor.deviatoric(default.read_dataset(loc['P'],0))
         in_file   = default.read_dataset(loc['s_P'],0)
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('eigenvalue,function',[('max',np.amax),('min',np.amin)])
     def test_add_eigenvalue(self,default,eigenvalue,function):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_eigenvalue('sigma',eigenvalue)
         loc = {'sigma' :default.get_dataset_location('sigma'),
                'lambda':default.get_dataset_location(f'lambda_{eigenvalue}(sigma)')}
-        in_memory = function(mechanics.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
+        in_memory = function(tensor.eigenvalues(default.read_dataset(loc['sigma'],0)),axis=1,keepdims=True)
         in_file   = default.read_dataset(loc['lambda'],0)
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('eigenvalue,idx',[('max',2),('mid',1),('min',0)])
     def test_add_eigenvector(self,default,eigenvalue,idx):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_eigenvector('sigma',eigenvalue)
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'v(sigma)':default.get_dataset_location(f'v_{eigenvalue}(sigma)')}
-        in_memory = mechanics.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
+        in_memory = tensor.eigenvectors(default.read_dataset(loc['sigma'],0))[:,idx]
         in_file   = default.read_dataset(loc['v(sigma)'],0)
         assert np.allclose(in_memory,in_file)
 
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
     def test_add_IPF_color(self,default,d):
-        default.add_IPF_color('orientation',d)
-        loc = {'orientation': default.get_dataset_location('orientation'),
-               'color':       default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
-        qu = default.read_dataset(loc['orientation']).view(np.double).reshape(-1,4)
-        crystal_structure = default.get_crystal_structure()
-        in_memory = np.empty((qu.shape[0],3),np.uint8)
-        for i,q in enumerate(qu):
-            o = Orientation(q,crystal_structure).reduced
-            in_memory[i] = np.uint8(o.IPF_color(np.array(d))*255)
+        default.add_IPF_color('O',np.array(d))
+        loc = {'O':     default.get_dataset_location('O'),
+               'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
+        qu = default.read_dataset(loc['O']).view(np.double).squeeze()
+        crystal_structure = default._get_attribute(default.get_dataset_location('O')[0],'Lattice')
+        c = Orientation(rotation=qu,lattice=crystal_structure)
+        in_memory = np.uint8(c.IPF_color(np.array(d))*255)
         in_file = default.read_dataset(loc['color'])
         assert np.allclose(in_memory,in_file)
 
     def test_add_maximum_shear(self,default):
-        default.add_Cauchy('P','F')
+        default.add_stress_Cauchy('P','F')
         default.add_maximum_shear('sigma')
         loc = {'sigma'           :default.get_dataset_location('sigma'),
                'max_shear(sigma)':default.get_dataset_location('max_shear(sigma)')}
@@ -192,23 +191,39 @@ class TestResult:
     def test_add_Mises_strain(self,default):
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
-        default.add_strain_tensor('F',t,m)
+        default.add_strain('F',t,m)
         label = f'epsilon_{t}^{m}(F)'
-        default.add_Mises(label)
+        default.add_equivalent_Mises(label)
         loc = {label      :default.get_dataset_location(label),
                label+'_vM':default.get_dataset_location(label+'_vM')}
-        in_memory = mechanics.Mises_strain(default.read_dataset(loc[label],0)).reshape(-1,1)
+        in_memory = mechanics.equivalent_strain_Mises(default.read_dataset(loc[label],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc[label+'_vM'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_Mises_stress(self,default):
-        default.add_Cauchy('P','F')
-        default.add_Mises('sigma')
+        default.add_stress_Cauchy('P','F')
+        default.add_equivalent_Mises('sigma')
         loc = {'sigma'   :default.get_dataset_location('sigma'),
                'sigma_vM':default.get_dataset_location('sigma_vM')}
-        in_memory = mechanics.Mises_stress(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
+        in_memory = mechanics.equivalent_stress_Mises(default.read_dataset(loc['sigma'],0)).reshape(-1,1)
         in_file   = default.read_dataset(loc['sigma_vM'],0)
         assert np.allclose(in_memory,in_file)
+
+    def test_add_Mises_invalid(self,default):
+        default.add_stress_Cauchy('P','F')
+        default.add_calculation('sigma_y','#sigma#',unit='y')
+        default.add_equivalent_Mises('sigma_y')
+        assert default.get_dataset_location('sigma_y_vM') == []
+
+    def test_add_Mises_stress_strain(self,default):
+        default.add_stress_Cauchy('P','F')
+        default.add_calculation('sigma_y','#sigma#',unit='y')
+        default.add_calculation('sigma_x','#sigma#',unit='x')
+        default.add_equivalent_Mises('sigma_y',kind='strain')
+        default.add_equivalent_Mises('sigma_x',kind='stress')
+        loc = {'y' :default.get_dataset_location('sigma_y_vM'),
+               'x' :default.get_dataset_location('sigma_x_vM')}
+        assert not np.allclose(default.read_dataset(loc['y'],0),default.read_dataset(loc['x'],0))
 
     def test_add_norm(self,default):
         default.add_norm('F',1)
@@ -218,23 +233,24 @@ class TestResult:
         in_file   = default.read_dataset(loc['|F|_1'],0)
         assert np.allclose(in_memory,in_file)
 
-    def test_add_PK2(self,default):
-        default.add_PK2('P','F')
+    def test_add_stress_second_Piola_Kirchhoff(self,default):
+        default.add_stress_second_Piola_Kirchhoff('P','F')
         loc = {'F':default.get_dataset_location('F'),
                'P':default.get_dataset_location('P'),
                'S':default.get_dataset_location('S')}
-        in_memory = mechanics.PK2(default.read_dataset(loc['P'],0),
-                                  default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stress_second_Piola_Kirchhoff(default.read_dataset(loc['P'],0),
+                                                            default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['S'],0)
         assert np.allclose(in_memory,in_file)
 
+    @pytest.mark.skip(reason='requires rework of lattice.f90')
     @pytest.mark.parametrize('polar',[True,False])
     def test_add_pole(self,default,polar):
         pole = np.array([1.,0.,0.])
-        default.add_pole('orientation',pole,polar)
-        loc = {'orientation': default.get_dataset_location('orientation'),
-               'pole':        default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
-        rot = Rotation(default.read_dataset(loc['orientation']).view(np.double))
+        default.add_pole('O',pole,polar)
+        loc = {'O':    default.get_dataset_location('O'),
+               'pole': default.get_dataset_location('p^{}_[1 0 0)'.format(u'rφ' if polar else 'xy'))}
+        rot = Rotation(default.read_dataset(loc['O']).view(np.double))
         rotated_pole = rot * np.broadcast_to(pole,rot.shape+(3,))
         xy = rotated_pole[:,0:2]/(1.+abs(pole[2]))
         in_memory = xy if not polar else \
@@ -242,11 +258,11 @@ class TestResult:
         in_file = default.read_dataset(loc['pole'])
         assert np.allclose(in_memory,in_file)
 
-    def test_add_rotational_part(self,default):
-        default.add_rotational_part('F')
+    def test_add_rotation(self,default):
+        default.add_rotation('F')
         loc = {'F':    default.get_dataset_location('F'),
                'R(F)': default.get_dataset_location('R(F)')}
-        in_memory = mechanics.rotational_part(default.read_dataset(loc['F'],0))
+        in_memory = mechanics.rotation(default.read_dataset(loc['F'],0)).as_matrix()
         in_file   = default.read_dataset(loc['R(F)'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -254,18 +270,18 @@ class TestResult:
         default.add_spherical('P')
         loc = {'P':   default.get_dataset_location('P'),
                'p_P': default.get_dataset_location('p_P')}
-        in_memory = mechanics.spherical_part(default.read_dataset(loc['P'],0)).reshape(-1,1)
+        in_memory = tensor.spherical(default.read_dataset(loc['P'],0),False).reshape(-1,1)
         in_file   = default.read_dataset(loc['p_P'],0)
         assert np.allclose(in_memory,in_file)
 
     def test_add_strain(self,default):
         t = ['V','U'][np.random.randint(0,2)]
         m = np.random.random()*2.0 - 1.0
-        default.add_strain_tensor('F',t,m)
+        default.add_strain('F',t,m)
         label = f'epsilon_{t}^{m}(F)'
         loc = {'F':   default.get_dataset_location('F'),
                label: default.get_dataset_location(label)}
-        in_memory = mechanics.strain_tensor(default.read_dataset(loc['F'],0),t,m)
+        in_memory = mechanics.strain(default.read_dataset(loc['F'],0),t,m)
         in_file   = default.read_dataset(loc[label],0)
         assert np.allclose(in_memory,in_file)
 
@@ -273,7 +289,7 @@ class TestResult:
         default.add_stretch_tensor('F','U')
         loc = {'F':    default.get_dataset_location('F'),
                'U(F)': default.get_dataset_location('U(F)')}
-        in_memory = mechanics.right_stretch(default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stretch_right(default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['U(F)'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -281,7 +297,7 @@ class TestResult:
         default.add_stretch_tensor('F','V')
         loc = {'F':    default.get_dataset_location('F'),
                'V(F)': default.get_dataset_location('V(F)')}
-        in_memory = mechanics.left_stretch(default.read_dataset(loc['F'],0))
+        in_memory = mechanics.stretch_left(default.read_dataset(loc['F'],0))
         in_file   = default.read_dataset(loc['V(F)'],0)
         assert np.allclose(in_memory,in_file)
 
@@ -293,10 +309,14 @@ class TestResult:
     def test_add_overwrite(self,default,overwrite):
         default.pick('times',default.times_in_range(0,np.inf)[-1])
 
-        default.add_Cauchy()
+        default.add_stress_Cauchy()
         loc = default.get_dataset_location('sigma')
         with h5py.File(default.fname,'r') as f:
-            created_first = f[loc[0]].attrs['Created'].decode()
+            # h5py3 compatibility
+            try:
+                created_first = f[loc[0]].attrs['Created'].decode()
+            except AttributeError:
+                created_first = f[loc[0]].attrs['Created']
         created_first = datetime.strptime(created_first,'%Y-%m-%d %H:%M:%S%z')
 
         if overwrite == 'on':
@@ -305,9 +325,16 @@ class TestResult:
             default.disallow_modification()
 
         time.sleep(2.)
-        default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        try:
+            default.add_calculation('sigma','#sigma#*0.0+311.','not the Cauchy stress')
+        except ValueError:
+            pass
         with h5py.File(default.fname,'r') as f:
-            created_second = f[loc[0]].attrs['Created'].decode()
+            # h5py3 compatibility
+            try:
+                created_second = f[loc[0]].attrs['Created'].decode()
+            except AttributeError:
+                created_second = f[loc[0]].attrs['Created']
         created_second = datetime.strptime(created_second,'%Y-%m-%d %H:%M:%S%z')
         if overwrite == 'on':
             assert created_first < created_second and np.allclose(default.read_dataset(loc),311.)
@@ -340,6 +367,11 @@ class TestResult:
     def test_vtk(self,tmp_path,default,output):
         os.chdir(tmp_path)
         default.save_vtk(output)
+
+    @pytest.mark.parametrize('mode',['point','cell'])
+    def test_vtk_mode(self,tmp_path,single_phase,mode):
+        os.chdir(tmp_path)
+        single_phase.save_vtk(mode=mode)
 
     def test_XDMF(self,tmp_path,single_phase):
         os.chdir(tmp_path)

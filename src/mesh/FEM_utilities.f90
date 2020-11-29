@@ -12,11 +12,11 @@ module FEM_utilities
   use PETScis
   
   use prec
-  use FEsolving
-  use homogenization
   use config
   use math
+  use IO
   use discretization_mesh
+  use homogenization
 
   implicit none
   private
@@ -164,7 +164,7 @@ subroutine utilities_constitutiveResponse(timeinc,P_av,forwardData)
 
   cutBack = .false.                                                                                 ! reset cutBack status
   
-  P_av = sum(sum(materialpoint_P,dim=4),dim=3) * wgt                                                ! average of P 
+  P_av = sum(sum(homogenization_P,dim=4),dim=3) * wgt                                                ! average of P 
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
 end subroutine utilities_constitutiveResponse

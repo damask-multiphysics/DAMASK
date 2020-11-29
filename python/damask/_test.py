@@ -316,12 +316,6 @@ class Test:
     return self.compare_Array(refName,curName)
 
 
-  def compare_ArrayCurCur(self,cur0,cur1):
-
-    cur0Name = self.fileInCurrent(cur0)
-    cur1Name = self.fileInCurrent(cur1)
-    return self.compare_Array(cur0Name,cur1Name)
-
   def compare_Table(self,headings0,file0,
                          headings1,file1,
                          normHeadings='',normType=None,

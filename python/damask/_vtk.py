@@ -1,3 +1,4 @@
+import os
 import multiprocessing as mp
 from pathlib import Path
 
@@ -36,7 +37,7 @@ class VTK:
 
 
     @staticmethod
-    def from_rectilinearGrid(grid,size,origin=np.zeros(3)):
+    def from_rectilinear_grid(grid,size,origin=np.zeros(3)):
         """
         Create VTK of type vtk.vtkRectilinearGrid.
 
@@ -64,7 +65,7 @@ class VTK:
 
 
     @staticmethod
-    def from_unstructuredGrid(nodes,connectivity,cell_type):
+    def from_unstructured_grid(nodes,connectivity,cell_type):
         """
         Create VTK of type vtk.vtkUnstructuredGrid.
 
@@ -96,7 +97,7 @@ class VTK:
 
 
     @staticmethod
-    def from_polyData(points):
+    def from_poly_data(points):
         """
         Create VTK of type vtk.polyData.
 
@@ -108,11 +109,18 @@ class VTK:
             Spatial position of the points.
 
         """
+        N = points.shape[0]
         vtk_points = vtk.vtkPoints()
         vtk_points.SetData(np_to_vtk(points))
 
+        vtk_cells = vtk.vtkCellArray()
+        vtk_cells.SetNumberOfCells(N)
+        vtk_cells.SetCells(N,np_to_vtkIdTypeArray(np.stack((np.ones  (N,dtype=np.int64),
+                                                            np.arange(N,dtype=np.int64)),axis=1).ravel(),deep=True))
+
         vtk_data = vtk.vtkPolyData()
         vtk_data.SetPoints(vtk_points)
+        vtk_data.SetVerts(vtk_cells)
 
         return VTK(vtk_data)
 
@@ -131,6 +139,8 @@ class VTK:
             vtkUnstructuredGrid, and vtkPolyData.
 
         """
+        if not os.path.isfile(fname):                                                               # vtk has a strange error handling
+            raise FileNotFoundError(f'no such file: {fname}')
         ext = Path(fname).suffix
         if ext == '.vtk' or dataset_type is not None:
             reader = vtk.vtkGenericDataObjectReader()
@@ -164,6 +174,7 @@ class VTK:
 
         return VTK(vtk_data)
 
+
     @staticmethod
     def _write(writer):
         """Wrapper for parallel writing."""
@@ -189,11 +200,10 @@ class VTK:
         elif isinstance(self.vtk_data,vtk.vtkPolyData):
             writer = vtk.vtkXMLPolyDataWriter()
 
-        default_ext = writer.GetDefaultFileExtension()
+        default_ext = '.'+writer.GetDefaultFileExtension()
         ext = Path(fname).suffix
-        if ext and ext != '.'+default_ext:
-            raise ValueError(f'Given extension {ext} does not match default .{default_ext}')
-        writer.SetFileName(str(Path(fname).with_suffix('.'+default_ext)))
+        writer.SetFileName(str(fname)+(default_ext if default_ext != ext else ''))
+
         if compress:
             writer.SetCompressorTypeToZLib()
         else:
@@ -238,10 +248,10 @@ class VTK:
                       else data).reshape(N_data,-1),deep=True)                               # avoid large files
             d.SetName(label)
 
-            if   N_data == N_cells:
-                self.vtk_data.GetCellData().AddArray(d)
-            elif N_data == N_points:
+            if   N_data == N_points:
                 self.vtk_data.GetPointData().AddArray(d)
+            elif N_data == N_cells:
+                self.vtk_data.GetCellData().AddArray(d)
             else:
                 raise ValueError(f'Cell / point count ({N_cells} / {N_points}) differs from data ({N_data}).')
         elif isinstance(data,pd.DataFrame):

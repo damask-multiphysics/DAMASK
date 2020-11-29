@@ -29,30 +29,28 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
   integer, intent(in)                  :: kinematics_length  
   logical, dimension(:,:), allocatable :: myKinematics
 
-  integer :: Ninstance,p,i,k
+  integer :: Ninstances,p,i,k
   real(pReal), dimension(:), allocatable :: temp
   class(tNode), pointer :: &
     phases, &
     phase, &
-    pl, &
     kinematics, &
     kinematic_type 
  
   print'(/,a)', ' <<<+-  kinematics_thermal_expansion init  -+>>>'
 
   myKinematics = kinematics_active('thermal_expansion',kinematics_length)
-  Ninstance = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myKinematics)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstance))
+  allocate(param(Ninstances))
   allocate(kinematics_thermal_expansion_instance(phases%length), source=0)
 
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
     phase => phases%get(p) 
-    pl => phase%get('plasticity')
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length

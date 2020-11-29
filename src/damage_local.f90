@@ -42,7 +42,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_init
 
-  integer :: Ninstance,NofMyHomog,h
+  integer :: Ninstances,Nmaterialpoints,h
   class(tNode), pointer :: &
     num_generic, &
     material_homogenization, &
@@ -57,8 +57,8 @@ subroutine damage_local_init
   num%residualStiffness = num_generic%get_asFloat('residualStiffness', defaultVal=1.0e-6_pReal)
   if (num%residualStiffness < 0.0_pReal)   call IO_error(301,ext_msg='residualStiffness')
 
-  Ninstance = count(damage_type == DAMAGE_local_ID)
-  allocate(param(Ninstance))
+  Ninstances = count(damage_type == DAMAGE_local_ID)
+  allocate(param(Ninstances))
 
   material_homogenization => config_material%get('homogenization')
   do h = 1, material_homogenization%length
@@ -73,11 +73,11 @@ subroutine damage_local_init
     prm%output = homogDamage%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
 
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     damageState(h)%sizeState = 1
-    allocate(damageState(h)%state0   (1,NofMyHomog), source=damage_initialPhi(h))
-    allocate(damageState(h)%subState0(1,NofMyHomog), source=damage_initialPhi(h))
-    allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%state0   (1,Nmaterialpoints), source=damage_initialPhi(h))
+    allocate(damageState(h)%subState0(1,Nmaterialpoints), source=damage_initialPhi(h))
+    allocate(damageState(h)%state    (1,Nmaterialpoints), source=damage_initialPhi(h))
 
     nullify(damageMapping(h)%p)
     damageMapping(h)%p => material_homogenizationMemberAt
@@ -143,8 +143,8 @@ subroutine damage_local_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip, el
  
   call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
 
-  phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
+  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
 
 end subroutine damage_local_getSourceAndItsTangent
 

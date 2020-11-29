@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<VTKFile type="RectilinearGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <RectilinearGrid WholeExtent="0 6 0 7 0 8">
+    <FieldData>
+      <Array type="String" Name="comments" NumberOfTuples="1" format="binary">
+        AQAAAACAAAARAAAAGQAAAA==eF7LyM/NT0/Ny6xKLMnMz1MwZAAAPsIGPQ==
+      </Array>
+    </FieldData>
+  <Piece Extent="0 6 0 7 0 8">
+    <PointData>
+    </PointData>
+    <CellData>
+      <DataArray type="Int64" Name="material" format="binary" RangeMin="0" RangeMax="11">
+        AQAAAACAAACACgAA2wAAAA==eF6tlssOgkAQBNcHiPj//2uM25eOZc8oc6kYagzdISzbeM/ZeJ/cgDTk7x/c16zm6fduXAOr/mOS8rqXfDH5mqP6pKHcVY9yJN/ziv5/R/k+8lI/GnnLV2uMm1G5tefXnZ6j6v3bD/nXyQWokU8e5a96tJc8z9H1aY88MfWZek3Xf6XnuBhTr+6fgPKpH9oj3/eS5+/bap/yPafo54buJ/mek3zqJeXu+tRP8vycp15E8tNe6rPaf7fPrk/9eO6q598/1GO1/67v53V6nul8T3n9Oy758p47Sgdl
+      </DataArray>
+    </CellData>
+    <Coordinates>
+      <DataArray type="Float64" Name="x" format="binary" RangeMin="0" RangeMax="0.75">
+        AQAAAACAAAA4AAAAHAAAAA==eF5jYEAGB+wh9AUofQNKP4DST6D0C3sAisIGjw==
+      </DataArray>
+      <DataArray type="Float64" Name="y" format="binary" RangeMin="0" RangeMax="0.875">
+        AQAAAACAAABAAAAAHwAAAA==eF5jYEAGB+wh9AUofQNKP4DST6D0Cyj9xh4AwVEHug==
+      </DataArray>
+      <DataArray type="Float64" Name="z" format="binary" RangeMin="0" RangeMax="1">
+        AQAAAACAAABIAAAAIgAAAA==eF5jYEAGB+wh9AUofQNKP4DST6D0Cyj9Bkp/sAcAAU8I6Q==
+      </DataArray>
+    </Coordinates>
+  </Piece>
+  </RectilinearGrid>
+</VTKFile>

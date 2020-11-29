@@ -31,12 +31,12 @@ module homogenization
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
   real(pReal),   dimension(:,:,:,:),     allocatable, public :: &
-    materialpoint_F0, &                                                                             !< def grad of IP at start of FE increment
-    materialpoint_F                                                                                 !< def grad of IP to be reached at end of FE increment
+    homogenization_F0, &                                                                             !< def grad of IP at start of FE increment
+    homogenization_F                                                                                 !< def grad of IP to be reached at end of FE increment
   real(pReal),   dimension(:,:,:,:),     allocatable, public, protected :: &
-    materialpoint_P                                                                                 !< first P--K stress of IP
+    homogenization_P                                                                                 !< first P--K stress of IP
   real(pReal),   dimension(:,:,:,:,:,:), allocatable, public, protected ::  &
-    materialpoint_dPdF                                                                              !< tangent of first P--K stress at IP
+    homogenization_dPdF                                                                              !< tangent of first P--K stress at IP
 
   type :: tNumerics
     integer :: &
@@ -158,7 +158,7 @@ subroutine homogenization_init
   debugHomog%grain       =  config_debug%get_asInt('grain',defaultVal = 1)
 
   if (debugHomog%grain < 1 &
-    .or. debugHomog%grain > homogenization_Ngrains(material_homogenizationAt(debugHomog%element))) &
+    .or. debugHomog%grain > homogenization_Nconstituents(material_homogenizationAt(debugHomog%element))) &
     call IO_error(602,ext_msg='constituent', el=debugHomog%element, g=debugHomog%grain)
 
 
@@ -181,10 +181,10 @@ subroutine homogenization_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
-  allocate(materialpoint_dPdF(3,3,3,3,discretization_nIP,discretization_nElem),       source=0.0_pReal)
-  materialpoint_F0 = spread(spread(math_I3,3,discretization_nIP),4,discretization_nElem)            ! initialize to identity
-  materialpoint_F = materialpoint_F0                                                                ! initialize to identity
-  allocate(materialpoint_P(3,3,discretization_nIP,discretization_nElem),              source=0.0_pReal)
+  allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs,discretization_Nelems),       source=0.0_pReal)
+  homogenization_F0 = spread(spread(math_I3,3,discretization_nIPs),4,discretization_Nelems)            ! initialize to identity
+  homogenization_F = homogenization_F0                                                                ! initialize to identity
+  allocate(homogenization_P(3,3,discretization_nIPs,discretization_Nelems),              source=0.0_pReal)
 
   print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(IO_STDOUT)
 
@@ -213,13 +213,13 @@ subroutine materialpoint_stressAndItsTangent(dt)
     i, &                                                                                            !< integration point number
     e, &                                                                                            !< element number
     myNgrains
-  real(pReal), dimension(discretization_nIP,discretization_nElem) :: &
+  real(pReal), dimension(discretization_nIPs,discretization_Nelems) :: &
     subFrac, &
     subStep
-  logical,     dimension(discretization_nIP,discretization_nElem) :: &
+  logical,     dimension(discretization_nIPs,discretization_Nelems) :: &
     requested, &
     converged
-  logical,     dimension(2,discretization_nIP,discretization_nElem) :: &
+  logical,     dimension(2,discretization_nIPs,discretization_Nelems) :: &
     doneAndHappy
 
 
@@ -257,7 +257,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
 
     !$OMP PARALLEL DO
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
+      myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
       IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
 
         if (converged(i,e)) then
@@ -327,11 +327,11 @@ subroutine materialpoint_stressAndItsTangent(dt)
 ! deformation partitioning
       !$OMP PARALLEL DO PRIVATE(myNgrains)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-        myNgrains = homogenization_Ngrains(material_homogenizationAt(e))
+        myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if(requested(i,e) .and. .not. doneAndHappy(1,i,e)) then                                   ! requested but not yet done
-            call partitionDeformation(materialpoint_F0(1:3,1:3,i,e) &
-                                      + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e))&
+            call partitionDeformation(homogenization_F0(1:3,1:3,i,e) &
+                                      + (homogenization_F(1:3,1:3,i,e)-homogenization_F0(1:3,1:3,i,e))&
                                          *(subStep(i,e)+subFrac(i,e)), &
                                       i,e)
             crystallite_dt(1:myNgrains,i,e) = dt*subStep(i,e)                                       ! propagate materialpoint dt to grains
@@ -357,8 +357,8 @@ subroutine materialpoint_stressAndItsTangent(dt)
               doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
               doneAndHappy(1:2,i,e) = updateState(dt*subStep(i,e), &
-                                                  materialpoint_F0(1:3,1:3,i,e) &
-                                                  + (materialpoint_F(1:3,1:3,i,e)-materialpoint_F0(1:3,1:3,i,e)) &
+                                                  homogenization_F0(1:3,1:3,i,e) &
+                                                  + (homogenization_F(1:3,1:3,i,e)-homogenization_F0(1:3,1:3,i,e)) &
                                                      *(subStep(i,e)+subFrac(i,e)), &
                                                  i,e)
               converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy
@@ -408,12 +408,12 @@ subroutine partitionDeformation(subF,ip,el)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
       call mech_isostrain_partitionDeformation(&
-                           crystallite_partitionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                           crystallite_partitionedF(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
                            subF)
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
       call mech_RGC_partitionDeformation(&
-                          crystallite_partitionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+                          crystallite_partitionedF(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
                           subF,&
                           ip, &
                           el)
@@ -437,19 +437,19 @@ function updateState(subdt,subF,ip,el)
     el                                                                                              !< element number
   integer :: c
   logical, dimension(2) :: updateState
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Ngrains(material_homogenizationAt(el)))
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
 
   updateState = .true.
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      do c=1,homogenization_Ngrains(material_homogenizationAt(el))
+      do c=1,homogenization_Nconstituents(material_homogenizationAt(el))
         dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
       enddo
       updateState = &
         updateState .and. &
-          mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                               crystallite_partitionedF(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
-                               crystallite_partitionedF0(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el),&
+          mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
+                        crystallite_partitionedF(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
+                        crystallite_partitionedF0(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el),&
                                subF,&
                                subdt, &
                                dPdFs, &
@@ -487,33 +487,33 @@ subroutine averageStressAndItsTangent(ip,el)
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
   integer :: c
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Ngrains(material_homogenizationAt(el)))
+  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
  
   
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-        materialpoint_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
-        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_stressTangent(1,ip,el)
+        homogenization_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_stressTangent(1,ip,el)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-      do c = 1, homogenization_Ngrains(material_homogenizationAt(el))
+      do c = 1, homogenization_Nconstituents(material_homogenizationAt(el))
         dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
       enddo
       call mech_isostrain_averageStressAndItsTangent(&
-        materialpoint_P(1:3,1:3,ip,el), &
-        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-        crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        homogenization_P(1:3,1:3,ip,el), &
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
         dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      do c = 1, homogenization_Ngrains(material_homogenizationAt(el))
+      do c = 1, homogenization_Nconstituents(material_homogenizationAt(el))
         dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
       enddo
       call mech_RGC_averageStressAndItsTangent(&
-        materialpoint_P(1:3,1:3,ip,el), &
-        materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-        crystallite_P(1:3,1:3,1:homogenization_Ngrains(material_homogenizationAt(el)),ip,el), &
+        homogenization_P(1:3,1:3,ip,el), &
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
         dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))
   end select chosenHomogenization
@@ -529,20 +529,20 @@ subroutine homogenization_results
     material_homogenization_type => homogenization_type
 
   integer :: p
-  character(len=pStringLen) :: group_base,group
+  character(len=:), allocatable :: group_base,group
 
   !real(pReal), dimension(:,:,:), allocatable :: temp
 
   do p=1,size(material_name_homogenization)
-    group_base = 'current/materialpoint/'//trim(material_name_homogenization(p))
+    group_base = 'current/homogenization/'//trim(material_name_homogenization(p))
     call results_closeGroup(results_addGroup(group_base))
 
     group = trim(group_base)//'/generic'
     call results_closeGroup(results_addGroup(group))
-    !temp = reshape(materialpoint_F,[3,3,discretization_nIP*discretization_nElem])
+    !temp = reshape(homogenization_F,[3,3,discretization_nIPs*discretization_Nelems])
     !call results_writeDataset(group,temp,'F',&
     !                          'deformation gradient','1')
-    !temp = reshape(materialpoint_P,[3,3,discretization_nIP*discretization_nElem])
+    !temp = reshape(homogenization_P,[3,3,discretization_nIPs*discretization_Nelems])
     !call results_writeDataset(group,temp,'P',&
     !                          '1st Piola-Kirchhoff stress','Pa')
 

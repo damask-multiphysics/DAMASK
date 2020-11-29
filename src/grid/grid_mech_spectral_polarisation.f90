@@ -13,6 +13,7 @@ module grid_mech_spectral_polarisation
   use prec
   use parallelization
   use DAMASK_interface
+  use IO
   use HDF5_utilities
   use math
   use spectral_utilities
@@ -158,9 +159,9 @@ subroutine grid_mech_spectral_polarisation_init
 
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -224,7 +225,7 @@ subroutine grid_mech_spectral_polarisation_init
     F_tau_lastInc = 2.0_pReal*F_lastInc
   endif restartRead
 
-  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+  homogenization_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -364,7 +365,7 @@ subroutine grid_mech_spectral_polarisation_forward(cutBack,guess,timeinc,timeinc
     F_lastInc     = reshape(F,    [3,3,grid(1),grid(2),grid3])
     F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid3])
 
-    materialpoint_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -497,7 +498,7 @@ subroutine converged(snes_local,PETScIter,devNull1,devNull2,devNull3,reason,dumm
             err_div/divTol,  ' (',err_div, ' / m, tol = ',divTol,')'
   print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error curl       = ', &
             err_curl/curlTol,' (',err_curl,' -,   tol = ',curlTol,')'
-  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error stress BC         = ', &
+  print  '(a,f12.2,a,es8.2,a,es9.2,a)', ' error stress BC  = ', &
             err_BC/BCTol,    ' (',err_BC,  ' Pa,  tol = ',BCTol,')'
   print'(/,a)', ' ==========================================================================='
   flush(IO_STDOUT)
@@ -606,7 +607,7 @@ subroutine formResidual(in, FandF_tau, &
   do k = 1, grid3; do j = 1, grid(2); do i = 1, grid(1)
     e = e + 1
     residual_F(1:3,1:3,i,j,k) = &
-      math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
+      math_mul3333xx33(math_invSym3333(homogenization_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
                        residual_F(1:3,1:3,i,j,k) - matmul(F(1:3,1:3,i,j,k), &
                        math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
                        + residual_F_tau(1:3,1:3,i,j,k)

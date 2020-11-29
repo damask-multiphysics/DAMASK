@@ -3,6 +3,7 @@ import datetime
 import os
 import subprocess
 import shlex
+import re
 import fractions
 from functools import reduce
 from optparse import Option
@@ -16,14 +17,17 @@ __all__=[
          'srepr',
          'croak',
          'report',
-         'emph','deemph','delete','strikeout',
+         'emph','deemph','warn','strikeout',
          'execute',
          'show_progress',
          'scale_to_coprime',
+         'project_stereographic',
          'hybrid_IA',
          'return_message',
          'extendableOption',
-         'execution_stamp'
+         'execution_stamp',
+         'shapeshifter', 'shapeblender',
+         'extend_docstring', 'extended_docstring'
         ]
 
 ####################################################################################################
@@ -38,7 +42,7 @@ def srepr(arg,glue = '\n'):
     arg : iterable
         Items to join.
     glue : str, optional
-        Defaults to \n.
+        Glue used for joining operation. Defaults to \n.
 
     """
     if (not hasattr(arg, "strip") and
@@ -51,6 +55,8 @@ def srepr(arg,glue = '\n'):
 def croak(what, newline = True):
     """
     Write formated to stderr.
+
+    DEPRECATED
 
     Parameters
     ----------
@@ -68,7 +74,7 @@ def croak(what, newline = True):
 def report(who = None,
            what = None):
     """
-    Reports script and file name.
+    Report script and file name.
 
     DEPRECATED
 
@@ -80,16 +86,13 @@ def emph(what):
     """Formats string with emphasis."""
     return bcolors.BOLD+srepr(what)+bcolors.ENDC
 
-
 def deemph(what):
     """Formats string with deemphasis."""
     return bcolors.DIM+srepr(what)+bcolors.ENDC
 
-
-def delete(what):
-    """Formats string as deleted."""
-    return bcolors.DIM+srepr(what)+bcolors.ENDC
-
+def warn(what):
+    """Formats string for warning."""
+    return bcolors.WARNING+emph(what)+bcolors.ENDC
 
 def strikeout(what):
     """Formats string as strikeout."""
@@ -160,7 +163,15 @@ def show_progress(iterable,N_iter=None,prefix='',bar_length=50):
 
 
 def scale_to_coprime(v):
-    """Scale vector to co-prime (relatively prime) integers."""
+    """
+    Scale vector to co-prime (relatively prime) integers.
+
+    Parameters
+    ----------
+    v : numpy.ndarray of shape (:)
+        Vector to scale.
+
+    """
     MAX_DENOMINATOR = 1000000
 
     def get_square_denominator(x):
@@ -169,6 +180,7 @@ def scale_to_coprime(v):
 
     def lcm(a, b):
         """Least common multiple."""
+        # Python 3.9 provides math.lcm, see https://stackoverflow.com/questions/51716916.
         return a * b // np.gcd(a, b)
 
     m = (np.array(v) * reduce(lcm, map(lambda x: int(get_square_denominator(x)),v)) ** 0.5).astype(np.int)
@@ -181,6 +193,28 @@ def scale_to_coprime(v):
     return m
 
 
+def project_stereographic(vector,normalize=False):
+    """
+    Apply stereographic projection to vector.
+
+    Parameters
+    ----------
+    vector : numpy.ndarray of shape (...,3)
+        Vector coordinates to be projected.
+    normalize : bool
+        Ensure unit length for vector. Defaults to False.
+
+    Returns
+    -------
+    coordinates : numpy.ndarray of shape (...,2)
+        Projected coordinates.
+
+    """
+    v_ = vector/np.linalg.norm(vector,axis=-1,keepdims=True) if normalize else vector
+    return np.block([v_[...,:2]/(1+np.abs(v_[...,2:3])),
+                     np.zeros_like(v_[...,2:3])])
+
+
 def execution_stamp(class_name,function_name=None):
     """Timestamp the execution of a (function within a) class."""
     now = datetime.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')
@@ -188,7 +222,21 @@ def execution_stamp(class_name,function_name=None):
     return f'damask.{class_name}{_function_name} v{version} ({now})'
 
 
-def hybrid_IA(dist,N,seed=None):
+def hybrid_IA(dist,N,rng_seed=None):
+    """
+    Hybrid integer approximation.
+
+    Parameters
+    ----------
+    dist : numpy.ndarray
+        Distribution to be approximated
+    N : int
+        Number of samples to draw.
+    rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
+        A seed to initialize the BitGenerator. Defaults to None.
+        If None, then fresh, unpredictable entropy will be pulled from the OS.
+
+    """
     N_opt_samples,N_inv_samples = (max(np.count_nonzero(dist),N),0)                                 # random subsampling if too little samples requested
 
     scale_,scale,inc_factor = (0.0,float(N_opt_samples),1.0)
@@ -199,7 +247,112 @@ def hybrid_IA(dist,N,seed=None):
                                    if N_inv_samples < N_opt_samples else \
                                   (scale_,0.5*(scale_ + scale), 1.0)
 
-    return np.repeat(np.arange(len(dist)),repeats)[np.random.default_rng(seed).permutation(N_inv_samples)[:N]]
+    return np.repeat(np.arange(len(dist)),repeats)[np.random.default_rng(rng_seed).permutation(N_inv_samples)[:N]]
+
+
+def shapeshifter(fro,to,mode='left',keep_ones=False):
+    """
+    Return a tuple that reshapes 'fro' to become broadcastable to 'to'.
+
+    Parameters
+    ----------
+    fro : tuple
+        Original shape of array.
+    to : tuple
+        Target shape of array after broadcasting.
+        len(to) cannot be less than len(fro).
+    mode : str, optional
+        Indicates whether new axes are preferably added to
+        either 'left' or 'right' of the original shape.
+        Defaults to 'left'.
+    keep_ones : bool, optional
+        Treat '1' in fro as literal value instead of dimensional placeholder.
+        Defaults to False.
+
+    """
+    beg = dict(left ='(^.*\\b)',
+               right='(^.*?\\b)')
+    sep = dict(left ='(.*\\b)',
+               right='(.*?\\b)')
+    end = dict(left ='(.*?$)',
+               right='(.*$)')
+    fro = (1,) if not len(fro) else fro
+    to  = (1,) if not len(to)  else to
+    try:
+        grp = re.match(beg[mode]
+                      +f',{sep[mode]}'.join(map(lambda x: f'{x}'
+                                                          if x>1 or (keep_ones and len(fro)>1) else
+                                                          '\\d+',fro))
+                      +f',{end[mode]}',
+                       ','.join(map(str,to))+',').groups()
+    except AttributeError:
+        raise ValueError(f'Shapes can not be shifted {fro} --> {to}')
+    fill = ()
+    for g,d in zip(grp,fro+(None,)):
+        fill += (1,)*g.count(',')+(d,)
+    return fill[:-1]
+
+
+def shapeblender(a,b):
+    """
+    Return a shape that overlaps the rightmost entries of 'a' with the leftmost of 'b'.
+
+    Parameters
+    ----------
+    a : tuple
+        Shape of first array.
+    b : tuple
+        Shape of second array.
+
+    Examples
+    --------
+    >>> shapeblender((4,4,3),(3,2,1))
+        (4,4,3,2,1)
+    >>> shapeblender((1,2),(1,2,3))
+        (1,2,3)
+    >>> shapeblender((1,),(2,2,1))
+        (1,2,2,1)
+    >>> shapeblender((3,2),(3,2))
+        (3,2)
+
+    """
+    i = min(len(a),len(b))
+    while i > 0 and a[-i:] != b[:i]: i -= 1
+    return a + b[i:]
+
+
+def extend_docstring(extra_docstring):
+    """
+    Decorator: Append to function's docstring.
+
+    Parameters
+    ----------
+    extra_docstring : str
+       Docstring to append.
+
+    """
+    def _decorator(func):
+        func.__doc__ += extra_docstring
+        return func
+    return _decorator
+
+
+def extended_docstring(f,extra_docstring):
+    """
+    Decorator: Combine another function's docstring with a given docstring.
+
+    Parameters
+    ----------
+    f : function
+       Function of which the docstring is taken.
+    extra_docstring : str
+       Docstring to append.
+
+    """
+    def _decorator(func):
+        func.__doc__ = f.__doc__ + extra_docstring
+        return func
+    return _decorator
 
 
 ####################################################################################################
@@ -294,17 +447,6 @@ class bcolors:
     DIM       = '\033[2m'
     UNDERLINE = '\033[4m'
     CROSSOUT  = '\033[9m'
-
-    def disable(self):
-        self.HEADER = ''
-        self.OKBLUE = ''
-        self.OKGREEN = ''
-        self.WARNING = ''
-        self.FAIL = ''
-        self.ENDC = ''
-        self.BOLD = ''
-        self.UNDERLINE = ''
-        self.CROSSOUT = ''
 
 
 class return_message:

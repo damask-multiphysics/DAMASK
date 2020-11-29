@@ -18,7 +18,7 @@ submodule(homogenization) homogenization_mech_isostrain
       mapping
   end type
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
 
 contains
@@ -29,9 +29,9 @@ contains
 module subroutine mech_isostrain_init
 
   integer :: &
-    Ninstance, &
+    Ninstances, &
     h, &
-    NofMyHomog
+    Nmaterialpoints
   class(tNode), pointer :: &
     material_homogenization, &
     homog, &
@@ -39,19 +39,19 @@ module subroutine mech_isostrain_init
 
   print'(/,a)',   ' <<<+-  homogenization_mech_isostrain init  -+>>>'
 
-  Ninstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
+  Ninstances = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
 
-  allocate(param(Ninstance))                                                                        ! one container of parameters per instance
+  allocate(param(Ninstances))                                                                        ! one container of parameters per instance
 
   material_homogenization => config_material%get('homogenization')
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_ISOSTRAIN_ID) cycle
     homog => material_homogenization%get(h)
-    homogMech => homog%get('mech')
+    homogMech => homog%get('mechanics')
     associate(prm => param(homogenization_typeInstance(h)))
 
-    prm%N_constituents = homogenization_Ngrains(h)
+    prm%N_constituents = homogenization_Nconstituents(h)
     select case(homogMech%get_asString('mapping',defaultVal = 'sum'))
       case ('sum')
         prm%mapping = parallel_ID
@@ -61,11 +61,11 @@ module subroutine mech_isostrain_init
         call IO_error(211,ext_msg='sum'//' (mech_isostrain)')
     end select
 
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     homogState(h)%sizeState       = 0
-    allocate(homogState(h)%state0   (0,NofMyHomog))
-    allocate(homogState(h)%subState0(0,NofMyHomog))
-    allocate(homogState(h)%state    (0,NofMyHomog))
+    allocate(homogState(h)%state0   (0,Nmaterialpoints))
+    allocate(homogState(h)%subState0(0,Nmaterialpoints))
+    allocate(homogState(h)%state    (0,Nmaterialpoints))
 
     end associate
 

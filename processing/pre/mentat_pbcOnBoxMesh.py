@@ -11,8 +11,6 @@ import numpy as np
 
 import damask
 
-sys.path.append(str(damask.solver.Marc().library_path))
-
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
@@ -30,11 +28,11 @@ def parseMFD(dat):
       # lines that start with a space are numerical data
       if line[0] == ' ':
         formatted[section]['els'].append([])
-        
+
         # grab numbers
         nums = re.split(r'\s+', line.strip())
-        
-        for num in nums:  
+
+        for num in nums:
           # floating point has format ' -x.xxxxxxxxxxxxe+yy'
           # scientific notation is used for float
           if (len(num) >= 4) and (num[-4] == 'e'):
@@ -47,7 +45,7 @@ def parseMFD(dat):
         else:
           formatted[section]['els'].append([])
           formatted[section]['els'][-1] = line
-        
+
     else: # Not in a section, we are looking for a =beg= now
       search = re.search(r'=beg=\s+(\d+)\s\((.*?)\)', line)
       if search is not None: # found start of a new section
@@ -60,7 +58,7 @@ def parseMFD(dat):
           section += 1
           formatted.append({'label': '', 'uid': -2, 'els': []}) # make dummy section to store unrecognized data
         formatted[section]['els'].append(line)
- 
+
   return formatted
 
 def asMFD(mfd_data):
@@ -93,14 +91,14 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
          'max': np.zeros(3,dtype='d'),
        'delta': np.zeros(3,dtype='d'),
       }
-  
+
   mfd_dict = {}
   for i in range(len(mfd_data)):
     mfd_dict[mfd_data[i]['label']] = i
 
   NodeCoords = np.array(mfd_data[mfd_dict['nodes']]['els'][1::4])[:,1:4]
-  Nnodes = NodeCoords.shape[0]  
-  
+  Nnodes = NodeCoords.shape[0]
+
   box['min'] = NodeCoords.min(axis=0)                                                               # find the bounding box
   box['max'] = NodeCoords.max(axis=0)
   box['delta'] = box['max']-box['min']
@@ -131,7 +129,7 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
       elif (key[base[coord]] == "%.8e"%box['max'][coord]):                                          # compare to max of bounding box (i.e. is on outer face?)
         Nmax += 1                                                                                   # count outer (front) face membership
         maxFlag[coord] = True                                                                       # remember face membership (for linked nodes)
-  
+
     if Nmin > 0:                                                                                    # node is on a back face
         # prepare for any non-existing entries in the data structure
       if key['x'] not in baseNode.keys():
@@ -140,17 +138,17 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
         baseNode[key['x']][key['y']] = {}
       if key['z'] not in baseNode[key['x']][key['y']].keys():
         baseNode[key['x']][key['y']][key['z']] = 0
-        
+
       baseNode[key['x']][key['y']][key['z']] = node+1                                               # remember the base node id
 
     if Nmax > 0 and Nmax >= Nmin:                                                                   # node is on at least as many front than back faces
       if any([maxFlag[i] and active[i] for i in range(3)]):
         linkNodes.append({'id': node+1,'coord': NodeCoords[node], 'faceMember': [maxFlag[i] and active[i] for i in range(3)]})
-  
+
   mfd_data[mfd_dict['entities']]['els'][0][0] += len(linkNodes) * 3
-  
+
   baseCorner = baseNode["%.8e"%box['min'][0]]["%.8e"%box['min'][1]]["%.8e"%box['min'][2]]           # detect ultimate base node
-  
+
   links = {'uid': 1705, 'label': 'links', 'els': [[7,0],[9,0]]}
   linkID = 0
   for node in linkNodes:                                                                            # loop over all linked nodes
@@ -165,7 +163,7 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
     for dof in [1,2,3]:
       tied_node = node['id']
       nterms = 1 + nLinks
-      
+
       linkID += 1
       # Link header
       links['els'].append('link{0}\n'.format(linkID))
@@ -173,10 +171,10 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
       links['els'].append([0])
       links['els'].append([0])
       links['els'].append([0, 0, 0, tied_node])
-      
+
       # these need to be put in groups of four
       link_payload = [dof, 0, nterms]
-      
+
       # Individual node contributions (node, dof, coef.)
       for i in range(nterms):
         if i == nLinks:
@@ -190,7 +188,7 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
           link_payload.append(1.0 - nLinks)
         else:
           link_payload.append(1.0)
-      
+
       # Needs to be formatted 4 data points per row, character width of 20, so 80 total
       for j in range(0, len(link_payload), 4):
         links['els'].append(link_payload[j:j+4])
@@ -206,9 +204,9 @@ def add_servoLinks(mfd_data,active=[True,True,True]):  # directions on which to 
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
-#-------------------------------------------------------------------------------------------------- 
+#--------------------------------------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(usage='%prog options [file[s]]', description = """
 Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh.
 Use *py_connection to operate on model presently opened in MSC.Mentat.
 """, version = scriptID)
@@ -235,6 +233,7 @@ if remote and filenames != []:
 if filenames == []: filenames = [None]
 
 if remote:
+  sys.path.append(str(damask.solver.Marc().library_path))
   import py_mentat
 
   damask.util.report(scriptName, 'waiting to connect...')

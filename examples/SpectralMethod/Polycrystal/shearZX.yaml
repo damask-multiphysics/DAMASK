@@ -1,6 +1,6 @@
 ---
 step:
-  - mech:
+  - mechanics:
       dot_F: [0, 0, 1e-3,
               0, 0,    0,
               0, 0,    0]

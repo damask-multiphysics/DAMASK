@@ -50,10 +50,21 @@ subroutine parallelization_init
   if (threadLevel<MPI_THREAD_FUNNELED)       error stop 'MPI library does not support OpenMP'
 #endif
 
-  call PETScInitializeNoArguments(petsc_err)                                                        ! first line in the code according to PETSc manual
+#if defined(DEBUG)
+  call PetscInitialize(PETSC_NULL_CHARACTER,petsc_err)
+#else
+  call PetscInitializeNoArguments(petsc_err)
+#endif
   CHKERRQ(petsc_err)
 
-  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
+#if defined(DEBUG) && defined(__INTEL_COMPILER)
+  call PetscSetFPTrap(PETSC_FP_TRAP_ON,petsc_err)
+#else
+  call PetscSetFPTrap(PETSC_FP_TRAP_OFF,petsc_err)
+#endif
+  CHKERRQ(petsc_err)
+
+call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
   if (err /= 0)                              error stop 'Could not determine worldrank'
 
   if (worldrank == 0) print'(/,a)',  ' <<<+-  parallelization init  -+>>>'

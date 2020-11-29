@@ -1,7 +1,7 @@
 ---
 
 step:
-  - mech:
+  - mechanics:
       dot_F: [1.0e-3, 0, 0,
               0,      x, 0,
               0,      0, x]
@@ -12,7 +12,7 @@ step:
       t: 10
       N: 40
       f_out: 4
-  - mech:
+  - mechanics:
       dot_F: [1.0e-3, 0, 0,
               0,      x, 0,
               0,      0, x]

@@ -22,7 +22,7 @@ submodule(constitutive:constitutive_damage) kinematics_slipplane_opening
       P_n
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
 
 contains
@@ -37,13 +37,14 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
   integer, intent(in)                  :: kinematics_length  
   logical, dimension(:,:), allocatable :: myKinematics
 
-  integer :: Ninstance,p,i,k
+  integer :: Ninstances,p,i,k
   character(len=pStringLen) :: extmsg = ''
   integer,     dimension(:),   allocatable :: N_sl
   real(pReal), dimension(:,:), allocatable :: d,n,t
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl, &
     kinematics, &
     kinematic_type 
@@ -51,18 +52,19 @@ module function kinematics_slipplane_opening_init(kinematics_length) result(myKi
   print'(/,a)', ' <<<+-  kinematics_slipplane init  -+>>>'
 
   myKinematics = kinematics_active('slipplane_opening',kinematics_length)
-  Ninstance = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myKinematics)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
   allocate(kinematics_slipplane_opening_instance(phases%length), source=0)
-  allocate(param(Ninstance))
+  allocate(param(Ninstances))
 
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_slipplane_opening_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p) 
-    pl => phase%get('plasticity')
+    phase => phases%get(p)
+    mech  => phase%get('mechanics')
+    pl    => mech%get('plasticity')
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length

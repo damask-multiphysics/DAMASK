@@ -22,6 +22,19 @@ _ref_white = np.array([.95047, 1.00000, 1.08883])                               
 # - support NaN color (paraview)
 
 class Colormap(mpl.colors.ListedColormap):
+    """
+    Enhance matplotlib colormap functionality to be used within DAMASK.
+
+    References
+    ----------
+    [1] DAMASK colormap theory
+      https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
+    [2] DAMASK colormaps first use
+      https://doi.org/10.1016/j.ijplas.2012.09.012
+    [3] Matplotlib colormaps overview
+      https://matplotlib.org/tutorials/colors/colormaps.html
+
+    """
 
     def __add__(self,other):
         """Concatenate colormaps."""
@@ -35,6 +48,17 @@ class Colormap(mpl.colors.ListedColormap):
     def __invert__(self):
         """Return inverted colormap."""
         return self.reversed()
+
+    def __repr__(self):
+        """Show colormap as matplotlib figure."""
+        fig = plt.figure(self.name,figsize=(5,.5))
+        ax1 = fig.add_axes([0, 0, 1, 1])
+        ax1.set_axis_off()
+        ax1.imshow(np.linspace(0,1,self.N).reshape(1,-1),
+                   aspect='auto', cmap=self, interpolation='nearest')
+        plt.show(block = False)
+        return self.name
+
 
     @staticmethod
     def from_range(low,high,name='DAMASK colormap',N=256,model='rgb'):
@@ -126,40 +150,16 @@ class Colormap(mpl.colors.ListedColormap):
 
         """
         # matplotlib presets
-        for cat in Colormap._predefined_mpl:
-            for n in cat[1]:
-                if n == name:
-                    colormap = cm.__dict__[name]
-                    if isinstance(colormap,mpl.colors.LinearSegmentedColormap):
-                        return Colormap(np.array(list(map(colormap,np.linspace(0,1,N)))),name=name)
-                    else:
-                        return Colormap(np.array(colormap.colors),name=name)
-
-        # DAMASK presets
-        definition = Colormap._predefined_DAMASK[name]
-        return Colormap.from_range(definition['low'],definition['high'],name,N)
-
-
-    @staticmethod
-    def list_predefined():
-        """
-        List predefined colormaps by category.
-
-        References
-        ----------
-        [1] DAMASK colormap theory
-          https://www.kennethmoreland.com/color-maps/ColorMapsExpanded.pdf
-        [2] DAMASK colormaps first use
-          https://doi.org/10.1016/j.ijplas.2012.09.012
-        [3] Matplotlib colormaps overview
-          https://matplotlib.org/tutorials/colors/colormaps.html
-
-        """
-        print('DAMASK colormaps')
-        print('  '+', '.join(Colormap._predefined_DAMASK.keys()))
-        for cat in Colormap._predefined_mpl:
-            print(f'{cat[0]}')
-            print('  '+', '.join(cat[1]))
+        try:
+            colormap = cm.__dict__[name]
+            return Colormap(np.array(list(map(colormap,np.linspace(0,1,N)))
+                                     if isinstance(colormap,mpl.colors.LinearSegmentedColormap) else
+                                     colormap.colors),
+                            name=name)
+        except KeyError:
+            # DAMASK presets
+            definition = Colormap._predefined_DAMASK[name]
+            return Colormap.from_range(definition['low'],definition['high'],name,N)
 
 
     def shade(self,field,bounds=None,gap=None):
@@ -168,9 +168,9 @@ class Colormap(mpl.colors.ListedColormap):
 
         Parameters
         ----------
-        field : numpy.array of shape(:,:)
+        field : numpy.array of shape (:,:)
             Data to be shaded.
-        bounds : iterable of len(2), optional
+        bounds : iterable of len (2), optional
             Colormap value range (low,high).
         gap : field.dtype, optional
             Transparent value. NaN will always be rendered transparent.
@@ -203,18 +203,6 @@ class Colormap(mpl.colors.ListedColormap):
             mode='RGBA')
 
 
-    def show(self,aspect=10,vertical=False):
-        """Show colormap as matplotlib figure."""
-        fig = plt.figure(figsize=(5/aspect,5) if vertical else (5,5/aspect))
-        ax1 = fig.add_axes([0, 0, 1, 1])
-        ax1.set_axis_off()
-        ax1.imshow(np.linspace(1 if vertical else 0,
-                               0 if vertical else 1,
-                               self.N).reshape((-1,1) if vertical else (1,-1)),
-                   aspect='auto', cmap=self, interpolation='nearest')
-        plt.show()
-
-
     def reversed(self,name=None):
         """
         Make a reversed instance of the colormap.
@@ -235,7 +223,6 @@ class Colormap(mpl.colors.ListedColormap):
         return Colormap(np.array(rev.colors),rev.name[:-4] if rev.name.endswith('_r_r') else rev.name)
 
 
-
     def save_paraview(self,fname=None):
         """
         Write colormap to JSON file for Paraview.
@@ -247,13 +234,13 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap and extension '.json'.
 
         """
-        if fname is not None:
+        if fname is None:
+            fhandle = None
+        else:
             try:
                 fhandle = open(fname,'w')
             except TypeError:
                 fhandle = fname
-        else:
-            fhandle = None
 
         colors = []
         for i,c in enumerate(np.round(self.colors,6).tolist()):
@@ -266,11 +253,9 @@ class Colormap(mpl.colors.ListedColormap):
                 'DefaultMap':True,
                 'RGBPoints':colors
                }]
-        if fhandle is None:
-            with open(self.name.replace(' ','_')+'.json', 'w') as f:
-                json.dump(out, f,indent=4)
-        else:
-            json.dump(out,fhandle,indent=4)
+
+        with open(self.name.replace(' ','_')+'.json', 'w') if fhandle is None else fhandle as f:
+            json.dump(out, f,indent=4)
 
 
     def save_ASCII(self,fname=None):
@@ -284,22 +269,19 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap and extension '.txt'.
 
         """
-        if fname is not None:
+        if fname is None:
+            fhandle = None
+        else:
             try:
                 fhandle = open(fname,'w')
             except TypeError:
                 fhandle = fname
-        else:
-            fhandle = None
 
         labels = {'RGBA':4} if self.colors.shape[1] == 4 else {'RGB': 3}
         t = Table(self.colors,labels,f'Creator: {util.execution_stamp("Colormap")}')
 
-        if fhandle is None:
-            with open(self.name.replace(' ','_')+'.txt', 'w') as f:
-                t.save(f)
-        else:
-            t.save(fhandle)
+        with open(self.name.replace(' ','_')+'.txt', 'w') if fhandle is None else fhandle as f:
+            t.save(f)
 
 
     def save_GOM(self,fname=None):
@@ -313,24 +295,21 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap and extension '.legend'.
 
         """
-        if fname is not None:
+        if fname is None:
+            fhandle = None
+        else:
             try:
                 fhandle = open(fname,'w')
             except TypeError:
                 fhandle = fname
-        else:
-            fhandle = None
         # ToDo: test in GOM
         GOM_str = '1 1 {name} 9 {name} '.format(name=self.name.replace(" ","_")) \
                 +  '0 1 0 3 0 0 -1 9 \\ 0 0 0 255 255 255 0 0 255 ' \
                 + f'30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 {len(self.colors)}' \
                 + ' '.join([f' 0 {c[0]} {c[1]} {c[2]} 255 1' for c in reversed((self.colors*255).astype(int))]) \
                 + '\n'
-        if fhandle is None:
-            with open(self.name.replace(' ','_')+'.legend', 'w') as f:
-                f.write(GOM_str)
-        else:
-            fhandle.write(GOM_str)
+        with open(self.name.replace(' ','_')+'.legend', 'w') if fhandle is None else fhandle as f:
+            f.write(GOM_str)
 
 
     def save_gmsh(self,fname=None):
@@ -344,22 +323,19 @@ class Colormap(mpl.colors.ListedColormap):
             consist of the name of the colormap and extension '.msh'.
 
         """
-        if fname is not None:
+        if fname is None:
+            fhandle = None
+        else:
             try:
                 fhandle = open(fname,'w')
             except TypeError:
                 fhandle = fname
-        else:
-            fhandle = None
         # ToDo: test in gmsh
         gmsh_str = 'View.ColorTable = {\n' \
                  +'\n'.join([f'{c[0]},{c[1]},{c[2]},' for c in self.colors[:,:3]*255]) \
                  +'\n}\n'
-        if fhandle is None:
-            with open(self.name.replace(' ','_')+'.msh', 'w') as f:
-                f.write(gmsh_str)
-        else:
-            fhandle.write(gmsh_str)
+        with open(self.name.replace(' ','_')+'.msh', 'w') if fhandle is None else fhandle as f:
+            f.write(gmsh_str)
 
 
     @staticmethod
@@ -387,7 +363,6 @@ class Colormap(mpl.colors.ListedColormap):
                 if msh_sat[2] < - np.pi/3.0: hSpin *= -1.0
                 return msh_sat[2] + hSpin
 
-
         lo = np.array(low)
         hi = np.array(high)
 
@@ -407,28 +382,28 @@ class Colormap(mpl.colors.ListedColormap):
         return (1.0 - frac) * lo + frac * hi
 
 
-    _predefined_mpl= [('Perceptually Uniform Sequential', [
-                         'viridis', 'plasma', 'inferno', 'magma', 'cividis']),
-                      ('Sequential', [
+    _predefined_mpl= {'Perceptually Uniform Sequential': [
+                         'viridis', 'plasma', 'inferno', 'magma', 'cividis'],
+                      'Sequential': [
                          'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
                          'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
-                         'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']),
-                      ('Sequential (2)', [
+                         'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn'],
+                      'Sequential (2)': [
                          'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone', 'pink',
                          'spring', 'summer', 'autumn', 'winter', 'cool', 'Wistia',
-                         'hot', 'afmhot', 'gist_heat', 'copper']),
-                      ('Diverging', [
+                         'hot', 'afmhot', 'gist_heat', 'copper'],
+                      'Diverging': [
                          'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu',
-                         'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic']),
-                      ('Cyclic', ['twilight', 'twilight_shifted', 'hsv']),
-                      ('Qualitative', [
+                         'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic'],
+                      'Cyclic': ['twilight', 'twilight_shifted', 'hsv'],
+                      'Qualitative': [
                          'Pastel1', 'Pastel2', 'Paired', 'Accent',
                          'Dark2', 'Set1', 'Set2', 'Set3',
-                         'tab10', 'tab20', 'tab20b', 'tab20c']),
-                      ('Miscellaneous', [
+                         'tab10', 'tab20', 'tab20b', 'tab20c'],
+                      'Miscellaneous': [
                          'flag', 'prism', 'ocean', 'gist_earth', 'terrain', 'gist_stern',
                          'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
-                         'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar'])]
+                         'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar']}
 
     _predefined_DAMASK = {'orientation':   {'low':  [0.933334,0.878432,0.878431],
                                             'high': [0.250980,0.007843,0.000000]},
@@ -436,6 +411,9 @@ class Colormap(mpl.colors.ListedColormap):
                                             'high': [0.266667,0.266667,0.000000]},
                           'stress':        {'low':  [0.878432,0.874511,0.949019],
                                             'high': [0.000002,0.000000,0.286275]}}
+
+    predefined = dict(**{'DAMASK':list(_predefined_DAMASK)},**_predefined_mpl)
+
 
     @staticmethod
     def _hsv2rgb(hsv):

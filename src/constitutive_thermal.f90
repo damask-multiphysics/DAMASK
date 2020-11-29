@@ -95,7 +95,7 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
    homog  = material_homogenizationAt(el)
    instance = thermal_typeInstance(homog)
 
-  do grain = 1, homogenization_Ngrains(homog)
+  do grain = 1, homogenization_Nconstituents(homog)
      phase = material_phaseAt(grain,el)
      constituent = material_phasememberAt(grain,ip,el)
      do source = 1, phase_Nsources(phase)

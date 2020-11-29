@@ -4,7 +4,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief  phenomenological crystal plasticity formulation using a powerlaw fitting
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_plastic) plastic_phenopowerlaw
+submodule(constitutive:constitutive_mech) plastic_phenopowerlaw
 
   type :: tParameters
     real(pReal) :: &
@@ -70,9 +70,9 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstance, &
+    Ninstances, &
     p, i, &
-    NipcMyPhase, &
+    Nconstituents, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
@@ -86,30 +86,31 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
 
   print'(/,a)', ' <<<+-  plastic_phenopowerlaw init  -+>>>'
 
   myPlasticity = plastic_active('phenopowerlaw')
-  Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myPlasticity)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
-  allocate(param(Ninstance))
-  allocate(state(Ninstance))
-  allocate(dotState(Ninstance))
+  allocate(param(Ninstances))
+  allocate(state(Ninstances))
+  allocate(dotState(Ninstances))
 
   phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
-
+    mech  => phase%get('mechanics')
     if(.not. myPlasticity(p)) cycle
     i = i + 1
     associate(prm => param(i), &
               dot => dotState(i), &
               stt => state(i))
-    pl  => phase%get('plasticity')
+    pl  => mech%get('plasticity')
 
 !--------------------------------------------------------------------------------------------------
 ! slip related parameters
@@ -119,7 +120,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
       prm%P_sl = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
                                            phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
-      if(phase%get_asString('lattice') == 'bcc') then
+      if(phase%get_asString('lattice') == 'cI') then
         a = pl%get_asFloats('a_nonSchmid',defaultVal=emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)
@@ -224,20 +225,20 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase = count(material_phaseAt == p) * discretization_nIP
+    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
     sizeDotState = size(['xi_sl   ','gamma_sl']) * prm%sum_N_sl &
                  + size(['xi_tw   ','gamma_tw']) * prm%sum_N_tw
     sizeState = sizeDotState
 
 
-    call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
+    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! state aliases and initialization
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%xi_slip => plasticState(p)%state   (startIndex:endIndex,:)
-    stt%xi_slip =  spread(xi_0_sl, 2, NipcMyPhase)
+    stt%xi_slip =  spread(xi_0_sl, 2, Nconstituents)
     dot%xi_slip => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'
@@ -245,7 +246,7 @@ module function plastic_phenopowerlaw_init() result(myPlasticity)
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_tw
     stt%xi_twin => plasticState(p)%state   (startIndex:endIndex,:)
-    stt%xi_twin =  spread(xi_0_tw, 2, NipcMyPhase)
+    stt%xi_twin =  spread(xi_0_tw, 2, Nconstituents)
     dot%xi_twin => plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_xi',defaultVal=1.0_pReal)
     if(any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_xi'

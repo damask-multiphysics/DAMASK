@@ -2,14 +2,10 @@
 stages:
   - prepareAll
   - python
-  - preprocessing
-  - postprocessing
-  - compilePETSc
-  - prepareGrid
+  - deprecated
+  - compile
   - grid
-  - compileMarc
   - marc
-  - example
   - performance
   - createPackage
   - createDocumentation
@@ -20,12 +16,12 @@ stages:
 
 ###################################################################################################
 before_script:
-  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue)x == 'x' ];
-      then echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue;
+  - if [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue)x == 'x' ];
+      then echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue;
     fi
-  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+  - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
       do sleep 5m;
-      echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
+      echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
     done
   - source $DAMASKROOT/env/DAMASK.sh
   - cd $DAMASKROOT/PRIVATE/testing
@@ -45,61 +41,55 @@ variables:
   # ===============================================================================================
   # Shortcut names
   # ===============================================================================================
-  DAMASKROOT: "$TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  DAMASKROOT: "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/DAMASK"
+  TESTROOT:   "$LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID/tests"
 
   # ===============================================================================================
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler17_8:               "Compiler/Intel/17.8 Libraries/IMKL/2017"
-  IntelCompiler18_4:               "Compiler/Intel/18.4 Libraries/IMKL/2018"
-  GNUCompiler8_2:                  "Compiler/GNU/8.2"
+  IntelCompiler19_1:               "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
+  GNUCompiler10:                   "Compiler/GNU/10"
   # ------------ Defaults ----------------------------------------------
-  IntelCompiler:                   "$IntelCompiler18_4"
-  GNUCompiler:                     "$GNUCompiler8_2"
+  IntelCompiler:                   "$IntelCompiler19_1"
+  GNUCompiler:                     "$GNUCompiler10"
   # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IMPI2018Intel18_4:               "MPI/Intel/18.4/IntelMPI/2018"
-  MPICH3_3GNU8_2:                  "MPI/GNU/8.2/MPICH/3.3"
+  IMPI2020Intel19_1:               "MPI/Intel/19.1.2/IntelMPI/2019"
+  OMPI4_0GNU10:                    "MPI/GNU/10/OpenMPI/4.0.5"
   # ------------ Defaults ----------------------------------------------
-  MPICH_Intel:                     "$IMPI2018Intel18_4"
-  MPICH_GNU:                       "$MPICH3_3GNU8_2"
+  MPI_Intel:                       "$IMPI2020Intel19_1"
+  MPI_GNU:                         "$OMPI4_0GNU10"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_10_3IMPI2018Intel18_4:    "Libraries/PETSc/3.10.3/Intel-18.4-IntelMPI-2018"
-  PETSc3_10_3MPICH3_3GNU8_2:       "Libraries/PETSc/3.10.3/GNU-8.2-MPICH-3.3"
+  PETSc3_14_0IMPI2020Intel19_1:    "Libraries/PETSc/3.14.0/Intel-19.1.2-IntelMPI-2019"
+  PETSc3_14_0OMPI4_0GNU10:         "Libraries/PETSc/3.14.0/GNU-10-OpenMPI-4.0.5"
   # ------------ Defaults ----------------------------------------------
-  PETSc_MPICH_Intel:               "$PETSc3_10_3IMPI2018Intel18_4"
-  PETSc_MPICH_GNU:                 "$PETSc3_10_3MPICH3_3GNU8_2"
+  PETSc_Intel:                     "$PETSc3_14_0IMPI2020Intel19_1"
+  PETSc_GNU:                       "$PETSc3_14_0OMPI4_0GNU10"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2019_1:                       "FEM/MSC/2019.1"
+  MSC2020:                         "FEM/MSC/2020"
   # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2019_1"
-  IntelMarc:                       "$IntelCompiler17_8"
-  HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
-  # ++++++++++++ Documentation ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  Doxygen1_8_17:                   "Documentation/Doxygen/1.8.17"
-  # ------------ Defaults ----------------------------------------------
-  Doxygen:                         "$Doxygen1_8_17"
-
+  MSC:                             "$MSC2020"
+  IntelMarc:                       "$IntelCompiler19_1"
+  HDF5Marc:                        "HDF5/1.12.0/Intel-19.1.2"
 
 ###################################################################################################
 checkout:
   stage: prepareAll
   before_script:
-    - echo $CI_PIPELINE_ID >> $TESTROOT/GitLabCI.queue
-    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $TESTROOT/GitLabCI.queue) != 1 ];
+    - echo $CI_PIPELINE_ID >> $LOCAL_HOME/GitLabCI.queue
+    - while [ $(awk "/$CI_PIPELINE_ID/{print NR}" $LOCAL_HOME/GitLabCI.queue) != 1 ];
         do sleep 5m;
-        echo -e "Currently queued pipelines:\n$(cat $TESTROOT/GitLabCI.queue)\n";
+        echo -e "Currently queued pipelines:\n$(cat $LOCAL_HOME/GitLabCI.queue)\n";
       done
   script:
     - mkdir -p $DAMASKROOT
+    - mkdir -p $TESTROOT
     - cd $DAMASKROOT
-    - if [ -d DAMASK ]; then rm -rf DAMASK; fi                                                      # there might be some leftovers from a failed clone
     - git clone -q git@magit1.mpie.de:damask/DAMASK.git .
     - git checkout $CI_COMMIT_SHA
     - git submodule update --init
     - source env/DAMASK.sh
     - make processing
-    - mkdir /tmp/$CI_PIPELINE_ID
   except:
     - master
     - release
@@ -109,78 +99,77 @@ Pytest_python:
   stage: python
   script:
     - cd $DAMASKROOT/python
-    - pytest --basetemp=/tmp/${CI_PIPELINE_ID}/python
+    - pytest --basetemp=${TESTROOT}/python -v
   except:
     - master
     - release
 
 ###################################################################################################
 Pre_SeedGeneration:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing_SeedGeneration/test.py
   except:
     - master
     - release
 
 Pre_GeomGeneration:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing_GeomGeneration/test.py
   except:
     - master
     - release
 
 Pre_GeomModification:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing_GeomModification/test.py
   except:
     - master
     - release
 
 Pre_General:
-  stage: preprocessing
+  stage: deprecated
   script: PreProcessing/test.py
   except:
     - master
     - release
 
-###################################################################################################
 Post_General:
-  stage: postprocessing
+  stage: deprecated
   script: PostProcessing/test.py
   except:
     - master
     - release
 
 Post_GeometryReconstruction:
-  stage: postprocessing
+  stage: deprecated
   script: spectral_geometryReconstruction/test.py
   except:
     - master
     - release
 
 Post_addCurl:
-  stage: postprocessing
+  stage: deprecated
   script: addCurl/test.py
   except:
     - master
     - release
 
 Post_addDivergence:
-  stage: postprocessing
+  stage: deprecated
   script: addDivergence/test.py
   except:
     - master
     - release
 
 Post_addGradient:
-  stage: postprocessing
+  stage: deprecated
   script: addGradient/test.py
   except:
     - master
     - release
 
 Post_OrientationAverageMisorientation:
-  stage: postprocessing
+  stage: deprecated
   script:
     - OrientationAverageMisorientation/test.py
   except:
@@ -188,61 +177,76 @@ Post_OrientationAverageMisorientation:
     - release
 
 ###################################################################################################
-grid_mech_compile_Intel:
-  stage: compilePETSc
+compile_grid_Intel:
+  stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cp -r grid_mech_compile grid_mech_compile_Intel
-    - grid_mech_compile_Intel/test.py
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_Intel
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
     - master
     - release
 
-Compile_FEM_Intel:
-  stage: compilePETSc
+compile_mesh_Intel:
+  stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cp -r FEM_compile FEM_compile_Intel
-    - FEM_compile_Intel/test.py
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_Intel
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
     - master
     - release
 
-grid_mech_compile_GNU:
-  stage: compilePETSc
+compile_grid_GNU:
+  stage: compile
   script:
-    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
-    - cp -r grid_mech_compile grid_mech_compile_GNU
-    - grid_mech_compile_GNU/test.py
+    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - pytest -k 'compile and grid' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_grid_GNU
+    - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
     - master
     - release
 
-Compile_FEM_GNU:
-  stage: compilePETSc
+compile_mesh_GNU:
+  stage: compile
   script:
-    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
-    - cp -r FEM_compile FEM_compile_GNU
-    - FEM_compile_GNU/test.py
+    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
-    - pytest -k 'compile and mesh' --basetemp=/tmp/${CI_PIPELINE_ID}/compile_mesh_GNU
+    - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
     - master
     - release
 
-###################################################################################################
-Compile_Intel_Prepare:
-  stage: prepareGrid
+compile_MARC:
+  stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - cd $DAMASKROOT
-    - make clean grid processing
+    - module load $IntelMarc $HDF5Marc $MSC
+    - cd pytest
+    - pytest -k 'compile and Marc' --basetemp=${TESTROOT}/compile_Marc
+  except:
+    - master
+    - release
+
+setup_grid:
+  stage: compile
+  script:
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
+    - BUILD_DIR=$(mktemp -d)
+    - cd ${BUILD_DIR}
+    - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
+    - make -j2 all install
+  except:
+    - master
+    - release
+
+setup_mesh:
+  stage: compile
+  script:
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
+    - BUILD_DIR=$(mktemp -d)
+    - cd ${BUILD_DIR}
+    - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
+    - make -j2 all install
   except:
     - master
     - release
@@ -251,9 +255,9 @@ Compile_Intel_Prepare:
 Pytest_grid:
   stage: grid
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
-    - pytest -m 'not compile' --basetemp=/tmp/${CI_PIPELINE_ID}/fortran
+    - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
   except:
     - master
     - release
@@ -265,32 +269,9 @@ Thermal:
     - master
     - release
 
-grid_parsingArguments:
-  stage: grid
-  script: grid_parsingArguments/test.py
-  except:
-    - master
-    - release
-
 Nonlocal_Damage_DetectChanges:
   stage: grid
   script: Nonlocal_Damage_DetectChanges/test.py
-  except:
-    - master
-    - release
-
-grid_all_restart:
-  stage: grid
-  script: grid_all_restart/test.py
-  except:
-    - master
-    - release
-
-grid_all_restartMPI:
-  stage: grid
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
-    - grid_all_restartMPI/test.py
   except:
     - master
     - release
@@ -309,46 +290,8 @@ Phenopowerlaw_singleSlip:
     - master
     - release
 
-###################################################################################################
-Marc_compileIfort:
-  stage: compileMarc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - Marc_compileIfort/test.py
-    - cd pytest
-    - pytest -k 'compile and Marc'
-  except:
-    - master
-    - release
 
 ###################################################################################################
-Hex_elastic:
-  stage: marc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - Hex_elastic/test.py
-  except:
-    - master
-    - release
-
-CubicFCC_elastic:
-  stage: marc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - CubicFCC_elastic/test.py
-  except:
-    - master
-    - release
-
-CubicBCC_elastic:
-  stage: marc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - CubicBCC_elastic/test.py
-  except:
-    - master
-    - release
-
 J2_plasticBehavior:
   stage: marc
   script:
@@ -368,24 +311,16 @@ Marc_elementLib:
     - release
 
 ###################################################################################################
-grid_all_example:
-  stage: example
-  script: grid_all_example/test.py
-  except:
-    - master
-    - release
-
-###################################################################################################
 SpectralRuntime:
   stage: performance
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $DAMASKROOT
     - make clean grid processing OPTIMIZATION=AGGRESSIVE
-    - cd $TESTROOT/performance                                                                      # location of old results
+    - cd $LOCAL_HOME/performance                                                                    # location of old results
     - git checkout .                                                                                # undo any changes (i.e. run time data from non-development branch)
     - cd $DAMASKROOT/PRIVATE/testing
-    - SpectralAll_runtime/test.py -d $TESTROOT/performance
+    - SpectralAll_runtime/test.py -d $LOCAL_HOME/performance
   except:
     - master
     - release
@@ -401,20 +336,10 @@ createTar:
     - release
 
 ###################################################################################################
-Marc:
+Python:
   stage: createDocumentation
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT marc
-  except:
-    - master
-    - release
-
-GridSolver:
-  stage: createDocumentation
-  script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel $Doxygen
-    - $DAMASKROOT/PRIVATE/documenting/runDoxygen.sh $DAMASKROOT grid
+    - echo 'tbd one matesting1'
   except:
     - master
     - release
@@ -423,11 +348,11 @@ GridSolver:
 backupData:
   stage: saveDocumentation
   script:
-    - cd $TESTROOT/performance                                                                      # location of new runtime results
+    - cd $LOCAL_HOME/performance                                                                    # location of new runtime results
     - git commit -am"${CI_PIPELINE_ID}_${CI_COMMIT_SHA}"
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
-    - mv $TESTROOT/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $TESTROOT/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
+    - mv $LOCAL_HOME/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
@@ -457,8 +382,8 @@ removeData:
   before_script:
     - echo "Removing data and lock of pipeline $CI_PIPELINE_ID"
   script:
-    - rm -rf $TESTROOT/GitLabCI_Pipeline_$CI_PIPELINE_ID
-    - sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue                                          # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
+    - rm -rf $LOCAL_HOME/GitLabCI_Pipeline_$CI_PIPELINE_ID
+    - sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue                                        # in case pipeline was manually (web GUI) restarted and releaseLock was performed already
   except:
     - master
     - release
@@ -469,7 +394,7 @@ removeLock:
   before_script:
     - echo "Removing lock of pipeline $CI_PIPELINE_ID"
   when: always
-  script: sed -i "/$CI_PIPELINE_ID/d" $TESTROOT/GitLabCI.queue
+  script: sed -i "/$CI_PIPELINE_ID/d" $LOCAL_HOME/GitLabCI.queue
   except:
     - master
     - release

@@ -367,12 +367,8 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! file handling errors
     case (100)
       msg = 'could not open file:'
-    case (101)
-      msg = 'write error for file:'
     case (102)
       msg = 'could not read file:'
-    case (106)
-      msg = 'working directory does not exist:'
 
 !--------------------------------------------------------------------------------------------------
 ! file parsing errors
@@ -395,14 +391,10 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
       msg = 'hex lattice structure with invalid c/a ratio'
     case (132)
       msg = 'trans_lattice_structure not possible'
-    case (133)
-      msg = 'transformed hex lattice structure with invalid c/a ratio'
     case (134)
       msg = 'negative lattice parameter'
     case (135)
       msg = 'zero entry on stiffness diagonal'
-    case (136)
-      msg = 'zero entry on stiffness diagonal for transformed phase'
     case (137)
       msg = 'not defined for lattice structure'
     case (138)
@@ -431,8 +423,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 ! material error messages and related messages in mesh
     case (150)
       msg = 'index out of bounds'
-    case (151)
-      msg = 'material has no constituents'
     case (153)
       msg = 'sum of phase fractions differs from 1'
     case (155)
@@ -463,10 +453,6 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !--------------------------------------------------------------------------------------------------
 ! math errors
-    case (400)
-      msg = 'matrix inversion error'
-    case (401)
-      msg = 'error in Eigenvalue calculation'
     case (402)
       msg = 'invalid orientation specified'
 
@@ -499,14 +485,12 @@ subroutine IO_error(error_ID,el,ip,g,instance,ext_msg)
 
 !-------------------------------------------------------------------------------------------------
 ! errors related to the grid solver
-    case (809)
-      msg = 'initializing FFTW'
-    case (810)
-      msg = 'FFTW plan creation'
     case (831)
       msg = 'mask consistency violated in grid load case'
     case (832)
       msg = 'ill-defined L (line partly defined) in grid load case'
+    case (833)
+      msg = 'non-positive ratio for geometric progression'
     case (834)
       msg = 'negative time increment in grid load case'
     case (835)
@@ -587,45 +571,20 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
   character(len=pStringLen)     :: formatString
 
   select case (warning_ID)
-    case (1)
-      msg = 'unknown key'
-    case (34)
-      msg = 'invalid restart increment given'
-    case (35)
-      msg = 'could not get $DAMASK_NUM_THREADS'
-    case (40)
-      msg = 'found spectral solver parameter'
     case (42)
       msg = 'parameter has no effect'
-    case (43)
-      msg = 'main diagonal of C66 close to zero'
     case (47)
       msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
-    case (50)
-      msg = 'not all available slip system families are defined'
-    case (51)
-      msg = 'not all available twin system families are defined'
-    case (52)
-      msg = 'not all available parameters are defined'
-    case (53)
-      msg = 'not all available transformation system families are defined'
-    case (101)
-      msg = 'crystallite debugging off'
-    case (201)
-      msg = 'position not found when parsing line'
     case (207)
       msg = 'line truncated'
     case (600)
       msg = 'crystallite responds elastically'
     case (601)
       msg = 'stiffness close to zero'
-    case (650)
-      msg = 'polar decomposition failed'
     case (700)
       msg = 'unknown crystal symmetry'
     case (709)
       msg = 'read only the first document'
- 
     case (850)
       msg = 'max number of cut back exceeded, terminating'
     case default

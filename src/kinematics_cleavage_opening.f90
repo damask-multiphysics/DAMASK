@@ -20,7 +20,7 @@ submodule(constitutive:constitutive_damage) kinematics_cleavage_opening
       cleavage_systems
   end type tParameters
 
-  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstance)
+  type(tParameters), dimension(:), allocatable :: param                                             !< containers of constitutive parameters (len Ninstances)
 
 
 contains
@@ -35,31 +35,29 @@ module function kinematics_cleavage_opening_init(kinematics_length) result(myKin
   integer, intent(in)                  :: kinematics_length  
   logical, dimension(:,:), allocatable :: myKinematics
 
-  integer :: Ninstance,p,k
+  integer :: Ninstances,p,k
   integer, dimension(:), allocatable :: N_cl                                                        !< active number of cleavage systems per family
   character(len=pStringLen) :: extmsg = ''
   class(tNode), pointer :: &
     phases, &
     phase, &
-    pl, &
     kinematics, &
     kinematic_type 
        
   print'(/,a)', ' <<<+-  kinematics_cleavage_opening init  -+>>>'
 
   myKinematics = kinematics_active('cleavage_opening',kinematics_length)
-  Ninstance = count(myKinematics)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myKinematics)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
 
   phases => config_material%get('phase')
-  allocate(param(Ninstance))
+  allocate(param(Ninstances))
   allocate(kinematics_cleavage_opening_instance(phases%length), source=0)
 
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_cleavage_opening_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p) 
-    pl => phase%get('plasticity')
+    phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length

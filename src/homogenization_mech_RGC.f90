@@ -81,9 +81,9 @@ module subroutine mech_RGC_init(num_homogMech)
     num_homogMech                                                                                   !< pointer to mechanical homogenization numerics data
 
   integer :: &
-    Ninstance, &
+    Ninstances, &
     h, &
-    NofMyHomog, &
+    Nmaterialpoints, &
     sizeState, nIntFaceTot
 
   class (tNode), pointer :: &
@@ -94,8 +94,8 @@ module subroutine mech_RGC_init(num_homogMech)
 
   print'(/,a)', ' <<<+-  homogenization_mech_rgc init  -+>>>'
 
-  Ninstance = count(homogenization_type == HOMOGENIZATION_RGC_ID)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
+  Ninstances = count(homogenization_type == HOMOGENIZATION_RGC_ID)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
 
   print*, 'Tjahjanto et al., International Journal of Material Forming 2(1):939–942, 2009'
   print*, 'https://doi.org/10.1007/s12289-009-0619-1'//IO_EOL
@@ -105,10 +105,10 @@ module subroutine mech_RGC_init(num_homogMech)
 
 
 
-  allocate(param(Ninstance))
-  allocate(state(Ninstance))
-  allocate(state0(Ninstance))
-  allocate(dependentState(Ninstance))
+  allocate(param(Ninstances))
+  allocate(state(Ninstances))
+  allocate(state0(Ninstances))
+  allocate(dependentState(Ninstances))
 
   num_RGC => num_homogMech%get('RGC',defaultVal=emptyDict)
 
@@ -145,7 +145,7 @@ module subroutine mech_RGC_init(num_homogMech)
   do h = 1, size(homogenization_type)
     if (homogenization_type(h) /= HOMOGENIZATION_RGC_ID) cycle
     homog => material_homogenization%get(h)
-    homogMech => homog%get('mech')
+    homogMech => homog%get('mechanics')
     associate(prm => param(homogenization_typeInstance(h)), &
               stt => state(homogenization_typeInstance(h)), &
               st0 => state0(homogenization_typeInstance(h)), &
@@ -164,7 +164,7 @@ module subroutine mech_RGC_init(num_homogMech)
 #endif
 
     prm%N_constituents = homogMech%get_asInts('cluster_size',requiredSize=3)
-    if (homogenization_Ngrains(h) /= product(prm%N_constituents)) &
+    if (homogenization_Nconstituents(h) /= product(prm%N_constituents)) &
       call IO_error(211,ext_msg='N_constituents (mech_RGC)')
 
     prm%xi_alpha = homogMech%get_asFloat('xi_alpha')
@@ -173,7 +173,7 @@ module subroutine mech_RGC_init(num_homogMech)
     prm%D_alpha  = homogMech%get_asFloats('D_alpha', requiredSize=3)
     prm%a_g      = homogMech%get_asFloats('a_g',     requiredSize=3)
 
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     nIntFaceTot = 3*(  (prm%N_constituents(1)-1)*prm%N_constituents(2)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*(prm%N_constituents(2)-1)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*prm%N_constituents(2)*(prm%N_constituents(3)-1))
@@ -181,24 +181,24 @@ module subroutine mech_RGC_init(num_homogMech)
               + size(['avg constitutive work ','average penalty energy'])
 
     homogState(h)%sizeState = sizeState
-    allocate(homogState(h)%state0   (sizeState,NofMyHomog), source=0.0_pReal)
-    allocate(homogState(h)%subState0(sizeState,NofMyHomog), source=0.0_pReal)
-    allocate(homogState(h)%state    (sizeState,NofMyHomog), source=0.0_pReal)
+    allocate(homogState(h)%state0   (sizeState,Nmaterialpoints), source=0.0_pReal)
+    allocate(homogState(h)%subState0(sizeState,Nmaterialpoints), source=0.0_pReal)
+    allocate(homogState(h)%state    (sizeState,Nmaterialpoints), source=0.0_pReal)
 
     stt%relaxationVector   => homogState(h)%state(1:nIntFaceTot,:)
     st0%relaxationVector   => homogState(h)%state0(1:nIntFaceTot,:)
     stt%work               => homogState(h)%state(nIntFaceTot+1,:)
     stt%penaltyEnergy      => homogState(h)%state(nIntFaceTot+2,:)
 
-    allocate(dst%volumeDiscrepancy(   NofMyHomog), source=0.0_pReal)
-    allocate(dst%relaxationRate_avg(  NofMyHomog), source=0.0_pReal)
-    allocate(dst%relaxationRate_max(  NofMyHomog), source=0.0_pReal)
-    allocate(dst%mismatch(          3,NofMyHomog), source=0.0_pReal)
+    allocate(dst%volumeDiscrepancy(   Nmaterialpoints), source=0.0_pReal)
+    allocate(dst%relaxationRate_avg(  Nmaterialpoints), source=0.0_pReal)
+    allocate(dst%relaxationRate_max(  Nmaterialpoints), source=0.0_pReal)
+    allocate(dst%mismatch(          3,Nmaterialpoints), source=0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
-    dependentState(homogenization_typeInstance(h))%orientation = spread(eu2om(prm%a_g*inRad),3,NofMyHomog)
-    !dst%orientation = spread(eu2om(prm%a_g*inRad),3,NofMyHomog) ifort version 18.0.1 crashes (for whatever reason)
+    dependentState(homogenization_typeInstance(h))%orientation = spread(eu2om(prm%a_g*inRad),3,Nmaterialpoints)
+    !dst%orientation = spread(eu2om(prm%a_g*inRad),3,Nmaterialpoints) ifort version 18.0.1 crashes (for whatever reason)
 
     end associate
 

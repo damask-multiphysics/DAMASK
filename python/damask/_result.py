@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom
 from pathlib import Path
 from functools import partial
+from collections import defaultdict
 
 import h5py
 import numpy as np
@@ -15,12 +16,13 @@ from numpy.lib import recfunctions as rfn
 import damask
 from . import VTK
 from . import Table
-from . import Rotation
 from . import Orientation
 from . import grid_filters
 from . import mechanics
+from . import tensor
 from . import util
 
+h5py3 = h5py.__version__[0] == '3'
 
 class Result:
     """
@@ -35,20 +37,16 @@ class Result:
 
         Parameters
         ----------
-        fname : str
-            name of the DADF5 file to be opened.
+        fname : str or pathlib.Path
+            Name of the DADF5 file to be opened.
 
         """
         with h5py.File(fname,'r') as f:
 
-            try:
-                self.version_major = f.attrs['DADF5_version_major']
-                self.version_minor = f.attrs['DADF5_version_minor']
-            except KeyError:
-                self.version_major = f.attrs['DADF5-major']
-                self.version_minor = f.attrs['DADF5-minor']
+            self.version_major = f.attrs['DADF5_version_major']
+            self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 2 <= self.version_minor <= 7:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 9:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -56,35 +54,33 @@ class Result:
             if self.structured:
                 self.grid   = f['geometry'].attrs['grid']
                 self.size   = f['geometry'].attrs['size']
-                self.origin = f['geometry'].attrs['origin'] if self.version_major == 0 and self.version_minor >= 5 else \
-                              np.zeros(3)
+                self.origin = f['geometry'].attrs['origin']
 
             r=re.compile('inc[0-9]+')
             increments_unsorted = {int(i[3:]):i for i in f.keys() if r.match(i)}
             self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
             self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
-            self.Nmaterialpoints, self.Nconstituents =   np.shape(f['mapping/cellResults/constituent'])
-            self.materialpoints  = [m.decode() for m in np.unique(f['mapping/cellResults/materialpoint']['Name'])]
-            self.constituents    = [c.decode() for c in np.unique(f['mapping/cellResults/constituent']  ['Name'])]
+            self.N_materialpoints, self.N_constituents =   np.shape(f['mapping/phase'])
 
-            # faster, but does not work with (deprecated) DADF5_postResults
-            #self.materialpoints  = [m for m in f['inc0/materialpoint']]
-            #self.constituents    = [c for c in f['inc0/constituent']]
+            self.homogenizations  = [m.decode() for m in np.unique(f['mapping/homogenization']['Name'])]
+            self.phases           = [c.decode() for c in np.unique(f['mapping/phase']['Name'])]
 
-            self.con_physics = []
-            for c in self.constituents:
-                self.con_physics += f['/'.join([self.increments[0],'constituent',c])].keys()
-            self.con_physics = list(set(self.con_physics))                                          # make unique
+            self.out_type_ph = []
+            for c in self.phases:
+                self.out_type_ph += f['/'.join([self.increments[0],'phase',c])].keys()
+            self.out_type_ph = list(set(self.out_type_ph))                                          # make unique
 
-            self.mat_physics = []
-            for m in self.materialpoints:
-                self.mat_physics += f['/'.join([self.increments[0],'materialpoint',m])].keys()
-            self.mat_physics = list(set(self.mat_physics))                                          # make unique
+            self.out_type_ho = []
+            for m in self.homogenizations:
+                self.out_type_ho += f['/'.join([self.increments[0],'homogenization',m])].keys()
+            self.out_type_ho = list(set(self.out_type_ho))                                          # make unique
 
-        self.selection = {'increments':     self.increments,
-                          'constituents':   self.constituents,'materialpoints': self.materialpoints,
-                          'con_physics':    self.con_physics, 'mat_physics':    self.mat_physics
+        self.selection = {'increments':      self.increments,
+                          'phases':          self.phases,
+                          'homogenizations': self.homogenizations,
+                          'out_type_ph':     self.out_type_ph,
+                          'out_type_ho':     self.out_type_ho
                          }
 
         self.fname = Path(fname).absolute()
@@ -93,7 +89,7 @@ class Result:
 
 
     def __repr__(self):
-        """Show selected data."""
+        """Show summary of file content."""
         all_selected_increments = self.selection['increments']
 
         self.pick('increments',all_selected_increments[0:1])
@@ -117,14 +113,18 @@ class Result:
         Parameters
         ----------
         action : str
-            select from 'set', 'add', and 'del'
+            Select from 'set', 'add', and 'del'.
         what : str
-            attribute to change (must be from self.selection)
+            Attribute to change (must be from self.selection).
         datasets : list of str or bool
-           name of datasets as list, supports ? and * wildcards.
+            Name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
         """
+        def natural_sort(key):
+            convert = lambda text: int(text) if text.isdigit() else text
+            return [ convert(c) for c in re.split('([0-9]+)', key) ]
+
         # allow True/False and string arguments
         if  datasets is True:
             datasets = ['*']
@@ -158,25 +158,60 @@ class Result:
             self.selection[what] = valid
         elif action == 'add':
             add = existing.union(valid)
-            add_sorted = sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            add_sorted = sorted(add, key=natural_sort)
             self.selection[what] = add_sorted
         elif action == 'del':
             diff = existing.difference(valid)
-            diff_sorted = sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            diff_sorted = sorted(diff, key=natural_sort)
             self.selection[what] = diff_sorted
 
 
+    def _get_attribute(self,path,attr):
+        """
+        Get the attribute of a dataset.
+
+        Parameters
+        ----------
+        Path : str
+            Path to the dataset.
+        attr : str
+            Name of the attribute to get.
+
+        Returns
+        -------
+        attr at path, str or None.
+            The requested attribute, None if not found.
+
+        """
+        with h5py.File(self.fname,'r') as f:
+            try:
+                return f[path].attrs[attr] if h5py3 else f[path].attrs[attr].decode()
+            except KeyError:
+                return None
+
+
     def allow_modification(self):
-        print(util.bcolors().WARNING+util.bcolors().BOLD+
-              'Warning: Modification of existing datasets allowed!'+
-              util.bcolors().ENDC)
+        """Allow to overwrite existing data."""
+        print(util.warn('Warning: Modification of existing datasets allowed!'))
         self._allow_modification = True
 
     def disallow_modification(self):
+        """Disllow to overwrite existing data (default case)."""
         self._allow_modification = False
 
 
     def incs_in_range(self,start,end):
+        """
+        Select all increments within a given range.
+
+        Parameters
+        ----------
+        start : int or str
+            Start increment.
+        end : int or str
+            End increment.
+
+        """
         selected = []
         for i,inc in enumerate([int(i[3:]) for i in self.increments]):
             s,e = map(lambda x: int(x[3:] if isinstance(x,str) and x.startswith('inc') else x), (start,end))
@@ -186,6 +221,17 @@ class Result:
 
 
     def times_in_range(self,start,end):
+        """
+        Select all increments within a given time range.
+
+        Parameters
+        ----------
+        start : float
+            Time of start increment.
+        end : float
+            Time of end increment.
+
+        """
         selected = []
         for i,time in enumerate(self.times):
             if start <= time <= end:
@@ -200,7 +246,7 @@ class Result:
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.selection)
+            Attribute to change (must be from self.selection).
 
         """
         datasets = self.selection[what]
@@ -280,43 +326,41 @@ class Result:
                 for path_old in self.get_dataset_location(name_old):
                     path_new = os.path.join(os.path.dirname(path_old),name_new)
                     f[path_new] = f[path_old]
-                    f[path_new].attrs['Renamed'] = 'Original name: {}'.encode()
+                    f[path_new].attrs['Renamed'] = f'Original name: {name_old}' if h5py3 else \
+                                                   f'Original name: {name_old}'.encode()
                     del f[path_old]
         else:
             raise PermissionError('Rename operation not permitted')
 
 
-  # def datamerger(regular expression to filter groups into one copy)
-
-
-    def place(self,datasets,component=0,tagged=False,split=True):
+    def place(self,datasets,constituent=0,tagged=False,split=True):
         """
         Distribute datasets onto geometry and return Table or (split) dictionary of Tables.
 
         Must not mix nodal end cell data.
 
         Only data within
-        - inc?????/constituent/*_*/*
-        - inc?????/materialpoint/*_*/*
-        - inc?????/geometry/*
+        - inc*/phase/*/*
+        - inc*/homogenization/*/*
+        - inc*/geometry/*
         are considered.
 
         Parameters
         ----------
           datasets : iterable or str
-          component : int
-              homogenization component to consider for constituent data
+          constituent : int
+              Constituent to consider for phase data
           tagged : bool
-              tag Table.column name with '#component'
+              tag Table.column name with '#constituent'
               defaults to False
           split : bool
               split Table by increment and return dictionary of Tables
               defaults to True
 
         """
-        sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) \
-         else [datasets]
-        tag = f'#{component}' if tagged else ''
+        sets = datasets if hasattr(datasets,'__iter__') and not isinstance(datasets,str) else \
+              [datasets]
+        tag = f'#{constituent}' if tagged else ''
         tbl = {} if split else None
         inGeom = {}
         inData = {}
@@ -328,15 +372,15 @@ class Result:
                     key = '/'.join([prop,name+tag])
                     if key not in inGeom:
                         if prop == 'geometry':
-                            inGeom[key] = inData[key] = np.arange(self.Nmaterialpoints)
-                        elif prop == 'constituent':
-                            inGeom[key] = np.where(f['mapping/cellResults/constituent'][:,component]['Name'] == str.encode(name))[0]
-                            inData[key] =          f['mapping/cellResults/constituent'][inGeom[key],component]['Position']
-                        else:
-                            inGeom[key] = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(name))[0]
-                            inData[key] =          f['mapping/cellResults/materialpoint'][inGeom[key].tolist()]['Position']
+                            inGeom[key] = inData[key] = np.arange(self.N_materialpoints)
+                        elif prop == 'phase':
+                            inGeom[key] = np.where(f['mapping/phase'][:,constituent]['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/phase'][inGeom[key],constituent]['Position']
+                        elif prop == 'homogenization':
+                            inGeom[key] = np.where(f['mapping/homogenization']['Name'] == str.encode(name))[0]
+                            inData[key] =          f['mapping/homogenization'][inGeom[key].tolist()]['Position']
                     shape = np.shape(f[path])
-                    data = np.full((self.Nmaterialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
+                    data = np.full((self.N_materialpoints,) + (shape[1:] if len(shape)>1 else (1,)),
                                    np.nan,
                                    dtype=np.dtype(f[path]))
                     data[inGeom[key]] = (f[path] if len(shape)>1 else np.expand_dims(f[path],1))[inData[key]]
@@ -345,12 +389,12 @@ class Result:
                         try:
                             tbl[inc].add(path,data)
                         except KeyError:
-                            tbl[inc] = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                            tbl[inc] = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
                     else:
                         try:
                             tbl.add(path,data)
                         except AttributeError:
-                            tbl = Table(data.reshape(self.Nmaterialpoints,-1),{path:data.shape[1:]})
+                            tbl = Table(data.reshape(self.N_materialpoints,-1),{path:data.shape[1:]})
 
         return tbl
 
@@ -360,8 +404,8 @@ class Result:
         Return groups that contain all requested datasets.
 
         Only groups within
-          - inc*/constituent/*/*
-          - inc*/materialpoint/*/*
+          - inc*/phase/*/*
+          - inc*/homogenization/*/*
           - inc*/geometry/*
 
         are considered as they contain user-relevant data.
@@ -393,7 +437,7 @@ class Result:
 
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     for oo in self.iterate(o):
                         for pp in self.iterate(p):
                             group = '/'.join([i,o[:-1],oo,pp])                                      # o[:-1]: plural/singular issue
@@ -412,7 +456,7 @@ class Result:
         with h5py.File(self.fname,'r') as f:
             for i in self.iterate('increments'):
                 message += f'\n{i} ({self.times[self.increments.index(i)]}s)\n'
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     message += f'  {o[:-1]}\n'
                     for oo in self.iterate(o):
                         message += f'    {oo}\n'
@@ -422,8 +466,13 @@ class Result:
                             for d in f[group].keys():
                                 try:
                                     dataset = f['/'.join([group,d])]
-                                    unit  = f" / {dataset.attrs['Unit'].decode()}" if 'Unit' in dataset.attrs else ''
-                                    description = dataset.attrs['Description'].decode()
+                                    if 'Unit' in dataset.attrs:
+                                        unit = f" / {dataset.attrs['Unit']}" if h5py3 else \
+                                               f" / {dataset.attrs['Unit'].decode()}"
+                                    else:
+                                        unit = ''
+                                    description = dataset.attrs['Description'] if h5py3 else \
+                                                  dataset.attrs['Description'].decode()
                                     message += f'        {d}{unit}: {description}\n'
                                 except KeyError:
                                     pass
@@ -441,7 +490,7 @@ class Result:
                     path.append(k)
                 except KeyError:
                     pass
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     for oo in self.iterate(o):
                         for pp in self.iterate(p):
                             k = '/'.join([i,o[:-1],oo,pp,label])
@@ -451,19 +500,6 @@ class Result:
                             except KeyError:
                                 pass
         return path
-
-
-    def get_constituent_ID(self,c=0):
-        """Pointwise constituent ID."""
-        with h5py.File(self.fname,'r') as f:
-            names = f['/mapping/cellResults/constituent']['Name'][:,c].astype('str')
-        return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
-
-
-    def get_crystal_structure(self):                                                                # ToDo: extension to multi constituents/phase
-        """Info about the crystal structure."""
-        with h5py.File(self.fname,'r') as f:
-            return f[self.get_dataset_location('orientation')[0]].attrs['Lattice'].astype('str')    # np.bytes_ to string
 
 
     def enable_user_function(self,func):
@@ -476,9 +512,21 @@ class Result:
         Dataset for all points/cells.
 
         If more than one path is given, the dataset is composed of the individual contributions.
+
+        Parameters
+        ----------
+        path : list of strings
+            The name of the datasets to consider.
+        c : int, optional
+            The constituent to consider. Defaults to 0.
+        plain: boolean, optional
+            Convert into plain numpy datatype.
+            Only relevant for compound datatype, e.g. the orientation.
+            Defaults to False.
+
         """
         with h5py.File(self.fname,'r') as f:
-            shape = (self.Nmaterialpoints,) + np.shape(f[path[0]])[1:]
+            shape = (self.N_materialpoints,) + np.shape(f[path[0]])[1:]
             if len(shape) == 1: shape = shape +(1,)
             dataset = np.full(shape,np.nan,dtype=np.dtype(f[path[0]]))
             for pa in path:
@@ -488,17 +536,17 @@ class Result:
                     dataset = np.array(f[pa])
                     continue
 
-                p = np.where(f['mapping/cellResults/constituent'][:,c]['Name'] == str.encode(label))[0]
+                p = np.where(f['mapping/phase'][:,c]['Name'] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/cellResults/constituent']['Position'][p,c])
+                    u = (f['mapping/phase']['Position'][p,c])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
                     dataset[p,:] = a[u,:]
 
-                p = np.where(f['mapping/cellResults/materialpoint']['Name'] == str.encode(label))[0]
+                p = np.where(f['mapping/homogenization']['Name'] == str.encode(label))[0]
                 if len(p)>0:
-                    u = (f['mapping/cellResults/materialpoint']['Position'][p.tolist()])
+                    u = (f['mapping/homogenization']['Position'][p.tolist()])
                     a = np.array(f[pa])
                     if len(a.shape) == 1:
                         a=a.reshape([a.shape[0],1])
@@ -589,19 +637,19 @@ class Result:
 
 
     @staticmethod
-    def _add_Cauchy(P,F):
+    def _add_stress_Cauchy(P,F):
         return {
-                'data':  mechanics.Cauchy(P['data'],F['data']),
+                'data':  mechanics.stress_Cauchy(P['data'],F['data']),
                 'label': 'sigma',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
                           'Description': "Cauchy stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_Cauchy'
+                          'Creator':     'add_stress_Cauchy'
                           }
                 }
-    def add_Cauchy(self,P='P',F='F'):
+    def add_stress_Cauchy(self,P='P',F='F'):
         """
         Add Cauchy stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
@@ -613,7 +661,7 @@ class Result:
             Label of the dataset containing the deformation gradient. Defaults to ‘F’.
 
         """
-        self._add_generic_pointwise(self._add_Cauchy,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_stress_Cauchy,{'P':P,'F':F})
 
 
     @staticmethod
@@ -643,7 +691,7 @@ class Result:
     @staticmethod
     def _add_deviator(T):
         return {
-                'data':  mechanics.deviatoric_part(T['data']),
+                'data':  tensor.deviatoric(T['data']),
                 'label': f"s_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
@@ -674,7 +722,7 @@ class Result:
             label,p = 'Minimum',0
 
         return {
-                'data': mechanics.eigenvalues(T_sym['data'])[:,p],
+                'data': tensor.eigenvalues(T_sym['data'])[:,p],
                 'label': f"lambda_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':         T_sym['meta']['Unit'],
@@ -706,7 +754,7 @@ class Result:
         elif eigenvalue == 'min':
             label,p = 'minimum',0
         return {
-                'data': mechanics.eigenvectors(T_sym['data'])[:,p],
+                'data': tensor.eigenvectors(T_sym['data'])[:,p],
                 'label': f"v_{eigenvalue}({T_sym['label']})",
                 'meta' : {
                           'Unit':        '1',
@@ -734,9 +782,11 @@ class Result:
     @staticmethod
     def _add_IPF_color(q,l):
         m = util.scale_to_coprime(np.array(l))
-
-        o = Orientation(Rotation(rfn.structured_to_unstructured(q['data'])),
-                        lattice = q['meta']['Lattice'])
+        try:
+            lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
+        except KeyError:
+            lattice =  q['meta']['Lattice']
+        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),
@@ -788,20 +838,27 @@ class Result:
 
 
     @staticmethod
-    def _add_Mises(T_sym):
-        t = 'strain' if T_sym['meta']['Unit'] == '1' else \
-            'stress'
+    def _add_equivalent_Mises(T_sym,kind):
+        k = kind
+        if k is None:
+            if T_sym['meta']['Unit'] == '1':
+                k = 'strain'
+            elif T_sym['meta']['Unit'] == 'Pa':
+                k = 'stress'
+        if k not in ['stress', 'strain']:
+            raise ValueError('invalid von Mises kind {kind}')
 
         return {
-                'data':  (mechanics.Mises_strain if t=='strain' else mechanics.Mises_stress)(T_sym['data']),
+                'data':  (mechanics.equivalent_strain_Mises if k=='strain' else \
+                          mechanics.equivalent_stress_Mises)(T_sym['data']),
                 'label': f"{T_sym['label']}_vM",
                 'meta':  {
                           'Unit':        T_sym['meta']['Unit'],
-                          'Description': f"Mises equivalent {t} of {T_sym['label']} ({T_sym['meta']['Description']})",
+                          'Description': f"Mises equivalent {k} of {T_sym['label']} ({T_sym['meta']['Description']})",
                           'Creator':     'add_Mises'
                           }
                 }
-    def add_Mises(self,T_sym):
+    def add_equivalent_Mises(self,T_sym,kind=None):
         """
         Add the equivalent Mises stress or strain of a symmetric tensor.
 
@@ -809,9 +866,12 @@ class Result:
         ----------
         T_sym : str
             Label of symmetric tensorial stress or strain dataset.
+        kind : {'stress', 'strain', None}, optional
+            Kind of the von Mises equivalent. Defaults to None, in which case
+            it is selected based on the unit of the dataset ('1' -> strain, 'Pa' -> stress').
 
         """
-        self._add_generic_pointwise(self._add_Mises,{'T_sym':T_sym})
+        self._add_generic_pointwise(self._add_equivalent_Mises,{'T_sym':T_sym},{'kind':kind})
 
 
     @staticmethod
@@ -853,19 +913,19 @@ class Result:
 
 
     @staticmethod
-    def _add_PK2(P,F):
+    def _add_stress_second_Piola_Kirchhoff(P,F):
         return {
-                'data':  mechanics.PK2(P['data'],F['data']),
+                'data':  mechanics.stress_second_Piola_Kirchhoff(P['data'],F['data']),
                 'label': 'S',
                 'meta':  {
                           'Unit':        P['meta']['Unit'],
                           'Description': "2. Piola-Kirchhoff stress calculated "
                                          f"from {P['label']} ({P['meta']['Description']})"
                                          f" and {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_PK2'
+                          'Creator':     'add_stress_second_Piola_Kirchhoff'
                           }
                 }
-    def add_PK2(self,P='P',F='F'):
+    def add_stress_second_Piola_Kirchhoff(self,P='P',F='F'):
         """
         Add second Piola-Kirchhoff stress calculated from first Piola-Kirchhoff stress and deformation gradient.
 
@@ -877,59 +937,64 @@ class Result:
             Label of deformation gradient dataset. Defaults to ‘F’.
 
         """
-        self._add_generic_pointwise(self._add_PK2,{'P':P,'F':F})
+        self._add_generic_pointwise(self._add_stress_second_Piola_Kirchhoff,{'P':P,'F':F})
+
+
+# The add_pole functionality needs discussion.
+# The new Crystal object can perform such a calculation but the outcome depends on the lattice parameters
+# as well as on whether a direction or plane is concerned (see the DAMASK_examples/pole_figure notebook).
+# Below code appears to be too simplistic.
+
+    # @staticmethod
+    # def _add_pole(q,p,polar):
+    #     pole      = np.array(p)
+    #     unit_pole = pole/np.linalg.norm(pole)
+    #     m         = util.scale_to_coprime(pole)
+    #     rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
+    #
+    #     rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
+    #     xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
+    #     coords = xy if not polar else \
+    #              np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
+    #     return {
+    #             'data': coords,
+    #             'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
+    #             'meta' : {
+    #                       'Unit':        '1',
+    #                       'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
+    #                                      .format('Polar' if polar else 'Cartesian'),
+    #                       'Creator':     'add_pole'
+    #                      }
+    #            }
+    # def add_pole(self,q,p,polar=False):
+    #     """
+    #     Add coordinates of stereographic projection of given pole in crystal frame.
+    #
+    #     Parameters
+    #     ----------
+    #     q : str
+    #         Label of the dataset containing the crystallographic orientation as quaternions.
+    #     p : numpy.array of shape (3)
+    #         Crystallographic direction or plane.
+    #     polar : bool, optional
+    #         Give pole in polar coordinates. Defaults to False.
+    #
+    #     """
+    #     self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
 
 
     @staticmethod
-    def _add_pole(q,p,polar):
-        pole      = np.array(p)
-        unit_pole = pole/np.linalg.norm(pole)
-        m         = util.scale_to_coprime(pole)
-        rot       = Rotation(q['data'].view(np.double).reshape(-1,4))
-
-        rotatedPole = rot @ np.broadcast_to(unit_pole,rot.shape+(3,))                               # rotate pole according to crystal orientation
-        xy = rotatedPole[:,0:2]/(1.+abs(unit_pole[2]))                                              # stereographic projection
-        coords = xy if not polar else \
-                 np.block([np.sqrt(xy[:,0:1]*xy[:,0:1]+xy[:,1:2]*xy[:,1:2]),np.arctan2(xy[:,1:2],xy[:,0:1])])
+    def _add_rotation(F):
         return {
-                'data': coords,
-                'label': 'p^{}_[{} {} {})'.format(u'rφ' if polar else 'xy',*m),
-                'meta' : {
-                          'Unit':        '1',
-                          'Description': '{} coordinates of stereographic projection of pole (direction/plane) in crystal frame'\
-                                         .format('Polar' if polar else 'Cartesian'),
-                          'Creator':     'add_pole'
-                         }
-               }
-    def add_pole(self,q,p,polar=False):
-        """
-        Add coordinates of stereographic projection of given pole in crystal frame.
-
-        Parameters
-        ----------
-        q : str
-            Label of the dataset containing the crystallographic orientation as quaternions.
-        p : numpy.array of shape (3)
-            Crystallographic direction or plane.
-        polar : bool, optional
-            Give pole in polar coordinates. Defaults to False.
-
-        """
-        self._add_generic_pointwise(self._add_pole,{'q':q},{'p':p,'polar':polar})
-
-
-    @staticmethod
-    def _add_rotational_part(F):
-        return {
-                'data':  mechanics.rotational_part(F['data']),
+                'data':  mechanics.rotation(F['data']).as_matrix(),
                 'label': f"R({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Rotational part of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_rotational_part'
+                          'Creator':     'add_rotation'
                           }
                  }
-    def add_rotational_part(self,F):
+    def add_rotation(self,F):
         """
         Add rotational part of a deformation gradient.
 
@@ -939,13 +1004,13 @@ class Result:
             Label of deformation gradient dataset.
 
         """
-        self._add_generic_pointwise(self._add_rotational_part,{'F':F})
+        self._add_generic_pointwise(self._add_rotation,{'F':F})
 
 
     @staticmethod
     def _add_spherical(T):
         return {
-                'data':  mechanics.spherical_part(T['data']),
+                'data':  tensor.spherical(T['data'],False),
                 'label': f"p_{T['label']}",
                 'meta':  {
                           'Unit':        T['meta']['Unit'],
@@ -967,21 +1032,21 @@ class Result:
 
 
     @staticmethod
-    def _add_strain_tensor(F,t,m):
+    def _add_strain(F,t,m):
         return {
-                'data':  mechanics.strain_tensor(F['data'],t,m),
+                'data':  mechanics.strain(F['data'],t,m),
                 'label': f"epsilon_{t}^{m}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
                           'Description': f"Strain tensor of {F['label']} ({F['meta']['Description']})",
-                          'Creator':     'add_strain_tensor'
+                          'Creator':     'add_strain'
                           }
                  }
-    def add_strain_tensor(self,F='F',t='V',m=0.0):
+    def add_strain(self,F='F',t='V',m=0.0):
         """
         Add strain tensor of a deformation gradient.
 
-        For details refer to damask.mechanics.strain_tensor
+        For details refer to damask.mechanics.strain
 
         Parameters
         ----------
@@ -994,13 +1059,13 @@ class Result:
             Order of the strain calculation. Defaults to ‘0.0’.
 
         """
-        self._add_generic_pointwise(self._add_strain_tensor,{'F':F},{'t':t,'m':m})
+        self._add_generic_pointwise(self._add_strain,{'F':F},{'t':t,'m':m})
 
 
     @staticmethod
     def _add_stretch_tensor(F,t):
         return {
-                'data':  (mechanics.left_stretch if t.upper() == 'V' else mechanics.right_stretch)(F['data']),
+                'data':  (mechanics.stretch_left if t.upper() == 'V' else mechanics.stretch_right)(F['data']),
                 'label': f"{t}({F['label']})",
                 'meta':  {
                           'Unit':        F['meta']['Unit'],
@@ -1035,7 +1100,7 @@ class Result:
                     loc  = f[group+'/'+label]
                     datasets_in[arg]={'data' :loc[()],
                                       'label':label,
-                                      'meta': {k:v.decode() for k,v in loc.attrs.items()}}
+                                      'meta': {k:(v if h5py3 else v.decode()) for k,v in loc.attrs.items()}}
             lock.release()
             r = func(**datasets_in,**args)
             return [group,r]
@@ -1080,17 +1145,21 @@ class Result:
                     if self._allow_modification and result[0]+'/'+result[1]['label'] in f:
                         dataset = f[result[0]+'/'+result[1]['label']]
                         dataset[...] = result[1]['data']
-                        dataset.attrs['Overwritten'] = 'Yes'.encode()
+                        dataset.attrs['Overwritten'] = 'Yes' if h5py3 else \
+                                                       'Yes'.encode()
                     else:
                         dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
 
                     now = datetime.datetime.now().astimezone()
-                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
+                    dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
+                                               now.strftime('%Y-%m-%d %H:%M:%S%z').encode()
 
                     for l,v in result[1]['meta'].items():
-                        dataset.attrs[l]=v.encode()
-                    creator = f"damask.Result.{dataset.attrs['Creator'].decode()} v{damask.version}"
-                    dataset.attrs['Creator'] = creator.encode()
+                        dataset.attrs[l]=v if h5py3 else v.encode()
+                    creator = dataset.attrs['Creator'] if h5py3 else \
+                              dataset.attrs['Creator'].decode()
+                    dataset.attrs['Creator'] = f"damask.Result.{creator} v{damask.version}" if h5py3 else \
+                                               f"damask.Result.{creator} v{damask.version}".encode()
 
                 except (OSError,RuntimeError) as err:
                     print(f'Could not add dataset: {err}.')
@@ -1107,7 +1176,7 @@ class Result:
         This works only for scalar, 3-vector and 3x3-tensor data.
         Selection is not taken into account.
         """
-        if len(self.constituents) != 1 or not self.structured:
+        if self.N_constituents != 1 or not self.structured:
             raise NotImplementedError('XDMF only available for grid results with 1 constituent.')
 
         xdmf=ET.Element('Xdmf')
@@ -1158,9 +1227,11 @@ class Result:
             delta.text="{} {} {}".format(*(self.size/self.grid))
 
 
+            type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
+
             with h5py.File(self.fname,'r') as f:
                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                attributes[-1].attrib={'Name':          'u',
+                attributes[-1].attrib={'Name':          'u / m',
                                        'Center':        'Node',
                                        'AttributeType': 'Vector'}
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
@@ -1169,7 +1240,7 @@ class Result:
                                        'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
-                for o,p in zip(['constituents','materialpoints'],['con_physics','mat_physics']):
+                for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
                     for oo in getattr(self,o):
                         for pp in getattr(self,p):
                             g = '/'.join([inc,o[:-1],oo,pp])
@@ -1177,19 +1248,21 @@ class Result:
                                 name = '/'.join([g,l])
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
-                                prec  = f[name].dtype.itemsize
 
-                                if (shape not in [(1,), (3,), (3,3)]) or dtype != np.float64: continue
+                                if dtype != np.float64: continue
+                                prec = f[name].dtype.itemsize
+                                unit = f[name].attrs['Unit'] if h5py3 else f[name].attrs['Unit'].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
-                                attributes[-1].attrib={'Name':          name.split('/',2)[2],
-                                                       'Center':        'Cell',
-                                                       'AttributeType': 'Tensor'}
+                                attributes[-1].attrib={'Name':          name.split('/',2)[2]+f' / {unit}',
+                                                       'Center':       'Cell',
+                                                       'AttributeType': type_map[shape]}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                                 data_items[-1].attrib={'Format':     'HDF',
                                                        'NumberType': 'Float',
                                                        'Precision':  f'{prec}',
-                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,np.prod(shape))}
+                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,1 if shape == () else
+                                                                                                     np.prod(shape))}
                                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
 
         with open(self.fname.with_suffix('.xdmf').name,'w') as f:
@@ -1212,58 +1285,53 @@ class Result:
         if mode.lower()=='cell':
 
             if self.structured:
-                v = VTK.from_rectilinearGrid(self.grid,self.size,self.origin)
+                v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
             else:
                 with h5py.File(self.fname,'r') as f:
-                    v = VTK.from_unstructuredGrid(f['/geometry/x_n'][()],
-                                                  f['/geometry/T_c'][()]-1,
-                                                  f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
+                    v = VTK.from_unstructured_grid(f['/geometry/x_n'][()],
+                                                   f['/geometry/T_c'][()]-1,
+                                                   f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
+                                                   f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-            v = VTK.from_polyData(self.cell_coordinates())
+            v = VTK.from_poly_data(self.cell_coordinates)
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 
         for inc in util.show_progress(self.iterate('increments'),len(self.selection['increments'])):
 
-            materialpoints_backup = self.selection['materialpoints'].copy()
-            self.pick('materialpoints',False)
+            picked_backup_ho = self.selection['homogenizations'].copy()
+            self.pick('homogenizations',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for p in self.iterate('con_physics'):
-                    if p != 'generic':
-                        for c in self.iterate('constituents'):
-                            x = self.get_dataset_location(label)
-                            if len(x) == 0:
+                for o in self.iterate('out_type_ph'):
+                    for c in range(self.N_constituents):
+                        prefix = '' if self.N_constituents == 1 else f'constituent{c}/'
+                        if o != 'mechanics':
+                            for _ in self.iterate('phases'):
+                                path = self.get_dataset_location(label)
+                                if len(path) == 0:
+                                    continue
+                                array = self.read_dataset(path,c)
+                                v.add(array,prefix+path[0].split('/',1)[1]+f' / {self._get_attribute(path[0],"Unit")}')
+                        else:
+                            paths = self.get_dataset_location(label)
+                            if len(paths) == 0:
                                 continue
-                            array = self.read_dataset(x,0)
-                            v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: hard coded 1!
-                    else:
-                        x = self.get_dataset_location(label)
-                        if len(x) == 0:
-                            continue
-                        array = self.read_dataset(x,0)
-                        ph_name = re.compile(r'(?<=(constituent\/))(.*?)(?=(generic))')             # identify  phase name
-                        dset_name = '1_' + re.sub(ph_name,r'',x[0].split('/',1)[1])                 # removing phase name
-                        v.add(array,dset_name)
-            self.pick('materialpoints',materialpoints_backup)
+                            array = self.read_dataset(paths,c)
+                            ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')              # identify  phase name
+                            dset_name = prefix+re.sub(ph_name,r'',paths[0].split('/',1)[1])          # remove phase name
+                            v.add(array,dset_name+f' / {self._get_attribute(paths[0],"Unit")}')
+            self.pick('homogenizations',picked_backup_ho)
 
-            constituents_backup = self.selection['constituents'].copy()
-            self.pick('constituents',False)
+            picked_backup_ph = self.selection['phases'].copy()
+            self.pick('phases',False)
             for label in (labels if isinstance(labels,list) else [labels]):
-                for p in self.iterate('mat_physics'):
-                    if p != 'generic':
-                        for m in self.iterate('materialpoints'):
-                            x = self.get_dataset_location(label)
-                            if len(x) == 0:
-                                continue
-                            array = self.read_dataset(x,0)
-                            v.add(array,'1_'+x[0].split('/',1)[1]) #ToDo: why 1_?
-                    else:
-                        x = self.get_dataset_location(label)
-                        if len(x) == 0:
-                            continue
-                        array = self.read_dataset(x,0)
-                        v.add(array,'1_'+x[0].split('/',1)[1])
-            self.pick('constituents',constituents_backup)
+                for _ in self.iterate('out_type_ho'):
+                    paths = self.get_dataset_location(label)
+                    if len(paths) == 0:
+                        continue
+                    array = self.read_dataset(paths)
+                    v.add(array,paths[0].split('/',1)[1]+f' / {self._get_attribute(paths[0],"Unit")}')
+            self.pick('phases',picked_backup_ph)
 
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')

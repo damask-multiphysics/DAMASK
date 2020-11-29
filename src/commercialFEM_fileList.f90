@@ -25,7 +25,7 @@
 #include "material.f90"
 #include "lattice.f90"
 #include "constitutive.f90"
-#include "constitutive_plastic.f90"
+#include "constitutive_mech.f90"
 #include "constitutive_plastic_none.f90"
 #include "constitutive_plastic_isotropic.f90"
 #include "constitutive_plastic_phenopowerlaw.f90"

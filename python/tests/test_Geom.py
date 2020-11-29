@@ -3,8 +3,11 @@ import numpy as np
 
 from damask import VTK
 from damask import Geom
+from damask import Table
 from damask import Rotation
 from damask import util
+from damask import seeds
+from damask import grid_filters
 
 
 def geom_equal(a,b):
@@ -23,16 +26,20 @@ def default():
     return Geom(x,[8e-6,5e-6,4e-6])
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Geom'
+    return ref_path_base/'Geom'
 
 
 class TestGeom:
 
     @pytest.fixture(autouse=True)
-    def _execution_stamp(self, execution_stamp):
+    def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
+
+    @pytest.fixture(autouse=True)
+    def _patch_datetime_now(self, patch_datetime_now):
+        print('patched datetime.datetime.now')
 
     def test_diff_equal(self,default):
         assert str(default.diff(default)) == ''
@@ -42,6 +49,8 @@ class TestGeom:
         new = Geom(default.material[1:,1:,1:]+1,default.size*.9,np.ones(3)-default.origin,comments=['modified'])
         assert str(default.diff(new)) != ''
 
+    def test_repr(self,default):
+        print(default)
 
     def test_read_write_vtr(self,default,tmp_path):
         default.save(tmp_path/'default')
@@ -49,8 +58,8 @@ class TestGeom:
         assert geom_equal(new,default)
 
     def test_invalid_vtr(self,tmp_path):
-        v = VTK.from_rectilinearGrid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
-        v.save(tmp_path/'no_materialpoint.vtr')
+        v = VTK.from_rectilinear_grid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
+        v.save(tmp_path/'no_materialpoint.vtr',parallel=False)
         with pytest.raises(ValueError):
             Geom.load(tmp_path/'no_materialpoint.vtr')
 
@@ -67,6 +76,10 @@ class TestGeom:
             Geom(default.material[1:,1:,1:],
                  size=np.ones(2))
 
+    def test_save_load_ASCII(self,default,tmp_path):
+        default.save_ASCII(tmp_path/'ASCII')
+        default.material -= 1
+        assert geom_equal(Geom.load_ASCII(tmp_path/'ASCII'),default)
 
     def test_invalid_origin(self,default):
         with pytest.raises(ValueError):
@@ -95,10 +108,10 @@ class TestGeom:
                                                    (['y','z'],    False)
                                                   ]
                             )
-    def test_mirror(self,default,update,reference_dir,directions,reflect):
+    def test_mirror(self,default,update,ref_path,directions,reflect):
         modified = default.mirror(directions,reflect)
         tag = f'directions_{"-".join(directions)}+reflect_{reflect}'
-        reference = reference_dir/f'mirror_{tag}.vtr'
+        reference = ref_path/f'mirror_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -117,10 +130,10 @@ class TestGeom:
                                            ['y','z'],
                                           ]
                             )
-    def test_flip(self,default,update,reference_dir,directions):
+    def test_flip(self,default,update,ref_path,directions):
         modified = default.flip(directions)
         tag = f'directions_{"-".join(directions)}'
-        reference = reference_dir/f'flip_{tag}.vtr'
+        reference = ref_path/f'flip_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -144,9 +157,9 @@ class TestGeom:
     @pytest.mark.parametrize('stencil',[1,2,3,4])
     @pytest.mark.parametrize('selection',[None,[1],[1,2,3]])
     @pytest.mark.parametrize('periodic',[True,False])
-    def test_clean(self,default,update,reference_dir,stencil,selection,periodic):
+    def test_clean(self,default,update,ref_path,stencil,selection,periodic):
         current = default.clean(stencil,selection,periodic)
-        reference = reference_dir/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
+        reference = ref_path/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
         if update and stencil > 1:
             current.save(reference)
         assert geom_equal(Geom.load(reference) if stencil > 1 else default,
@@ -163,10 +176,10 @@ class TestGeom:
                                      np.array((10,20,2))
                                     ]
                             )
-    def test_scale(self,default,update,reference_dir,grid):
+    def test_scale(self,default,update,ref_path,grid):
         modified = default.scale(grid)
         tag = f'grid_{util.srepr(grid,"-")}'
-        reference = reference_dir/f'scale_{tag}.vtr'
+        reference = ref_path/f'scale_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -176,6 +189,7 @@ class TestGeom:
         material = default.material.copy()
         for m in np.unique(material):
             material[material==m] = material.max() + np.random.randint(1,30)
+        default.material -= 1
         modified = Geom(material,
                         default.size,
                         default.origin)
@@ -194,6 +208,18 @@ class TestGeom:
                           modified.substitute(np.arange(default.material.max())+1+offset,
                                               np.arange(default.material.max())+1))
 
+    def test_substitute_invariant(self,default):
+        f = np.unique(default.material.flatten())[:np.random.randint(1,default.material.max())]
+        t = np.random.permutation(f)
+        modified = default.substitute(f,t)
+        assert np.array_equiv(t,f) or (not geom_equal(modified,default))
+        assert geom_equal(default, modified.substitute(t,f))
+
+    def test_sort(self):
+        grid = np.random.randint(5,20,3)
+        m = Geom(np.random.randint(1,20,grid)*3,np.ones(3)).sort().material.flatten(order='F')
+        for i,v in enumerate(m):
+            assert i==0 or v > m[:i].max() or v in m[:i]
 
     @pytest.mark.parametrize('axis_angle',[np.array([1,0,0,86.7]), np.array([0,1,0,90.4]), np.array([0,0,1,90]),
                                            np.array([1,0,0,175]),np.array([0,-1,0,178]),np.array([0,0,1,180])])
@@ -206,10 +232,10 @@ class TestGeom:
 
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
-    def test_rotate(self,default,update,reference_dir,Eulers):
-        modified = default.rotate(Rotation.from_Eulers(Eulers,degrees=True))
+    def test_rotate(self,default,update,ref_path,Eulers):
+        modified = default.rotate(Rotation.from_Euler_angles(Eulers,degrees=True))
         tag = f'Eulers_{util.srepr(Eulers,"-")}'
-        reference = reference_dir/f'rotate_{tag}.vtr'
+        reference = ref_path/f'rotate_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -249,12 +275,12 @@ class TestGeom:
     @pytest.mark.parametrize('inverse',[True,False])
     @pytest.mark.parametrize('periodic',[True,False])
     def test_add_primitive_rotation(self,center,inverse,periodic):
-        """Rotation should not change result for sphere (except for discretization errors)."""
-        g = np.array([32,32,32])
+        """Rotation should not change result for sphere."""
+        g = np.random.randint(8,32,(3))
+        s = np.random.random(3)+.5
         fill = np.random.randint(10)+2
-        eu=np.array([np.random.randint(4),np.random.randint(2),np.random.randint(4)])*.5*np.pi
-        G_1 = Geom(np.ones(g,'i'),[1.,1.,1.]).add_primitive(.3,center,1,fill,inverse=inverse,periodic=periodic)
-        G_2 = Geom(np.ones(g,'i'),[1.,1.,1.]).add_primitive(.3,center,1,fill,Rotation.from_Eulers(eu),inverse,periodic=periodic)
+        G_1 = Geom(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,inverse=inverse,periodic=periodic)
+        G_2 = Geom(np.ones(g,'i'),s).add_primitive(.3,center,1,fill,Rotation.from_random(),inverse,periodic=periodic)
         assert geom_equal(G_1,G_2)
 
 
@@ -364,11 +390,33 @@ class TestGeom:
         geom = Geom.from_minimal_surface(grid,np.ones(3),surface,threshold)
         assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5,rtol=1e-3)
 
-    @pytest.mark.parametrize('periodic',[True,False])
-    @pytest.mark.parametrize('direction',['x','y','z'])
-    def test_get_grain_boundaries(self,periodic,direction,reference_dir):
-        geom=Geom.load(reference_dir/'get_grain_boundaries_4g12x15x20.vtr')
-        current=geom.get_grain_boundaries(periodic,direction)
-        reference=VTK.load(reference_dir/f'get_grain_boundaries_4g12x15x20_{direction}_per{periodic}.vtu')
-        assert current == reference
 
+    def test_from_table(self):
+        grid = np.random.randint(60,100,3)
+        size = np.ones(3)+np.random.rand(3)
+        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
+        z=np.ones(grid.prod())
+        z[grid[:2].prod()*int(grid[2]/2):]=0
+        t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
+        g = Geom.from_table(t,'coords',['1_coords','z'])
+        assert g.N_materials == g.grid[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == grid[0]).all()
+
+
+    def test_from_table_recover(self,tmp_path):
+        grid = np.random.randint(60,100,3)
+        size = np.ones(3)+np.random.rand(3)
+        s = seeds.from_random(size,np.random.randint(60,100))
+        geom = Geom.from_Voronoi_tessellation(grid,size,s)
+        coords = grid_filters.cell_coord0(grid,size)
+        t = Table(np.column_stack((coords.reshape(-1,3,order='F'),geom.material.flatten(order='F'))),{'c':3,'m':1})
+        assert geom_equal(geom.sort().renumber(),Geom.from_table(t,'c',['m']))
+
+    @pytest.mark.parametrize('periodic',[True,False])
+    @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
+    def test_get_grain_boundaries(self,update,ref_path,periodic,direction):
+        geom=Geom.load(ref_path/'get_grain_boundaries_8g12x15x20.vtr')
+        current=geom.get_grain_boundaries(periodic,direction)
+        if update:
+            current.save(ref_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
+        reference=VTK.load(ref_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
+        assert current.__repr__() == reference.__repr__()

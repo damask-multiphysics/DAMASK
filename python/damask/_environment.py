@@ -3,14 +3,8 @@ from pathlib import Path
 
 class Environment:
 
-    def __init__(self):
-        """Do Nothing."""
-        pass
-
     @property
     def screen_size(self):
-        width  = 1024
-        height =  768
         try:
             import wx
             _ = wx.App(False)                                                                       # noqa
@@ -23,7 +17,9 @@ class Environment:
                 height = tk.winfo_screenheight()
                 tk.destroy()
             except Exception as e:
-                pass
+                width  = 1024
+                height =  768
+
         return (width,height)
 
 
@@ -32,7 +28,7 @@ class Environment:
         options = {}
         for item in ['DAMASK_NUM_THREADS',
                      'MSC_ROOT',
-                     'MARC_VERSION',
+                     'MSC_VERSION',
                      ]:
             options[item] = os.environ[item] if item in os.environ else None
 
@@ -43,8 +39,3 @@ class Environment:
     def root_dir(self):
         """Return DAMASK root path."""
         return Path(__file__).parents[2]
-
-
-    # for compatibility
-    def rootDir(self):
-        return str(self.root_dir)

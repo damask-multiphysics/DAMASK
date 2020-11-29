@@ -11,11 +11,17 @@ def default():
     return Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['test data','contains only ones'])
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Table'
+    return ref_path_base/'Table'
 
 class TestTable:
+
+    def test_repr(self,default):
+        print(default)
+
+    def test_len(self):
+        len(Table(np.random.rand(7,3),{'X':3})) == 7
 
     def test_get_scalar(self,default):
         d = default.get('s')
@@ -61,23 +67,23 @@ class TestTable:
             default.save(tmp_path/'shouldnotbethere.txt',format='invalid')
 
     @pytest.mark.parametrize('mode',['str','path'])
-    def test_read_ang(self,reference_dir,mode):
+    def test_read_ang(self,ref_path,mode):
         if   mode == 'path':
-            new = Table.load_ang(reference_dir/'simple.ang')
+            new = Table.load_ang(ref_path/'simple.ang')
         elif mode == 'str':
-            new = Table.load_ang(str(reference_dir/'simple.ang'))
+            new = Table.load_ang(str(ref_path/'simple.ang'))
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
-    def test_read_ang_file(self,reference_dir):
-        f = open(reference_dir/'simple.ang')
+    def test_read_ang_file(self,ref_path):
+        f = open(ref_path/'simple.ang')
         new = Table.load_ang(f)
         assert new.data.shape == (4,10) and \
                new.labels == ['eu', 'pos', 'IQ', 'CI', 'ID', 'intensity', 'fit']
 
     @pytest.mark.parametrize('fname',['datatype-mix.txt','whitespace-mix.txt'])
-    def test_read_strange(self,reference_dir,fname):
-        with open(reference_dir/fname) as f:
+    def test_read_strange(self,ref_path,fname):
+        with open(ref_path/fname) as f:
             Table.load(f)
 
     def test_set(self,default):

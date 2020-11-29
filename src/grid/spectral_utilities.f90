@@ -5,6 +5,7 @@
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
   use, intrinsic :: iso_c_binding
+
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 
@@ -14,6 +15,7 @@ module spectral_utilities
   use math
   use rotations
   use IO
+  use config
   use discretization_grid
   use discretization
   use homogenization
@@ -86,19 +88,6 @@ module spectral_utilities
     logical,     dimension(3,3)   :: mask   = .false.
     character(len=:), allocatable :: myType
   end type tBoundaryCondition
-
-  type, public :: tLoadCase
-    type(rotation)               :: rot                                                             !< rotation of BC
-    type(tBoundaryCondition) ::     stress, &                                                       !< stress BC
-                                    deformation                                                     !< deformation BC (dot_F, F, or L)
-    real(pReal) ::                  time                                                            !< length of increment
-    integer ::                      incs, &                                                         !< number of increments
-                                    outputfrequency, &                                              !< frequency of result writes
-                                    restartfrequency                                                !< frequency of restart writes
-    logical ::                      followFormerTrajectory, &                                       !< follow trajectory of former loadcase
-                                    logscale                                                        !< logarithmic time inc flag
-    integer(kind(FIELD_UNDEFINED_ID)), allocatable :: ID(:)
-  end type tLoadCase
 
   type, public :: tSolutionParams
     real(pReal), dimension(3,3) :: stress_BC
@@ -214,11 +203,11 @@ subroutine spectral_utilities_init
 
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
-  call PETScOptionsClear(PETSC_NULL_OPTIONS,ierr)
+  call PetscOptionsClear(PETSC_NULL_OPTIONS,ierr)
   CHKERRQ(ierr)
-  if(debugPETSc) call PETScOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
+  if(debugPETSc) call PetscOptionsInsertString(PETSC_NULL_OPTIONS,trim(PETSCDEBUG),ierr)
   CHKERRQ(ierr)
-  call PETScOptionsInsertString(PETSC_NULL_OPTIONS,&
+  call PetscOptionsInsertString(PETSC_NULL_OPTIONS,&
                                 num_grid%get_asString('petsc_options',defaultVal=''),ierr)
   CHKERRQ(ierr)
 
@@ -313,12 +302,12 @@ subroutine spectral_utilities_init
                                         tensorSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                        tensorField_real, tensorField_fourier, &     ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planTensorForth)) call IO_error(810, ext_msg='planTensorForth')
+  if (.not. C_ASSOCIATED(planTensorForth)) error stop 'FFTW error'
   planTensorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order
                                        tensorSize,  FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                         tensorField_fourier,tensorField_real, &     ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! all processors, planer precision
-  if (.not. C_ASSOCIATED(planTensorBack)) call IO_error(810, ext_msg='planTensorBack')
+  if (.not. C_ASSOCIATED(planTensorBack)) error stop 'FFTW error'
 
 !--------------------------------------------------------------------------------------------------
 ! vector MPI fftw plans
@@ -326,12 +315,12 @@ subroutine spectral_utilities_init
                                            vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK,&! no. of transforms, default iblock and oblock
                                                        vectorField_real, vectorField_fourier, &     ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planVectorForth)) call IO_error(810, ext_msg='planVectorForth')
+  if (.not. C_ASSOCIATED(planVectorForth)) error stop 'FFTW error'
   planVectorBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)],  &         ! dimension, logical length in each dimension in reversed order
                                          vecSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, & ! no. of transforms, default iblock and oblock
                                                       vectorField_fourier,vectorField_real, &       ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! all processors, planer precision
-  if (.not. C_ASSOCIATED(planVectorBack)) call IO_error(810, ext_msg='planVectorBack')
+  if (.not. C_ASSOCIATED(planVectorBack)) error stop 'FFTW error'
 
 !--------------------------------------------------------------------------------------------------
 ! scalar MPI fftw plans
@@ -339,12 +328,12 @@ subroutine spectral_utilities_init
                                        scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                        scalarField_real, scalarField_fourier, &     ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planScalarForth)) call IO_error(810, ext_msg='planScalarForth')
+  if (.not. C_ASSOCIATED(planScalarForth)) error stop 'FFTW error'
   planScalarBack  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], &          ! dimension, logical length in each dimension in reversed order, no. of transforms
                                        scalarSize, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &! no. of transforms, default iblock and oblock
                                                        scalarField_fourier,scalarField_real, &      ! input data, output data
                                                                PETSC_COMM_WORLD, FFTW_planner_flag) ! use all processors, planer precision
-  if (.not. C_ASSOCIATED(planScalarBack)) call IO_error(810, ext_msg='planScalarBack')
+  if (.not. C_ASSOCIATED(planScalarBack)) error stop 'FFTW error'
 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
@@ -603,9 +592,8 @@ real(pReal) function utilities_divergenceRMS()
   enddo; enddo
   if(grid(1) == 1) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                    ! counted twice in case of grid(1) == 1
   call MPI_Allreduce(MPI_IN_PLACE,utilities_divergenceRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='utilities_divergenceRMS')
+  if(ierr /=0) error stop 'MPI error'
   utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                     ! RMS in real space calculated with Parsevals theorem from Fourier space
-
 
 end function utilities_divergenceRMS
 
@@ -664,7 +652,7 @@ real(pReal) function utilities_curlRMS()
   enddo; enddo
 
   call MPI_Allreduce(MPI_IN_PLACE,utilities_curlRMS,1,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='utilities_curlRMS')
+  if(ierr /=0) error stop 'MPI error'
   utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
   if(grid(1) == 1) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                                ! counted twice in case of grid(1) == 1
 
@@ -713,7 +701,6 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     allocate(s_reduced,mold = c_reduced)
     call math_invert(s_reduced, errmatinv, c_reduced)                                               ! invert reduced stiffness
     if (any(IEEE_is_NaN(s_reduced))) errmatinv = .true.
-    if (errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
 
 !--------------------------------------------------------------------------------------------------
 ! check if inversion was successful
@@ -725,7 +712,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
       write(IO_STDOUT,trim(formatString),advance='no') ' C * S (load) ', &
                                                              transpose(matmul(c_reduced,s_reduced))
       write(IO_STDOUT,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
-      if(errmatinv) call IO_error(error_ID=400,ext_msg='utilities_maskedCompliance')
+      if(errmatinv) error stop 'matrix inversion error'
     endif
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
   else
@@ -802,7 +789,7 @@ end subroutine utilities_fourierTensorDivergence
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate constitutive response from materialpoint_F0 to F during timeinc
+!> @brief calculate constitutive response from homogenization_F0 to F during timeinc
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
                                           F,timeinc,rotation_BC)
@@ -824,11 +811,11 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   print'(/,a)', ' ... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
 
-  materialpoint_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
+  homogenization_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
 
   call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
 
-  P = reshape(materialpoint_P, [3,3,grid(1),grid(2),grid3])
+  P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                   ! average of P
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   if (debugRotation) &
@@ -845,32 +832,33 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_min = huge(1.0_pReal)
   dPdF_norm_min = huge(1.0_pReal)
   do i = 1, product(grid(1:2))*grid3
-    if (dPdF_norm_max < sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_max = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_max = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
+      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
     endif
-    if (dPdF_norm_min > sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_min = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_min = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
+      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
     endif
   end do
 
   valueAndRank = [dPdF_norm_max,real(worldrank,pReal)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1, MPI_2DOUBLE_PRECISION, MPI_MAXLOC, PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Allreduce max')
+  if (ierr /= 0) error stop 'MPI error'
   call MPI_Bcast(dPdF_max,81,MPI_DOUBLE,int(valueAndRank(2)),PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Bcast max')
+  if (ierr /= 0) error stop 'MPI error'
 
   valueAndRank = [dPdF_norm_min,real(worldrank,pReal)]
   call MPI_Allreduce(MPI_IN_PLACE,valueAndRank,1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Allreduce min')
+  if (ierr /= 0) error stop 'MPI error'
   call MPI_Bcast(dPdF_min,81,MPI_DOUBLE,int(valueAndRank(2)),PETSC_COMM_WORLD, ierr)
-  if (ierr /= 0) call IO_error(894, ext_msg='MPI_Bcast min')
+  if (ierr /= 0) error stop 'MPI error'
 
   C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
 
-  C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5)
+  C_volAvg = sum(sum(homogenization_dPdF,dim=6),dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  if (ierr /= 0) error stop 'MPI error'
   C_volAvg = C_volAvg * wgt
 
 
@@ -994,12 +982,11 @@ subroutine utilities_updateCoords(F)
   real(pReal),   dimension(3,  grid(1)+1,grid(2)+1,grid3+1)       :: nodeCoords
   integer :: &
     i,j,k,n, &
-    rank_t, &
-    rank_b, &
-    c, r, &
+    rank_t, rank_b, &
+    c, &
     ierr
-  integer, dimension(MPI_STATUS_SIZE) :: &
-    s
+  integer, dimension(4) :: request
+  integer, dimension(MPI_STATUS_SIZE,4) :: status
   real(pReal),   dimension(3)   :: step
   real(pReal),   dimension(3,3) :: Favg
   integer,       dimension(3) :: me
@@ -1035,7 +1022,7 @@ subroutine utilities_updateCoords(F)
  ! average F
   if (grid3Offset == 0) Favg = real(tensorField_fourier(1:3,1:3,1,1,1),pReal)*wgt
   call MPI_Bcast(Favg,9,MPI_DOUBLE,0,PETSC_COMM_WORLD,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Bcast')
+  if(ierr /=0) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
  ! pad cell center fluctuations along z-direction (needed when running MPI simulation)
@@ -1045,20 +1032,20 @@ subroutine utilities_updateCoords(F)
   rank_b = modulo(worldrank-1,worldsize)
 
   ! send bottom layer to process below
-  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Isend')
-  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
-  call MPI_Wait(r,s,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Wait')
+  call MPI_Isend(IPfluct_padded(:,:,:,2),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,request(1),ierr)
+  if(ierr /=0) error stop 'MPI error'
+  call MPI_Irecv(IPfluct_padded(:,:,:,grid3+2),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,request(2),ierr)
+  if(ierr /=0) error stop 'MPI error'
 
   ! send top layer to process above
-  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,0,PETSC_COMM_WORLD,r,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Isend')
-  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,0,PETSC_COMM_WORLD,r,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Irecv')
-  call MPI_Wait(r,s,ierr)
-  if(ierr /=0) call IO_error(894, ext_msg='update_IPcoords/MPI_Wait')
+  call MPI_Isend(IPfluct_padded(:,:,:,grid3+1),c,MPI_DOUBLE,rank_t,1,PETSC_COMM_WORLD,request(3),ierr)
+  if(ierr /=0) error stop 'MPI error'
+  call MPI_Irecv(IPfluct_padded(:,:,:,1),      c,MPI_DOUBLE,rank_b,1,PETSC_COMM_WORLD,request(4),ierr)
+  if(ierr /=0) error stop 'MPI error'
+
+  call MPI_Waitall(4,request,status,ierr)
+  if(ierr /=0) error stop 'MPI error'
+  if(any(status(MPI_ERROR,:) /= 0)) error stop 'MPI error'
 
  !--------------------------------------------------------------------------------------------------
  ! calculate nodal displacements

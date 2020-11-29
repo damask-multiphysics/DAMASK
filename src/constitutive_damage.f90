@@ -184,7 +184,7 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
    phiDot = 0.0_pReal
    dPhiDot_dPhi = 0.0_pReal
  
-   do grain = 1, homogenization_Ngrains(material_homogenizationAt(el))
+   do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
      phase = material_phaseAt(grain,el)
      constituent = material_phasememberAt(grain,ip,el)
      do source = 1, phase_Nsources(phase)
@@ -225,7 +225,7 @@ module subroutine damage_results
   do p = 1, size(material_name_phase)
 
     sourceLoop: do i = 1, phase_Nsources(p)
-    group = trim('current/constituent')//'/'//trim(material_name_phase(p))
+    group = trim('current/phase')//'/'//trim(material_name_phase(p))
     group = trim(group)//'/sources'
     call results_closeGroup(results_addGroup(group))
 

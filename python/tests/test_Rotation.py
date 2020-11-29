@@ -11,9 +11,9 @@ n = 1000
 atol=1.e-4
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Rotation'
+    return ref_path_base/'Rotation'
 
 @pytest.fixture
 def set_of_rotations(set_of_quaternions):
@@ -522,7 +522,7 @@ class TestRotation:
     def test_Eulers_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from Euler angles and back."""
         for rot in set_of_rotations:
-            m = rot.as_Eulers()
+            m = rot.as_Euler_angles()
             o = backward(forward(m))
             u = np.array([np.pi*2,np.pi,np.pi*2])
             ok = np.allclose(m,o,atol=atol)
@@ -559,7 +559,7 @@ class TestRotation:
         """Ensure invariance of conversion from Rodrigues-Frank vector and back."""
         cutoff = np.tan(np.pi*.5*(1.-1e-4))
         for rot in set_of_rotations:
-            m = rot.as_Rodrigues()
+            m = rot.as_Rodrigues_vector()
             o = backward(forward(m))
             ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
             ok = ok or np.isclose(m[3],0.0,atol=atol)
@@ -626,7 +626,7 @@ class TestRotation:
                                                    (Rotation._eu2ro,eu2ro)])
     def test_Eulers_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for Euler angles against single point calculation."""
-        eu = np.array([rot.as_Eulers() for rot in set_of_rotations])
+        eu = np.array([rot.as_Euler_angles() for rot in set_of_rotations])
         vectorized(eu.reshape(eu.shape[0]//2,-1,3))
         co = vectorized(eu)
         for e,c in zip(eu,co):
@@ -649,7 +649,7 @@ class TestRotation:
                                                    (Rotation._ro2ho,ro2ho)])
     def test_Rodrigues_vectorization(self,set_of_rotations,vectorized,single):
         """Check vectorized implementation for Rodrigues-Frank vector against single point calculation."""
-        ro = np.array([rot.as_Rodrigues() for rot in set_of_rotations])
+        ro = np.array([rot.as_Rodrigues_vector() for rot in set_of_rotations])
         vectorized(ro.reshape(ro.shape[0]//2,-1,4))
         co = vectorized(ro)
         for r,c in zip(ro,co):
@@ -682,12 +682,15 @@ class TestRotation:
         for v,o in zip(vec,ori):
             assert np.allclose(func(v,normalize=True).as_quaternion(),o.as_quaternion())
 
+    def test_invalid_init(self):
+        with pytest.raises(TypeError):
+            Rotation(np.ones(3))
 
     @pytest.mark.parametrize('degrees',[True,False])
     def test_Eulers(self,set_of_rotations,degrees):
         for rot in set_of_rotations:
             m = rot.as_quaternion()
-            o = Rotation.from_Eulers(rot.as_Eulers(degrees),degrees).as_quaternion()
+            o = Rotation.from_Euler_angles(rot.as_Euler_angles(degrees),degrees).as_quaternion()
             ok = np.allclose(m,o,atol=atol)
             if np.isclose(rot.as_quaternion()[0],0.0,atol=atol):
                 ok |= np.allclose(m*-1.,o,atol=atol)
@@ -699,8 +702,8 @@ class TestRotation:
     def test_axis_angle(self,set_of_rotations,degrees,normalize,P):
         c = np.array([P*-1,P*-1,P*-1,1.])
         for rot in set_of_rotations:
-            m = rot.as_Eulers()
-            o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalize,P).as_Eulers()
+            m = rot.as_Euler_angles()
+            o = Rotation.from_axis_angle(rot.as_axis_angle(degrees)*c,degrees,normalize,P).as_Euler_angles()
             u = np.array([np.pi*2,np.pi,np.pi*2])
             ok = np.allclose(m,o,atol=atol)
             ok |= np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
@@ -726,7 +729,7 @@ class TestRotation:
         c = np.array([P*-1,P*-1,P*-1,1.])
         for rot in set_of_rotations:
             m = rot.as_matrix()
-            o = Rotation.from_Rodrigues(rot.as_Rodrigues()*c,normalize,P).as_matrix()
+            o = Rotation.from_Rodrigues_vector(rot.as_Rodrigues_vector()*c,normalize,P).as_matrix()
             ok = np.allclose(m,o,atol=atol)
             assert ok and np.isclose(np.linalg.det(o),1.0), f'{m},{o}'
 
@@ -734,8 +737,8 @@ class TestRotation:
     def test_homochoric(self,set_of_rotations,P):
         cutoff = np.tan(np.pi*.5*(1.-1e-4))
         for rot in set_of_rotations:
-            m = rot.as_Rodrigues()
-            o = Rotation.from_homochoric(rot.as_homochoric()*P*-1,P).as_Rodrigues()
+            m = rot.as_Rodrigues_vector()
+            o = Rotation.from_homochoric(rot.as_homochoric()*P*-1,P).as_Rodrigues_vector()
             ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
             ok = ok or np.isclose(m[3],0.0,atol=atol)
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0), f'{m},{o},{rot.as_quaternion()}'
@@ -769,13 +772,61 @@ class TestRotation:
 
     @pytest.mark.parametrize('shape',[None,1,(4,4)])
     def test_random(self,shape):
-        Rotation.from_random(shape)
+        r = Rotation.from_random(shape)
+        if shape is None:
+            assert r.shape == ()
+        elif shape == 1:
+            assert r.shape == (1,)
+        else:
+            assert r.shape == shape
+
+    def test_equal(self):
+        assert Rotation.from_random(rng_seed=1) == Rotation.from_random(rng_seed=1)
+
+    def test_inversion(self):
+        r = Rotation.from_random()
+        assert r == ~~r
+
+    @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(1,1,1)])
+    def test_shape(self,shape):
+        r = Rotation.from_random(shape=shape)
+        assert r.shape == (shape if isinstance(shape,tuple) else (shape,) if shape else ())
+
+    @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(3,3,2)])
+    def test_append(self,shape):
+        r = Rotation.from_random(shape=shape)
+        p = Rotation.from_random(shape=shape)
+        s = r.append(p)
+        print(f'append 2x {shape} --> {s.shape}')
+        assert s[0,...] == r[0,...] and s[-1,...] == p[-1,...]
+
+    @pytest.mark.parametrize('quat,standardized',[
+                                                  ([-1,0,0,0],[1,0,0,0]),
+                                                  ([-0.5,-0.5,-0.5,-0.5],[0.5,0.5,0.5,0.5]),
+                                                 ])
+    def test_standardization(self,quat,standardized):
+        assert Rotation(quat)._standardize() == Rotation(standardized)
+
+    @pytest.mark.parametrize('shape,length',[
+                                          ((2,3,4),2),
+                                          (4,4),
+                                          ((),0)
+                                         ])
+    def test_len(self,shape,length):
+        r = Rotation.from_random(shape=shape)
+        assert len(r) == length
+
+    @pytest.mark.parametrize('shape',[(4,6),(2,3,4),(3,3,3)])
+    @pytest.mark.parametrize('order',['C','F'])
+    def test_flatten_reshape(self,shape,order):
+        r = Rotation.from_random(shape=shape)
+        assert r == r.flatten(order).reshape(shape,order)
 
     @pytest.mark.parametrize('function',[Rotation.from_quaternion,
-                                         Rotation.from_Eulers,
+                                         Rotation.from_Euler_angles,
                                          Rotation.from_axis_angle,
                                          Rotation.from_matrix,
-                                         Rotation.from_Rodrigues,
+                                         Rotation.from_Rodrigues_vector,
                                          Rotation.from_homochoric,
                                          Rotation.from_cubochoric])
     def test_invalid_shape(self,function):
@@ -783,9 +834,16 @@ class TestRotation:
         with pytest.raises(ValueError):
             function(invalid_shape)
 
+    def test_invalid_shape_parallel(self):
+        invalid_a = np.random.random(np.random.randint(8,32,(3)))
+        invalid_b = np.random.random(np.random.randint(8,32,(3)))
+        with pytest.raises(ValueError):
+            Rotation.from_parallel(invalid_a,invalid_b)
+
+
     @pytest.mark.parametrize('fr,to',[(Rotation.from_quaternion,'as_quaternion'),
                                       (Rotation.from_axis_angle,'as_axis_angle'),
-                                      (Rotation.from_Rodrigues, 'as_Rodrigues'),
+                                      (Rotation.from_Rodrigues_vector, 'as_Rodrigues_vector'),
                                       (Rotation.from_homochoric,'as_homochoric'),
                                       (Rotation.from_cubochoric,'as_cubochoric')])
     def test_invalid_P(self,fr,to):
@@ -804,16 +862,16 @@ class TestRotation:
 
 
     @pytest.mark.parametrize('function,invalid',[(Rotation.from_quaternion, np.array([-1,0,0,0])),
-                                                 (Rotation.from_quaternion, np.array([1,1,1,0])),
-                                                 (Rotation.from_Eulers,     np.array([1,4,0])),
-                                                 (Rotation.from_axis_angle, np.array([1,0,0,4])),
-                                                 (Rotation.from_axis_angle, np.array([1,1,0,1])),
-                                                 (Rotation.from_matrix,     np.random.rand(3,3)),
-                                                 (Rotation.from_matrix,     np.array([[1,1,0],[1,2,0],[0,0,1]])),
-                                                 (Rotation.from_Rodrigues,  np.array([1,0,0,-1])),
-                                                 (Rotation.from_Rodrigues,  np.array([1,1,0,1])),
-                                                 (Rotation.from_homochoric, np.array([2,2,2])),
-                                                 (Rotation.from_cubochoric, np.array([1.1,0,0]))  ])
+                                                 (Rotation.from_quaternion,        np.array([1,1,1,0])),
+                                                 (Rotation.from_Euler_angles,      np.array([1,4,0])),
+                                                 (Rotation.from_axis_angle,        np.array([1,0,0,4])),
+                                                 (Rotation.from_axis_angle,        np.array([1,1,0,1])),
+                                                 (Rotation.from_matrix,            np.random.rand(3,3)),
+                                                 (Rotation.from_matrix,            np.array([[1,1,0],[1,2,0],[0,0,1]])),
+                                                 (Rotation.from_Rodrigues_vector,  np.array([1,0,0,-1])),
+                                                 (Rotation.from_Rodrigues_vector,  np.array([1,1,0,1])),
+                                                 (Rotation.from_homochoric,        np.array([2,2,2])),
+                                                 (Rotation.from_cubochoric,        np.array([1.1,0,0]))  ])
     def test_invalid_value(self,function,invalid):
         with pytest.raises(ValueError):
             function(invalid)
@@ -848,7 +906,8 @@ class TestRotation:
                                      np.random.rand(3,3,3,3)])
     def test_rotate_identity(self,data):
         R = Rotation()
-        assert np.allclose(data,R*data)
+        print(R,data)
+        assert np.allclose(data,R@data)
 
     @pytest.mark.parametrize('data',[np.random.rand(3),
                                      np.random.rand(3,3),
@@ -856,9 +915,19 @@ class TestRotation:
     def test_rotate_360deg(self,data):
         phi_1 = np.random.random() * np.pi
         phi_2 = 2*np.pi - phi_1
-        R_1 = Rotation.from_Eulers(np.array([phi_1,0.,0.]))
-        R_2 = Rotation.from_Eulers(np.array([0.,0.,phi_2]))
+        R_1 = Rotation.from_Euler_angles(np.array([phi_1,0.,0.]))
+        R_2 = Rotation.from_Euler_angles(np.array([0.,0.,phi_2]))
         assert np.allclose(data,R_2@(R_1@data))
+
+    @pytest.mark.parametrize('pwr',[-10,0,1,2.5,np.pi,np.random.random()])
+    def test_rotate_power(self,pwr):
+        R = Rotation.from_random()
+        axis_angle = R.as_axis_angle()
+        axis_angle[ 3] = (pwr*axis_angle[-1])%(2.*np.pi)
+        if axis_angle[3] > np.pi:
+            axis_angle[3] -= 2.*np.pi
+            axis_angle    *= -1
+        assert R**pwr == Rotation.from_axis_angle(axis_angle)
 
     def test_rotate_inverse(self):
         R = Rotation.from_random()
@@ -877,7 +946,7 @@ class TestRotation:
     def test_rotate_invalid_shape(self,data):
         R = Rotation.from_random()
         with pytest.raises(ValueError):
-            R*data
+            R@data
 
     @pytest.mark.parametrize('data',['does_not_work',
                                      (1,2),
@@ -885,7 +954,7 @@ class TestRotation:
     def test_rotate_invalid_type(self,data):
         R = Rotation.from_random()
         with pytest.raises(TypeError):
-            R*data
+            R@data
 
     def test_misorientation(self):
         R = Rotation.from_random()
@@ -893,14 +962,13 @@ class TestRotation:
 
     def test_misorientation360(self):
         R_1 = Rotation()
-        R_2 = Rotation.from_Eulers([360,0,0],degrees=True)
+        R_2 = Rotation.from_Euler_angles([360,0,0],degrees=True)
         assert np.allclose(R_1.misorientation(R_2).as_matrix(),np.eye(3))
 
     @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
     def test_average(self,angle):
-        R_1 = Rotation.from_axis_angle([0,0,1,10],degrees=True)
-        R_2 = Rotation.from_axis_angle([0,0,1,angle],degrees=True)
-        avg_angle = R_1.average(R_2).as_axis_angle(degrees=True,pair=True)[1]
+        R = Rotation.from_axis_angle([[0,0,1,10],[0,0,1,angle]],degrees=True)
+        avg_angle = R.average().as_axis_angle(degrees=True,pair=True)[1]
         assert np.isclose(avg_angle,10+(angle-10)/2.)
 
 
@@ -948,34 +1016,34 @@ class TestRotation:
     @pytest.mark.parametrize('fractions',[True,False])
     @pytest.mark.parametrize('degrees',[True,False])
     @pytest.mark.parametrize('N',[2**13,2**14,2**15])
-    def test_ODF_cell(self,reference_dir,fractions,degrees,N):
+    def test_ODF_cell(self,ref_path,fractions,degrees,N):
         steps = np.array([144,36,36])
         limits = np.array([360.,90.,90.])
         rng = tuple(zip(np.zeros(3),limits))
 
-        weights = Table.load(reference_dir/'ODF_experimental_cell.txt').get('intensity').flatten()
+        weights = Table.load(ref_path/'ODF_experimental_cell.txt').get('intensity').flatten()
         Eulers = grid_filters.cell_coord0(steps,limits)
         Eulers = np.radians(Eulers) if not degrees else Eulers
 
-        Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees,fractions).as_Eulers(True)
+        Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees,fractions).as_Euler_angles(True)
         weights_r = np.histogramdd(Eulers_r,steps,rng)[0].flatten(order='F')/N * np.sum(weights)
 
         if fractions: assert np.sqrt(((weights_r - weights) ** 2).mean()) < 4
 
     @pytest.mark.parametrize('degrees',[True,False])
     @pytest.mark.parametrize('N',[2**13,2**14,2**15])
-    def test_ODF_node(self,reference_dir,degrees,N):
+    def test_ODF_node(self,ref_path,degrees,N):
         steps = np.array([144,36,36])
         limits = np.array([360.,90.,90.])
         rng = tuple(zip(-limits/steps*.5,limits-limits/steps*.5))
 
-        weights = Table.load(reference_dir/'ODF_experimental.txt').get('intensity')
+        weights = Table.load(ref_path/'ODF_experimental.txt').get('intensity')
         weights = weights.reshape(steps+1,order='F')[:-1,:-1,:-1].reshape(-1,order='F')
 
         Eulers = grid_filters.node_coord0(steps,limits)[:-1,:-1,:-1]
         Eulers = np.radians(Eulers) if not degrees else Eulers
 
-        Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees).as_Eulers(True)
+        Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees).as_Euler_angles(True)
         weights_r = np.histogramdd(Eulers_r,steps,rng)[0].flatten(order='F')/N * np.sum(weights)
 
         assert np.sqrt(((weights_r - weights) ** 2).mean()) < 5

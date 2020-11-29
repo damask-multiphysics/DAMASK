@@ -7,7 +7,7 @@
 !> @brief material subroutine incoprorating dislocation and twinning physics
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_plastic) plastic_dislotwin
+submodule(constitutive:constitutive_mech) plastic_dislotwin
 
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
@@ -126,9 +126,9 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
   logical, dimension(:), allocatable :: myPlasticity
   integer :: &
-    Ninstance, &
+    Ninstances, &
     p, i, &
-    NipcMyPhase, &
+    Nconstituents, &
     sizeState, sizeDotState, &
     startIndex, endIndex
   integer,     dimension(:), allocatable :: &
@@ -141,14 +141,15 @@ module function plastic_dislotwin_init() result(myPlasticity)
   class(tNode), pointer :: &
     phases, &
     phase, &
+    mech, &
     pl
 
   print'(/,a)', ' <<<+-  plastic_dislotwin init  -+>>>'
 
   myPlasticity = plastic_active('dislotwin')
-  Ninstance = count(myPlasticity)
-  print'(a,i2)', ' # instances: ',Ninstance; flush(IO_STDOUT)
-  if(Ninstance == 0) return
+  Ninstances = count(myPlasticity)
+  print'(a,i2)', ' # instances: ',Ninstances; flush(IO_STDOUT)
+  if(Ninstances == 0) return
   
   print*, 'Ma and Roters, Acta Materialia 52(12):3603–3612, 2004'
   print*, 'https://doi.org/10.1016/j.actamat.2004.04.012'//IO_EOL
@@ -159,23 +160,23 @@ module function plastic_dislotwin_init() result(myPlasticity)
   print*, 'Wong et al., Acta Materialia 118:140–151, 2016'
   print*, 'https://doi.org/10.1016/j.actamat.2016.07.032'
 
-  allocate(param(Ninstance))
-  allocate(state(Ninstance))
-  allocate(dotState(Ninstance))
-  allocate(dependentState(Ninstance))
+  allocate(param(Ninstances))
+  allocate(state(Ninstances))
+  allocate(dotState(Ninstances))
+  allocate(dependentState(Ninstances))
 
   phases => config_material%get('phase')
   i = 0
   do p = 1, phases%length
     phase => phases%get(p)
-
+    mech  => phase%get('mechanics')
     if(.not. myPlasticity(p)) cycle
     i = i + 1
     associate(prm => param(i), &
               dot => dotState(i), &
               stt => state(i), &
               dst => dependentState(i))
-    pl  => phase%get('plasticity')
+    pl  => mech%get('plasticity')
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(pl)
@@ -300,7 +301,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%r    = math_expand(prm%r,N_tw)
 
       ! sanity checks
-      if (    prm%x_c_tw        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_twin'
+      if (    prm%x_c_tw        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_tw'
       if (    prm%L_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tw'
       if (    prm%i_tw          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tw'
       if (any(prm%b_tw          < 0.0_pReal)) extmsg = trim(extmsg)//' b_tw'
@@ -331,15 +332,15 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%h_tr_tr = lattice_interaction_TransByTrans(N_tr,pl%get_asFloats('h_tr_tr'), &
                                                      phase%get_asString('lattice'))
 
-      prm%C66_tr  = lattice_C66_trans(N_tr,prm%C66,pl%get_asString('trans_lattice_structure'), &
+      prm%C66_tr  = lattice_C66_trans(N_tr,prm%C66,pl%get_asString('lattice_tr'), &
                                       0.0_pReal, &
-                                      pl%get_asFloat('a_bcc', defaultVal=0.0_pReal), &
-                                      pl%get_asFloat('a_fcc', defaultVal=0.0_pReal))
+                                      pl%get_asFloat('a_cI', defaultVal=0.0_pReal), &
+                                      pl%get_asFloat('a_cF', defaultVal=0.0_pReal))
 
-      prm%P_tr    = lattice_SchmidMatrix_trans(N_tr,pl%get_asString('trans_lattice_structure'), &
+      prm%P_tr    = lattice_SchmidMatrix_trans(N_tr,pl%get_asString('lattice_tr'), &
                                                0.0_pReal, &
-                                               pl%get_asFloat('a_bcc', defaultVal=0.0_pReal), &
-                                               pl%get_asFloat('a_fcc', defaultVal=0.0_pReal))
+                                               pl%get_asFloat('a_cI', defaultVal=0.0_pReal), &
+                                               pl%get_asFloat('a_cF', defaultVal=0.0_pReal))
 
       if (lattice_structure(p) /= lattice_FCC_ID) then
         prm%dot_N_0_tr = pl%get_asFloats('dot_N_0_tr')
@@ -351,7 +352,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
       prm%s    = math_expand(prm%s,N_tr)
 
       ! sanity checks
-      if (    prm%x_c_tr        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_trans'
+      if (    prm%x_c_tr        < 0.0_pReal)  extmsg = trim(extmsg)//' x_c_tr'
       if (    prm%L_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' L_tr'
       if (    prm%i_tr          < 0.0_pReal)  extmsg = trim(extmsg)//' i_tr'
       if (any(prm%t_tr          < 0.0_pReal)) extmsg = trim(extmsg)//' t_tr'
@@ -407,21 +408,21 @@ module function plastic_dislotwin_init() result(myPlasticity)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    NipcMyPhase  = count(material_phaseAt == p) * discretization_nIP
+    Nconstituents  = count(material_phaseAt == p) * discretization_nIPs
     sizeDotState = size(['rho_mob ','rho_dip ','gamma_sl']) * prm%sum_N_sl &
                  + size(['f_tw'])                           * prm%sum_N_tw &
                  + size(['f_tr'])                           * prm%sum_N_tr
     sizeState = sizeDotState
 
 
-    call constitutive_allocateState(plasticState(p),NipcMyPhase,sizeState,sizeDotState,0)
+    call constitutive_allocateState(plasticState(p),Nconstituents,sizeState,sizeDotState,0)
 
 !--------------------------------------------------------------------------------------------------
 ! locally defined state aliases and initialization of state0 and atol
     startIndex = 1
     endIndex   = prm%sum_N_sl
     stt%rho_mob=>plasticState(p)%state(startIndex:endIndex,:)
-    stt%rho_mob= spread(rho_mob_0,2,NipcMyPhase)
+    stt%rho_mob= spread(rho_mob_0,2,Nconstituents)
     dot%rho_mob=>plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
     if (any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' atol_rho'
@@ -429,7 +430,7 @@ module function plastic_dislotwin_init() result(myPlasticity)
     startIndex = endIndex + 1
     endIndex   = endIndex + prm%sum_N_sl
     stt%rho_dip=>plasticState(p)%state(startIndex:endIndex,:)
-    stt%rho_dip= spread(rho_dip_0,2,NipcMyPhase)
+    stt%rho_dip= spread(rho_dip_0,2,Nconstituents)
     dot%rho_dip=>plasticState(p)%dotState(startIndex:endIndex,:)
     plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('atol_rho',defaultVal=1.0_pReal)
 
@@ -455,18 +456,18 @@ module function plastic_dislotwin_init() result(myPlasticity)
     plasticState(p)%atol(startIndex:endIndex) = pl%get_asFloat('f_trans',defaultVal=1.0e-6_pReal)
     if (any(plasticState(p)%atol(startIndex:endIndex) < 0.0_pReal)) extmsg = trim(extmsg)//' f_trans'
 
-    allocate(dst%Lambda_sl             (prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%tau_pass              (prm%sum_N_sl,NipcMyPhase),source=0.0_pReal)
+    allocate(dst%Lambda_sl             (prm%sum_N_sl,Nconstituents),source=0.0_pReal)
+    allocate(dst%tau_pass              (prm%sum_N_sl,Nconstituents),source=0.0_pReal)
 
-    allocate(dst%Lambda_tw             (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%tau_hat_tw            (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%tau_r_tw              (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%V_tw                  (prm%sum_N_tw,NipcMyPhase),source=0.0_pReal)
+    allocate(dst%Lambda_tw             (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
+    allocate(dst%tau_hat_tw            (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
+    allocate(dst%tau_r_tw              (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
+    allocate(dst%V_tw                  (prm%sum_N_tw,Nconstituents),source=0.0_pReal)
 
-    allocate(dst%Lambda_tr             (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%tau_hat_tr            (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%tau_r_tr              (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
-    allocate(dst%V_tr                  (prm%sum_N_tr,NipcMyPhase),source=0.0_pReal)
+    allocate(dst%Lambda_tr             (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
+    allocate(dst%tau_hat_tr            (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
+    allocate(dst%tau_r_tr              (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
+    allocate(dst%V_tr                  (prm%sum_N_tr,Nconstituents),source=0.0_pReal)
 
     plasticState(p)%state0 = plasticState(p)%state                                                  ! ToDo: this could be done centrally
 

@@ -46,7 +46,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine damage_nonlocal_init
 
-  integer :: Ninstance,NofMyHomog,h
+  integer :: Ninstances,Nmaterialpoints,h
   class(tNode), pointer :: &
     num_generic, &
     material_homogenization, &
@@ -60,8 +60,8 @@ subroutine damage_nonlocal_init
   num_generic => config_numerics%get('generic',defaultVal= emptyDict)
   num%charLength = num_generic%get_asFloat('charLength',defaultVal=1.0_pReal)
 
-  Ninstance = count(damage_type == DAMAGE_nonlocal_ID)
-  allocate(param(Ninstance))
+  Ninstances = count(damage_type == DAMAGE_nonlocal_ID)
+  allocate(param(Ninstances))
 
   material_homogenization => config_material%get('homogenization')
   do h = 1, material_homogenization%length
@@ -76,11 +76,11 @@ subroutine damage_nonlocal_init
     prm%output = homogDamage%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
 
-    NofMyHomog = count(material_homogenizationAt == h)
+    Nmaterialpoints = count(material_homogenizationAt == h)
     damageState(h)%sizeState = 1
-    allocate(damageState(h)%state0   (1,NofMyHomog), source=damage_initialPhi(h))
-    allocate(damageState(h)%subState0(1,NofMyHomog), source=damage_initialPhi(h))
-    allocate(damageState(h)%state    (1,NofMyHomog), source=damage_initialPhi(h))
+    allocate(damageState(h)%state0   (1,Nmaterialpoints), source=damage_initialPhi(h))
+    allocate(damageState(h)%subState0(1,Nmaterialpoints), source=damage_initialPhi(h))
+    allocate(damageState(h)%state    (1,Nmaterialpoints), source=damage_initialPhi(h))
 
     nullify(damageMapping(h)%p)
     damageMapping(h)%p => material_homogenizationMemberAt
@@ -110,8 +110,8 @@ subroutine damage_nonlocal_getSourceAndItsTangent(phiDot, dPhiDot_dPhi, phi, ip,
   dPhiDot_dPhi = 0.0_pReal
  
   call constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
-  phiDot = phiDot/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
-  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+  phiDot = phiDot/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
+  dPhiDot_dPhi = dPhiDot_dPhi/real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
 
 end subroutine damage_nonlocal_getSourceAndItsTangent
 
@@ -132,13 +132,13 @@ function damage_nonlocal_getDiffusion(ip,el)
 
   homog  = material_homogenizationAt(el)
   damage_nonlocal_getDiffusion = 0.0_pReal
-  do grain = 1, homogenization_Ngrains(homog)
+  do grain = 1, homogenization_Nconstituents(homog)
     damage_nonlocal_getDiffusion = damage_nonlocal_getDiffusion + &
       crystallite_push33ToRef(grain,ip,el,lattice_D(1:3,1:3,material_phaseAt(grain,el)))
   enddo
 
   damage_nonlocal_getDiffusion = &
-    num%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Ngrains(homog),pReal)
+    num%charLength**2*damage_nonlocal_getDiffusion/real(homogenization_Nconstituents(homog),pReal)
 
 end function damage_nonlocal_getDiffusion
 
@@ -156,12 +156,12 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
 
   damage_nonlocal_getMobility = 0.0_pReal
 
-  do ipc = 1, homogenization_Ngrains(material_homogenizationAt(el))
+  do ipc = 1, homogenization_Nconstituents(material_homogenizationAt(el))
     damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(ipc,el))
   enddo
 
   damage_nonlocal_getMobility = damage_nonlocal_getMobility/&
-                                real(homogenization_Ngrains(material_homogenizationAt(el)),pReal)
+                                real(homogenization_Nconstituents(material_homogenizationAt(el)),pReal)
 
 end function damage_nonlocal_getMobility
 
