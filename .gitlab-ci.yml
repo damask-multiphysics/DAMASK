@@ -292,33 +292,6 @@ Phenopowerlaw_singleSlip:
 
 
 ###################################################################################################
-Hex_elastic:
-  stage: marc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - Hex_elastic/test.py
-  except:
-    - master
-    - release
-
-CubicFCC_elastic:
-  stage: marc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - CubicFCC_elastic/test.py
-  except:
-    - master
-    - release
-
-CubicBCC_elastic:
-  stage: marc
-  script:
-    - module load $IntelMarc $HDF5Marc $MSC
-    - CubicBCC_elastic/test.py
-  except:
-    - master
-    - release
-
 J2_plasticBehavior:
   stage: marc
   script:
