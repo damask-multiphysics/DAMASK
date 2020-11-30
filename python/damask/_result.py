@@ -1269,7 +1269,7 @@ class Result:
             f.write(xml.dom.minidom.parseString(ET.tostring(xdmf).decode()).toprettyxml())
 
 
-    def save_vtk(self,labels=[],mode='cell'):
+    def save_VTK(self,labels=[],mode='cell'):
         """
         Export to vtk cell/point data.
 
