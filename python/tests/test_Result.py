@@ -373,6 +373,17 @@ class TestResult:
         os.chdir(tmp_path)
         single_phase.save_VTK(mode=mode)
 
-    def test_XDMF(self,tmp_path,single_phase):
+    def test_XDMF(self,tmp_path,single_phase,update,reference_dir):
+        for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
+            for dtype in ['f4','f8','i1','i2','i4','i8','u1','u2','u4','u8']:
+                 single_phase.add_calculation(f'{shape[0]}_{dtype}',f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')")
+        fname = os.path.splitext(os.path.basename(single_phase.fname))[0]+'.xdmf'
         os.chdir(tmp_path)
         single_phase.save_XDMF()
+        if update:
+            shutil.copy(tmp_path/fname,reference_dir/fname)
+        assert sorted(open(tmp_path/fname).read()) == sorted(open(reference_dir/fname).read())      # XML is not ordered
+
+    def test_XDMF_invalid(self,default):
+        with pytest.raises(TypeError):
+            default.save_XDMF()

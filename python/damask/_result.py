@@ -61,7 +61,7 @@ class Result:
             self.increments     = [increments_unsorted[i] for i in sorted(increments_unsorted)]
             self.times          = [round(f[i].attrs['time/s'],12) for i in self.increments]
 
-            self.N_materialpoints, self.N_constituents =   np.shape(f['mapping/phase'])
+            self.N_materialpoints, self.N_constituents = np.shape(f['mapping/phase'])
 
             self.homogenizations  = [m.decode() for m in np.unique(f['mapping/homogenization']['Name'])]
             self.phases           = [c.decode() for c in np.unique(f['mapping/phase']['Name'])]
@@ -1176,8 +1176,17 @@ class Result:
         This works only for scalar, 3-vector and 3x3-tensor data.
         Selection is not taken into account.
         """
-        if self.N_constituents != 1 or not self.structured:
-            raise NotImplementedError('XDMF only available for grid results with 1 constituent.')
+        if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
+            raise TypeError('XDMF output requires homogeneous grid')
+
+
+        attribute_type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
+
+        def number_type_map(dtype):
+            if dtype in np.sctypes['int']:   return 'Int'
+            if dtype in np.sctypes['uint']:  return 'UInt'
+            if dtype in np.sctypes['float']: return 'Float'
+
 
         xdmf=ET.Element('Xdmf')
         xdmf.attrib={'Version':  '2.0',
@@ -1227,8 +1236,6 @@ class Result:
             delta.text="{} {} {}".format(*(self.size/self.grid))
 
 
-            type_map = defaultdict(lambda:'Matrix', ( ((),'Scalar'), ((3,),'Vector'), ((3,3),'Tensor')) )
-
             with h5py.File(self.fname,'r') as f:
                 attributes.append(ET.SubElement(grid, 'Attribute'))
                 attributes[-1].attrib={'Name':          'u / m',
@@ -1249,18 +1256,17 @@ class Result:
                                 shape = f[name].shape[1:]
                                 dtype = f[name].dtype
 
-                                if dtype != np.float64: continue
-                                prec = f[name].dtype.itemsize
+                                if dtype not in np.sctypes['int']+np.sctypes['uint']+np.sctypes['float']: continue
                                 unit = f[name].attrs['Unit'] if h5py3 else f[name].attrs['Unit'].decode()
 
                                 attributes.append(ET.SubElement(grid, 'Attribute'))
                                 attributes[-1].attrib={'Name':          name.split('/',2)[2]+f' / {unit}',
                                                        'Center':       'Cell',
-                                                       'AttributeType': type_map[shape]}
+                                                       'AttributeType': attribute_type_map[shape]}
                                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                                 data_items[-1].attrib={'Format':     'HDF',
-                                                       'NumberType': 'Float',
-                                                       'Precision':  f'{prec}',
+                                                       'NumberType': number_type_map(dtype),
+                                                       'Precision':  f'{dtype.itemsize}',
                                                        'Dimensions': '{} {} {} {}'.format(*self.grid,1 if shape == () else
                                                                                                      np.prod(shape))}
                                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
