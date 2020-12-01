@@ -30,10 +30,10 @@ submodule(constitutive) constitutive_mech
         myPlasticity
     end function plastic_dislotwin_init
 
-    module function plastic_disloTungsten_init() result(myPlasticity)
+    module function plastic_dislotungsten_init() result(myPlasticity)
       logical, dimension(:), allocatable :: &
         myPlasticity
-    end function plastic_disloTungsten_init
+    end function plastic_dislotungsten_init
 
     module function plastic_nonlocal_init()      result(myPlasticity)
       logical, dimension(:), allocatable :: &
@@ -94,7 +94,7 @@ submodule(constitutive) constitutive_mech
         of
     end subroutine plastic_dislotwin_LpAndItsTangent
 
-    pure module subroutine plastic_disloTungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
+    pure module subroutine plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,T,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
         Lp                                                                                          !< plastic velocity gradient
       real(pReal), dimension(3,3,3,3), intent(out) :: &
@@ -107,7 +107,7 @@ submodule(constitutive) constitutive_mech
       integer,                         intent(in) :: &
         instance, &
         of
-    end subroutine plastic_disloTungsten_LpAndItsTangent
+    end subroutine plastic_dislotungsten_LpAndItsTangent
 
     module subroutine plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp, &
                                                        Mp,Temperature,instance,of,ip,el)
@@ -136,11 +136,11 @@ submodule(constitutive) constitutive_mech
         T
     end subroutine plastic_dislotwin_dependentState
 
-    module subroutine plastic_disloTungsten_dependentState(instance,of)
+    module subroutine plastic_dislotungsten_dependentState(instance,of)
       integer,       intent(in) :: &
         instance, &
         of
-    end subroutine plastic_disloTungsten_dependentState
+    end subroutine plastic_dislotungsten_dependentState
 
     module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
       real(pReal), dimension(3,3), intent(in) :: &
@@ -173,10 +173,10 @@ submodule(constitutive) constitutive_mech
       character(len=*), intent(in) :: group
     end subroutine plastic_dislotwin_results
 
-    module subroutine plastic_disloTungsten_results(instance,group)
+    module subroutine plastic_dislotungsten_results(instance,group)
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
-    end subroutine plastic_disloTungsten_results
+    end subroutine plastic_dislotungsten_results
 
     module subroutine plastic_nonlocal_results(instance,group)
       integer,          intent(in) :: instance
@@ -255,7 +255,7 @@ module subroutine mech_init
   where(plastic_phenopowerlaw_init())     phase_plasticity = PLASTICITY_PHENOPOWERLAW_ID
   where(plastic_kinehardening_init())     phase_plasticity = PLASTICITY_KINEHARDENING_ID
   where(plastic_dislotwin_init())         phase_plasticity = PLASTICITY_DISLOTWIN_ID
-  where(plastic_disloTungsten_init())     phase_plasticity = PLASTICITY_DISLOTUNGSTEN_ID
+  where(plastic_dislotungsten_init())     phase_plasticity = PLASTICITY_DISLOTUNGSTEN_ID
   where(plastic_nonlocal_init())          phase_plasticity = PLASTICITY_NONLOCAL_ID
 
   do p = 1, phases%length
@@ -368,7 +368,7 @@ module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
       call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,of)
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_disloTungsten_dependentState(instance,of)
+      call plastic_dislotungsten_dependentState(instance,of)
     case (PLASTICITY_NONLOCAL_ID) plasticityType
       call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
   end select plasticityType
@@ -435,7 +435,7 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_disloTungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
 
   end select plasticityType
 
@@ -478,7 +478,7 @@ module subroutine plastic_results
         call plastic_dislotwin_results(phase_plasticityInstance(p),group)
 
       case(PLASTICITY_DISLOTUNGSTEN_ID)
-        call plastic_disloTungsten_results(phase_plasticityInstance(p),group)
+        call plastic_dislotungsten_results(phase_plasticityInstance(p),group)
 
       case(PLASTICITY_NONLOCAL_ID)
         call plastic_nonlocal_results(phase_plasticityInstance(p),group)

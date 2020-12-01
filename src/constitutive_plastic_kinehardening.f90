@@ -125,7 +125,7 @@ module function plastic_kinehardening_init() result(myPlasticity)
       prm%P = lattice_SchmidMatrix_slip(N_sl,phase%get_asString('lattice'),&
                                         phase%get_asFloat('c/a',defaultVal=0.0_pReal))
 
-      if(trim(phase%get_asString('lattice')) == 'bcc') then
+      if(trim(phase%get_asString('lattice')) == 'cI') then
         a = pl%get_asFloats('a_nonSchmid',defaultVal = emptyRealArray)
         if(size(a) > 0) prm%nonSchmidActive = .true.
         prm%nonSchmid_pos  = lattice_nonSchmidMatrix(N_sl,a,+1)

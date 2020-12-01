@@ -46,7 +46,7 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 8:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 9:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys()
@@ -121,6 +121,10 @@ class Result:
             True is equivalent to [*], False is equivalent to []
 
         """
+        def natural_sort(key):
+            convert = lambda text: int(text) if text.isdigit() else text
+            return [ convert(c) for c in re.split('([0-9]+)', key) ]
+
         # allow True/False and string arguments
         if  datasets is True:
             datasets = ['*']
@@ -154,11 +158,11 @@ class Result:
             self.selection[what] = valid
         elif action == 'add':
             add = existing.union(valid)
-            add_sorted = sorted(add, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            add_sorted = sorted(add, key=natural_sort)
             self.selection[what] = add_sorted
         elif action == 'del':
             diff = existing.difference(valid)
-            diff_sorted = sorted(diff, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+            diff_sorted = sorted(diff, key=natural_sort)
             self.selection[what] = diff_sorted
 
 
@@ -329,9 +333,6 @@ class Result:
             raise PermissionError('Rename operation not permitted')
 
 
-  # def datamerger(regular expression to filter groups into one copy)
-
-
     def place(self,datasets,constituent=0,tagged=False,split=True):
         """
         Distribute datasets onto geometry and return Table or (split) dictionary of Tables.
@@ -499,20 +500,6 @@ class Result:
                             except KeyError:
                                 pass
         return path
-
-
-    def get_constituent_ID(self,c=0):
-        """Pointwise constituent ID."""
-        with h5py.File(self.fname,'r') as f:
-            names = f['/mapping/phase']['Name'][:,c].astype('str')
-        return np.array([int(n.split('_')[0]) for n in names.tolist()],dtype=np.int32)
-
-
-    def get_crystal_structure(self):                                                                # ToDo: extension to multi constituents/phase
-        """Info about the crystal structure."""
-        with h5py.File(self.fname,'r') as f:
-            return f[self.get_dataset_location('O')[0]].attrs['Lattice'] if h5py3 else \
-                   f[self.get_dataset_location('O')[0]].attrs['Lattice'].decode()
 
 
     def enable_user_function(self,func):
@@ -795,11 +782,11 @@ class Result:
     @staticmethod
     def _add_IPF_color(q,l):
         m = util.scale_to_coprime(np.array(l))
-
-        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),
-                        lattice  = {'fcc':'cF',
-                                    'bcc':'cI',
-                                    'hex':'hP'}[q['meta']['Lattice']])
+        try:
+            lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
+        except KeyError:
+            lattice =  q['meta']['Lattice']
+        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),

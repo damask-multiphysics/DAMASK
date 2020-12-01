@@ -2,12 +2,12 @@
 homogenization:
   SX:
     N_constituents: 1
-    mech: {type: none}
+    mechanics: {type: none}
 
 phase:
   pheno_fcc:
-    lattice: fcc
-    mech:
+    lattice: cF
+    mechanics:
       output: [F, P, F_e, F_p, L_p, O]
       elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
       plasticity:
@@ -23,8 +23,8 @@ phase:
         xi_0_sl: [31e6]
         xi_inf_sl: [63e6]
   pheno_bcc:
-    lattice: bcc
-    mech:
+    lattice: cI
+    mechanics:
       output: [F, P, F_e, F_p, L_p, O]
       elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
       plasticity:

@@ -17,7 +17,7 @@ module lattice
   private
 
 !--------------------------------------------------------------------------------------------------
-! face centered cubic
+! face centered cubic (cF)
   integer, dimension(*), parameter :: &
     FCC_NSLIPSYSTEM = [12, 6]                                                                       !< # of slip systems per family for fcc
 
@@ -108,7 +108,7 @@ module lattice
       ],pReal),shape(FCC_SYSTEMCLEAVAGE))
 
 !--------------------------------------------------------------------------------------------------
-! body centered cubic
+! body centered cubic (cI)
   integer, dimension(*), parameter :: &
     BCC_NSLIPSYSTEM = [12, 12]                                                                      !< # of slip systems per family for bcc
 
@@ -186,7 +186,7 @@ module lattice
       ],pReal),shape(BCC_SYSTEMCLEAVAGE))
 
 !--------------------------------------------------------------------------------------------------
-! hexagonal
+! hexagonal (hP)
   integer, dimension(*), parameter :: &
     HEX_NSLIPSYSTEM = [3, 3, 3, 6, 12, 6]                                                           !< # of slip systems per family for hex
 
@@ -279,7 +279,7 @@ module lattice
       ],pReal),shape(HEX_SYSTEMTWIN))                                                               !< twin systems for hex, sorted by P. Eisenlohr CCW around <c> starting next to a_1 axis
 
 !--------------------------------------------------------------------------------------------------
-! body centered tetragonal
+! body centered tetragonal (tI)
   integer, dimension(*), parameter :: &
     BCT_NSLIPSYSTEM = [2, 2, 2, 4, 2, 4, 2, 2, 4, 8, 4, 8, 8 ]                                      !< # of slip systems per family for bct (Sn) Bieler J. Electr Mater 2009
 
@@ -361,7 +361,7 @@ module lattice
        ],pReal),shape(BCT_SYSTEMSLIP))                                                              !< slip systems for bct sorted by Bieler
 
 !--------------------------------------------------------------------------------------------------
-! orthorhombic
+! orthorhombic primitive (oP)
   integer, dimension(*), parameter :: &
     ORT_NCLEAVAGESYSTEM = [1, 1, 1]                                                                 !< # of cleavage systems per family for ortho
 
@@ -457,7 +457,7 @@ subroutine lattice_init
     phase, &
     mech, &
     elasticity
- 
+
   print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
 
   phases => config_material%get('phase')
@@ -490,18 +490,18 @@ subroutine lattice_init
     lattice_C66(6,6,p) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
 
     select case(phase%get_asString('lattice'))
-      case('iso')
-        lattice_structure(p) = lattice_ISO_ID
-      case('fcc')
+      case('cF')
         lattice_structure(p) = lattice_FCC_ID
-      case('bcc')
+      case('cI')
         lattice_structure(p) = lattice_BCC_ID
-      case('hex')
+      case('hP')
         lattice_structure(p) = lattice_HEX_ID
-      case('bct')
+      case('tI')
         lattice_structure(p) = lattice_BCT_ID
-      case('ort')
+      case('oP')
         lattice_structure(p) = lattice_ORT_ID
+      case('aP')
+        lattice_structure(p) = lattice_ISO_ID
       case default
         call IO_error(130,ext_msg='lattice_init: '//phase%get_asString('lattice'))
     end select
@@ -593,9 +593,9 @@ function lattice_characteristicShear_Twin(Ntwin,structure,CoverA) result(charact
     mySystems: do s = 1,Ntwin(f)
       a = a + 1
       select case(structure)
-        case('fcc','bcc')
+        case('cF','cI')
           characteristicShear(a) = 0.5_pReal*sqrt(2.0_pReal)
-        case('hex')
+        case('hP')
           if (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal) &
             call IO_error(131,ext_msg='lattice_characteristicShear_Twin')
           p = sum(HEX_NTWINSYSTEM(1:f-1))+s
@@ -634,15 +634,15 @@ function lattice_C66_twin(Ntwin,C66,structure,CoverA)
   integer                               :: i
 
   select case(structure)
-    case('fcc')
+    case('cF')
       coordinateSystem = buildCoordinateSystem(Ntwin,FCC_NSLIPSYSTEM,FCC_SYSTEMTWIN,&
-                                               trim(structure),0.0_pReal)
-    case('bcc')
+                                               structure,0.0_pReal)
+    case('cI')
       coordinateSystem = buildCoordinateSystem(Ntwin,BCC_NSLIPSYSTEM,BCC_SYSTEMTWIN,&
-                                               trim(structure),0.0_pReal)
-    case('hex')
+                                               structure,0.0_pReal)
+    case('hP')
       coordinateSystem = buildCoordinateSystem(Ntwin,HEX_NSLIPSYSTEM,HEX_SYSTEMTWIN,&
-                                               'hex',cOverA)
+                                               structure,cOverA)
     case default
       call IO_error(137,ext_msg='lattice_C66_twin: '//trim(structure))
   end select
@@ -672,12 +672,9 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
   real(pReal)                             :: a_bcc, a_fcc, cOverA_trans
   integer                                 :: i
 
-  if (len_trim(structure_target) /= 3) &
-    call IO_error(137,ext_msg='lattice_C66_trans (target): '//trim(structure_target))
-
  !--------------------------------------------------------------------------------------------------
  ! elasticity matrix of the target phase in cube orientation
-  if (structure_target(1:3) == 'hex') then
+  if (structure_target == 'hP') then
     if (cOverA_trans < 1.0_pReal .or. cOverA_trans > 2.0_pReal) &
       call IO_error(131,ext_msg='lattice_C66_trans: '//trim(structure_target))
     C_bar66(1,1) = (C_parent66(1,1) + C_parent66(1,2) + 2.0_pReal*C_parent66(4,4))/2.0_pReal
@@ -693,8 +690,8 @@ function lattice_C66_trans(Ntrans,C_parent66,structure_target, &
     C_target_unrotated66(1,3) = C_bar66(1,3)
     C_target_unrotated66(3,3) = C_bar66(3,3)
     C_target_unrotated66(4,4) = C_bar66(4,4) - C_bar66(1,4)**2.0_pReal/(0.5_pReal*(C_bar66(1,1) - C_bar66(1,2)))
-    C_target_unrotated66 = applyLatticeSymmetryC66(C_target_unrotated66,'hex')
-  elseif (structure_target(1:3)  == 'bcc') then
+    C_target_unrotated66 = applyLatticeSymmetryC66(C_target_unrotated66,'hP')
+  elseif (structure_target  == 'cI') then
     if (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal) &
       call IO_error(134,ext_msg='lattice_C66_trans: '//trim(structure_target))
     C_target_unrotated66 = C_parent66
@@ -737,9 +734,9 @@ function lattice_nonSchmidMatrix(Nslip,nonSchmidCoefficients,sense) result(nonSc
   if (abs(sense) /= 1) error stop 'Sense in lattice_nonSchmidMatrix'
 
   coordinateSystem  = buildCoordinateSystem(Nslip,BCC_NSLIPSYSTEM,BCC_SYSTEMSLIP,&
-                                            'bcc',0.0_pReal)
+                                            'cI',0.0_pReal)
   coordinateSystem(1:3,1,1:sum(Nslip)) = coordinateSystem(1:3,1,1:sum(Nslip))*real(sense,pReal)     ! convert unidirectional coordinate system
-  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'bcc',0.0_pReal)                                ! Schmid contribution
+  nonSchmidMatrix = lattice_SchmidMatrix_slip(Nslip,'cI',0.0_pReal)                                ! Schmid contribution
 
   do i = 1,sum(Nslip)
     direction = coordinateSystem(1:3,1,i)
@@ -961,16 +958,16 @@ function lattice_interaction_SlipBySlip(Nslip,interactionValues,structure) resul
 
 
   select case(structure)
-    case('fcc')
+    case('cF')
       interactionTypes = FCC_INTERACTIONSLIPSLIP
       NslipMax         = FCC_NSLIPSYSTEM
-    case('bcc')
+    case('cI')
       interactionTypes = BCC_INTERACTIONSLIPSLIP
       NslipMax         = BCC_NSLIPSYSTEM
-    case('hex')
+    case('hP')
       interactionTypes = HEX_INTERACTIONSLIPSLIP
       NslipMax         = HEX_NSLIPSYSTEM
-    case('bct')
+    case('tI')
       interactionTypes = BCT_INTERACTIONSLIPSLIP
       NslipMax         = BCT_NSLIPSYSTEM
     case default
@@ -1062,13 +1059,13 @@ function lattice_interaction_TwinByTwin(Ntwin,interactionValues,structure) resul
       ],shape(HEX_INTERACTIONTWINTWIN))                                                             !< Twin-twin interaction types for hex
 
   select case(structure)
-    case('fcc')
+    case('cF')
       interactionTypes = FCC_INTERACTIONTWINTWIN
       NtwinMax         = FCC_NTWINSYSTEM
-    case('bcc')
+    case('cI')
       interactionTypes = BCC_INTERACTIONTWINTWIN
       NtwinMax         = BCC_NTWINSYSTEM
-    case('hex')
+    case('hP')
       interactionTypes = HEX_INTERACTIONTWINTWIN
       NtwinMax         = HEX_NTWINSYSTEM
     case default
@@ -1110,7 +1107,7 @@ function lattice_interaction_TransByTrans(Ntrans,interactionValues,structure) re
       2,2,2,2,2,2,2,2,2,1,1,1  &
       ],shape(FCC_INTERACTIONTRANSTRANS))                                                           !< Trans-trans interaction types for fcc
 
-  if(structure == 'fcc') then
+  if(structure == 'cF') then
     interactionTypes = FCC_INTERACTIONTRANSTRANS
     NtransMax        = FCC_NTRANSSYSTEM
   else
@@ -1238,15 +1235,15 @@ function lattice_interaction_SlipByTwin(Nslip,Ntwin,interactionValues,structure)
       ],shape(HEX_INTERACTIONSLIPTWIN))                                                             !< Slip-twin interaction types for hex
 
   select case(structure)
-    case('fcc')
+    case('cF')
       interactionTypes = FCC_INTERACTIONSLIPTWIN
       NslipMax         = FCC_NSLIPSYSTEM
       NtwinMax         = FCC_NTWINSYSTEM
-    case('bcc')
+    case('cI')
       interactionTypes = BCC_INTERACTIONSLIPTWIN
       NslipMax         = BCC_NSLIPSYSTEM
       NtwinMax         = BCC_NTWINSYSTEM
-    case('hex')
+    case('hP')
       interactionTypes = HEX_INTERACTIONSLIPTWIN
       NslipMax         = HEX_NSLIPSYSTEM
       NtwinMax         = HEX_NTWINSYSTEM
@@ -1299,7 +1296,7 @@ function lattice_interaction_SlipByTrans(Nslip,Ntrans,interactionValues,structur
       ],shape(FCC_INTERACTIONSLIPTRANS))                                                            !< Slip-trans interaction types for fcc
 
   select case(structure)
-    case('fcc')
+    case('cF')
       interactionTypes = FCC_INTERACTIONSLIPTRANS
       NslipMax         = FCC_NSLIPSYSTEM
       NtransMax        = FCC_NTRANSSYSTEM
@@ -1366,15 +1363,15 @@ function lattice_interaction_TwinBySlip(Ntwin,Nslip,interactionValues,structure)
       ],shape(HEX_INTERACTIONTWINSLIP))                                                             !< Twin-slip interaction types for hex
 
   select case(structure)
-    case('fcc')
+    case('cF')
       interactionTypes = FCC_INTERACTIONTWINSLIP
       NtwinMax         = FCC_NTWINSYSTEM
       NslipMax         = FCC_NSLIPSYSTEM
-    case('bcc')
+    case('cI')
       interactionTypes = BCC_INTERACTIONTWINSLIP
       NtwinMax         = BCC_NTWINSYSTEM
       NslipMax         = BCC_NSLIPSYSTEM
-    case('hex')
+    case('hP')
       interactionTypes = HEX_INTERACTIONTWINSLIP
       NtwinMax         = HEX_NTWINSYSTEM
       NslipMax         = HEX_NSLIPSYSTEM
@@ -1404,16 +1401,16 @@ function lattice_SchmidMatrix_slip(Nslip,structure,cOverA) result(SchmidMatrix)
   integer                                            :: i
 
   select case(structure)
-    case('fcc')
+    case('cF')
       NslipMax    = FCC_NSLIPSYSTEM
       slipSystems = FCC_SYSTEMSLIP
-    case('bcc')
+    case('cI')
       NslipMax    = BCC_NSLIPSYSTEM
       slipSystems = BCC_SYSTEMSLIP
-    case('hex')
+    case('hP')
       NslipMax    = HEX_NSLIPSYSTEM
       slipSystems = HEX_SYSTEMSLIP
-    case('bct')
+    case('tI')
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
@@ -1454,13 +1451,13 @@ function lattice_SchmidMatrix_twin(Ntwin,structure,cOverA) result(SchmidMatrix)
   integer                                            :: i
 
   select case(structure)
-    case('fcc')
+    case('cF')
       NtwinMax    = FCC_NTWINSYSTEM
       twinSystems = FCC_SYSTEMTWIN
-    case('bcc')
+    case('cI')
       NtwinMax    = BCC_NTWINSYSTEM
       twinSystems = BCC_SYSTEMTWIN
-    case('hex')
+    case('hP')
       NtwinMax    = HEX_NTWINSYSTEM
       twinSystems = HEX_SYSTEMTWIN
     case default
@@ -1498,15 +1495,13 @@ function lattice_SchmidMatrix_trans(Ntrans,structure_target,cOverA,a_bcc,a_fcc) 
   real(pReal), dimension(3,3,sum(Ntrans)) :: devNull
   real(pReal)                             :: a_bcc, a_fcc
 
-  if (len_trim(structure_target) /= 3) &
-    call IO_error(137,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
-  if (structure_target(1:3) /= 'bcc' .and. structure_target(1:3) /= 'hex') &
+  if (structure_target /= 'cI' .and. structure_target /= 'hP') &
     call IO_error(137,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
 
-  if (structure_target(1:3) == 'hex' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+  if (structure_target == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
     call IO_error(131,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
 
-  if (structure_target(1:3) == 'bcc' .and. (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal)) &
+  if (structure_target == 'cI' .and. (a_bcc <= 0.0_pReal .or. a_fcc <= 0.0_pReal)) &
     call IO_error(134,ext_msg='lattice_SchmidMatrix_trans: '//trim(structure_target))
 
   call buildTransformationSystem(devNull,SchmidMatrix,Ntrans,cOverA,a_fcc,a_bcc)
@@ -1531,13 +1526,13 @@ function lattice_SchmidMatrix_cleavage(Ncleavage,structure,cOverA) result(Schmid
   integer                                                :: i
 
   select case(structure)
-    case('ort')
+    case('oP')
       NcleavageMax    = ORT_NCLEAVAGESYSTEM
       cleavageSystems = ORT_SYSTEMCLEAVAGE
-    case('fcc')
+    case('cF')
       NcleavageMax    = FCC_NCLEAVAGESYSTEM
       cleavageSystems = FCC_SYSTEMCLEAVAGE
-    case('bcc')
+    case('cI')
       NcleavageMax    = BCC_NCLEAVAGESYSTEM
       cleavageSystems = BCC_SYSTEMCLEAVAGE
     case default
@@ -1630,16 +1625,16 @@ function lattice_labels_slip(Nslip,structure) result(labels)
   integer,          dimension(:),   allocatable :: NslipMax
 
   select case(structure)
-    case('fcc')
+    case('cF')
       NslipMax    = FCC_NSLIPSYSTEM
       slipSystems = FCC_SYSTEMSLIP
-    case('bcc')
+    case('cI')
       NslipMax    = BCC_NSLIPSYSTEM
       slipSystems = BCC_SYSTEMSLIP
-    case('hex')
+    case('hP')
       NslipMax    = HEX_NSLIPSYSTEM
       slipSystems = HEX_SYSTEMSLIP
-    case('bct')
+    case('tI')
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
@@ -1671,15 +1666,15 @@ function lattice_applyLatticeSymmetry33(T,structure) result(T_sym)
   T_sym = 0.0_pReal
 
   select case(structure)
-    case('iso','fcc','bcc')
+    case('aP','cF','cI')
       do k=1,3
         T_sym(k,k) = T(1,1)
       enddo
-    case('hex')
+    case('hP')
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(1,1)
       T_sym(3,3) = T(3,3)
-    case('ort','bct')
+    case('oP','tI')
       T_sym(1,1) = T(1,1)
       T_sym(2,2) = T(2,2)
       T_sym(3,3) = T(3,3)
@@ -1706,7 +1701,7 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
   C66_sym = 0.0_pReal
 
   select case(structure)
-    case ('iso')
+    case ('aP')
       do k=1,3
         do j=1,3
           C66_sym(k,j) = C66(1,2)
@@ -1714,7 +1709,7 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
         C66_sym(k,k)     = C66(1,1)
         C66_sym(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
       enddo
-    case ('fcc','bcc')
+    case ('cF','cI')
       do k=1,3
         do j=1,3
           C66_sym(k,j) = C66(1,2)
@@ -1722,7 +1717,7 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
         C66_sym(k,k)     = C66(1,1)
         C66_sym(k+3,k+3) = C66(4,4)
       enddo
-    case ('hex')
+    case ('hP')
       C66_sym(1,1) = C66(1,1)
       C66_sym(2,2) = C66(1,1)
       C66_sym(3,3) = C66(3,3)
@@ -1735,7 +1730,7 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
       C66_sym(4,4) = C66(4,4)
       C66_sym(5,5) = C66(4,4)
       C66_sym(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
-    case ('ort')
+    case ('oP')
       C66_sym(1,1) = C66(1,1)
       C66_sym(2,2) = C66(2,2)
       C66_sym(3,3) = C66(3,3)
@@ -1748,7 +1743,7 @@ function applyLatticeSymmetryC66(C66,structure) result(C66_sym)
       C66_sym(4,4) = C66(4,4)
       C66_sym(5,5) = C66(5,5)
       C66_sym(6,6) = C66(6,6)
-    case ('bct')
+    case ('tI')
       C66_sym(1,1) = C66(1,1)
       C66_sym(2,2) = C66(1,1)
       C66_sym(3,3) = C66(3,3)
@@ -1783,13 +1778,13 @@ function lattice_labels_twin(Ntwin,structure) result(labels)
   integer,          dimension(:),   allocatable :: NtwinMax
 
   select case(structure)
-    case('fcc')
+    case('cF')
       NtwinMax    = FCC_NTWINSYSTEM
       twinSystems = FCC_SYSTEMTWIN
-    case('bcc')
+    case('cI')
       NtwinMax    = BCC_NTWINSYSTEM
       twinSystems = BCC_SYSTEMTWIN
-    case('hex')
+    case('hP')
       NtwinMax    = HEX_NTWINSYSTEM
       twinSystems = HEX_SYSTEMTWIN
     case default
@@ -1869,16 +1864,16 @@ function coordinateSystem_slip(Nslip,structure,cOverA) result(coordinateSystem)
   integer,     dimension(:),   allocatable :: NslipMax
 
   select case(structure)
-    case('fcc')
+    case('cF')
       NslipMax    = FCC_NSLIPSYSTEM
       slipSystems = FCC_SYSTEMSLIP
-    case('bcc')
+    case('cI')
       NslipMax    = BCC_NSLIPSYSTEM
       slipSystems = BCC_SYSTEMSLIP
-    case('hex')
+    case('hP')
       NslipMax    = HEX_NSLIPSYSTEM
       slipSystems = HEX_SYSTEMSLIP
-    case('bct')
+    case('tI')
       NslipMax    = BCT_NSLIPSYSTEM
       slipSystems = BCT_SYSTEMSLIP
     case default
@@ -1965,11 +1960,9 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
     f, &                                                                                            !< index of my family
     s                                                                                               !< index of my system in current family
 
-  if (len_trim(structure) /= 3) &
-    call IO_error(137,ext_msg='buildCoordinateSystem: '//trim(structure))
-  if (trim(structure) == 'bct' .and. cOverA > 2.0_pReal) &
+  if (structure == 'tI' .and. cOverA > 2.0_pReal) &
     call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(structure))
-  if (trim(structure) == 'hex' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
+  if (structure == 'hP' .and. (cOverA < 1.0_pReal .or. cOverA > 2.0_pReal)) &
     call IO_error(131,ext_msg='buildCoordinateSystem:'//trim(structure))
 
   a = 0
@@ -1978,13 +1971,13 @@ function buildCoordinateSystem(active,potential,system,structure,cOverA)
       a = a + 1
       p = sum(potential(1:f-1))+s
 
-      select case(trim(structure))
+      select case(structure)
 
-        case ('fcc','bcc','iso','ort','bct')
+        case ('cF','cI','aP','oP','tI')
           direction = system(1:3,p)
           normal    = system(4:6,p)
 
-        case ('hex')
+        case ('hP')
           direction = [ system(1,p)*1.5_pReal, &
                        (system(1,p)+2.0_pReal*system(2,p))*sqrt(0.75_pReal), &
                         system(4,p)*cOverA ]                                                        ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(p/a)])
@@ -2267,15 +2260,15 @@ subroutine selfTest
   call random_number(r)
 
   system = reshape([1.0_pReal+r(1),0.0_pReal,0.0_pReal, 0.0_pReal,1.0_pReal+r(2),0.0_pReal],[6,1])
-  CoSy   = buildCoordinateSystem([1],[1],system,'fcc',0.0_pReal)
+  CoSy   = buildCoordinateSystem([1],[1],system,'cF',0.0_pReal)
   if(any(dNeq(CoSy(1:3,1:3,1),math_I3))) error stop 'buildCoordinateSystem'
 
   call random_number(C)
   C(1,1) = C(1,1) + 1.0_pReal
-  C = applyLatticeSymmetryC66(C,'iso')
+  C = applyLatticeSymmetryC66(C,'aP')
   if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
   if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
-  
+
   lambda = C(1,2)
   if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'voigt')),equivalent_nu(C,'voigt'),1.0e-12_pReal)) &
     error stop 'equivalent_nu/voigt'

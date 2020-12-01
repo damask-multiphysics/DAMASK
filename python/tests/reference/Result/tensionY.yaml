@@ -5,7 +5,7 @@ step:
       t: 20
       N: 40
       f_out: 4
-    mech:
+    mechanics:
       dot_F: [x, 0,      0,
               0, 1.0e-3, 0,
               0, 0,      x]
