@@ -5,6 +5,7 @@
 !--------------------------------------------------------------------------------------------------
 module spectral_utilities
   use, intrinsic :: iso_c_binding
+
 #include <petsc/finclude/petscsys.h>
   use PETScSys
 
@@ -14,6 +15,7 @@ module spectral_utilities
   use math
   use rotations
   use IO
+  use config
   use discretization_grid
   use discretization
   use homogenization

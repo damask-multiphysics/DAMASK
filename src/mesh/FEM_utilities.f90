@@ -12,11 +12,11 @@ module FEM_utilities
   use PETScis
   
   use prec
-  use FEsolving
-  use homogenization
   use config
   use math
+  use IO
   use discretization_mesh
+  use homogenization
 
   implicit none
   private

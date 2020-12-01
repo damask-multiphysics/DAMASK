@@ -48,30 +48,29 @@ variables:
   # Names of module files to load
   # ===============================================================================================
   # ++++++++++++ Compiler +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IntelCompiler17_8:               "Compiler/Intel/17.8 Libraries/IMKL/2017"
-  IntelCompiler18_4:               "Compiler/Intel/18.4 Libraries/IMKL/2018"
-  GNUCompiler8_2:                  "Compiler/GNU/8.2"
+  IntelCompiler19_1:               "Compiler/Intel/19.1.2 Libraries/IMKL/2020"
+  GNUCompiler10:                   "Compiler/GNU/10"
   # ------------ Defaults ----------------------------------------------
-  IntelCompiler:                   "$IntelCompiler18_4"
-  GNUCompiler:                     "$GNUCompiler8_2"
+  IntelCompiler:                   "$IntelCompiler19_1"
+  GNUCompiler:                     "$GNUCompiler10"
   # ++++++++++++ MPI ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  IMPI2018Intel18_4:               "MPI/Intel/18.4/IntelMPI/2018"
-  MPICH3_3GNU8_2:                  "MPI/GNU/8.2/MPICH/3.3"
+  IMPI2020Intel19_1:               "MPI/Intel/19.1.2/IntelMPI/2019"
+  OMPI4_0GNU10:                    "MPI/GNU/10/OpenMPI/4.0.5"
   # ------------ Defaults ----------------------------------------------
-  MPICH_Intel:                     "$IMPI2018Intel18_4"
-  MPICH_GNU:                       "$MPICH3_3GNU8_2"
+  MPI_Intel:                       "$IMPI2020Intel19_1"
+  MPI_GNU:                         "$OMPI4_0GNU10"
   # ++++++++++++ PETSc ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  PETSc3_10_3IMPI2018Intel18_4:    "Libraries/PETSc/3.10.3/Intel-18.4-IntelMPI-2018"
-  PETSc3_10_3MPICH3_3GNU8_2:       "Libraries/PETSc/3.10.3/GNU-8.2-MPICH-3.3"
+  PETSc3_14_0IMPI2020Intel19_1:    "Libraries/PETSc/3.14.0/Intel-19.1.2-IntelMPI-2019"
+  PETSc3_14_0OMPI4_0GNU10:         "Libraries/PETSc/3.14.0/GNU-10-OpenMPI-4.0.5"
   # ------------ Defaults ----------------------------------------------
-  PETSc_MPICH_Intel:               "$PETSc3_10_3IMPI2018Intel18_4"
-  PETSc_MPICH_GNU:                 "$PETSc3_10_3MPICH3_3GNU8_2"
+  PETSc_Intel:                     "$PETSc3_14_0IMPI2020Intel19_1"
+  PETSc_GNU:                       "$PETSc3_14_0OMPI4_0GNU10"
   # ++++++++++++ commercial FEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  MSC2019_1:                       "FEM/MSC/2019.1"
+  MSC2020:                         "FEM/MSC/2020"
   # ------------ Defaults ----------------------------------------------
-  MSC:                             "$MSC2019_1"
-  IntelMarc:                       "$IntelCompiler17_8"
-  HDF5Marc:                        "HDF5/1.10.5/Intel-17.8"
+  MSC:                             "$MSC2020"
+  IntelMarc:                       "$IntelCompiler19_1"
+  HDF5Marc:                        "HDF5/1.12.0/Intel-19.1.2"
 
 ###################################################################################################
 checkout:
@@ -181,7 +180,7 @@ Post_OrientationAverageMisorientation:
 compile_grid_Intel:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_Intel
   except:
@@ -191,7 +190,7 @@ compile_grid_Intel:
 compile_mesh_Intel:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_Intel
   except:
@@ -201,7 +200,7 @@ compile_mesh_Intel:
 compile_grid_GNU:
   stage: compile
   script:
-    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
+    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
     - pytest -k 'compile and grid' --basetemp=${TESTROOT}/compile_grid_GNU
   except:
@@ -211,7 +210,7 @@ compile_grid_GNU:
 compile_mesh_GNU:
   stage: compile
   script:
-    - module load $GNUCompiler $MPICH_GNU $PETSc_MPICH_GNU
+    - module load $GNUCompiler $MPI_GNU $PETSc_GNU
     - cd pytest
     - pytest -k 'compile and mesh' --basetemp=${TESTROOT}/compile_mesh_GNU
   except:
@@ -231,7 +230,7 @@ compile_MARC:
 setup_grid:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)
     - cd ${BUILD_DIR}
     - cmake -DDAMASK_SOLVER=GRID -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
@@ -243,7 +242,7 @@ setup_grid:
 setup_mesh:
   stage: compile
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - BUILD_DIR=$(mktemp -d)
     - cd ${BUILD_DIR}
     - cmake -DDAMASK_SOLVER=MESH -DCMAKE_INSTALL_PREFIX=${DAMASKROOT} ${DAMASKROOT}
@@ -256,7 +255,7 @@ setup_mesh:
 Pytest_grid:
   stage: grid
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd pytest
     - pytest -k 'not compile' --basetemp=${TESTROOT}/fortran -v
   except:
@@ -342,7 +341,7 @@ Marc_elementLib:
 SpectralRuntime:
   stage: performance
   script:
-    - module load $IntelCompiler $MPICH_Intel $PETSc_MPICH_Intel
+    - module load $IntelCompiler $MPI_Intel $PETSc_Intel
     - cd $DAMASKROOT
     - make clean grid processing OPTIMIZATION=AGGRESSIVE
     - cd $LOCAL_HOME/performance                                                                    # location of old results
