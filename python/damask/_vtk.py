@@ -76,7 +76,8 @@ class VTK:
         nodes : numpy.ndarray of shape (:,3)
             Spatial position of the nodes.
         connectivity : numpy.ndarray of np.dtype = int
-            Cell connectivity (0-based), first dimension determines #Cells, second dimension determines #Nodes/Cell.
+            Cell connectivity (0-based), first dimension determines #Cells,
+            second dimension determines #Nodes/Cell.
         cell_type : str
             Name of the vtk.vtkCell subclass. Tested for TRIANGLE, QUAD, TETRA, and HEXAHEDRON.
 
@@ -91,7 +92,9 @@ class VTK:
 
         vtk_data = vtk.vtkUnstructuredGrid()
         vtk_data.SetPoints(vtk_nodes)
-        vtk_data.SetCells(eval(f'vtk.VTK_{cell_type.split("_",1)[-1].upper()}'),cells)
+        cell_types = {'TRIANGLE':vtk.VTK_TRIANGLE, 'QUAD':vtk.VTK_QUAD,
+                      'TETRA'   :vtk.VTK_TETRA,    'HEXAHEDRON':vtk.VTK_HEXAHEDRON}
+        vtk_data.SetCells(cell_types[cell_type.split("_",1)[-1].upper()],cells)
 
         return VTK(vtk_data)
 
