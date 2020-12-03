@@ -394,7 +394,7 @@ class TestGeom:
     def test_from_table(self):
         cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
-        coords = grid_filters.cell_coord0(cells,size).reshape(-1,3,order='F')
+        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
         z=np.ones(cells.prod())
         z[cells[:2].prod()*int(cells[2]/2):]=0
         t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
@@ -407,7 +407,7 @@ class TestGeom:
         size = np.ones(3)+np.random.rand(3)
         s = seeds.from_random(size,np.random.randint(60,100))
         geom = Geom.from_Voronoi_tessellation(cells,size,s)
-        coords = grid_filters.cell_coord0(cells,size)
+        coords = grid_filters.coordinates0_point(cells,size)
         t = Table(np.column_stack((coords.reshape(-1,3,order='F'),geom.material.flatten(order='F'))),{'c':3,'m':1})
         assert geom_equal(geom.sort().renumber(),Geom.from_table(t,'c',['m']))
 

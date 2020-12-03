@@ -29,7 +29,7 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
     if cells is None:
         coords = rng.random((N_seeds,3)) * size
     else:
-        grid_coords = grid_filters.cell_coord0(cells,size).reshape(-1,3,order='F')
+        grid_coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
         coords = grid_coords[rng.choice(_np.prod(cells),N_seeds, replace=False)] \
                + _np.broadcast_to(size/cells,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)          # wobble without leaving cells
 
@@ -98,7 +98,7 @@ def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
     material = geom.material.reshape((-1,1),order='F')
     mask = _np.full(geom.cells.prod(),True,dtype=bool) if selection is None else \
            _np.isin(material,selection,invert=invert).flatten()
-    coords = grid_filters.cell_coord0(geom.cells,geom.size).reshape(-1,3,order='F')
+    coords = grid_filters.coordinates0_point(geom.cells,geom.size).reshape(-1,3,order='F')
 
     if not average:
         return (coords[mask],material[mask])

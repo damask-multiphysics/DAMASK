@@ -155,8 +155,8 @@ class TestVTK:
         cells = np.array([5,6,7],int)
         size  = np.array([.6,1.,.5])
         rectilinearGrid = VTK.from_rectilinear_grid(cells,size)
-        c = grid_filters.cell_coord0(cells,size).reshape(-1,3,order='F')
-        n = grid_filters.node_coord0(cells,size).reshape(-1,3,order='F')
+        c = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
+        n = grid_filters.coordinates0_node(cells,size).reshape(-1,3,order='F')
         rectilinearGrid.add(c,'cell')
         rectilinearGrid.add(n,'node')
         if update:

@@ -71,13 +71,13 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
+  grid,size,origin = damask.grid_filters.cellSizeOrigin_coordinates0_point(table.get(options.pos))
 
   F = table.get(options.defgrad).reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+(3,3))
-  nodes = damask.grid_filters.node_coord(size,F)
+  nodes = damask.grid_filters.coordinates_node(size,F)
 
   if options.shape:
-    centers = damask.grid_filters.cell_coord(size,F)
+    centers = damask.grid_filters.coordinates_point(size,F)
     shapeMismatch = shapeMismatch(size,F,nodes,centers)
     table = table.add('shapeMismatch(({}))'.format(options.defgrad),
                       shapeMismatch.reshape(-1,1,order='F'),

@@ -1022,7 +1022,7 @@ class TestRotation:
         rng = tuple(zip(np.zeros(3),limits))
 
         weights = Table.load(ref_path/'ODF_experimental_cell.txt').get('intensity').flatten()
-        Eulers = grid_filters.cell_coord0(steps,limits)
+        Eulers = grid_filters.coordinates0_point(steps,limits)
         Eulers = np.radians(Eulers) if not degrees else Eulers
 
         Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees,fractions).as_Euler_angles(True)
@@ -1040,7 +1040,7 @@ class TestRotation:
         weights = Table.load(ref_path/'ODF_experimental.txt').get('intensity')
         weights = weights.reshape(steps+1,order='F')[:-1,:-1,:-1].reshape(-1,order='F')
 
-        Eulers = grid_filters.node_coord0(steps,limits)[:-1,:-1,:-1]
+        Eulers = grid_filters.coordinates0_node(steps,limits)[:-1,:-1,:-1]
         Eulers = np.radians(Eulers) if not degrees else Eulers
 
         Eulers_r = Rotation.from_ODF(weights,Eulers.reshape(-1,3,order='F'),N,degrees).as_Euler_angles(True)

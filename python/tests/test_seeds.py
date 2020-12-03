@@ -41,7 +41,7 @@ class TestSeeds:
     def test_from_geom_grid(self,periodic,average):
         cells = np.random.randint(10,20,3)
         size  = np.ones(3) + np.random.random(3)
-        coords = grid_filters.cell_coord0(cells,size).reshape(-1,3)
+        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
         np.random.shuffle(coords)
         geom_1 = Geom.from_Voronoi_tessellation(cells,size,coords)
         coords,material = seeds.from_geom(geom_1,average=average,periodic=periodic)

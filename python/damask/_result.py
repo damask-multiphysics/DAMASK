@@ -562,19 +562,19 @@ class Result:
             return dataset
 
     @property
-    def cell_coordinates(self):
+    def coordinates0_point(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.cell_coord0(self.cells,self.size,self.origin).reshape(-1,3,order='F')
+            return grid_filters.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
     @property
-    def node_coordinates(self):
+    def coordinates0_node(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.node_coord0(self.cells,self.size,self.origin).reshape(-1,3,order='F')
+            return grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_n'][()]
@@ -1303,7 +1303,7 @@ class Result:
                                                    f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
                                                    f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-            v = VTK.from_poly_data(self.cell_coordinates)
+            v = VTK.from_poly_data(self.coordinates0_point)
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 

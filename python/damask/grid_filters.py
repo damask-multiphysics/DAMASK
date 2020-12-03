@@ -22,11 +22,11 @@ def _ks(size,cells,first_order=False):
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     cells : numpy.ndarray of shape (3)
-        number of cells.
+        Number of cells.
     first_order : bool, optional
-        correction for first order derivatives, defaults to False.
+        Correction for first order derivatives, defaults to False.
 
     """
     k_sk = _np.where(_np.arange(cells[0])>cells[0]//2,_np.arange(cells[0])-cells[0],_np.arange(cells[0]))/size[0]
@@ -47,9 +47,9 @@ def curl(size,field):
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     field : numpy.ndarray of shape (:,:,:,3) or (:,:,:,3,3)
-        periodic field of which the curl is calculated.
+        Periodic field of which the curl is calculated.
 
     """
     n = _np.prod(field.shape[3:])
@@ -73,9 +73,9 @@ def divergence(size,field):
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     field : numpy.ndarray of shape (:,:,:,3) or (:,:,:,3,3)
-        periodic field of which the divergence is calculated.
+        Periodic field of which the divergence is calculated.
 
     """
     n = _np.prod(field.shape[3:])
@@ -95,9 +95,9 @@ def gradient(size,field):
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     field : numpy.ndarray of shape (:,:,:,1) or (:,:,:,3)
-        periodic field of which the gradient is calculated.
+        Periodic field of which the gradient is calculated.
 
     """
     n = _np.prod(field.shape[3:])
@@ -110,18 +110,18 @@ def gradient(size,field):
     return _np.fft.irfftn(grad_,axes=(0,1,2),s=field.shape[:3])
 
 
-def cell_coord0(cells,size,origin=_np.zeros(3)):
+def coordinates0_point(cells,size,origin=_np.zeros(3)):
     """
     Cell center positions (undeformed).
 
     Parameters
     ----------
     cells : numpy.ndarray of shape (3)
-        number of cells.
+        Number of cells.
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     origin : numpy.ndarray, optional
-        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
+        Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
     start = origin        + size/cells*.5
@@ -133,16 +133,16 @@ def cell_coord0(cells,size,origin=_np.zeros(3)):
                      axis = -1)
 
 
-def cell_displacement_fluct(size,F):
+def displacement_fluct_point(size,F):
     """
     Cell center displacement field from fluctuation part of the deformation gradient field.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
 
     """
     integrator = 0.5j*size/_np.pi
@@ -160,67 +160,67 @@ def cell_displacement_fluct(size,F):
     return _np.fft.irfftn(displacement,axes=(0,1,2),s=F.shape[:3])
 
 
-def cell_displacement_avg(size,F):
+def displacement_avg_point(size,F):
     """
     Cell center displacement field from average part of the deformation gradient field.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
 
     """
     F_avg = _np.average(F,axis=(0,1,2))
-    return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),cell_coord0(F.shape[:3],size))
+    return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_point(F.shape[:3],size))
 
 
-def cell_displacement(size,F):
+def displacement_point(size,F):
     """
     Cell center displacement field from deformation gradient field.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
 
     """
-    return cell_displacement_avg(size,F) + cell_displacement_fluct(size,F)
+    return displacement_avg_point(size,F) + displacement_fluct_point(size,F)
 
 
-def cell_coord(size,F,origin=_np.zeros(3)):
+def coordinates_point(size,F,origin=_np.zeros(3)):
     """
     Cell center positions.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
     origin : numpy.ndarray of shape (3), optional
-        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
+        Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
-    return cell_coord0(F.shape[:3],size,origin) + cell_displacement(size,F)
+    return coordinates0_point(F.shape[:3],size,origin) + displacement_point(size,F)
 
 
-def cell_coord0_gridSizeOrigin(coord0,ordered=True):
+def cellSizeOrigin_coordinates0_point(coordinates0,ordered=True):
     """
-    Return grid 'DNA', i.e. cells, size, and origin from 1D array of cell positions.
+    Return grid 'DNA', i.e. cells, size, and origin from 1D array of point positions.
 
     Parameters
     ----------
-    coord0 : numpy.ndarray of shape (:,3)
-        undeformed cell coordinates.
+    coordinates0 : numpy.ndarray of shape (:,3)
+        Undeformed cell coordinates.
     ordered : bool, optional
-        expect coord0 data to be ordered (x fast, z slow).
+        Expect coordinates0 data to be ordered (x fast, z slow).
 
     """
-    coords    = [_np.unique(coord0[:,i]) for i in range(3)]
+    coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
     cells     = _np.array(list(map(len,coords)),'i')
@@ -232,8 +232,8 @@ def cell_coord0_gridSizeOrigin(coord0,ordered=True):
     size  [_np.where(cells==1)] = origin[_np.where(cells==1)]*2.
     origin[_np.where(cells==1)] = 0.0
 
-    if cells.prod() != len(coord0):
-        raise ValueError('Data count {len(coord0)} does not match cells {cells}.')
+    if cells.prod() != len(coordinates0):
+        raise ValueError('Data count {len(coordinates0)} does not match cells {cells}.')
 
     start = origin + delta*.5
     end   = origin - delta*.5 + size
@@ -244,37 +244,38 @@ def cell_coord0_gridSizeOrigin(coord0,ordered=True):
             _np.allclose(coords[2],_np.linspace(start[2],end[2],cells[2]),atol=atol)):
         raise ValueError('Regular cells spacing violated.')
 
-    if ordered and not _np.allclose(coord0.reshape(tuple(cells)+(3,),order='F'),cell_coord0(cells,size,origin),atol=atol):
+    if ordered and not _np.allclose(coordinates0.reshape(tuple(cells)+(3,),order='F'),
+                                    coordinates0_point(cells,size,origin),atol=atol):
         raise ValueError('Input data is not ordered (x fast, z slow).')
 
     return (cells,size,origin)
 
 
-def coord0_check(coord0):
+def coordinates0_check(coordinates0):
     """
     Check whether coordinates lie on a regular grid.
 
     Parameters
     ----------
-    coord0 : numpy.ndarray
-        array of undeformed cell coordinates.
+    coordinates0 : numpy.ndarray
+        Array of undeformed cell coordinates.
 
     """
-    cell_coord0_gridSizeOrigin(coord0,ordered=True)
+    cellSizeOrigin_coordinates0_point(coordinates0,ordered=True)
 
 
-def node_coord0(cells,size,origin=_np.zeros(3)):
+def coordinates0_node(cells,size,origin=_np.zeros(3)):
     """
     Nodal positions (undeformed).
 
     Parameters
     ----------
     cells : numpy.ndarray of shape (3)
-        number of cells.
+        Number of cells.
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     origin : numpy.ndarray of shape (3), optional
-        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
+        Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
     return _np.stack(_np.meshgrid(_np.linspace(origin[0],size[0]+origin[0],cells[0]+1),
@@ -283,71 +284,71 @@ def node_coord0(cells,size,origin=_np.zeros(3)):
                      axis = -1)
 
 
-def node_displacement_fluct(size,F):
+def displacement_fluct_node(size,F):
     """
     Nodal displacement field from fluctuation part of the deformation gradient field.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
 
     """
-    return cell_2_node(cell_displacement_fluct(size,F))
+    return point_2_node(displacement_fluct_point(size,F))
 
 
-def node_displacement_avg(size,F):
+def displacement_avg_node(size,F):
     """
     Nodal displacement field from average part of the deformation gradient field.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
 
     """
     F_avg = _np.average(F,axis=(0,1,2))
-    return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),node_coord0(F.shape[:3],size))
+    return _np.einsum('ml,ijkl->ijkm',F_avg - _np.eye(3),coordinates0_node(F.shape[:3],size))
 
 
-def node_displacement(size,F):
+def displacement_node(size,F):
     """
     Nodal displacement field from deformation gradient field.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
 
     """
-    return node_displacement_avg(size,F) + node_displacement_fluct(size,F)
+    return displacement_avg_node(size,F) + displacement_fluct_node(size,F)
 
 
-def node_coord(size,F,origin=_np.zeros(3)):
+def coordinates_node(size,F,origin=_np.zeros(3)):
     """
     Nodal positions.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size of the periodic field.
+        Physical size of the periodic field.
     F : numpy.ndarray
-        deformation gradient field.
+        Deformation gradient field.
     origin : numpy.ndarray of shape (3), optional
-        physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
+        Physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
-    return node_coord0(F.shape[:3],size,origin) + node_displacement(size,F)
+    return coordinates0_node(F.shape[:3],size,origin) + displacement_node(size,F)
 
 
-def cell_2_node(cell_data):
-    """Interpolate periodic cell data to nodal data."""
+def point_2_node(cell_data):
+    """Interpolate periodic point data to nodal data."""
     n = (  cell_data + _np.roll(cell_data,1,(0,1,2))
          + _np.roll(cell_data,1,(0,))  + _np.roll(cell_data,1,(1,))  + _np.roll(cell_data,1,(2,))
          + _np.roll(cell_data,1,(0,1)) + _np.roll(cell_data,1,(1,2)) + _np.roll(cell_data,1,(2,0)))*0.125
@@ -355,8 +356,8 @@ def cell_2_node(cell_data):
     return _np.pad(n,((0,1),(0,1),(0,1))+((0,0),)*len(cell_data.shape[3:]),mode='wrap')
 
 
-def node_2_cell(node_data):
-    """Interpolate periodic nodal data to cell data."""
+def node_2_point(node_data):
+    """Interpolate periodic nodal data to point data."""
     c = (  node_data + _np.roll(node_data,1,(0,1,2))
          + _np.roll(node_data,1,(0,))  + _np.roll(node_data,1,(1,))  + _np.roll(node_data,1,(2,))
          + _np.roll(node_data,1,(0,1)) + _np.roll(node_data,1,(1,2)) + _np.roll(node_data,1,(2,0)))*0.125
@@ -364,27 +365,27 @@ def node_2_cell(node_data):
     return c[1:,1:,1:]
 
 
-def node_coord0_gridSizeOrigin(coord0,ordered=True):
+def cellSizeOrigin_coordinates0_node(coordinates0,ordered=True):
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of nodal positions.
 
     Parameters
     ----------
-    coord0 : numpy.ndarray of shape (:,3)
-        undeformed nodal coordinates.
+    coordinates0 : numpy.ndarray of shape (:,3)
+        Undeformed nodal coordinates.
     ordered : bool, optional
-        expect coord0 data to be ordered (x fast, z slow).
+        Expect coordinates0 data to be ordered (x fast, z slow).
 
     """
-    coords    = [_np.unique(coord0[:,i]) for i in range(3)]
+    coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
     cells     = _np.array(list(map(len,coords)),'i') - 1
     size      = maxcorner-mincorner
     origin    = mincorner
 
-    if (cells+1).prod() != len(coord0):
-        raise ValueError('Data count {len(coord0)} does not match cells {cells}.')
+    if (cells+1).prod() != len(coordinates0):
+        raise ValueError('Data count {len(coordinates0)} does not match cells {cells}.')
 
     atol = _np.max(size)*5e-2
     if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],cells[0]+1),atol=atol) and \
@@ -392,7 +393,8 @@ def node_coord0_gridSizeOrigin(coord0,ordered=True):
             _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],cells[2]+1),atol=atol)):
         raise ValueError('Regular cells spacing violated.')
 
-    if ordered and not _np.allclose(coord0.reshape(tuple(cells+1)+(3,),order='F'),node_coord0(cells,size,origin),atol=atol):
+    if ordered and not _np.allclose(coordinates0.reshape(tuple(cells+1)+(3,),order='F'),
+                                    coordinates0_node(cells,size,origin),atol=atol):
         raise ValueError('Input data is not ordered (x fast, z slow).')
 
     return (cells,size,origin)
@@ -412,9 +414,9 @@ def regrid(size,F,cells_new):
         New cells for undeformed coordinates.
 
     """
-    c = cell_coord0(F.shape[:3],size) \
-      + cell_displacement_avg(size,F) \
-      + cell_displacement_fluct(size,F)
+    c = coordinates0_point(F.shape[:3],size) \
+      + displacement_avg_point(size,F) \
+      + displacement_fluct_point(size,F)
 
     outer = _np.dot(_np.average(F,axis=(0,1,2)),size)
     for d in range(3):
@@ -422,4 +424,4 @@ def regrid(size,F,cells_new):
         c[_np.where(c[:,:,:,d]>outer[d])] -= outer[d]
 
     tree = _spatial.cKDTree(c.reshape(-1,3),boxsize=outer)
-    return tree.query(cell_coord0(cells_new,outer))[1].flatten()
+    return tree.query(coordinates0_point(cells_new,outer))[1].flatten()

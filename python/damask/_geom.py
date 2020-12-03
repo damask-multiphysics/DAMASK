@@ -302,7 +302,7 @@ class Geom:
             Each unique combintation of values results in one material ID.
 
         """
-        cells,size,origin = grid_filters.cell_coord0_gridSizeOrigin(table.get(coordinates))
+        cells,size,origin = grid_filters.cellSizeOrigin_coordinates0_point(table.get(coordinates))
 
         labels_ = [labels] if isinstance(labels,str) else labels
         unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
@@ -344,11 +344,11 @@ class Geom:
             seeds_p = np.vstack((seeds  -np.array([size[0],0.,0.]),seeds,  seeds  +np.array([size[0],0.,0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,size[1],0.]),seeds_p,seeds_p+np.array([0.,size[1],0.])))
             seeds_p = np.vstack((seeds_p-np.array([0.,0.,size[2]]),seeds_p,seeds_p+np.array([0.,0.,size[2]])))
-            coords  = grid_filters.cell_coord0(cells*3,size*3,-size).reshape(-1,3)
+            coords  = grid_filters.coordinates0_point(cells*3,size*3,-size).reshape(-1,3)
         else:
             weights_p = weights
             seeds_p   = seeds
-            coords    = grid_filters.cell_coord0(cells,size).reshape(-1,3)
+            coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
         pool = mp.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
         result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
@@ -388,7 +388,7 @@ class Geom:
             Perform a periodic tessellation. Defaults to True.
 
         """
-        coords = grid_filters.cell_coord0(cells,size).reshape(-1,3)
+        coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,material_ = KDTree.query(coords)
 
@@ -592,7 +592,7 @@ class Geom:
         c = (np.array(center) + .5)*self.size/self.cells if np.array(center).dtype    in np.sctypes['int'] else \
             (np.array(center) - self.origin)
 
-        coords = grid_filters.cell_coord0(self.cells,self.size,
+        coords = grid_filters.coordinates0_point(self.cells,self.size,
                                           -(0.5*(self.size + (self.size/self.cells
                                                               if np.array(center).dtype in np.sctypes['int'] else
                                                               0)) if periodic else c))
@@ -932,5 +932,5 @@ class Geom:
             base_nodes = np.argwhere(mask.flatten(order='F')).reshape(-1,1)
             connectivity.append(np.block([base_nodes + o[i][k] for k in range(4)]))
 
-        coords = grid_filters.node_coord0(self.cells,self.size,self.origin).reshape(-1,3,order='F')
+        coords = grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         return VTK.from_unstructured_grid(coords,np.vstack(connectivity),'QUAD')
