@@ -33,6 +33,10 @@ class Table:
         """Brief overview."""
         return '\n'.join(['# '+c for c in self.comments])+'\n'+self.data.__repr__()
 
+    def __getitem__(self,item):
+        """Return slice according to item."""
+        return self.__class__(data=self.data[item],shapes=self.shapes,comments=self.comments)
+
     def __len__(self):
         """Number of rows."""
         return len(self.data)
@@ -44,6 +48,15 @@ class Table:
     def copy(self):
         """Copy Table."""
         return self.__copy__()
+
+    def where(self,expression):
+        """
+        Return boolean array corresponding to interpolated expression being True.
+
+        Table columns are addressed as #column# and will have appropriate shapes.
+
+        """
+        return eval(re.sub('#(.+?)#',r'self.get("\1")',expression))
 
 
     def _label_discrete(self):
