@@ -10,9 +10,9 @@ from damask import util
 
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Orientation'
+    return ref_path_base/'Orientation'
 
 @pytest.fixture
 def set_of_rodrigues(set_of_quaternions):
@@ -414,8 +414,8 @@ class TestOrientation:
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['cF','cI'])
-    def test_relationship_reference(self,update,reference_dir,model,lattice):
-        reference = reference_dir/f'{lattice}_{model}.txt'
+    def test_relationship_reference(self,update,ref_path,model,lattice):
+        reference = ref_path/f'{lattice}_{model}.txt'
         o = Orientation(lattice=lattice)
         eu = o.related(model).as_Euler_angles(degrees=True)
         if update:
@@ -525,10 +525,10 @@ class TestOrientation:
             == o.shape + (o.symmetry_operations.shape if with_symmetry else ()) + vector.shape
 
     @pytest.mark.parametrize('lattice',['hP','cI','cF'])
-    def test_Schmid(self,update,reference_dir,lattice):
+    def test_Schmid(self,update,ref_path,lattice):
         L = Orientation(lattice=lattice)
         for mode in L.kinematics:
-            reference = reference_dir/f'{lattice}_{mode}.txt'
+            reference = ref_path/f'{lattice}_{mode}.txt'
             P = L.Schmid(mode)
             if update:
                 table = Table(P.reshape(-1,9),{'Schmid':(3,3,)})

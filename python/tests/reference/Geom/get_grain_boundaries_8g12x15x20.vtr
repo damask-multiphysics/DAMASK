@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<VTKFile type="RectilinearGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <RectilinearGrid WholeExtent="0 12 0 15 0 20">
+    <FieldData>
+      <Array type="String" Name="comments" NumberOfTuples="1" format="binary">
+        AQAAAACAAABJAAAATwAAAA==eF4FwVEKgCAMANCO4mcRG5sTUy/QOVZKQUqB4Pl7L2vT/uBe3ob91FrMECQk0PrdCsEHuI4gzsVNspktWQJmsNFwTOKT8EpMtEw/IaUSzA==
+      </Array>
+    </FieldData>
+  <Piece Extent="0 12 0 15 0 20">
+    <PointData>
+    </PointData>
+    <CellData>
+      <DataArray type="Int32" Name="material" format="binary" RangeMin="0" RangeMax="7">
+        AQAAAACAAABAOAAA2AAAAA==eF7t0TEOwgAQA8EkkPD/H1PQ4pMsbXdryd1U9nH8zzs0Rf/rFfqE6lmfQv27zbf761mfQv27zbf761mfQv27zbf761mfQv27zbf761mfQv27zbf761mfQv27zbf761mfQv27zbf761mfQv27zbf761mfQv27zbf761l/ht6h+tm/Qj+heta3f+ln3+6vZ337l3727f561rd/6Wff7q9nffuXfvbt/nrWt3/pZ9/ur2d9+5d+9u3+eta3f+ln3+6vZ337l3727f561rd/6Wff7q9n/ReDyzIp
+      </DataArray>
+    </CellData>
+    <Coordinates>
+      <DataArray type="Float64" Name="x" format="binary" RangeMin="0" RangeMax="1.2">
+        AQAAAACAAABoAAAAOQAAAA==eF5jYICAmWCw0x5Cn7Q3BoPLUP5N+/9gcB8q/tg+DQyeQeVf2p8BgzdQde+h4h+h6j/bAwAS5DYX
+      </DataArray>
+      <DataArray type="Float64" Name="y" format="binary" RangeMin="0" RangeMax="1.5">
+        AQAAAACAAACAAAAARQAAAA==eF5jYICAWTNBYKc9hD5pb2IMApeh/Jv2EFUPoOKP7dPTQOAZVP6l/dkzIPAGqu4DVPwjVP1nqPwXqL5vUHU/7AHEUzT8
+      </DataArray>
+      <DataArray type="Float64" Name="z" format="binary" RangeMin="0" RangeMax="2">
+        AQAAAACAAACoAAAAVQAAAA==eF5jYICAWTNBYKc9hD5pb2IMApeh/Jv2EFUPoOKP7dPTQOAZVP6l/dkzIPAGqu4DVPwjVP1nqPwXqL5vUHU/oOp+QtX9hqr7A1X3D6qOwQEAqKdGHg==
+      </DataArray>
+    </Coordinates>
+  </Piece>
+  </RectilinearGrid>
+</VTKFile>

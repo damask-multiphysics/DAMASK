@@ -10,9 +10,9 @@ from PIL import ImageChops
 from damask import Colormap
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Colormap'
+    return ref_path_base/'Colormap'
 
 class TestColormap:
 
@@ -131,13 +131,13 @@ class TestColormap:
         assert (np.allclose(c.colors[:len(c.colors)//2],c.colors[len(c.colors)//2:]))
 
     @pytest.mark.parametrize('bounds',[None,[2,10]])
-    def test_shade(self,reference_dir,update,bounds):
+    def test_shade(self,ref_path,update,bounds):
         data = np.add(*np.indices((10, 11)))
         img_current = Colormap.from_predefined('orientation').shade(data,bounds=bounds)
         if update:
-            img_current.save(reference_dir/f'shade_{bounds}.png')
+            img_current.save(ref_path/f'shade_{bounds}.png')
         else:
-            img_reference = Image.open(reference_dir/f'shade_{bounds}.png')
+            img_reference = Image.open(ref_path/f'shade_{bounds}.png')
             diff = ImageChops.difference(img_reference.convert('RGB'),img_current.convert('RGB'))
             assert not diff.getbbox()
 
@@ -149,14 +149,14 @@ class TestColormap:
                                            ('GOM','.legend'),
                                            ('gmsh','.msh')
                                           ])
-    def test_compare_reference(self,format,ext,tmp_path,reference_dir,update):
+    def test_compare_reference(self,format,ext,tmp_path,ref_path,update):
         name = 'binary'
         c = Colormap.from_predefined(name)                                              # noqa
         if update:
-            os.chdir(reference_dir)
+            os.chdir(ref_path)
             eval(f'c.save_{format}()')
         else:
             os.chdir(tmp_path)
             eval(f'c.save_{format}()')
             time.sleep(.5)
-            assert filecmp.cmp(tmp_path/(name+ext),reference_dir/(name+ext))
+            assert filecmp.cmp(tmp_path/(name+ext),ref_path/(name+ext))

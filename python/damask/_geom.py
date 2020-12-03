@@ -897,3 +897,41 @@ class Geom:
                     origin   = self.origin,
                     comments = self.comments+[util.execution_stamp('Geom','vicinity_offset')],
                    )
+
+
+    def get_grain_boundaries(self,periodic=True,directions='xyz'):
+        """
+        Create VTK unstructured grid containing grain boundaries.
+
+        Parameters
+        ----------
+        periodic : bool, optional
+            Show boundaries across periodicity. Defaults to True.
+        directions : iterable containing str, optional
+            Direction(s) along which the geometry is mirrored.
+            Valid entries are 'x', 'y', 'z'. Defaults to 'xyz'.
+
+        """
+        valid = ['x','y','z']
+        if not set(directions).issubset(valid):
+            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
+
+        o = [[0, self.grid[0]+1,           np.prod(self.grid[:2]+1)+self.grid[0]+1, np.prod(self.grid[:2]+1)],
+             [0, np.prod(self.grid[:2]+1), np.prod(self.grid[:2]+1)+1,              1],
+             [0, 1,                        self.grid[0]+1+1,                        self.grid[0]+1]] # offset for connectivity
+
+        connectivity = []
+        for i,d in enumerate(['x','y','z']):
+            if d not in directions: continue
+            mask = self.material != np.roll(self.material,1,i)
+            for j in [0,1,2]:
+                mask = np.concatenate((mask,np.take(mask,[0],j)*(i==j)),j)
+            if i == 0 and not periodic: mask[0,:,:] = mask[-1,:,:] = False
+            if i == 1 and not periodic: mask[:,0,:] = mask[:,-1,:] = False
+            if i == 2 and not periodic: mask[:,:,0] = mask[:,:,-1] = False
+
+            base_nodes = np.argwhere(mask.flatten(order='F')).reshape(-1,1)
+            connectivity.append(np.block([base_nodes + o[i][k] for k in range(4)]))
+
+        coords = grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
+        return VTK.from_unstructured_grid(coords,np.vstack(connectivity),'QUAD')

@@ -9,9 +9,9 @@ from damask import VTK
 from damask import grid_filters
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'VTK'
+    return ref_path_base/'VTK'
 
 @pytest.fixture
 def default():
@@ -140,18 +140,18 @@ class TestVTK:
         new = VTK.load(tmp_path/'with_comments.vtr')
         assert new.get_comments() == ['this is a comment']
 
-    def test_compare_reference_polyData(self,update,reference_dir,tmp_path):
+    def test_compare_reference_polyData(self,update,ref_path,tmp_path):
         points=np.dstack((np.linspace(0.,1.,10),np.linspace(0.,2.,10),np.linspace(-1.,1.,10))).squeeze()
         polyData = VTK.from_poly_data(points)
         polyData.add(points,'coordinates')
         if update:
-             polyData.save(reference_dir/'polyData')
+             polyData.save(ref_path/'polyData')
         else:
-             reference = VTK.load(reference_dir/'polyData.vtp')
+             reference = VTK.load(ref_path/'polyData.vtp')
              assert polyData.__repr__() == reference.__repr__() and \
                     np.allclose(polyData.get('coordinates'),points)
 
-    def test_compare_reference_rectilinearGrid(self,update,reference_dir,tmp_path):
+    def test_compare_reference_rectilinearGrid(self,update,ref_path,tmp_path):
         grid = np.array([5,6,7],int)
         size = np.array([.6,1.,.5])
         rectilinearGrid = VTK.from_rectilinear_grid(grid,size)
@@ -160,8 +160,8 @@ class TestVTK:
         rectilinearGrid.add(c,'cell')
         rectilinearGrid.add(n,'node')
         if update:
-             rectilinearGrid.save(reference_dir/'rectilinearGrid')
+             rectilinearGrid.save(ref_path/'rectilinearGrid')
         else:
-             reference = VTK.load(reference_dir/'rectilinearGrid.vtr')
+             reference = VTK.load(ref_path/'rectilinearGrid.vtr')
              assert rectilinearGrid.__repr__() == reference.__repr__() and \
                     np.allclose(rectilinearGrid.get('cell'),c)

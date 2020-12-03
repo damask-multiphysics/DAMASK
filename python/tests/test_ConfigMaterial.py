@@ -7,16 +7,16 @@ from damask import ConfigMaterial
 from damask import Table
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'ConfigMaterial'
+    return ref_path_base/'ConfigMaterial'
 
 
 class TestConfigMaterial:
 
     @pytest.mark.parametrize('fname',[None,'test.yaml'])
-    def test_load_save(self,reference_dir,tmp_path,fname):
-        reference = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_load_save(self,ref_path,tmp_path,fname):
+        reference = ConfigMaterial.load(ref_path/'material.yaml')
         os.chdir(tmp_path)
         if fname is None:
             reference.save()
@@ -26,60 +26,60 @@ class TestConfigMaterial:
             new = ConfigMaterial.load(fname)
         assert reference == new
 
-    def test_valid_complete(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_valid_complete(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         assert material_config.is_valid and material_config.is_complete
 
-    def test_invalid_lattice(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_invalid_lattice(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         material_config['phase']['Aluminum']['lattice']='fxc'
         assert not material_config.is_valid
 
-    def test_invalid_orientation(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_invalid_orientation(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         material_config['material'][0]['constituents'][0]['O']=[0,0,0,0]
         assert not material_config.is_valid
 
-    def test_invalid_fraction(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_invalid_fraction(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         material_config['material'][0]['constituents'][0]['fraction']=.9
         assert not material_config.is_valid
 
     @pytest.mark.parametrize('item',['homogenization','phase','material'])
-    def test_incomplete_missing(self,reference_dir,item):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_incomplete_missing(self,ref_path,item):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         del material_config[item]
         assert not material_config.is_complete
 
     @pytest.mark.parametrize('item',['O','phase'])
-    def test_incomplete_material_constituent(self,reference_dir,item):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_incomplete_material_constituent(self,ref_path,item):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         del material_config['material'][0]['constituents'][0][item]
         assert not material_config.is_complete
 
-    def test_incomplete_material_homogenization(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_incomplete_material_homogenization(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         del material_config['material'][0]['homogenization']
         assert not material_config.is_complete
 
-    def test_incomplete_homogenization_N_constituents(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_incomplete_homogenization_N_constituents(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         for h in material_config['homogenization'].keys():
             del material_config['homogenization'][h]['N_constituents']
         assert not material_config.is_complete
 
-    def test_incomplete_phase_lattice(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_incomplete_phase_lattice(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         del material_config['phase']['Aluminum']['lattice']
         assert not material_config.is_complete
 
-    def test_incomplete_wrong_phase(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_incomplete_wrong_phase(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         new = material_config.material_rename_phase({'Steel':'FeNbC'})
         assert not new.is_complete
 
-    def test_incomplete_wrong_homogenization(self,reference_dir):
-        material_config = ConfigMaterial.load(reference_dir/'material.yaml')
+    def test_incomplete_wrong_homogenization(self,ref_path):
+        material_config = ConfigMaterial.load(ref_path/'material.yaml')
         new = material_config.material_rename_homogenization({'Taylor':'isostrain'})
         assert not new.is_complete
 

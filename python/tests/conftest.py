@@ -61,7 +61,7 @@ def update(request):
 
 
 @pytest.fixture
-def reference_dir_base():
+def ref_path_base():
     """Directory containing reference results."""
     return Path(__file__).parent/'reference'
 

@@ -26,9 +26,9 @@ def default():
     return Geom(x,[8e-6,5e-6,4e-6])
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Geom'
+    return ref_path_base/'Geom'
 
 
 class TestGeom:
@@ -36,6 +36,10 @@ class TestGeom:
     @pytest.fixture(autouse=True)
     def _patch_execution_stamp(self, patch_execution_stamp):
         print('patched damask.util.execution_stamp')
+
+    @pytest.fixture(autouse=True)
+    def _patch_datetime_now(self, patch_datetime_now):
+        print('patched datetime.datetime.now')
 
     def test_diff_equal(self,default):
         assert str(default.diff(default)) == ''
@@ -104,10 +108,10 @@ class TestGeom:
                                                    (['y','z'],    False)
                                                   ]
                             )
-    def test_mirror(self,default,update,reference_dir,directions,reflect):
+    def test_mirror(self,default,update,ref_path,directions,reflect):
         modified = default.mirror(directions,reflect)
         tag = f'directions_{"-".join(directions)}+reflect_{reflect}'
-        reference = reference_dir/f'mirror_{tag}.vtr'
+        reference = ref_path/f'mirror_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -126,10 +130,10 @@ class TestGeom:
                                            ['y','z'],
                                           ]
                             )
-    def test_flip(self,default,update,reference_dir,directions):
+    def test_flip(self,default,update,ref_path,directions):
         modified = default.flip(directions)
         tag = f'directions_{"-".join(directions)}'
-        reference = reference_dir/f'flip_{tag}.vtr'
+        reference = ref_path/f'flip_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -153,9 +157,9 @@ class TestGeom:
     @pytest.mark.parametrize('stencil',[1,2,3,4])
     @pytest.mark.parametrize('selection',[None,[1],[1,2,3]])
     @pytest.mark.parametrize('periodic',[True,False])
-    def test_clean(self,default,update,reference_dir,stencil,selection,periodic):
+    def test_clean(self,default,update,ref_path,stencil,selection,periodic):
         current = default.clean(stencil,selection,periodic)
-        reference = reference_dir/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
+        reference = ref_path/f'clean_{stencil}_{"+".join(map(str,[None] if selection is None else selection))}_{periodic}'
         if update and stencil > 1:
             current.save(reference)
         assert geom_equal(Geom.load(reference) if stencil > 1 else default,
@@ -172,10 +176,10 @@ class TestGeom:
                                      np.array((10,20,2))
                                     ]
                             )
-    def test_scale(self,default,update,reference_dir,grid):
+    def test_scale(self,default,update,ref_path,grid):
         modified = default.scale(grid)
         tag = f'grid_{util.srepr(grid,"-")}'
-        reference = reference_dir/f'scale_{tag}.vtr'
+        reference = ref_path/f'scale_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -228,10 +232,10 @@ class TestGeom:
 
     @pytest.mark.parametrize('Eulers',[[32.0,68.0,21.0],
                                        [0.0,32.0,240.0]])
-    def test_rotate(self,default,update,reference_dir,Eulers):
+    def test_rotate(self,default,update,ref_path,Eulers):
         modified = default.rotate(Rotation.from_Euler_angles(Eulers,degrees=True))
         tag = f'Eulers_{util.srepr(Eulers,"-")}'
-        reference = reference_dir/f'rotate_{tag}.vtr'
+        reference = ref_path/f'rotate_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
                           modified)
@@ -406,3 +410,13 @@ class TestGeom:
         coords = grid_filters.cell_coord0(grid,size)
         t = Table(np.column_stack((coords.reshape(-1,3,order='F'),geom.material.flatten(order='F'))),{'c':3,'m':1})
         assert geom_equal(geom.sort().renumber(),Geom.from_table(t,'c',['m']))
+
+    @pytest.mark.parametrize('periodic',[True,False])
+    @pytest.mark.parametrize('direction',['x','y','z',['x','y'],'zy','xz',['x','y','z']])
+    def test_get_grain_boundaries(self,update,ref_path,periodic,direction):
+        geom=Geom.load(ref_path/'get_grain_boundaries_8g12x15x20.vtr')
+        current=geom.get_grain_boundaries(periodic,direction)
+        if update:
+            current.save(ref_path/f'get_grain_boundaries_8g12x15x20_{direction}_{periodic}.vtu',parallel=False)
+        reference=VTK.load(ref_path/f'get_grain_boundaries_8g12x15x20_{"".join(direction)}_{periodic}.vtu')
+        assert current.__repr__() == reference.__repr__()

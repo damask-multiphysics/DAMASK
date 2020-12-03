@@ -16,25 +16,25 @@ from damask import mechanics
 from damask import grid_filters
 
 @pytest.fixture
-def default(tmp_path,reference_dir):
+def default(tmp_path,ref_path):
     """Small Result file in temp location for modification."""
     fname = '12grains6x7x8_tensionY.hdf5'
-    shutil.copy(reference_dir/fname,tmp_path)
+    shutil.copy(ref_path/fname,tmp_path)
     f = Result(tmp_path/fname)
     f.pick('times',20.0)
     return f
 
 @pytest.fixture
-def single_phase(tmp_path,reference_dir):
+def single_phase(tmp_path,ref_path):
     """Single phase Result file in temp location for modification."""
     fname = '6grains6x7x8_single_phase_tensionY.hdf5'
-    shutil.copy(reference_dir/fname,tmp_path)
+    shutil.copy(ref_path/fname,tmp_path)
     return Result(tmp_path/fname)
 
 @pytest.fixture
-def reference_dir(reference_dir_base):
+def ref_path(ref_path_base):
     """Directory containing reference results."""
-    return reference_dir_base/'Result'
+    return ref_path_base/'Result'
 
 
 class TestResult:
@@ -373,7 +373,7 @@ class TestResult:
         os.chdir(tmp_path)
         single_phase.save_VTK(mode=mode)
 
-    def test_XDMF(self,tmp_path,single_phase,update,reference_dir):
+    def test_XDMF(self,tmp_path,single_phase,update,ref_path):
         for shape in [('scalar',()),('vector',(3,)),('tensor',(3,3)),('matrix',(12,))]:
             for dtype in ['f4','f8','i1','i2','i4','i8','u1','u2','u4','u8']:
                  single_phase.add_calculation(f'{shape[0]}_{dtype}',f"np.ones(np.shape(#F#)[0:1]+{shape[1]},'{dtype}')")
@@ -381,8 +381,8 @@ class TestResult:
         os.chdir(tmp_path)
         single_phase.save_XDMF()
         if update:
-            shutil.copy(tmp_path/fname,reference_dir/fname)
-        assert sorted(open(tmp_path/fname).read()) == sorted(open(reference_dir/fname).read())      # XML is not ordered
+            shutil.copy(tmp_path/fname,ref_path/fname)
+        assert sorted(open(tmp_path/fname).read()) == sorted(open(ref_path/fname).read())           # XML is not ordered
 
     def test_XDMF_invalid(self,default):
         with pytest.raises(TypeError):
