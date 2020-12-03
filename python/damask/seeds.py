@@ -7,7 +7,7 @@ from . import util
 from . import grid_filters
 
 
-def from_random(size,N_seeds,grid=None,rng_seed=None):
+def from_random(size,N_seeds,cells=None,rng_seed=None):
     """
     Random seeding in space.
 
@@ -17,7 +17,7 @@ def from_random(size,N_seeds,grid=None,rng_seed=None):
         Physical size of the seeding domain.
     N_seeds : int
         Number of seeds.
-    grid : numpy.ndarray of shape (3), optional.
+    cells : numpy.ndarray of shape (3), optional.
         If given, ensures that all seeds initiate one grain if using a
         standard Voronoi tessellation.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -26,12 +26,12 @@ def from_random(size,N_seeds,grid=None,rng_seed=None):
 
     """
     rng = _np.random.default_rng(rng_seed)
-    if grid is None:
+    if cells is None:
         coords = rng.random((N_seeds,3)) * size
     else:
-        grid_coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
-        coords = grid_coords[rng.choice(_np.prod(grid),N_seeds, replace=False)] \
-               + _np.broadcast_to(size/grid,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)           # wobble without leaving grid
+        grid_coords = grid_filters.cell_coord0(cells,size).reshape(-1,3,order='F')
+        coords = grid_coords[rng.choice(_np.prod(cells),N_seeds, replace=False)] \
+               + _np.broadcast_to(size/cells,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)          # wobble without leaving cells
 
     return coords
 
@@ -51,7 +51,7 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     distance : float
         Minimum acceptable distance to other seeds.
     periodic : boolean, optional
-        Calculate minimum distance for periodically repeated grid.
+        Calculate minimum distance for periodically repeated cells.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
@@ -96,9 +96,9 @@ def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
 
     """
     material = geom.material.reshape((-1,1),order='F')
-    mask = _np.full(geom.grid.prod(),True,dtype=bool) if selection is None else \
+    mask = _np.full(geom.cells.prod(),True,dtype=bool) if selection is None else \
            _np.isin(material,selection,invert=invert).flatten()
-    coords = grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
+    coords = grid_filters.cell_coord0(geom.cells,geom.size).reshape(-1,3,order='F')
 
     if not average:
         return (coords[mask],material[mask])

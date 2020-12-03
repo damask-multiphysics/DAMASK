@@ -54,13 +54,13 @@ for name in filenames:
     damask.util.report(scriptName,name)
     geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-    offset =(np.amin(options.box, axis=1)*geom.grid/geom.size).astype(int)
+    offset =(np.amin(options.box, axis=1)*geom.cells/geom.size).astype(int)
     box    = np.amax(options.box, axis=1) \
            - np.amin(options.box, axis=1)
 
     Nx = int(options.N/np.sqrt(options.N*geom.size[1]*box[1]/geom.size[0]/box[0]))
     Ny = int(options.N/np.sqrt(options.N*geom.size[0]*box[0]/geom.size[1]/box[1]))
-    Nz = int(box[2]*geom.grid[2])
+    Nz = int(box[2]*geom.cells[2])
 
     damask.util.croak('poking {} x {} x {} in box {} {} {}...'.format(Nx,Ny,Nz,*box))
 
@@ -70,12 +70,12 @@ for name in filenames:
     n = 0
     for i in range(Nx):
         for j in range(Ny):
-            g[0] = round((i+0.5)*box[0]*geom.grid[0]/Nx-0.5)+offset[0]
-            g[1] = round((j+0.5)*box[1]*geom.grid[1]/Ny-0.5)+offset[1]
+            g[0] = round((i+0.5)*box[0]*geom.cells[0]/Nx-0.5)+offset[0]
+            g[1] = round((j+0.5)*box[1]*geom.cells[1]/Ny-0.5)+offset[1]
             for k in range(Nz):
                 g[2] = k + offset[2]
-                g %= geom.grid
-                seeds[n,0:3] = (g+0.5)/geom.grid                                                    # normalize coordinates to box
+                g %= geom.cells
+                seeds[n,0:3] = (g+0.5)/geom.cells                                                   # normalize coordinates to box
                 seeds[n,  3] = geom.material[g[0],g[1],g[2]]
                 if options.x: g[0] += 1
                 if options.y: g[1] += 1
@@ -85,7 +85,7 @@ for name in filenames:
     comments = geom.comments \
              + [scriptID + ' ' + ' '.join(sys.argv[1:]),
                 'poking\ta {}\tb {}\tc {}'.format(Nx,Ny,Nz),
-                'grid\ta {}\tb {}\tc {}'.format(*geom.grid),
+                'grid\ta {}\tb {}\tc {}'.format(*geom.cells),
                 'size\tx {}\ty {}\tz {}'.format(*geom.size),
                 'origin\tx {}\ty {}\tz {}'.format(*geom.origin),
                ]

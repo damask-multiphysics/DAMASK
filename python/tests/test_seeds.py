@@ -8,11 +8,11 @@ from damask import Geom
 
 class TestSeeds:
 
-    @pytest.mark.parametrize('grid',[None,np.ones(3,dtype='i')*10])
-    def test_from_random(self,grid):
+    @pytest.mark.parametrize('cells',[None,np.ones(3,dtype='i')*10])
+    def test_from_random(self,cells):
         N_seeds = np.random.randint(30,300)
         size = np.ones(3) + np.random.random(3)
-        coords = seeds.from_random(size,N_seeds,grid)
+        coords = seeds.from_random(size,N_seeds,cells)
         assert (0<=coords).all() and (coords<size).all()
 
     @pytest.mark.parametrize('periodic',[True,False])
@@ -27,36 +27,36 @@ class TestSeeds:
         assert (0<= coords).all() and (coords<size).all() and np.min(min_dists[:,1])>=distance
 
     def test_from_geom_reconstruct(self):
-        grid = np.random.randint(10,20,3)
+        cells = np.random.randint(10,20,3)
         N_seeds = np.random.randint(30,300)
         size = np.ones(3) + np.random.random(3)
-        coords = seeds.from_random(size,N_seeds,grid)
-        geom_1 = Geom.from_Voronoi_tessellation(grid,size,coords)
+        coords = seeds.from_random(size,N_seeds,cells)
+        geom_1 = Geom.from_Voronoi_tessellation(cells,size,coords)
         coords,material = seeds.from_geom(geom_1)
-        geom_2 = Geom.from_Voronoi_tessellation(grid,size,coords,material)
+        geom_2 = Geom.from_Voronoi_tessellation(cells,size,coords,material)
         assert (geom_2.material==geom_1.material).all()
 
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('average',[True,False])
     def test_from_geom_grid(self,periodic,average):
-        grid = np.random.randint(10,20,3)
-        size = np.ones(3) + np.random.random(3)
-        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3)
+        cells = np.random.randint(10,20,3)
+        size  = np.ones(3) + np.random.random(3)
+        coords = grid_filters.cell_coord0(cells,size).reshape(-1,3)
         np.random.shuffle(coords)
-        geom_1 = Geom.from_Voronoi_tessellation(grid,size,coords)
+        geom_1 = Geom.from_Voronoi_tessellation(cells,size,coords)
         coords,material = seeds.from_geom(geom_1,average=average,periodic=periodic)
-        geom_2 = Geom.from_Voronoi_tessellation(grid,size,coords,material)
+        geom_2 = Geom.from_Voronoi_tessellation(cells,size,coords,material)
         assert (geom_2.material==geom_1.material).all()
 
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('average',[True,False])
     @pytest.mark.parametrize('invert',[True,False])
     def test_from_geom_selection(self,periodic,average,invert):
-        grid = np.random.randint(10,20,3)
+        cells = np.random.randint(10,20,3)
         N_seeds = np.random.randint(30,300)
         size = np.ones(3) + np.random.random(3)
-        coords = seeds.from_random(size,N_seeds,grid)
-        geom = Geom.from_Voronoi_tessellation(grid,size,coords)
+        coords = seeds.from_random(size,N_seeds,cells)
+        geom = Geom.from_Voronoi_tessellation(cells,size,coords)
         selection=np.random.randint(N_seeds)+1
         coords,material = seeds.from_geom(geom,average=average,periodic=periodic,invert=invert,selection=[selection])
         assert selection not in material if invert else (selection==material).all()

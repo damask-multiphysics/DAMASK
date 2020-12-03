@@ -212,7 +212,7 @@ points = np.array(options.grid).prod().astype('float')
 # ----------- calculate target distribution and bin edges
 targetGeom = damask.Geom.load_ASCII(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
 nMaterials = len(np.unique(targetGeom.material))
-targetVolFrac = np.bincount(targetGeom.material.flatten())/targetGeom.grid.prod().astype(np.float)
+targetVolFrac = np.bincount(targetGeom.material.flatten())/targetGeom.cells.prod().astype(np.float)
 target = []
 for i in range(1,nMaterials+1):
   targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries

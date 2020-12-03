@@ -201,7 +201,7 @@ for name in filenames:
 
     cmds = [\
       init(),
-      mesh(geom.grid,geom.size),
+      mesh(geom.cells,geom.size),
       materials(),
       geometry(),
       initial_conditions(material),

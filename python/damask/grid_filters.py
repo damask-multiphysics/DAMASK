@@ -8,14 +8,14 @@ This convention is consistent with the geom file format.
 When converting to/from a plain list (e.g. storage in ASCII table),
 the following operations are required for tensorial data:
 
-D3 = D1.reshape(grid+(-1,),order='F').reshape(grid+(3,3))
-D1 = D3.reshape(grid+(-1,)).reshape(-1,9,order='F')
+D3 = D1.reshape(cells+(-1,),order='F').reshape(cells+(3,3))
+D1 = D3.reshape(cells+(-1,)).reshape(-1,9,order='F')
 
 """
 from scipy import spatial as _spatial
 import numpy as _np
 
-def _ks(size,grid,first_order=False):
+def _ks(size,cells,first_order=False):
     """
     Get wave numbers operator.
 
@@ -23,19 +23,19 @@ def _ks(size,grid,first_order=False):
     ----------
     size : numpy.ndarray of shape (3)
         physical size of the periodic field.
-    grid : numpy.ndarray of shape (3)
-        number of grid points.
+    cells : numpy.ndarray of shape (3)
+        number of cells.
     first_order : bool, optional
         correction for first order derivatives, defaults to False.
 
     """
-    k_sk = _np.where(_np.arange(grid[0])>grid[0]//2,_np.arange(grid[0])-grid[0],_np.arange(grid[0]))/size[0]
-    if grid[0]%2 == 0 and first_order: k_sk[grid[0]//2] = 0                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
+    k_sk = _np.where(_np.arange(cells[0])>cells[0]//2,_np.arange(cells[0])-cells[0],_np.arange(cells[0]))/size[0]
+    if cells[0]%2 == 0 and first_order: k_sk[cells[0]//2] = 0                                       # Nyquist freq=0 for even cells (Johnson, MIT, 2011)
 
-    k_sj = _np.where(_np.arange(grid[1])>grid[1]//2,_np.arange(grid[1])-grid[1],_np.arange(grid[1]))/size[1]
-    if grid[1]%2 == 0 and first_order: k_sj[grid[1]//2] = 0                                         # Nyquist freq=0 for even grid (Johnson, MIT, 2011)
+    k_sj = _np.where(_np.arange(cells[1])>cells[1]//2,_np.arange(cells[1])-cells[1],_np.arange(cells[1]))/size[1]
+    if cells[1]%2 == 0 and first_order: k_sj[cells[1]//2] = 0                                       # Nyquist freq=0 for even cells (Johnson, MIT, 2011)
 
-    k_si = _np.arange(grid[2]//2+1)/size[2]
+    k_si = _np.arange(cells[2]//2+1)/size[2]
 
     return _np.stack(_np.meshgrid(k_sk,k_sj,k_si,indexing = 'ij'), axis=-1)
 
@@ -110,26 +110,26 @@ def gradient(size,field):
     return _np.fft.irfftn(grad_,axes=(0,1,2),s=field.shape[:3])
 
 
-def cell_coord0(grid,size,origin=_np.zeros(3)):
+def cell_coord0(cells,size,origin=_np.zeros(3)):
     """
     Cell center positions (undeformed).
 
     Parameters
     ----------
-    grid : numpy.ndarray of shape (3)
-        number of grid points.
+    cells : numpy.ndarray of shape (3)
+        number of cells.
     size : numpy.ndarray of shape (3)
         physical size of the periodic field.
     origin : numpy.ndarray, optional
         physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
-    start = origin        + size/grid*.5
-    end   = origin + size - size/grid*.5
+    start = origin        + size/cells*.5
+    end   = origin + size - size/cells*.5
 
-    return _np.stack(_np.meshgrid(_np.linspace(start[0],end[0],grid[0]),
-                                  _np.linspace(start[1],end[1],grid[1]),
-                                  _np.linspace(start[2],end[2],grid[2]),indexing = 'ij'),
+    return _np.stack(_np.meshgrid(_np.linspace(start[0],end[0],cells[0]),
+                                  _np.linspace(start[1],end[1],cells[1]),
+                                  _np.linspace(start[2],end[2],cells[2]),indexing = 'ij'),
                      axis = -1)
 
 
@@ -210,7 +210,7 @@ def cell_coord(size,F,origin=_np.zeros(3)):
 
 def cell_coord0_gridSizeOrigin(coord0,ordered=True):
     """
-    Return grid 'DNA', i.e. grid, size, and origin from 1D array of cell positions.
+    Return grid 'DNA', i.e. cells, size, and origin from 1D array of cell positions.
 
     Parameters
     ----------
@@ -223,31 +223,31 @@ def cell_coord0_gridSizeOrigin(coord0,ordered=True):
     coords    = [_np.unique(coord0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
-    grid      = _np.array(list(map(len,coords)),'i')
-    size      = grid/_np.maximum(grid-1,1) * (maxcorner-mincorner)
-    delta     = size/grid
+    cells     = _np.array(list(map(len,coords)),'i')
+    size      = cells/_np.maximum(cells-1,1) * (maxcorner-mincorner)
+    delta     = size/cells
     origin    = mincorner - delta*.5
 
     # 1D/2D: size/origin combination undefined, set origin to 0.0
-    size  [_np.where(grid==1)] = origin[_np.where(grid==1)]*2.
-    origin[_np.where(grid==1)] = 0.0
+    size  [_np.where(cells==1)] = origin[_np.where(cells==1)]*2.
+    origin[_np.where(cells==1)] = 0.0
 
-    if grid.prod() != len(coord0):
-        raise ValueError('Data count {len(coord0)} does not match grid {grid}.')
+    if cells.prod() != len(coord0):
+        raise ValueError('Data count {len(coord0)} does not match cells {cells}.')
 
     start = origin + delta*.5
     end   = origin - delta*.5 + size
 
     atol = _np.max(size)*5e-2
-    if not (_np.allclose(coords[0],_np.linspace(start[0],end[0],grid[0]),atol=atol) and \
-            _np.allclose(coords[1],_np.linspace(start[1],end[1],grid[1]),atol=atol) and \
-            _np.allclose(coords[2],_np.linspace(start[2],end[2],grid[2]),atol=atol)):
-        raise ValueError('Regular grid spacing violated.')
+    if not (_np.allclose(coords[0],_np.linspace(start[0],end[0],cells[0]),atol=atol) and \
+            _np.allclose(coords[1],_np.linspace(start[1],end[1],cells[1]),atol=atol) and \
+            _np.allclose(coords[2],_np.linspace(start[2],end[2],cells[2]),atol=atol)):
+        raise ValueError('Regular cells spacing violated.')
 
-    if ordered and not _np.allclose(coord0.reshape(tuple(grid)+(3,),order='F'),cell_coord0(grid,size,origin),atol=atol):
+    if ordered and not _np.allclose(coord0.reshape(tuple(cells)+(3,),order='F'),cell_coord0(cells,size,origin),atol=atol):
         raise ValueError('Input data is not ordered (x fast, z slow).')
 
-    return (grid,size,origin)
+    return (cells,size,origin)
 
 
 def coord0_check(coord0):
@@ -263,23 +263,23 @@ def coord0_check(coord0):
     cell_coord0_gridSizeOrigin(coord0,ordered=True)
 
 
-def node_coord0(grid,size,origin=_np.zeros(3)):
+def node_coord0(cells,size,origin=_np.zeros(3)):
     """
     Nodal positions (undeformed).
 
     Parameters
     ----------
-    grid : numpy.ndarray of shape (3)
-        number of grid points.
+    cells : numpy.ndarray of shape (3)
+        number of cells.
     size : numpy.ndarray of shape (3)
         physical size of the periodic field.
     origin : numpy.ndarray of shape (3), optional
         physical origin of the periodic field. Defaults to [0.0,0.0,0.0].
 
     """
-    return _np.stack(_np.meshgrid(_np.linspace(origin[0],size[0]+origin[0],grid[0]+1),
-                                  _np.linspace(origin[1],size[1]+origin[1],grid[1]+1),
-                                  _np.linspace(origin[2],size[2]+origin[2],grid[2]+1),indexing = 'ij'),
+    return _np.stack(_np.meshgrid(_np.linspace(origin[0],size[0]+origin[0],cells[0]+1),
+                                  _np.linspace(origin[1],size[1]+origin[1],cells[1]+1),
+                                  _np.linspace(origin[2],size[2]+origin[2],cells[2]+1),indexing = 'ij'),
                      axis = -1)
 
 
@@ -366,7 +366,7 @@ def node_2_cell(node_data):
 
 def node_coord0_gridSizeOrigin(coord0,ordered=True):
     """
-    Return grid 'DNA', i.e. grid, size, and origin from 1D array of nodal positions.
+    Return grid 'DNA', i.e. cells, size, and origin from 1D array of nodal positions.
 
     Parameters
     ----------
@@ -379,37 +379,37 @@ def node_coord0_gridSizeOrigin(coord0,ordered=True):
     coords    = [_np.unique(coord0[:,i]) for i in range(3)]
     mincorner = _np.array(list(map(min,coords)))
     maxcorner = _np.array(list(map(max,coords)))
-    grid      = _np.array(list(map(len,coords)),'i') - 1
+    cells     = _np.array(list(map(len,coords)),'i') - 1
     size      = maxcorner-mincorner
     origin    = mincorner
 
-    if (grid+1).prod() != len(coord0):
-        raise ValueError('Data count {len(coord0)} does not match grid {grid}.')
+    if (cells+1).prod() != len(coord0):
+        raise ValueError('Data count {len(coord0)} does not match cells {cells}.')
 
     atol = _np.max(size)*5e-2
-    if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],grid[0]+1),atol=atol) and \
-            _np.allclose(coords[1],_np.linspace(mincorner[1],maxcorner[1],grid[1]+1),atol=atol) and \
-            _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],grid[2]+1),atol=atol)):
-        raise ValueError('Regular grid spacing violated.')
+    if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],cells[0]+1),atol=atol) and \
+            _np.allclose(coords[1],_np.linspace(mincorner[1],maxcorner[1],cells[1]+1),atol=atol) and \
+            _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],cells[2]+1),atol=atol)):
+        raise ValueError('Regular cells spacing violated.')
 
-    if ordered and not _np.allclose(coord0.reshape(tuple(grid+1)+(3,),order='F'),node_coord0(grid,size,origin),atol=atol):
+    if ordered and not _np.allclose(coord0.reshape(tuple(cells+1)+(3,),order='F'),node_coord0(cells,size,origin),atol=atol):
         raise ValueError('Input data is not ordered (x fast, z slow).')
 
-    return (grid,size,origin)
+    return (cells,size,origin)
 
 
-def regrid(size,F,new_grid):
+def regrid(size,F,cells_new):
     """
-    Return mapping from coordinates in deformed configuration to a regular grid.
+    Return mapping from coordinates in deformed configuration to a regular cells.
 
     Parameters
     ----------
     size : numpy.ndarray of shape (3)
-        physical size
+        Physical size.
     F : numpy.ndarray of shape (:,:,:,3,3)
-        deformation gradient field
-    new_grid : numpy.ndarray of shape (3)
-        new grid for undeformed coordinates
+        Deformation gradient field.
+    cells_new : numpy.ndarray of shape (3)
+        New cells for undeformed coordinates.
 
     """
     c = cell_coord0(F.shape[:3],size) \
@@ -422,4 +422,4 @@ def regrid(size,F,new_grid):
         c[_np.where(c[:,:,:,d]>outer[d])] -= outer[d]
 
     tree = _spatial.cKDTree(c.reshape(-1,3),boxsize=outer)
-    return tree.query(cell_coord0(new_grid,outer))[1].flatten()
+    return tree.query(cell_coord0(cells_new,outer))[1].flatten()

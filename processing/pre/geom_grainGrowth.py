@@ -64,7 +64,7 @@ for name in filenames:
 
   geom = damask.Geom.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
-  grid_original = geom.grid
+  grid_original = geom.cells
   damask.util.croak(geom)
   material = np.tile(geom.material,np.where(grid_original == 1, 2,1))                   # make one copy along dimensions with grid == 1
   grid = np.array(material.shape)

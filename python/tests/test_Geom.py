@@ -12,7 +12,7 @@ from damask import grid_filters
 
 def geom_equal(a,b):
     return np.all(a.material == b.material) and \
-           np.all(a.grid     == b.grid) and \
+           np.all(a.cells    == b.cells) and \
            np.allclose(a.size, b.size) and \
            str(a.diff(b)) == str(b.diff(a))
 
@@ -167,7 +167,7 @@ class TestGeom:
                          )
 
 
-    @pytest.mark.parametrize('grid',[
+    @pytest.mark.parametrize('cells',[
                                      (10,11,10),
                                      [10,13,10],
                                      np.array((10,10,10)),
@@ -176,9 +176,9 @@ class TestGeom:
                                      np.array((10,20,2))
                                     ]
                             )
-    def test_scale(self,default,update,ref_path,grid):
-        modified = default.scale(grid)
-        tag = f'grid_{util.srepr(grid,"-")}'
+    def test_scale(self,default,update,ref_path,cells):
+        modified = default.scale(cells)
+        tag = f'grid_{util.srepr(cells,"-")}'
         reference = ref_path/f'scale_{tag}.vtr'
         if update: modified.save(reference)
         assert geom_equal(Geom.load(reference),
@@ -216,8 +216,8 @@ class TestGeom:
         assert geom_equal(default, modified.substitute(t,f))
 
     def test_sort(self):
-        grid = np.random.randint(5,20,3)
-        m = Geom(np.random.randint(1,20,grid)*3,np.ones(3)).sort().material.flatten(order='F')
+        cells = np.random.randint(5,20,3)
+        m = Geom(np.random.randint(1,20,cells)*3,np.ones(3)).sort().material.flatten(order='F')
         for i,v in enumerate(m):
             assert i==0 or v > m[:i].max() or v in m[:i]
 
@@ -242,10 +242,10 @@ class TestGeom:
 
 
     def test_canvas(self,default):
-        grid = default.grid
+        cells = default.cells
         grid_add = np.random.randint(0,30,(3))
-        modified = default.canvas(grid + grid_add)
-        assert np.all(modified.material[:grid[0],:grid[1],:grid[2]] == default.material)
+        modified = default.canvas(cells + grid_add)
+        assert np.all(modified.material[:cells[0],:cells[1],:cells[2]] == default.material)
 
 
     @pytest.mark.parametrize('center1,center2',[(np.random.random(3)*.5,np.random.random()*8),
@@ -314,38 +314,38 @@ class TestGeom:
 
     @pytest.mark.parametrize('periodic',[True,False])
     def test_tessellation_approaches(self,periodic):
-        grid   = np.random.randint(10,20,3)
+        cells  = np.random.randint(10,20,3)
         size   = np.random.random(3) + 1.0
         N_seeds= np.random.randint(10,30)
         seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
-        Voronoi  = Geom.from_Voronoi_tessellation( grid,size,seeds,                 np.arange(N_seeds)+5,periodic)
-        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
+        Voronoi  = Geom.from_Voronoi_tessellation( cells,size,seeds,                 np.arange(N_seeds)+5,periodic)
+        Laguerre = Geom.from_Laguerre_tessellation(cells,size,seeds,np.ones(N_seeds),np.arange(N_seeds)+5,periodic)
         assert geom_equal(Laguerre,Voronoi)
 
 
     def test_Laguerre_weights(self):
-        grid   = np.random.randint(10,20,3)
+        cells  = np.random.randint(10,20,3)
         size   = np.random.random(3) + 1.0
         N_seeds= np.random.randint(10,30)
         seeds  = np.random.rand(N_seeds,3) * np.broadcast_to(size,(N_seeds,3))
         weights= np.full((N_seeds),-np.inf)
         ms     = np.random.randint(N_seeds)
         weights[ms] = np.random.random()
-        Laguerre = Geom.from_Laguerre_tessellation(grid,size,seeds,weights,periodic=np.random.random()>0.5)
+        Laguerre = Geom.from_Laguerre_tessellation(cells,size,seeds,weights,periodic=np.random.random()>0.5)
         assert np.all(Laguerre.material == ms)
 
 
     @pytest.mark.parametrize('approach',['Laguerre','Voronoi'])
     def test_tessellate_bicrystal(self,approach):
-        grid  = np.random.randint(5,10,3)*2
-        size  = grid.astype(np.float)
+        cells = np.random.randint(5,10,3)*2
+        size  = cells.astype(np.float)
         seeds = np.vstack((size*np.array([0.5,0.25,0.5]),size*np.array([0.5,0.75,0.5])))
-        material = np.zeros(grid)
-        material[:,grid[1]//2:,:] = 1
+        material = np.zeros(cells)
+        material[:,cells[1]//2:,:] = 1
         if   approach == 'Laguerre':
-            geom = Geom.from_Laguerre_tessellation(grid,size,seeds,np.ones(2),periodic=np.random.random()>0.5)
+            geom = Geom.from_Laguerre_tessellation(cells,size,seeds,np.ones(2),periodic=np.random.random()>0.5)
         elif approach == 'Voronoi':
-            geom = Geom.from_Voronoi_tessellation(grid,size,seeds,            periodic=np.random.random()>0.5)
+            geom = Geom.from_Voronoi_tessellation(cells,size,seeds,            periodic=np.random.random()>0.5)
         assert np.all(geom.material == material)
 
 
@@ -363,14 +363,14 @@ class TestGeom:
                                         'Fisher-Koch S',
                                         ])
     def test_minimal_surface_basic_properties(self,surface):
-        grid = np.random.randint(60,100,3)
-        size = np.ones(3)+np.random.rand(3)
+        cells = np.random.randint(60,100,3)
+        size  = np.ones(3)+np.random.rand(3)
         threshold = 2*np.random.rand()-1.
         periods = np.random.randint(2)+1
         materials = np.random.randint(0,40,2)
-        geom = Geom.from_minimal_surface(grid,size,surface,threshold,periods,materials)
+        geom = Geom.from_minimal_surface(cells,size,surface,threshold,periods,materials)
         assert set(geom.material.flatten()) | set(materials) == set(materials) \
-               and (geom.size == size).all() and (geom.grid == grid).all()
+               and (geom.size == size).all() and (geom.cells == cells).all()
 
     @pytest.mark.parametrize('surface,threshold',[('Schwarz P',0),
                                         ('Double Primitive',-1./6.),
@@ -386,28 +386,28 @@ class TestGeom:
                                         ('Fisher-Koch S',0),
                                         ])
     def test_minimal_surface_volume(self,surface,threshold):
-        grid = np.ones(3,dtype=int)*64
-        geom = Geom.from_minimal_surface(grid,np.ones(3),surface,threshold)
-        assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.grid),.5,rtol=1e-3)
+        cells = np.ones(3,dtype=int)*64
+        geom = Geom.from_minimal_surface(cells,np.ones(3),surface,threshold)
+        assert np.isclose(np.count_nonzero(geom.material==1)/np.prod(geom.cells),.5,rtol=1e-3)
 
 
     def test_from_table(self):
-        grid = np.random.randint(60,100,3)
+        cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
-        coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
-        z=np.ones(grid.prod())
-        z[grid[:2].prod()*int(grid[2]/2):]=0
+        coords = grid_filters.cell_coord0(cells,size).reshape(-1,3,order='F')
+        z=np.ones(cells.prod())
+        z[cells[:2].prod()*int(cells[2]/2):]=0
         t = Table(np.column_stack((coords,z)),{'coords':3,'z':1})
         g = Geom.from_table(t,'coords',['1_coords','z'])
-        assert g.N_materials == g.grid[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == grid[0]).all()
+        assert g.N_materials == g.cells[0]*2 and (g.material[:,:,-1]-g.material[:,:,0] == cells[0]).all()
 
 
     def test_from_table_recover(self,tmp_path):
-        grid = np.random.randint(60,100,3)
+        cells = np.random.randint(60,100,3)
         size = np.ones(3)+np.random.rand(3)
         s = seeds.from_random(size,np.random.randint(60,100))
-        geom = Geom.from_Voronoi_tessellation(grid,size,s)
-        coords = grid_filters.cell_coord0(grid,size)
+        geom = Geom.from_Voronoi_tessellation(cells,size,s)
+        coords = grid_filters.cell_coord0(cells,size)
         t = Table(np.column_stack((coords.reshape(-1,3,order='F'),geom.material.flatten(order='F'))),{'c':3,'m':1})
         assert geom_equal(geom.sort().renumber(),Geom.from_table(t,'c',['m']))
 
