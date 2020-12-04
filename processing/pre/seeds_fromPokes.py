@@ -52,7 +52,7 @@ options.box = np.array(options.box).reshape(3,2)
 
 for name in filenames:
     damask.util.report(scriptName,name)
-    geom = damask.Geom.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
+    geom = damask.Grid.load_ASCII(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
     offset =(np.amin(options.box, axis=1)*geom.cells/geom.size).astype(int)
     box    = np.amax(options.box, axis=1) \

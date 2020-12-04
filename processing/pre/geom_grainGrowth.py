@@ -62,7 +62,7 @@ if filenames == []: filenames = [None]
 for name in filenames:
   damask.util.report(scriptName,name)
 
-  geom = damask.Geom.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
+  geom = damask.Grid.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
 
   grid_original = geom.cells
   damask.util.croak(geom)
@@ -169,7 +169,7 @@ for name in filenames:
     # undo any changes involving immutable materials
     material = np.where(immutable, material_original,material)
 
-  damask.Geom(material = material[0:grid_original[0],0:grid_original[1],0:grid_original[2]],
+  damask.Grid(material = material[0:grid_original[0],0:grid_original[1],0:grid_original[2]],
               size      = geom.size,
               origin    = geom.origin,
               comments  = geom.comments + [scriptID + ' ' + ' '.join(sys.argv[1:])],

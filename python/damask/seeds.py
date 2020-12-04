@@ -77,14 +77,14 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     return coords
 
 
-def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
+def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
     """
-    Create seed from existing geometry description.
+    Create seed from existing grid description.
 
     Parameters
     ----------
-    geom : damask.Geom
-        Geometry, from which the material IDs are used as seeds.
+    grid : damask.Grid
+        Grid, from which the material IDs are used as seeds.
     selection : iterable of integers, optional
         Material IDs to consider.
     invert : boolean, false
@@ -95,10 +95,10 @@ def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
         Center of gravity with periodic boundaries.
 
     """
-    material = geom.material.reshape((-1,1),order='F')
-    mask = _np.full(geom.cells.prod(),True,dtype=bool) if selection is None else \
+    material = grid.material.reshape((-1,1),order='F')
+    mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
            _np.isin(material,selection,invert=invert).flatten()
-    coords = grid_filters.coordinates0_point(geom.cells,geom.size).reshape(-1,3,order='F')
+    coords = grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:
         return (coords[mask],material[mask])
@@ -106,8 +106,8 @@ def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
         materials = _np.unique(material[mask])
         coords_ = _np.zeros((materials.size,3),dtype=float)
         for i,mat in enumerate(materials):
-            pc = (2*_np.pi*coords[material[:,0]==mat,:]-geom.origin)/geom.size
-            coords_[i] = geom.origin + geom.size / 2 / _np.pi * (_np.pi +
+            pc = (2*_np.pi*coords[material[:,0]==mat,:]-grid.origin)/grid.size
+            coords_[i] = grid.origin + grid.size / 2 / _np.pi * (_np.pi +
                          _np.arctan2(-_np.average(_np.sin(pc),axis=0),
                                      -_np.average(_np.cos(pc),axis=0))) \
                          if periodic else \

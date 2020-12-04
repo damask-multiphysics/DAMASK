@@ -4,7 +4,7 @@ from scipy.spatial import cKDTree
 
 from damask import seeds
 from damask import grid_filters
-from damask import Geom
+from damask import Grid
 
 class TestSeeds:
 
@@ -26,37 +26,37 @@ class TestSeeds:
                        cKDTree(coords).query(coords, 2)
         assert (0<= coords).all() and (coords<size).all() and np.min(min_dists[:,1])>=distance
 
-    def test_from_geom_reconstruct(self):
+    def test_from_grid_reconstruct(self):
         cells = np.random.randint(10,20,3)
         N_seeds = np.random.randint(30,300)
         size = np.ones(3) + np.random.random(3)
         coords = seeds.from_random(size,N_seeds,cells)
-        geom_1 = Geom.from_Voronoi_tessellation(cells,size,coords)
-        coords,material = seeds.from_geom(geom_1)
-        geom_2 = Geom.from_Voronoi_tessellation(cells,size,coords,material)
-        assert (geom_2.material==geom_1.material).all()
+        grid_1 = Grid.from_Voronoi_tessellation(cells,size,coords)
+        coords,material = seeds.from_grid(grid_1)
+        grid_2 = Grid.from_Voronoi_tessellation(cells,size,coords,material)
+        assert (grid_2.material==grid_1.material).all()
 
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('average',[True,False])
-    def test_from_geom_grid(self,periodic,average):
+    def test_from_grid_grid(self,periodic,average):
         cells = np.random.randint(10,20,3)
         size  = np.ones(3) + np.random.random(3)
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
         np.random.shuffle(coords)
-        geom_1 = Geom.from_Voronoi_tessellation(cells,size,coords)
-        coords,material = seeds.from_geom(geom_1,average=average,periodic=periodic)
-        geom_2 = Geom.from_Voronoi_tessellation(cells,size,coords,material)
-        assert (geom_2.material==geom_1.material).all()
+        grid_1 = Grid.from_Voronoi_tessellation(cells,size,coords)
+        coords,material = seeds.from_grid(grid_1,average=average,periodic=periodic)
+        grid_2 = Grid.from_Voronoi_tessellation(cells,size,coords,material)
+        assert (grid_2.material==grid_1.material).all()
 
     @pytest.mark.parametrize('periodic',[True,False])
     @pytest.mark.parametrize('average',[True,False])
     @pytest.mark.parametrize('invert',[True,False])
-    def test_from_geom_selection(self,periodic,average,invert):
+    def test_from_grid_selection(self,periodic,average,invert):
         cells = np.random.randint(10,20,3)
         N_seeds = np.random.randint(30,300)
         size = np.ones(3) + np.random.random(3)
         coords = seeds.from_random(size,N_seeds,cells)
-        geom = Geom.from_Voronoi_tessellation(cells,size,coords)
+        grid = Grid.from_Voronoi_tessellation(cells,size,coords)
         selection=np.random.randint(N_seeds)+1
-        coords,material = seeds.from_geom(geom,average=average,periodic=periodic,invert=invert,selection=[selection])
+        coords,material = seeds.from_grid(grid,average=average,periodic=periodic,invert=invert,selection=[selection])
         assert selection not in material if invert else (selection==material).all()

@@ -16,21 +16,21 @@ from . import grid_filters
 from . import Rotation
 
 
-class Geom:
+class Grid:
     """Geometry definition for grid solvers."""
 
     def __init__(self,material,size,origin=[0.0,0.0,0.0],comments=[]):
         """
-        New geometry definition from array of materials, size, and origin.
+        New grid definition from array of materials, size, and origin.
 
         Parameters
         ----------
         material : numpy.ndarray
             Material index array (3D).
         size : list or numpy.ndarray
-            Physical size of the geometry in meter.
+            Physical size of the grid in meter.
         origin : list or numpy.ndarray, optional
-            Physical origin of the geometry in meter.
+            Physical origin of the grid in meter.
         comments : list of str, optional
             Comment lines.
 
@@ -42,7 +42,7 @@ class Geom:
 
 
     def __repr__(self):
-        """Basic information on geometry definition."""
+        """Basic information on grid definition."""
         return util.srepr([
                f'cells    a b c:  {util.srepr(self.cells, " x ")}',
                f'size     x y z:  {util.srepr(self.size,  " x ")}',
@@ -53,12 +53,12 @@ class Geom:
 
 
     def __copy__(self):
-        """Copy geometry."""
+        """Copy grid."""
         return copy.deepcopy(self)
 
 
     def copy(self):
-        """Copy geometry."""
+        """Copy grid."""
         return self.__copy__()
 
 
@@ -68,8 +68,8 @@ class Geom:
 
         Parameters
         ----------
-        other : Geom
-            Geometry to compare self against.
+        other : damask.Grid
+            Grid to compare self against.
 
         """
         message = []
@@ -117,7 +117,7 @@ class Geom:
 
     @property
     def size(self):
-        """Physical size of geometry in meter."""
+        """Physical size of grid in meter."""
         return self._size
 
     @size.setter
@@ -129,7 +129,7 @@ class Geom:
 
     @property
     def origin(self):
-        """Coordinates of geometry origin in meter."""
+        """Coordinates of grid origin in meter."""
         return self._origin
 
     @origin.setter
@@ -141,7 +141,7 @@ class Geom:
 
     @property
     def comments(self):
-        """Comments/history of geometry."""
+        """Comments, e.g. history of operations."""
         return self._comments
 
     @comments.setter
@@ -157,7 +157,7 @@ class Geom:
 
     @property
     def N_materials(self):
-        """Number of (unique) material indices within geometry."""
+        """Number of (unique) material indices within grid."""
         return np.unique(self.material).size
 
 
@@ -169,8 +169,8 @@ class Geom:
         Parameters
         ----------
         fname : str or or pathlib.Path
-            Geometry file to read.
-            Valid extension is .vtr, which will be appended if not given.
+            Grid file to read. Valid extension is .vtr, which will be appended
+            if not given.
 
         """
         v = VTK.load(fname if str(fname).endswith('.vtr') else str(fname)+'.vtr')
@@ -178,7 +178,7 @@ class Geom:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
-        return Geom(material = v.get('material').reshape(cells,order='F'),
+        return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
                     origin = bbox[0],
                     comments=comments)
@@ -248,7 +248,7 @@ class Geom:
         if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
             material = material.astype('int') - (1 if material.min() > 0 else 0)
 
-        return Geom(material.reshape(cells,order='F'),size,origin,comments)
+        return Grid(material.reshape(cells,order='F'),size,origin,comments)
 
 
     @staticmethod
@@ -282,7 +282,7 @@ class Geom:
              if point_data is None else \
              np.reshape(f[path.join(root_dir,base_group,point_data,material)],cells.prod())
 
-        return Geom(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Geom','load_DREAM3D'))
+        return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 
 
     @staticmethod
@@ -310,7 +310,7 @@ class Geom:
         ma = np.arange(cells.prod()) if len(unique) == cells.prod() else \
              np.arange(unique.size)[np.argsort(pd.unique(unique_inverse))][unique_inverse]
 
-        return Geom(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Geom','from_table'))
+        return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','from_table'))
 
 
     @staticmethod
@@ -327,7 +327,7 @@ class Geom:
         cells : int numpy.ndarray of shape (3)
             Number of cells in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
-            Physical size of the geometry in meter.
+            Physical size of the grid in meter.
         seeds : numpy.ndarray of shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         weights : numpy.ndarray of shape (seeds.shape[0])
@@ -336,7 +336,7 @@ class Geom:
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
-            Perform a periodic tessellation. Defaults to True.
+            Assume grid to be periodic. Defaults to True.
 
         """
         if periodic:
@@ -351,7 +351,7 @@ class Geom:
             coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
         pool = mp.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
-        result = pool.map_async(partial(Geom._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
+        result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()
         material_ = np.array(result.get())
@@ -362,9 +362,9 @@ class Geom:
         else:
             material_ = material_.reshape(cells)
 
-        return Geom(material = material_ if material is None else material[material_],
+        return Grid(material = material_ if material is None else material[material_],
                     size     = size,
-                    comments = util.execution_stamp('Geom','from_Laguerre_tessellation'),
+                    comments = util.execution_stamp('Grid','from_Laguerre_tessellation'),
                    )
 
 
@@ -378,23 +378,23 @@ class Geom:
         cells : int numpy.ndarray of shape (3)
             Number of cells in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
-            Physical size of the geometry in meter.
+            Physical size of the grid in meter.
         seeds : numpy.ndarray of shape (:,3)
             Position of the seed points in meter. All points need to lay within the box.
         material : numpy.ndarray of shape (seeds.shape[0]), optional
             Material ID of the seeds.
             Defaults to None, in which case materials are consecutively numbered.
         periodic : Boolean, optional
-            Perform a periodic tessellation. Defaults to True.
+            Assume grid to be periodic. Defaults to True.
 
         """
         coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
         KDTree = spatial.cKDTree(seeds,boxsize=size) if periodic else spatial.cKDTree(seeds)
         devNull,material_ = KDTree.query(coords)
 
-        return Geom(material = (material_ if material is None else material[material_]).reshape(cells),
+        return Grid(material = (material_ if material is None else material[material_]).reshape(cells),
                     size     = size,
-                    comments = util.execution_stamp('Geom','from_Voronoi_tessellation'),
+                    comments = util.execution_stamp('Grid','from_Voronoi_tessellation'),
                    )
 
 
@@ -450,7 +450,7 @@ class Geom:
         cells : int numpy.ndarray of shape (3)
             Number of cells in x,y,z direction.
         size : list or numpy.ndarray of shape (3)
-            Physical size of the geometry in meter.
+            Physical size of the grid in meter.
         surface : str
             Type of the minimal surface. See notes for details.
         threshold : float, optional.
@@ -497,9 +497,9 @@ class Geom:
                             periods*2.0*np.pi*(np.arange(cells[1])+0.5)/cells[1],
                             periods*2.0*np.pi*(np.arange(cells[2])+0.5)/cells[2],
                             indexing='ij',sparse=True)
-        return Geom(material = np.where(threshold < Geom._minimal_surface[surface](x,y,z),materials[1],materials[0]),
+        return Grid(material = np.where(threshold < Grid._minimal_surface[surface](x,y,z),materials[1],materials[0]),
                     size     = size,
-                    comments = util.execution_stamp('Geom','from_minimal_surface'),
+                    comments = util.execution_stamp('Grid','from_minimal_surface'),
                    )
 
 
@@ -583,7 +583,7 @@ class Geom:
             Retain original materials within primitive and fill outside.
             Defaults to False.
         periodic : Boolean, optional
-            Repeat primitive over boundaries. Defaults to True.
+            Assume grid to be periodic. Defaults to True.
 
         """
         # radius and center
@@ -604,23 +604,23 @@ class Geom:
         if periodic:                                                                                # translate back to center
             mask = np.roll(mask,((c/self.size-0.5)*self.cells).round().astype(int),(0,1,2))
 
-        return Geom(material = np.where(np.logical_not(mask) if inverse else mask,
+        return Grid(material = np.where(np.logical_not(mask) if inverse else mask,
                                         self.material,
                                         np.nanmax(self.material)+1 if fill is None else fill),
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','add_primitive')],
+                    comments = self.comments+[util.execution_stamp('Grid','add_primitive')],
                    )
 
 
     def mirror(self,directions,reflect=False):
         """
-        Mirror geometry along given directions.
+        Mirror grid along given directions.
 
         Parameters
         ----------
         directions : iterable containing str
-            Direction(s) along which the geometry is mirrored.
+            Direction(s) along which the grid is mirrored.
             Valid entries are 'x', 'y', 'z'.
         reflect : bool, optional
             Reflect (include) outermost layers. Defaults to False.
@@ -640,21 +640,21 @@ class Geom:
         if 'z' in directions:
             mat = np.concatenate([mat,mat[:,:,limits[0]:limits[1]:-1]],2)
 
-        return Geom(material = mat,
+        return Grid(material = mat,
                     size     = self.size/self.cells*np.asarray(mat.shape),
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','mirror')],
+                    comments = self.comments+[util.execution_stamp('Grid','mirror')],
                    )
 
 
     def flip(self,directions):
         """
-        Flip geometry along given directions.
+        Flip grid along given directions.
 
         Parameters
         ----------
         directions : iterable containing str
-            Direction(s) along which the geometry is flipped.
+            Direction(s) along which the grid is flipped.
             Valid entries are 'x', 'y', 'z'.
 
         """
@@ -664,26 +664,26 @@ class Geom:
 
         mat = np.flip(self.material, (valid.index(d) for d in directions if d in valid))
 
-        return Geom(material = mat,
+        return Grid(material = mat,
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','flip')],
+                    comments = self.comments+[util.execution_stamp('Grid','flip')],
                    )
 
 
     def scale(self,cells,periodic=True):
         """
-        Scale geometry to new cells.
+        Scale grid to new cells.
 
         Parameters
         ----------
         cells : numpy.ndarray of shape (3)
             Number of cells in x,y,z direction.
         periodic : Boolean, optional
-            Assume geometry to be periodic. Defaults to True.
+            Assume grid to be periodic. Defaults to True.
 
         """
-        return Geom(material = ndimage.interpolation.zoom(
+        return Grid(material = ndimage.interpolation.zoom(
                                                            self.material,
                                                            cells/self.cells,
                                                            output=self.material.dtype,
@@ -693,13 +693,13 @@ class Geom:
                                                           ),
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','scale')],
+                    comments = self.comments+[util.execution_stamp('Grid','scale')],
                    )
 
 
     def clean(self,stencil=3,selection=None,periodic=True):
         """
-        Smooth geometry by selecting most frequent material index within given stencil at each location.
+        Smooth grid by selecting most frequent material index within given stencil at each location.
 
         Parameters
         ----------
@@ -708,7 +708,7 @@ class Geom:
         selection : list, optional
             Field values that can be altered. Defaults to all.
         periodic : Boolean, optional
-            Assume geometry to be periodic. Defaults to True.
+            Assume grid to be periodic. Defaults to True.
 
         """
         def mostFrequent(arr,selection=None):
@@ -719,7 +719,7 @@ class Geom:
             else:
                 return me
 
-        return Geom(material = ndimage.filters.generic_filter(
+        return Grid(material = ndimage.filters.generic_filter(
                                                                self.material,
                                                                mostFrequent,
                                                                size=(stencil if selection is None else stencil//2*2+1,)*3,
@@ -728,7 +728,7 @@ class Geom:
                                                               ).astype(self.material.dtype),
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','clean')],
+                    comments = self.comments+[util.execution_stamp('Grid','clean')],
                    )
 
 
@@ -736,21 +736,21 @@ class Geom:
         """Renumber sorted material indices as 0,...,N-1."""
         _,renumbered = np.unique(self.material,return_inverse=True)
 
-        return Geom(material = renumbered.reshape(self.cells),
+        return Grid(material = renumbered.reshape(self.cells),
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','renumber')],
+                    comments = self.comments+[util.execution_stamp('Grid','renumber')],
                    )
 
 
     def rotate(self,R,fill=None):
         """
-        Rotate geometry (pad if required).
+        Rotate grid (pad if required).
 
         Parameters
         ----------
         R : damask.Rotation
-            Rotation to apply to the geometry.
+            Rotation to apply to the grid.
         fill : int or float, optional
             Material index to fill the corners. Defaults to material.max() + 1.
 
@@ -774,23 +774,23 @@ class Geom:
 
         origin = self.origin-(np.asarray(material_in.shape)-self.cells)*.5 * self.size/self.cells
 
-        return Geom(material = material_in,
+        return Grid(material = material_in,
                     size     = self.size/self.cells*np.asarray(material_in.shape),
                     origin   = origin,
-                    comments = self.comments+[util.execution_stamp('Geom','rotate')],
+                    comments = self.comments+[util.execution_stamp('Grid','rotate')],
                    )
 
 
     def canvas(self,cells=None,offset=None,fill=None):
         """
-        Crop or enlarge/pad geometry.
+        Crop or enlarge/pad grid.
 
         Parameters
         ----------
         cells : numpy.ndarray of shape (3)
             Number of cells  x,y,z direction.
         offset : numpy.ndarray of shape (3)
-            Offset (measured in cells) from old to new geometry [0,0,0].
+            Offset (measured in cells) from old to new grid [0,0,0].
         fill : int or float, optional
             Material index to fill the background. Defaults to material.max() + 1.
 
@@ -808,10 +808,10 @@ class Geom:
 
         canvas[ll[0]:ur[0],ll[1]:ur[1],ll[2]:ur[2]] = self.material[LL[0]:UR[0],LL[1]:UR[1],LL[2]:UR[2]]
 
-        return Geom(material = canvas,
+        return Grid(material = canvas,
                     size     = self.size/self.cells*np.asarray(canvas.shape),
                     origin   = self.origin+offset*self.size/self.cells,
-                    comments = self.comments+[util.execution_stamp('Geom','canvas')],
+                    comments = self.comments+[util.execution_stamp('Grid','canvas')],
                    )
 
 
@@ -833,10 +833,10 @@ class Geom:
         mp = np.vectorize(mp)
         mapper = dict(zip(from_material,to_material))
 
-        return Geom(material = mp(self.material,mapper).reshape(self.cells),
+        return Grid(material = mp(self.material,mapper).reshape(self.cells),
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','substitute')],
+                    comments = self.comments+[util.execution_stamp('Grid','substitute')],
                    )
 
 
@@ -847,10 +847,10 @@ class Geom:
         sort_idx = np.argsort(from_ma)
         ma = np.unique(a)[sort_idx][np.searchsorted(from_ma,a,sorter = sort_idx)]
 
-        return Geom(material = ma.reshape(self.cells,order='F'),
+        return Grid(material = ma.reshape(self.cells,order='F'),
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','sort')],
+                    comments = self.comments+[util.execution_stamp('Grid','sort')],
                    )
 
 
@@ -860,7 +860,7 @@ class Geom:
 
         Different from themselves (or listed as triggers) within a given (cubic) vicinity,
         i.e. within the region close to a grain/phase boundary.
-        ToDo: use include/exclude as in seeds.from_geom
+        ToDo: use include/exclude as in seeds.from_grid
 
         Parameters
         ----------
@@ -874,7 +874,7 @@ class Geom:
             List of material indices that trigger a change.
             Defaults to [], meaning that any different neighbor triggers a change.
         periodic : Boolean, optional
-            Assume geometry to be periodic. Defaults to True.
+            Assume grid to be periodic. Defaults to True.
 
         """
         def tainted_neighborhood(stencil,trigger):
@@ -891,10 +891,10 @@ class Geom:
                                               mode='wrap' if periodic else 'nearest',
                                               extra_keywords={'trigger':trigger})
 
-        return Geom(material = np.where(mask, self.material + offset_,self.material),
+        return Grid(material = np.where(mask, self.material + offset_,self.material),
                     size     = self.size,
                     origin   = self.origin,
-                    comments = self.comments+[util.execution_stamp('Geom','vicinity_offset')],
+                    comments = self.comments+[util.execution_stamp('Grid','vicinity_offset')],
                    )
 
 
@@ -904,10 +904,10 @@ class Geom:
 
         Parameters
         ----------
-        periodic : bool, optional
-            Show boundaries across periodicity. Defaults to True.
+        periodic : Boolean, optional
+            Assume grid to be periodic. Defaults to True.
         directions : iterable containing str, optional
-            Direction(s) along which the geometry is mirrored.
+            Direction(s) along which the boundaries are determined.
             Valid entries are 'x', 'y', 'z'. Defaults to 'xyz'.
 
         """
