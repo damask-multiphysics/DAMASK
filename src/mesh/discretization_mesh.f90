@@ -69,7 +69,7 @@ subroutine discretization_mesh_init(restart)
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, l, &
+    j, l, k, &
     debug_element, debug_ip
   PetscSF :: sf
   DM :: globalMesh
@@ -95,7 +95,6 @@ subroutine discretization_mesh_init(restart)
 ! read debug parameters
   debug_element = config_debug%get_asInt('element',defaultVal=1)
   debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
-
 
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,interface_geomFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
@@ -137,11 +136,14 @@ subroutine discretization_mesh_init(restart)
           l = l + 1
           if (trim(fileContent(l)) == '$EndElements') exit
           chunkPos = IO_stringPos(fileContent(l))
-          if (chunkPos(1) == 3+IO_intValue(fileContent(l),chunkPos,3)+dimPlex+1) then
-            call DMSetLabelValue(globalMesh,'material',j,IO_intValue(fileContent(l),chunkPos,4),ierr)
-            CHKERRQ(ierr)
-            j = j + 1
+          if(IO_intValue(fileContent(l),chunkPos,1) == 3) then
+            do k = 1, IO_intValue(fileContent(l),chunkPos,4)
+              call DMSetLabelValue(globalMesh,'material',j,IO_intValue(fileContent(l),chunkPos,2),ierr)
+              CHKERRQ(ierr)
+              j = j + 1
+            enddo
           endif
+          l = l + IO_intValue(fileContent(l),chunkPos,4)
         enddo
         exit
       endif
