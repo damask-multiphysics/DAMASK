@@ -27,4 +27,4 @@ for sub_dir in ['pre','post']:
 sys.stdout.write('\npruning broken links...\n')
 for filename in bin_dir.glob('*'):
     if not filename.is_file():
-        filename.unlink
+        filename.unlink()

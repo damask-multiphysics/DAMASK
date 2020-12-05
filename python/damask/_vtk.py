@@ -131,7 +131,7 @@ class VTK:
     @staticmethod
     def load(fname,dataset_type=None):
         """
-        Create VTK from file.
+        Load from VTK file.
 
         Parameters
         ----------
@@ -184,7 +184,7 @@ class VTK:
         writer.Write()
     def save(self,fname,parallel=True,compress=True):
         """
-        Write to file.
+        Save as VTK file.
 
         Parameters
         ----------

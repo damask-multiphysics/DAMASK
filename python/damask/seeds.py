@@ -7,7 +7,7 @@ from . import util
 from . import grid_filters
 
 
-def from_random(size,N_seeds,grid=None,rng_seed=None):
+def from_random(size,N_seeds,cells=None,rng_seed=None):
     """
     Random seeding in space.
 
@@ -17,7 +17,7 @@ def from_random(size,N_seeds,grid=None,rng_seed=None):
         Physical size of the seeding domain.
     N_seeds : int
         Number of seeds.
-    grid : numpy.ndarray of shape (3), optional.
+    cells : numpy.ndarray of shape (3), optional.
         If given, ensures that all seeds initiate one grain if using a
         standard Voronoi tessellation.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
@@ -26,12 +26,12 @@ def from_random(size,N_seeds,grid=None,rng_seed=None):
 
     """
     rng = _np.random.default_rng(rng_seed)
-    if grid is None:
+    if cells is None:
         coords = rng.random((N_seeds,3)) * size
     else:
-        grid_coords = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
-        coords = grid_coords[rng.choice(_np.prod(grid),N_seeds, replace=False)] \
-               + _np.broadcast_to(size/grid,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)           # wobble without leaving grid
+        grid_coords = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
+        coords = grid_coords[rng.choice(_np.prod(cells),N_seeds, replace=False)] \
+               + _np.broadcast_to(size/cells,(N_seeds,3))*(rng.random((N_seeds,3))*.5-.25)          # wobble without leaving cells
 
     return coords
 
@@ -51,7 +51,7 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     distance : float
         Minimum acceptable distance to other seeds.
     periodic : boolean, optional
-        Calculate minimum distance for periodically repeated grid.
+        Calculate minimum distance for periodically repeated cells.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
@@ -77,14 +77,14 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     return coords
 
 
-def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
+def from_grid(grid,selection=None,invert=False,average=False,periodic=True):
     """
-    Create seed from existing geometry description.
+    Create seed from existing grid description.
 
     Parameters
     ----------
-    geom : damask.Geom
-        Geometry, from which the material IDs are used as seeds.
+    grid : damask.Grid
+        Grid, from which the material IDs are used as seeds.
     selection : iterable of integers, optional
         Material IDs to consider.
     invert : boolean, false
@@ -95,10 +95,10 @@ def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
         Center of gravity with periodic boundaries.
 
     """
-    material = geom.material.reshape((-1,1),order='F')
-    mask = _np.full(geom.grid.prod(),True,dtype=bool) if selection is None else \
+    material = grid.material.reshape((-1,1),order='F')
+    mask = _np.full(grid.cells.prod(),True,dtype=bool) if selection is None else \
            _np.isin(material,selection,invert=invert).flatten()
-    coords = grid_filters.cell_coord0(geom.grid,geom.size).reshape(-1,3,order='F')
+    coords = grid_filters.coordinates0_point(grid.cells,grid.size).reshape(-1,3,order='F')
 
     if not average:
         return (coords[mask],material[mask])
@@ -106,8 +106,8 @@ def from_geom(geom,selection=None,invert=False,average=False,periodic=True):
         materials = _np.unique(material[mask])
         coords_ = _np.zeros((materials.size,3),dtype=float)
         for i,mat in enumerate(materials):
-            pc = (2*_np.pi*coords[material[:,0]==mat,:]-geom.origin)/geom.size
-            coords_[i] = geom.origin + geom.size / 2 / _np.pi * (_np.pi +
+            pc = (2*_np.pi*coords[material[:,0]==mat,:]-grid.origin)/grid.size
+            coords_[i] = grid.origin + grid.size / 2 / _np.pi * (_np.pi +
                          _np.arctan2(-_np.average(_np.sin(pc),axis=0),
                                      -_np.average(_np.cos(pc),axis=0))) \
                          if periodic else \

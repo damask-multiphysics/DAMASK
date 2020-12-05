@@ -79,7 +79,7 @@ subroutine discretization_grid_init(restart)
   call MPI_Bcast(origin,3,MPI_DOUBLE,0,PETSC_COMM_WORLD, ierr)
   if (ierr /= 0) error stop 'MPI error'
 
-  print'(/,a,3(i12  ))',  ' grid     a b c: ', grid
+  print'(/,a,3(i12  ))',  ' cells    a b c: ', grid
   print'(a,3(es12.5))',   ' size     x y z: ', geomSize
   print'(a,3(es12.5))',   ' origin   x y z: ', origin
 
@@ -125,9 +125,9 @@ subroutine discretization_grid_init(restart)
   if(.not. restart) then
     call results_openJobFile
     call results_closeGroup(results_addGroup('geometry'))
-    call results_addAttribute('grid',  grid,    'geometry')
-    call results_addAttribute('size',  geomSize,'geometry')
-    call results_addAttribute('origin',origin,  'geometry')
+    call results_addAttribute('cells', grid,    '/geometry')
+    call results_addAttribute('size',  geomSize,'/geometry')
+    call results_addAttribute('origin',origin,  '/geometry')
     call results_closeJobFile
   endif
 

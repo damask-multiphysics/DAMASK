@@ -225,7 +225,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def save_paraview(self,fname=None):
         """
-        Write colormap to JSON file for Paraview.
+        Save as JSON file for use in Paraview.
 
         Parameters
         ----------
@@ -260,7 +260,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def save_ASCII(self,fname=None):
         """
-        Write colormap to ASCII table.
+        Save as ASCII file.
 
         Parameters
         ----------
@@ -286,7 +286,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def save_GOM(self,fname=None):
         """
-        Write colormap to GOM Aramis compatible format.
+        Save as ASCII file for use in GOM Aramis.
 
         Parameters
         ----------
@@ -314,7 +314,7 @@ class Colormap(mpl.colors.ListedColormap):
 
     def save_gmsh(self,fname=None):
         """
-        Write colormap to Gmsh compatible format.
+        Save as ASCII file for use in gmsh.
 
         Parameters
         ----------
