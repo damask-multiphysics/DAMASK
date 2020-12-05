@@ -43,12 +43,15 @@ class Grid:
 
     def __repr__(self):
         """Basic information on grid definition."""
+        mat_min = np.nanmin(self.material)
+        mat_max = np.nanmax(self.material)
+        mat_N   = self.N_materials
         return util.srepr([
-               f'cells    a b c:  {util.srepr(self.cells, " x ")}',
-               f'size     x y z:  {util.srepr(self.size,  " x ")}',
-               f'origin   x y z:  {util.srepr(self.origin,"   ")}',
-               f'# materials:     {self.N_materials}',
-               f'max material:    {np.nanmax(self.material)}',
+               f'cells  a b c: {util.srepr(self.cells, " x ")}',
+               f'size   x y z: {util.srepr(self.size,  " x ")}',
+               f'origin x y z: {util.srepr(self.origin,"   ")}',
+               f'# materials:  {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
+                                           f' (min: {mat_min}, max: {mat_max})')
               ])
 
 
