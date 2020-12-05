@@ -404,12 +404,12 @@ subroutine readVTR(grid,geomSize,origin,material)
     size_deflated = temp(4:)
     bytes_inflated = base64_to_bytes(base64_str(base64_nChar(headerLen)+1_pI64:))
 
-    allocate(bytes(0))
+    allocate(bytes(sum(size_inflated)))
     e = 0_pI64
     do b = 1, nBlock
       s = e + 1_pI64
       e = s + size_deflated(b) - 1_pI64
-      bytes = [bytes,zlib_inflate(bytes_inflated(s:e),size_inflated(b))]
+      bytes(sum(size_inflated(:b-1))+1_pI64:sum(size_inflated(:b))) = zlib_inflate(bytes_inflated(s:e),size_inflated(b))
     enddo
 
   end function asBytes_compressed
