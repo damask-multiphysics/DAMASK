@@ -1789,7 +1789,7 @@ subroutine initialize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_
 !--------------------------------------------------------------------------------------------------
 ! creating a property list for IO and set it to collective
   call h5pcreate_f(H5P_DATASET_ACCESS_F, aplist_id, hdferr)
-    if(hdferr < 0) error stop 'HDF5 error'
+  if(hdferr < 0) error stop 'HDF5 error'
 #ifdef PETSc
   call h5pset_all_coll_metadata_ops_f(aplist_id, .true., hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -1815,7 +1815,7 @@ end subroutine initialize_read
 !--------------------------------------------------------------------------------------------------
 subroutine finalize_read(dset_id, filespace_id, memspace_id, plist_id, aplist_id)
 
-  integer(HID_T), intent(in)   :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
+  integer(HID_T), intent(in) :: dset_id, filespace_id, memspace_id, plist_id, aplist_id
   integer :: hdferr
 
   call h5pclose_f(plist_id, hdferr)
@@ -1836,8 +1836,8 @@ end subroutine finalize_read
 !> @brief initialize HDF5 handles, determines global shape and start for parallel write
 !--------------------------------------------------------------------------------------------------
 subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
-                           myStart, totalShape, &
-                           loc_id,myShape,datasetName,datatype,parallel)
+                            myStart, totalShape, &
+                            loc_id,myShape,datasetName,datatype,parallel)
 
   integer(HID_T),    intent(in) :: loc_id                                                           !< file or group handle
   character(len=*),  intent(in) :: datasetName                                                      !< name of the dataset in the file
@@ -1850,10 +1850,10 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
     totalShape                                                                                      !< shape of the dataset (all processes)
   integer(HID_T),    intent(out) :: dset_id, filespace_id, memspace_id, plist_id
 
-  integer, dimension(worldsize) :: &
-    writeSize                                                                                       !< contribution of all processes
-  integer :: ierr
-  integer :: hdferr
+  integer,          dimension(worldsize)      :: writeSize                                          !< contribution of all processes
+  integer(HID_T) ::  dcpl
+  integer :: ierr, hdferr
+  integer(HSIZE_T), parameter :: chunkSize = 1024_HSIZE_T**2/8_HSIZE_T
 
 !-------------------------------------------------------------------------------------------------
 ! creating a property list for transfer properties (is collective when reading in parallel)
@@ -1881,6 +1881,17 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   totalShape = [myShape(1:ubound(myShape,1)-1),int(sum(writeSize),HSIZE_T)]
 
 !--------------------------------------------------------------------------------------------------
+! compress (and chunk) larger datasets
+  call h5pcreate_f(H5P_DATASET_CREATE_F, dcpl, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+  if(product(totalShape) >= chunkSize*2_HSIZE_T) then
+    call h5pset_chunk_f(dcpl, size(totalShape), getChunks(totalShape,chunkSize), hdferr)
+    if(hdferr < 0) error stop 'HDF5 error'
+    call h5pset_deflate_f(dcpl, 6, hdferr)
+    if(hdferr < 0) error stop 'HDF5 error'
+  endif
+
+!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape) and in file (global shape)
   call h5screate_simple_f(size(myShape), myShape, memspace_id, hdferr, myShape)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -1889,9 +1900,12 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
 
 !--------------------------------------------------------------------------------------------------
 ! create dataset in the file and select a hyperslab from it (the portion of the current process)
-  call h5dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr)
+  call h5dcreate_f(loc_id, trim(datasetName), datatype, filespace_id, dset_id, hdferr, dcpl)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myStart, myShape, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+
+  call h5pclose_f(dcpl , hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
 end subroutine initialize_write
@@ -1915,5 +1929,20 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
   if(hdferr < 0) error stop 'HDF5 error'
 
 end subroutine finalize_write
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief determine chunk layout
+!--------------------------------------------------------------------------------------------------
+pure function getChunks(totalShape,chunkSize)
+  
+  integer(HSIZE_T), dimension(:), intent(in)    :: totalShape
+  integer(HSIZE_T),               intent(in)    :: chunkSize
+  integer(HSIZE_T), dimension(size(totalShape)) :: getChunks
+
+  getChunks = [totalShape(1:size(totalShape)-1),&
+               chunkSize/product(totalShape(1:size(totalShape)-1))]
+
+end function getChunks
 
 end module HDF5_Utilities

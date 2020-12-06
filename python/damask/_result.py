@@ -1132,6 +1132,7 @@ class Result:
             Arguments parsed to func.
 
         """
+        chunk_size = 1024**2//8
         num_threads = damask.environment.options['DAMASK_NUM_THREADS']
         pool = mp.Pool(int(num_threads) if num_threads is not None else None)
         lock = mp.Manager().Lock()
@@ -1155,7 +1156,14 @@ class Result:
                         dataset.attrs['Overwritten'] = 'Yes' if h5py3 else \
                                                        'Yes'.encode()
                     else:
-                        dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                        if result[1]['data'].size >= chunk_size*2:
+                            shape  = result[1]['data'].shape
+                            chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
+                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
+                                                                  maxshape=shape,chunks=chunks,compression = 'gzip')
+                        else:
+                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
+                                                                  maxshape=result[1]['data'].shape)
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
