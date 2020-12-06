@@ -1160,10 +1160,11 @@ class Result:
                             shape  = result[1]['data'].shape
                             chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
                             dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
-                                                                  maxshape=shape,chunks=chunks,compression = 'gzip')
+                                                                  maxshape=shape, chunks=chunks,
+                                                                  compression='gzip', compression_opts=6,
+                                                                  shuffle=True,fletcher32=True)
                         else:
-                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
-                                                                  maxshape=result[1]['data'].shape)
+                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
