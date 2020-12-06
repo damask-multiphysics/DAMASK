@@ -46,7 +46,7 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 10:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 11:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys() or \
@@ -790,7 +790,10 @@ class Result:
             lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
         except KeyError:
             lattice =  q['meta']['Lattice']
-        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
+        try:
+            o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
+        except ValueError:
+            o = Orientation(rotation = q['data'],lattice=lattice)
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),

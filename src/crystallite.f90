@@ -734,9 +734,9 @@ end function crystallite_push33ToRef
 subroutine crystallite_results
 
   integer :: p,o
-  real(pReal),    allocatable, dimension(:,:,:) :: selected_tensors
-  type(rotation), allocatable, dimension(:)     :: selected_rotations
-  character(len=:), allocatable                 :: group,structureLabel
+  real(pReal), allocatable, dimension(:,:,:) :: selected_tensors
+  real(pReal), allocatable, dimension(:,:)   :: selected_rotations
+  character(len=:), allocatable              :: group,structureLabel
 
   do p=1,size(material_name_phase)
     group = trim('current/phase')//'/'//trim(material_name_phase(p))//'/mechanics'
@@ -794,7 +794,8 @@ subroutine crystallite_results
           end select
           selected_rotations = select_rotations(crystallite_orientation,p)
           call results_writeDataset(group,selected_rotations,output_constituent(p)%label(o),&
-                                   'crystal orientation as quaternion',structureLabel)
+                                   'crystal orientation as quaternion')
+          call results_addAttribute('Lattice',structureLabel,group//'/'//output_constituent(p)%label(o))
       end select
     enddo
   enddo
@@ -835,10 +836,10 @@ subroutine crystallite_results
 
     integer, intent(in) :: instance
     type(rotation), dimension(:,:,:), intent(in) :: dataset
-    type(rotation), allocatable, dimension(:) :: select_rotations
+    real(pReal), allocatable, dimension(:,:) :: select_rotations
     integer :: e,i,c,j
 
-    allocate(select_rotations(count(material_phaseAt==instance)*homogenization_maxNconstituents*discretization_nIPs))
+    allocate(select_rotations(4,count(material_phaseAt==instance)*homogenization_maxNconstituents*discretization_nIPs))
 
     j=0
     do e = 1, size(material_phaseAt,2)
@@ -846,7 +847,7 @@ subroutine crystallite_results
         do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
            if (material_phaseAt(c,e) == instance) then
              j = j + 1
-             select_rotations(j) = dataset(c,i,e)
+             select_rotations(1:4,j) = dataset(c,i,e)%asQuaternion()
            endif
         enddo
       enddo
