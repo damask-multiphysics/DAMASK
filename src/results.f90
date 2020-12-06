@@ -503,8 +503,8 @@ end subroutine results_writeScalarDataset_rotation
 subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
 
   integer,          dimension(:,:),   intent(in) :: phaseAt                                         !< phase section at (constituent,element)
-  integer,                   dimension(:,:,:), intent(in) :: memberAtLocal                          !< phase member at (constituent,IP,element)
-  character(len=pStringLen), dimension(:),     intent(in) :: label                                  !< label of each phase section
+  integer,          dimension(:,:,:), intent(in) :: memberAtLocal                                   !< phase member at (constituent,IP,element)
+  character(len=*), dimension(:),     intent(in) :: label                                           !< label of each phase section
 
   integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2),size(memberAtLocal,3)) :: &
     phaseAtMaterialpoint, &
@@ -526,7 +526,6 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
     filespace_id, &
     plist_id, &
     dt_id
-
 
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: hdferr, ierr, i
@@ -571,10 +570,10 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   memberOffset = 0
   do i=1, size(label)
-    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                                ! number of points/instance of this process
+    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                           ! number of points/instance of this process
   enddo
   writeSize = 0
-  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                      ! total number of points by this process
+  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                 ! total number of points by this process
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
@@ -658,8 +657,8 @@ end subroutine results_mapping_constituent
 subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
   integer,          dimension(:),   intent(in) :: homogenizationAt                                  !< homogenization section at (element)
-  integer,                   dimension(:,:), intent(in) :: memberAtLocal                            !< homogenization member at (IP,element)
-  character(len=pStringLen), dimension(:),   intent(in) :: label                                    !< label of each homogenization section
+  integer,          dimension(:,:), intent(in) :: memberAtLocal                                     !< homogenization member at (IP,element)
+  character(len=*), dimension(:),   intent(in) :: label                                             !< label of each homogenization section
 
   integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2)) :: &
     homogenizationAtMaterialpoint, &
@@ -681,7 +680,6 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
     filespace_id, &
     plist_id, &
     dt_id
-
 
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: hdferr, ierr, i

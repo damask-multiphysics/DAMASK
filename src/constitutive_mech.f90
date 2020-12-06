@@ -454,10 +454,10 @@ end subroutine constitutive_plastic_LpAndItsTangents
 module subroutine plastic_results
 
   integer :: p
-  character(len=pStringLen) :: group
+  character(len=:), allocatable :: group
 
   plasticityLoop:  do p=1,size(material_name_phase)
-    group = trim('current/phase')//'/'//trim(material_name_phase(p))
+    group = '/current/phase/'//trim(material_name_phase(p))
     call results_closeGroup(results_addGroup(group))
 
     group = trim(group)//'/plastic'

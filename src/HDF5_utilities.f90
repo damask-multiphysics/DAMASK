@@ -175,7 +175,7 @@ end subroutine HDF5_closeFile
 !--------------------------------------------------------------------------------------------------
 integer(HID_T) function HDF5_addGroup(fileHandle,groupName)
 
-  integer(HID_T), intent(in)   :: fileHandle
+  integer(HID_T),   intent(in) :: fileHandle
   character(len=*), intent(in) :: groupName
 
   integer        :: hdferr
