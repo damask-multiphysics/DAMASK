@@ -97,7 +97,6 @@ subroutine discretization_mesh_init(restart)
   debug_element = config_debug%get_asInt('element',defaultVal=1)
   debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
- ! vol_tag = 10
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,interface_geomFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
   call DMGetDimension(globalMesh,dimPlex,ierr)
@@ -153,6 +152,7 @@ subroutine discretization_mesh_init(restart)
     call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),ierr)
     CHKERRQ(ierr)
   end do
+  materialAt(:) = materialAt(:) + 1
 
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
   if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
