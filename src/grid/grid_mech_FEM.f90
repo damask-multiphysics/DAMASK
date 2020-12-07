@@ -16,6 +16,7 @@ module grid_mech_FEM
   use IO
   use HDF5_utilities
   use math
+  use rotations
   use spectral_utilities
   use FEsolving
   use config

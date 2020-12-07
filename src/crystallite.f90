@@ -794,7 +794,7 @@ subroutine crystallite_results
           end select
           selected_rotations = select_rotations(crystallite_orientation,p)
           call results_writeDataset(group,selected_rotations,output_constituent(p)%label(o),&
-                                   'crystal orientation as quaternion')
+                                   'crystal orientation as quaternion','q_0 <q_1 q_2 q_3>')
           call results_addAttribute('Lattice',structureLabel,group//'/'//output_constituent(p)%label(o))
       end select
     enddo
