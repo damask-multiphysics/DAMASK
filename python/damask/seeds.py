@@ -18,8 +18,8 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
     N_seeds : int
         Number of seeds.
     cells : numpy.ndarray of shape (3), optional.
-        If given, ensures that all seeds initiate one grain if using a
-        standard Voronoi tessellation.
+        If given, ensures that each seed results in a grain for a standard
+        Voronoi tessellation.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
@@ -51,7 +51,7 @@ def from_Poisson_disc(size,N_seeds,N_candidates,distance,periodic=True,rng_seed=
     distance : float
         Minimum acceptable distance to other seeds.
     periodic : boolean, optional
-        Calculate minimum distance for periodically repeated cells.
+        Calculate minimum distance for periodically repeated grid.
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.
