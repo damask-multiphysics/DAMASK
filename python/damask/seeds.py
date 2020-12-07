@@ -18,8 +18,8 @@ def from_random(size,N_seeds,cells=None,rng_seed=None):
     N_seeds : int
         Number of seeds.
     cells : numpy.ndarray of shape (3), optional.
-        If given, ensures that each seed results in a grain for a standard
-        Voronoi tessellation.
+        If given, ensures that each seed results in a grain when a standard Voronoi
+        tessellation is performed using the given grid resolution (i.e. size/cells).
     rng_seed : {None, int, array_like[ints], SeedSequence, BitGenerator, Generator}, optional
         A seed to initialize the BitGenerator. Defaults to None.
         If None, then fresh, unpredictable entropy will be pulled from the OS.

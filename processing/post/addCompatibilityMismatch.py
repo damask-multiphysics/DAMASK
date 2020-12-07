@@ -71,7 +71,7 @@ for name in filenames:
   damask.util.report(scriptName,name)
 
   table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
-  grid,size,origin = damask.grid_filters.cellSizeOrigin_coordinates0_point(table.get(options.pos))
+  grid,size,origin = damask.grid_filters.cellsSizeOrigin_coordinates0_point(table.get(options.pos))
 
   F = table.get(options.defgrad).reshape(tuple(grid)+(-1,),order='F').reshape(tuple(grid)+(3,3))
   nodes = damask.grid_filters.coordinates_node(size,F)
