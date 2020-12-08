@@ -65,7 +65,7 @@ if filenames == []: parser.error('no input file specified.')
 for name in filenames:
     damask.util.report(scriptName,name)
 
-    geom = damask.Geom.load_DREAM3D(name,options.basegroup,options.pointwise)
+    geom = damask.Grid.load_DREAM3D(name,options.basegroup,options.pointwise)
     damask.util.croak(geom)
 
     geom.save_ASCII(os.path.splitext(name)[0]+'.geom')

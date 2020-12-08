@@ -162,7 +162,7 @@ subroutine writeGeometry(elem, &
 
   coordinates_temp = coordinates_points
   call results_writeDataset('geometry',coordinates_temp,'x_p', &
-                            'initial coordinates of the materialpoints','m')
+                            'initial coordinates of the materialpoints (cell centers)','m')
 
   call results_closeJobFile
 

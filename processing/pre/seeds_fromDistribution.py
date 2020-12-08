@@ -91,7 +91,7 @@ class myThread (threading.Thread):
       perturbedSeedsTable.set('pos',coords).save(perturbedSeedsVFile,legacy=True)
 
 #--- do tesselation with perturbed seed file ------------------------------------------------------
-      perturbedGeom = damask.Geom.from_Voronoi_tessellation(options.grid,np.ones(3),coords)
+      perturbedGeom = damask.Grid.from_Voronoi_tessellation(options.grid,np.ones(3),coords)
 
 
 #--- evaluate current seeds file ------------------------------------------------------------------
@@ -210,9 +210,9 @@ baseFile = os.path.splitext(os.path.basename(options.seedFile))[0]
 points = np.array(options.grid).prod().astype('float')
 
 # ----------- calculate target distribution and bin edges
-targetGeom = damask.Geom.load_ASCII(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
+targetGeom = damask.Grid.load_ASCII(os.path.splitext(os.path.basename(options.target))[0]+'.geom')
 nMaterials = len(np.unique(targetGeom.material))
-targetVolFrac = np.bincount(targetGeom.material.flatten())/targetGeom.grid.prod().astype(np.float)
+targetVolFrac = np.bincount(targetGeom.material.flatten())/targetGeom.cells.prod().astype(np.float)
 target = []
 for i in range(1,nMaterials+1):
   targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
@@ -229,7 +229,7 @@ bestSeedsUpdate = time.time()
 
 # ----------- tessellate initial seed file to get and evaluate geom file
 bestSeedsVFile.seek(0)
-initialGeom = damask.Geom.from_Voronoi_tessellation(options.grid,np.ones(3),initial_seeds)
+initialGeom = damask.Grid.from_Voronoi_tessellation(options.grid,np.ones(3),initial_seeds)
 
 if len(np.unique(targetGeom.material)) != nMaterials:
   damask.util.croak('error. Material count mismatch')

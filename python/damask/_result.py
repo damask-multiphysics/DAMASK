@@ -46,13 +46,17 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 9:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 10:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
-            self.structured = 'grid' in f['geometry'].attrs.keys()
+            self.structured = 'grid' in f['geometry'].attrs.keys() or \
+                              'cells' in f['geometry'].attrs.keys()
 
             if self.structured:
-                self.grid   = f['geometry'].attrs['grid']
+                try:
+                    self.cells  = f['geometry'].attrs['cells']
+                except KeyError:
+                    self.cells  = f['geometry'].attrs['grid']
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
 
@@ -558,19 +562,19 @@ class Result:
             return dataset
 
     @property
-    def cell_coordinates(self):
+    def coordinates0_point(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.cell_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
+            return grid_filters.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
     @property
-    def node_coordinates(self):
+    def coordinates0_node(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
+            return grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_n'][()]
@@ -1218,7 +1222,7 @@ class Result:
 
             topology=ET.SubElement(grid, 'Topology')
             topology.attrib={'TopologyType': '3DCoRectMesh',
-                             'Dimensions':   '{} {} {}'.format(*self.grid+1)}
+                             'Dimensions':   '{} {} {}'.format(*self.cells+1)}
 
             geometry=ET.SubElement(grid, 'Geometry')
             geometry.attrib={'GeometryType':'Origin_DxDyDz'}
@@ -1233,7 +1237,7 @@ class Result:
             delta.attrib={'Format':     'XML',
                           'NumberType': 'Float',
                           'Dimensions': '3'}
-            delta.text="{} {} {}".format(*(self.size/self.grid))
+            delta.text="{} {} {}".format(*(self.size/self.cells))
 
 
             with h5py.File(self.fname,'r') as f:
@@ -1244,7 +1248,7 @@ class Result:
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                 data_items[-1].attrib={'Format':     'HDF',
                                        'Precision':  '8',
-                                       'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
+                                       'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
                 for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
@@ -1267,8 +1271,8 @@ class Result:
                                 data_items[-1].attrib={'Format':     'HDF',
                                                        'NumberType': number_type_map(dtype),
                                                        'Precision':  f'{dtype.itemsize}',
-                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,1 if shape == () else
-                                                                                                     np.prod(shape))}
+                                                       'Dimensions': '{} {} {} {}'.format(*self.cells,1 if shape == () else
+                                                                                                      np.prod(shape))}
                                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
 
         with open(self.fname.with_suffix('.xdmf').name,'w') as f:
@@ -1291,7 +1295,7 @@ class Result:
         if mode.lower()=='cell':
 
             if self.structured:
-                v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
+                v = VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
             else:
                 with h5py.File(self.fname,'r') as f:
                     v = VTK.from_unstructured_grid(f['/geometry/x_n'][()],
@@ -1299,7 +1303,7 @@ class Result:
                                                    f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
                                                    f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-            v = VTK.from_poly_data(self.cell_coordinates)
+            v = VTK.from_poly_data(self.coordinates0_point)
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 
