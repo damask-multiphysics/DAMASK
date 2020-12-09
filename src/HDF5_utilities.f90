@@ -1831,6 +1831,21 @@ subroutine initialize_write(dset_id, filespace_id, memspace_id, plist_id, &
   call h5pclose_f(dcpl , hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
 
+  contains
+  !------------------------------------------------------------------------------------------------
+  !> @brief determine chunk layout
+  !------------------------------------------------------------------------------------------------
+  pure function getChunks(totalShape,chunkSize)
+
+    integer(HSIZE_T), dimension(:), intent(in)    :: totalShape
+    integer(HSIZE_T),               intent(in)    :: chunkSize
+    integer(HSIZE_T), dimension(size(totalShape)) :: getChunks
+
+    getChunks = [totalShape(1:size(totalShape)-1),&
+                 chunkSize/product(totalShape(1:size(totalShape)-1))]
+
+  end function getChunks
+
 end subroutine initialize_write
 
 
@@ -1853,19 +1868,5 @@ subroutine finalize_write(plist_id, dset_id, filespace_id, memspace_id)
 
 end subroutine finalize_write
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief determine chunk layout
-!--------------------------------------------------------------------------------------------------
-pure function getChunks(totalShape,chunkSize)
-  
-  integer(HSIZE_T), dimension(:), intent(in)    :: totalShape
-  integer(HSIZE_T),               intent(in)    :: chunkSize
-  integer(HSIZE_T), dimension(size(totalShape)) :: getChunks
-
-  getChunks = [totalShape(1:size(totalShape)-1),&
-               chunkSize/product(totalShape(1:size(totalShape)-1))]
-
-end function getChunks
 
 end module HDF5_Utilities

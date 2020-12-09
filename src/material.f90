@@ -403,7 +403,7 @@ function getKeys(dict)
     temp(i) = dict%getKey(i)
     l = max(len_trim(temp(i)),l)
   enddo
-  
+
   allocate(character(l)::getKeys(dict%length))
   do i=1, dict%length
     getKeys(i) = trim(temp(i))
