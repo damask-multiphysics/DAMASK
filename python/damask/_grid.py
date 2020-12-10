@@ -7,7 +7,8 @@ import warnings
 import numpy as np
 import pandas as pd
 import h5py
-from scipy import ndimage,spatial
+from scipy import ndimage, spatial
+from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
 from . import environment
 from . import VTK
@@ -50,8 +51,8 @@ class Grid:
                f'cells  a b c: {util.srepr(self.cells, " x ")}',
                f'size   x y z: {util.srepr(self.size,  " x ")}',
                f'origin x y z: {util.srepr(self.origin,"   ")}',
-               f'# materials:  {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
-                                           f' (min: {mat_min}, max: {mat_max})')
+               f'# materials: {mat_N}' + ('' if mat_min == 0 and mat_max+1 == mat_N else
+                                          f' (min: {mat_min}, max: {mat_max})')
               ])
 
 
@@ -107,9 +108,9 @@ class Grid:
     @material.setter
     def material(self,material):
         if len(material.shape) != 3:
-            raise ValueError(f'Invalid material shape {material.shape}.')
+            raise ValueError(f'invalid material shape {material.shape}')
         elif material.dtype not in np.sctypes['float'] + np.sctypes['int']:
-            raise TypeError(f'Invalid material data type {material.dtype}.')
+            raise TypeError(f'invalid material data type {material.dtype}')
         else:
             self._material = np.copy(material)
 
@@ -126,7 +127,7 @@ class Grid:
     @size.setter
     def size(self,size):
         if len(size) != 3 or any(np.array(size) <= 0):
-            raise ValueError(f'Invalid size {size}.')
+            raise ValueError(f'invalid size {size}')
         else:
             self._size = np.array(size)
 
@@ -138,7 +139,7 @@ class Grid:
     @origin.setter
     def origin(self,origin):
         if len(origin) != 3:
-            raise ValueError(f'Invalid origin {origin}.')
+            raise ValueError(f'invalid origin {origin}')
         else:
             self._origin = np.array(origin)
 
@@ -181,6 +182,10 @@ class Grid:
         cells = np.array(v.vtk_data.GetDimensions())-1
         bbox  = np.array(v.vtk_data.GetBounds()).reshape(3,2).T
 
+        for i,c in enumerate([v.vtk_data.GetXCoordinates(),v.vtk_data.GetYCoordinates(),v.vtk_data.GetZCoordinates()]):
+            if not np.allclose(vtk_to_np(c),np.linspace(bbox[0][i],bbox[1][i],cells[i]+1)):
+                raise ValueError('regular grid spacing violated')
+
         return Grid(material = v.get('material').reshape(cells,order='F'),
                     size = bbox[1] - bbox[0],
                     origin = bbox[0],
@@ -214,7 +219,7 @@ class Grid:
         except ValueError:
             header_length,keyword = (-1, 'invalid')
         if not keyword.startswith('head') or header_length < 3:
-            raise TypeError('Header length information missing or invalid')
+            raise TypeError('header length information missing or invalid')
 
         comments = []
         content = f.readlines()
@@ -246,7 +251,7 @@ class Grid:
             i += len(items)
 
         if i != cells.prod():
-            raise TypeError(f'Invalid file: expected {cells.prod()} entries, found {i}')
+            raise TypeError(f'invalid file: expected {cells.prod()} entries, found {i}')
 
         if not np.any(np.mod(material,1) != 0.0):                                                   # no float present
             material = material.astype('int') - (1 if material.min() > 0 else 0)
@@ -631,7 +636,7 @@ class Grid:
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
-            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
+            raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
         limits = [None,None] if reflect else [-2,0]
         mat = self.material.copy()
@@ -663,7 +668,7 @@ class Grid:
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
-            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
+            raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
         mat = np.flip(self.material, (valid.index(d) for d in directions if d in valid))
 
@@ -916,7 +921,7 @@ class Grid:
         """
         valid = ['x','y','z']
         if not set(directions).issubset(valid):
-            raise ValueError(f'Invalid direction {set(directions).difference(valid)} specified.')
+            raise ValueError(f'invalid direction {set(directions).difference(valid)} specified')
 
         o = [[0, self.cells[0]+1,           np.prod(self.cells[:2]+1)+self.cells[0]+1, np.prod(self.cells[:2]+1)],
              [0, np.prod(self.cells[:2]+1), np.prod(self.cells[:2]+1)+1,               1],
