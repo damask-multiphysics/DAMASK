@@ -46,7 +46,7 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 10:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 11:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
             self.structured = 'grid' in f['geometry'].attrs.keys() or \
@@ -790,7 +790,10 @@ class Result:
             lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
         except KeyError:
             lattice =  q['meta']['Lattice']
-        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
+        try:
+            o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
+        except ValueError:
+            o = Orientation(rotation = q['data'],lattice=lattice)
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),
@@ -1130,6 +1133,7 @@ class Result:
             Arguments parsed to func.
 
         """
+        chunk_size = 1024**2//8
         num_threads = damask.environment.options['DAMASK_NUM_THREADS']
         pool = mp.Pool(int(num_threads) if num_threads is not None else None)
         lock = mp.Manager().Lock()
@@ -1153,7 +1157,15 @@ class Result:
                         dataset.attrs['Overwritten'] = 'Yes' if h5py3 else \
                                                        'Yes'.encode()
                     else:
-                        dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                        if result[1]['data'].size >= chunk_size*2:
+                            shape  = result[1]['data'].shape
+                            chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
+                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
+                                                                  maxshape=shape, chunks=chunks,
+                                                                  compression='gzip', compression_opts=6,
+                                                                  shuffle=True,fletcher32=True)
+                        else:
+                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \

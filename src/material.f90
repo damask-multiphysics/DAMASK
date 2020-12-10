@@ -52,7 +52,7 @@ module material
     HOMOGENIZATION_RGC_ID
   end enum
 
-  character(len=pStringLen), public, protected, allocatable, dimension(:) :: &
+  character(len=:), public, protected, allocatable, dimension(:) :: &
     material_name_phase, &                                                                          !< name of each phase
     material_name_homogenization                                                                    !< name of each homogenization
 
@@ -392,13 +392,21 @@ end subroutine sanityCheck
 function getKeys(dict)
 
   class(tNode), intent(in) :: dict
-  character(len=pStringLen), dimension(:), allocatable :: getKeys
+  character(len=:),          dimension(:), allocatable :: getKeys
+  character(len=pStringLen), dimension(:), allocatable :: temp
 
-  integer :: i
+  integer :: i,l
 
-  allocate(getKeys(dict%length))
+  allocate(temp(dict%length))
+  l = 0
   do i=1, dict%length
-    getKeys(i) = dict%getKey(i)
+    temp(i) = dict%getKey(i)
+    l = max(len_trim(temp(i)),l)
+  enddo
+
+  allocate(character(l)::getKeys(dict%length))
+  do i=1, dict%length
+    getKeys(i) = trim(temp(i))
   enddo
 
 end function getKeys
