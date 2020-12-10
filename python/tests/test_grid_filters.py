@@ -26,12 +26,12 @@ class TestGridFilters:
 
     @pytest.mark.parametrize('mode',['point','node'])
     def test_grid_DNA(self,mode):
-         """Ensure that cellSizeOrigin_coordinates0_xx is the inverse of coordinates0_xx."""
+         """Ensure that cellsSizeOrigin_coordinates0_xx is the inverse of coordinates0_xx."""
          cells   = np.random.randint(8,32,(3))
          size   = np.random.random(3)
          origin = np.random.random(3)
          coord0 = eval(f'grid_filters.coordinates0_{mode}(cells,size,origin)')                     # noqa
-         _cells,_size,_origin = eval(f'grid_filters.cellSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"))')
+         _cells,_size,_origin = eval(f'grid_filters.cellsSizeOrigin_coordinates0_{mode}(coord0.reshape(-1,3,order="F"))')
          assert np.allclose(cells,_cells) and np.allclose(size,_size) and np.allclose(origin,_origin)
 
     def test_displacement_fluct_equivalence(self):
@@ -40,14 +40,14 @@ class TestGridFilters:
          cells = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(cells)+(3,3))
          assert np.allclose(grid_filters.displacement_fluct_node(size,F),
-                            grid_filters.point_2_node(grid_filters.displacement_fluct_point(size,F)))
+                            grid_filters.point_to_node(grid_filters.displacement_fluct_point(size,F)))
 
     def test_interpolation_to_node(self):
          size = np.random.random(3)
          cells = np.random.randint(8,32,(3))
          F    = np.random.random(tuple(cells)+(3,3))
          assert np.allclose(grid_filters.coordinates_node(size,F) [1:-1,1:-1,1:-1],
-                            grid_filters.point_2_node(grid_filters.coordinates_point(size,F))[1:-1,1:-1,1:-1])
+                            grid_filters.point_to_node(grid_filters.coordinates_point(size,F))[1:-1,1:-1,1:-1])
 
     def test_interpolation_to_cell(self):
          cells = np.random.randint(1,30,(3))
@@ -94,15 +94,15 @@ class TestGridFilters:
          assert np.allclose(function(size,F),0.0)
 
     @pytest.mark.parametrize('function',[grid_filters.coordinates0_check,
-                                         grid_filters.cellSizeOrigin_coordinates0_node,
-                                         grid_filters.cellSizeOrigin_coordinates0_point])
+                                         grid_filters.cellsSizeOrigin_coordinates0_node,
+                                         grid_filters.cellsSizeOrigin_coordinates0_point])
     def test_invalid_coordinates(self,function):
         invalid_coordinates = np.random.random((np.random.randint(12,52),3))
         with pytest.raises(ValueError):
             function(invalid_coordinates)
 
-    @pytest.mark.parametrize('function',[grid_filters.cellSizeOrigin_coordinates0_node,
-                                         grid_filters.cellSizeOrigin_coordinates0_point])
+    @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_node,
+                                         grid_filters.cellsSizeOrigin_coordinates0_point])
     def test_uneven_spaced_coordinates(self,function):
         start = np.random.random(3)
         end   = np.random.random(3)*10. + start
@@ -116,8 +116,8 @@ class TestGridFilters:
 
 
     @pytest.mark.parametrize('mode',[True,False])
-    @pytest.mark.parametrize('function',[grid_filters.cellSizeOrigin_coordinates0_node,
-                                         grid_filters.cellSizeOrigin_coordinates0_point])
+    @pytest.mark.parametrize('function',[grid_filters.cellsSizeOrigin_coordinates0_node,
+                                         grid_filters.cellsSizeOrigin_coordinates0_point])
     def test_unordered_coordinates(self,function,mode):
         origin = np.random.random(3)
         size   = np.random.random(3)*10.+origin

@@ -208,7 +208,7 @@ def coordinates_point(size,F,origin=_np.zeros(3)):
     return coordinates0_point(F.shape[:3],size,origin) + displacement_point(size,F)
 
 
-def cellSizeOrigin_coordinates0_point(coordinates0,ordered=True):
+def cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True):
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of point positions.
 
@@ -218,6 +218,7 @@ def cellSizeOrigin_coordinates0_point(coordinates0,ordered=True):
         Undeformed cell coordinates.
     ordered : bool, optional
         Expect coordinates0 data to be ordered (x fast, z slow).
+        Defaults to True.
 
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
@@ -242,7 +243,7 @@ def cellSizeOrigin_coordinates0_point(coordinates0,ordered=True):
     if not (_np.allclose(coords[0],_np.linspace(start[0],end[0],cells[0]),atol=atol) and \
             _np.allclose(coords[1],_np.linspace(start[1],end[1],cells[1]),atol=atol) and \
             _np.allclose(coords[2],_np.linspace(start[2],end[2],cells[2]),atol=atol)):
-        raise ValueError('Regular cells spacing violated.')
+        raise ValueError('Regular cell spacing violated.')
 
     if ordered and not _np.allclose(coordinates0.reshape(tuple(cells)+(3,),order='F'),
                                     coordinates0_point(cells,size,origin),atol=atol):
@@ -261,7 +262,7 @@ def coordinates0_check(coordinates0):
         Array of undeformed cell coordinates.
 
     """
-    cellSizeOrigin_coordinates0_point(coordinates0,ordered=True)
+    cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True)
 
 
 def coordinates0_node(cells,size,origin=_np.zeros(3)):
@@ -296,7 +297,7 @@ def displacement_fluct_node(size,F):
         Deformation gradient field.
 
     """
-    return point_2_node(displacement_fluct_point(size,F))
+    return point_to_node(displacement_fluct_point(size,F))
 
 
 def displacement_avg_node(size,F):
@@ -347,7 +348,7 @@ def coordinates_node(size,F,origin=_np.zeros(3)):
     return coordinates0_node(F.shape[:3],size,origin) + displacement_node(size,F)
 
 
-def point_2_node(cell_data):
+def point_to_node(cell_data):
     """Interpolate periodic point data to nodal data."""
     n = (  cell_data + _np.roll(cell_data,1,(0,1,2))
          + _np.roll(cell_data,1,(0,))  + _np.roll(cell_data,1,(1,))  + _np.roll(cell_data,1,(2,))
@@ -365,7 +366,7 @@ def node_2_point(node_data):
     return c[1:,1:,1:]
 
 
-def cellSizeOrigin_coordinates0_node(coordinates0,ordered=True):
+def cellsSizeOrigin_coordinates0_node(coordinates0,ordered=True):
     """
     Return grid 'DNA', i.e. cells, size, and origin from 1D array of nodal positions.
 
@@ -375,6 +376,7 @@ def cellSizeOrigin_coordinates0_node(coordinates0,ordered=True):
         Undeformed nodal coordinates.
     ordered : bool, optional
         Expect coordinates0 data to be ordered (x fast, z slow).
+        Defaults to True.
 
     """
     coords    = [_np.unique(coordinates0[:,i]) for i in range(3)]
@@ -391,7 +393,7 @@ def cellSizeOrigin_coordinates0_node(coordinates0,ordered=True):
     if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],cells[0]+1),atol=atol) and \
             _np.allclose(coords[1],_np.linspace(mincorner[1],maxcorner[1],cells[1]+1),atol=atol) and \
             _np.allclose(coords[2],_np.linspace(mincorner[2],maxcorner[2],cells[2]+1),atol=atol)):
-        raise ValueError('Regular cells spacing violated.')
+        raise ValueError('Regular cell spacing violated.')
 
     if ordered and not _np.allclose(coordinates0.reshape(tuple(cells+1)+(3,),order='F'),
                                     coordinates0_node(cells,size,origin),atol=atol):
@@ -400,9 +402,9 @@ def cellSizeOrigin_coordinates0_node(coordinates0,ordered=True):
     return (cells,size,origin)
 
 
-def regrid(size,F,cells_new):
+def regrid(size,F,cells):
     """
-    Return mapping from coordinates in deformed configuration to a regular cells.
+    Return mapping from coordinates in deformed configuration to a regular grid.
 
     Parameters
     ----------
@@ -410,13 +412,11 @@ def regrid(size,F,cells_new):
         Physical size.
     F : numpy.ndarray of shape (:,:,:,3,3)
         Deformation gradient field.
-    cells_new : numpy.ndarray of shape (3)
-        New cells for undeformed coordinates.
+    cells : numpy.ndarray of shape (3)
+        Cell count along x,y,z of remapping grid.
 
     """
-    c = coordinates0_point(F.shape[:3],size) \
-      + displacement_avg_point(size,F) \
-      + displacement_fluct_point(size,F)
+    c = coordinates_point(size,F)
 
     outer = _np.dot(_np.average(F,axis=(0,1,2)),size)
     for d in range(3):
@@ -424,4 +424,4 @@ def regrid(size,F,cells_new):
         c[_np.where(c[:,:,:,d]>outer[d])] -= outer[d]
 
     tree = _spatial.cKDTree(c.reshape(-1,3),boxsize=outer)
-    return tree.query(coordinates0_point(cells_new,outer))[1].flatten()
+    return tree.query(coordinates0_point(cells,outer))[1].flatten()

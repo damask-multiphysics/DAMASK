@@ -353,7 +353,6 @@ backupData:
     - mkdir $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}
     - mv $LOCAL_HOME/performance/time.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
     - mv $LOCAL_HOME/performance/memory.png $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
-    - mv $DAMASKROOT/PRIVATE/documenting/DAMASK_* $BACKUP/${CI_PIPELINE_ID}_${CI_COMMIT_SHA}/
   only:
     - development
 

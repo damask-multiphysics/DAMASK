@@ -305,7 +305,7 @@ class Grid:
             Each unique combintation of values results in one material ID.
 
         """
-        cells,size,origin = grid_filters.cellSizeOrigin_coordinates0_point(table.get(coordinates))
+        cells,size,origin = grid_filters.cellsSizeOrigin_coordinates0_point(table.get(coordinates))
 
         labels_ = [labels] if isinstance(labels,str) else labels
         unique,unique_inverse = np.unique(np.hstack([table.get(l) for l in labels_]),return_inverse=True,axis=0)
