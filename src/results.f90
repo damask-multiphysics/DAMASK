@@ -8,7 +8,6 @@ module results
   use DAMASK_interface
   use parallelization
   use IO
-  use rotations
   use HDF5_utilities
 #ifdef PETSc
   use PETSC
@@ -20,27 +19,21 @@ module results
   integer(HID_T) :: resultsFile
 
   interface results_writeDataset
-
     module procedure results_writeTensorDataset_real
     module procedure results_writeVectorDataset_real
     module procedure results_writeScalarDataset_real
 
     module procedure results_writeTensorDataset_int
     module procedure results_writeVectorDataset_int
-
-    module procedure results_writeScalarDataset_rotation
-
   end interface results_writeDataset
 
   interface results_addAttribute
-
     module procedure results_addAttribute_real
     module procedure results_addAttribute_int
     module procedure results_addAttribute_str
 
     module procedure results_addAttribute_int_array
     module procedure results_addAttribute_real_array
-
   end interface results_addAttribute
 
   public :: &
@@ -74,7 +67,7 @@ subroutine results_init(restart)
   if(.not. restart) then
     resultsFile = HDF5_openFile(trim(getSolverJobName())//'.hdf5','w',.true.)
     call results_addAttribute('DADF5_version_major',0)
-    call results_addAttribute('DADF5_version_minor',10)
+    call results_addAttribute('DADF5_version_minor',11)
     call results_addAttribute('DAMASK_version',DAMASKVERSION)
     call get_command(commandLine)
     call results_addAttribute('Call',trim(commandLine))
@@ -466,45 +459,13 @@ end subroutine results_writeTensorDataset_int
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief stores a scalar dataset in a group
-!--------------------------------------------------------------------------------------------------
-subroutine results_writeScalarDataset_rotation(group,dataset,label,description,lattice_structure)
-
-  character(len=*), intent(in)                  :: label,group,description
-  character(len=*), intent(in), optional        :: lattice_structure
-  type(rotation),   intent(inout), dimension(:) :: dataset
-
-  integer(HID_T) :: groupHandle
-
-  groupHandle = results_openGroup(group)
-
-#ifdef PETSc
-  call HDF5_write(groupHandle,dataset,label,.true.)
-#else
-  call HDF5_write(groupHandle,dataset,label,.false.)
-#endif
-
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Description',description,label)
-  if (HDF5_objectExists(groupHandle,label) .and. present(lattice_structure)) &
-    call HDF5_addAttribute(groupHandle,'Lattice',lattice_structure,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Creator','DAMASK '//DAMASKVERSION,label)
-  if (HDF5_objectExists(groupHandle,label)) &
-    call HDF5_addAttribute(groupHandle,'Created',now(),label)
-  call HDF5_closeGroup(groupHandle)
-
-end subroutine results_writeScalarDataset_rotation
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
 subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
 
   integer,          dimension(:,:),   intent(in) :: phaseAt                                         !< phase section at (constituent,element)
-  integer,                   dimension(:,:,:), intent(in) :: memberAtLocal                          !< phase member at (constituent,IP,element)
-  character(len=pStringLen), dimension(:),     intent(in) :: label                                  !< label of each phase section
+  integer,          dimension(:,:,:), intent(in) :: memberAtLocal                                   !< phase member at (constituent,IP,element)
+  character(len=*), dimension(:),     intent(in) :: label                                           !< label of each phase section
 
   integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2),size(memberAtLocal,3)) :: &
     phaseAtMaterialpoint, &
@@ -526,7 +487,6 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
     filespace_id, &
     plist_id, &
     dt_id
-
 
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: hdferr, ierr, i
@@ -571,10 +531,10 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   memberOffset = 0
   do i=1, size(label)
-    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                                ! number of points/instance of this process
+    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                           ! number of points/instance of this process
   enddo
   writeSize = 0
-  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                      ! total number of points by this process
+  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                 ! total number of points by this process
 
 !--------------------------------------------------------------------------------------------------
 ! MPI settings and communication
@@ -658,8 +618,8 @@ end subroutine results_mapping_constituent
 subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
   integer,          dimension(:),   intent(in) :: homogenizationAt                                  !< homogenization section at (element)
-  integer,                   dimension(:,:), intent(in) :: memberAtLocal                            !< homogenization member at (IP,element)
-  character(len=pStringLen), dimension(:),   intent(in) :: label                                    !< label of each homogenization section
+  integer,          dimension(:,:), intent(in) :: memberAtLocal                                     !< homogenization member at (IP,element)
+  character(len=*), dimension(:),   intent(in) :: label                                             !< label of each homogenization section
 
   integer, dimension(size(memberAtLocal,1),size(memberAtLocal,2)) :: &
     homogenizationAtMaterialpoint, &
@@ -681,7 +641,6 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
     filespace_id, &
     plist_id, &
     dt_id
-
 
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: hdferr, ierr, i
