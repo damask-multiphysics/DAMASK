@@ -57,7 +57,7 @@ class Colormap(mpl.colors.ListedColormap):
         ax1.imshow(np.linspace(0,1,self.N).reshape(1,-1),
                    aspect='auto', cmap=self, interpolation='nearest')
         plt.show(block = False)
-        return self.name
+        return 'Colormap: '+self.name
 
 
     @staticmethod
