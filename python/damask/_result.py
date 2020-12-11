@@ -784,7 +784,7 @@ class Result:
 
 
     @staticmethod
-    def _add_IPF_color(q,l):
+    def _add_IPF_color(l,q):
         m = util.scale_to_coprime(np.array(l))
         try:
             lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
@@ -805,16 +805,17 @@ class Result:
                           'Creator':     'add_IPF_color'
                          }
                }
-    def add_IPF_color(self,q,l):
+    def add_IPF_color(self,l,q='O'):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
         Parameters
         ----------
-        q : str
-            Label of the dataset containing the crystallographic orientation as quaternions.
         l : numpy.array of shape (3)
             Lab frame direction for inverse pole figure.
+        q : str
+            Label of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
 
         """
         self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})

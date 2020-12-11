@@ -169,7 +169,7 @@ class TestResult:
 
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
     def test_add_IPF_color(self,default,d):
-        default.add_IPF_color('O',np.array(d))
+        default.add_IPF_color(d,'O')
         loc = {'O':     default.get_dataset_location('O'),
                'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
         qu = default.read_dataset(loc['O']).view(np.double).squeeze()

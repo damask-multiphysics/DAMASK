@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from vtk.util.numpy_support import numpy_to_vtk as np_to_vtk
 
 from damask import VTK
 from damask import Grid
@@ -57,13 +58,21 @@ class TestGrid:
         new = Grid.load(tmp_path/'default.vtr')
         assert grid_equal(new,default)
 
-    def test_invalid_vtr(self,tmp_path):
+    def test_invalid_no_material(self,tmp_path):
         v = VTK.from_rectilinear_grid(np.random.randint(5,10,3)*2,np.random.random(3) + 1.0)
         v.save(tmp_path/'no_materialpoint.vtr',parallel=False)
         with pytest.raises(ValueError):
             Grid.load(tmp_path/'no_materialpoint.vtr')
 
-    def test_invalid_material(self):
+    def test_invalid_spacing(self,tmp_path,default):
+        default.save(tmp_path/'spacing_ok.vtr')
+        vtk = VTK.load(tmp_path/'spacing_ok.vtr')
+        vtk.vtk_data.SetXCoordinates(np_to_vtk(np.sort(np.random.random(default.cells[0]))))
+        vtk.save(tmp_path/'invalid_spacing.vtr',parallel=False)
+        with pytest.raises(ValueError):
+            Grid.load(tmp_path/'invalid_spacing.vtr')
+
+    def test_invalid_material_type(self):
         with pytest.raises(TypeError):
             Grid(np.zeros((3,3,3),dtype='complex'),np.ones(3))
 

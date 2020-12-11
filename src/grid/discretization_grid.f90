@@ -150,168 +150,6 @@ end subroutine discretization_grid_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Parses geometry file
-!> @details important variables have an implicit "save" attribute. Therefore, this function is
-! supposed to be called only once!
-!--------------------------------------------------------------------------------------------------
-subroutine readGeom(grid,geomSize,origin,material)
-
-  integer,     dimension(3), intent(out) :: &
-    grid                                                                                            ! grid   (across all processes!)
-  real(pReal), dimension(3), intent(out) :: &
-    geomSize, &                                                                                     ! size   (across all processes!)
-    origin                                                                                          ! origin (across all processes!)
-  integer,     dimension(:), intent(out), allocatable :: &
-    material
-
-  character(len=:),      allocatable :: rawData
-  character(len=65536)               :: line
-  integer, allocatable, dimension(:) :: chunkPos
-  integer :: &
-    headerLength = -1, &                                                                            !< length of header (in lines)
-    fileLength, &                                                                                   !< length of the geom file (in characters)
-    fileUnit, &
-    startPos, endPos, &
-    myStat, &
-    l, &                                                                                            !< line counter
-    c, &                                                                                            !< counter for # materials in line
-    o, &                                                                                            !< order of "to" packing
-    e, &                                                                                            !< "element", i.e. spectral collocation point
-    i, j
-
-  grid = -1
-  geomSize = -1.0_pReal
-
-!--------------------------------------------------------------------------------------------------
-! read raw data as stream
-  inquire(file = trim(interface_geomFile), size=fileLength)
-  open(newunit=fileUnit, file=trim(interface_geomFile), access='stream',&
-       status='old', position='rewind', action='read',iostat=myStat)
-  if(myStat /= 0) call IO_error(100,ext_msg=trim(interface_geomFile))
-  allocate(character(len=fileLength)::rawData)
-  read(fileUnit) rawData
-  close(fileUnit)
-
-!--------------------------------------------------------------------------------------------------
-! get header length
-  endPos = index(rawData,IO_EOL)
-  if(endPos <= index(rawData,'head')) then                                                          ! ToDo: Should be 'header'
-    startPos = len(rawData)
-    call IO_error(error_ID=841, ext_msg='readGeom')
-  else
-    chunkPos = IO_stringPos(rawData(1:endPos))
-    if (chunkPos(1) < 2) call IO_error(error_ID=841, ext_msg='readGeom')
-    headerLength = IO_intValue(rawData(1:endPos),chunkPos,1)
-    startPos = endPos + 1
-  endif
-
-!--------------------------------------------------------------------------------------------------
-! read and interpret header
-  origin = 0.0_pReal
-  l = 0
-  do while (l < headerLength .and. startPos < len(rawData))
-    endPos = startPos + index(rawData(startPos:),IO_EOL) - 1
-    if (endPos < startPos) endPos = len(rawData)                                                    ! end of file without new line
-    line = rawData(startPos:endPos)
-    startPos = endPos + 1
-    l = l + 1
-
-    chunkPos = IO_stringPos(trim(line))
-    if (chunkPos(1) < 2) cycle                                                                      ! need at least one keyword value pair
-
-    select case (IO_lc(IO_StringValue(trim(line),chunkPos,1)) )
-      case ('grid')
-        if (chunkPos(1) > 6) then
-          do j = 2,6,2
-            select case (IO_lc(IO_stringValue(line,chunkPos,j)))
-              case('a')
-                grid(1) = IO_intValue(line,chunkPos,j+1)
-              case('b')
-                grid(2) = IO_intValue(line,chunkPos,j+1)
-              case('c')
-                grid(3) = IO_intValue(line,chunkPos,j+1)
-            end select
-          enddo
-        endif
-
-      case ('size')
-        if (chunkPos(1) > 6) then
-          do j = 2,6,2
-            select case (IO_lc(IO_stringValue(line,chunkPos,j)))
-              case('x')
-                geomSize(1) = IO_floatValue(line,chunkPos,j+1)
-              case('y')
-                geomSize(2) = IO_floatValue(line,chunkPos,j+1)
-              case('z')
-                geomSize(3) = IO_floatValue(line,chunkPos,j+1)
-            end select
-          enddo
-        endif
-
-      case ('origin')
-        if (chunkPos(1) > 6) then
-          do j = 2,6,2
-            select case (IO_lc(IO_stringValue(line,chunkPos,j)))
-              case('x')
-                origin(1) = IO_floatValue(line,chunkPos,j+1)
-              case('y')
-                origin(2) = IO_floatValue(line,chunkPos,j+1)
-              case('z')
-                origin(3) = IO_floatValue(line,chunkPos,j+1)
-            end select
-          enddo
-        endif
-
-    end select
-
-  enddo
-
-!--------------------------------------------------------------------------------------------------
-! sanity checks
-  if(any(grid < 1)) &
-    call IO_error(error_ID = 842, ext_msg='grid (readGeom)')
-  if(any(geomSize < 0.0_pReal)) &
-    call IO_error(error_ID = 842, ext_msg='size (readGeom)')
-
-  allocate(material(product(grid)), source = -1)                                              ! too large in case of MPI (shrink later, not very elegant)
-
-!--------------------------------------------------------------------------------------------------
-! read and interpret content
-  e = 1
-  do while (startPos < len(rawData))
-    endPos = startPos + index(rawData(startPos:),IO_EOL) - 1
-    if (endPos < startPos) endPos = len(rawData)                                                    ! end of file without new line
-    line = rawData(startPos:endPos)
-    startPos = endPos + 1
-    l = l + 1
-    chunkPos = IO_stringPos(trim(line))
-
-    noCompression: if (chunkPos(1) /= 3) then
-      c = chunkPos(1)
-      material(e:e+c-1) =  [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
-    else noCompression
-      compression: if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'of') then
-        c = IO_intValue(line,chunkPos,1)
-        material(e:e+c-1) = [(IO_intValue(line,chunkPos,3),i = 1,IO_intValue(line,chunkPos,1))]
-      else         if (IO_lc(IO_stringValue(line,chunkPos,2))  == 'to') then compression
-        c = abs(IO_intValue(line,chunkPos,3) - IO_intValue(line,chunkPos,1)) + 1
-        o = merge(+1, -1, IO_intValue(line,chunkPos,3) > IO_intValue(line,chunkPos,1))
-        material(e:e+c-1) = [(i, i = IO_intValue(line,chunkPos,1),IO_intValue(line,chunkPos,3),o)]
-      else compression
-        c = chunkPos(1)
-        material(e:e+c-1) = [(IO_intValue(line,chunkPos,i+1), i=0, c-1)]
-      endif compression
-    endif noCompression
-
-    e = e+c
-  end do
-
-  if (e-1 /= product(grid)) call IO_error(error_ID = 843, el=e)
-
-end subroutine readGeom
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief Parse vtk rectilinear grid (.vtr)
 !> @details https://vtk.org/Wiki/VTK_XML_Formats
 !--------------------------------------------------------------------------------------------------
@@ -566,12 +404,12 @@ subroutine readVTR(grid,geomSize,origin,material)
     size_deflated = temp(4:)
     bytes_inflated = base64_to_bytes(base64_str(base64_nChar(headerLen)+1_pI64:))
 
-    allocate(bytes(0))
+    allocate(bytes(sum(size_inflated)))
     e = 0_pI64
     do b = 1, nBlock
       s = e + 1_pI64
       e = s + size_deflated(b) - 1_pI64
-      bytes = [bytes,zlib_inflate(bytes_inflated(s:e),size_inflated(b))]
+      bytes(sum(size_inflated(:b-1))+1_pI64:sum(size_inflated(:b))) = zlib_inflate(bytes_inflated(s:e),size_inflated(b))
     enddo
 
   end function asBytes_compressed
