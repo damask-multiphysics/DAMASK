@@ -49,15 +49,6 @@ class Table:
         """Copy Table."""
         return self.__copy__()
 
-    def where(self,expression):
-        """
-        Return boolean array corresponding to interpolated expression being True.
-
-        Table columns are addressed as #column# and will have appropriate shapes.
-
-        """
-        return eval(re.sub('#(.+?)#',r'self.get("\1")',expression))
-
 
     def _label_discrete(self):
         """Label data individually, e.g. v v v ==> 1_v 2_v 3_v."""

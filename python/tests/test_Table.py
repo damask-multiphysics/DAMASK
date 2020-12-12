@@ -44,12 +44,6 @@ class TestTable:
     def test_getitem(self,N):
         assert len(Table(np.random.rand(N,1),{'X':1})[:N//2]) == N//2
 
-    @pytest.mark.parametrize('N',[10,40])
-    @pytest.mark.parametrize('limit',[0.1,0.6])
-    def test_where(self,N,limit):
-        r = Table(np.random.rand(N,1),{'X':1})
-        assert np.all(r[r.where(f'#X# > {limit}')].get('X') > limit)
-
     @pytest.mark.parametrize('mode',['str','path'])
     def test_write_read(self,default,tmp_path,mode):
         default.save(tmp_path/'default.txt')
