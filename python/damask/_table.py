@@ -33,6 +33,10 @@ class Table:
         """Brief overview."""
         return '\n'.join(['# '+c for c in self.comments])+'\n'+self.data.__repr__()
 
+    def __getitem__(self,item):
+        """Return slice according to item."""
+        return self.__class__(data=self.data[item],shapes=self.shapes,comments=self.comments)
+
     def __len__(self):
         """Number of rows."""
         return len(self.data)

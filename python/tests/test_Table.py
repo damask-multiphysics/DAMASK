@@ -8,7 +8,7 @@ from damask import Table
 def default():
     """Simple Table."""
     x = np.ones((5,13),dtype=float)
-    return Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['test data','contains only ones'])
+    return Table(x,{'F':(3,3),'v':(3,),'s':(1,)},['test data','contains five rows of only ones'])
 
 @pytest.fixture
 def ref_path(ref_path_base):
@@ -20,8 +20,9 @@ class TestTable:
     def test_repr(self,default):
         print(default)
 
-    def test_len(self):
-        len(Table(np.random.rand(7,3),{'X':3})) == 7
+    @pytest.mark.parametrize('N',[10,40])
+    def test_len(self,N):
+        len(Table(np.random.rand(N,3),{'X':3})) == N
 
     def test_get_scalar(self,default):
         d = default.get('s')
@@ -38,6 +39,10 @@ class TestTable:
     def test_get_component(self,default):
         d = default.get('5_F')
         assert np.allclose(d,1.0) and d.shape[1:] == (1,)
+
+    @pytest.mark.parametrize('N',[10,40])
+    def test_getitem(self,N):
+        assert len(Table(np.random.rand(N,1),{'X':1})[:N//2]) == N//2
 
     @pytest.mark.parametrize('mode',['str','path'])
     def test_write_read(self,default,tmp_path,mode):
