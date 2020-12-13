@@ -10,7 +10,7 @@
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
-#define PETSC_MINOR_MIN 10
+#define PETSC_MINOR_MIN 12
 #define PETSC_MINOR_MAX 14
 
 module DAMASK_interface
