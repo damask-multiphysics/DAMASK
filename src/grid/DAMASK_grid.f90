@@ -442,18 +442,19 @@ program DAMASK_grid
           print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
         endif; flush(IO_STDOUT)
 
-        if (mod(inc,loadCases(l)%f_out) == 0) then
+        if (mod(inc,loadCases(l)%f_out) == 0 .or. interface_SIGUSR1) then
           print'(1/,a)', ' ... writing results to file ......................................'
           flush(IO_STDOUT)
           call CPFEM_results(totalIncsCounter,time)
         endif
-        if (mod(inc,loadCases(l)%f_restart) == 0) then
+        if (mod(inc,loadCases(l)%f_restart) == 0 .or. interface_SIGUSR2) then
           call mech_restartWrite
           call CPFEM_restartWrite
         endif
+        if (interface_SIGTERM) exit loadCaseLooping
       endif skipping
 
-     enddo incLooping
+    enddo incLooping
 
   enddo loadCaseLooping
 
