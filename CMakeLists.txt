@@ -1,6 +1,18 @@
-########################################################################################
-# Compiler options for building DAMASK
 cmake_minimum_required (VERSION 3.10.0)
+include (FindPkgConfig REQUIRED)
+
+# Dummy project to determine compiler names and version
+project (Prerequisites LANGUAGES)
+set(ENV{PKG_CONFIG_PATH} "$ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib/pkgconfig")
+pkg_search_module (PETSC REQUIRED PETSc>3.12.0)
+pkg_get_variable (CMAKE_Fortran_COMPILER PETSc fcompiler)
+pkg_get_variable (CMAKE_C_COMPILER PETSc ccompiler)
+
+find_program (CAT_EXECUTABLE NAMES cat)
+execute_process (COMMAND ${CAT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/VERSION
+                 RESULT_VARIABLE DAMASK_VERSION_RETURN
+                 OUTPUT_VARIABLE DAMASK_VERSION
+                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 #---------------------------------------------------------------------------------------
 # Find PETSc from system environment
@@ -28,17 +40,11 @@ include ${petsc_conf_rules}
 include ${petsc_conf_variables}
 INCLUDE_DIRS   := \${PETSC_FC_INCLUDES}
 LIBRARIES      := \${PETSC_WITH_EXTERNAL_LIB}
-COMPILERF      := \${FC}
-COMPILERC      := \${CC}
 LINKERNAME     := \${FLINKER}
 includes:
 \t@echo \${INCLUDE_DIRS}
 extlibs:
 \t@echo \${LIBRARIES}
-compilerf:
-\t@echo \${COMPILERF}
-compilerc:
-\t@echo \${COMPILERC}
 linker:
 \t@echo \${LINKERNAME}
 ")
@@ -56,16 +62,6 @@ execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_conf
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "extlibs"
                  RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
                  OUTPUT_VARIABLE petsc_external_lib
-                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-# PETSc specified fortran compiler
-execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "compilerf"
-                 RESULT_VARIABLE PETSC_MPIFC_RETURN
-                 OUTPUT_VARIABLE PETSC_MPIFC
-                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-# PETSc specified C compiler
-execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "compilerc"
-                 RESULT_VARIABLE PETSC_MPICC_RETURN
-                 OUTPUT_VARIABLE PETSC_MPICC
                  OUTPUT_STRIP_TRAILING_WHITESPACE)
 # PETSc specified linker (Fortran compiler + PETSc linking flags)
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "linker"
@@ -91,13 +87,6 @@ message ("Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message ("Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message ("Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
 message ("Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
-message ("Found MPI Fortran Compiler:\n${PETSC_MPIFC}\n"     )
-message ("Found MPI C Compiler:\n${PETSC_MPICC}\n"           )
-
-# set compiler commands to match PETSc (needs to be done before defining the project)
-# https://cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
-set (CMAKE_Fortran_COMPILER "${PETSC_MPIFC}")
-set (CMAKE_C_COMPILER       "${PETSC_MPICC}")
 
 #---------------------------------------------------------------------------------------
 # Now start to care about DAMASK
@@ -115,7 +104,8 @@ elseif (DAMASK_SOLVER STREQUAL "mesh")
 else ()
     message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
+add_definitions (-DPETSc)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set (CMAKE_BUILD_TYPE "RELEASE")
@@ -153,17 +143,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "SYNTAXONLY")
     set (BUILDCMD_POST "${BUILDCMD_POST} -fsyntax-only")
 endif ()
 
-# Parse DAMASK version from VERSION file
-find_program (CAT_EXECUTABLE NAMES cat)
-execute_process (COMMAND ${CAT_EXECUTABLE} ${PROJECT_SOURCE_DIR}/VERSION
-                 RESULT_VARIABLE DAMASK_VERSION_RETURN
-                 OUTPUT_VARIABLE DAMASK_V
-                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-add_definitions (-DDAMASKVERSION="${DAMASK_V}")
 
-# definition of other macros
-add_definitions (-DPETSc)
-
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 if    (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     include (Compiler-Intel)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
