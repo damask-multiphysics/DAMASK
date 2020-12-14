@@ -205,7 +205,7 @@ subroutine DAMASK_interface_init
   if (interface_restartInc > 0) &
     print'(a,i6.6)', ' Restart from increment: ', interface_restartInc
 
-  !call signalterm_c(c_funloc(catchSIGTERM))
+  call signalterm_c(c_funloc(catchSIGTERM))
   call signalusr1_c(c_funloc(catchSIGUSR1))
   call signalusr2_c(c_funloc(catchSIGUSR2))
   call interface_setSIGTERM(.false.)
