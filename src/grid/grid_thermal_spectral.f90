@@ -197,8 +197,7 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
   call VecMax(solution_vec,devNull,T_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
     print'(/,a)', ' ... thermal conduction converged ..................................'
-  write(IO_STDOUT,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
-                                                        T_min, T_max, stagNorm
+  print'(/,a,f8.4,2x,f8.4,2x,f8.4)', ' Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
   print'(/,a)', ' ==========================================================================='
   flush(IO_STDOUT) 
 

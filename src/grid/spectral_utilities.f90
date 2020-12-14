@@ -688,8 +688,8 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
     if(debugGeneral) then
       print'(/,a)', ' ... updating masked compliance ............................................'
-      write(IO_STDOUT,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
-                                                   transpose(temp99_Real)*1.0e-9_pReal
+      print'(/,a,/,8(9(2x,f12.7,1x)/),9(2x,f12.7,1x))', &
+        ' Stiffness C (load) / GPa =', transpose(temp99_Real)*1.0e-9_pReal
       flush(IO_STDOUT)
     endif
 
@@ -709,9 +709,8 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     if (debugGeneral .or. errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-      write(IO_STDOUT,trim(formatString),advance='no') ' C * S (load) ', &
-                                                             transpose(matmul(c_reduced,s_reduced))
-      write(IO_STDOUT,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
+      print trim(formatString), ' C * S (load) ', transpose(matmul(c_reduced,s_reduced))
+      print trim(formatString), ' S (load) ', transpose(s_reduced)
       if(errmatinv) error stop 'matrix inversion error'
     endif
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
@@ -722,7 +721,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   utilities_maskedCompliance = math_99to3333(temp99_Real)
 
   if(debugGeneral) then
-    write(IO_STDOUT,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
+    print'(/,a,/,9(9(2x,f10.5,1x)/),9(2x,f10.5,1x))', &
       ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
     flush(IO_STDOUT)
   endif
@@ -818,13 +817,11 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                   ! average of P
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  if (debugRotation) &
-  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
-                                                      transpose(P_av)*1.e-6_pReal
-  if(present(rotation_BC)) &
-    P_av = rotation_BC%rotate(P_av)
-  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
-                                                      transpose(P_av)*1.e-6_pReal
+  if (debugRotation) print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    ' Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
+  if(present(rotation_BC)) P_av = rotation_BC%rotate(P_av)
+  print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    ' Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
 
   dPdF_max = 0.0_pReal
