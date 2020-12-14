@@ -446,10 +446,12 @@ program DAMASK_grid
           print'(1/,a)', ' ... writing results to file ......................................'
           flush(IO_STDOUT)
           call CPFEM_results(totalIncsCounter,time)
+          call interface_setSIGUSR1(.false.)
         endif
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. interface_SIGUSR2) then
           call mech_restartWrite
           call CPFEM_restartWrite
+          call interface_setSIGUSR2(.false.)
         endif
         if (interface_SIGTERM) exit loadCaseLooping
       endif skipping
