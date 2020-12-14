@@ -40,13 +40,10 @@ include ${petsc_conf_rules}
 include ${petsc_conf_variables}
 INCLUDE_DIRS   := \${PETSC_FC_INCLUDES}
 LIBRARIES      := \${PETSC_WITH_EXTERNAL_LIB}
-LINKERNAME     := \${FLINKER}
 includes:
 \t@echo \${INCLUDE_DIRS}
 extlibs:
 \t@echo \${LIBRARIES}
-linker:
-\t@echo \${LINKERNAME}
 ")
 
 # CMake will execute each target in the ${petsc_config_makefile}
@@ -58,15 +55,9 @@ execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_conf
                  OUTPUT_VARIABLE petsc_includes
                  OUTPUT_STRIP_TRAILING_WHITESPACE)
 # Find the PETSc external linking directory settings
-# required for final linking, must be appended after the executable
 execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "extlibs"
                  RESULT_VARIABLE PETSC_EXTERNAL_LIB_RETURN
                  OUTPUT_VARIABLE petsc_external_lib
-                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-# PETSc specified linker (Fortran compiler + PETSc linking flags)
-execute_process (COMMAND ${MAKE_EXECUTABLE} --no-print-directory -f ${petsc_config_makefile} "linker"
-                 RESULT_VARIABLE PETSC_LINKER_RETURN
-                 OUTPUT_VARIABLE PETSC_LINKER
                  OUTPUT_STRIP_TRAILING_WHITESPACE)
 # Remove temporary makefile, no need to keep it anymore.
 file (REMOVE_RECURSE ${TEMPDIR})
@@ -86,7 +77,6 @@ endforeach (exlib)
 message ("Found PETSC_DIR:\n${PETSC_DIR}\n"                  )
 message ("Found PETSC_INCLUDES:\n${PETSC_INCLUDES}\n"        )
 message ("Found PETSC_EXTERNAL_LIB:\n${PETSC_EXTERNAL_LIB}\n")
-message ("Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
 
 #---------------------------------------------------------------------------------------
 # Now start to care about DAMASK
@@ -94,18 +84,18 @@ message ("Found PETSC_LINKER:\n${PETSC_LINKER}\n"            )
 # DAMASK solver defines project to build
 string(TOLOWER ${DAMASK_SOLVER} DAMASK_SOLVER)
 if (DAMASK_SOLVER STREQUAL "grid")
-    project (damask-grid Fortran C)
+    project (damask-grid HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
     add_definitions (-DGrid)
-    message ("Building Grid Solver\n")
 elseif (DAMASK_SOLVER STREQUAL "mesh")
-    project (damask-mesh Fortran C)
+    project (damask-mesh HOMEPAGE_URL https://damask.mpie.de LANGUAGES Fortran C)
     add_definitions (-DMesh)
-    message ("Building Mesh Solver\n")
 else ()
     message (FATAL_ERROR "Build target (DAMASK_SOLVER) is not defined")
 endif ()
 add_definitions (-DDAMASKVERSION="${DAMASK_VERSION}")
 add_definitions (-DPETSc)
+
+message ("\nBuilding ${CMAKE_PROJECT_NAME}\n")
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set (CMAKE_BUILD_TYPE "RELEASE")
@@ -155,9 +145,8 @@ else ()
     message (FATAL_ERROR "Compiler type (CMAKE_Fortran_COMPILER_ID) not recognized")
 endif ()
 
-
 set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${BUILDCMD_PRE} ${OPENMP_FLAGS} ${STANDARD_CHECK} ${OPTIMIZATION_FLAGS} ${COMPILE_FLAGS} ${PRECISION_FLAGS}")
-set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${PETSC_LINKER} ${OPENMP_FLAGS}   ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
+set (CMAKE_Fortran_LINK_EXECUTABLE           "${BUILDCMD_PRE} ${CMAKE_Fortran_COMPILER} ${OPENMP_FLAGS} ${OPTIMIZATION_FLAGS} ${LINKER_FLAGS}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
     set (CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_Fortran_FLAGS_${CMAKE_BUILD_TYPE}} ${DEBUG_FLAGS}")
