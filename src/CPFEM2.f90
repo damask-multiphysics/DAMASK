@@ -67,7 +67,8 @@ subroutine CPFEM_initAll
   call homogenization_init
   call CPFEM_init
   call config_deallocate
-  call crystallite_setInitialValues                                                                 ! ToDo: MD More general approach needed
+  if (interface_restartInc==0) &
+    call crystallite_setInitialValues                                                               ! ToDo: MD More general approach needed
 
 end subroutine CPFEM_initAll
 
