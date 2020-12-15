@@ -135,7 +135,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
 
-  logical, dimension(discretization_nIPs,discretization_Nelems) :: devNull
   integer :: &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
@@ -288,8 +287,6 @@ subroutine crystallite_init
   enddo
   !$OMP END PARALLEL DO
 
-  devNull = crystallite_stress()
-
 #ifdef DEBUG
   if (debugCrystallite%basic) then
     print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -321,13 +318,10 @@ function crystallite_stress()
     subLp0,&                                                                                        !< plastic velocity grad at start of crystallite inc
     subLi0                                                                                          !< intermediate velocity grad at start of crystallite inc
 
-
   todo = .false.
 
   subLp0 = crystallite_partitionedLp0
   subLi0 = crystallite_partitionedLi0
-
-
 
 !--------------------------------------------------------------------------------------------------
 ! initialize to starting condition
@@ -435,8 +429,6 @@ function crystallite_stress()
 !  integrate --- requires fully defined state array (basic + dependent state)
     where(.not. crystallite_converged .and. crystallite_subStep > num%subStepMinCryst) &            ! do not try non-converged but fully cutbacked any further
       todo = .true.                                                                                 ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
-
-
   enddo cutbackLooping
 
 ! return whether converged or not
@@ -471,10 +463,10 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     crystallite_partitionedS0(1:3,1:3,c,i,e)  = crystallite_S0(1:3,1:3,c,i,e)
 
     plasticState(material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e)) = &
-    plasticState(material_phaseAt(c,e))%state0(         :,material_phasememberAt(c,i,e))
+    plasticState(material_phaseAt(c,e))%state0(           :,material_phasememberAt(c,i,e))
     do s = 1, phase_Nsources(material_phaseAt(c,e))
       sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e)) = &
-      sourceState(material_phaseAt(c,e))%p(s)%state0(         :,material_phasememberAt(c,i,e))
+      sourceState(material_phaseAt(c,e))%p(s)%state0(           :,material_phasememberAt(c,i,e))
     enddo
   enddo
 
