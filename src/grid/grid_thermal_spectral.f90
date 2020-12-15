@@ -131,8 +131,7 @@ subroutine grid_thermal_spectral_init
   cell = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     cell = cell + 1
-    T_current(i,j,k) = temperature(material_homogenizationAt(cell))% &
-                                   p(thermalMapping(material_homogenizationAt(cell))%p(1,cell))
+    T_current(i,j,k) = temperature(material_homogenizationAt(cell))%p(material_homogenizationMemberAt(1,cell))
     T_lastInc(i,j,k) = T_current(i,j,k)
     T_stagInc(i,j,k) = T_current(i,j,k)
   enddo; enddo; enddo

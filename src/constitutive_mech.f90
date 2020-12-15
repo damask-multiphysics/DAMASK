@@ -3,6 +3,12 @@
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_mech
 
+  integer(kind(ELASTICITY_undefined_ID)), dimension(:),   allocatable :: &
+    phase_elasticity                                                                                !< elasticity of each phase
+  integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
+    phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
+
+
   interface
 
     module function plastic_none_init()          result(myPlasticity)
@@ -360,7 +366,7 @@ module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
     instance, of
 
   ho  = material_homogenizationAt(el)
-  tme = thermalMapping(ho)%p(ip,el)
+  tme = material_homogenizationMemberAt(ip,el)
   of  = material_phasememberAt(ipc,ip,el)
   instance = phase_plasticityInstance(material_phaseAt(ipc,el))
 
@@ -407,7 +413,7 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     i, j, instance, of
 
   ho = material_homogenizationAt(el)
-  tme = thermalMapping(ho)%p(ip,el)
+  tme = material_homogenizationMemberAt(ip,el)
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)
   of = material_phasememberAt(ipc,ip,el)

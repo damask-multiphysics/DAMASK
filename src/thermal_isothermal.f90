@@ -3,6 +3,7 @@
 !> @brief material subroutine for isothermal temperature field
 !--------------------------------------------------------------------------------------------------
 module thermal_isothermal
+  use prec
   use config
   use material
 
@@ -29,10 +30,8 @@ subroutine thermal_isothermal_init
     allocate(thermalState(h)%subState0(0,Nmaterialpoints))
     allocate(thermalState(h)%state    (0,Nmaterialpoints))
 
-    deallocate(temperature    (h)%p)
-    allocate  (temperature    (h)%p(1), source=thermal_initialT(h))
-    deallocate(temperatureRate(h)%p)
-    allocate  (temperatureRate(h)%p(1))
+    allocate(temperature    (h)%p(Nmaterialpoints),source=thermal_initialT(h))
+    allocate(temperatureRate(h)%p(Nmaterialpoints),source = 0.0_pReal)
 
   enddo
 

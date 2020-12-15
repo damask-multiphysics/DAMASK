@@ -72,12 +72,9 @@ subroutine thermal_adiabatic_init
     allocate(thermalState(h)%state0   (1,Nmaterialpoints), source=thermal_initialT(h))
     allocate(thermalState(h)%subState0(1,Nmaterialpoints), source=thermal_initialT(h))
     allocate(thermalState(h)%state    (1,Nmaterialpoints), source=thermal_initialT(h))
- 
-    thermalMapping(h)%p => material_homogenizationMemberAt
-    deallocate(temperature(h)%p)
+
     temperature(h)%p => thermalState(h)%state(1,:)
-    deallocate(temperatureRate(h)%p)
-    allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
+    allocate(temperatureRate(h)%p(Nmaterialpoints),source = 0.0_pReal)
   
     end associate
   enddo
@@ -117,8 +114,8 @@ function thermal_adiabatic_updateState(subdt, ip, el)
                                      <= 1.0e-6_pReal*abs(thermalState(homog)%state(1,offset)), &
                                    .true.]
  
-  temperature    (homog)%p(thermalMapping(homog)%p(ip,el)) = T  
-  temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el)) = &
+  temperature    (homog)%p(material_homogenizationMemberAt(ip,el)) = T  
+  temperatureRate(homog)%p(material_homogenizationMemberAt(ip,el)) = &
     (thermalState(homog)%state(1,offset) - thermalState(homog)%subState0(1,offset))/(subdt+tiny(0.0_pReal))
   
 end function thermal_adiabatic_updateState
