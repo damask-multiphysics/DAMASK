@@ -93,7 +93,7 @@ module spectral_utilities
     real(pReal), dimension(3,3) :: stress_BC
     logical, dimension(3,3)     :: stress_mask
     type(rotation)              :: rotation_BC
-    real(pReal) :: timeinc, timeincOld
+    real(pReal) :: timeinc
   end type tSolutionParams
 
   type :: tNumerics
