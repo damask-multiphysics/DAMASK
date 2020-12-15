@@ -32,7 +32,6 @@ module mesh_mech_FEM
   type tSolutionParams
     type(tFieldBC)  :: fieldBC
     real(pReal)     :: timeinc
-    real(pReal)     :: timeincOld
   end type tSolutionParams
 
   type(tSolutionParams)  :: params
@@ -302,7 +301,6 @@ type(tSolutionState) function FEM_mech_solution( &
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
   params%timeinc = timeinc
-  params%timeincOld = timeinc_old
   params%fieldBC = fieldBC
 
   call SNESSolve(mech_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)                             ! solve mech_snes based on solution guess (result in solution)
