@@ -79,7 +79,6 @@ subroutine damage_local_init
     allocate(damageState(h)%subState0(1,Nmaterialpoints), source=1.0_pReal)
     allocate(damageState(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
 
-    damageMapping(h)%p => material_homogenizationMemberAt
     damage(h)%p => damageState(h)%state(1,:)
 
     end associate

@@ -30,7 +30,6 @@ subroutine damage_none_init
     allocate(damageState(h)%subState0(0,Nmaterialpoints))
     allocate(damageState(h)%state    (0,Nmaterialpoints))
 
-    damageMapping(h)%p => material_homogenizationMemberAt
     allocate  (damage(h)%p(Nmaterialpoints), source=1.0_pReal)
 
   enddo

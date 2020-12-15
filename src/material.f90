@@ -77,7 +77,7 @@ module material
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt                                                                       !< homogenization ID of each element
-  integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
+  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (ip,elem)
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
@@ -91,9 +91,6 @@ module material
 
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
-
-  type(tHomogMapping), allocatable, dimension(:), public :: &
-    damageMapping                                                                                   !< mapping for damage state/fields
 
   type(group_float),  allocatable, dimension(:), public :: &
     temperature, &                                                                                  !< temperature field
@@ -159,11 +156,8 @@ subroutine material_init(restart)
   allocate(thermalState    (size(material_name_homogenization)))
   allocate(damageState     (size(material_name_homogenization)))
 
-  allocate(damageMapping   (size(material_name_homogenization)))
-
   allocate(temperature     (size(material_name_homogenization)))
   allocate(damage          (size(material_name_homogenization)))
-
   allocate(temperatureRate (size(material_name_homogenization)))
 
 

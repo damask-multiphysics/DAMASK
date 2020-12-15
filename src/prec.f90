@@ -54,16 +54,12 @@ module prec
   type, extends(tState) :: tPlasticState
     logical :: &
       nonlocal = .false.
-    real(pReal), pointer,     dimension(:,:) :: &
+    real(pReal), pointer, dimension(:,:) :: &
       slipRate                                                                                      !< slip rate
   end type
 
   type :: tSourceState
     type(tState), dimension(:), allocatable :: p                                                    !< tState for each active source mechanism in a phase
-  end type
-
-  type :: tHomogMapping
-    integer, pointer, dimension(:,:) :: p
   end type
 
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.

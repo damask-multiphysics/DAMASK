@@ -125,7 +125,7 @@ module subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
   constituent = material_phasememberAt(ipc,ip,el)
   sourceOffset = source_damage_anisoDuctile_offset(phase)
   homog = material_homogenizationAt(el)
-  damageOffset = damageMapping(homog)%p(ip,el)
+  damageOffset = material_homogenizationMemberAt(ip,el)
 
   associate(prm => param(source_damage_anisoDuctile_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) &

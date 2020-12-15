@@ -332,7 +332,7 @@ module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(ipc,el))
     degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(ipc,el)))
       case (STIFFNESS_DEGRADATION_damage_ID) degradationType
-        C = C * damage(ho)%p(damageMapping(ho)%p(ip,el))**2
+        C = C * damage(ho)%p(material_homogenizationMemberAt(ip,el))**2
     end select degradationType
   enddo DegradationLoop
 
