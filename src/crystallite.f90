@@ -115,6 +115,7 @@ module crystallite
 
   public :: &
     crystallite_init, &
+    crystallite_setInitialValues, &
     crystallite_stress, &
     crystallite_stressTangent, &
     crystallite_orientations, &
@@ -136,9 +137,7 @@ contains
 subroutine crystallite_init
 
   integer :: &
-    c, &                                                                                            !< counter in integration point component loop
-    i, &                                                                                            !< counter in integration point loop
-    e, &                                                                                            !< counter in element loop
+    p, &
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
     eMax                                                                                            !< maximum number of elements
@@ -237,19 +236,38 @@ subroutine crystallite_init
   phases => config_material%get('phase')
 
   allocate(output_constituent(phases%length))
-  do c = 1, phases%length
-    phase => phases%get(c)
+  do p = 1, phases%length
+    phase => phases%get(p)
     mech  => phase%get('mechanics',defaultVal = emptyDict)
 #if defined(__GFORTRAN__)
-    output_constituent(c)%label  = output_asStrings(mech)
+    output_constituent(p)%label  = output_asStrings(mech)
 #else
-    output_constituent(c)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
+    output_constituent(p)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
+#ifdef DEBUG
+  if (debugCrystallite%basic) then
+    print'(a42,1x,i10)', '    # of elements:                       ', eMax
+    print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
+    print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
+    flush(IO_STDOUT)
+  endif
+#endif
+
+end subroutine crystallite_init
+
 
 !--------------------------------------------------------------------------------------------------
-! initialize
+!> @brief Set initial values
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_setInitialValues
+
+  integer :: &
+    c, &                                                                                            !< counter in integration point component loop
+    i, &                                                                                            !< counter in integration point loop
+    e                                                                                               !< counter in element loop
+
  !$OMP PARALLEL DO PRIVATE(i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Nconstituents(material_homogenizationAt(e))
@@ -287,16 +305,8 @@ subroutine crystallite_init
   enddo
   !$OMP END PARALLEL DO
 
-#ifdef DEBUG
-  if (debugCrystallite%basic) then
-    print'(a42,1x,i10)', '    # of elements:                       ', eMax
-    print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
-    print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
-    flush(IO_STDOUT)
-  endif
-#endif
 
-end subroutine crystallite_init
+end subroutine crystallite_setInitialValues
 
 
 !--------------------------------------------------------------------------------------------------
