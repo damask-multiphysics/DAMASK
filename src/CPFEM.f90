@@ -89,11 +89,10 @@ subroutine CPFEM_initAll
   call lattice_init
   call material_init(.false.)
   call constitutive_init
-  call crystallite_init
   call homogenization_init
+  call crystallite_init
   call CPFEM_init
   call config_deallocate
-  call crystallite_setInitialValues                                                                 ! ToDo: MD More general approach needed
 
 end subroutine CPFEM_initAll
 

@@ -69,9 +69,9 @@ module crystallite
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_partitionedF                                                                        !< def grad to be reached at end of homog inc
 
-  logical,                    dimension(:,:,:),         allocatable, public :: &
+  logical,                    dimension(:,:,:),       allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
-  logical,                    dimension(:,:,:),         allocatable :: &
+  logical,                    dimension(:,:,:),       allocatable :: &
     crystallite_converged                                                                           !< convergence flag
 
   type :: tOutput                                                                                   !< new requested output (per phase)
@@ -115,7 +115,6 @@ module crystallite
 
   public :: &
     crystallite_init, &
-    crystallite_setInitialValues, &
     crystallite_stress, &
     crystallite_stressTangent, &
     crystallite_orientations, &
@@ -138,6 +137,9 @@ subroutine crystallite_init
 
   integer :: &
     p, &
+    c, &                                                                                            !< counter in integration point component loop
+    i, &                                                                                            !< counter in integration point loop
+    e, &                                                                                            !< counter in element loop
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
     eMax                                                                                            !< maximum number of elements
@@ -255,19 +257,6 @@ subroutine crystallite_init
   endif
 #endif
 
-end subroutine crystallite_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set initial values
-!--------------------------------------------------------------------------------------------------
-subroutine crystallite_setInitialValues
-
-  integer :: &
-    c, &                                                                                            !< counter in integration point component loop
-    i, &                                                                                            !< counter in integration point loop
-    e                                                                                               !< counter in element loop
-
  !$OMP PARALLEL DO PRIVATE(i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Nconstituents(material_homogenizationAt(e))
@@ -306,7 +295,7 @@ subroutine crystallite_setInitialValues
   !$OMP END PARALLEL DO
 
 
-end subroutine crystallite_setInitialValues
+end subroutine crystallite_init
 
 
 !--------------------------------------------------------------------------------------------------
