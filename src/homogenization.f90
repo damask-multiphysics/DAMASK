@@ -30,12 +30,12 @@ module homogenization
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
-  real(pReal),   dimension(:,:,:,:),     allocatable, public :: &
+  real(pReal),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
-  real(pReal),   dimension(:,:,:,:),     allocatable, public :: & !, protected :: &                 ! Issue with ifort
+  real(pReal),   dimension(:,:,:),     allocatable, public :: & !, protected :: &                   Issue with ifort
     homogenization_P                                                                                !< first P--K stress of IP
-  real(pReal),   dimension(:,:,:,:,:,:), allocatable, public :: & !, protected ::  &
+  real(pReal),   dimension(:,:,:,:,:), allocatable, public :: & !, protected ::  &
     homogenization_dPdF                                                                             !< tangent of first P--K stress at IP
 
 
@@ -193,6 +193,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
     converged
   logical,     dimension(2,discretization_nIPs,discretization_Nelems) :: &
     doneAndHappy
+  integer :: m
 
 
 !--------------------------------------------------------------------------------------------------
@@ -227,7 +228,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
        any(subStep(FEsolving_execIP(1):FEsolving_execIP(2),&
                    FEsolving_execElem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
-    !$OMP PARALLEL DO
+    !$OMP PARALLEL DO PRIVATE(m)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
       IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -297,13 +298,14 @@ subroutine materialpoint_stressAndItsTangent(dt)
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
-      !$OMP PARALLEL DO PRIVATE(myNgrains)
+      !$OMP PARALLEL DO PRIVATE(myNgrains,m)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if(requested(i,e) .and. .not. doneAndHappy(1,i,e)) then                                   ! requested but not yet done
-            call mech_partition(homogenization_F0(1:3,1:3,i,e) &
-                                      + (homogenization_F(1:3,1:3,i,e)-homogenization_F0(1:3,1:3,i,e))&
+            m = (e-1)*discretization_nIPs + i
+            call mech_partition(homogenization_F0(1:3,1:3,m) &
+                                      + (homogenization_F(1:3,1:3,m)-homogenization_F0(1:3,1:3,m))&
                                          *(subStep(i,e)+subFrac(i,e)), &
                                       i,e)
             crystallite_dt(1:myNgrains,i,e) = dt*subStep(i,e)                                       ! propagate materialpoint dt to grains
@@ -321,16 +323,17 @@ subroutine materialpoint_stressAndItsTangent(dt)
 
 !--------------------------------------------------------------------------------------------------
 ! state update
-     !$OMP PARALLEL DO
+     !$OMP PARALLEL DO PRIVATE(m)
       elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (requested(i,e) .and. .not. doneAndHappy(1,i,e)) then
             if (.not. converged(i,e)) then
               doneAndHappy(1:2,i,e) = [.true.,.false.]
             else
+              m = (e-1)*discretization_nIPs + i
               doneAndHappy(1:2,i,e) = updateState(dt*subStep(i,e), &
-                                                  homogenization_F0(1:3,1:3,i,e) &
-                                                  + (homogenization_F(1:3,1:3,i,e)-homogenization_F0(1:3,1:3,i,e)) &
+                                                  homogenization_F0(1:3,1:3,m) &
+                                                  + (homogenization_F(1:3,1:3,m)-homogenization_F0(1:3,1:3,m)) &
                                                      *(subStep(i,e)+subFrac(i,e)), &
                                                  i,e)
               converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy

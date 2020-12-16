@@ -73,10 +73,10 @@ module subroutine mech_init(num_homog)
 
   print'(/,a)',   ' <<<+-  homogenization_mech init  -+>>>'
 
-  allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs,discretization_Nelems),       source=0.0_pReal)
-  homogenization_F0 = spread(spread(math_I3,3,discretization_nIPs),4,discretization_Nelems)            ! initialize to identity
-  homogenization_F = homogenization_F0                                                                 ! initialize to identity
-  allocate(homogenization_P(3,3,discretization_nIPs,discretization_Nelems),              source=0.0_pReal)
+  allocate(homogenization_dPdF(3,3,3,3,discretization_nIPs*discretization_Nelems), source=0.0_pReal)
+  homogenization_F0 = spread(math_I3,3,discretization_nIPs*discretization_Nelems)                   ! initialize to identity
+  homogenization_F = homogenization_F0                                                              ! initialize to identity
+  allocate(homogenization_P(3,3,discretization_nIPs*discretization_Nelems),        source=0.0_pReal)
 
   num_homogMech => num_homog%get('mech',defaultVal=emptyDict)
   if (any(homogenization_type == HOMOGENIZATION_NONE_ID))      call mech_none_init
@@ -127,23 +127,24 @@ module subroutine mech_homogenize(ip,el)
   integer, intent(in) :: &
        ip, &                                                                                        !< integration point
        el                                                                                           !< element number
-  integer :: c
+  integer :: c,m
   real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
 
 
+  m = (el-1)* discretization_nIPs + ip
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-        homogenization_P(1:3,1:3,ip,el)            = crystallite_P(1:3,1:3,1,ip,el)
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ip,el) = crystallite_stressTangent(1,ip,el)
+        homogenization_P(1:3,1:3,m)            = crystallite_P(1:3,1:3,1,ip,el)
+        homogenization_dPdF(1:3,1:3,1:3,1:3,m) = crystallite_stressTangent(1,ip,el)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
       do c = 1, homogenization_Nconstituents(material_homogenizationAt(el))
         dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
       enddo
       call mech_isostrain_averageStressAndItsTangent(&
-        homogenization_P(1:3,1:3,ip,el), &
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        homogenization_P(1:3,1:3,m), &
+        homogenization_dPdF(1:3,1:3,1:3,1:3,m),&
         crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
         dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))
@@ -153,8 +154,8 @@ module subroutine mech_homogenize(ip,el)
         dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
       enddo
       call mech_RGC_averageStressAndItsTangent(&
-        homogenization_P(1:3,1:3,ip,el), &
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+        homogenization_P(1:3,1:3,m), &
+        homogenization_dPdF(1:3,1:3,1:3,1:3,m),&
         crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
         dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))

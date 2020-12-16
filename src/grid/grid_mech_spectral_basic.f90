@@ -199,7 +199,7 @@ subroutine grid_mech_spectral_basic_init
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
   endif restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                          ! set starting condition for materialpoint_stressAndItsTangent
+  homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
   call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
@@ -319,7 +319,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_old,t_
                                    rotation_BC%rotate(F_aimDot,active=.true.))
     F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
 
-    homogenization_F0 = reshape(F,[3,3,1,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F,[3,3,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------

@@ -810,7 +810,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   print'(/,a)', ' ... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
 
-  homogenization_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
+  homogenization_F  = reshape(F,[3,3,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
 
   call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
 
@@ -829,13 +829,13 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_min = huge(1.0_pReal)
   dPdF_norm_min = huge(1.0_pReal)
   do i = 1, product(grid(1:2))*grid3
-    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)) then
+      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)
     endif
-    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)) then
+      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)
     endif
   end do
 
@@ -853,7 +853,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
 
-  C_volAvg = sum(sum(homogenization_dPdF,dim=6),dim=5)
+  C_volAvg = sum(homogenization_dPdF,dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   if (ierr /= 0) error stop 'MPI error'
   C_volAvg = C_volAvg * wgt

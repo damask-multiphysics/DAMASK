@@ -316,16 +316,16 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   Vec                                :: x_local, f_local, xx_local
   PetscSection                       :: section
   PetscScalar, dimension(:), pointer :: x_scal, pf_scal
-  PetscScalar,                target :: f_scal(cellDof)
-  PetscReal                          :: detJ, IcellJMat(dimPlex,dimPlex)
-  PetscReal,  pointer,dimension(:)   :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
+  PetscScalar, dimension(cellDof), target :: f_scal
+  PetscReal                          ::  IcellJMat(dimPlex,dimPlex)
+  PetscReal,    dimension(:),pointer :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
   PetscInt                           :: cellStart, cellEnd, cell, field, face, &
                                         qPt, basis, comp, cidx, &
-                                        numFields
-  PetscReal                          :: detFAvg
-  PetscReal                          :: BMat(dimPlex*dimPlex,cellDof)
+                                        numFields, &
+                                        bcSize,m
+  PetscReal                          :: detFAvg, detJ
+  PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat
 
-  PetscInt                           :: bcSize
   IS                                 :: bcPoints
 
 
@@ -366,6 +366,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
     CHKERRQ(ierr)
     IcellJMat = reshape(pInvcellJ,shape=[dimPlex,dimPlex])
     do qPt = 0, nQuadrature-1
+      m = cell*nQuadrature + qPt+1
       BMat = 0.0
       do basis = 0, nBasis-1
         do comp = 0, dimPlex-1
@@ -375,15 +376,14 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
-        reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
+      homogenization_F(1:dimPlex,1:dimPlex,m) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     enddo
     if (num%BBarStabilisation) then
-      detFAvg = math_det33(sum(homogenization_F(1:3,1:3,1:nQuadrature,cell+1),dim=3)/real(nQuadrature))
-      do qPt = 1, nQuadrature
-        homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1) = &
-          homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1)* &
-          (detFAvg/math_det33(homogenization_F(1:3,1:3,qPt,cell+1)))**(1.0/real(dimPlex))
+      detFAvg = math_det33(sum(homogenization_F(1:3,1:3,cell*nQuadrature+1:(cell+1)*nQuadrature),dim=3)/real(nQuadrature))
+      do qPt = 0, nQuadrature-1
+        m = cell*nQuadrature + qPt+1
+        homogenization_F(1:dimPlex,1:dimPlex,m) = homogenization_F(1:dimPlex,1:dimPlex,m) &
+                                                * (detFAvg/math_det33(homogenization_F(1:3,1:3,m)))**(1.0/real(dimPlex))
 
       enddo
     endif
@@ -407,6 +407,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
     IcellJMat = reshape(pInvcellJ,shape=[dimPlex,dimPlex])
     f_scal = 0.0
     do qPt = 0, nQuadrature-1
+      m = cell*nQuadrature + qPt+1
       BMat = 0.0
       do basis = 0, nBasis-1
         do comp = 0, dimPlex-1
@@ -418,7 +419,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
       enddo
       f_scal = f_scal + &
                matmul(transpose(BMat), &
-                      reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,qPt+1,cell+1)), &
+                      reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,m)), &
                               shape=[dimPlex*dimPlex]))*qWeights(qPt+1)
     enddo
     f_scal = f_scal*abs(detJ)
@@ -463,7 +464,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
                                           K_eB
 
   PetscInt                             :: cellStart, cellEnd, cell, field, face, &
-                                          qPt, basis, comp, cidx,bcSize
+                                          qPt, basis, comp, cidx,bcSize, m
 
   IS                                   :: bcPoints
 
@@ -506,6 +507,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
     FAvg = 0.0
     BMatAvg = 0.0
     do qPt = 0, nQuadrature-1
+      m = cell*nQuadrature + qPt + 1
       BMat = 0.0
       do basis = 0, nBasis-1
         do comp = 0, dimPlex-1
@@ -516,7 +518,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
+      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,m), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1)
       if (num%BBarStabilisation) then
@@ -524,12 +526,11 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0/real(dimPlex))
         K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1), &
-                                               shape=[dimPlex*dimPlex,1]), &
+               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[dimPlex*dimPlex,1]), &
                                        matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
                                                       shape=[1,dimPlex*dimPlex],order=[2,1]),BMat))),MatA)
-        MatB = MatB + &
-               matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1),shape=[1,dimPlex*dimPlex]),MatA)
+        MatB = MatB &
+             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[1,dimPlex*dimPlex]),MatA)
         FAvg = FAvg + F
         BMatAvg = BMatAvg + BMat
       else

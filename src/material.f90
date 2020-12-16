@@ -140,7 +140,6 @@ contains
 subroutine material_init(restart)
 
   logical, intent(in) :: restart
-  integer             :: myHomog
 
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
