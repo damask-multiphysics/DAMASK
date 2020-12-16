@@ -6,7 +6,7 @@
 !> @brief Relaxed grain cluster (RGC) homogenization scheme
 !> N_constituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_mech_RGC
+submodule(homogenization:homogenization_mech) homogenization_mech_RGC
   use rotations
 
   type :: tParameters
