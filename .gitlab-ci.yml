@@ -269,13 +269,6 @@ Thermal:
     - master
     - release
 
-Nonlocal_Damage_DetectChanges:
-  stage: grid
-  script: Nonlocal_Damage_DetectChanges/test.py
-  except:
-    - master
-    - release
-
 Plasticity_DetectChanges:
   stage: grid
   script: Plasticity_DetectChanges/test.py
