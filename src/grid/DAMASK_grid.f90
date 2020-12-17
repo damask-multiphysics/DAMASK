@@ -61,10 +61,13 @@ program DAMASK_grid
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate, &
-    cutBack = .false.
+    cutBack = .false.,&
+    set_signal,&
+    set_signal1
   integer :: &
     i, j, m, field, &
     errorID = 0, &
+    ierr,&
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
     l = 0, &                                                                                        !< current load case
@@ -445,13 +448,17 @@ program DAMASK_grid
         if (mod(inc,loadCases(l)%f_out) == 0 .or. interface_SIGUSR1) then
           print'(1/,a)', ' ... writing results to file ......................................'
           flush(IO_STDOUT)
+          call MPI_ALLREDUCE(interface_SIGUSR1,set_signal,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
           call CPFEM_results(totalIncsCounter,time)
           call interface_setSIGUSR1(.false.)
+          call MPI_ALLREDUCE(interface_SIGUSR1,set_signal,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
         endif
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. interface_SIGUSR2) then
+          call MPI_ALLREDUCE(interface_SIGUSR2,set_signal1,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
           call mech_restartWrite
           call CPFEM_restartWrite
           call interface_setSIGUSR2(.false.)
+          call MPI_ALLREDUCE(interface_SIGUSR2,set_signal1,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
         endif
         if (interface_SIGTERM) exit loadCaseLooping
       endif skipping
