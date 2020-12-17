@@ -9,12 +9,15 @@ from . import Orientation
 class ConfigMaterial(Config):
     """Material configuration."""
 
-    def __init__(self):
-        """Initialize object with all required dictionary keys."""
-        super().__init__()
-        self['material'] = []
-        self['homogenization'] = {}
-        self['phase'] = {}
+    _defaults = {'material': [],
+                 'homogenization': {},
+                 'phase': {}}
+
+    def __init__(self,d={}):
+        """Initialize object with default dictionary keys."""
+        super().__init__(d)
+        for k,v in self._defaults.items():
+            if k not in self: self[k] = v
 
     def save(self,fname='material.yaml',**kwargs):
         """

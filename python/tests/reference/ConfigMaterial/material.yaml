@@ -1,10 +1,10 @@
 homogenization:
   SX:
-    N_constituents: 2
-    mech: {type: none}
+    N_constituents: 1
+    mechanics: {type: none}
   Taylor:
     N_constituents: 2
-    mech: {type: isostrain}
+    mechanics: {type: isostrain}
 
 material:
   - constituents:
@@ -34,11 +34,11 @@ material:
 phase:
   Aluminum:
     lattice: cF
-    mech:
+    mechanics:
       output: [F, P, F_e, F_p, L_p]
       elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
   Steel:
     lattice: cI
-    mech:
+    mechanics:
       output: [F, P, F_e, F_p, L_p]
       elasticity: {C_11: 233.3e9, C_12: 135.5e9, C_44: 118.0e9, type: hooke}
