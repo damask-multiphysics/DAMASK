@@ -62,8 +62,7 @@ program DAMASK_grid
     guess, &                                                                                        !< guess along former trajectory
     stagIterate, &
     cutBack = .false.,&
-    set_signal,&
-    set_signal1
+    signal
   integer :: &
     i, j, m, field, &
     errorID = 0, &
@@ -445,22 +444,21 @@ program DAMASK_grid
           print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
         endif; flush(IO_STDOUT)
 
-        if (mod(inc,loadCases(l)%f_out) == 0 .or. interface_SIGUSR1) then
+        call MPI_ALLREDUCE(interface_SIGUSR1,signal,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
+        call interface_setSIGUSR1(.false.)
+        if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
           print'(1/,a)', ' ... writing results to file ......................................'
           flush(IO_STDOUT)
-          call MPI_ALLREDUCE(interface_SIGUSR1,set_signal,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
           call CPFEM_results(totalIncsCounter,time)
-          call interface_setSIGUSR1(.false.)
-          call MPI_ALLREDUCE(interface_SIGUSR1,set_signal,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
         endif
-        if (mod(inc,loadCases(l)%f_restart) == 0 .or. interface_SIGUSR2) then
-          call MPI_ALLREDUCE(interface_SIGUSR2,set_signal1,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
+        call MPI_ALLREDUCE(interface_SIGUSR2,signal,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
+        call interface_setSIGUSR2(.false.)
+        if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
           call mech_restartWrite
           call CPFEM_restartWrite
-          call interface_setSIGUSR2(.false.)
-          call MPI_ALLREDUCE(interface_SIGUSR2,set_signal1,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
         endif
-        if (interface_SIGTERM) exit loadCaseLooping
+        call MPI_ALLREDUCE(interface_SIGTERM,signal,1,MPI_LOGICAL,MPI_LAND,PETSC_COMM_WORLD,ierr)
+        if (signal) exit loadCaseLooping
       endif skipping
 
     enddo incLooping
