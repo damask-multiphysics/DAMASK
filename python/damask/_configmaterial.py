@@ -85,6 +85,8 @@ class ConfigMaterial(Config):
                 fraction: 1.0
                 phase: Steel
             homogenization: SX
+        homogenization: {}
+        phase: {}
 
         """
         constituents_ = {k:table.get(v) for k,v in constituents.items()}
@@ -271,6 +273,8 @@ class ConfigMaterial(Config):
                 fraction: 1.0
                 phase: Aluminum
             homogenization: SX
+        homogenization: {}
+        phase: {}
 
         """
         length = -1
