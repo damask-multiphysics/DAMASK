@@ -146,14 +146,9 @@ subroutine FEM_mech_init(fieldBC)
   call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
   call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
   nBasis = nBasis/nc
-#if (PETSC_VERSION_MINOR > 10)
   call DMAddField(mech_mesh,PETSC_NULL_DMLABEL,mechFE,ierr); CHKERRQ(ierr)
   call DMCreateDS(mech_mesh,ierr); CHKERRQ(ierr)
-#endif
   call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
-#if (PETSC_VERSION_MINOR < 11)
-  call PetscDSAddDiscretization(mechDS,mechFE,ierr); CHKERRQ(ierr)
-#endif
   call PetscDSGetTotalDimension(mechDS,cellDof,ierr); CHKERRQ(ierr)
   call PetscFEDestroy(mechFE,ierr); CHKERRQ(ierr)
   call PetscQuadratureDestroy(mechQuad,ierr); CHKERRQ(ierr)
@@ -162,11 +157,7 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
-#if (PETSC_VERSION_MINOR < 12)
-  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
-#else
   call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
-#endif
   allocate(pnumComp(1), source=dimPlex)
   allocate(pnumDof(0:dimPlex), source = 0)
   do topologDim = 0, dimPlex
@@ -204,14 +195,8 @@ subroutine FEM_mech_init(fieldBC)
       endif
     endif
   enddo; enddo
-#if (PETSC_VERSION_MINOR < 11)
-  call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
-                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
-#else
   call DMPlexCreateSection(mech_mesh,nolabel,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
-
-#endif
   CHKERRQ(ierr)
   call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   do faceSet = 1, numBC
@@ -266,11 +251,7 @@ subroutine FEM_mech_init(fieldBC)
       x_scal(basis+1:basis+dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0_pReal)
     enddo
     px_scal => x_scal
-#if (PETSC_VERSION_MINOR < 11)
-    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,INSERT_ALL_VALUES,ierr)
-#else
-    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,5,ierr)                  ! PETSc: cbee0a90b60958e5c50c89b1e41f4451dfa6008c
-#endif
+    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,5,ierr)
     CHKERRQ(ierr)
   enddo
 
@@ -353,11 +334,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   allocate(pinvcellJ(dimPlex**2))
   allocate(x_scal(cellDof))
 
-#if (PETSC_VERSION_MINOR < 12)
-  call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
-#else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
-#endif
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
   CHKERRQ(ierr)
@@ -500,11 +477,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
-#if (PETSC_VERSION_MINOR < 12)
-  call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
-#else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
-#endif
   call DMGetGlobalSection(dm_local,gSection,ierr); CHKERRQ(ierr)
 
   call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
@@ -684,8 +657,8 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
   print'(/,1x,a,a,i0,a,i0,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
                                                   int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
-  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
-                                                        transpose(P_av)*1.e-6_pReal
+  print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    ' Piola--Kirchhoff stress / MPa =',transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
 
 end subroutine FEM_mech_converged

@@ -21,6 +21,9 @@ class NiceDumper(yaml.SafeDumper):
         return self.represent_data(dict(data)) if isinstance(data, dict) and type(data) != dict else \
                super().represent_data(data)
 
+    def ignore_aliases(self, data):
+        """No references."""
+        return True
 
 class Config(dict):
     """YAML-based configuration."""

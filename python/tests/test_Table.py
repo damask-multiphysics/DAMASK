@@ -22,7 +22,7 @@ class TestTable:
 
     @pytest.mark.parametrize('N',[10,40])
     def test_len(self,N):
-        len(Table(np.random.rand(N,3),{'X':3})) == N
+        assert len(Table(np.random.rand(N,3),{'X':3})) == N
 
     def test_get_scalar(self,default):
         d = default.get('s')
