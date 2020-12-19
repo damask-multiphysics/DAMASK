@@ -41,10 +41,8 @@ module material
     STIFFNESS_DEGRADATION_UNDEFINED_ID, &
     STIFFNESS_DEGRADATION_DAMAGE_ID, &
     THERMAL_ISOTHERMAL_ID, &
-    THERMAL_ADIABATIC_ID, &
     THERMAL_CONDUCTION_ID, &
     DAMAGE_NONE_ID, &
-    DAMAGE_LOCAL_ID, &
     DAMAGE_NONLOCAL_ID, &
     HOMOGENIZATION_UNDEFINED_ID, &
     HOMOGENIZATION_NONE_ID, &
@@ -86,7 +84,6 @@ module material
 
   type(tState),        allocatable, dimension(:), public :: &
     homogState, &
-    thermalState, &
     damageState
 
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
@@ -123,10 +120,8 @@ module material
     STIFFNESS_DEGRADATION_UNDEFINED_ID, &
     STIFFNESS_DEGRADATION_DAMAGE_ID, &
     THERMAL_ISOTHERMAL_ID, &
-    THERMAL_ADIABATIC_ID, &
     THERMAL_CONDUCTION_ID, &
     DAMAGE_NONE_ID, &
-    DAMAGE_LOCAL_ID, &
     DAMAGE_NONLOCAL_ID, &
     HOMOGENIZATION_NONE_ID, &
     HOMOGENIZATION_ISOSTRAIN_ID, &
@@ -152,7 +147,6 @@ subroutine material_init(restart)
 
 
   allocate(homogState      (size(material_name_homogenization)))
-  allocate(thermalState    (size(material_name_homogenization)))
   allocate(damageState     (size(material_name_homogenization)))
 
   allocate(temperature     (size(material_name_homogenization)))
@@ -218,8 +212,6 @@ subroutine material_parseHomogenization
         select case (homogThermal%get_asString('type'))
           case('isothermal')
             thermal_type(h) = THERMAL_isothermal_ID
-          case('adiabatic')
-            thermal_type(h) = THERMAL_adiabatic_ID
           case('conduction')
             thermal_type(h) = THERMAL_conduction_ID
           case default
@@ -232,8 +224,6 @@ subroutine material_parseHomogenization
         select case (homogDamage%get_asString('type'))
           case('none')
             damage_type(h) = DAMAGE_none_ID
-          case('local')
-            damage_type(h) = DAMAGE_local_ID
           case('nonlocal')
             damage_type(h) = DAMAGE_nonlocal_ID
           case default

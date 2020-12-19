@@ -1629,7 +1629,6 @@ subroutine crystallite_forward
   enddo; enddo
   do i = 1,size(material_name_homogenization)
     homogState  (i)%state0 = homogState  (i)%state
-    thermalState(i)%state0 = thermalState(i)%state
     damageState (i)%state0 = damageState (i)%state
   enddo
 

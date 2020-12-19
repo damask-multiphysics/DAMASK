@@ -66,10 +66,6 @@ subroutine thermal_conduction_init
 #endif
 
     Nmaterialpoints=count(material_homogenizationAt==h)
-    thermalState(h)%sizeState = 0
-    allocate(thermalState(h)%state0   (0,Nmaterialpoints))
-    allocate(thermalState(h)%subState0(0,Nmaterialpoints))
-    allocate(thermalState(h)%state    (0,Nmaterialpoints))
 
     allocate  (temperature    (h)%p(Nmaterialpoints), source=thermal_initialT(h))
     allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
