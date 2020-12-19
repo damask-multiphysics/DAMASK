@@ -371,7 +371,9 @@ module constitutive
     constitutive_LiAndItsTangents, &
     constitutive_SandItsTangents, &
     constitutive_collectDotState, &
+    constitutive_collectDotState_source, &
     constitutive_deltaState, &
+    constitutive_deltaState_source, &
     constitutive_damage_getRateAndItsTangents, &
     constitutive_thermal_getRateAndItsTangents, &
     constitutive_results, &
@@ -655,6 +657,46 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
   end select plasticityType
   broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
 
+
+end function constitutive_collectDotState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+function constitutive_collectDotState_source(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    phase, &
+    of
+  real(pReal),  intent(in) :: &
+    subdt                                                                                           !< timestep
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
+    FArray, &                                                                                       !< elastic deformation gradient
+    FpArray                                                                                         !< plastic deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+  real(pReal),              dimension(3,3) :: &
+    Mp
+  integer :: &
+    ho, &                                                                                           !< homogenization
+    tme, &                                                                                          !< thermal member position
+    i, &                                                                                            !< counter in source loop
+    instance
+  logical :: broken
+
+  ho = material_homogenizationAt(el)
+  tme = material_homogenizationMemberAt(ip,el)
+  instance = phase_plasticityInstance(phase)
+
+
+  broken = .false.
+
   SourceLoop: do i = 1, phase_Nsources(phase)
 
     sourceType: select case (phase_source(i,phase))
@@ -677,7 +719,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
 
   enddo SourceLoop
 
-end function constitutive_collectDotState
+end function constitutive_collectDotState_source
 
 
 !--------------------------------------------------------------------------------------------------
@@ -735,6 +777,37 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
     end select
   endif
 
+end function constitutive_deltaState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief for constitutive models having an instantaneous change of state
+!> will return false if delta state is not needed/supported by the constitutive model
+!--------------------------------------------------------------------------------------------------
+function constitutive_deltaState_source(S, Fe, Fi, ipc, ip, el, phase, of) result(broken)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    phase, &
+    of
+  real(pReal),   intent(in), dimension(3,3) :: &
+    S, &                                                                                            !< 2nd Piola Kirchhoff stress
+    Fe, &                                                                                           !< elastic deformation gradient
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),               dimension(3,3) :: &
+    Mp
+  integer :: &
+    i, &
+    instance, &
+    myOffset, &
+    mySize
+  logical :: &
+    broken
+
+
+  broken = .false.
 
   sourceLoop: do i = 1, phase_Nsources(phase)
 
@@ -743,7 +816,7 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
       case (SOURCE_damage_isoBrittle_ID) sourceType
         call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
                                                    ipc, ip, el)
-        broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%deltaState(:,of)))
+        broken = any(IEEE_is_NaN(sourceState(phase)%p(i)%deltaState(:,of)))
         if(.not. broken) then
           myOffset = sourceState(phase)%p(i)%offsetDeltaState
           mySize   = sourceState(phase)%p(i)%sizeDeltaState
@@ -755,7 +828,7 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
 
   enddo SourceLoop
 
-end function constitutive_deltaState
+end function constitutive_deltaState_source
 
 
 !--------------------------------------------------------------------------------------------------

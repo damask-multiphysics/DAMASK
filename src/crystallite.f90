@@ -1104,6 +1104,11 @@ subroutine integrateStateFPI(g,i,e)
                                     crystallite_Fi(1:3,1:3,g,i,e), &
                                     crystallite_partitionedFp0, &
                                     crystallite_subdt(g,i,e), g,i,e,p,c)
+  broken = broken .or. constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedF0, &
+                                          crystallite_Fi(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedFp0, &
+                                          crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
   size_pl = plasticState(p)%sizeDotState
@@ -1132,6 +1137,11 @@ subroutine integrateStateFPI(g,i,e)
     if(broken) exit iteration
 
     broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedF0, &
+                                          crystallite_Fi(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedFp0, &
+                                          crystallite_subdt(g,i,e), g,i,e,p,c)
+    broken = broken .or. constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
                                           crystallite_partitionedF0, &
                                           crystallite_Fi(1:3,1:3,g,i,e), &
                                           crystallite_partitionedFp0, &
@@ -1169,6 +1179,9 @@ subroutine integrateStateFPI(g,i,e)
 
     if(crystallite_converged(g,i,e)) then
       broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
+                                       crystallite_Fe(1:3,1:3,g,i,e), &
+                                       crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+      broken = broken .or. constitutive_deltaState_source(crystallite_S(1:3,1:3,g,i,e), &
                                        crystallite_Fe(1:3,1:3,g,i,e), &
                                        crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
       exit iteration
