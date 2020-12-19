@@ -1214,7 +1214,6 @@ subroutine integrateStateEuler(g,i,e)
   integer :: &
     p, &
     c, &
-    s, &
     sizeDotState
   logical :: &
     broken
@@ -1233,16 +1232,10 @@ subroutine integrateStateEuler(g,i,e)
   plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                           + plasticState(p)%dotState (1:sizeDotState,c) &
                                             * crystallite_subdt(g,i,e)
-  do s = 1, phase_Nsources(p)
-    sizeDotState = sourceState(p)%p(s)%sizeDotState
-    sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                  * crystallite_subdt(g,i,e)
-  enddo
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
                                    crystallite_Fe(1:3,1:3,g,i,e), &
-                                  crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+                                   crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
   if(broken) return
 
   broken = integrateStress(g,i,e)
@@ -1263,13 +1256,11 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
   integer :: &
     p, &
     c, &
-    s, &
     sizeDotState
   logical :: &
     broken
 
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: residuum_plastic
-  real(pReal), dimension(constitutive_source_maxSizeDotState,maxval(phase_Nsources)) :: residuum_source
 
 
   p = material_phaseAt(g,e)
@@ -1287,14 +1278,6 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
   residuum_plastic(1:sizeDotState) = - plasticState(p)%dotstate(1:sizeDotState,c) * 0.5_pReal * crystallite_subdt(g,i,e)
   plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                           + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
-  do s = 1, phase_Nsources(p)
-    sizeDotState = sourceState(p)%p(s)%sizeDotState
-
-    residuum_source(1:sizeDotState,s)  = - sourceState(p)%p(s)%dotstate(1:sizeDotState,c) &
-                                       * 0.5_pReal * crystallite_subdt(g,i,e)
-    sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                + sourceState(p)%p(s)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
-  enddo
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
                                    crystallite_Fe(1:3,1:3,g,i,e), &
@@ -1317,15 +1300,6 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
                                            + 0.5_pReal * plasticState(p)%dotState(:,c) * crystallite_subdt(g,i,e), &
                                            plasticState(p)%state(1:sizeDotState,c), &
                                            plasticState(p)%atol(1:sizeDotState))
-
-  do s = 1, phase_Nsources(p)
-    sizeDotState = sourceState(p)%p(s)%sizeDotState
-    crystallite_converged(g,i,e) = &
-    crystallite_converged(g,i,e) .and. converged(residuum_source(1:sizeDotState,s) &
-                                                 + 0.5_pReal*sourceState(p)%p(s)%dotState(:,c)*crystallite_subdt(g,i,e), &
-                                                 sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                                 sourceState(p)%p(s)%atol(1:sizeDotState))
-  enddo
 
 end subroutine integrateStateAdaptiveEuler
 
@@ -1403,11 +1377,9 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
     n, &
     p, &
     c, &
-    s, &
     sizeDotState
   logical :: &
     broken
-  real(pReal), dimension(constitutive_source_maxSizeDotState,size(B),maxval(phase_Nsources)) :: source_RKdotState
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B))                    :: plastic_RKdotState
 
   p = material_phaseAt(g,e)
@@ -1424,33 +1396,17 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
     sizeDotState = plasticState(p)%sizeDotState
     plastic_RKdotState(1:sizeDotState,stage) = plasticState(p)%dotState(:,c)
     plasticState(p)%dotState(:,c) = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
-    do s = 1, phase_Nsources(p)
-      sizeDotState = sourceState(p)%p(s)%sizeDotState
-      source_RKdotState(1:sizeDotState,stage,s) = sourceState(p)%p(s)%dotState(:,c)
-      sourceState(p)%p(s)%dotState(:,c) = A(1,stage) * source_RKdotState(1:sizeDotState,1,s)
-    enddo
 
     do n = 2, stage
       sizeDotState = plasticState(p)%sizeDotState
       plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) &
                                     + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
-      do s = 1, phase_Nsources(p)
-        sizeDotState = sourceState(p)%p(s)%sizeDotState
-        sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) &
-                                          + A(n,stage) * source_RKdotState(1:sizeDotState,n,s)
-      enddo
     enddo
 
     sizeDotState = plasticState(p)%sizeDotState
     plasticState(p)%state(1:sizeDotState,c) = plasticState(p)%subState0(1:sizeDotState,c) &
                                             + plasticState(p)%dotState (1:sizeDotState,c) &
                                               * crystallite_subdt(g,i,e)
-    do s = 1, phase_Nsources(p)
-      sizeDotState = sourceState(p)%p(s)%sizeDotState
-      sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                  + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                    * crystallite_subdt(g,i,e)
-    enddo
 
     broken = integrateStress(g,i,e,CC(stage))
     if(broken) exit
@@ -1478,20 +1434,6 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
                                         plasticState(p)%state(1:sizeDotState,c), &
                                         plasticState(p)%atol(1:sizeDotState))
 
-  do s = 1, phase_Nsources(p)
-    sizeDotState = sourceState(p)%p(s)%sizeDotState
-
-    source_RKdotState(1:sizeDotState,size(B),s) = sourceState(p)%p(s)%dotState(:,c)
-    sourceState(p)%p(s)%dotState(:,c)  = matmul(source_RKdotState(1:sizeDotState,1:size(B),s),B)
-    sourceState(p)%p(s)%state(1:sizeDotState,c) = sourceState(p)%p(s)%subState0(1:sizeDotState,c) &
-                                                + sourceState(p)%p(s)%dotState (1:sizeDotState,c) &
-                                                  * crystallite_subdt(g,i,e)
-    if(present(DB)) &
-      broken = broken .or. .not. converged(matmul(source_RKdotState(1:sizeDotState,1:size(DB),s),DB) &
-                                                 * crystallite_subdt(g,i,e), &
-                                           sourceState(p)%p(s)%state(1:sizeDotState,c), &
-                                           sourceState(p)%p(s)%atol(1:sizeDotState))
-  enddo
   if(broken) return
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
