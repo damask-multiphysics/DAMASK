@@ -26,7 +26,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
 
-  integer, intent(in)                  :: kinematics_length  
+  integer, intent(in)                  :: kinematics_length
   logical, dimension(:,:), allocatable :: myKinematics
 
   integer :: Ninstances,p,i,k
@@ -35,8 +35,8 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
     phases, &
     phase, &
     kinematics, &
-    kinematic_type 
- 
+    kinematic_type
+
   print'(/,a)', ' <<<+-  kinematics_thermal_expansion init  -+>>>'
 
   myKinematics = kinematics_active('thermal_expansion',kinematics_length)
@@ -50,13 +50,13 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
 
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p) 
+    phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
-        kinematic_type => kinematics%get(k) 
+        kinematic_type => kinematics%get(k)
 
         prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=0.0_pReal)
 
@@ -79,29 +79,6 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
 
 
 end function kinematics_thermal_expansion_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  report initial thermal strain based on current temperature deviation from reference
-!--------------------------------------------------------------------------------------------------
-pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
-
- integer, intent(in) :: &
-   phase, &
-   homog, &
-   offset
-
- real(pReal), dimension(3,3) :: &
-   initialStrain                                                                                    !< initial thermal strain (should be small strain, though)
-
- associate(prm => param(kinematics_thermal_expansion_instance(phase)))
- initialStrain = &
-   (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%A(1:3,1:3,1) + &                        ! constant  coefficient
-   (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%A(1:3,1:3,2) + &                        ! linear    coefficient
-   (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%A(1:3,1:3,3)                            ! quadratic coefficient
- end associate
-
-end function kinematics_thermal_expansion_initialStrain
 
 
 !--------------------------------------------------------------------------------------------------

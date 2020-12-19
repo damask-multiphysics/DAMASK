@@ -263,7 +263,7 @@ subroutine crystallite_init
       crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       crystallite_Fp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e) &
                                      / math_det33(crystallite_Fp0(1:3,1:3,c,i,e))**(1.0_pReal/3.0_pReal)
-      crystallite_Fi0(1:3,1:3,c,i,e) = constitutive_initialFi(c,i,e)
+      crystallite_Fi0(1:3,1:3,c,i,e) = math_I3
       crystallite_F0(1:3,1:3,c,i,e)  = math_I3
       crystallite_Fe(1:3,1:3,c,i,e)  = math_inv33(matmul(crystallite_Fi0(1:3,1:3,c,i,e), &
                                                          crystallite_Fp0(1:3,1:3,c,i,e)))           ! assuming that euler angles are given in internal strain free configuration

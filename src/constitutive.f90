@@ -200,15 +200,6 @@ module constitutive
         el                                                                                          !< element
     end function plastic_dislotwin_homogenizedC
 
-    pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
-     integer, intent(in) :: &
-       phase, &
-       homog, &
-       offset
-     real(pReal), dimension(3,3) :: &
-       initialStrain
-    end function kinematics_thermal_expansion_initialStrain
-
     module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
       integer, intent(in) :: &
         instance, &
@@ -340,7 +331,7 @@ module constitutive
   end interface constitutive_dependentState
 
   interface constitutive_SandItsTangents
-    
+
     module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
       integer, intent(in) :: &
         ipc, &                                                                                      !< component-ID of integration point
@@ -378,7 +369,6 @@ module constitutive
     constitutive_LpAndItsTangents, &
     constitutive_dependentState, &
     constitutive_LiAndItsTangents, &
-    constitutive_initialFi, &
     constitutive_SandItsTangents, &
     constitutive_collectDotState, &
     constitutive_deltaState, &
@@ -421,7 +411,7 @@ subroutine constitutive_init
 
   print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
 
-  phases => config_material%get('phase') 
+  phases => config_material%get('phase')
   constitutive_source_maxSizeDotState = 0
   PhaseLoop2:do p = 1,phases%length
 !--------------------------------------------------------------------------------------------------
@@ -605,39 +595,6 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   enddo; enddo
 
 end subroutine constitutive_LiAndItsTangents
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  collects initial intermediate deformation gradient
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_initialFi(ipc, ip, el)
-
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-  real(pReal), dimension(3,3) :: &
-    constitutive_initialFi                                                                          !< composite initial intermediate deformation gradient
-  integer :: &
-    k                                                                                               !< counter in kinematics loop
-  integer :: &
-    phase, &
-    homog, offset
-
-  constitutive_initialFi = math_I3
-  phase = material_phaseAt(ipc,el)
-
-  KinematicsLoop: do k = 1, phase_Nkinematics(phase)                                                !< Warning: small initial strain assumption
-    kinematicsType: select case (phase_kinematics(k,phase))
-      case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        homog  = material_homogenizationAt(el)
-        offset = material_homogenizationMemberAt(ip,el)
-        constitutive_initialFi = constitutive_initialFi &
-                               + kinematics_thermal_expansion_initialStrain(homog,phase,offset)
-    end select kinematicsType
-  enddo KinematicsLoop
-
-end function constitutive_initialFi
 
 
 !--------------------------------------------------------------------------------------------------
