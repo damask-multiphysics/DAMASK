@@ -417,6 +417,7 @@ function crystallite_stress()
             crystallite_subdt(c,i,e) = crystallite_subStep(c,i,e) * crystallite_dt(c,i,e)
             crystallite_converged(c,i,e) = .false.
             call integrateState(c,i,e)
+            call integrateSourceState(c,i,e)
           endif
 
         enddo
@@ -1104,11 +1105,6 @@ subroutine integrateStateFPI(g,i,e)
                                     crystallite_Fi(1:3,1:3,g,i,e), &
                                     crystallite_partitionedFp0, &
                                     crystallite_subdt(g,i,e), g,i,e,p,c)
-  broken = broken .or. constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedF0, &
-                                          crystallite_Fi(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedFp0, &
-                                          crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
   size_pl = plasticState(p)%sizeDotState
@@ -1116,32 +1112,16 @@ subroutine integrateStateFPI(g,i,e)
                                      + plasticState(p)%dotState (1:size_pl,c) &
                                      * crystallite_subdt(g,i,e)
   plastic_dotState(1:size_pl,2) = 0.0_pReal
-  do s = 1, phase_Nsources(p)
-    size_so(s) = sourceState(p)%p(s)%sizeDotState
-    sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%subState0(1:size_so(s),c) &
-                                              + sourceState(p)%p(s)%dotState (1:size_so(s),c) &
-                                              * crystallite_subdt(g,i,e)
-    source_dotState(1:size_so(s),2,s) = 0.0_pReal
-  enddo
 
   iteration: do NiterationState = 1, num%nState
 
     if(nIterationState > 1) plastic_dotState(1:size_pl,2) = plastic_dotState(1:size_pl,1)
     plastic_dotState(1:size_pl,1) = plasticState(p)%dotState(:,c)
-    do s = 1, phase_Nsources(p)
-      if(nIterationState > 1) source_dotState(1:size_so(s),2,s) = source_dotState(1:size_so(s),1,s)
-      source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
-    enddo
 
     broken = integrateStress(g,i,e)
     if(broken) exit iteration
 
     broken = constitutive_collectDotState(crystallite_S(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedF0, &
-                                          crystallite_Fi(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedFp0, &
-                                          crystallite_subdt(g,i,e), g,i,e,p,c)
-    broken = broken .or. constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
                                           crystallite_partitionedF0, &
                                           crystallite_Fi(1:3,1:3,g,i,e), &
                                           crystallite_partitionedFp0, &
@@ -1160,28 +1140,9 @@ subroutine integrateStateFPI(g,i,e)
     crystallite_converged(g,i,e) = converged(r(1:size_pl), &
                                              plasticState(p)%state(1:size_pl,c), &
                                              plasticState(p)%atol(1:size_pl))
-    do s = 1, phase_Nsources(p)
-      zeta = damper(sourceState(p)%p(s)%dotState(:,c), &
-                    source_dotState(1:size_so(s),1,s),&
-                    source_dotState(1:size_so(s),2,s))
-      sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
-                                        + source_dotState(1:size_so(s),1,s)* (1.0_pReal - zeta)
-      r(1:size_so(s)) = sourceState(p)%p(s)%state    (1:size_so(s),c)  &
-                      - sourceState(p)%p(s)%subState0(1:size_so(s),c)  &
-                      - sourceState(p)%p(s)%dotState (1:size_so(s),c) * crystallite_subdt(g,i,e)
-      sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%state(1:size_so(s),c) &
-                                                - r(1:size_so(s))
-      crystallite_converged(g,i,e) = &
-      crystallite_converged(g,i,e) .and. converged(r(1:size_so(s)), &
-                                                   sourceState(p)%p(s)%state(1:size_so(s),c), &
-                                                   sourceState(p)%p(s)%atol(1:size_so(s)))
-    enddo
 
     if(crystallite_converged(g,i,e)) then
       broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                       crystallite_Fe(1:3,1:3,g,i,e), &
-                                       crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
-      broken = broken .or. constitutive_deltaState_source(crystallite_S(1:3,1:3,g,i,e), &
                                        crystallite_Fe(1:3,1:3,g,i,e), &
                                        crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
       exit iteration
@@ -1214,6 +1175,118 @@ subroutine integrateStateFPI(g,i,e)
 
 end subroutine integrateStateFPI
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief integrate stress, state with adaptive 1st order explicit Euler method
+!> using Fixed Point Iteration to adapt the stepsize
+!--------------------------------------------------------------------------------------------------
+subroutine integrateSourceState(g,i,e)
+
+  integer, intent(in) :: &
+    e, &                                                                                            !< element index in element loop
+    i, &                                                                                            !< integration point index in ip loop
+    g                                                                                               !< grain index in grain loop
+  integer :: &
+    NiterationState, &                                                                              !< number of iterations in state loop
+    p, &
+    c, &
+    s, &
+    size_pl
+  integer, dimension(maxval(phase_Nsources)) :: &
+    size_so
+  real(pReal) :: &
+    zeta
+  real(pReal), dimension(max(constitutive_plasticity_maxSizeDotState,constitutive_source_maxSizeDotState)) :: &
+    r                                                                                               ! state residuum
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,2) :: &
+    plastic_dotState
+  real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
+  logical :: &
+    broken
+
+  p = material_phaseAt(g,e)
+  c = material_phaseMemberAt(g,i,e)
+
+  broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedF0, &
+                                          crystallite_Fi(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedFp0, &
+                                          crystallite_subdt(g,i,e), g,i,e,p,c)
+  if(broken) return
+
+  do s = 1, phase_Nsources(p)
+    size_so(s) = sourceState(p)%p(s)%sizeDotState
+    sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%subState0(1:size_so(s),c) &
+                                              + sourceState(p)%p(s)%dotState (1:size_so(s),c) &
+                                              * crystallite_subdt(g,i,e)
+    source_dotState(1:size_so(s),2,s) = 0.0_pReal
+  enddo
+
+  iteration: do NiterationState = 1, num%nState
+
+    if(nIterationState > 1) plastic_dotState(1:size_pl,2) = plastic_dotState(1:size_pl,1)
+    do s = 1, phase_Nsources(p)
+      if(nIterationState > 1) source_dotState(1:size_so(s),2,s) = source_dotState(1:size_so(s),1,s)
+      source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
+    enddo
+
+    broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedF0, &
+                                          crystallite_Fi(1:3,1:3,g,i,e), &
+                                          crystallite_partitionedFp0, &
+                                          crystallite_subdt(g,i,e), g,i,e,p,c)
+    if(broken) exit iteration
+
+    do s = 1, phase_Nsources(p)
+      zeta = damper(sourceState(p)%p(s)%dotState(:,c), &
+                    source_dotState(1:size_so(s),1,s),&
+                    source_dotState(1:size_so(s),2,s))
+      sourceState(p)%p(s)%dotState(:,c) = sourceState(p)%p(s)%dotState(:,c) * zeta &
+                                        + source_dotState(1:size_so(s),1,s)* (1.0_pReal - zeta)
+      r(1:size_so(s)) = sourceState(p)%p(s)%state    (1:size_so(s),c)  &
+                      - sourceState(p)%p(s)%subState0(1:size_so(s),c)  &
+                      - sourceState(p)%p(s)%dotState (1:size_so(s),c) * crystallite_subdt(g,i,e)
+      sourceState(p)%p(s)%state(1:size_so(s),c) = sourceState(p)%p(s)%state(1:size_so(s),c) &
+                                                - r(1:size_so(s))
+      crystallite_converged(g,i,e) = &
+      crystallite_converged(g,i,e) .and. converged(r(1:size_so(s)), &
+                                                   sourceState(p)%p(s)%state(1:size_so(s),c), &
+                                                   sourceState(p)%p(s)%atol(1:size_so(s)))
+    enddo
+
+    if(crystallite_converged(g,i,e)) then
+      broken = constitutive_deltaState_source(crystallite_S(1:3,1:3,g,i,e), &
+                                       crystallite_Fe(1:3,1:3,g,i,e), &
+                                       crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+      exit iteration
+    endif
+
+  enddo iteration
+
+
+  contains
+
+  !--------------------------------------------------------------------------------------------------
+  !> @brief calculate the damping for correction of state and dot state
+  !--------------------------------------------------------------------------------------------------
+  real(pReal) pure function damper(current,previous,previous2)
+
+  real(pReal), dimension(:), intent(in) ::&
+    current, previous, previous2
+
+  real(pReal) :: dot_prod12, dot_prod22
+
+  dot_prod12 = dot_product(current  - previous,  previous - previous2)
+  dot_prod22 = dot_product(previous - previous2, previous - previous2)
+  if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
+    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+  else
+    damper = 1.0_pReal
+  endif
+
+  end function damper
+
+end subroutine integrateSourceState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
