@@ -515,8 +515,7 @@ subroutine crystallite_restore(i,e,includeL)
   logical, intent(in) :: &
     includeL                                                                                        !< protect agains fake cutback
   integer :: &
-    c, &                                                                                            !< constituent number
-    s
+    c                                                                                            !< constituent number
 
   do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     if (includeL) then
@@ -529,10 +528,6 @@ subroutine crystallite_restore(i,e,includeL)
 
     plasticState    (material_phaseAt(c,e))%state(          :,material_phasememberAt(c,i,e)) = &
     plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e))
-    do s = 1, phase_Nsources(material_phaseAt(c,e))
-      sourceState(material_phaseAt(c,e))%p(s)%state(          :,material_phasememberAt(c,i,e)) = &
-      sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e))
-    enddo
   enddo
 
 end subroutine crystallite_restore
@@ -1198,8 +1193,6 @@ subroutine integrateSourceState(g,i,e)
     zeta
   real(pReal), dimension(max(constitutive_plasticity_maxSizeDotState,constitutive_source_maxSizeDotState)) :: &
     r                                                                                               ! state residuum
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,2) :: &
-    plastic_dotState
   real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
     broken
@@ -1224,7 +1217,6 @@ subroutine integrateSourceState(g,i,e)
 
   iteration: do NiterationState = 1, num%nState
 
-    if(nIterationState > 1) plastic_dotState(1:size_pl,2) = plastic_dotState(1:size_pl,1)
     do s = 1, phase_Nsources(p)
       if(nIterationState > 1) source_dotState(1:size_so(s),2,s) = source_dotState(1:size_so(s),1,s)
       source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
@@ -1651,10 +1643,6 @@ subroutine crystallite_forward
   do i = 1, size(plasticState)
     plasticState(i)%state0 = plasticState(i)%state
   enddo
-  do i = 1, size(sourceState)
-    do j = 1,phase_Nsources(i)
-      sourceState(i)%p(j)%state0 = sourceState(i)%p(j)%state
-  enddo; enddo
   do i = 1,size(material_name_homogenization)
     homogState  (i)%state0 = homogState  (i)%state
     damageState (i)%state0 = damageState (i)%state

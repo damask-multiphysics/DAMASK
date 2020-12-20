@@ -99,6 +99,7 @@ end subroutine CPFEM_restartWrite
 subroutine CPFEM_forward
 
   call crystallite_forward
+  call constitutive_forward
 
 end subroutine CPFEM_forward
 

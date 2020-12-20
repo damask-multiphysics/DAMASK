@@ -255,6 +255,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
             subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
             call crystallite_restore(i,e,subStep(i,e) < 1.0_pReal)
+            call constitutive_restore(i,e)
 
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                 homogState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &

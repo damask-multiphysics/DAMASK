@@ -378,6 +378,8 @@ module constitutive
     constitutive_thermal_getRateAndItsTangents, &
     constitutive_results, &
     constitutive_allocateState, &
+    constitutive_forward, &
+    constitutive_restore, &
     plastic_nonlocal_updateCompatibility, &
     plastic_active, &
     source_active, &
@@ -862,6 +864,44 @@ subroutine constitutive_allocateState(state, &
 
 
 end subroutine constitutive_allocateState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Restore data after homog cutback.
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_restore(i,e)
+
+  integer, intent(in) :: &
+    i, &                                                                                            !< integration point number
+    e                                                                                               !< element number
+  integer :: &
+    c, &                                                                                            !< constituent number
+    s
+
+  do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
+    do s = 1, phase_Nsources(material_phaseAt(c,e))
+      sourceState(material_phaseAt(c,e))%p(s)%state(          :,material_phasememberAt(c,i,e)) = &
+      sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e))
+    enddo
+  enddo
+
+end subroutine constitutive_restore
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data after successful increment.
+! ToDo: Any guessing for the current states possible?
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_forward
+
+  integer :: i, j
+
+  do i = 1, size(sourceState)
+    do j = 1,phase_Nsources(i)
+      sourceState(i)%p(j)%state0 = sourceState(i)%p(j)%state
+  enddo; enddo
+
+end subroutine constitutive_forward
 
 
 !--------------------------------------------------------------------------------------------------
