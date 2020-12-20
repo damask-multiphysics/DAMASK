@@ -13,8 +13,6 @@ module constitutive
   use results
   use lattice
   use discretization
-  use geometry_plastic_nonlocal, only: &
-    geometry_plastic_nonlocal_disable
   use parallelization
   use HDF5_utilities
   use DAMASK_interface
@@ -169,6 +167,24 @@ module constitutive
 end function constitutive_collectDotState
 
 
+module function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(broken)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    phase, &
+    of
+  real(pReal),   intent(in), dimension(3,3) :: &
+    S, &                                                                                            !< 2nd Piola Kirchhoff stress
+    Fi                                                                                              !< intermediate deformation gradient
+  logical :: &
+    broken
+
+
+end function constitutive_deltaState
+
+
     module function plastic_active(plastic_label)  result(active_plastic)
       character(len=*), intent(in)        :: plastic_label
       logical, dimension(:), allocatable  :: active_plastic
@@ -308,24 +324,6 @@ end function constitutive_collectDotState
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
     end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
-
-    module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_kinehardening_deltaState
-
-    module subroutine plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
-      real(pReal), dimension(3,3), intent(in) :: &
-        Mp
-      integer, intent(in) :: &
-        instance, &
-        of, &
-        ip, &
-        el
-    end subroutine plastic_nonlocal_deltaState
 
     module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
       integer, intent(in) :: &
@@ -700,62 +698,6 @@ function constitutive_collectDotState_source(S, ipc, ip, el,phase,of) result(bro
   enddo SourceLoop
 
 end function constitutive_collectDotState_source
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief for constitutive models having an instantaneous change of state
-!> will return false if delta state is not needed/supported by the constitutive model
-!--------------------------------------------------------------------------------------------------
-function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(broken)
-
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
-    phase, &
-    of
-  real(pReal),   intent(in), dimension(3,3) :: &
-    S, &                                                                                            !< 2nd Piola Kirchhoff stress
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),               dimension(3,3) :: &
-    Mp
-  integer :: &
-    instance, &
-    myOffset, &
-    mySize
-  logical :: &
-    broken
-
-  Mp  = matmul(matmul(transpose(Fi),Fi),S)
-  instance = phase_plasticityInstance(phase)
-
-  plasticityType: select case (phase_plasticity(phase))
-
-    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_deltaState(Mp,instance,of)
-      broken = any(IEEE_is_NaN(plasticState(phase)%deltaState(:,of)))
-
-    case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_deltaState(Mp,instance,of,ip,el)
-      broken = any(IEEE_is_NaN(plasticState(phase)%deltaState(:,of)))
-
-    case default
-      broken = .false.
-
-  end select plasticityType
-
-  if(.not. broken) then
-    select case(phase_plasticity(phase))
-      case (PLASTICITY_NONLOCAL_ID,PLASTICITY_KINEHARDENING_ID)
-
-        myOffset = plasticState(phase)%offsetDeltaState
-        mySize   = plasticState(phase)%sizeDeltaState
-        plasticState(phase)%state(myOffset + 1:myOffset + mySize,of) = &
-        plasticState(phase)%state(myOffset + 1:myOffset + mySize,of) + plasticState(phase)%deltaState(1:mySize,of)
-    end select
-  endif
-
-end function constitutive_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
