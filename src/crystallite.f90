@@ -1138,7 +1138,6 @@ subroutine integrateStateFPI(g,i,e)
 
     if(crystallite_converged(g,i,e)) then
       broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                       crystallite_Fe(1:3,1:3,g,i,e), &
                                        crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
       exit iteration
     endif
@@ -1200,11 +1199,7 @@ subroutine integrateSourceState(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedF0, &
-                                          crystallite_Fi(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedFp0, &
-                                          crystallite_subdt(g,i,e), g,i,e,p,c)
+  broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
   if(broken) return
 
   do s = 1, phase_Nsources(p)
@@ -1222,11 +1217,7 @@ subroutine integrateSourceState(g,i,e)
       source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
     enddo
 
-    broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedF0, &
-                                          crystallite_Fi(1:3,1:3,g,i,e), &
-                                          crystallite_partitionedFp0, &
-                                          crystallite_subdt(g,i,e), g,i,e,p,c)
+    broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
     if(broken) exit iteration
 
     do s = 1, phase_Nsources(p)
@@ -1247,9 +1238,7 @@ subroutine integrateSourceState(g,i,e)
     enddo
 
     if(crystallite_converged(g,i,e)) then
-      broken = constitutive_deltaState_source(crystallite_S(1:3,1:3,g,i,e), &
-                                       crystallite_Fe(1:3,1:3,g,i,e), &
-                                       crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
+      broken = constitutive_deltaState_source(crystallite_Fe(1:3,1:3,g,i,e),g,i,e,p,c)
       exit iteration
     endif
 
@@ -1312,7 +1301,6 @@ subroutine integrateStateEuler(g,i,e)
                                             * crystallite_subdt(g,i,e)
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                   crystallite_Fe(1:3,1:3,g,i,e), &
                                    crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
   if(broken) return
 
@@ -1358,7 +1346,6 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
                                           + plasticState(p)%dotstate(1:sizeDotState,c) * crystallite_subdt(g,i,e)
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                   crystallite_Fe(1:3,1:3,g,i,e), &
                                    crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
   if(broken) return
 
@@ -1515,7 +1502,6 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
   if(broken) return
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,g,i,e), &
-                                   crystallite_Fe(1:3,1:3,g,i,e), &
                                    crystallite_Fi(1:3,1:3,g,i,e),g,i,e,p,c)
   if(broken) return
 

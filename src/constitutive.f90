@@ -666,7 +666,7 @@ end function constitutive_collectDotState
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_collectDotState_source(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken)
+function constitutive_collectDotState_source(S, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -674,27 +674,11 @@ function constitutive_collectDotState_source(S, FArray, Fi, FpArray, subdt, ipc,
     el, &                                                                                           !< element
     phase, &
     of
-  real(pReal),  intent(in) :: &
-    subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
-    FArray, &                                                                                       !< elastic deformation gradient
-    FpArray                                                                                         !< plastic deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Fi                                                                                              !< intermediate deformation gradient
   real(pReal),  intent(in), dimension(3,3) :: &
     S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
-  real(pReal),              dimension(3,3) :: &
-    Mp
   integer :: &
-    ho, &                                                                                           !< homogenization
-    tme, &                                                                                          !< thermal member position
-    i, &                                                                                            !< counter in source loop
-    instance
+    i                                                                                               !< counter in source loop
   logical :: broken
-
-  ho = material_homogenizationAt(el)
-  tme = material_homogenizationMemberAt(ip,el)
-  instance = phase_plasticityInstance(phase)
 
 
   broken = .false.
@@ -728,7 +712,7 @@ end function constitutive_collectDotState_source
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broken)
+function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -738,12 +722,10 @@ function constitutive_deltaState(S, Fe, Fi, ipc, ip, el, phase, of) result(broke
     of
   real(pReal),   intent(in), dimension(3,3) :: &
     S, &                                                                                            !< 2nd Piola Kirchhoff stress
-    Fe, &                                                                                           !< elastic deformation gradient
     Fi                                                                                              !< intermediate deformation gradient
   real(pReal),               dimension(3,3) :: &
     Mp
   integer :: &
-    i, &
     instance, &
     myOffset, &
     mySize
@@ -786,7 +768,7 @@ end function constitutive_deltaState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_deltaState_source(S, Fe, Fi, ipc, ip, el, phase, of) result(broken)
+function constitutive_deltaState_source(Fe, ipc, ip, el, phase, of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -795,14 +777,9 @@ function constitutive_deltaState_source(S, Fe, Fi, ipc, ip, el, phase, of) resul
     phase, &
     of
   real(pReal),   intent(in), dimension(3,3) :: &
-    S, &                                                                                            !< 2nd Piola Kirchhoff stress
-    Fe, &                                                                                           !< elastic deformation gradient
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),               dimension(3,3) :: &
-    Mp
+    Fe                                                                                              !< elastic deformation gradient
   integer :: &
     i, &
-    instance, &
     myOffset, &
     mySize
   logical :: &
