@@ -147,6 +147,27 @@ module constitutive
     module subroutine thermal_init
     end subroutine thermal_init
 
+ module function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    phase, &
+    of
+  real(pReal),  intent(in) :: &
+    subdt                                                                                           !< timestep
+  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
+    FArray, &                                                                                       !< elastic deformation gradient
+    FpArray                                                                                         !< plastic deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),  intent(in), dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+
+  logical :: broken
+end function constitutive_collectDotState
+
 
     module function plastic_active(plastic_label)  result(active_plastic)
       character(len=*), intent(in)        :: plastic_label
@@ -164,67 +185,6 @@ module constitutive
       integer,          intent(in)          :: kinematics_length
       logical, dimension(:,:), allocatable  :: active_kinematics
     end function kinematics_active
-
-    module subroutine plastic_isotropic_dotState(Mp,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_isotropic_dotState
-
-    module subroutine plastic_phenopowerlaw_dotState(Mp,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_phenopowerlaw_dotState
-
-    module subroutine plastic_kinehardening_dotState(Mp,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_kinehardening_dotState
-
-    module subroutine plastic_dislotwin_dotState(Mp,T,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      real(pReal),                  intent(in) :: &
-        T
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_dislotwin_dotState
-
-    module subroutine plastic_disloTungsten_dotState(Mp,T,instance,of)
-      real(pReal), dimension(3,3),  intent(in) :: &
-        Mp                                                                                          !< Mandel stress
-      real(pReal),                  intent(in) :: &
-        T
-      integer,                      intent(in) :: &
-        instance, &
-        of
-    end subroutine plastic_disloTungsten_dotState
-
-    module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
-                                                        instance,of,ip,el)
-      real(pReal), dimension(3,3), intent(in) :: &
-        Mp                                                                                          !< MandelStress
-      real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
-        F, &                                                                                        !< deformation gradient
-        Fp                                                                                          !< plastic deformation gradient
-      real(pReal), intent(in) :: &
-        Temperature, &                                                                              !< temperature
-        timestep                                                                                    !< substepped crystallite time increment
-      integer, intent(in) :: &
-        instance, &
-        of, &
-        ip, &                                                                                       !< current integration point
-        el                                                                                          !< current element number
-    end subroutine plastic_nonlocal_dotState
 
 
     module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
@@ -694,66 +654,7 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 end subroutine constitutive_LiAndItsTangents
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief contains the constitutive equation for calculating the rate of change of microstructure
-!--------------------------------------------------------------------------------------------------
-function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken)
 
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
-    phase, &
-    of
-  real(pReal),  intent(in) :: &
-    subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
-    FArray, &                                                                                       !< elastic deformation gradient
-    FpArray                                                                                         !< plastic deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
-  real(pReal),              dimension(3,3) :: &
-    Mp
-  integer :: &
-    ho, &                                                                                           !< homogenization
-    tme, &                                                                                          !< thermal member position
-    i, &                                                                                            !< counter in source loop
-    instance
-  logical :: broken
-
-  ho = material_homogenizationAt(el)
-  tme = material_homogenizationMemberAt(ip,el)
-  instance = phase_plasticityInstance(phase)
-
-  Mp = matmul(matmul(transpose(Fi),Fi),S)
-
-  plasticityType: select case (phase_plasticity(phase))
-
-    case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call plastic_isotropic_dotState(Mp,instance,of)
-
-    case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      call plastic_phenopowerlaw_dotState(Mp,instance,of)
-
-    case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_dotState(Mp,instance,of)
-
-    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_dotState(Mp,temperature(ho)%p(tme),instance,of)
-
-    case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_disloTungsten_dotState(Mp,temperature(ho)%p(tme),instance,of)
-
-    case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dotState(Mp,FArray,FpArray,temperature(ho)%p(tme),subdt, &
-                                          instance,of,ip,el)
-  end select plasticityType
-  broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
-
-
-end function constitutive_collectDotState
 
 
 !--------------------------------------------------------------------------------------------------
