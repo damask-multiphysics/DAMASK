@@ -21,7 +21,6 @@ module CPFEM2
   use HDF5_utilities
   use homogenization
   use constitutive
-  use crystallite
 #if    defined(Mesh)
   use FEM_quadrature
   use discretization_mesh

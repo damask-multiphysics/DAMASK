@@ -13,7 +13,6 @@ module CPFEM
   use discretization_marc
   use material
   use config
-  use crystallite
   use homogenization
   use IO
   use discretization

@@ -7,7 +7,6 @@ module damage_nonlocal
   use material
   use config
   use YAML_types
-  use crystallite
   use lattice
   use constitutive
   use results

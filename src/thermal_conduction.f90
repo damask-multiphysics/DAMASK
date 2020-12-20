@@ -8,7 +8,6 @@ module thermal_conduction
   use config
   use lattice
   use results
-  use crystallite
   use constitutive
   use YAML_types
 
