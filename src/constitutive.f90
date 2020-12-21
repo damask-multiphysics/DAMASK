@@ -347,9 +347,7 @@ end function constitutive_deltaState
     module subroutine damage_results
     end subroutine damage_results
 
-  end interface
 
-  interface constitutive_LpAndItsTangents
 
     module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, ipc, ip, el)
@@ -367,9 +365,6 @@ end function constitutive_deltaState
         dLp_dFi                                                                                     !< derivative of Lp with respect to Fi
     end subroutine constitutive_plastic_LpAndItsTangents
 
-  end interface constitutive_LpAndItsTangents
-
-  interface constitutive_dependentState
 
     module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
       integer, intent(in) :: &
@@ -381,9 +376,7 @@ end function constitutive_deltaState
         Fp                                                                                          !< plastic deformation gradient
     end subroutine constitutive_plastic_dependentState
 
-  end interface constitutive_dependentState
 
-  interface constitutive_SandItsTangents
 
     module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
       integer, intent(in) :: &
@@ -400,7 +393,7 @@ end function constitutive_deltaState
         dS_dFi                                                                                      !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
     end subroutine constitutive_hooke_SandItsTangents
 
-  end interface constitutive_SandItsTangents
+  end interface
 
 
   type(tDebugOptions) :: debugConstitutive
@@ -408,10 +401,7 @@ end function constitutive_deltaState
   public :: &
     constitutive_init, &
     constitutive_homogenizedC, &
-    constitutive_LpAndItsTangents, &
-    constitutive_dependentState, &
     constitutive_LiAndItsTangents, &
-    constitutive_SandItsTangents, &
     constitutive_collectDotState, &
     constitutive_collectDotState_source, &
     constitutive_deltaState, &
@@ -997,7 +987,7 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2)
       do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
-        call constitutive_dependentState(crystallite_partitionedF0(1:3,1:3,c,i,e), &
+        call constitutive_plastic_dependentState(crystallite_partitionedF0(1:3,1:3,c,i,e), &
                                          crystallite_partitionedFp0(1:3,1:3,c,i,e), &
                                          c,i,e)                                                     ! update dependent state variables to be consistent with basic states
      enddo
@@ -1290,7 +1280,7 @@ function crystallite_stressTangent(c,i,e) result(dPdF)
   pp = material_phaseAt(i,e)
   m = material_phaseMemberAt(c,i,e)
 
-        call constitutive_SandItsTangents(devNull,dSdFe,dSdFi, &
+        call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
                                          crystallite_Fe(1:3,1:3,c,i,e), &
                                          constitutive_mech_Fi(pp)%data(1:3,1:3,m),c,i,e)
         call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
@@ -1326,7 +1316,7 @@ function crystallite_stressTangent(c,i,e) result(dPdF)
           dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
         endif
 
-        call constitutive_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
+        call constitutive_plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
                                            crystallite_S (1:3,1:3,c,i,e), &
                                            constitutive_mech_Fi(pp)%data(1:3,1:3,m),c,i,e)
         dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
@@ -1643,7 +1633,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
     F  = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
-  call constitutive_dependentState(crystallite_partitionedF(1:3,1:3,ipc,ip,el), &
+  call constitutive_plastic_dependentState(crystallite_partitionedF(1:3,1:3,ipc,ip,el), &
                                    crystallite_Fp(1:3,1:3,ipc,ip,el),ipc,ip,el)
 
   Lpguess = crystallite_Lp(1:3,1:3,ipc,ip,el)                                                       ! take as first guess
@@ -1681,10 +1671,10 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
 
       B  = math_I3 - dt*Lpguess
       Fe = matmul(matmul(A,B), invFi_new)
-      call constitutive_SandItsTangents(S, dS_dFe, dS_dFi, &
+      call constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                         Fe, Fi_new, ipc, ip, el)
 
-      call constitutive_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
+      call constitutive_plastic_LpAndItsTangents(Lp_constitutive, dLp_dS, dLp_dFi, &
                                          S, Fi_new, ipc, ip, el)
 
       !* update current residuum and check for convergence of loop
