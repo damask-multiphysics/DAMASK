@@ -954,7 +954,7 @@ subroutine crystallite_init
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Nconstituents(material_homogenizationAt(e))
 
-      p = material_phaseAt(i,e)
+      p = material_phaseAt(c,e)
       m = material_phaseMemberAt(c,i,e)
       crystallite_Fp0(1:3,1:3,c,i,e) = material_orientation0(c,i,e)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       crystallite_Fp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e) &
@@ -1031,7 +1031,7 @@ function crystallite_stress()
   elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
       homogenizationRequestsCalculation: if (crystallite_requested(c,i,e)) then
-            p = material_phaseAt(i,e)
+            p = material_phaseAt(c,e)
             m = material_phaseMemberAt(c,i,e)
         plasticState    (material_phaseAt(c,e))%subState0(      :,material_phaseMemberAt(c,i,e)) = &
         plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phaseMemberAt(c,i,e))
@@ -1064,7 +1064,7 @@ function crystallite_stress()
     elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       do i = FEsolving_execIP(1),FEsolving_execIP(2)
         do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
-            p = material_phaseAt(i,e)
+            p = material_phaseAt(c,e)
             m = material_phaseMemberAt(c,i,e)
 !--------------------------------------------------------------------------------------------------
 !  wind forward
@@ -1161,9 +1161,9 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     c, &                                                                                            !< constituent number
     s,p, m
 
-  p = material_phaseAt(i,e)
   do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
-      m = material_phaseMemberAt(c,i,e)
+    p = material_phaseAt(c,e)
+    m = material_phaseMemberAt(c,i,e)
     crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp0(1:3,1:3,c,i,e)
     constitutive_mech_partionedFi0(p)%data(1:3,1:3,m) = constitutive_mech_Fi0(p)%data(1:3,1:3,m)
@@ -1193,9 +1193,9 @@ subroutine crystallite_windForward(i,e)
   integer :: &
     c, &                                                                                            !< constituent number
     s, p, m
-  p = material_phaseAt(i,e)
   do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
-      m = material_phaseMemberAt(c,i,e)
+    p = material_phaseAt(c,e)
+    m = material_phaseMemberAt(c,i,e)
     crystallite_partitionedF0 (1:3,1:3,c,i,e) = crystallite_partitionedF(1:3,1:3,c,i,e)
     crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp        (1:3,1:3,c,i,e)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp        (1:3,1:3,c,i,e)
@@ -1226,13 +1226,13 @@ subroutine crystallite_restore(i,e,includeL)
     includeL                                                                                        !< protect agains fake cutback
   integer :: &
     c, p, m                                                                                            !< constituent number
-  p = material_phaseAt(i,e)
 
   do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
     if (includeL) then
       crystallite_Lp(1:3,1:3,c,i,e) = crystallite_partitionedLp0(1:3,1:3,c,i,e)
       crystallite_Li(1:3,1:3,c,i,e) = crystallite_partitionedLi0(1:3,1:3,c,i,e)
     endif                                                                                           ! maybe protecting everything from overwriting makes more sense
+  p = material_phaseAt(c,e)
   m = material_phaseMemberAt(c,i,e)
     crystallite_Fp(1:3,1:3,c,i,e)   = crystallite_partitionedFp0(1:3,1:3,c,i,e)
     constitutive_mech_Fi(p)%data(1:3,1:3,m)   = constitutive_mech_partionedFi0(p)%data(1:3,1:3,m)
@@ -1277,7 +1277,7 @@ function crystallite_stressTangent(c,i,e) result(dPdF)
   real(pReal), dimension(9,9)::        temp_99
   logical :: error
 
-  pp = material_phaseAt(i,e)
+  pp = material_phaseAt(c,e)
   m = material_phaseMemberAt(c,i,e)
 
         call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
