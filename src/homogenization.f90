@@ -196,7 +196,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1),FEsolving_execIP(2);
 
-      call crystallite_initializeRestorationPoints(i,e)
+      call constitutive_initializeRestorationPoints(i,e)
 
       subFrac(i,e) = 0.0_pReal
       converged(i,e) = .false.                                                                      ! pretend failed step ...

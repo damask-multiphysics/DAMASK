@@ -453,7 +453,7 @@ end function constitutive_deltaState
     crystallite_restartWrite, &
     crystallite_restartRead, &
     crystallite_forward, &
-    crystallite_initializeRestorationPoints, &
+    constitutive_initializeRestorationPoints, &
     crystallite_windForward, &
     crystallite_restore
 
@@ -1184,7 +1184,7 @@ end function crystallite_stress
 !--------------------------------------------------------------------------------------------------
 !> @brief Backup data for homog cutback.
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_initializeRestorationPoints(i,e)
+subroutine constitutive_initializeRestorationPoints(i,e)
 
   integer, intent(in) :: &
     i, &                                                                                            !< integration point number
@@ -1211,7 +1211,7 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     enddo
   enddo
 
-end subroutine crystallite_initializeRestorationPoints
+end subroutine constitutive_initializeRestorationPoints
 
 
 !--------------------------------------------------------------------------------------------------
