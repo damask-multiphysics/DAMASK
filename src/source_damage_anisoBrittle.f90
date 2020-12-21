@@ -143,7 +143,7 @@ module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
   constituent = material_phasememberAt(ipc,ip,el)
   sourceOffset = source_damage_anisoBrittle_offset(phase)
   homog = material_homogenizationAt(el)
-  damageOffset = damageMapping(homog)%p(ip,el)
+  damageOffset = material_homogenizationMemberAt(ip,el)
 
   associate(prm => param(source_damage_anisoBrittle_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal

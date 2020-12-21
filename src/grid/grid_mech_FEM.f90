@@ -238,7 +238,7 @@ subroutine grid_mech_FEM_init
     F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid3)
   endif restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                          ! set starting condition for materialpoint_stressAndItsTangent
+  homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(F)
   call utilities_constitutiveResponse(P_current,P_av,C_volAvg,devNull, &                            ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       F, &                                                          ! target F
@@ -359,7 +359,7 @@ subroutine grid_mech_FEM_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
 
     F_lastInc = F
 
-    homogenization_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F, [3,3,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -557,9 +557,9 @@ subroutine formResidual(da_local,x_local, &
     ii = i-xstart+1; jj = j-ystart+1; kk = k-zstart+1
     ele = ele + 1
     f_elem = matmul(transpose(BMat),transpose(P_current(1:3,1:3,ii,jj,kk)))*detJ + &
-             matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,1,ele) + &
-                                   homogenization_dPdF(2,2,2,2,1,ele) + &
-                                   homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
+             matmul(HGMat,x_elem)*(homogenization_dPdF(1,1,1,1,ele) + &
+                                   homogenization_dPdF(2,2,2,2,ele) + &
+                                   homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
     ctr = 0
     do kk = 0, 1; do jj = 0, 1; do ii = 0, 1
       ctr = ctr + 1
@@ -636,18 +636,18 @@ subroutine formJacobian(da_local,x_local,Jac_pre,Jac,dummy,ierr)
     row = col
     ele = ele + 1
     K_ele = 0.0
-    K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,1,ele) + &
-                                homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
-    K_ele(9 :16,9 :16) = HGMat*(homogenization_dPdF(1,1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,1,ele) + &
-                                homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
-    K_ele(17:24,17:24) = HGMat*(homogenization_dPdF(1,1,1,1,1,ele) + &
-                                homogenization_dPdF(2,2,2,2,1,ele) + &
-                                homogenization_dPdF(3,3,3,3,1,ele))/3.0_pReal
+    K_ele(1 :8 ,1 :8 ) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
+                                homogenization_dPdF(2,2,2,2,ele) + &
+                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
+    K_ele(9 :16,9 :16) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
+                                homogenization_dPdF(2,2,2,2,ele) + &
+                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
+    K_ele(17:24,17:24) = HGMat*(homogenization_dPdF(1,1,1,1,ele) + &
+                                homogenization_dPdF(2,2,2,2,ele) + &
+                                homogenization_dPdF(3,3,3,3,ele))/3.0_pReal
     K_ele = K_ele + &
             matmul(transpose(BMatFull), &
-                   matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,1,ele), &
+                   matmul(reshape(reshape(homogenization_dPdF(1:3,1:3,1:3,1:3,ele), &
                                           shape=[3,3,3,3], order=[2,1,4,3]),shape=[9,9]),BMatFull))*detJ
     call MatSetValuesStencil(Jac,24,row,24,col,K_ele,ADD_VALUES,ierr)
     CHKERRQ(ierr)

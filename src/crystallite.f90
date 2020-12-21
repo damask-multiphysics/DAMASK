@@ -69,9 +69,9 @@ module crystallite
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_partitionedF                                                                        !< def grad to be reached at end of homog inc
 
-  logical,                    dimension(:,:,:),         allocatable, public :: &
+  logical,                    dimension(:,:,:),       allocatable, public :: &
     crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
-  logical,                    dimension(:,:,:),         allocatable :: &
+  logical,                    dimension(:,:,:),       allocatable :: &
     crystallite_converged                                                                           !< convergence flag
 
   type :: tOutput                                                                                   !< new requested output (per phase)
@@ -135,8 +135,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_init
 
-  logical, dimension(discretization_nIPs,discretization_Nelems) :: devNull
   integer :: &
+    p, &
     c, &                                                                                            !< counter in integration point component loop
     i, &                                                                                            !< counter in integration point loop
     e, &                                                                                            !< counter in element loop
@@ -238,19 +238,25 @@ subroutine crystallite_init
   phases => config_material%get('phase')
 
   allocate(output_constituent(phases%length))
-  do c = 1, phases%length
-    phase => phases%get(c)
+  do p = 1, phases%length
+    phase => phases%get(p)
     mech  => phase%get('mechanics',defaultVal = emptyDict)
 #if defined(__GFORTRAN__)
-    output_constituent(c)%label  = output_asStrings(mech)
+    output_constituent(p)%label  = output_asStrings(mech)
 #else
-    output_constituent(c)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
+    output_constituent(p)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
   enddo
 
+#ifdef DEBUG
+  if (debugCrystallite%basic) then
+    print'(a42,1x,i10)', '    # of elements:                       ', eMax
+    print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
+    print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
+    flush(IO_STDOUT)
+  endif
+#endif
 
-!--------------------------------------------------------------------------------------------------
-! initialize
  !$OMP PARALLEL DO PRIVATE(i,c)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Nconstituents(material_homogenizationAt(e))
@@ -288,16 +294,6 @@ subroutine crystallite_init
   enddo
   !$OMP END PARALLEL DO
 
-  devNull = crystallite_stress()
-
-#ifdef DEBUG
-  if (debugCrystallite%basic) then
-    print'(a42,1x,i10)', '    # of elements:                       ', eMax
-    print'(a42,1x,i10)', '    # of integration points/element:     ', iMax
-    print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
-    flush(IO_STDOUT)
-  endif
-#endif
 
 end subroutine crystallite_init
 
@@ -321,13 +317,10 @@ function crystallite_stress()
     subLp0,&                                                                                        !< plastic velocity grad at start of crystallite inc
     subLi0                                                                                          !< intermediate velocity grad at start of crystallite inc
 
-
   todo = .false.
 
   subLp0 = crystallite_partitionedLp0
   subLi0 = crystallite_partitionedLi0
-
-
 
 !--------------------------------------------------------------------------------------------------
 ! initialize to starting condition
@@ -435,8 +428,6 @@ function crystallite_stress()
 !  integrate --- requires fully defined state array (basic + dependent state)
     where(.not. crystallite_converged .and. crystallite_subStep > num%subStepMinCryst) &            ! do not try non-converged but fully cutbacked any further
       todo = .true.                                                                                 ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
-
-
   enddo cutbackLooping
 
 ! return whether converged or not
@@ -471,10 +462,10 @@ subroutine crystallite_initializeRestorationPoints(i,e)
     crystallite_partitionedS0(1:3,1:3,c,i,e)  = crystallite_S0(1:3,1:3,c,i,e)
 
     plasticState(material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e)) = &
-    plasticState(material_phaseAt(c,e))%state0(         :,material_phasememberAt(c,i,e))
+    plasticState(material_phaseAt(c,e))%state0(           :,material_phasememberAt(c,i,e))
     do s = 1, phase_Nsources(material_phaseAt(c,e))
       sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e)) = &
-      sourceState(material_phaseAt(c,e))%p(s)%state0(         :,material_phasememberAt(c,i,e))
+      sourceState(material_phaseAt(c,e))%p(s)%state0(           :,material_phasememberAt(c,i,e))
     enddo
   enddo
 

@@ -126,8 +126,8 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, i
 
   phase = material_phaseAt(ipc,el)
   homog = material_homogenizationAt(el)
-  T = temperature(homog)%p(thermalMapping(homog)%p(ip,el))
-  TDot = temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el))
+  T = temperature(homog)%p(material_homogenizationMemberAt(ip,el))
+  TDot = temperatureRate(homog)%p(material_homogenizationMemberAt(ip,el))
 
   associate(prm => param(kinematics_thermal_expansion_instance(phase)))
   Li = TDot * ( &

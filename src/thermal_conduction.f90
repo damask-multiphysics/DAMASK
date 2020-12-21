@@ -71,10 +71,7 @@ subroutine thermal_conduction_init
     allocate(thermalState(h)%subState0(0,Nmaterialpoints))
     allocate(thermalState(h)%state    (0,Nmaterialpoints))
 
-    thermalMapping(h)%p => material_homogenizationMemberAt
-    deallocate(temperature    (h)%p)
     allocate  (temperature    (h)%p(Nmaterialpoints), source=thermal_initialT(h))
-    deallocate(temperatureRate(h)%p)
     allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
 
     end associate
@@ -205,7 +202,7 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
     offset
 
   homog  = material_homogenizationAt(el)
-  offset = thermalMapping(homog)%p(ip,el)
+  offset = material_homogenizationMemberAt(ip,el)
   temperature    (homog)%p(offset) = T
   temperatureRate(homog)%p(offset) = Tdot
 

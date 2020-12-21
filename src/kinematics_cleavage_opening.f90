@@ -120,7 +120,7 @@ module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S,
     udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
 
   homog = material_homogenizationAt(el)
-  damageOffset = damageMapping(homog)%p(ip,el)
+  damageOffset = material_homogenizationMemberAt(ip,el)
 
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal

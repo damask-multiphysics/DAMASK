@@ -78,13 +78,10 @@ subroutine damage_nonlocal_init
 
     Nmaterialpoints = count(material_homogenizationAt == h)
     damageState(h)%sizeState = 1
-    allocate(damageState(h)%state0   (1,Nmaterialpoints), source=damage_initialPhi(h))
-    allocate(damageState(h)%subState0(1,Nmaterialpoints), source=damage_initialPhi(h))
-    allocate(damageState(h)%state    (1,Nmaterialpoints), source=damage_initialPhi(h))
+    allocate(damageState(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
+    allocate(damageState(h)%subState0(1,Nmaterialpoints), source=1.0_pReal)
+    allocate(damageState(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
 
-    nullify(damageMapping(h)%p)
-    damageMapping(h)%p => material_homogenizationMemberAt
-    deallocate(damage(h)%p)
     damage(h)%p => damageState(h)%state(1,:)
 
     end associate
@@ -181,7 +178,7 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
     offset
 
   homog  = material_homogenizationAt(el)
-  offset = damageMapping(homog)%p(ip,el)
+  offset = material_homogenizationMemberAt(ip,el)
   damage(homog)%p(offset) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage

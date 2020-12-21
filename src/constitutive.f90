@@ -19,25 +19,21 @@ module constitutive
   implicit none
   private
 
-  integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable :: &                      !ToDo: old intel compiler complains about protected
-    phase_elasticity                                                                                !< elasticity of each phase
-
-  integer(kind(PLASTICITY_undefined_ID)),     dimension(:),   allocatable :: &                      !ToDo: old intel compiler complains about protected
+  integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
     phase_plasticity                                                                                !< plasticity of each phase
 
-  integer(kind(SOURCE_undefined_ID)), dimension(:,:), allocatable :: &                              ! ToDo: old intel compiler complains about protected
+  integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
     phase_source, &                                                                                 !< active sources mechanisms of each phase
-    phase_kinematics, &                                                                             !< active kinematic mechanisms of each phase
-    phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
+    phase_kinematics                                                                                !< active kinematic mechanisms of each phase
 
-  integer, dimension(:), allocatable,  public :: &                                                  ! ToDo: old intel compiler complains about protected
+  integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
     phase_Nsources, &                                                                               !< number of source mechanisms active in each phase
     phase_Nkinematics, &                                                                            !< number of kinematic mechanisms active in each phase
     phase_NstiffnessDegradations, &                                                                 !< number of stiffness degradation mechanisms active in each phase
     phase_plasticityInstance, &                                                                     !< instance of particular plasticity of each phase
     phase_elasticityInstance                                                                        !< instance of particular elasticity of each phase
 
-  logical, dimension(:), allocatable, public :: &                                                   ! ToDo: old intel compiler complains about protected
+  logical, dimension(:), allocatable, public :: &                                                   ! ToDo: should be protected (bug in Intel Compiler)
     phase_localPlasticity                                                                           !< flags phases with local constitutive law
 
   type(tPlasticState), allocatable, dimension(:), public :: &
@@ -634,10 +630,10 @@ pure function constitutive_initialFi(ipc, ip, el)
   KinematicsLoop: do k = 1, phase_Nkinematics(phase)                                                !< Warning: small initial strain assumption
     kinematicsType: select case (phase_kinematics(k,phase))
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        homog = material_homogenizationAt(el)
-        offset = thermalMapping(homog)%p(ip,el)
-        constitutive_initialFi = &
-          constitutive_initialFi + kinematics_thermal_expansion_initialStrain(homog,phase,offset)
+        homog  = material_homogenizationAt(el)
+        offset = material_homogenizationMemberAt(ip,el)
+        constitutive_initialFi = constitutive_initialFi &
+                               + kinematics_thermal_expansion_initialStrain(homog,phase,offset)
     end select kinematicsType
   enddo KinematicsLoop
 
@@ -674,7 +670,7 @@ function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el
   logical :: broken
 
   ho = material_homogenizationAt(el)
-  tme = thermalMapping(ho)%p(ip,el)
+  tme = material_homogenizationMemberAt(ip,el)
   instance = phase_plasticityInstance(phase)
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)

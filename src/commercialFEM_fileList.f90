@@ -52,6 +52,7 @@
 #include "damage_local.f90"
 #include "damage_nonlocal.f90"
 #include "homogenization.f90"
+#include "homogenization_mech.f90"
 #include "homogenization_mech_none.f90"
 #include "homogenization_mech_isostrain.f90"
 #include "homogenization_mech_RGC.f90"
