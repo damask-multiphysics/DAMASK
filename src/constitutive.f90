@@ -162,7 +162,7 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
- module function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken)
+ module function constitutive_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -173,12 +173,7 @@ module constitutive
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
   real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
-    FArray, &                                                                                       !< elastic deformation gradient
     FpArray                                                                                         !< plastic deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    Fi                                                                                              !< intermediate deformation gradient
-  real(pReal),  intent(in), dimension(3,3) :: &
-    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
 
   logical :: broken
 end function constitutive_collectDotState
