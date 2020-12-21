@@ -47,7 +47,7 @@ module constitutive
     !
     crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
     crystallite_partitionedS0                                                                       !< 2nd Piola-Kirchhoff stress vector at start of homog inc
-  real(pReal),               dimension(:,:,:,:,:),    allocatable, public, protected :: &
+  real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_P, &                                                                                !< 1st Piola-Kirchhoff stress per grain
     crystallite_Lp, &                                                                               !< current plastic velocitiy grad (end of converged time step)
     crystallite_S, &                                                                                !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)

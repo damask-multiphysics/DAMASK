@@ -922,7 +922,7 @@ end function integrateStress
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateFPI(g,i,e)
+module subroutine integrateStateFPI(g,i,e)
 
   integer, intent(in) :: &
     e, &                                                                                            !< element index in element loop
@@ -1027,7 +1027,7 @@ end subroutine integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateEuler(g,i,e)
+module subroutine integrateStateEuler(g,i,e)
 
   integer, intent(in) :: &
     e, &                                                                                            !< element index in element loop
@@ -1068,7 +1068,7 @@ end subroutine integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateAdaptiveEuler(g,i,e)
+module subroutine integrateStateAdaptiveEuler(g,i,e)
 
   integer, intent(in) :: &
     e, &                                                                                            !< element index in element loop
@@ -1127,7 +1127,7 @@ end subroutine integrateStateAdaptiveEuler
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the classic Runge Kutta method
 !---------------------------------------------------------------------------------------------------
-subroutine integrateStateRK4(g,i,e)
+module subroutine integrateStateRK4(g,i,e)
 
   integer, intent(in) :: g,i,e
 
@@ -1150,7 +1150,7 @@ end subroutine integrateStateRK4
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the Cash-Carp method
 !---------------------------------------------------------------------------------------------------
-subroutine integrateStateRKCK45(g,i,e)
+module subroutine integrateStateRKCK45(g,i,e)
 
   integer, intent(in) :: g,i,e
 
