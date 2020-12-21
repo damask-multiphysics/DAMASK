@@ -140,6 +140,7 @@ module constitutive
 
   interface
 
+! == cleaned:begin =================================================================================
     module subroutine mech_init
     end subroutine mech_init
 
@@ -148,6 +149,18 @@ module constitutive
 
     module subroutine thermal_init
     end subroutine thermal_init
+
+
+    module subroutine mech_results(group,ph)
+      character(len=*), intent(in) :: group
+      integer,          intent(in) :: ph
+    end subroutine mech_results
+
+    module subroutine mech_restart_read(fileHandle)
+      integer(HID_T), intent(in) :: fileHandle
+    end subroutine mech_restart_read
+
+! == cleaned:end ===================================================================================
 
  module function constitutive_collectDotState(S, FArray, Fi, FpArray, subdt, ipc, ip, el,phase,of) result(broken)
 

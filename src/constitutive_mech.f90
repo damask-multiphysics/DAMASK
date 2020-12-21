@@ -651,6 +651,40 @@ module function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(br
 end function constitutive_deltaState
 
 
+module subroutine mech_results(group,ph)
+
+  character(len=*), intent(in) :: group
+  integer,          intent(in) :: ph
+
+  select case(phase_plasticity(ph))
+
+    case(PLASTICITY_ISOTROPIC_ID)
+      call plastic_isotropic_results(phase_plasticityInstance(ph),group//'plastic')
+
+    case(PLASTICITY_PHENOPOWERLAW_ID)
+      call plastic_phenopowerlaw_results(phase_plasticityInstance(ph),group//'plastic')
+
+    case(PLASTICITY_KINEHARDENING_ID)
+      call plastic_kinehardening_results(phase_plasticityInstance(ph),group//'plastic')
+
+    case(PLASTICITY_DISLOTWIN_ID)
+      call plastic_dislotwin_results(phase_plasticityInstance(ph),group//'plastic')
+
+    case(PLASTICITY_DISLOTUNGSTEN_ID)
+      call plastic_dislotungsten_results(phase_plasticityInstance(ph),group//'plastic')
+
+    case(PLASTICITY_NONLOCAL_ID)
+      call plastic_nonlocal_results(phase_plasticityInstance(ph),group//'plastic')
+  end select
+
+end subroutine mech_results
+
+    module subroutine mech_restart_read(fileHandle)
+      integer(HID_T), intent(in) :: fileHandle
+    end subroutine mech_restart_read
+
+
+
 !--------------------------------------------------------------------------------------------
 !> @brief writes plasticity constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------
