@@ -144,6 +144,11 @@ class Rotation:
         return self.copy(rotation=Rotation(np.block([np.cos(pwr*phi),np.sin(pwr*phi)*p]))._standardize())
 
 
+    def __mul__(self,other):
+        """Standard multiplication is not implemented."""
+        raise NotImplementedError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+
+
     def __matmul__(self,other):
         """
         Rotation of vector, second or fourth order tensor, or rotation object.
