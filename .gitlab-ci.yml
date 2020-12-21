@@ -262,20 +262,6 @@ Pytest_grid:
     - master
     - release
 
-Thermal:
-  stage: grid
-  script: Thermal/test.py
-  except:
-    - master
-    - release
-
-Nonlocal_Damage_DetectChanges:
-  stage: grid
-  script: Nonlocal_Damage_DetectChanges/test.py
-  except:
-    - master
-    - release
-
 Plasticity_DetectChanges:
   stage: grid
   script: Plasticity_DetectChanges/test.py
