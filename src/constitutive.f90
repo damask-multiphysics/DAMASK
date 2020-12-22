@@ -637,7 +637,7 @@ end subroutine constitutive_LiAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_collectDotState_source(S, ipc, ip, el,phase,of) result(broken)
+function constitutive_source_collectDotState(S, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -676,7 +676,7 @@ function constitutive_collectDotState_source(S, ipc, ip, el,phase,of) result(bro
 
   enddo SourceLoop
 
-end function constitutive_collectDotState_source
+end function constitutive_source_collectDotState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1453,7 +1453,7 @@ subroutine integrateSourceState(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
+  broken = constitutive_source_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
   if(broken) return
 
   do s = 1, phase_Nsources(p)
@@ -1471,7 +1471,7 @@ subroutine integrateSourceState(g,i,e)
       source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
     enddo
 
-    broken = constitutive_collectDotState_source(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
+    broken = constitutive_source_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
     if(broken) exit iteration
 
     do s = 1, phase_Nsources(p)

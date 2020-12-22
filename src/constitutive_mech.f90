@@ -546,7 +546,7 @@ end subroutine constitutive_plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
+function mech_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -597,7 +597,7 @@ function constitutive_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) resu
   broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
 
 
-end function constitutive_collectDotState
+end function mech_collectDotState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -952,7 +952,7 @@ module subroutine integrateStateFPI(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = constitutive_collectDotState(crystallite_partitionedFp0, &
+  broken = mech_collectDotState(crystallite_partitionedFp0, &
                                         crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -970,7 +970,7 @@ module subroutine integrateStateFPI(g,i,e)
     broken = integrateStress(g,i,e)
     if(broken) exit iteration
 
-    broken = constitutive_collectDotState(crystallite_partitionedFp0, &
+    broken = mech_collectDotState(crystallite_partitionedFp0, &
                                           crystallite_subdt(g,i,e), g,i,e,p,c)
     if(broken) exit iteration
 
@@ -1040,7 +1040,7 @@ module subroutine integrateStateEuler(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = constitutive_collectDotState(crystallite_partitionedFp0, &
+  broken = mech_collectDotState(crystallite_partitionedFp0, &
                                     crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1081,7 +1081,7 @@ module subroutine integrateStateAdaptiveEuler(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = constitutive_collectDotState(crystallite_partitionedFp0, &
+  broken = mech_collectDotState(crystallite_partitionedFp0, &
                                         crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1098,7 +1098,7 @@ module subroutine integrateStateAdaptiveEuler(g,i,e)
   broken = integrateStress(g,i,e)
   if(broken) return
 
-  broken = constitutive_collectDotState(crystallite_partitionedFp0, &
+  broken = mech_collectDotState(crystallite_partitionedFp0, &
                                         crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1193,7 +1193,7 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = constitutive_collectDotState(crystallite_partitionedFp0, &
+  broken = mech_collectDotState(crystallite_partitionedFp0, &
                                         crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
@@ -1216,7 +1216,7 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
     broken = integrateStress(g,i,e,CC(stage))
     if(broken) exit
 
-    broken = constitutive_collectDotState(crystallite_partitionedFp0, &
+    broken = mech_collectDotState(crystallite_partitionedFp0, &
                                           crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
     if(broken) exit
 
