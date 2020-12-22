@@ -160,6 +160,10 @@ module constitutive
       integer(HID_T), intent(in) :: fileHandle
     end subroutine mech_restart_read
 
+    module subroutine mech_initializeRestorationPoints(ph,me)
+      integer, intent(in) :: ph, me
+    end subroutine mech_initializeRestorationPoints
+
 ! == cleaned:end ===================================================================================
 
  module function constitutive_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
@@ -196,11 +200,6 @@ module function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(br
 
 end function constitutive_deltaState
 
-
-    module function plastic_active(plastic_label)  result(active_plastic)
-      character(len=*), intent(in)        :: plastic_label
-      logical, dimension(:), allocatable  :: active_plastic
-    end function plastic_active
 
     module function source_active(source_label,src_length)  result(active_source)
       character(len=*), intent(in)          :: source_label
@@ -437,7 +436,6 @@ end function constitutive_deltaState
     constitutive_forward, &
     constitutive_restore, &
     plastic_nonlocal_updateCompatibility, &
-    plastic_active, &
     source_active, &
     kinematics_active, &
     converged, &
@@ -1195,20 +1193,17 @@ subroutine constitutive_initializeRestorationPoints(i,e)
     e                                                                                               !< element number
   integer :: &
     c, &                                                                                            !< constituent number
-    s,p, m
+    s,ph, me
 
   do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
-    p = material_phaseAt(c,e)
-    m = material_phaseMemberAt(c,i,e)
+    ph = material_phaseAt(c,e)
+    me = material_phaseMemberAt(c,i,e)
     crystallite_partitionedFp0(1:3,1:3,c,i,e) = crystallite_Fp0(1:3,1:3,c,i,e)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp0(1:3,1:3,c,i,e)
-    constitutive_mech_partionedFi0(p)%data(1:3,1:3,m) = constitutive_mech_Fi0(p)%data(1:3,1:3,m)
-    constitutive_mech_partionedLi0(p)%data(1:3,1:3,m) = constitutive_mech_Li0(p)%data(1:3,1:3,m)
     crystallite_partitionedF0(1:3,1:3,c,i,e)  = crystallite_F0(1:3,1:3,c,i,e)
     crystallite_partitionedS0(1:3,1:3,c,i,e)  = crystallite_S0(1:3,1:3,c,i,e)
 
-    plasticState(material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e)) = &
-    plasticState(material_phaseAt(c,e))%state0(           :,material_phasememberAt(c,i,e))
+    call mech_initializeRestorationPoints(ph,me)
     do s = 1, phase_Nsources(material_phaseAt(c,e))
       sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e)) = &
       sourceState(material_phaseAt(c,e))%p(s)%state0(           :,material_phasememberAt(c,i,e))

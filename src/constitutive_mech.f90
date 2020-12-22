@@ -360,7 +360,7 @@ end subroutine mech_init
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if a plastic module is active or not
 !--------------------------------------------------------------------------------------------------
-module function plastic_active(plastic_label)  result(active_plastic)
+function plastic_active(plastic_label)  result(active_plastic)
 
   character(len=*), intent(in)       :: plastic_label                                               !< type of plasticity model
   logical, dimension(:), allocatable :: active_plastic
@@ -1374,6 +1374,22 @@ subroutine crystallite_results(group,ph)
  end function select_rotations
 
 end subroutine crystallite_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Backup data for homog cutback.
+!--------------------------------------------------------------------------------------------------
+module subroutine mech_initializeRestorationPoints(ph,me)
+
+  integer, intent(in) :: &
+    ph, &
+    me
+
+  constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
+  plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state0(:,me)
+
+end subroutine mech_initializeRestorationPoints
 
 
 end submodule constitutive_mech
