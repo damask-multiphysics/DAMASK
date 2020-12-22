@@ -231,7 +231,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
           steppingNeeded: if (subStep(i,e) > num%subStepMinHomog) then
 
             ! wind forward grain starting point
-            call crystallite_windForward(i,e)
+            call constitutive_windForward(i,e)
 
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                 homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &

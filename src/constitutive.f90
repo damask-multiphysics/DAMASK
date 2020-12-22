@@ -448,7 +448,7 @@ end function constitutive_deltaState
     crystallite_restartRead, &
     crystallite_forward, &
     constitutive_initializeRestorationPoints, &
-    crystallite_windForward, &
+    constitutive_windForward, &
     crystallite_restore
 
 contains
@@ -1216,7 +1216,7 @@ end subroutine constitutive_initializeRestorationPoints
 !--------------------------------------------------------------------------------------------------
 !> @brief Wind homog inc forward.
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_windForward(i,e)
+subroutine constitutive_windForward(i,e)
 
   integer, intent(in) :: &
     i, &                                                                                            !< integration point number
@@ -1242,7 +1242,7 @@ subroutine crystallite_windForward(i,e)
     enddo
   enddo
 
-end subroutine crystallite_windForward
+end subroutine constitutive_windForward
 
 
 !--------------------------------------------------------------------------------------------------
