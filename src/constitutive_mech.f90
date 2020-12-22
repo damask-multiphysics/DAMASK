@@ -1409,5 +1409,21 @@ module subroutine mech_initializeRestorationPoints(ph,me)
 end subroutine mech_initializeRestorationPoints
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief Wind homog inc forward.
+!--------------------------------------------------------------------------------------------------
+module subroutine constitutive_mech_windForward(ph,me)
+
+  integer, intent(in) :: ph, me
+
+    constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
+    constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
+    constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
+
+    plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state(:,me)
+
+
+end subroutine constitutive_mech_windForward
+
 end submodule constitutive_mech
 

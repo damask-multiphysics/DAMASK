@@ -166,6 +166,10 @@ module constitutive
       integer, intent(in) :: ph, me
     end subroutine mech_initializeRestorationPoints
 
+    module subroutine constitutive_mech_windForward(ph,me)
+      integer, intent(in) :: ph, me
+    end subroutine constitutive_mech_windForward
+
 ! == cleaned:end ===================================================================================
 
 
@@ -1141,6 +1145,7 @@ subroutine constitutive_initializeRestorationPoints(i,e)
     crystallite_partitionedS0(1:3,1:3,c,i,e)  = crystallite_S0(1:3,1:3,c,i,e)
 
     call mech_initializeRestorationPoints(ph,me)
+
     do s = 1, phase_Nsources(material_phaseAt(c,e))
       sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e)) = &
       sourceState(material_phaseAt(c,e))%p(s)%state0(           :,material_phasememberAt(c,i,e))
@@ -1160,22 +1165,17 @@ subroutine constitutive_windForward(i,e)
     e                                                                                               !< element number
   integer :: &
     c, &                                                                                            !< constituent number
-    s, p, m
+    s, ph, me
   do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
-    p = material_phaseAt(c,e)
-    m = material_phaseMemberAt(c,i,e)
+    ph = material_phaseAt(c,e)
+    me = material_phaseMemberAt(c,i,e)
     crystallite_partitionedF0 (1:3,1:3,c,i,e) = crystallite_partitionedF(1:3,1:3,c,i,e)
-    constitutive_mech_partionedFp0(p)%data(1:3,1:3,m) = constitutive_mech_Fp(p)%data(1:3,1:3,m)
     crystallite_partitionedLp0(1:3,1:3,c,i,e) = crystallite_Lp        (1:3,1:3,c,i,e)
-    constitutive_mech_partionedFi0(p)%data(1:3,1:3,m) = constitutive_mech_Fi(p)%data(1:3,1:3,m)
-    constitutive_mech_partionedLi0(p)%data(1:3,1:3,m) = constitutive_mech_Li(p)%data(1:3,1:3,m)
     crystallite_partitionedS0 (1:3,1:3,c,i,e) = crystallite_S         (1:3,1:3,c,i,e)
 
-    plasticState    (material_phaseAt(c,e))%partitionedState0(:,material_phasememberAt(c,i,e)) = &
-    plasticState    (material_phaseAt(c,e))%state          (:,material_phasememberAt(c,i,e))
+    call constitutive_mech_windForward(ph,me)
     do s = 1, phase_Nsources(material_phaseAt(c,e))
-      sourceState(material_phaseAt(c,e))%p(s)%partitionedState0(:,material_phasememberAt(c,i,e)) = &
-      sourceState(material_phaseAt(c,e))%p(s)%state          (:,material_phasememberAt(c,i,e))
+      sourceState(ph)%p(s)%partitionedState0(:,me) = sourceState(ph)%p(s)%state(:,me)
     enddo
   enddo
 
