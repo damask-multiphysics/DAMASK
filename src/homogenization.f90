@@ -399,6 +399,7 @@ subroutine homogenization_results
   integer :: p
   character(len=:), allocatable :: group_base,group
 
+  call results_closeGroup(results_addGroup('current/homogenization/'))
 
   do p=1,size(material_name_homogenization)
     group_base = 'current/homogenization/'//trim(material_name_homogenization(p))

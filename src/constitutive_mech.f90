@@ -651,6 +651,9 @@ module subroutine mech_results(group,ph)
   character(len=*), intent(in) :: group
   integer,          intent(in) :: ph
 
+  if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) &
+    call results_closeGroup(results_addGroup(group//'plastic'))
+
   select case(phase_plasticity(ph))
 
     case(PLASTICITY_ISOTROPIC_ID)
@@ -670,6 +673,7 @@ module subroutine mech_results(group,ph)
 
     case(PLASTICITY_NONLOCAL_ID)
       call plastic_nonlocal_results(phase_plasticityInstance(ph),group//'plastic')
+
   end select
 
 end subroutine mech_results
@@ -677,48 +681,6 @@ end subroutine mech_results
     module subroutine mech_restart_read(fileHandle)
       integer(HID_T), intent(in) :: fileHandle
     end subroutine mech_restart_read
-
-
-
-!--------------------------------------------------------------------------------------------
-!> @brief writes plasticity constitutive results to HDF5 output file
-!--------------------------------------------------------------------------------------------
-module subroutine plastic_results
-
-  integer :: p
-  character(len=:), allocatable :: group
-
-  plasticityLoop:  do p=1,size(material_name_phase)
-    group = '/current/phase/'//trim(material_name_phase(p))
-    call results_closeGroup(results_addGroup(group))
-
-    group = trim(group)//'/plastic'
-
-    call results_closeGroup(results_addGroup(group))
-    select case(phase_plasticity(p))
-
-      case(PLASTICITY_ISOTROPIC_ID)
-        call plastic_isotropic_results(phase_plasticityInstance(p),group)
-
-      case(PLASTICITY_PHENOPOWERLAW_ID)
-        call plastic_phenopowerlaw_results(phase_plasticityInstance(p),group)
-
-      case(PLASTICITY_KINEHARDENING_ID)
-        call plastic_kinehardening_results(phase_plasticityInstance(p),group)
-
-      case(PLASTICITY_DISLOTWIN_ID)
-        call plastic_dislotwin_results(phase_plasticityInstance(p),group)
-
-      case(PLASTICITY_DISLOTUNGSTEN_ID)
-        call plastic_dislotungsten_results(phase_plasticityInstance(p),group)
-
-      case(PLASTICITY_NONLOCAL_ID)
-        call plastic_nonlocal_results(phase_plasticityInstance(p),group)
-    end select
-
-  enddo plasticityLoop
-
-end subroutine plastic_results
 
 
 !--------------------------------------------------------------------------------------------------

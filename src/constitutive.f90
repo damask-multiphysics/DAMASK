@@ -348,9 +348,6 @@ end function constitutive_deltaState
         C
     end subroutine source_damage_isoBrittle_deltaState
 
-    module subroutine plastic_results
-    end subroutine plastic_results
-
     module subroutine damage_results
     end subroutine damage_results
 
@@ -844,7 +841,22 @@ end subroutine constitutive_forward
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_results
 
-  call plastic_results
+  integer :: ph
+  character(len=:), allocatable :: group
+
+
+  group = '/current/phase/'
+  call results_closeGroup(results_addGroup(group))
+
+  do ph = 1, size(material_name_phase)
+
+    group = group//trim(material_name_phase(ph))//'/'
+    call results_closeGroup(results_addGroup(group))
+
+    call mech_results(group,ph)
+
+  enddo
+
   call damage_results
 
 end subroutine constitutive_results
