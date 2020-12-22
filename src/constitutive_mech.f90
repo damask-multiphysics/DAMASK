@@ -462,15 +462,14 @@ end subroutine constitutive_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different plasticity constitutive models
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
+module subroutine constitutive_plastic_dependentState(F, ipc, ip, el)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
   real(pReal),   intent(in), dimension(3,3) :: &
-    F, &                                                                                            !< elastic deformation gradient
-    Fp                                                                                              !< plastic deformation gradient
+    F                                                                                               !< elastic deformation gradient
 
   integer :: &
     ho, &                                                                                           !< homogenization
@@ -569,7 +568,7 @@ end subroutine constitutive_plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function mech_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
+function mech_collectDotState(subdt, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -579,8 +578,6 @@ function mech_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broke
     of
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
-    FpArray                                                                                         !< plastic deformation gradient
   real(pReal),              dimension(3,3) :: &
     Mp
   integer :: &
@@ -793,8 +790,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
     F  = crystallite_subF(1:3,1:3,ipc,ip,el)
   endif
 
-  call constitutive_plastic_dependentState(crystallite_partitionedF(1:3,1:3,ipc,ip,el), &
-                                   crystallite_Fp(1:3,1:3,ipc,ip,el),ipc,ip,el)
+  call constitutive_plastic_dependentState(crystallite_partitionedF(1:3,1:3,ipc,ip,el),ipc,ip,el)
 
   p = material_phaseAt(ipc,el)
   m = material_phaseMemberAt(ipc,ip,el)
@@ -936,7 +932,7 @@ function integrateStress(ipc,ip,el,timeFraction) result(broken)
   crystallite_S    (1:3,1:3,ipc,ip,el) = S
   crystallite_Lp   (1:3,1:3,ipc,ip,el) = Lpguess
   constitutive_mech_Li(p)%data(1:3,1:3,m) = Liguess
-  crystallite_Fp   (1:3,1:3,ipc,ip,el) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)         ! regularize
+  constitutive_mech_Fp(p)%data(1:3,1:3,m) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)         ! regularize
   constitutive_mech_Fi(p)%data(1:3,1:3,m) = Fi_new
   crystallite_Fe   (1:3,1:3,ipc,ip,el) = matmul(matmul(F,invFp_new),invFi_new)
   broken = .false.
@@ -975,8 +971,7 @@ module subroutine integrateStateFPI(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = mech_collectDotState(crystallite_partitionedFp0, &
-                                        crystallite_subdt(g,i,e), g,i,e,p,c)
+  broken = mech_collectDotState(crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
   size_pl = plasticState(p)%sizeDotState
@@ -993,8 +988,7 @@ module subroutine integrateStateFPI(g,i,e)
     broken = integrateStress(g,i,e)
     if(broken) exit iteration
 
-    broken = mech_collectDotState(crystallite_partitionedFp0, &
-                                          crystallite_subdt(g,i,e), g,i,e,p,c)
+    broken = mech_collectDotState(crystallite_subdt(g,i,e), g,i,e,p,c)
     if(broken) exit iteration
 
     zeta = damper(plasticState(p)%dotState(:,c),plastic_dotState(1:size_pl,1),&
@@ -1063,8 +1057,7 @@ subroutine integrateStateEuler(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = mech_collectDotState(crystallite_partitionedFp0, &
-                                    crystallite_subdt(g,i,e), g,i,e,p,c)
+  broken = mech_collectDotState(crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
   sizeDotState = plasticState(p)%sizeDotState
@@ -1104,8 +1097,7 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = mech_collectDotState(crystallite_partitionedFp0, &
-                                        crystallite_subdt(g,i,e), g,i,e,p,c)
+  broken = mech_collectDotState(crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
   sizeDotState = plasticState(p)%sizeDotState
@@ -1121,8 +1113,7 @@ subroutine integrateStateAdaptiveEuler(g,i,e)
   broken = integrateStress(g,i,e)
   if(broken) return
 
-  broken = mech_collectDotState(crystallite_partitionedFp0, &
-                                        crystallite_subdt(g,i,e), g,i,e,p,c)
+  broken = mech_collectDotState(crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
 
@@ -1216,8 +1207,7 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = mech_collectDotState(crystallite_partitionedFp0, &
-                                        crystallite_subdt(g,i,e), g,i,e,p,c)
+  broken = mech_collectDotState(crystallite_subdt(g,i,e), g,i,e,p,c)
   if(broken) return
 
   do stage = 1,size(A,1)
@@ -1239,8 +1229,7 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
     broken = integrateStress(g,i,e,CC(stage))
     if(broken) exit
 
-    broken = mech_collectDotState(crystallite_partitionedFp0, &
-                                          crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
+    broken = mech_collectDotState(crystallite_subdt(g,i,e)*CC(stage), g,i,e,p,c)
     if(broken) exit
 
   enddo
@@ -1301,8 +1290,7 @@ subroutine crystallite_results(group,ph)
           call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
                                    'elastic deformation gradient','1')
         case('F_p')
-          selected_tensors = select_tensors(crystallite_Fp,ph)
-          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fp(ph)%data,output_constituent(ph)%label(ou),&
                                    'plastic deformation gradient','1')
         case('F_i')
           call results_writeDataset(group//'/mechanics/',constitutive_mech_Fi(ph)%data,output_constituent(ph)%label(ou),&
@@ -1414,6 +1402,7 @@ module subroutine mech_initializeRestorationPoints(ph,me)
 
 
   constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
   constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state0(:,me)
 

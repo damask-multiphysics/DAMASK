@@ -563,6 +563,8 @@ module subroutine plastic_nonlocal_dependentState(F, instance, of, ip, el)
     el
 
   integer :: &
+    ph, &
+    me, &
     no, &                                                                                           !< neighbor offset
     neighbor_el, &                                                                                  ! element number of neighboring material point
     neighbor_ip, &                                                                                  ! integration point of neighboring material point
@@ -642,8 +644,10 @@ module subroutine plastic_nonlocal_dependentState(F, instance, of, ip, el)
 
   rho0 = getRho0(instance,of,ip,el)
   if (.not. phase_localPlasticity(material_phaseAt(1,el)) .and. prm%shortRangeStressCorrection) then
-    invFp = math_inv33(crystallite_Fp(1:3,1:3,1,ip,el))
-    invFe = matmul(crystallite_Fp(1:3,1:3,1,ip,el),math_inv33(F))
+    ph = material_phaseAt(1,el)
+    me = material_phaseMemberAt(1,ip,el)
+    invFp = math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,me))
+    invFe = matmul(constitutive_mech_Fp(ph)%data(1:3,1:3,me),math_inv33(F))
 
     rho_edg_delta = rho0(:,mob_edg_pos) - rho0(:,mob_edg_neg)
     rho_scr_delta = rho0(:,mob_scr_pos) - rho0(:,mob_scr_neg)
@@ -1290,7 +1294,7 @@ function rhoDotFlux(F,timestep,  instance,of,ip,el)
     m(1:3,:,4) =  prm%slip_transverse
 
     my_F = F(1:3,1:3,1,ip,el)
-    my_Fe = matmul(my_F, math_inv33(crystallite_Fp(1:3,1:3,1,ip,el)))
+    my_Fe = matmul(my_F, math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,of)))
 
     neighbors: do n = 1,nIPneighbors
 
@@ -1308,7 +1312,7 @@ function rhoDotFlux(F,timestep,  instance,of,ip,el)
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
         neighbor_instance = phase_plasticityInstance(material_phaseAt(1,neighbor_el))
         neighbor_F = F(1:3,1:3,1,neighbor_ip,neighbor_el)
-        neighbor_Fe = matmul(neighbor_F, math_inv33(crystallite_Fp(1:3,1:3,1,neighbor_ip,neighbor_el)))
+        neighbor_Fe = matmul(neighbor_F, math_inv33(constitutive_mech_Fp(np)%data(1:3,1:3,no)))
         Favg = 0.5_pReal * (my_F + neighbor_F)
       else                                                                                          ! if no neighbor, take my value as average
         Favg = my_F
