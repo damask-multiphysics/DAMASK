@@ -152,6 +152,12 @@ module constitutive
       integer,          intent(in) :: ph
     end subroutine mech_results
 
+    module subroutine damage_results(group,ph)
+      character(len=*), intent(in) :: group
+      integer,          intent(in) :: ph
+    end subroutine damage_results
+
+
     module subroutine mech_restart_read(fileHandle)
       integer(HID_T), intent(in) :: fileHandle
     end subroutine mech_restart_read
@@ -314,10 +320,6 @@ end function constitutive_deltaState
         C
     end subroutine source_damage_isoBrittle_deltaState
 
-    module subroutine damage_results
-    end subroutine damage_results
-
-
 
     module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                          S, Fi, ipc, ip, el)
@@ -468,7 +470,7 @@ end subroutine constitutive_init
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if a source mechanism is active or not
 !--------------------------------------------------------------------------------------------------
-module function source_active(source_label,src_length)  result(active_source)
+function source_active(source_label,src_length)  result(active_source)
 
   character(len=*), intent(in)         :: source_label                                              !< name of source mechanism
   integer,          intent(in)         :: src_length                                                !< max. number of sources in system
@@ -499,8 +501,7 @@ end function source_active
 !--------------------------------------------------------------------------------------------------
 !> @brief checks if a kinematic mechanism is active or not
 !--------------------------------------------------------------------------------------------------
-
-module function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
+function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
 
   character(len=*), intent(in)         :: kinematics_label                                          !< name of kinematic mechanism
   integer,          intent(in)         :: kinematics_length                                         !< max. number of kinematics in system
@@ -631,13 +632,10 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
 end subroutine constitutive_LiAndItsTangents
 
 
-
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_source_collectDotState(S, ipc, ip, el,phase,of) result(broken)
+function constitutive_damage_collectDotState(S, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -667,6 +665,39 @@ function constitutive_source_collectDotState(S, ipc, ip, el,phase,of) result(bro
       case (SOURCE_damage_anisoDuctile_ID) sourceType
         call source_damage_anisoDuctile_dotState(ipc, ip, el)
 
+    end select sourceType
+
+    broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
+
+  enddo SourceLoop
+
+end function constitutive_damage_collectDotState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+function constitutive_thermal_collectDotState(S, ipc, ip, el,phase,of) result(broken)
+
+  integer, intent(in) :: &
+    ipc, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    phase, &
+    of
+  real(pReal),  intent(in), dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
+  integer :: &
+    i                                                                                               !< counter in source loop
+  logical :: broken
+
+
+  broken = .false.
+
+  SourceLoop: do i = 1, phase_Nsources(phase)
+
+    sourceType: select case (phase_source(i,phase))
+
       case (SOURCE_thermal_externalheat_ID) sourceType
         call source_thermal_externalheat_dotState(phase,of)
 
@@ -676,7 +707,7 @@ function constitutive_source_collectDotState(S, ipc, ip, el,phase,of) result(bro
 
   enddo SourceLoop
 
-end function constitutive_source_collectDotState
+end function constitutive_thermal_collectDotState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -805,19 +836,17 @@ subroutine constitutive_results
   character(len=:), allocatable :: group
 
 
-  group = '/current/phase/'
-  call results_closeGroup(results_addGroup(group))
+  call results_closeGroup(results_addGroup('/current/phase/'))
 
   do ph = 1, size(material_name_phase)
 
-    group = group//trim(material_name_phase(ph))//'/'
+    group = '/current/phase/'//trim(material_name_phase(ph))//'/'
     call results_closeGroup(results_addGroup(group))
 
     call mech_results(group,ph)
+    call damage_results(group,ph)
 
   enddo
-
-  call damage_results
 
 end subroutine constitutive_results
 
@@ -1453,7 +1482,8 @@ subroutine integrateSourceState(g,i,e)
   p = material_phaseAt(g,e)
   c = material_phaseMemberAt(g,i,e)
 
-  broken = constitutive_source_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
+  broken = constitutive_thermal_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
+  broken = broken .or. constitutive_damage_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
   if(broken) return
 
   do s = 1, phase_Nsources(p)
@@ -1471,7 +1501,8 @@ subroutine integrateSourceState(g,i,e)
       source_dotState(1:size_so(s),1,s) = sourceState(p)%p(s)%dotState(:,c)
     enddo
 
-    broken = constitutive_source_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
+    broken = constitutive_thermal_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
+    broken = broken .or. constitutive_damage_collectDotState(crystallite_S(1:3,1:3,g,i,e), g,i,e,p,c)
     if(broken) exit iteration
 
     do s = 1, phase_Nsources(p)
