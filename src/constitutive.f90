@@ -351,22 +351,6 @@ module constitutive
       integer, intent(in) :: e, i, g
     end subroutine integrateStateFPI
 
-    module subroutine integrateStateEuler(g,i,e)
-      integer, intent(in) :: e, i, g
-    end subroutine integrateStateEuler
-
-    module subroutine integrateStateAdaptiveEuler(g,i,e)
-      integer, intent(in) :: e, i, g
-    end subroutine integrateStateAdaptiveEuler
-
-    module subroutine integrateStateRK4(g,i,e)
-      integer, intent(in) :: e, i, g
-    end subroutine integrateStateRK4
-
-    module subroutine integrateStateRKCK45(g,i,e)
-      integer, intent(in) :: e, i, g
-    end subroutine integrateStateRKCK45
-
   end interface
 
 
@@ -696,7 +680,7 @@ end function constitutive_thermal_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_deltaState_source(Fe, ipc, ip, el, phase, of) result(broken)
+function constitutive_damage_deltaState(Fe, ipc, ip, el, phase, of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -735,7 +719,7 @@ function constitutive_deltaState_source(Fe, ipc, ip, el, phase, of) result(broke
 
   enddo SourceLoop
 
-end function constitutive_deltaState_source
+end function constitutive_damage_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -918,20 +902,6 @@ subroutine crystallite_init
   if(num%nState < 1)                          call IO_error(301,ext_msg='nState')
   if(num%nStress< 1)                          call IO_error(301,ext_msg='nStress')
 
-  select case(num_crystallite%get_asString('integrator',defaultVal='FPI'))
-    case('FPI')
-      integrateState => integrateStateFPI
-    case('Euler')
-      integrateState => integrateStateEuler
-    case('AdaptiveEuler')
-      integrateState => integrateStateAdaptiveEuler
-    case('RK4')
-      integrateState => integrateStateRK4
-    case('RKCK45')
-      integrateState => integrateStateRKCK45
-    case default
-     call IO_error(301,ext_msg='integrator')
-  end select
 
   phases => config_material%get('phase')
 
@@ -1505,7 +1475,7 @@ subroutine integrateSourceState(g,i,e)
     enddo
 
     if(crystallite_converged(g,i,e)) then
-      broken = constitutive_deltaState_source(crystallite_Fe(1:3,1:3,g,i,e),g,i,e,p,c)
+      broken = constitutive_damage_deltaState(crystallite_Fe(1:3,1:3,g,i,e),g,i,e,p,c)
       exit iteration
     endif
 

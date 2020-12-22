@@ -133,7 +133,7 @@ submodule(constitutive) constitutive_mech
         el                                                                                          !< current element number
     end subroutine plastic_nonlocal_LpAndItsTangent
 
-        module subroutine plastic_isotropic_dotState(Mp,instance,of)
+    module subroutine plastic_isotropic_dotState(Mp,instance,of)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
@@ -220,7 +220,7 @@ submodule(constitutive) constitutive_mech
         el                                                                                          !< current element number
     end subroutine plastic_nonlocal_dependentState
 
-        module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
+    module subroutine plastic_kinehardening_deltaState(Mp,instance,of)
       real(pReal), dimension(3,3),  intent(in) :: &
         Mp                                                                                          !< Mandel stress
       integer,                      intent(in) :: &
@@ -289,6 +289,7 @@ module subroutine mech_init
     p, &
     stiffDegradationCtr
   class(tNode), pointer :: &
+    num_crystallite, &
     phases, &
     phase, &
     mech, &
@@ -357,6 +358,30 @@ module subroutine mech_init
     phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
     phase_plasticityInstance(p) = count(phase_plasticity(1:p) == phase_plasticity(p))
   enddo
+
+  num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
+
+  select case(num_crystallite%get_asString('integrator',defaultVal='FPI'))
+
+    case('FPI')
+      integrateState => integrateStateFPI
+
+    case('Euler')
+      integrateState => integrateStateEuler
+
+    case('AdaptiveEuler')
+      integrateState => integrateStateAdaptiveEuler
+
+    case('RK4')
+      integrateState => integrateStateRK4
+
+    case('RKCK45')
+      integrateState => integrateStateRKCK45
+
+    case default
+     call IO_error(301,ext_msg='integrator')
+
+  end select
 
 end subroutine mech_init
 
@@ -1024,7 +1049,7 @@ end subroutine integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-module subroutine integrateStateEuler(g,i,e)
+subroutine integrateStateEuler(g,i,e)
 
   integer, intent(in) :: &
     e, &                                                                                            !< element index in element loop
@@ -1062,7 +1087,7 @@ end subroutine integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-module subroutine integrateStateAdaptiveEuler(g,i,e)
+subroutine integrateStateAdaptiveEuler(g,i,e)
 
   integer, intent(in) :: &
     e, &                                                                                            !< element index in element loop
@@ -1115,7 +1140,7 @@ end subroutine integrateStateAdaptiveEuler
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the classic Runge Kutta method
 !---------------------------------------------------------------------------------------------------
-module subroutine integrateStateRK4(g,i,e)
+subroutine integrateStateRK4(g,i,e)
 
   integer, intent(in) :: g,i,e
 
@@ -1138,7 +1163,7 @@ end subroutine integrateStateRK4
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the Cash-Carp method
 !---------------------------------------------------------------------------------------------------
-module subroutine integrateStateRKCK45(g,i,e)
+subroutine integrateStateRKCK45(g,i,e)
 
   integer, intent(in) :: g,i,e
 
