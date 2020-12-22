@@ -270,7 +270,11 @@ submodule(constitutive) constitutive_mech
 
 
   end interface
-
+  type :: tOutput                                                                                   !< new requested output (per phase)
+    character(len=pStringLen), allocatable, dimension(:) :: &
+      label
+  end type tOutput
+  type(tOutput), allocatable, dimension(:) :: output_constituent
 
 contains
 

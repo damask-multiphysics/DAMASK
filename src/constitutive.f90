@@ -60,11 +60,7 @@ module constitutive
   logical,                    dimension(:,:,:),       allocatable :: &
     crystallite_converged                                                                           !< convergence flag
 
-  type :: tOutput                                                                                   !< new requested output (per phase)
-    character(len=pStringLen), allocatable, dimension(:) :: &
-      label
-  end type tOutput
-  type(tOutput), allocatable, dimension(:) :: output_constituent
+
 
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
@@ -199,19 +195,6 @@ module function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(br
 
 
 end function constitutive_deltaState
-
-
-    module function source_active(source_label,src_length)  result(active_source)
-      character(len=*), intent(in)          :: source_label
-      integer,          intent(in)          :: src_length
-      logical, dimension(:,:), allocatable  :: active_source
-    end function source_active
-
-    module function kinematics_active(kinematics_label,kinematics_length)  result(active_kinematics)
-      character(len=*), intent(in)          :: kinematics_label
-      integer,          intent(in)          :: kinematics_length
-      logical, dimension(:,:), allocatable  :: active_kinematics
-    end function kinematics_active
 
 
     module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
