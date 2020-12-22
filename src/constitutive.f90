@@ -162,22 +162,6 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
- module function constitutive_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
-
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
-    phase, &
-    of
-  real(pReal),  intent(in) :: &
-    subdt                                                                                           !< timestep
-  real(pReal),  intent(in), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: &
-    FpArray                                                                                         !< plastic deformation gradient
-
-  logical :: broken
-end function constitutive_collectDotState
-
 
 module function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(broken)
 
@@ -408,10 +392,6 @@ end function constitutive_deltaState
     constitutive_init, &
     constitutive_homogenizedC, &
     constitutive_LiAndItsTangents, &
-    constitutive_collectDotState, &
-    constitutive_collectDotState_source, &
-    constitutive_deltaState, &
-    constitutive_deltaState_source, &
     constitutive_damage_getRateAndItsTangents, &
     constitutive_thermal_getRateAndItsTangents, &
     constitutive_results, &

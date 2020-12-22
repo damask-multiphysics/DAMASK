@@ -546,7 +546,7 @@ end subroutine constitutive_plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-module function constitutive_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
+function constitutive_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
