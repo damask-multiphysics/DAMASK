@@ -277,7 +277,6 @@ subroutine CPFEM_results(inc,time)
   call results_openJobFile
   call results_addIncrement(inc,time)
   call constitutive_results
-  call crystallite_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

@@ -446,7 +446,6 @@ end function constitutive_deltaState
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_results, &
     crystallite_restartWrite, &
     crystallite_restartRead, &
     crystallite_forward, &
@@ -964,7 +963,6 @@ subroutine crystallite_init
 
   phases => config_material%get('phase')
 
-  allocate(output_constituent(phases%length))
   allocate(constitutive_mech_Fi(phases%length))
   allocate(constitutive_mech_Fi0(phases%length))
   allocate(constitutive_mech_partionedFi0(phases%length))
@@ -973,13 +971,7 @@ subroutine crystallite_init
   allocate(constitutive_mech_partionedLi0(phases%length))
   do p = 1, phases%length
     Nconstituents = count(material_phaseAt == p) * discretization_nIPs
-    phase => phases%get(p)
-    mech  => phase%get('mechanics',defaultVal = emptyDict)
-#if defined(__GFORTRAN__)
-    output_constituent(p)%label  = output_asStrings(mech)
-#else
-    output_constituent(p)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
-#endif
+
     allocate(constitutive_mech_Fi(p)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fi0(p)%data(3,3,Nconstituents))
     allocate(constitutive_mech_partionedFi0(p)%data(3,3,Nconstituents))
@@ -1472,134 +1464,6 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief writes crystallite results to HDF5 output file
-!--------------------------------------------------------------------------------------------------
-subroutine crystallite_results
-
-  integer :: p,o
-  real(pReal), allocatable, dimension(:,:,:) :: selected_tensors
-  real(pReal), allocatable, dimension(:,:)   :: selected_rotations
-  character(len=:), allocatable              :: group,structureLabel
-
-  do p=1,size(material_name_phase)
-    group = trim('current/phase')//'/'//trim(material_name_phase(p))//'/mechanics'
-
-    call results_closeGroup(results_addGroup(group))
-
-    do o = 1, size(output_constituent(p)%label)
-      select case (output_constituent(p)%label(o))
-        case('F')
-          selected_tensors = select_tensors(crystallite_partitionedF,p)
-          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'deformation gradient','1')
-        case('F_e')
-          selected_tensors = select_tensors(crystallite_Fe,p)
-          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'elastic deformation gradient','1')
-        case('F_p')
-          selected_tensors = select_tensors(crystallite_Fp,p)
-          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'plastic deformation gradient','1')
-        case('F_i')
-          call results_writeDataset(group,constitutive_mech_Fi(p)%data,output_constituent(p)%label(o),&
-                                   'inelastic deformation gradient','1')
-        case('L_p')
-          selected_tensors = select_tensors(crystallite_Lp,p)
-          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'plastic velocity gradient','1/s')
-        case('L_i')
-          call results_writeDataset(group,constitutive_mech_Li(p)%data,output_constituent(p)%label(o),&
-                                   'inelastic velocity gradient','1/s')
-        case('P')
-          selected_tensors = select_tensors(crystallite_P,p)
-          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'First Piola-Kirchhoff stress','Pa')
-        case('S')
-          selected_tensors = select_tensors(crystallite_S,p)
-          call results_writeDataset(group,selected_tensors,output_constituent(p)%label(o),&
-                                   'Second Piola-Kirchhoff stress','Pa')
-        case('O')
-          select case(lattice_structure(p))
-            case(lattice_ISO_ID)
-              structureLabel = 'aP'
-            case(lattice_FCC_ID)
-              structureLabel = 'cF'
-            case(lattice_BCC_ID)
-              structureLabel = 'cI'
-            case(lattice_BCT_ID)
-              structureLabel = 'tI'
-            case(lattice_HEX_ID)
-              structureLabel = 'hP'
-            case(lattice_ORT_ID)
-              structureLabel = 'oP'
-          end select
-          selected_rotations = select_rotations(crystallite_orientation,p)
-          call results_writeDataset(group,selected_rotations,output_constituent(p)%label(o),&
-                                   'crystal orientation as quaternion','q_0 <q_1 q_2 q_3>')
-          call results_addAttribute('Lattice',structureLabel,group//'/'//output_constituent(p)%label(o))
-      end select
-    enddo
-  enddo
-
-  contains
-
-  !------------------------------------------------------------------------------------------------
-  !> @brief select tensors for output
-  !------------------------------------------------------------------------------------------------
-  function select_tensors(dataset,instance)
-
-    integer, intent(in) :: instance
-    real(pReal), dimension(:,:,:,:,:), intent(in) :: dataset
-    real(pReal), allocatable, dimension(:,:,:) :: select_tensors
-    integer :: e,i,c,j
-
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIPs))
-
-    j=0
-    do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIPs
-        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
-          if (material_phaseAt(c,e) == instance) then
-            j = j + 1
-            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
-          endif
-        enddo
-      enddo
-    enddo
-
-  end function select_tensors
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief select rotations for output
-!--------------------------------------------------------------------------------------------------
-  function select_rotations(dataset,instance)
-
-    integer, intent(in) :: instance
-    type(rotation), dimension(:,:,:), intent(in) :: dataset
-    real(pReal), allocatable, dimension(:,:) :: select_rotations
-    integer :: e,i,c,j
-
-    allocate(select_rotations(4,count(material_phaseAt==instance)*homogenization_maxNconstituents*discretization_nIPs))
-
-    j=0
-    do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIPs
-        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
-           if (material_phaseAt(c,e) == instance) then
-             j = j + 1
-             select_rotations(1:4,j) = dataset(c,i,e)%asQuaternion()
-           endif
-        enddo
-      enddo
-   enddo
-
- end function select_rotations
-
-end subroutine crystallite_results
 
 
 !--------------------------------------------------------------------------------------------------

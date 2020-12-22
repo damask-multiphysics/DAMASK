@@ -299,10 +299,16 @@ module subroutine mech_init
   allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
   allocate(phase_elasticityInstance(phases%length), source = 0)
   allocate(phase_NstiffnessDegradations(phases%length),source=0)
+  allocate(output_constituent(phases%length))
 
   do p = 1, phases%length
     phase   => phases%get(p)
     mech    => phase%get('mechanics')
+#if defined(__GFORTRAN__)
+    output_constituent(p)%label  = output_asStrings(mech)
+#else
+    output_constituent(p)%label  = mech%get_asStrings('output',defaultVal=emptyStringArray)
+#endif
     elastic => mech%get('elasticity')
     if(elastic%get_asString('type') == 'hooke') then
       phase_elasticity(p) = ELASTICITY_HOOKE_ID
@@ -652,29 +658,31 @@ module subroutine mech_results(group,ph)
   integer,          intent(in) :: ph
 
   if (phase_plasticity(ph) /= PLASTICITY_NONE_ID) &
-    call results_closeGroup(results_addGroup(group//'plastic'))
+    call results_closeGroup(results_addGroup(group//'plastic/'))
 
   select case(phase_plasticity(ph))
 
     case(PLASTICITY_ISOTROPIC_ID)
-      call plastic_isotropic_results(phase_plasticityInstance(ph),group//'plastic')
+      call plastic_isotropic_results(phase_plasticityInstance(ph),group//'plastic/')
 
     case(PLASTICITY_PHENOPOWERLAW_ID)
-      call plastic_phenopowerlaw_results(phase_plasticityInstance(ph),group//'plastic')
+      call plastic_phenopowerlaw_results(phase_plasticityInstance(ph),group//'plastic/')
 
     case(PLASTICITY_KINEHARDENING_ID)
-      call plastic_kinehardening_results(phase_plasticityInstance(ph),group//'plastic')
+      call plastic_kinehardening_results(phase_plasticityInstance(ph),group//'plastic/')
 
     case(PLASTICITY_DISLOTWIN_ID)
-      call plastic_dislotwin_results(phase_plasticityInstance(ph),group//'plastic')
+      call plastic_dislotwin_results(phase_plasticityInstance(ph),group//'plastic/')
 
     case(PLASTICITY_DISLOTUNGSTEN_ID)
-      call plastic_dislotungsten_results(phase_plasticityInstance(ph),group//'plastic')
+      call plastic_dislotungsten_results(phase_plasticityInstance(ph),group//'plastic/')
 
     case(PLASTICITY_NONLOCAL_ID)
-      call plastic_nonlocal_results(phase_plasticityInstance(ph),group//'plastic')
+      call plastic_nonlocal_results(phase_plasticityInstance(ph),group//'plastic/')
 
   end select
+
+  call crystallite_results(group,ph)
 
 end subroutine mech_results
 
@@ -1235,6 +1243,137 @@ subroutine integrateStateRK(g,i,e,A,B,CC,DB)
 
 
 end subroutine integrateStateRK
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes crystallite results to HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine crystallite_results(group,ph)
+
+  character(len=*), intent(in) :: group
+  integer,          intent(in) :: ph
+
+  integer :: ou
+  real(pReal), allocatable, dimension(:,:,:) :: selected_tensors
+  real(pReal), allocatable, dimension(:,:)   :: selected_rotations
+  character(len=:), allocatable              :: structureLabel
+
+
+    call results_closeGroup(results_addGroup(group//'/mechanics/'))
+
+    do ou = 1, size(output_constituent(ph)%label)
+
+      select case (output_constituent(ph)%label(ou))
+        case('F')
+          selected_tensors = select_tensors(crystallite_partitionedF,ph)
+          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+                                   'deformation gradient','1')
+        case('F_e')
+          selected_tensors = select_tensors(crystallite_Fe,ph)
+          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+                                   'elastic deformation gradient','1')
+        case('F_p')
+          selected_tensors = select_tensors(crystallite_Fp,ph)
+          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+                                   'plastic deformation gradient','1')
+        case('F_i')
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fi(ph)%data,output_constituent(ph)%label(ou),&
+                                   'inelastic deformation gradient','1')
+        case('L_p')
+          selected_tensors = select_tensors(crystallite_Lp,ph)
+          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+                                   'plastic velocity gradient','1/s')
+        case('L_i')
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Li(ph)%data,output_constituent(ph)%label(ou),&
+                                   'inelastic velocity gradient','1/s')
+        case('P')
+          selected_tensors = select_tensors(crystallite_P,ph)
+          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+                                   'First Piola-Kirchhoff stress','Pa')
+        case('S')
+          selected_tensors = select_tensors(crystallite_S,ph)
+          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+                                   'Second Piola-Kirchhoff stress','Pa')
+        case('O')
+          select case(lattice_structure(ph))
+            case(lattice_ISO_ID)
+              structureLabel = 'aP'
+            case(lattice_FCC_ID)
+              structureLabel = 'cF'
+            case(lattice_BCC_ID)
+              structureLabel = 'cI'
+            case(lattice_BCT_ID)
+              structureLabel = 'tI'
+            case(lattice_HEX_ID)
+              structureLabel = 'hP'
+            case(lattice_ORT_ID)
+              structureLabel = 'oP'
+          end select
+          selected_rotations = select_rotations(crystallite_orientation,ph)
+          call results_writeDataset(group//'/mechanics/',selected_rotations,output_constituent(ph)%label(ou),&
+                                   'crystal orientation as quaternion','q_0 (q_1 q_2 q_3)')
+          call results_addAttribute('Lattice',structureLabel,group//'/mechanics/'//output_constituent(ph)%label(ou))
+      end select
+    enddo
+
+
+  contains
+
+  !------------------------------------------------------------------------------------------------
+  !> @brief select tensors for output
+  !------------------------------------------------------------------------------------------------
+  function select_tensors(dataset,instance)
+
+    integer, intent(in) :: instance
+    real(pReal), dimension(:,:,:,:,:), intent(in) :: dataset
+    real(pReal), allocatable, dimension(:,:,:) :: select_tensors
+    integer :: e,i,c,j
+
+    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIPs))
+
+    j=0
+    do e = 1, size(material_phaseAt,2)
+      do i = 1, discretization_nIPs
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
+          if (material_phaseAt(c,e) == instance) then
+            j = j + 1
+            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
+          endif
+        enddo
+      enddo
+    enddo
+
+  end function select_tensors
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief select rotations for output
+!--------------------------------------------------------------------------------------------------
+  function select_rotations(dataset,instance)
+
+    integer, intent(in) :: instance
+    type(rotation), dimension(:,:,:), intent(in) :: dataset
+    real(pReal), allocatable, dimension(:,:) :: select_rotations
+    integer :: e,i,c,j
+
+    allocate(select_rotations(4,count(material_phaseAt==instance)*homogenization_maxNconstituents*discretization_nIPs))
+
+    j=0
+    do e = 1, size(material_phaseAt,2)
+      do i = 1, discretization_nIPs
+        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
+           if (material_phaseAt(c,e) == instance) then
+             j = j + 1
+             select_rotations(1:4,j) = dataset(c,i,e)%asQuaternion()
+           endif
+        enddo
+      enddo
+   enddo
+
+ end function select_rotations
+
+end subroutine crystallite_results
 
 
 end submodule constitutive_mech
