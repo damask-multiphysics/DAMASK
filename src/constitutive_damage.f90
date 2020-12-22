@@ -227,21 +227,21 @@ module subroutine damage_results(group,ph)
   sourceLoop: do so = 1, phase_Nsources(ph)
 
   if (phase_source(so,ph) /= SOURCE_UNDEFINED_ID) &
-    call results_closeGroup(results_addGroup(group//'damage/'))
+    call results_closeGroup(results_addGroup(group//'sources/')) ! should be 'damage'
 
     sourceType: select case (phase_source(so,ph))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
-        call source_damage_anisoBrittle_results(ph,group//'damage/')
+        call source_damage_anisoBrittle_results(ph,group//'sources/')
 
       case (SOURCE_damage_anisoDuctile_ID) sourceType
-        call source_damage_anisoDuctile_results(ph,group//'damage/')
+        call source_damage_anisoDuctile_results(ph,group//'sources/')
 
       case (SOURCE_damage_isoBrittle_ID) sourceType
-        call source_damage_isoBrittle_results(ph,group//'damage/')
+        call source_damage_isoBrittle_results(ph,group//'sources/')
 
       case (SOURCE_damage_isoDuctile_ID) sourceType
-        call source_damage_isoDuctile_results(ph,group//'damage/')
+        call source_damage_isoDuctile_results(ph,group//'sources/')
 
     end select sourceType
 
