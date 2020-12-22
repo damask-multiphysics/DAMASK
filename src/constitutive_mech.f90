@@ -177,13 +177,12 @@ submodule(constitutive) constitutive_mech
         of
     end subroutine plastic_disloTungsten_dotState
 
-    module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
+    module subroutine plastic_nonlocal_dotState(Mp, F, Temperature,timestep, &
                                                         instance,of,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
       real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
-        F, &                                                                                        !< deformation gradient
-        Fp                                                                                          !< plastic deformation gradient
+        F                                                                                           !< deformation gradient
       real(pReal), intent(in) :: &
         Temperature, &                                                                              !< temperature
         timestep                                                                                    !< substepped crystallite time increment
@@ -209,10 +208,9 @@ submodule(constitutive) constitutive_mech
         of
     end subroutine plastic_dislotungsten_dependentState
 
-    module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
+    module subroutine plastic_nonlocal_dependentState(F, instance, of, ip, el)
       real(pReal), dimension(3,3), intent(in) :: &
-        F, &                                                                                        !< deformation gradient
-        Fp                                                                                          !< plastic deformation gradient
+        F                                                                                           !< deformation gradient
       integer, intent(in) :: &
         instance, &
         of, &
@@ -490,7 +488,7 @@ module subroutine constitutive_plastic_dependentState(F, Fp, ipc, ip, el)
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
       call plastic_dislotungsten_dependentState(instance,of)
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dependentState (F,Fp,instance,of,ip,el)
+      call plastic_nonlocal_dependentState (F,instance,of,ip,el)
   end select plasticityType
 
 end subroutine constitutive_plastic_dependentState
@@ -616,7 +614,7 @@ function mech_collectDotState(FpArray, subdt, ipc, ip, el,phase,of) result(broke
       call plastic_disloTungsten_dotState(Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dotState(Mp,crystallite_partitionedF0,FpArray,temperature(ho)%p(tme),subdt, &
+      call plastic_nonlocal_dotState(Mp,crystallite_partitionedF0,temperature(ho)%p(tme),subdt, &
                                           instance,of,ip,el)
   end select plasticityType
   broken = any(IEEE_is_NaN(plasticState(phase)%dotState(:,of)))
