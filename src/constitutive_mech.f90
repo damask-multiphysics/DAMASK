@@ -604,7 +604,7 @@ end function mech_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-module function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(broken)
+function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(broken)
 
   integer, intent(in) :: &
     ipc, &                                                                                          !< component-ID of integration point
@@ -1388,6 +1388,7 @@ module subroutine mech_initializeRestorationPoints(ph,me)
   integer, intent(in) :: &
     ph, &
     me
+
 
   constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
   constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)

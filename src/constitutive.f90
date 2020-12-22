@@ -61,7 +61,6 @@ module constitutive
     crystallite_converged                                                                           !< convergence flag
 
 
-
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
   end type
@@ -168,23 +167,6 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
-
-module function constitutive_deltaState(S, Fi, ipc, ip, el, phase, of) result(broken)
-
-  integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
-    phase, &
-    of
-  real(pReal),   intent(in), dimension(3,3) :: &
-    S, &                                                                                            !< 2nd Piola Kirchhoff stress
-    Fi                                                                                              !< intermediate deformation gradient
-  logical :: &
-    broken
-
-
-end function constitutive_deltaState
 
 
     module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
