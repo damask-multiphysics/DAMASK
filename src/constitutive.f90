@@ -842,8 +842,8 @@ subroutine crystallite_init
 
   integer :: &
     Nconstituents, &
-    p, &
-    m, &
+    ph, &
+    me, &
     co, &                                                                                            !< counter in integration point component loop
     ip, &                                                                                            !< counter in integration point loop
     el, &                                                                                            !< counter in element loop
@@ -931,18 +931,18 @@ subroutine crystallite_init
   allocate(constitutive_mech_Li(phases%length))
   allocate(constitutive_mech_Li0(phases%length))
   allocate(constitutive_mech_partionedLi0(phases%length))
-  do p = 1, phases%length
-    Nconstituents = count(material_phaseAt == p) * discretization_nIPs
+  do ph = 1, phases%length
+    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
-    allocate(constitutive_mech_Fi(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Fi0(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partionedFi0(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Fp(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Fp0(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partionedFp0(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Li(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_Li0(p)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partionedLi0(p)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Fi(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Fi0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_partionedFi0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Fp(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Fp0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_partionedFp0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Li(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Li0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_partionedLi0(ph)%data(3,3,Nconstituents))
   enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -950,26 +950,26 @@ subroutine crystallite_init
   print'(a42,1x,i10)', 'max # of constituents/integration point: ', cMax
   flush(IO_STDOUT)
 
- !$OMP PARALLEL DO PRIVATE(p,m)
+ !$OMP PARALLEL DO PRIVATE(ph,me)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     do ip = FEsolving_execIP(1), FEsolving_execIP(2); do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
 
-      p = material_phaseAt(co,el)
-      m = material_phaseMemberAt(co,ip,el)
-      constitutive_mech_Fp0(p)%data(1:3,1:3,m) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
-      constitutive_mech_Fp0(p)%data(1:3,1:3,m) = constitutive_mech_Fp0(p)%data(1:3,1:3,m) &
-                                     / math_det33(constitutive_mech_Fp0(p)%data(1:3,1:3,m))**(1.0_pReal/3.0_pReal)
-      constitutive_mech_Fi0(p)%data(1:3,1:3,m) = math_I3
+      ph = material_phaseAt(co,el)
+      me = material_phaseMemberAt(co,ip,el)
+      constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me) &
+                                     / math_det33(constitutive_mech_Fp0(ph)%data(1:3,1:3,me))**(1.0_pReal/3.0_pReal)
+      constitutive_mech_Fi0(ph)%data(1:3,1:3,me) = math_I3
 
       crystallite_F0(1:3,1:3,co,ip,el)  = math_I3
 
-      crystallite_Fe(1:3,1:3,co,ip,el)  = math_inv33(matmul(constitutive_mech_Fi0(p)%data(1:3,1:3,m), &
-                                                         constitutive_mech_Fp0(p)%data(1:3,1:3,m)))           ! assuming that euler angles are given in internal strain free configuration
-      constitutive_mech_Fp(p)%data(1:3,1:3,m)  = constitutive_mech_Fp0(p)%data(1:3,1:3,m)
-      constitutive_mech_Fi(p)%data(1:3,1:3,m) = constitutive_mech_Fi0(p)%data(1:3,1:3,m)
+      crystallite_Fe(1:3,1:3,co,ip,el)  = math_inv33(matmul(constitutive_mech_Fi0(ph)%data(1:3,1:3,me), &
+                                                         constitutive_mech_Fp0(ph)%data(1:3,1:3,me)))           ! assuming that euler angles are given in internal strain free configuration
+      constitutive_mech_Fp(ph)%data(1:3,1:3,me)  = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
+      constitutive_mech_Fi(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
 
-      constitutive_mech_partionedFi0(p)%data(1:3,1:3,m) = constitutive_mech_Fi0(p)%data(1:3,1:3,m)
-      constitutive_mech_partionedFp0(p)%data(1:3,1:3,m) = constitutive_mech_Fp0(p)%data(1:3,1:3,m)
+      constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
+      constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
 
     enddo; enddo
   enddo
@@ -980,12 +980,12 @@ subroutine crystallite_init
 
   call crystallite_orientations()
 
-  !$OMP PARALLEL DO PRIVATE(p,m)
+  !$OMP PARALLEL DO PRIVATE(ph,me)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
       do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-        p = material_phaseAt(co,el)
-        m = material_phaseMemberAt(co,ip,el)
+        ph = material_phaseAt(co,el)
+        me = material_phaseMemberAt(co,ip,el)
         call constitutive_plastic_dependentState(crystallite_partitionedF0(1:3,1:3,co,ip,el), &
                                          co,ip,el)                                                     ! update dependent state variables to be consistent with basic states
      enddo
