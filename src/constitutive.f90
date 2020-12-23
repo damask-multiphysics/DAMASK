@@ -846,9 +846,9 @@ subroutine crystallite_init
     Nconstituents, &
     p, &
     m, &
-    c, &                                                                                            !< counter in integration point component loop
-    i, &                                                                                            !< counter in integration point loop
-    e, &                                                                                            !< counter in element loop
+    co, &                                                                                            !< counter in integration point component loop
+    ip, &                                                                                            !< counter in integration point loop
+    el, &                                                                                            !< counter in element loop
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
     eMax                                                                                            !< maximum number of elements
@@ -954,19 +954,19 @@ subroutine crystallite_init
   flush(IO_STDOUT)
 
  !$OMP PARALLEL DO PRIVATE(p,m)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1), FEsolving_execIP(2); do c = 1, homogenization_Nconstituents(material_homogenizationAt(e))
+  do el = FEsolving_execElem(1),FEsolving_execElem(2)
+    do ip = FEsolving_execIP(1), FEsolving_execIP(2); do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
 
-      p = material_phaseAt(c,e)
-      m = material_phaseMemberAt(c,i,e)
-      constitutive_mech_Fp0(p)%data(1:3,1:3,m) = material_orientation0(c,i,e)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
+      p = material_phaseAt(co,el)
+      m = material_phaseMemberAt(co,ip,el)
+      constitutive_mech_Fp0(p)%data(1:3,1:3,m) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       constitutive_mech_Fp0(p)%data(1:3,1:3,m) = constitutive_mech_Fp0(p)%data(1:3,1:3,m) &
                                      / math_det33(constitutive_mech_Fp0(p)%data(1:3,1:3,m))**(1.0_pReal/3.0_pReal)
       constitutive_mech_Fi0(p)%data(1:3,1:3,m) = math_I3
 
-      crystallite_F0(1:3,1:3,c,i,e)  = math_I3
+      crystallite_F0(1:3,1:3,co,ip,el)  = math_I3
 
-      crystallite_Fe(1:3,1:3,c,i,e)  = math_inv33(matmul(constitutive_mech_Fi0(p)%data(1:3,1:3,m), &
+      crystallite_Fe(1:3,1:3,co,ip,el)  = math_inv33(matmul(constitutive_mech_Fi0(p)%data(1:3,1:3,m), &
                                                          constitutive_mech_Fp0(p)%data(1:3,1:3,m)))           ! assuming that euler angles are given in internal strain free configuration
       constitutive_mech_Fp(p)%data(1:3,1:3,m)  = constitutive_mech_Fp0(p)%data(1:3,1:3,m)
       constitutive_mech_Fi(p)%data(1:3,1:3,m) = constitutive_mech_Fi0(p)%data(1:3,1:3,m)
@@ -974,7 +974,7 @@ subroutine crystallite_init
       constitutive_mech_partionedFi0(p)%data(1:3,1:3,m) = constitutive_mech_Fi0(p)%data(1:3,1:3,m)
       constitutive_mech_partionedFp0(p)%data(1:3,1:3,m) = constitutive_mech_Fp0(p)%data(1:3,1:3,m)
 
-      crystallite_requested(c,i,e) = .true.
+      crystallite_requested(co,ip,el) = .true.
     enddo; enddo
   enddo
   !$OMP END PARALLEL DO
@@ -985,13 +985,13 @@ subroutine crystallite_init
   call crystallite_orientations()
 
   !$OMP PARALLEL DO PRIVATE(p,m)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2)
-      do c = 1,homogenization_Nconstituents(material_homogenizationAt(e))
-        p = material_phaseAt(c,e)
-        m = material_phaseMemberAt(c,i,e)
-        call constitutive_plastic_dependentState(crystallite_partitionedF0(1:3,1:3,c,i,e), &
-                                         c,i,e)                                                     ! update dependent state variables to be consistent with basic states
+  do el = FEsolving_execElem(1),FEsolving_execElem(2)
+    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+      do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
+        p = material_phaseAt(co,el)
+        m = material_phaseMemberAt(co,ip,el)
+        call constitutive_plastic_dependentState(crystallite_partitionedF0(1:3,1:3,co,ip,el), &
+                                         co,ip,el)                                                     ! update dependent state variables to be consistent with basic states
      enddo
     enddo
   enddo
@@ -1011,7 +1011,7 @@ function crystallite_stress()
     formerSubStep
   integer :: &
     NiterationCrystallite, &                                                                        ! number of iterations in crystallite loop
-    c, &                                                                                            !< counter in integration point component loop
+    co, &                                                                                            !< counter in integration point component loop
     ip, &                                                                                            !< counter in integration point loop
     el, &                                                                                            !< counter in element loop
     s, ph, me
@@ -1031,25 +1031,25 @@ function crystallite_stress()
   crystallite_subStep = 0.0_pReal
   !$OMP PARALLEL DO PRIVATE(ph,me)
   elementLooping1: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2); do c = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-            ph = material_phaseAt(c,el)
-            me = material_phaseMemberAt(c,ip,el)
-      subLi0(1:3,1:3,c,ip,el) = constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me)
-      homogenizationRequestsCalculation: if (crystallite_requested(c,ip,el)) then
-        plasticState    (material_phaseAt(c,el))%subState0(      :,material_phaseMemberAt(c,ip,el)) = &
-        plasticState    (material_phaseAt(c,el))%partitionedState0(:,material_phaseMemberAt(c,ip,el))
+    do ip = FEsolving_execIP(1),FEsolving_execIP(2); do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
+            ph = material_phaseAt(co,el)
+            me = material_phaseMemberAt(co,ip,el)
+      subLi0(1:3,1:3,co,ip,el) = constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me)
+      homogenizationRequestsCalculation: if (crystallite_requested(co,ip,el)) then
+        plasticState    (material_phaseAt(co,el))%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
+        plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phaseMemberAt(co,ip,el))
 
-        do s = 1, phase_Nsources(material_phaseAt(c,el))
-          sourceState(material_phaseAt(c,el))%p(s)%subState0(      :,material_phaseMemberAt(c,ip,el)) = &
-          sourceState(material_phaseAt(c,el))%p(s)%partitionedState0(:,material_phaseMemberAt(c,ip,el))
+        do s = 1, phase_Nsources(material_phaseAt(co,el))
+          sourceState(material_phaseAt(co,el))%p(s)%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
+          sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phaseMemberAt(co,ip,el))
         enddo
-        crystallite_subFp0(1:3,1:3,c,ip,el) = constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me)
-        crystallite_subFi0(1:3,1:3,c,ip,el) = constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me)
-        crystallite_subF0(1:3,1:3,c,ip,el)  = crystallite_partitionedF0(1:3,1:3,c,ip,el)
-        subFrac(c,ip,el) = 0.0_pReal
-        crystallite_subStep(c,ip,el) = 1.0_pReal/num%subStepSizeCryst
-        todo(c,ip,el) = .true.
-        crystallite_converged(c,ip,el) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
+        crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me)
+        crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me)
+        crystallite_subF0(1:3,1:3,co,ip,el)  = crystallite_partitionedF0(1:3,1:3,co,ip,el)
+        subFrac(co,ip,el) = 0.0_pReal
+        crystallite_subStep(co,ip,el) = 1.0_pReal/num%subStepSizeCryst
+        todo(co,ip,el) = .true.
+        crystallite_converged(co,ip,el) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
       endif homogenizationRequestsCalculation
     enddo; enddo
   enddo elementLooping1
@@ -1066,68 +1066,68 @@ function crystallite_stress()
     !$OMP PARALLEL DO PRIVATE(formerSubStep,ph,me)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-        do c = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-            ph = material_phaseAt(c,el)
-            me = material_phaseMemberAt(c,ip,el)
+        do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
+            ph = material_phaseAt(co,el)
+            me = material_phaseMemberAt(co,ip,el)
 !--------------------------------------------------------------------------------------------------
 !  wind forward
-          if (crystallite_converged(c,ip,el)) then
-            formerSubStep = crystallite_subStep(c,ip,el)
-            subFrac(c,ip,el) = subFrac(c,ip,el) + crystallite_subStep(c,ip,el)
-            crystallite_subStep(c,ip,el) = min(1.0_pReal - subFrac(c,ip,el), &
-                                             num%stepIncreaseCryst * crystallite_subStep(c,ip,el))
+          if (crystallite_converged(co,ip,el)) then
+            formerSubStep = crystallite_subStep(co,ip,el)
+            subFrac(co,ip,el) = subFrac(co,ip,el) + crystallite_subStep(co,ip,el)
+            crystallite_subStep(co,ip,el) = min(1.0_pReal - subFrac(co,ip,el), &
+                                             num%stepIncreaseCryst * crystallite_subStep(co,ip,el))
 
-            todo(c,ip,el) = crystallite_subStep(c,ip,el) > 0.0_pReal                        ! still time left to integrate on?
+            todo(co,ip,el) = crystallite_subStep(co,ip,el) > 0.0_pReal                        ! still time left to integrate on?
 
-            if (todo(c,ip,el)) then
-              crystallite_subF0 (1:3,1:3,c,ip,el) = crystallite_subF(1:3,1:3,c,ip,el)
-              subLp0(1:3,1:3,c,ip,el) = crystallite_Lp  (1:3,1:3,c,ip,el)
-              subLi0(1:3,1:3,c,ip,el) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
-              crystallite_subFp0(1:3,1:3,c,ip,el) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
-              crystallite_subFi0(1:3,1:3,c,ip,el) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
-              plasticState(    material_phaseAt(c,el))%subState0(:,material_phaseMemberAt(c,ip,el)) &
-                = plasticState(material_phaseAt(c,el))%state(    :,material_phaseMemberAt(c,ip,el))
-              do s = 1, phase_Nsources(material_phaseAt(c,el))
-                sourceState(    material_phaseAt(c,el))%p(s)%subState0(:,material_phaseMemberAt(c,ip,el)) &
-                  = sourceState(material_phaseAt(c,el))%p(s)%state(    :,material_phaseMemberAt(c,ip,el))
+            if (todo(co,ip,el)) then
+              crystallite_subF0 (1:3,1:3,co,ip,el) = crystallite_subF(1:3,1:3,co,ip,el)
+              subLp0(1:3,1:3,co,ip,el) = crystallite_Lp  (1:3,1:3,co,ip,el)
+              subLi0(1:3,1:3,co,ip,el) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
+              crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
+              crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
+              plasticState(    material_phaseAt(co,el))%subState0(:,material_phaseMemberAt(co,ip,el)) &
+                = plasticState(material_phaseAt(co,el))%state(    :,material_phaseMemberAt(co,ip,el))
+              do s = 1, phase_Nsources(material_phaseAt(co,el))
+                sourceState(    material_phaseAt(co,el))%p(s)%subState0(:,material_phaseMemberAt(co,ip,el)) &
+                  = sourceState(material_phaseAt(co,el))%p(s)%state(    :,material_phaseMemberAt(co,ip,el))
               enddo
             endif
 
 !--------------------------------------------------------------------------------------------------
 !  cut back (reduced time and restore)
           else
-            crystallite_subStep(c,ip,el)       = num%subStepSizeCryst * crystallite_subStep(c,ip,el)
-            constitutive_mech_Fp(ph)%data(1:3,1:3,me) =            crystallite_subFp0(1:3,1:3,c,ip,el)
-            constitutive_mech_Fi(ph)%data(1:3,1:3,me) =            crystallite_subFi0(1:3,1:3,c,ip,el)
-            crystallite_S    (1:3,1:3,c,ip,el) =            crystallite_S0    (1:3,1:3,c,ip,el)
-            if (crystallite_subStep(c,ip,el) < 1.0_pReal) then                                        ! actual (not initial) cutback
-              crystallite_Lp (1:3,1:3,c,ip,el) =            subLp0(1:3,1:3,c,ip,el)
-              constitutive_mech_Li(ph)%data(1:3,1:3,me) =            subLi0(1:3,1:3,c,ip,el)
+            crystallite_subStep(co,ip,el)       = num%subStepSizeCryst * crystallite_subStep(co,ip,el)
+            constitutive_mech_Fp(ph)%data(1:3,1:3,me) =            crystallite_subFp0(1:3,1:3,co,ip,el)
+            constitutive_mech_Fi(ph)%data(1:3,1:3,me) =            crystallite_subFi0(1:3,1:3,co,ip,el)
+            crystallite_S    (1:3,1:3,co,ip,el) =            crystallite_S0    (1:3,1:3,co,ip,el)
+            if (crystallite_subStep(co,ip,el) < 1.0_pReal) then                                        ! actual (not initial) cutback
+              crystallite_Lp (1:3,1:3,co,ip,el) =            subLp0(1:3,1:3,co,ip,el)
+              constitutive_mech_Li(ph)%data(1:3,1:3,me) =            subLi0(1:3,1:3,co,ip,el)
             endif
-            plasticState    (material_phaseAt(c,el))%state(    :,material_phaseMemberAt(c,ip,el)) &
-              = plasticState(material_phaseAt(c,el))%subState0(:,material_phaseMemberAt(c,ip,el))
-            do s = 1, phase_Nsources(material_phaseAt(c,el))
-              sourceState(    material_phaseAt(c,el))%p(s)%state(    :,material_phaseMemberAt(c,ip,el)) &
-                = sourceState(material_phaseAt(c,el))%p(s)%subState0(:,material_phaseMemberAt(c,ip,el))
+            plasticState    (material_phaseAt(co,el))%state(    :,material_phaseMemberAt(co,ip,el)) &
+              = plasticState(material_phaseAt(co,el))%subState0(:,material_phaseMemberAt(co,ip,el))
+            do s = 1, phase_Nsources(material_phaseAt(co,el))
+              sourceState(    material_phaseAt(co,el))%p(s)%state(    :,material_phaseMemberAt(co,ip,el)) &
+                = sourceState(material_phaseAt(co,el))%p(s)%subState0(:,material_phaseMemberAt(co,ip,el))
             enddo
 
                                                                                                     ! cant restore dotState here, since not yet calculated in first cutback after initialization
-            todo(c,ip,el) = crystallite_subStep(c,ip,el) > num%subStepMinCryst                          ! still on track or already done (beyond repair)
+            todo(co,ip,el) = crystallite_subStep(co,ip,el) > num%subStepMinCryst                          ! still on track or already done (beyond repair)
           endif
 
 !--------------------------------------------------------------------------------------------------
 !  prepare for integration
-          if (todo(c,ip,el)) then
-            crystallite_subF(1:3,1:3,c,ip,el) = crystallite_subF0(1:3,1:3,c,ip,el) &
-                                            + crystallite_subStep(c,ip,el) *( crystallite_partitionedF (1:3,1:3,c,ip,el) &
-                                                                           -crystallite_partitionedF0(1:3,1:3,c,ip,el))
-            crystallite_Fe(1:3,1:3,c,ip,el) = matmul(crystallite_subF(1:3,1:3,c,ip,el), &
+          if (todo(co,ip,el)) then
+            crystallite_subF(1:3,1:3,co,ip,el) = crystallite_subF0(1:3,1:3,co,ip,el) &
+                                            + crystallite_subStep(co,ip,el) *( crystallite_partitionedF (1:3,1:3,co,ip,el) &
+                                                                           -crystallite_partitionedF0(1:3,1:3,co,ip,el))
+            crystallite_Fe(1:3,1:3,co,ip,el) = matmul(crystallite_subF(1:3,1:3,co,ip,el), &
                                                    math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                      constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
-            crystallite_subdt(c,ip,el) = crystallite_subStep(c,ip,el) * crystallite_dt(c,ip,el)
-            crystallite_converged(c,ip,el) = .false.
-            call integrateState(c,ip,el)
-            call integrateSourceState(c,ip,el)
+            crystallite_subdt(co,ip,el) = crystallite_subStep(co,ip,el) * crystallite_dt(co,ip,el)
+            crystallite_converged(co,ip,el) = .false.
+            call integrateState(co,ip,el)
+            call integrateSourceState(co,ip,el)
           endif
 
         enddo
