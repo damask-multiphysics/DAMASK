@@ -21,6 +21,7 @@ module constitutive
 
   implicit none
   private
+
   enum, bind(c); enumerator :: &
     PLASTICITY_UNDEFINED_ID, &
     PLASTICITY_NONE_ID, &
@@ -118,7 +119,7 @@ module constitutive
 
   procedure(integrateStateFPI), pointer :: integrateState
 
-  integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
+  integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable, public :: &
     phase_plasticity                                                                                !< plasticity of each phase
 
   integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
@@ -186,6 +187,11 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
+    module function constitutive_homogenizedC(co,ip,el) result(C)
+      integer, intent(in) :: co, ip, el
+      real(pReal), dimension(6,6) :: C
+    end function constitutive_homogenizedC
+
     module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
       integer, intent(in) :: &
         co, &                                                                                      !< component-ID of integration point
@@ -240,14 +246,7 @@ module constitutive
         dTDot_dT
     end subroutine constitutive_thermal_getRateAndItsTangents
 
-    module function plastic_dislotwin_homogenizedC(co,ip,el) result(homogenizedC)
-      real(pReal), dimension(6,6) :: &
-        homogenizedC
-      integer,     intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-    end function plastic_dislotwin_homogenizedC
+
 
     module subroutine plastic_nonlocal_updateCompatibility(orientation,instance,i,e)
       integer, intent(in) :: &
@@ -396,7 +395,26 @@ module constitutive
     crystallite_restartRead, &
     constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
-    crystallite_restore
+    crystallite_restore, &
+        PLASTICITY_UNDEFINED_ID, &
+    PLASTICITY_NONE_ID, &
+    PLASTICITY_ISOTROPIC_ID, &
+    PLASTICITY_PHENOPOWERLAW_ID, &
+    PLASTICITY_KINEHARDENING_ID, &
+    PLASTICITY_DISLOTWIN_ID, &
+    PLASTICITY_DISLOTUNGSTEN_ID, &
+    PLASTICITY_NONLOCAL_ID, &
+    SOURCE_UNDEFINED_ID ,&
+    SOURCE_THERMAL_DISSIPATION_ID, &
+    SOURCE_THERMAL_EXTERNALHEAT_ID, &
+    SOURCE_DAMAGE_ISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ISODUCTILE_ID, &
+    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ANISODUCTILE_ID, &
+    KINEMATICS_UNDEFINED_ID ,&
+    KINEMATICS_CLEAVAGE_OPENING_ID, &
+    KINEMATICS_SLIPPLANE_OPENING_ID, &
+    KINEMATICS_THERMAL_EXPANSION_ID
 
 contains
 
@@ -510,29 +528,6 @@ function kinematics_active(kinematics_label,kinematics_length)  result(active_ki
 
 
 end function kinematics_active
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns the homogenize elasticity matrix
-!> ToDo: homogenizedC66 would be more consistent
-!--------------------------------------------------------------------------------------------------
-function constitutive_homogenizedC(co,ip,el)
-
-  real(pReal), dimension(6,6) :: &
-    constitutive_homogenizedC
-  integer,      intent(in)     :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
-
-  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
-    case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     constitutive_homogenizedC = plastic_dislotwin_homogenizedC(co,ip,el)
-    case default plasticityType
-     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(co,el))
-  end select plasticityType
-
-end function constitutive_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------

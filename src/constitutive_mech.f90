@@ -9,7 +9,7 @@ submodule(constitutive) constitutive_mech
     STIFFNESS_DEGRADATION_UNDEFINED_ID, &
     STIFFNESS_DEGRADATION_DAMAGE_ID
   end enum
-  
+
   integer(kind(ELASTICITY_undefined_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
   integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
@@ -272,6 +272,15 @@ submodule(constitutive) constitutive_mech
       integer,          intent(in) :: instance
       character(len=*), intent(in) :: group
     end subroutine plastic_nonlocal_results
+
+    module function plastic_dislotwin_homogenizedC(co,ip,el) result(homogenizedC)
+      real(pReal), dimension(6,6) :: &
+        homogenizedC
+      integer,     intent(in) :: &
+        co, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+    end function plastic_dislotwin_homogenizedC
 
 
   end interface
@@ -1448,6 +1457,29 @@ module subroutine constitutive_mech_forward()
   enddo
 
 end subroutine constitutive_mech_forward
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the homogenize elasticity matrix
+!> ToDo: homogenizedC66 would be more consistent
+!--------------------------------------------------------------------------------------------------
+module function constitutive_homogenizedC(co,ip,el) result(C)
+
+  real(pReal), dimension(6,6) :: C
+  integer,      intent(in)     :: &
+    co, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+
+  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
+    case (PLASTICITY_DISLOTWIN_ID) plasticityType
+     C = plastic_dislotwin_homogenizedC(co,ip,el)
+    case default plasticityType
+     C = lattice_C66(1:6,1:6,material_phaseAt(co,el))
+  end select plasticityType
+
+end function constitutive_homogenizedC
 
 end submodule constitutive_mech
 
