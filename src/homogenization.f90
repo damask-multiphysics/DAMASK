@@ -152,31 +152,29 @@ subroutine materialpoint_stressAndItsTangent(dt)
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    myNgrains, co
-  real(pReal), dimension(discretization_nIPs,discretization_Nelems) :: &
+    myNgrains, co, ce
+  real(pReal) :: &
     subFrac, &
     subStep
-  logical,     dimension(discretization_nIPs,discretization_Nelems) :: &
+  logical :: &
     requested, &
     converged
-  logical,     dimension(2,discretization_nIPs,discretization_Nelems) :: &
+  logical, dimension(2) :: &
     doneAndHappy
-  integer :: ce
 
 
-
-!$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate,NiterationHomog)
+!$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate,NiterationHomog,subFrac,converged,subStep,requested,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2);
+    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points
       call constitutive_initializeRestorationPoints(ip,el)
 
-      subFrac(ip,el) = 0.0_pReal
-      converged(ip,el) = .false.                                                                      ! pretend failed step ...
-      subStep(ip,el) = 1.0_pReal/num%subStepSizeHomog                                                 ! ... larger then the requested calculation
-      requested(ip,el) = .true.                                                                       ! everybody requires calculation
+      subFrac = 0.0_pReal
+      converged = .false.                                                                           ! pretend failed step ...
+      subStep = 1.0_pReal/num%subStepSizeHomog                                                      ! ... larger then the requested calculation
+      requested = .true.                                                                            ! everybody requires calculation
 
       if (homogState(material_homogenizationAt(el))%sizeState > 0) &
           homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
@@ -188,15 +186,15 @@ subroutine materialpoint_stressAndItsTangent(dt)
 
   NiterationHomog = 0
 
-  cutBackLooping: do while (.not. terminallyIll .and. subStep(ip,el) > num%subStepMinHomog)
+  cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
       myNgrains = homogenization_Nconstituents(material_homogenizationAt(el))
 
-        if (converged(ip,el)) then
-          subFrac(ip,el) = subFrac(ip,el) + subStep(ip,el)
-          subStep(ip,el) = min(1.0_pReal-subFrac(ip,el),num%stepIncreaseHomog*subStep(ip,el))             ! introduce flexibility for step increase/acceleration
+        if (converged) then
+          subFrac = subFrac + subStep
+          subStep = min(1.0_pReal-subFrac,num%stepIncreaseHomog*subStep)             ! introduce flexibility for step increase/acceleration
 
-          steppingNeeded: if (subStep(ip,el) > num%subStepMinHomog) then
+          steppingNeeded: if (subStep > num%subStepMinHomog) then
 
             ! wind forward grain starting point
             call constitutive_windForward(ip,el)
@@ -211,17 +209,17 @@ subroutine materialpoint_stressAndItsTangent(dt)
           endif steppingNeeded
 
         else
-          if ( (myNgrains == 1 .and. subStep(ip,el) <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
-               num%subStepSizeHomog * subStep(ip,el) <=  num%subStepMinHomog ) then                   ! would require too small subStep
+          if ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
+               num%subStepSizeHomog * subStep <=  num%subStepMinHomog ) then                   ! would require too small subStep
                                                                                                     ! cutback makes no sense
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
             endif
             terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
-            subStep(ip,el) = num%subStepSizeHomog * subStep(ip,el)                                      ! crystallite had severe trouble, so do a significant cutback
+            subStep = num%subStepSizeHomog * subStep                                      ! crystallite had severe trouble, so do a significant cutback
 
-            call crystallite_restore(ip,el,subStep(ip,el) < 1.0_pReal)
+            call crystallite_restore(ip,el,subStep < 1.0_pReal)
             call constitutive_restore(ip,el)
 
             if(homogState(material_homogenizationAt(el))%sizeState > 0) &
@@ -233,46 +231,46 @@ subroutine materialpoint_stressAndItsTangent(dt)
           endif
         endif
 
-        if (subStep(ip,el) > num%subStepMinHomog) then
-          requested(ip,el) = .true.
-          doneAndHappy(1:2,ip,el) = [.false.,.true.]
+        if (subStep > num%subStepMinHomog) then
+          requested = .true.
+          doneAndHappy = [.false.,.true.]
         endif
 
 
         NiterationMPstate = 0
 
-        convergenceLooping: do while (.not. terminallyIll .and. requested(ip,el) &
-                       .and. .not. doneAndHappy(1,ip,el) &
+        convergenceLooping: do while (.not. terminallyIll .and. requested &
+                       .and. .not. doneAndHappy(1) &
                        .and. NiterationMPstate < num%nMPstate)
           NiterationMPstate = NiterationMPstate + 1
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
 
-          if(requested(ip,el) .and. .not. doneAndHappy(1,ip,el)) then                                   ! requested but not yet done
+          if(requested .and. .not. doneAndHappy(1)) then                                   ! requested but not yet done
             ce = (el-1)*discretization_nIPs + ip
             call mech_partition(homogenization_F0(1:3,1:3,ce) &
                                       + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))&
-                                         *(subStep(ip,el)+subFrac(ip,el)), &
+                                         *(subStep+subFrac), &
                                       ip,el)
-            converged(ip,el) = .true.
+            converged = .true.
             do co = 1, myNgrains
-              converged(ip,el) = converged(ip,el) .and. crystallite_stress(dt*subStep(ip,el),co,ip,el)
+              converged = converged .and. crystallite_stress(dt*subStep,co,ip,el)
             enddo
           endif
 
 
-          if (requested(ip,el) .and. .not. doneAndHappy(1,ip,el)) then
-            if (.not. converged(ip,el)) then
-              doneAndHappy(1:2,ip,el) = [.true.,.false.]
+          if (requested .and. .not. doneAndHappy(1)) then
+            if (.not. converged) then
+              doneAndHappy = [.true.,.false.]
             else
               ce = (el-1)*discretization_nIPs + ip
-              doneAndHappy(1:2,ip,el) = updateState(dt*subStep(ip,el), &
+              doneAndHappy = updateState(dt*subStep, &
                                                   homogenization_F0(1:3,1:3,ce) &
                                                   + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce)) &
-                                                     *(subStep(ip,el)+subFrac(ip,el)), &
+                                                     *(subStep+subFrac), &
                                                  ip,el)
-              converged(ip,el) = all(doneAndHappy(1:2,ip,el))                                           ! converged if done and happy
+              converged = all(doneAndHappy)
             endif
           endif
 
