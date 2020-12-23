@@ -21,6 +21,31 @@ module constitutive
 
   implicit none
   private
+  enum, bind(c); enumerator :: &
+    ELASTICITY_UNDEFINED_ID, &
+    ELASTICITY_HOOKE_ID, &
+    PLASTICITY_UNDEFINED_ID, &
+    PLASTICITY_NONE_ID, &
+    PLASTICITY_ISOTROPIC_ID, &
+    PLASTICITY_PHENOPOWERLAW_ID, &
+    PLASTICITY_KINEHARDENING_ID, &
+    PLASTICITY_DISLOTWIN_ID, &
+    PLASTICITY_DISLOTUNGSTEN_ID, &
+    PLASTICITY_NONLOCAL_ID, &
+    SOURCE_UNDEFINED_ID ,&
+    SOURCE_THERMAL_DISSIPATION_ID, &
+    SOURCE_THERMAL_EXTERNALHEAT_ID, &
+    SOURCE_DAMAGE_ISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ISODUCTILE_ID, &
+    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
+    SOURCE_DAMAGE_ANISODUCTILE_ID, &
+    KINEMATICS_UNDEFINED_ID ,&
+    KINEMATICS_CLEAVAGE_OPENING_ID, &
+    KINEMATICS_SLIPPLANE_OPENING_ID, &
+    KINEMATICS_THERMAL_EXPANSION_ID, &
+    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
+    STIFFNESS_DEGRADATION_DAMAGE_ID
+  end enum
   real(pReal),               dimension(:,:,:),        allocatable, public :: &
     crystallite_dt                                                                                  !< requested time increment of each grain
   real(pReal),               dimension(:,:,:),        allocatable :: &
@@ -352,6 +377,7 @@ module constitutive
     end subroutine integrateStateFPI
 
   end interface
+
 
 
   type(tDebugOptions) :: debugConstitutive
