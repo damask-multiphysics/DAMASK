@@ -220,7 +220,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
        any(subStep(FEsolving_execIP(1):FEsolving_execIP(2),&
                    FEsolving_execElem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
-    !$OMP PARALLEL DO PRIVATE(m,myNgrains)
+    !$OMP PARALLEL DO PRIVATE(m,myNgrains,NiterationMPstate)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
       IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -270,25 +270,18 @@ subroutine materialpoint_stressAndItsTangent(dt)
           requested(i,e) = .true.
           doneAndHappy(1:2,i,e) = [.false.,.true.]
         endif
-      enddo IpLooping1
-    enddo elementLooping1
-    !$OMP END PARALLEL DO
+
 
     NiterationMPstate = 0
 
-    convergenceLooping: do while (.not. terminallyIll .and. &
-              any(                 requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
-                  .and. .not. doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
-                 ) .and. &
-              NiterationMPstate < num%nMPstate)
+    convergenceLooping: do while (.not. terminallyIll .and. requested(i,e) &
+                  .and. .not. doneAndHappy(1,i,e) &
+                  .and. NiterationMPstate < num%nMPstate)
       NiterationMPstate = NiterationMPstate + 1
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
-      !$OMP PARALLEL DO PRIVATE(myNgrains,m,co)
-      elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-        myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
-        IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
+
           if(requested(i,e) .and. .not. doneAndHappy(1,i,e)) then                                   ! requested but not yet done
             m = (e-1)*discretization_nIPs + i
             call mech_partition(homogenization_F0(1:3,1:3,m) &
@@ -319,11 +312,11 @@ subroutine materialpoint_stressAndItsTangent(dt)
               converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy
             endif
           endif
-        enddo IpLooping2
-      enddo elementLooping2
-      !$OMP END PARALLEL DO
 
     enddo convergenceLooping
+      enddo IpLooping1
+    enddo elementLooping1
+    !$OMP END PARALLEL DO
 
     NiterationHomog = NiterationHomog + 1
 
