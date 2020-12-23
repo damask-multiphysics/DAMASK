@@ -1391,10 +1391,10 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
     el, &
     ip, &
     co
-  
+
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
 
-  
+
   T = matmul(material_orientation0(co,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
              transpose(math_inv33(crystallite_subF(1:3,1:3,co,ip,el))))
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
@@ -1412,12 +1412,12 @@ subroutine integrateSourceState(co,ip,el)
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
-  
+
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
-    c, &
-    s, &
+    me, &
+    so, &
     size_pl
   integer, dimension(maxval(phase_Nsources)) :: &
     size_so
@@ -1431,50 +1431,50 @@ subroutine integrateSourceState(co,ip,el)
 
 
   ph = material_phaseAt(co,el)
-  c = material_phaseMemberAt(co,ip,el)
+  me = material_phaseMemberAt(co,ip,el)
 
-  broken = constitutive_thermal_collectDotState(ph,c)
-  broken = broken .or. constitutive_damage_collectDotState(crystallite_S(1:3,1:3,co,ip,el), co,ip,el,ph,c)
+  broken = constitutive_thermal_collectDotState(ph,me)
+  broken = broken .or. constitutive_damage_collectDotState(crystallite_S(1:3,1:3,co,ip,el), co,ip,el,ph,me)
   if(broken) return
 
-  do s = 1, phase_Nsources(ph)
-    size_so(s) = sourceState(ph)%p(s)%sizeDotState
-    sourceState(ph)%p(s)%state(1:size_so(s),c) = sourceState(ph)%p(s)%subState0(1:size_so(s),c) &
-                                              + sourceState(ph)%p(s)%dotState (1:size_so(s),c) &
+  do so = 1, phase_Nsources(ph)
+    size_so(so) = sourceState(ph)%p(so)%sizeDotState
+    sourceState(ph)%p(so)%state(1:size_so(so),me) = sourceState(ph)%p(so)%subState0(1:size_so(so),me) &
+                                              + sourceState(ph)%p(so)%dotState (1:size_so(so),me) &
                                               * crystallite_subdt(co,ip,el)
-    source_dotState(1:size_so(s),2,s) = 0.0_pReal
+    source_dotState(1:size_so(so),2,so) = 0.0_pReal
   enddo
 
   iteration: do NiterationState = 1, num%nState
 
-    do s = 1, phase_Nsources(ph)
-      if(nIterationState > 1) source_dotState(1:size_so(s),2,s) = source_dotState(1:size_so(s),1,s)
-      source_dotState(1:size_so(s),1,s) = sourceState(ph)%p(s)%dotState(:,c)
+    do so = 1, phase_Nsources(ph)
+      if(nIterationState > 1) source_dotState(1:size_so(so),2,so) = source_dotState(1:size_so(so),1,so)
+      source_dotState(1:size_so(so),1,so) = sourceState(ph)%p(so)%dotState(:,me)
     enddo
 
-    broken = constitutive_thermal_collectDotState(ph,c)
-    broken = broken .or. constitutive_damage_collectDotState(crystallite_S(1:3,1:3,co,ip,el), co,ip,el,ph,c)
+    broken = constitutive_thermal_collectDotState(ph,me)
+    broken = broken .or. constitutive_damage_collectDotState(crystallite_S(1:3,1:3,co,ip,el), co,ip,el,ph,me)
     if(broken) exit iteration
 
-    do s = 1, phase_Nsources(ph)
-      zeta = damper(sourceState(ph)%p(s)%dotState(:,c), &
-                    source_dotState(1:size_so(s),1,s),&
-                    source_dotState(1:size_so(s),2,s))
-      sourceState(ph)%p(s)%dotState(:,c) = sourceState(ph)%p(s)%dotState(:,c) * zeta &
-                                        + source_dotState(1:size_so(s),1,s)* (1.0_pReal - zeta)
-      r(1:size_so(s)) = sourceState(ph)%p(s)%state    (1:size_so(s),c)  &
-                      - sourceState(ph)%p(s)%subState0(1:size_so(s),c)  &
-                      - sourceState(ph)%p(s)%dotState (1:size_so(s),c) * crystallite_subdt(co,ip,el)
-      sourceState(ph)%p(s)%state(1:size_so(s),c) = sourceState(ph)%p(s)%state(1:size_so(s),c) &
-                                                - r(1:size_so(s))
+    do so = 1, phase_Nsources(ph)
+      zeta = damper(sourceState(ph)%p(so)%dotState(:,me), &
+                    source_dotState(1:size_so(so),1,so),&
+                    source_dotState(1:size_so(so),2,so))
+      sourceState(ph)%p(so)%dotState(:,me) = sourceState(ph)%p(so)%dotState(:,me) * zeta &
+                                        + source_dotState(1:size_so(so),1,so)* (1.0_pReal - zeta)
+      r(1:size_so(so)) = sourceState(ph)%p(so)%state    (1:size_so(so),me)  &
+                      - sourceState(ph)%p(so)%subState0(1:size_so(so),me)  &
+                      - sourceState(ph)%p(so)%dotState (1:size_so(so),me) * crystallite_subdt(co,ip,el)
+      sourceState(ph)%p(so)%state(1:size_so(so),me) = sourceState(ph)%p(so)%state(1:size_so(so),me) &
+                                                - r(1:size_so(so))
       crystallite_converged(co,ip,el) = &
-      crystallite_converged(co,ip,el) .and. converged(r(1:size_so(s)), &
-                                                   sourceState(ph)%p(s)%state(1:size_so(s),c), &
-                                                   sourceState(ph)%p(s)%atol(1:size_so(s)))
+      crystallite_converged(co,ip,el) .and. converged(r(1:size_so(so)), &
+                                                   sourceState(ph)%p(so)%state(1:size_so(so),me), &
+                                                   sourceState(ph)%p(so)%atol(1:size_so(so)))
     enddo
 
     if(crystallite_converged(co,ip,el)) then
-      broken = constitutive_damage_deltaState(crystallite_Fe(1:3,1:3,co,ip,el),co,ip,el,ph,c)
+      broken = constitutive_damage_deltaState(crystallite_Fe(1:3,1:3,co,ip,el),co,ip,el,ph,me)
       exit iteration
     endif
 
