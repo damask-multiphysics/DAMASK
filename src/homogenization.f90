@@ -272,12 +272,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
         endif
 
 
-    NiterationMPstate = 0
+        NiterationMPstate = 0
 
-    convergenceLooping: do while (.not. terminallyIll .and. requested(i,e) &
-                  .and. .not. doneAndHappy(1,i,e) &
-                  .and. NiterationMPstate < num%nMPstate)
-      NiterationMPstate = NiterationMPstate + 1
+        convergenceLooping: do while (.not. terminallyIll .and. requested(i,e) &
+                       .and. .not. doneAndHappy(1,i,e) &
+                       .and. NiterationMPstate < num%nMPstate)
+          NiterationMPstate = NiterationMPstate + 1
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
@@ -289,14 +289,11 @@ subroutine materialpoint_stressAndItsTangent(dt)
                                          *(subStep(i,e)+subFrac(i,e)), &
                                       i,e)
             crystallite_dt(1:myNgrains,i,e) = dt*subStep(i,e)                                       ! propagate materialpoint dt to grains
-            crystallite_requested(1:myNgrains,i,e) = .true.                                         ! request calculation for constituents
-          else
-            crystallite_requested(1:myNgrains,i,e) = .false.                                        ! calculation for constituents not required anymore
+            converged(i,e) = .true.
+            do co = 1, myNgrains
+              converged(i,e) = converged(i,e) .and. crystallite_stress(co,i,e)
+            enddo
           endif
-          converged(i,e) = .true.
-          do co = 1, myNgrains
-            converged(i,e) = converged(i,e) .and. crystallite_stress(co,i,e)
-          enddo
 
 
           if (requested(i,e) .and. .not. doneAndHappy(1,i,e)) then
@@ -313,7 +310,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
             endif
           endif
 
-    enddo convergenceLooping
+        enddo convergenceLooping
       enddo IpLooping1
     enddo elementLooping1
     !$OMP END PARALLEL DO

@@ -72,8 +72,6 @@ module constitutive
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_partitionedF                                                                        !< def grad to be reached at end of homog inc
 
-  logical,                    dimension(:,:,:),       allocatable, public :: &
-    crystallite_requested                                                                           !< used by upper level (homogenization) to request crystallite calculation
   logical,                    dimension(:,:,:),       allocatable :: &
     crystallite_converged                                                                           !< convergence flag
 
@@ -889,7 +887,6 @@ subroutine crystallite_init
 
   allocate(crystallite_orientation(cMax,iMax,eMax))
 
-  allocate(crystallite_requested(cMax,iMax,eMax),             source=.false.)
   allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
@@ -974,7 +971,6 @@ subroutine crystallite_init
       constitutive_mech_partionedFi0(p)%data(1:3,1:3,m) = constitutive_mech_Fi0(p)%data(1:3,1:3,m)
       constitutive_mech_partionedFp0(p)%data(1:3,1:3,m) = constitutive_mech_Fp0(p)%data(1:3,1:3,m)
 
-      crystallite_requested(co,ip,el) = .true.
     enddo; enddo
   enddo
   !$OMP END PARALLEL DO
@@ -1033,22 +1029,20 @@ function crystallite_stress(co,ip,el)
   me = material_phaseMemberAt(co,ip,el)
   subLi0 = constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me)
   subLp0 = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
-  homogenizationRequestsCalculation: if (crystallite_requested(co,ip,el)) then
-    plasticState    (material_phaseAt(co,el))%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
-    plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phaseMemberAt(co,ip,el))
+  plasticState    (material_phaseAt(co,el))%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
+  plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phaseMemberAt(co,ip,el))
 
-    do s = 1, phase_Nsources(material_phaseAt(co,el))
-      sourceState(material_phaseAt(co,el))%p(s)%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
-      sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phaseMemberAt(co,ip,el))
-    enddo
-    crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me)
-    crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me)
-    crystallite_subF0(1:3,1:3,co,ip,el)  = crystallite_partitionedF0(1:3,1:3,co,ip,el)
-    subFrac = 0.0_pReal
-    crystallite_subStep(co,ip,el) = 1.0_pReal/num%subStepSizeCryst
-    todo = .true.
-    crystallite_converged(co,ip,el) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
-  endif homogenizationRequestsCalculation
+  do s = 1, phase_Nsources(material_phaseAt(co,el))
+    sourceState(material_phaseAt(co,el))%p(s)%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
+    sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phaseMemberAt(co,ip,el))
+  enddo
+  crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me)
+  crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me)
+  crystallite_subF0(1:3,1:3,co,ip,el)  = crystallite_partitionedF0(1:3,1:3,co,ip,el)
+  subFrac = 0.0_pReal
+  crystallite_subStep(co,ip,el) = 1.0_pReal/num%subStepSizeCryst
+  todo = .true.
+  crystallite_converged(co,ip,el) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
 
   todo = .true.
   NiterationCrystallite = 0
