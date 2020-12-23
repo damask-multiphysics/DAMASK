@@ -180,7 +180,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
     NiterationMPstate, &
     i, &                                                                                            !< integration point number
     e, &                                                                                            !< element number
-    myNgrains
+    myNgrains, co
   real(pReal), dimension(discretization_nIPs,discretization_Nelems) :: &
     subFrac, &
     subStep
@@ -285,7 +285,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
-      !$OMP PARALLEL DO PRIVATE(myNgrains,m)
+      !$OMP PARALLEL DO PRIVATE(myNgrains,m,co)
       elementLooping2: do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
         IpLooping2: do i = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -300,19 +300,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
           else
             crystallite_requested(1:myNgrains,i,e) = .false.                                        ! calculation for constituents not required anymore
           endif
-        enddo IpLooping2
-      enddo elementLooping2
-      !$OMP END PARALLEL DO
+          converged(i,e) = .true.
+          do co = 1, myNgrains
+            converged(i,e) = converged(i,e) .and. crystallite_stress2(co,i,e)
+          enddo
 
-!--------------------------------------------------------------------------------------------------
-! crystallite integration
-      converged = crystallite_stress() !ToDo: MD not sure if that is the best logic
 
-!--------------------------------------------------------------------------------------------------
-! state update
-     !$OMP PARALLEL DO PRIVATE(m)
-      elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-        IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
           if (requested(i,e) .and. .not. doneAndHappy(1,i,e)) then
             if (.not. converged(i,e)) then
               doneAndHappy(1:2,i,e) = [.true.,.false.]
@@ -326,8 +319,8 @@ subroutine materialpoint_stressAndItsTangent(dt)
               converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy
             endif
           endif
-        enddo IpLooping3
-      enddo elementLooping3
+        enddo IpLooping2
+      enddo elementLooping2
       !$OMP END PARALLEL DO
 
     enddo convergenceLooping
@@ -339,11 +332,11 @@ subroutine materialpoint_stressAndItsTangent(dt)
   if (.not. terminallyIll ) then
     call crystallite_orientations()                                                                 ! calculate crystal orientations
     !$OMP PARALLEL DO
-    elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      IpLooping4: do i = FEsolving_execIP(1),FEsolving_execIP(2)
+    elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
         call mech_homogenize(i,e)
-      enddo IpLooping4
-    enddo elementLooping4
+      enddo IpLooping3
+    enddo elementLooping3
     !$OMP END PARALLEL DO
   else
     print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
@@ -433,7 +426,7 @@ end subroutine homogenization_results
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_forward
 
-  integer :: ho 
+  integer :: ho
 
   do ho = 1, size(material_name_homogenization)
     homogState (ho)%state0 = homogState (ho)%state
