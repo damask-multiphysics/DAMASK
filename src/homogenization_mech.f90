@@ -4,6 +4,13 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization) homogenization_mech
 
+
+  enum, bind(c); enumerator :: &
+    ELASTICITY_UNDEFINED_ID, &
+    ELASTICITY_HOOKE_ID, &
+    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
+    STIFFNESS_DEGRADATION_DAMAGE_ID
+  end enum
   interface
 
     module subroutine mech_none_init

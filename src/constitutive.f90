@@ -22,8 +22,6 @@ module constitutive
   implicit none
   private
   enum, bind(c); enumerator :: &
-    ELASTICITY_UNDEFINED_ID, &
-    ELASTICITY_HOOKE_ID, &
     PLASTICITY_UNDEFINED_ID, &
     PLASTICITY_NONE_ID, &
     PLASTICITY_ISOTROPIC_ID, &
@@ -42,9 +40,7 @@ module constitutive
     KINEMATICS_UNDEFINED_ID ,&
     KINEMATICS_CLEAVAGE_OPENING_ID, &
     KINEMATICS_SLIPPLANE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID, &
-    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
-    STIFFNESS_DEGRADATION_DAMAGE_ID
+    KINEMATICS_THERMAL_EXPANSION_ID
   end enum
   real(pReal),               dimension(:,:,:),        allocatable, public :: &
     crystallite_dt                                                                                  !< requested time increment of each grain
@@ -691,18 +687,18 @@ end function constitutive_thermal_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_deltaState(Fe, co, ip, el, phase, of) result(broken)
+function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
-    phase, &
+    ph, &
     of
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
   integer :: &
-    i, &
+    so, &
     myOffset, &
     mySize
   logical :: &
@@ -711,19 +707,19 @@ function constitutive_damage_deltaState(Fe, co, ip, el, phase, of) result(broken
 
   broken = .false.
 
-  sourceLoop: do i = 1, phase_Nsources(phase)
+  sourceLoop: do so = 1, phase_Nsources(ph)
 
-     sourceType: select case (phase_source(i,phase))
+     sourceType: select case (phase_source(so,ph))
 
       case (SOURCE_damage_isoBrittle_ID) sourceType
         call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(co,ip,el), Fe, &
                                                    co, ip, el)
-        broken = any(IEEE_is_NaN(sourceState(phase)%p(i)%deltaState(:,of)))
+        broken = any(IEEE_is_NaN(sourceState(ph)%p(so)%deltaState(:,of)))
         if(.not. broken) then
-          myOffset = sourceState(phase)%p(i)%offsetDeltaState
-          mySize   = sourceState(phase)%p(i)%sizeDeltaState
-          sourceState(phase)%p(i)%state(myOffset + 1: myOffset + mySize,of) = &
-          sourceState(phase)%p(i)%state(myOffset + 1: myOffset + mySize,of) + sourceState(phase)%p(i)%deltaState(1:mySize,of)
+          myOffset = sourceState(ph)%p(so)%offsetDeltaState
+          mySize   = sourceState(ph)%p(so)%sizeDeltaState
+          sourceState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) = &
+          sourceState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) + sourceState(ph)%p(so)%deltaState(1:mySize,of)
         endif
 
     end select sourceType
@@ -1405,13 +1401,12 @@ subroutine integrateSourceState(co,ip,el)
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
     me, &
-    so, &
-    size_pl
+    so
   integer, dimension(maxval(phase_Nsources)) :: &
     size_so
   real(pReal) :: &
     zeta
-  real(pReal), dimension(max(constitutive_plasticity_maxSizeDotState,constitutive_source_maxSizeDotState)) :: &
+  real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
     r                                                                                               ! state residuum
   real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
