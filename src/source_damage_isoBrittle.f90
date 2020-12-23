@@ -94,10 +94,10 @@ end function source_damage_isoBrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
+module subroutine source_damage_isoBrittle_deltaState(C, Fe, co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
   real(pReal),  intent(in), dimension(3,3) :: &
@@ -114,8 +114,8 @@ module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
   real(pReal) :: &
     strainenergy
 
-  phase = material_phaseAt(ipc,el)                                                                  !< phase ID at ipc,ip,el
-  constituent = material_phasememberAt(ipc,ip,el)                                                   !< state array offset for phase ID at ipc,ip,el
+  phase = material_phaseAt(co,el)                                                                  !< phase ID at co,ip,el
+  constituent = material_phasememberAt(co,ip,el)                                                   !< state array offset for phase ID at co,ip,el
   sourceOffset = source_damage_isoBrittle_offset(phase)
 
   strain = 0.5_pReal*math_sym33to6(matmul(transpose(Fe),Fe)-math_I3)

@@ -84,10 +84,10 @@ end function kinematics_thermal_expansion_init
 !--------------------------------------------------------------------------------------------------
 !> @brief constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
+module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< grain number
+    co, &                                                                                          !< grain number
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal),   intent(out), dimension(3,3) :: &
@@ -101,7 +101,7 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, i
   real(pReal) :: &
     T, TDot
 
-  phase = material_phaseAt(ipc,el)
+  phase = material_phaseAt(co,el)
   homog = material_homogenizationAt(el)
   T = temperature(homog)%p(material_homogenizationMemberAt(ip,el))
   TDot = temperatureRate(homog)%p(material_homogenizationMemberAt(ip,el))

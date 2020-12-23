@@ -170,25 +170,25 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
-    module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
+    module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
       real(pReal),  intent(in), dimension(3,3) :: &
         S
     end subroutine source_damage_anisoBrittle_dotState
 
-    module subroutine source_damage_anisoDuctile_dotState(ipc, ip, el)
+    module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
     end subroutine source_damage_anisoDuctile_dotState
 
-    module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
+    module subroutine source_damage_isoDuctile_dotState(co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
     end subroutine source_damage_isoDuctile_dotState
@@ -224,11 +224,11 @@ module constitutive
         dTDot_dT
     end subroutine constitutive_thermal_getRateAndItsTangents
 
-    module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
+    module function plastic_dislotwin_homogenizedC(co,ip,el) result(homogenizedC)
       real(pReal), dimension(6,6) :: &
         homogenizedC
       integer,     intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
     end function plastic_dislotwin_homogenizedC
@@ -254,9 +254,9 @@ module constitutive
         of
     end subroutine plastic_isotropic_LiAndItsTangent
 
-    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+    module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< grain number
+        co, &                                                                                      !< grain number
         ip, &                                                                                       !< integration point number
         el                                                                                          !< element number
       real(pReal),   intent(in),  dimension(3,3) :: &
@@ -267,9 +267,9 @@ module constitutive
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_cleavage_opening_LiAndItsTangent
 
-    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+    module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< grain number
+        co, &                                                                                      !< grain number
         ip, &                                                                                       !< integration point number
         el                                                                                          !< element number
       real(pReal),   intent(in),  dimension(3,3) :: &
@@ -280,9 +280,9 @@ module constitutive
         dLd_dTstar                                                                                  !< derivative of Ld with respect to Tstar (4th-order tensor)
     end subroutine kinematics_slipplane_opening_LiAndItsTangent
 
-    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
+    module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< grain number
+        co, &                                                                                      !< grain number
         ip, &                                                                                       !< integration point number
         el                                                                                          !< element number
       real(pReal),   intent(out), dimension(3,3) :: &
@@ -292,9 +292,9 @@ module constitutive
     end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
 
-    module subroutine source_damage_isoBrittle_deltaState(C, Fe, ipc, ip, el)
+    module subroutine source_damage_isoBrittle_deltaState(C, Fe, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
       real(pReal),  intent(in), dimension(3,3) :: &
@@ -305,9 +305,9 @@ module constitutive
 
 
     module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
-                                         S, Fi, ipc, ip, el)
+                                         S, Fi, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
       real(pReal),   intent(in),  dimension(3,3) :: &
@@ -321,9 +321,9 @@ module constitutive
     end subroutine constitutive_plastic_LpAndItsTangents
 
 
-    module subroutine constitutive_plastic_dependentState(F, ipc, ip, el)
+    module subroutine constitutive_plastic_dependentState(F, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
       real(pReal),   intent(in), dimension(3,3) :: &
@@ -332,9 +332,9 @@ module constitutive
 
 
 
-    module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, ipc, ip, el)
+    module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, co, ip, el)
       integer, intent(in) :: &
-        ipc, &                                                                                      !< component-ID of integration point
+        co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
       real(pReal),   intent(in),  dimension(3,3) :: &
@@ -498,20 +498,20 @@ end function kinematics_active
 !> @brief returns the homogenize elasticity matrix
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
-function constitutive_homogenizedC(ipc,ip,el)
+function constitutive_homogenizedC(co,ip,el)
 
   real(pReal), dimension(6,6) :: &
     constitutive_homogenizedC
   integer,      intent(in)     :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     constitutive_homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
+     constitutive_homogenizedC = plastic_dislotwin_homogenizedC(co,ip,el)
     case default plasticityType
-     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(ipc,el))
+     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phaseAt(co,el))
   end select plasticityType
 
 end function constitutive_homogenizedC
@@ -522,10 +522,10 @@ end function constitutive_homogenizedC
 ! ToDo: MD: S is Mi?
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
-                                         S, Fi, ipc, ip, el)
+                                         S, Fi, co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
   real(pReal),   intent(in),  dimension(3,3) :: &
@@ -554,10 +554,10 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   dLi_dS  = 0.0_pReal
   dLi_dFi = 0.0_pReal
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(ipc,el)))
+  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
     case (PLASTICITY_isotropic_ID) plasticityType
-      of = material_phasememberAt(ipc,ip,el)
-      instance = phase_plasticityInstance(material_phaseAt(ipc,el))
+      of = material_phasememberAt(co,ip,el)
+      instance = phase_plasticityInstance(material_phaseAt(co,el))
       call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
     case default plasticityType
       my_Li = 0.0_pReal
@@ -567,14 +567,14 @@ subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
   Li = Li + my_Li
   dLi_dS = dLi_dS + my_dLi_dS
 
-  KinematicsLoop: do k = 1, phase_Nkinematics(material_phaseAt(ipc,el))
-    kinematicsType: select case (phase_kinematics(k,material_phaseAt(ipc,el)))
+  KinematicsLoop: do k = 1, phase_Nkinematics(material_phaseAt(co,el))
+    kinematicsType: select case (phase_kinematics(k,material_phaseAt(co,el)))
       case (KINEMATICS_cleavage_opening_ID) kinematicsType
-        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ipc, ip, el)
+        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
       case (KINEMATICS_slipplane_opening_ID) kinematicsType
-        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, ipc, ip, el)
+        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
       case (KINEMATICS_thermal_expansion_ID) kinematicsType
-        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, ipc, ip, el)
+        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, co, ip, el)
       case default kinematicsType
         my_Li = 0.0_pReal
         my_dLi_dS = 0.0_pReal
@@ -600,10 +600,10 @@ end subroutine constitutive_LiAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_collectDotState(S, ipc, ip, el,phase,of) result(broken)
+function constitutive_damage_collectDotState(S, co, ip, el,phase,of) result(broken)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
     phase, &
@@ -622,13 +622,13 @@ function constitutive_damage_collectDotState(S, ipc, ip, el,phase,of) result(bro
     sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
-        call source_damage_anisoBrittle_dotState(S, ipc, ip, el) ! correct stress?
+        call source_damage_anisoBrittle_dotState(S, co, ip, el) ! correct stress?
 
       case (SOURCE_damage_isoDuctile_ID) sourceType
-        call source_damage_isoDuctile_dotState(ipc, ip, el)
+        call source_damage_isoDuctile_dotState(co, ip, el)
 
       case (SOURCE_damage_anisoDuctile_ID) sourceType
-        call source_damage_anisoDuctile_dotState(ipc, ip, el)
+        call source_damage_anisoDuctile_dotState(co, ip, el)
 
     end select sourceType
 
@@ -668,10 +668,10 @@ end function constitutive_thermal_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_deltaState(Fe, ipc, ip, el, phase, of) result(broken)
+function constitutive_damage_deltaState(Fe, co, ip, el, phase, of) result(broken)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
     phase, &
@@ -693,8 +693,8 @@ function constitutive_damage_deltaState(Fe, ipc, ip, el, phase, of) result(broke
      sourceType: select case (phase_source(i,phase))
 
       case (SOURCE_damage_isoBrittle_ID) sourceType
-        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(ipc,ip,el), Fe, &
-                                                   ipc, ip, el)
+        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(co,ip,el), Fe, &
+                                                   co, ip, el)
         broken = any(IEEE_is_NaN(sourceState(phase)%p(i)%deltaState(:,of)))
         if(.not. broken) then
           myOffset = sourceState(phase)%p(i)%offsetDeltaState
@@ -1382,7 +1382,7 @@ end subroutine crystallite_orientations
 !--------------------------------------------------------------------------------------------------
 !> @brief Map 2nd order tensor to reference config
 !--------------------------------------------------------------------------------------------------
-function crystallite_push33ToRef(ipc,ip,el, tensor33)
+function crystallite_push33ToRef(co,ip,el, tensor33)
 
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
   real(pReal), dimension(3,3), intent(in) :: tensor33
@@ -1390,10 +1390,10 @@ function crystallite_push33ToRef(ipc,ip,el, tensor33)
   integer, intent(in):: &
     el, &
     ip, &
-    ipc
+    co
 
-  T = matmul(material_orientation0(ipc,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
-             transpose(math_inv33(crystallite_subF(1:3,1:3,ipc,ip,el))))
+  T = matmul(material_orientation0(co,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
+             transpose(math_inv33(crystallite_subF(1:3,1:3,co,ip,el))))
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
