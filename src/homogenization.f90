@@ -150,8 +150,8 @@ subroutine materialpoint_stressAndItsTangent(dt)
   integer :: &
     NiterationHomog, &
     NiterationMPstate, &
-    i, &                                                                                            !< integration point number
-    e, &                                                                                            !< element number
+    ip, &                                                                                            !< integration point number
+    el, &                                                                                            !< element number
     myNgrains, co
   real(pReal), dimension(discretization_nIPs,discretization_Nelems) :: &
     subFrac, &
@@ -161,28 +161,28 @@ subroutine materialpoint_stressAndItsTangent(dt)
     converged
   logical,     dimension(2,discretization_nIPs,discretization_Nelems) :: &
     doneAndHappy
-  integer :: m
+  integer :: ce
 
 
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1),FEsolving_execIP(2);
+  do el = FEsolving_execElem(1),FEsolving_execElem(2)
+    do ip = FEsolving_execIP(1),FEsolving_execIP(2);
 
-      call constitutive_initializeRestorationPoints(i,e)
+      call constitutive_initializeRestorationPoints(ip,el)
 
-      subFrac(i,e) = 0.0_pReal
-      converged(i,e) = .false.                                                                      ! pretend failed step ...
-      subStep(i,e) = 1.0_pReal/num%subStepSizeHomog                                                 ! ... larger then the requested calculation
-      requested(i,e) = .true.                                                                       ! everybody requires calculation
+      subFrac(ip,el) = 0.0_pReal
+      converged(ip,el) = .false.                                                                      ! pretend failed step ...
+      subStep(ip,el) = 1.0_pReal/num%subStepSizeHomog                                                 ! ... larger then the requested calculation
+      requested(ip,el) = .true.                                                                       ! everybody requires calculation
 
-      if (homogState(material_homogenizationAt(e))%sizeState > 0) &
-          homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
+      if (homogState(material_homogenizationAt(el))%sizeState > 0) &
+          homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+          homogState(material_homogenizationAt(el))%State0(   :,material_homogenizationMemberAt(ip,el))
 
-      if (damageState(material_homogenizationAt(e))%sizeState > 0) &
-          damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
+      if (damageState(material_homogenizationAt(el))%sizeState > 0) &
+          damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+          damageState(material_homogenizationAt(el))%State0(   :,material_homogenizationMemberAt(ip,el))
     enddo
   enddo
 
@@ -192,93 +192,93 @@ subroutine materialpoint_stressAndItsTangent(dt)
        any(subStep(FEsolving_execIP(1):FEsolving_execIP(2),&
                    FEsolving_execElem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
-    !$OMP PARALLEL DO PRIVATE(m,myNgrains,NiterationMPstate)
-    elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
-      IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
+    !$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate)
+    elementLooping1: do el = FEsolving_execElem(1),FEsolving_execElem(2)
+      myNgrains = homogenization_Nconstituents(material_homogenizationAt(el))
+      IpLooping1: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
 
-        if (converged(i,e)) then
-          subFrac(i,e) = subFrac(i,e) + subStep(i,e)
-          subStep(i,e) = min(1.0_pReal-subFrac(i,e),num%stepIncreaseHomog*subStep(i,e))             ! introduce flexibility for step increase/acceleration
+        if (converged(ip,el)) then
+          subFrac(ip,el) = subFrac(ip,el) + subStep(ip,el)
+          subStep(ip,el) = min(1.0_pReal-subFrac(ip,el),num%stepIncreaseHomog*subStep(ip,el))             ! introduce flexibility for step increase/acceleration
 
-          steppingNeeded: if (subStep(i,e) > num%subStepMinHomog) then
+          steppingNeeded: if (subStep(ip,el) > num%subStepMinHomog) then
 
             ! wind forward grain starting point
-            call constitutive_windForward(i,e)
+            call constitutive_windForward(ip,el)
 
-            if(homogState(material_homogenizationAt(e))%sizeState > 0) &
-                homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-                homogState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
-            if(damageState(material_homogenizationAt(e))%sizeState > 0) &
-                damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-                damageState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
+            if(homogState(material_homogenizationAt(el))%sizeState > 0) &
+                homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+                homogState(material_homogenizationAt(el))%State    (:,material_homogenizationMemberAt(ip,el))
+            if(damageState(material_homogenizationAt(el))%sizeState > 0) &
+                damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+                damageState(material_homogenizationAt(el))%State    (:,material_homogenizationMemberAt(ip,el))
 
           endif steppingNeeded
 
         else
-          if ( (myNgrains == 1 .and. subStep(i,e) <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
-               num%subStepSizeHomog * subStep(i,e) <=  num%subStepMinHomog ) then                   ! would require too small subStep
+          if ( (myNgrains == 1 .and. subStep(ip,el) <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
+               num%subStepSizeHomog * subStep(ip,el) <=  num%subStepMinHomog ) then                   ! would require too small subStep
                                                                                                     ! cutback makes no sense
             if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
-              print*, ' Integration point ', i,' at element ', e, ' terminally ill'
+              print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
             endif
             terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
-            subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
+            subStep(ip,el) = num%subStepSizeHomog * subStep(ip,el)                                      ! crystallite had severe trouble, so do a significant cutback
 
-            call crystallite_restore(i,e,subStep(i,e) < 1.0_pReal)
-            call constitutive_restore(i,e)
+            call crystallite_restore(ip,el,subStep(ip,el) < 1.0_pReal)
+            call constitutive_restore(ip,el)
 
-            if(homogState(material_homogenizationAt(e))%sizeState > 0) &
-                homogState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
-                homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
-            if(damageState(material_homogenizationAt(e))%sizeState > 0) &
-                damageState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
-                damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
+            if(homogState(material_homogenizationAt(el))%sizeState > 0) &
+                homogState(material_homogenizationAt(el))%State(    :,material_homogenizationMemberAt(ip,el)) = &
+                homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el))
+            if(damageState(material_homogenizationAt(el))%sizeState > 0) &
+                damageState(material_homogenizationAt(el))%State(    :,material_homogenizationMemberAt(ip,el)) = &
+                damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el))
           endif
         endif
 
-        if (subStep(i,e) > num%subStepMinHomog) then
-          requested(i,e) = .true.
-          doneAndHappy(1:2,i,e) = [.false.,.true.]
+        if (subStep(ip,el) > num%subStepMinHomog) then
+          requested(ip,el) = .true.
+          doneAndHappy(1:2,ip,el) = [.false.,.true.]
         endif
 
 
         NiterationMPstate = 0
 
-        convergenceLooping: do while (.not. terminallyIll .and. requested(i,e) &
-                       .and. .not. doneAndHappy(1,i,e) &
+        convergenceLooping: do while (.not. terminallyIll .and. requested(ip,el) &
+                       .and. .not. doneAndHappy(1,ip,el) &
                        .and. NiterationMPstate < num%nMPstate)
           NiterationMPstate = NiterationMPstate + 1
 
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
 
-          if(requested(i,e) .and. .not. doneAndHappy(1,i,e)) then                                   ! requested but not yet done
-            m = (e-1)*discretization_nIPs + i
-            call mech_partition(homogenization_F0(1:3,1:3,m) &
-                                      + (homogenization_F(1:3,1:3,m)-homogenization_F0(1:3,1:3,m))&
-                                         *(subStep(i,e)+subFrac(i,e)), &
-                                      i,e)
-            crystallite_dt(1:myNgrains,i,e) = dt*subStep(i,e)                                       ! propagate materialpoint dt to grains
-            converged(i,e) = .true.
+          if(requested(ip,el) .and. .not. doneAndHappy(1,ip,el)) then                                   ! requested but not yet done
+            ce = (el-1)*discretization_nIPs + ip
+            call mech_partition(homogenization_F0(1:3,1:3,ce) &
+                                      + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))&
+                                         *(subStep(ip,el)+subFrac(ip,el)), &
+                                      ip,el)
+            crystallite_dt(1:myNgrains,ip,el) = dt*subStep(ip,el)                                       ! propagate materialpoint dt to grains
+            converged(ip,el) = .true.
             do co = 1, myNgrains
-              converged(i,e) = converged(i,e) .and. crystallite_stress(co,i,e)
+              converged(ip,el) = converged(ip,el) .and. crystallite_stress(co,ip,el)
             enddo
           endif
 
 
-          if (requested(i,e) .and. .not. doneAndHappy(1,i,e)) then
-            if (.not. converged(i,e)) then
-              doneAndHappy(1:2,i,e) = [.true.,.false.]
+          if (requested(ip,el) .and. .not. doneAndHappy(1,ip,el)) then
+            if (.not. converged(ip,el)) then
+              doneAndHappy(1:2,ip,el) = [.true.,.false.]
             else
-              m = (e-1)*discretization_nIPs + i
-              doneAndHappy(1:2,i,e) = updateState(dt*subStep(i,e), &
-                                                  homogenization_F0(1:3,1:3,m) &
-                                                  + (homogenization_F(1:3,1:3,m)-homogenization_F0(1:3,1:3,m)) &
-                                                     *(subStep(i,e)+subFrac(i,e)), &
-                                                 i,e)
-              converged(i,e) = all(doneAndHappy(1:2,i,e))                                           ! converged if done and happy
+              ce = (el-1)*discretization_nIPs + ip
+              doneAndHappy(1:2,ip,el) = updateState(dt*subStep(ip,el), &
+                                                  homogenization_F0(1:3,1:3,ce) &
+                                                  + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce)) &
+                                                     *(subStep(ip,el)+subFrac(ip,el)), &
+                                                 ip,el)
+              converged(ip,el) = all(doneAndHappy(1:2,ip,el))                                           ! converged if done and happy
             endif
           endif
 
@@ -294,9 +294,9 @@ subroutine materialpoint_stressAndItsTangent(dt)
   if (.not. terminallyIll ) then
     call crystallite_orientations()                                                                 ! calculate crystal orientations
     !$OMP PARALLEL DO
-    elementLooping3: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-      IpLooping3: do i = FEsolving_execIP(1),FEsolving_execIP(2)
-        call mech_homogenize(i,e)
+    elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
+      IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+        call mech_homogenize(ip,el)
       enddo IpLooping3
     enddo elementLooping3
     !$OMP END PARALLEL DO
