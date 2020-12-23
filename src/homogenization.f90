@@ -220,7 +220,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
        any(subStep(FEsolving_execIP(1):FEsolving_execIP(2),&
                    FEsolving_execElem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
 
-    !$OMP PARALLEL DO PRIVATE(m)
+    !$OMP PARALLEL DO PRIVATE(m,myNgrains)
     elementLooping1: do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Nconstituents(material_homogenizationAt(e))
       IpLooping1: do i = FEsolving_execIP(1),FEsolving_execIP(2)
