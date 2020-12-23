@@ -48,20 +48,6 @@ module homogenization
 
   type(tNumerics) :: num
 
-  type :: tDebugOptions
-    logical :: &
-      basic, &
-      extensive, &
-      selective
-    integer :: &
-      element, &
-      ip, &
-      grain
-  end type tDebugOptions
-
-  type(tDebugOptions) :: debugHomog
-
-
 !--------------------------------------------------------------------------------------------------
   interface
 
@@ -125,23 +111,9 @@ subroutine homogenization_init
 
   class (tNode) , pointer :: &
     num_homog, &
-    num_homogGeneric, &
-    debug_homogenization
+    num_homogGeneric
 
   print'(/,a)', ' <<<+-  homogenization init  -+>>>'; flush(IO_STDOUT)
-
-  debug_homogenization => config_debug%get('homogenization', defaultVal=emptyList)
-  debugHomog%basic       =  debug_homogenization%contains('basic')
-  debugHomog%extensive   =  debug_homogenization%contains('extensive')
-  debugHomog%selective   =  debug_homogenization%contains('selective')
-  debugHomog%element     =  config_debug%get_asInt('element',defaultVal = 1)
-  debugHomog%ip          =  config_debug%get_asInt('integrationpoint',defaultVal = 1)
-  debugHomog%grain       =  config_debug%get_asInt('grain',defaultVal = 1)
-
-  if (debugHomog%grain < 1 &
-    .or. debugHomog%grain > homogenization_Nconstituents(material_homogenizationAt(debugHomog%element))) &
-    call IO_error(602,ext_msg='constituent', el=debugHomog%element, g=debugHomog%grain)
-
 
   num_homog        => config_numerics%get('homogenization',defaultVal=emptyDict)
   num_homogGeneric => num_homog%get('generic',defaultVal=emptyDict)
