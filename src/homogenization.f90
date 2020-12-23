@@ -112,6 +112,7 @@ module homogenization
   public ::  &
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
+    homogenization_forward, &
     homogenization_results
 
 contains
@@ -424,5 +425,21 @@ subroutine homogenization_results
  enddo
 
 end subroutine homogenization_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data after successful increment.
+! ToDo: Any guessing for the current states possible?
+!--------------------------------------------------------------------------------------------------
+subroutine homogenization_forward
+
+  integer :: ho 
+
+  do ho = 1, size(material_name_homogenization)
+    homogState (ho)%state0 = homogState (ho)%state
+    damageState(ho)%state0 = damageState(ho)%state
+  enddo
+
+end subroutine homogenization_forward
 
 end module homogenization

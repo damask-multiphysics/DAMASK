@@ -1425,5 +1425,24 @@ module subroutine constitutive_mech_windForward(ph,me)
 
 end subroutine constitutive_mech_windForward
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Forward data after successful increment.
+! ToDo: Any guessing for the current states possible?
+!--------------------------------------------------------------------------------------------------
+module subroutine constitutive_mech_forward()
+
+  integer :: ph
+
+
+  do ph = 1, size(plasticState)
+    plasticState(ph)%state0 = plasticState(ph)%state
+    constitutive_mech_Fi0(ph) = constitutive_mech_Fi(ph)
+    constitutive_mech_Fp0(ph) = constitutive_mech_Fp(ph)
+    constitutive_mech_Li0(ph) = constitutive_mech_Li(ph)
+  enddo
+
+end subroutine constitutive_mech_forward
+
 end submodule constitutive_mech
 

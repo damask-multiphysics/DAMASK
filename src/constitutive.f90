@@ -32,16 +32,11 @@ module constitutive
     crystallite_F0, &                                                                               !< def grad at start of FE inc
     crystallite_subF,  &                                                                            !< def grad to be reached at end of crystallite inc
     crystallite_subF0, &                                                                            !< def grad at start of crystallite inc
-    !
     crystallite_Fe, &                                                                               !< current "elastic" def grad (end of converged time step)
-    !
     crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
-    !
     crystallite_subFi0,&                                                                            !< intermediate def grad at start of crystallite inc
-    !
     crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
     crystallite_partitionedLp0, &                                                                   !< plastic velocity grad at start of homog inc
-    !
     crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
     crystallite_partitionedS0                                                                       !< 2nd Piola-Kirchhoff stress vector at start of homog inc
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
@@ -170,9 +165,10 @@ module constitutive
       integer, intent(in) :: ph, me
     end subroutine constitutive_mech_windForward
 
+    module subroutine constitutive_mech_forward
+    end subroutine constitutive_mech_forward
+
 ! == cleaned:end ===================================================================================
-
-
 
     module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
       integer, intent(in) :: &
@@ -381,7 +377,6 @@ module constitutive
     crystallite_push33ToRef, &
     crystallite_restartWrite, &
     crystallite_restartRead, &
-    crystallite_forward, &
     constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
     crystallite_restore
@@ -777,6 +772,12 @@ end subroutine constitutive_restore
 subroutine constitutive_forward
 
   integer :: i, j
+
+  crystallite_F0  = crystallite_partitionedF
+  crystallite_Lp0 = crystallite_Lp
+  crystallite_S0  = crystallite_S
+
+  call constitutive_mech_forward()
 
   do i = 1, size(sourceState)
     do j = 1,phase_Nsources(i)
@@ -1604,30 +1605,5 @@ subroutine crystallite_restartRead
 
 end subroutine crystallite_restartRead
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Forward data after successful increment.
-! ToDo: Any guessing for the current states possible?
-!--------------------------------------------------------------------------------------------------
-subroutine crystallite_forward
-
-  integer :: i, j
-
-  crystallite_F0  = crystallite_partitionedF
-  crystallite_Lp0 = crystallite_Lp
-  crystallite_S0  = crystallite_S
-
-  do i = 1, size(plasticState)
-    plasticState(i)%state0 = plasticState(i)%state
-    constitutive_mech_Fi0(i) = constitutive_mech_Fi(i)
-    constitutive_mech_Fp0(i) = constitutive_mech_Fp(i)
-    constitutive_mech_Li0(i) = constitutive_mech_Li(i)
-  enddo
-  do i = 1,size(material_name_homogenization)
-    homogState  (i)%state0 = homogState  (i)%state
-    damageState (i)%state0 = damageState (i)%state
-  enddo
-
-end subroutine crystallite_forward
 
 end module constitutive

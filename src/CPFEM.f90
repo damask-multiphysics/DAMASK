@@ -260,7 +260,7 @@ end subroutine CPFEM_general
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_forward
 
-  call crystallite_forward
+  call homogenization_forward
   call constitutive_forward
 
 end subroutine CPFEM_forward
