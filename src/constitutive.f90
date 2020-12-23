@@ -407,11 +407,12 @@ contains
 subroutine constitutive_init
 
   integer :: &
-    p, &                                                                                            !< counter in phase loop
-    s                                                                                               !< counter in source loop
+    ph, &                                                                                            !< counter in phase loop
+    so                                                                                               !< counter in source loop
   class (tNode), pointer :: &
     debug_constitutive, &
     phases
+
 
   debug_constitutive => config_debug%get('constitutive', defaultVal=emptyList)
   debugConstitutive%basic      =  debug_constitutive%contains('basic')
@@ -423,26 +424,26 @@ subroutine constitutive_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize constitutive laws
+  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
   call mech_init
   call damage_init
   call thermal_init
 
-  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
 
   phases => config_material%get('phase')
   constitutive_source_maxSizeDotState = 0
-  PhaseLoop2:do p = 1,phases%length
+  PhaseLoop2:do ph = 1,phases%length
 !--------------------------------------------------------------------------------------------------
 ! partition and initialize state
-    plasticState(p)%partitionedState0 = plasticState(p)%state0
-    plasticState(p)%state             = plasticState(p)%partitionedState0
-    forall(s = 1:phase_Nsources(p))
-      sourceState(p)%p(s)%partitionedState0 = sourceState(p)%p(s)%state0
-      sourceState(p)%p(s)%state             = sourceState(p)%p(s)%partitionedState0
+    plasticState(ph)%partitionedState0 = plasticState(ph)%state0
+    plasticState(ph)%state             = plasticState(ph)%partitionedState0
+    forall(so = 1:phase_Nsources(ph))
+      sourceState(ph)%p(so)%partitionedState0 = sourceState(ph)%p(so)%state0
+      sourceState(ph)%p(so)%state             = sourceState(ph)%p(so)%partitionedState0
     end forall
 
     constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
-                                                maxval(sourceState(p)%p%sizeDotState))
+                                                maxval(sourceState(ph)%p%sizeDotState))
   enddo PhaseLoop2
   constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
@@ -617,26 +618,26 @@ end subroutine constitutive_LiAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_collectDotState(S, co, ip, el,phase,of) result(broken)
+function constitutive_damage_collectDotState(S, co, ip, el,ph,of) result(broken)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
-    phase, &
+    ph, &
     of
   real(pReal),  intent(in), dimension(3,3) :: &
     S                                                                                               !< 2nd Piola Kirchhoff stress (vector notation)
   integer :: &
-    i                                                                                               !< counter in source loop
+    so                                                                                               !< counter in source loop
   logical :: broken
 
 
   broken = .false.
 
-  SourceLoop: do i = 1, phase_Nsources(phase)
+  SourceLoop: do so = 1, phase_Nsources(ph)
 
-    sourceType: select case (phase_source(i,phase))
+    sourceType: select case (phase_source(so,ph))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
         call source_damage_anisoBrittle_dotState(S, co, ip, el) ! correct stress?
@@ -649,7 +650,7 @@ function constitutive_damage_collectDotState(S, co, ip, el,phase,of) result(brok
 
     end select sourceType
 
-    broken = broken .or. any(IEEE_is_NaN(sourceState(phase)%p(i)%dotState(:,of)))
+    broken = broken .or. any(IEEE_is_NaN(sourceState(ph)%p(so)%dotState(:,of)))
 
   enddo SourceLoop
 
