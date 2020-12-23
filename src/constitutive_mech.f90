@@ -1185,16 +1185,15 @@ end subroutine integrateStateRKCK45
 !--------------------------------------------------------------------------------------------------
 subroutine integrateStateRK(co,ip,el,A,B,CC,DB)
 
-
   real(pReal), dimension(:,:), intent(in) :: A
   real(pReal), dimension(:),   intent(in) :: B, CC
   real(pReal), dimension(:),   intent(in), optional :: DB
-
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
-  integer :: &
+
+ integer :: &
     stage, &                                                                                        ! stage index in integration stage loop
     n, &
     ph, &
@@ -1202,7 +1201,8 @@ subroutine integrateStateRK(co,ip,el,A,B,CC,DB)
     sizeDotState
   logical :: &
     broken
-  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B))                    :: plastic_RKdotState
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B)) :: plastic_RKdotState
+
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)

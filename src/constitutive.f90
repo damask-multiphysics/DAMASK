@@ -1250,97 +1250,97 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
   pp = material_phaseAt(co,el)
   m = material_phaseMemberAt(co,ip,el)
 
-        call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
-                                         crystallite_Fe(1:3,1:3,co,ip,el), &
-                                         constitutive_mech_Fi(pp)%data(1:3,1:3,m),co,ip,el)
-        call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
-                                           crystallite_S (1:3,1:3,co,ip,el), &
-                                           constitutive_mech_Fi(pp)%data(1:3,1:3,m), &
-                                           co,ip,el)
+  call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
+                                   crystallite_Fe(1:3,1:3,co,ip,el), &
+                                   constitutive_mech_Fi(pp)%data(1:3,1:3,m),co,ip,el)
+  call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
+                                     crystallite_S (1:3,1:3,co,ip,el), &
+                                     constitutive_mech_Fi(pp)%data(1:3,1:3,m), &
+                                     co,ip,el)
 
-        invFp = math_inv33(constitutive_mech_Fp(pp)%data(1:3,1:3,m))
-        invFi = math_inv33(constitutive_mech_Fi(pp)%data(1:3,1:3,m))
-        invSubFp0 = math_inv33(crystallite_subFp0(1:3,1:3,co,ip,el))
-        invSubFi0 = math_inv33(crystallite_subFi0(1:3,1:3,co,ip,el))
+  invFp = math_inv33(constitutive_mech_Fp(pp)%data(1:3,1:3,m))
+  invFi = math_inv33(constitutive_mech_Fi(pp)%data(1:3,1:3,m))
+  invSubFp0 = math_inv33(crystallite_subFp0(1:3,1:3,co,ip,el))
+  invSubFi0 = math_inv33(crystallite_subFi0(1:3,1:3,co,ip,el))
 
-        if (sum(abs(dLidS)) < tol_math_check) then
-          dFidS = 0.0_pReal
-        else
-          lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
-          do o=1,3; do p=1,3
-            lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
-                                  + crystallite_subdt(co,ip,el)*matmul(invSubFi0,dLidFi(1:3,1:3,o,p))
-            lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
-                                  + invFi*invFi(p,o)
-            rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
-                                  - crystallite_subdt(co,ip,el)*matmul(invSubFi0,dLidS(1:3,1:3,o,p))
-          enddo; enddo
-          call math_invert(temp_99,error,math_3333to99(lhs_3333))
-          if (error) then
-            call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
-                            ext_msg='inversion error in analytic tangent calculation')
-            dFidS = 0.0_pReal
-          else
-            dFidS = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
-          endif
-          dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
-        endif
+  if (sum(abs(dLidS)) < tol_math_check) then
+    dFidS = 0.0_pReal
+  else
+    lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
+    do o=1,3; do p=1,3
+      lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
+                            + crystallite_subdt(co,ip,el)*matmul(invSubFi0,dLidFi(1:3,1:3,o,p))
+      lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
+                            + invFi*invFi(p,o)
+      rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
+                            - crystallite_subdt(co,ip,el)*matmul(invSubFi0,dLidS(1:3,1:3,o,p))
+    enddo; enddo
+    call math_invert(temp_99,error,math_3333to99(lhs_3333))
+    if (error) then
+      call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
+                      ext_msg='inversion error in analytic tangent calculation')
+      dFidS = 0.0_pReal
+    else
+      dFidS = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
+    endif
+    dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
+  endif
 
-        call constitutive_plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                           crystallite_S (1:3,1:3,co,ip,el), &
-                                           constitutive_mech_Fi(pp)%data(1:3,1:3,m),co,ip,el)
-        dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
+  call constitutive_plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
+                                     crystallite_S (1:3,1:3,co,ip,el), &
+                                     constitutive_mech_Fi(pp)%data(1:3,1:3,m),co,ip,el)
+  dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
 !--------------------------------------------------------------------------------------------------
 ! calculate dSdF
-        temp_33_1 = transpose(matmul(invFp,invFi))
-        temp_33_2 = matmul(crystallite_subF(1:3,1:3,co,ip,el),invSubFp0)
-        temp_33_3 = matmul(matmul(crystallite_subF(1:3,1:3,co,ip,el),invFp), invSubFi0)
+  temp_33_1 = transpose(matmul(invFp,invFi))
+  temp_33_2 = matmul(crystallite_subF(1:3,1:3,co,ip,el),invSubFp0)
+  temp_33_3 = matmul(matmul(crystallite_subF(1:3,1:3,co,ip,el),invFp), invSubFi0)
 
-        do o=1,3; do p=1,3
-          rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
-          temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
-                                 + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
-        enddo; enddo
-        lhs_3333 = crystallite_subdt(co,ip,el)*math_mul3333xx3333(dSdFe,temp_3333) &
-                 + math_mul3333xx3333(dSdFi,dFidS)
+  do o=1,3; do p=1,3
+    rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
+    temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
+                           + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
+  enddo; enddo
+  lhs_3333 = crystallite_subdt(co,ip,el)*math_mul3333xx3333(dSdFe,temp_3333) &
+           + math_mul3333xx3333(dSdFi,dFidS)
 
-        call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
-        if (error) then
-          call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
-                          ext_msg='inversion error in analytic tangent calculation')
-          dSdF = rhs_3333
-        else
-          dSdF = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
-        endif
+  call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
+  if (error) then
+    call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
+                    ext_msg='inversion error in analytic tangent calculation')
+    dSdF = rhs_3333
+  else
+    dSdF = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! calculate dFpinvdF
-        temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
-        do o=1,3; do p=1,3
-          dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(co,ip,el) &
-                                * matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi))
-        enddo; enddo
+  temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
+  do o=1,3; do p=1,3
+    dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(co,ip,el) &
+                          * matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi))
+  enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
-        temp_33_1 = matmul(crystallite_S(1:3,1:3,co,ip,el),transpose(invFp))
-        temp_33_2 = matmul(invFp,temp_33_1)
-        temp_33_3 = matmul(crystallite_subF(1:3,1:3,co,ip,el),invFp)
-        temp_33_4 = matmul(temp_33_3,crystallite_S(1:3,1:3,co,ip,el))
+  temp_33_1 = matmul(crystallite_S(1:3,1:3,co,ip,el),transpose(invFp))
+  temp_33_2 = matmul(invFp,temp_33_1)
+  temp_33_3 = matmul(crystallite_subF(1:3,1:3,co,ip,el),invFp)
+  temp_33_4 = matmul(temp_33_3,crystallite_S(1:3,1:3,co,ip,el))
 
-        dPdF = 0.0_pReal
-        do p=1,3
-          dPdF(p,1:3,p,1:3) = transpose(temp_33_2)
-        enddo
-        do o=1,3; do p=1,3
-          dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
-                            + matmul(matmul(crystallite_subF(1:3,1:3,co,ip,el), &
-                                     dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
-                            + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
-                                     transpose(invFp)) &
-                            + matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
-        enddo; enddo
+  dPdF = 0.0_pReal
+  do p=1,3
+    dPdF(p,1:3,p,1:3) = transpose(temp_33_2)
+  enddo
+  do o=1,3; do p=1,3
+    dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
+                      + matmul(matmul(crystallite_subF(1:3,1:3,co,ip,el), &
+                               dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
+                      + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
+                               transpose(invFp)) &
+                      + matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
+  enddo; enddo
 
 end function crystallite_stressTangent
 
@@ -1385,14 +1385,16 @@ end subroutine crystallite_orientations
 !--------------------------------------------------------------------------------------------------
 function crystallite_push33ToRef(co,ip,el, tensor33)
 
-  real(pReal), dimension(3,3) :: crystallite_push33ToRef
   real(pReal), dimension(3,3), intent(in) :: tensor33
   real(pReal), dimension(3,3)             :: T
   integer, intent(in):: &
     el, &
     ip, &
     co
+  
+  real(pReal), dimension(3,3) :: crystallite_push33ToRef
 
+  
   T = matmul(material_orientation0(co,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
              transpose(math_inv33(crystallite_subF(1:3,1:3,co,ip,el))))
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
@@ -1410,6 +1412,7 @@ subroutine integrateSourceState(co,ip,el)
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
+  
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
@@ -1425,6 +1428,7 @@ subroutine integrateSourceState(co,ip,el)
   real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
     broken
+
 
   ph = material_phaseAt(co,el)
   c = material_phaseMemberAt(co,ip,el)
