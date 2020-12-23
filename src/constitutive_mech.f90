@@ -465,11 +465,11 @@ end subroutine constitutive_hooke_SandItsTangents
 module subroutine constitutive_plastic_dependentState(F, co, ip, el)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
+    co, &                                                                                           !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
   real(pReal),   intent(in), dimension(3,3) :: &
-    F                                                                                               !< elastic deformation gradient
+    F                                                                                               !< deformation gradient
 
   integer :: &
     ho, &                                                                                           !< homogenization
@@ -501,7 +501,7 @@ end subroutine constitutive_plastic_dependentState
 module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                      S, Fi, co, ip, el)
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
+    co, &                                                                                           !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
   real(pReal),   intent(in),  dimension(3,3) :: &
@@ -796,7 +796,7 @@ function integrateStress(co,ip,el,timeFraction) result(broken)
   m = material_phaseMemberAt(co,ip,el)
 
   Lpguess = crystallite_Lp(1:3,1:3,co,ip,el)                                                       ! take as first guess
-  Liguess = constitutive_mech_Li(p)%data(1:3,1:3,m)                                                      ! take as first guess
+  Liguess = constitutive_mech_Li(p)%data(1:3,1:3,m)                                                ! take as first guess
 
   call math_invert33(invFp_current,devNull,error,crystallite_subFp0(1:3,1:3,co,ip,el))
   if (error) return ! error
