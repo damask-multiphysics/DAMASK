@@ -3,6 +3,13 @@
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_mech
 
+  enum, bind(c); enumerator :: &
+    ELASTICITY_UNDEFINED_ID, &
+    ELASTICITY_HOOKE_ID, &
+    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
+    STIFFNESS_DEGRADATION_DAMAGE_ID
+  end enum
+  
   integer(kind(ELASTICITY_undefined_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
   integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &

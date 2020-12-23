@@ -164,11 +164,13 @@ subroutine materialpoint_stressAndItsTangent(dt)
   integer :: ce
 
 
-!--------------------------------------------------------------------------------------------------
-! initialize restoration points
+
+!$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate,NiterationHomog)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2);
 
+!--------------------------------------------------------------------------------------------------
+! initialize restoration points
       call constitutive_initializeRestorationPoints(ip,el)
 
       subFrac(ip,el) = 0.0_pReal
@@ -183,19 +185,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
       if (damageState(material_homogenizationAt(el))%sizeState > 0) &
           damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
           damageState(material_homogenizationAt(el))%State0(   :,material_homogenizationMemberAt(ip,el))
-    enddo
-  enddo
 
   NiterationHomog = 0
 
-  cutBackLooping: do while (.not. terminallyIll .and. &
-       any(subStep(FEsolving_execIP(1):FEsolving_execIP(2),&
-                   FEsolving_execElem(1):FEsolving_execElem(2)) > num%subStepMinHomog))
+  cutBackLooping: do while (.not. terminallyIll .and. subStep(ip,el) > num%subStepMinHomog)
 
-    !$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate)
-    elementLooping1: do el = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Nconstituents(material_homogenizationAt(el))
-      IpLooping1: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
 
         if (converged(ip,el)) then
           subFrac(ip,el) = subFrac(ip,el) + subStep(ip,el)
@@ -283,13 +278,15 @@ subroutine materialpoint_stressAndItsTangent(dt)
           endif
 
         enddo convergenceLooping
-      enddo IpLooping1
-    enddo elementLooping1
-    !$OMP END PARALLEL DO
+
 
     NiterationHomog = NiterationHomog + 1
 
   enddo cutBackLooping
+
+        enddo
+    enddo
+    !$OMP END PARALLEL DO
 
   if (.not. terminallyIll ) then
     call crystallite_orientations()                                                                 ! calculate crystal orientations
