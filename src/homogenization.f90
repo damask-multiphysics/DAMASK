@@ -302,7 +302,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
           endif
           converged(i,e) = .true.
           do co = 1, myNgrains
-            converged(i,e) = converged(i,e) .and. crystallite_stress2(co,i,e)
+            converged(i,e) = converged(i,e) .and. crystallite_stress(co,i,e)
           enddo
 
 

@@ -398,7 +398,6 @@ module constitutive
     converged, &
     crystallite_init, &
     crystallite_stress, &
-    crystallite_stress2, &
     crystallite_stressTangent, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
@@ -1005,165 +1004,14 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress()
-
-  logical, dimension(discretization_nIPs,discretization_Nelems) :: crystallite_stress
-  real(pReal) :: &
-    formerSubStep
-  integer :: &
-    NiterationCrystallite, &                                                                        ! number of iterations in crystallite loop
-    co, &                                                                                            !< counter in integration point component loop
-    ip, &                                                                                            !< counter in integration point loop
-    el, &                                                                                            !< counter in element loop
-    s, ph, me
-  logical, dimension(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: todo     !ToDo: need to set some values to false for different Ngrains
-  real(pReal), dimension(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems) :: subFrac     !ToDo: need to set some values to false for different Ngrains
-  real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
-    subLp0,&                                                                                        !< plastic velocity grad at start of crystallite inc
-    subLi0                                                                                          !< intermediate velocity grad at start of crystallite inc
-
-  todo = .false.
-
-  allocate(subLi0(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems))
-  subLp0 = crystallite_partitionedLp0
-
-!--------------------------------------------------------------------------------------------------
-! initialize to starting condition
-  crystallite_subStep = 0.0_pReal
-  !$OMP PARALLEL DO PRIVATE(ph,me)
-  elementLooping1: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2); do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-            ph = material_phaseAt(co,el)
-            me = material_phaseMemberAt(co,ip,el)
-      subLi0(1:3,1:3,co,ip,el) = constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me)
-      homogenizationRequestsCalculation: if (crystallite_requested(co,ip,el)) then
-        plasticState    (material_phaseAt(co,el))%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
-        plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phaseMemberAt(co,ip,el))
-
-        do s = 1, phase_Nsources(material_phaseAt(co,el))
-          sourceState(material_phaseAt(co,el))%p(s)%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
-          sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phaseMemberAt(co,ip,el))
-        enddo
-        crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me)
-        crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me)
-        crystallite_subF0(1:3,1:3,co,ip,el)  = crystallite_partitionedF0(1:3,1:3,co,ip,el)
-        subFrac(co,ip,el) = 0.0_pReal
-        crystallite_subStep(co,ip,el) = 1.0_pReal/num%subStepSizeCryst
-        todo(co,ip,el) = .true.
-        crystallite_converged(co,ip,el) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
-      endif homogenizationRequestsCalculation
-    enddo; enddo
-  enddo elementLooping1
-  !$OMP END PARALLEL DO
-
-  NiterationCrystallite = 0
-  cutbackLooping: do while (any(todo(:,FEsolving_execIP(1):FEsolving_execIP(2),FEsolving_execELem(1):FEsolving_execElem(2))))
-    NiterationCrystallite = NiterationCrystallite + 1
-
-#ifdef DEBUG
-    if (debugCrystallite%extensive) &
-      print'(a,i6)', '<< CRYST stress >> crystallite iteration ',NiterationCrystallite
-#endif
-    !$OMP PARALLEL DO PRIVATE(formerSubStep,ph,me)
-    elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-      do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-        do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-            ph = material_phaseAt(co,el)
-            me = material_phaseMemberAt(co,ip,el)
-!--------------------------------------------------------------------------------------------------
-!  wind forward
-          if (crystallite_converged(co,ip,el)) then
-            formerSubStep = crystallite_subStep(co,ip,el)
-            subFrac(co,ip,el) = subFrac(co,ip,el) + crystallite_subStep(co,ip,el)
-            crystallite_subStep(co,ip,el) = min(1.0_pReal - subFrac(co,ip,el), &
-                                             num%stepIncreaseCryst * crystallite_subStep(co,ip,el))
-
-            todo(co,ip,el) = crystallite_subStep(co,ip,el) > 0.0_pReal                        ! still time left to integrate on?
-
-            if (todo(co,ip,el)) then
-              crystallite_subF0 (1:3,1:3,co,ip,el) = crystallite_subF(1:3,1:3,co,ip,el)
-              subLp0(1:3,1:3,co,ip,el) = crystallite_Lp  (1:3,1:3,co,ip,el)
-              subLi0(1:3,1:3,co,ip,el) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
-              crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
-              crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
-              plasticState(    material_phaseAt(co,el))%subState0(:,material_phaseMemberAt(co,ip,el)) &
-                = plasticState(material_phaseAt(co,el))%state(    :,material_phaseMemberAt(co,ip,el))
-              do s = 1, phase_Nsources(material_phaseAt(co,el))
-                sourceState(    material_phaseAt(co,el))%p(s)%subState0(:,material_phaseMemberAt(co,ip,el)) &
-                  = sourceState(material_phaseAt(co,el))%p(s)%state(    :,material_phaseMemberAt(co,ip,el))
-              enddo
-            endif
-
-!--------------------------------------------------------------------------------------------------
-!  cut back (reduced time and restore)
-          else
-            crystallite_subStep(co,ip,el)       = num%subStepSizeCryst * crystallite_subStep(co,ip,el)
-            constitutive_mech_Fp(ph)%data(1:3,1:3,me) =            crystallite_subFp0(1:3,1:3,co,ip,el)
-            constitutive_mech_Fi(ph)%data(1:3,1:3,me) =            crystallite_subFi0(1:3,1:3,co,ip,el)
-            crystallite_S    (1:3,1:3,co,ip,el) =            crystallite_S0    (1:3,1:3,co,ip,el)
-            if (crystallite_subStep(co,ip,el) < 1.0_pReal) then                                        ! actual (not initial) cutback
-              crystallite_Lp (1:3,1:3,co,ip,el) =            subLp0(1:3,1:3,co,ip,el)
-              constitutive_mech_Li(ph)%data(1:3,1:3,me) =            subLi0(1:3,1:3,co,ip,el)
-            endif
-            plasticState    (material_phaseAt(co,el))%state(    :,material_phaseMemberAt(co,ip,el)) &
-              = plasticState(material_phaseAt(co,el))%subState0(:,material_phaseMemberAt(co,ip,el))
-            do s = 1, phase_Nsources(material_phaseAt(co,el))
-              sourceState(    material_phaseAt(co,el))%p(s)%state(    :,material_phaseMemberAt(co,ip,el)) &
-                = sourceState(material_phaseAt(co,el))%p(s)%subState0(:,material_phaseMemberAt(co,ip,el))
-            enddo
-
-                                                                                                    ! cant restore dotState here, since not yet calculated in first cutback after initialization
-            todo(co,ip,el) = crystallite_subStep(co,ip,el) > num%subStepMinCryst                          ! still on track or already done (beyond repair)
-          endif
-
-!--------------------------------------------------------------------------------------------------
-!  prepare for integration
-          if (todo(co,ip,el)) then
-            crystallite_subF(1:3,1:3,co,ip,el) = crystallite_subF0(1:3,1:3,co,ip,el) &
-                                            + crystallite_subStep(co,ip,el) *( crystallite_partitionedF (1:3,1:3,co,ip,el) &
-                                                                           -crystallite_partitionedF0(1:3,1:3,co,ip,el))
-            crystallite_Fe(1:3,1:3,co,ip,el) = matmul(crystallite_subF(1:3,1:3,co,ip,el), &
-                                                   math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
-                                                                     constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
-            crystallite_subdt(co,ip,el) = crystallite_subStep(co,ip,el) * crystallite_dt(co,ip,el)
-            crystallite_converged(co,ip,el) = .false.
-            call integrateState(co,ip,el)
-            call integrateSourceState(co,ip,el)
-          endif
-
-        enddo
-      enddo
-    enddo elementLooping3
-    !$OMP END PARALLEL DO
-
-!--------------------------------------------------------------------------------------------------
-!  integrate --- requires fully defined state array (basic + dependent state)
-    where(.not. crystallite_converged .and. crystallite_subStep > num%subStepMinCryst) &            ! do not try non-converged but fully cutbacked any further
-      todo = .true.                                                                                 ! TODO: again unroll this into proper elementloop to avoid N^2 for single point evaluation
-  enddo cutbackLooping
-
-! return whether converged or not
-  crystallite_stress = .false.
-  elementLooping5: do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-      crystallite_stress(ip,el) = all(crystallite_converged(:,ip,el))
-    enddo
-  enddo elementLooping5
-
-end function crystallite_stress
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculate stress (P)
-!--------------------------------------------------------------------------------------------------
-function crystallite_stress2(co,ip,el)
+function crystallite_stress(co,ip,el)
 
   integer, intent(in) :: &
     co, &
     ip, &
     el
 
-  logical :: crystallite_stress2
+  logical :: crystallite_stress
 
   real(pReal) :: &
     formerSubStep
@@ -1280,9 +1128,9 @@ function crystallite_stress2(co,ip,el)
   enddo cutbackLooping
 
 ! return whether converged or not
-  crystallite_stress2 = crystallite_converged(co,ip,el)
+  crystallite_stress = crystallite_converged(co,ip,el)
 
-end function crystallite_stress2
+end function crystallite_stress
 
 
 !--------------------------------------------------------------------------------------------------
