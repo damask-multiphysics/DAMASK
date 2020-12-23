@@ -42,8 +42,6 @@ module constitutive
     KINEMATICS_SLIPPLANE_OPENING_ID, &
     KINEMATICS_THERMAL_EXPANSION_ID
   end enum
-  real(pReal),               dimension(:,:,:),        allocatable, public :: &
-    crystallite_dt                                                                                  !< requested time increment of each grain
   real(pReal),               dimension(:,:,:),        allocatable :: &
     crystallite_subdt                                                                               !< substepped time increment of each grain
   type(rotation),            dimension(:,:,:),        allocatable :: &
@@ -876,9 +874,7 @@ subroutine crystallite_init
            crystallite_subFp0,crystallite_subFi0, &
            source = crystallite_partitionedF)
 
-  allocate(crystallite_dt(cMax,iMax,eMax),source=0.0_pReal)
-  allocate(crystallite_subdt, &
-           source = crystallite_dt)
+  allocate(crystallite_subdt(cMax,iMax,eMax),source=0.0_pReal)
 
   allocate(crystallite_orientation(cMax,iMax,eMax))
 
@@ -995,8 +991,9 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-function crystallite_stress(co,ip,el)
+function crystallite_stress(dt,co,ip,el)
 
+  real(pReal), intent(in) :: dt
   integer, intent(in) :: &
     co, &
     ip, &
@@ -1094,7 +1091,7 @@ function crystallite_stress(co,ip,el)
      crystallite_Fe(1:3,1:3,co,ip,el) = matmul(crystallite_subF(1:3,1:3,co,ip,el), &
                                             math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                               constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
-     crystallite_subdt(co,ip,el) = subStep * crystallite_dt(co,ip,el)
+     crystallite_subdt(co,ip,el) = subStep * dt
      crystallite_converged(co,ip,el) = .false.
      call integrateState(co,ip,el)
      call integrateSourceState(co,ip,el)

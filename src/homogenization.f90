@@ -255,10 +255,9 @@ subroutine materialpoint_stressAndItsTangent(dt)
                                       + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))&
                                          *(subStep(ip,el)+subFrac(ip,el)), &
                                       ip,el)
-            crystallite_dt(1:myNgrains,ip,el) = dt*subStep(ip,el)                                       ! propagate materialpoint dt to grains
             converged(ip,el) = .true.
             do co = 1, myNgrains
-              converged(ip,el) = converged(ip,el) .and. crystallite_stress(co,ip,el)
+              converged(ip,el) = converged(ip,el) .and. crystallite_stress(dt*subStep(ip,el),co,ip,el)
             enddo
           endif
 
