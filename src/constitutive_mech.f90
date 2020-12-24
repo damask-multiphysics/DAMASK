@@ -1409,9 +1409,9 @@ module subroutine mech_initializeRestorationPoints(ph,me)
   integer, intent(in) :: ph, me
 
 
-  constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
-  constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
-  constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state0(:,me)
 
 end subroutine mech_initializeRestorationPoints
@@ -1425,9 +1425,9 @@ module subroutine constitutive_mech_windForward(ph,me)
   integer, intent(in) :: ph, me
 
 
-  constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
-  constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
-  constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
 
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state(:,me)
 
@@ -1504,7 +1504,7 @@ module function crystallite_stress(dt,co,ip,el)
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
-  subLi0 = constitutive_mech_partionedLi0(ph)%data(1:3,1:3,me)
+  subLi0 = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
   subLp0 = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
   plasticState    (material_phaseAt(co,el))%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
   plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phaseMemberAt(co,ip,el))
@@ -1513,8 +1513,8 @@ module function crystallite_stress(dt,co,ip,el)
     sourceState(material_phaseAt(co,el))%p(s)%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
     sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phaseMemberAt(co,ip,el))
   enddo
-  crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me)
-  crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me)
+  crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
+  crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
   subF0  = crystallite_partitionedF0(1:3,1:3,co,ip,el)
   subFrac = 0.0_pReal
   subStep = 1.0_pReal/num%subStepSizeCryst
@@ -1566,7 +1566,6 @@ module function crystallite_stress(dt,co,ip,el)
           = sourceState(material_phaseAt(co,el))%p(s)%subState0(:,material_phaseMemberAt(co,ip,el))
       enddo
 
-                                                                                              ! cant restore dotState here, since not yet calculated in first cutback after initialization
       todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)
     endif
 

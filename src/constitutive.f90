@@ -76,13 +76,13 @@ module constitutive
   type(tTensorContainer), dimension(:), allocatable :: &
     constitutive_mech_Fi, &
     constitutive_mech_Fi0, &
-    constitutive_mech_partionedFi0, &
+    constitutive_mech_partitionedFi0, &
     constitutive_mech_Li, &
     constitutive_mech_Li0, &
-    constitutive_mech_partionedLi0, &
+    constitutive_mech_partitionedLi0, &
     constitutive_mech_Fp, &
     constitutive_mech_Fp0, &
-    constitutive_mech_partionedFp0
+    constitutive_mech_partitionedFp0
 
 
   type :: tNumerics
@@ -913,25 +913,25 @@ subroutine crystallite_init
 
   allocate(constitutive_mech_Fi(phases%length))
   allocate(constitutive_mech_Fi0(phases%length))
-  allocate(constitutive_mech_partionedFi0(phases%length))
+  allocate(constitutive_mech_partitionedFi0(phases%length))
   allocate(constitutive_mech_Fp(phases%length))
   allocate(constitutive_mech_Fp0(phases%length))
-  allocate(constitutive_mech_partionedFp0(phases%length))
+  allocate(constitutive_mech_partitionedFp0(phases%length))
   allocate(constitutive_mech_Li(phases%length))
   allocate(constitutive_mech_Li0(phases%length))
-  allocate(constitutive_mech_partionedLi0(phases%length))
+  allocate(constitutive_mech_partitionedLi0(phases%length))
   do ph = 1, phases%length
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
     allocate(constitutive_mech_Fi(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fi0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partionedFi0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_partitionedFi0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fp(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Fp0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partionedFp0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_partitionedFp0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Li(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Li0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partionedLi0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_partitionedLi0(ph)%data(3,3,Nconstituents))
   enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -957,8 +957,8 @@ subroutine crystallite_init
       constitutive_mech_Fp(ph)%data(1:3,1:3,me)  = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
       constitutive_mech_Fi(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
 
-      constitutive_mech_partionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
-      constitutive_mech_partionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
+      constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
+      constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
 
     enddo; enddo
   enddo
@@ -1063,11 +1063,11 @@ subroutine crystallite_restore(ip,el,includeL)
   m = material_phaseMemberAt(co,ip,el)
     if (includeL) then
       crystallite_Lp(1:3,1:3,co,ip,el) = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
-      constitutive_mech_Li(p)%data(1:3,1:3,m) = constitutive_mech_partionedLi0(p)%data(1:3,1:3,m)
+      constitutive_mech_Li(p)%data(1:3,1:3,m) = constitutive_mech_partitionedLi0(p)%data(1:3,1:3,m)
     endif                                                                                           ! maybe protecting everything from overwriting makes more sense
 
-    constitutive_mech_Fp(p)%data(1:3,1:3,m)   = constitutive_mech_partionedFp0(p)%data(1:3,1:3,m)
-    constitutive_mech_Fi(p)%data(1:3,1:3,m)   = constitutive_mech_partionedFi0(p)%data(1:3,1:3,m)
+    constitutive_mech_Fp(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFp0(p)%data(1:3,1:3,m)
+    constitutive_mech_Fi(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFi0(p)%data(1:3,1:3,m)
     crystallite_S (1:3,1:3,co,ip,el)   = crystallite_partitionedS0 (1:3,1:3,co,ip,el)
 
     plasticState    (material_phaseAt(co,el))%state(          :,material_phasememberAt(co,ip,el)) = &
