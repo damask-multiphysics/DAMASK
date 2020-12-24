@@ -13,7 +13,6 @@ module CPFEM
   use discretization_marc
   use material
   use config
-  use crystallite
   use homogenization
   use IO
   use discretization
@@ -262,6 +261,7 @@ end subroutine CPFEM_general
 subroutine CPFEM_forward
 
   call crystallite_forward
+  call constitutive_forward
 
 end subroutine CPFEM_forward
 

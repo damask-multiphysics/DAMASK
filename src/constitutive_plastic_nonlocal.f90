@@ -10,7 +10,8 @@ submodule(constitutive:constitutive_mech) plastic_nonlocal
     IPneighborhood  => geometry_plastic_nonlocal_IPneighborhood, &
     IPvolume        => geometry_plastic_nonlocal_IPvolume0, &
     IParea          => geometry_plastic_nonlocal_IParea0, &
-    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0
+    IPareaNormal    => geometry_plastic_nonlocal_IPareaNormal0, &
+    geometry_plastic_nonlocal_disable
 
   real(pReal), parameter :: &
     kB = 1.38e-23_pReal                                                                             !< Boltzmann constant in J/Kelvin
@@ -195,7 +196,7 @@ module function plastic_nonlocal_init() result(myPlasticity)
     call geometry_plastic_nonlocal_disable
     return
   endif
-  
+
   print*, 'Reuber et al., Acta Materialia 71:333–348, 2014'
   print*, 'https://doi.org/10.1016/j.actamat.2014.03.012'//IO_EOL
 

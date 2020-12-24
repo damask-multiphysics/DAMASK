@@ -21,7 +21,6 @@ module CPFEM2
   use HDF5_utilities
   use homogenization
   use constitutive
-  use crystallite
 #if    defined(Mesh)
   use FEM_quadrature
   use discretization_mesh
@@ -99,6 +98,7 @@ end subroutine CPFEM_restartWrite
 subroutine CPFEM_forward
 
   call crystallite_forward
+  call constitutive_forward
 
 end subroutine CPFEM_forward
 

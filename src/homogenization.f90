@@ -11,14 +11,11 @@ module homogenization
   use math
   use material
   use constitutive
-  use crystallite
   use FEsolving
   use discretization
   use thermal_isothermal
-  use thermal_adiabatic
   use thermal_conduction
   use damage_none
-  use damage_local
   use damage_nonlocal
   use results
 
@@ -162,11 +159,9 @@ subroutine homogenization_init
   call mech_init(num_homog)
 
   if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
-  if (any(thermal_type == THERMAL_adiabatic_ID))  call thermal_adiabatic_init
   if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init
 
   if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
-  if (any(damage_type == DAMAGE_local_ID))     call damage_local_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
 
 
@@ -212,10 +207,6 @@ subroutine materialpoint_stressAndItsTangent(dt)
           homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
           homogState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
 
-      if (thermalState(material_homogenizationAt(e))%sizeState > 0) &
-          thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-          thermalState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
-
       if (damageState(material_homogenizationAt(e))%sizeState > 0) &
           damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
           damageState(material_homogenizationAt(e))%State0(   :,material_homogenizationMemberAt(i,e))
@@ -245,9 +236,6 @@ subroutine materialpoint_stressAndItsTangent(dt)
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                 homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
                 homogState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
-            if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
-                thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
-                thermalState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
             if(damageState(material_homogenizationAt(e))%sizeState > 0) &
                 damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e)) = &
                 damageState(material_homogenizationAt(e))%State    (:,material_homogenizationMemberAt(i,e))
@@ -266,13 +254,11 @@ subroutine materialpoint_stressAndItsTangent(dt)
             subStep(i,e) = num%subStepSizeHomog * subStep(i,e)                                      ! crystallite had severe trouble, so do a significant cutback
 
             call crystallite_restore(i,e,subStep(i,e) < 1.0_pReal)
+            call constitutive_restore(i,e)
 
             if(homogState(material_homogenizationAt(e))%sizeState > 0) &
                 homogState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
                 homogState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
-            if(thermalState(material_homogenizationAt(e))%sizeState > 0) &
-                thermalState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
-                thermalState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
             if(damageState(material_homogenizationAt(e))%sizeState > 0) &
                 damageState(material_homogenizationAt(e))%State(    :,material_homogenizationMemberAt(i,e)) = &
                 damageState(material_homogenizationAt(e))%subState0(:,material_homogenizationMemberAt(i,e))
@@ -400,24 +386,6 @@ function updateState(subdt,subF,ip,el)
                                el)
   end select chosenHomogenization
 
-  chosenThermal: select case (thermal_type(material_homogenizationAt(el)))
-    case (THERMAL_adiabatic_ID) chosenThermal
-      updateState = &
-        updateState .and. &
-        thermal_adiabatic_updateState(subdt, &
-                                      ip, &
-                                      el)
-  end select chosenThermal
-
-  chosenDamage: select case (damage_type(material_homogenizationAt(el)))
-    case (DAMAGE_local_ID) chosenDamage
-      updateState = &
-        updateState .and. &
-        damage_local_updateState(subdt, &
-                                 ip, &
-                                 el)
-  end select chosenDamage
-
 end function updateState
 
 
@@ -441,8 +409,6 @@ subroutine homogenization_results
     group = trim(group_base)//'/damage'
     call results_closeGroup(results_addGroup(group))
     select case(damage_type(p))
-      case(DAMAGE_LOCAL_ID)
-        call damage_local_results(p,group)
       case(DAMAGE_NONLOCAL_ID)
         call damage_nonlocal_results(p,group)
     end select
@@ -450,8 +416,6 @@ subroutine homogenization_results
     group = trim(group_base)//'/thermal'
     call results_closeGroup(results_addGroup(group))
     select case(thermal_type(p))
-      case(THERMAL_ADIABATIC_ID)
-        call thermal_adiabatic_results(p,group)
       case(THERMAL_CONDUCTION_ID)
         call thermal_conduction_results(p,group)
     end select
