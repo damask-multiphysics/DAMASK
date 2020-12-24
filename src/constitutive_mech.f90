@@ -791,6 +791,8 @@ function integrateStress(co,ip,el,timeFraction) result(broken)
                                       o, &
                                       p, &
                                       m, &
+                                      ph, &
+                                      me, &
                                       jacoCounterLp, &
                                       jacoCounterLi                                                 ! counters to check for Jacobian update
   logical :: error,broken
@@ -808,11 +810,11 @@ function integrateStress(co,ip,el,timeFraction) result(broken)
 
   call constitutive_plastic_dependentState(crystallite_partitionedF(1:3,1:3,co,ip,el),co,ip,el)
 
-  p = material_phaseAt(co,el)
-  m = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseAt(co,el)
+  me = material_phaseMemberAt(co,ip,el)
 
   Lpguess = crystallite_Lp(1:3,1:3,co,ip,el)                                                       ! take as first guess
-  Liguess = constitutive_mech_Li(p)%data(1:3,1:3,m)                                                ! take as first guess
+  Liguess = constitutive_mech_Li(ph)%data(1:3,1:3,me)                                              ! take as first guess
 
   call math_invert33(invFp_current,devNull,error,crystallite_subFp0(1:3,1:3,co,ip,el))
   if (error) return ! error
@@ -941,15 +943,12 @@ function integrateStress(co,ip,el,timeFraction) result(broken)
   call math_invert33(Fp_new,devNull,error,invFp_new)
   if (error) return ! error
 
-  p = material_phaseAt(co,el)
-  m = material_phaseMemberAt(co,ip,el)
-
   crystallite_P    (1:3,1:3,co,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
   crystallite_S    (1:3,1:3,co,ip,el) = S
   crystallite_Lp   (1:3,1:3,co,ip,el) = Lpguess
-  constitutive_mech_Li(p)%data(1:3,1:3,m) = Liguess
-  constitutive_mech_Fp(p)%data(1:3,1:3,m) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)         ! regularize
-  constitutive_mech_Fi(p)%data(1:3,1:3,m) = Fi_new
+  constitutive_mech_Li(ph)%data(1:3,1:3,me) = Liguess
+  constitutive_mech_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)         ! regularize
+  constitutive_mech_Fi(ph)%data(1:3,1:3,me) = Fi_new
   crystallite_Fe   (1:3,1:3,co,ip,el) = matmul(matmul(F,invFp_new),invFi_new)
   broken = .false.
 
@@ -970,17 +969,13 @@ module subroutine integrateStateFPI(co,ip,el)
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
     me, &
-    s, &
     size_pl
-  integer, dimension(maxval(phase_Nsources)) :: &
-    size_so
   real(pReal) :: &
     zeta
-  real(pReal), dimension(max(constitutive_plasticity_maxSizeDotState,constitutive_source_maxSizeDotState)) :: &
+  real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
     r                                                                                               ! state residuum
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,2) :: &
     plastic_dotState
-  real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
     broken
 
@@ -1199,10 +1194,10 @@ end subroutine integrateStateRKCK45
 !> @brief Integrate state (including stress integration) with an explicit Runge-Kutta method or an
 !! embedded explicit Runge-Kutta method
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateRK(co,ip,el,A,B,CC,DB)
+subroutine integrateStateRK(co,ip,el,A,B,C,DB)
 
   real(pReal), dimension(:,:), intent(in) :: A
-  real(pReal), dimension(:),   intent(in) :: B, CC
+  real(pReal), dimension(:),   intent(in) :: B, C
   real(pReal), dimension(:),   intent(in), optional :: DB
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
@@ -1242,10 +1237,10 @@ subroutine integrateStateRK(co,ip,el,A,B,CC,DB)
                                             + plasticState(ph)%dotState (1:sizeDotState,me) &
                                               * crystallite_subdt(co,ip,el)
 
-    broken = integrateStress(co,ip,el,CC(stage))
+    broken = integrateStress(co,ip,el,C(stage))
     if(broken) exit
 
-    broken = mech_collectDotState(crystallite_subdt(co,ip,el)*CC(stage), co,ip,el,ph,me)
+    broken = mech_collectDotState(crystallite_subdt(co,ip,el)*C(stage), co,ip,el,ph,me)
     if(broken) exit
 
   enddo
@@ -1275,7 +1270,6 @@ subroutine integrateStateRK(co,ip,el,A,B,CC,DB)
 
 
 end subroutine integrateStateRK
-
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1354,22 +1348,22 @@ subroutine crystallite_results(group,ph)
   !------------------------------------------------------------------------------------------------
   !> @brief select tensors for output
   !------------------------------------------------------------------------------------------------
-  function select_tensors(dataset,instance)
+  function select_tensors(dataset,ph)
 
-    integer, intent(in) :: instance
+    integer, intent(in) :: ph
     real(pReal), dimension(:,:,:,:,:), intent(in) :: dataset
     real(pReal), allocatable, dimension(:,:,:) :: select_tensors
-    integer :: e,i,c,j
+    integer :: el,ip,co,j
 
-    allocate(select_tensors(3,3,count(material_phaseAt==instance)*discretization_nIPs))
+    allocate(select_tensors(3,3,count(material_phaseAt==ph)*discretization_nIPs))
 
     j=0
-    do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIPs
-        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
-          if (material_phaseAt(c,e) == instance) then
+    do el = 1, size(material_phaseAt,2)
+      do ip = 1, discretization_nIPs
+        do co = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
+          if (material_phaseAt(co,el) == ph) then
             j = j + 1
-            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,c,i,e)
+            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,co,ip,el)
           endif
         enddo
       enddo
@@ -1381,22 +1375,22 @@ subroutine crystallite_results(group,ph)
 !--------------------------------------------------------------------------------------------------
 !> @brief select rotations for output
 !--------------------------------------------------------------------------------------------------
-  function select_rotations(dataset,instance)
+  function select_rotations(dataset,ph)
 
-    integer, intent(in) :: instance
+    integer, intent(in) :: ph
     type(rotation), dimension(:,:,:), intent(in) :: dataset
     real(pReal), allocatable, dimension(:,:) :: select_rotations
-    integer :: e,i,c,j
+    integer :: el,ip,co,j
 
-    allocate(select_rotations(4,count(material_phaseAt==instance)*homogenization_maxNconstituents*discretization_nIPs))
+    allocate(select_rotations(4,count(material_phaseAt==ph)*homogenization_maxNconstituents*discretization_nIPs))
 
     j=0
-    do e = 1, size(material_phaseAt,2)
-      do i = 1, discretization_nIPs
-        do c = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
-           if (material_phaseAt(c,e) == instance) then
+    do el = 1, size(material_phaseAt,2)
+      do ip = 1, discretization_nIPs
+        do co = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
+           if (material_phaseAt(co,el) == ph) then
              j = j + 1
-             select_rotations(1:4,j) = dataset(c,i,e)%asQuaternion()
+             select_rotations(1:4,j) = dataset(co,ip,el)%asQuaternion()
            endif
         enddo
       enddo
