@@ -184,11 +184,10 @@ subroutine materialpoint_stressAndItsTangent(dt)
           damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
           damageState(material_homogenizationAt(el))%State0(   :,material_homogenizationMemberAt(ip,el))
 
-  NiterationHomog = 0
+      NiterationHomog = 0
+      cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
-  cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
-
-      myNgrains = homogenization_Nconstituents(material_homogenizationAt(el))
+        myNgrains = homogenization_Nconstituents(material_homogenizationAt(el))
 
         if (converged) then
           subFrac = subFrac + subStep
@@ -238,7 +237,6 @@ subroutine materialpoint_stressAndItsTangent(dt)
 
 
         NiterationMPstate = 0
-
         convergenceLooping: do while (.not. terminallyIll .and. requested &
                        .and. .not. doneAndHappy(1) &
                        .and. NiterationMPstate < num%nMPstate)
@@ -275,15 +273,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
           endif
 
         enddo convergenceLooping
+        NiterationHomog = NiterationHomog + 1
 
-
-    NiterationHomog = NiterationHomog + 1
-
-  enddo cutBackLooping
-
-        enddo
+      enddo cutBackLooping
     enddo
-    !$OMP END PARALLEL DO
+  enddo
+  !$OMP END PARALLEL DO
 
   if (.not. terminallyIll ) then
     call crystallite_orientations()                                                                 ! calculate crystal orientations
