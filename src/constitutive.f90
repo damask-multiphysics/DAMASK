@@ -1126,8 +1126,8 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 !--------------------------------------------------------------------------------------------------
 ! calculate dSdF
   temp_33_1 = transpose(matmul(invFp,invFi))
-  temp_33_2 = matmul(crystallite_subF(1:3,1:3,co,ip,el),invSubFp0)
-  temp_33_3 = matmul(matmul(crystallite_subF(1:3,1:3,co,ip,el),invFp), invSubFi0)
+  temp_33_2 = matmul(crystallite_partitionedF(1:3,1:3,co,ip,el),invSubFp0)
+  temp_33_3 = matmul(matmul(crystallite_partitionedF(1:3,1:3,co,ip,el),invFp), invSubFi0)
 
   do o=1,3; do p=1,3
     rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
@@ -1158,7 +1158,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 ! assemble dPdF
   temp_33_1 = matmul(crystallite_S(1:3,1:3,co,ip,el),transpose(invFp))
   temp_33_2 = matmul(invFp,temp_33_1)
-  temp_33_3 = matmul(crystallite_subF(1:3,1:3,co,ip,el),invFp)
+  temp_33_3 = matmul(crystallite_partitionedF(1:3,1:3,co,ip,el),invFp)
   temp_33_4 = matmul(temp_33_3,crystallite_S(1:3,1:3,co,ip,el))
 
   dPdF = 0.0_pReal
@@ -1167,7 +1167,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
   enddo
   do o=1,3; do p=1,3
     dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
-                      + matmul(matmul(crystallite_subF(1:3,1:3,co,ip,el), &
+                      + matmul(matmul(crystallite_partitionedF(1:3,1:3,co,ip,el), &
                                dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
                       + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
                                transpose(invFp)) &
@@ -1214,7 +1214,7 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
 
 
   T = matmul(material_orientation0(co,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
-             transpose(math_inv33(crystallite_subF(1:3,1:3,co,ip,el))))
+             transpose(math_inv33(crystallite_partitionedF(1:3,1:3,co,ip,el))))
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
