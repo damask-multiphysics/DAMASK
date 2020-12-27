@@ -205,26 +205,24 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
                 damageState(ho)%State    (:,material_homogenizationMemberAt(ip,el))
 
           endif steppingNeeded
-        else
-          if ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
+        elseif ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
                num%subStepSizeHomog * subStep <=  num%subStepMinHomog ) then                   ! would require too small subStep
                                                                                                     ! cutback makes no sense
-            if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
-              print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
-            terminallyIll = .true.                                                                  ! ...and kills all others
-          else                                                                                      ! cutback makes sense
-            subStep = num%subStepSizeHomog * subStep                                      ! crystallite had severe trouble, so do a significant cutback
+          if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
+            print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
+          terminallyIll = .true.                                                                  ! ...and kills all others
+        else                                                                                      ! cutback makes sense
+          subStep = num%subStepSizeHomog * subStep                                      ! crystallite had severe trouble, so do a significant cutback
 
-            call crystallite_restore(ip,el,subStep < 1.0_pReal)
-            call constitutive_restore(ip,el)
+          call crystallite_restore(ip,el,subStep < 1.0_pReal)
+          call constitutive_restore(ip,el)
 
-            if(homogState(ho)%sizeState > 0) &
-                homogState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
-                homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
-            if(damageState(ho)%sizeState > 0) &
-                damageState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
-                damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
-          endif
+          if(homogState(ho)%sizeState > 0) &
+              homogState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
+              homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
+          if(damageState(ho)%sizeState > 0) &
+              damageState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
+              damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
         endif
 
         if (subStep > num%subStepMinHomog) doneAndHappy = [.false.,.true.]
