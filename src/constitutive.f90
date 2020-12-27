@@ -1089,7 +1089,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
     el                                                                                               !< counter in element loop
   integer :: &
     o, &
-    p, pp, m
+    p, ph, me
 
   real(pReal), dimension(3,3)     ::   devNull, &
                                        invSubFp0,invSubFi0,invFp,invFi, &
@@ -1109,19 +1109,19 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
   real(pReal), dimension(9,9)::        temp_99
   logical :: error
 
-  pp = material_phaseAt(co,el)
-  m = material_phaseMemberAt(co,ip,el)
+  ph = material_phaseAt(co,el)
+  me = material_phaseMemberAt(co,ip,el)
 
   call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
                                    crystallite_Fe(1:3,1:3,co,ip,el), &
-                                   constitutive_mech_Fi(pp)%data(1:3,1:3,m),co,ip,el)
+                                   constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
   call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
                                      crystallite_S (1:3,1:3,co,ip,el), &
-                                     constitutive_mech_Fi(pp)%data(1:3,1:3,m), &
+                                     constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                      co,ip,el)
 
-  invFp = math_inv33(constitutive_mech_Fp(pp)%data(1:3,1:3,m))
-  invFi = math_inv33(constitutive_mech_Fi(pp)%data(1:3,1:3,m))
+  invFp = math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,me))
+  invFi = math_inv33(constitutive_mech_Fi(ph)%data(1:3,1:3,me))
   invSubFp0 = math_inv33(crystallite_subFp0(1:3,1:3,co,ip,el))
   invSubFi0 = math_inv33(crystallite_subFi0(1:3,1:3,co,ip,el))
 
@@ -1150,7 +1150,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 
   call constitutive_plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
                                      crystallite_S (1:3,1:3,co,ip,el), &
-                                     constitutive_mech_Fi(pp)%data(1:3,1:3,m),co,ip,el)
+                                     constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
   dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
 !--------------------------------------------------------------------------------------------------
