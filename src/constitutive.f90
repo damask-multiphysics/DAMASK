@@ -64,10 +64,6 @@ module constitutive
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_partitionedF                                                                        !< def grad to be reached at end of homog inc
 
-  logical,                    dimension(:,:,:),       allocatable :: &
-    crystallite_converged                                                                           !< convergence flag
-
-
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
   end type
@@ -185,10 +181,10 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
-    module function crystallite_stress(dt,co,ip,el)
+    module function crystallite_stress(dt,co,ip,el) result(converged_)
       real(pReal), intent(in) :: dt
       integer, intent(in) :: co, ip, el
-      logical :: crystallite_stress
+      logical :: converged_
     end function crystallite_stress
 
     module function constitutive_homogenizedC(co,ip,el) result(C)
@@ -872,10 +868,8 @@ subroutine crystallite_init
            source = crystallite_partitionedF)
 
   allocate(crystallite_subdt(cMax,iMax,eMax),source=0.0_pReal)
-
   allocate(crystallite_orientation(cMax,iMax,eMax))
 
-  allocate(crystallite_converged(cMax,iMax,eMax),             source=.true.)
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
@@ -1253,7 +1247,7 @@ end function crystallite_push33ToRef
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-subroutine integrateSourceState(co,ip,el)
+function integrateSourceState(co,ip,el) result(broken)
 
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
@@ -1273,12 +1267,13 @@ subroutine integrateSourceState(co,ip,el)
     r                                                                                               ! state residuum
   real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
   logical :: &
-    broken
+    broken, converged_
 
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
+  converged_ = .true.
   broken = constitutive_thermal_collectDotState(ph,me)
   broken = broken .or. constitutive_damage_collectDotState(crystallite_S(1:3,1:3,co,ip,el), co,ip,el,ph,me)
   if(broken) return
@@ -1313,18 +1308,19 @@ subroutine integrateSourceState(co,ip,el)
                       - sourceState(ph)%p(so)%dotState (1:size_so(so),me) * crystallite_subdt(co,ip,el)
       sourceState(ph)%p(so)%state(1:size_so(so),me) = sourceState(ph)%p(so)%state(1:size_so(so),me) &
                                                 - r(1:size_so(so))
-      crystallite_converged(co,ip,el) = &
-      crystallite_converged(co,ip,el) .and. converged(r(1:size_so(so)), &
-                                                   sourceState(ph)%p(so)%state(1:size_so(so),me), &
-                                                   sourceState(ph)%p(so)%atol(1:size_so(so)))
+      converged_ = converged_  .and. converged(r(1:size_so(so)), &
+                                               sourceState(ph)%p(so)%state(1:size_so(so),me), &
+                                               sourceState(ph)%p(so)%atol(1:size_so(so)))
     enddo
 
-    if(crystallite_converged(co,ip,el)) then
+    if(converged_) then
       broken = constitutive_damage_deltaState(crystallite_Fe(1:3,1:3,co,ip,el),co,ip,el,ph,me)
       exit iteration
     endif
 
   enddo iteration
+
+  broken = broken .or. .not. converged_
 
 
   contains
@@ -1349,7 +1345,7 @@ subroutine integrateSourceState(co,ip,el)
 
   end function damper
 
-end subroutine integrateSourceState
+end function integrateSourceState
 
 
 !--------------------------------------------------------------------------------------------------
