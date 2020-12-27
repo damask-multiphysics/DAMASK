@@ -188,8 +188,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       NiterationHomog = 0
       cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
-
-
         if (converged) then
           subFrac = subFrac + subStep
           subStep = min(1.0_pReal-subFrac,num%stepIncreaseHomog*subStep)             ! introduce flexibility for step increase/acceleration
@@ -207,14 +205,12 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
                 damageState(ho)%State    (:,material_homogenizationMemberAt(ip,el))
 
           endif steppingNeeded
-
         else
           if ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
                num%subStepSizeHomog * subStep <=  num%subStepMinHomog ) then                   ! would require too small subStep
                                                                                                     ! cutback makes no sense
-            if (.not. terminallyIll) then                                                           ! so first signals terminally ill...
+            if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
-            endif
             terminallyIll = .true.                                                                  ! ...and kills all others
           else                                                                                      ! cutback makes sense
             subStep = num%subStepSizeHomog * subStep                                      ! crystallite had severe trouble, so do a significant cutback
@@ -231,10 +227,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           endif
         endif
 
-        if (subStep > num%subStepMinHomog) then
-          doneAndHappy = [.false.,.true.]
-        endif
-
+        if (subStep > num%subStepMinHomog) doneAndHappy = [.false.,.true.]
 
         NiterationMPstate = 0
         convergenceLooping: do while (.not. terminallyIll &
@@ -245,7 +238,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
 
-          if(.not. doneAndHappy(1)) then
+          if (.not. doneAndHappy(1)) then
             ce = (el-1)*discretization_nIPs + ip
             call mech_partition(homogenization_F0(1:3,1:3,ce) &
                                       + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))&
