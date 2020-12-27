@@ -179,6 +179,14 @@ module constitutive
     module subroutine constitutive_mech_forward
     end subroutine constitutive_mech_forward
 
+    module subroutine mech_restore(ip,el,includeL)
+      integer, intent(in) :: &
+        ip, &
+        el
+      logical, intent(in) :: &
+        includeL
+    end subroutine mech_restore
+
 ! == cleaned:end ===================================================================================
 
     module function crystallite_stress(dt,co,ip,el) result(converged_)
@@ -392,8 +400,7 @@ module constitutive
     crystallite_restartRead, &
     constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
-    crystallite_restore, &
-        PLASTICITY_UNDEFINED_ID, &
+    PLASTICITY_UNDEFINED_ID, &
     PLASTICITY_NONE_ID, &
     PLASTICITY_ISOTROPIC_ID, &
     PLASTICITY_PHENOPOWERLAW_ID, &
@@ -756,21 +763,26 @@ end subroutine constitutive_allocateState
 !--------------------------------------------------------------------------------------------------
 !> @brief Restore data after homog cutback.
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_restore(ip,el)
+subroutine constitutive_restore(ip,el,includeL)
 
+  logical, intent(in) :: includeL
   integer, intent(in) :: &
     ip, &                                                                                            !< integration point number
     el                                                                                               !< element number
+
   integer :: &
     co, &                                                                                            !< constituent number
-    s
+    so
+
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    do s = 1, phase_Nsources(material_phaseAt(co,el))
-      sourceState(material_phaseAt(co,el))%p(s)%state(          :,material_phasememberAt(co,ip,el)) = &
-      sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phasememberAt(co,ip,el))
+    do so = 1, phase_Nsources(material_phaseAt(co,el))
+      sourceState(material_phaseAt(co,el))%p(so)%state(          :,material_phasememberAt(co,ip,el)) = &
+      sourceState(material_phaseAt(co,el))%p(so)%partitionedState0(:,material_phasememberAt(co,ip,el))
     enddo
   enddo
+
+  call mech_restore(ip,el,includeL)
 
 end subroutine constitutive_restore
 
@@ -1036,38 +1048,6 @@ subroutine constitutive_windForward(ip,el)
   enddo
 
 end subroutine constitutive_windForward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Restore data after homog cutback.
-!--------------------------------------------------------------------------------------------------
-subroutine crystallite_restore(ip,el,includeL)
-
-  integer, intent(in) :: &
-    ip, &                                                                                            !< integration point number
-    el                                                                                               !< element number
-  logical, intent(in) :: &
-    includeL                                                                                        !< protect agains fake cutback
-  integer :: &
-    co, p, m                                                                                            !< constituent number
-
-  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-  p = material_phaseAt(co,el)
-  m = material_phaseMemberAt(co,ip,el)
-    if (includeL) then
-      crystallite_Lp(1:3,1:3,co,ip,el) = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
-      constitutive_mech_Li(p)%data(1:3,1:3,m) = constitutive_mech_partitionedLi0(p)%data(1:3,1:3,m)
-    endif                                                                                           ! maybe protecting everything from overwriting makes more sense
-
-    constitutive_mech_Fp(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFp0(p)%data(1:3,1:3,m)
-    constitutive_mech_Fi(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFi0(p)%data(1:3,1:3,m)
-    crystallite_S (1:3,1:3,co,ip,el)   = crystallite_partitionedS0 (1:3,1:3,co,ip,el)
-
-    plasticState    (material_phaseAt(co,el))%state(          :,material_phasememberAt(co,ip,el)) = &
-    plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phasememberAt(co,ip,el))
-  enddo
-
-end subroutine crystallite_restore
 
 
 !--------------------------------------------------------------------------------------------------

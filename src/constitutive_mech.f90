@@ -1577,5 +1577,37 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 
 end function crystallite_stress
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Restore data after homog cutback.
+!--------------------------------------------------------------------------------------------------
+module subroutine mech_restore(ip,el,includeL)
+
+  integer, intent(in) :: &
+    ip, &                                                                                            !< integration point number
+    el                                                                                               !< element number
+  logical, intent(in) :: &
+    includeL                                                                                        !< protect agains fake cutback
+  integer :: &
+    co, p, m                                                                                            !< constituent number
+
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
+  p = material_phaseAt(co,el)
+  m = material_phaseMemberAt(co,ip,el)
+    if (includeL) then
+      crystallite_Lp(1:3,1:3,co,ip,el) = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
+      constitutive_mech_Li(p)%data(1:3,1:3,m) = constitutive_mech_partitionedLi0(p)%data(1:3,1:3,m)
+    endif                                                                                           ! maybe protecting everything from overwriting makes more sense
+
+    constitutive_mech_Fp(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFp0(p)%data(1:3,1:3,m)
+    constitutive_mech_Fi(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFi0(p)%data(1:3,1:3,m)
+    crystallite_S (1:3,1:3,co,ip,el)   = crystallite_partitionedS0 (1:3,1:3,co,ip,el)
+
+    plasticState    (material_phaseAt(co,el))%state(          :,material_phasememberAt(co,ip,el)) = &
+    plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phasememberAt(co,ip,el))
+  enddo
+
+end subroutine mech_restore
+
 end submodule constitutive_mech
 
