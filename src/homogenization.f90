@@ -148,7 +148,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   real(pReal), intent(in) :: dt                                                                     !< time increment
   integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
   integer :: &
-    NiterationHomog, &
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
@@ -162,7 +161,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     doneAndHappy
 
 
-!$OMP PARALLEL DO PRIVATE(ce,ho,myNgrains,NiterationMPstate,NiterationHomog,subFrac,converged,subStep,doneAndHappy)
+!$OMP PARALLEL DO PRIVATE(ce,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
     myNgrains = homogenization_Nconstituents(ho)
@@ -184,8 +183,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
           damageState(ho)%State0(   :,material_homogenizationMemberAt(ip,el))
 
-
-      NiterationHomog = 0
       cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
         if (converged) then
@@ -261,8 +258,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           endif
 
         enddo convergenceLooping
-        NiterationHomog = NiterationHomog + 1
-
       enddo cutBackLooping
     enddo
   enddo
