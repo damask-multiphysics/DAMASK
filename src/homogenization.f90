@@ -157,13 +157,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
     subFrac, &
     subStep
   logical :: &
-    requested, &
     converged
   logical, dimension(2) :: &
     doneAndHappy
 
 
-!$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate,NiterationHomog,subFrac,converged,subStep,requested,doneAndHappy)
+!$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate,NiterationHomog,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
 
@@ -174,7 +173,6 @@ subroutine materialpoint_stressAndItsTangent(dt)
       subFrac = 0.0_pReal
       converged = .false.                                                                           ! pretend failed step ...
       subStep = 1.0_pReal/num%subStepSizeHomog                                                      ! ... larger then the requested calculation
-      requested = .true.                                                                            ! everybody requires calculation
 
       if (homogState(material_homogenizationAt(el))%sizeState > 0) &
           homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
@@ -231,13 +229,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
         endif
 
         if (subStep > num%subStepMinHomog) then
-          requested = .true.
           doneAndHappy = [.false.,.true.]
         endif
 
 
         NiterationMPstate = 0
-        convergenceLooping: do while (.not. terminallyIll .and. requested &
+        convergenceLooping: do while (.not. terminallyIll &
                        .and. .not. doneAndHappy(1) &
                        .and. NiterationMPstate < num%nMPstate)
           NiterationMPstate = NiterationMPstate + 1
@@ -245,7 +242,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
 !--------------------------------------------------------------------------------------------------
 ! deformation partitioning
 
-          if(requested .and. .not. doneAndHappy(1)) then                                   ! requested but not yet done
+          if(.not. doneAndHappy(1)) then
             ce = (el-1)*discretization_nIPs + ip
             call mech_partition(homogenization_F0(1:3,1:3,ce) &
                                       + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))&
