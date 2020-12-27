@@ -945,8 +945,8 @@ subroutine crystallite_init
   flush(IO_STDOUT)
 
  !$OMP PARALLEL DO PRIVATE(ph,me)
-  do el = 1, size(material_phaseMemberAt,3)
-    do ip = 1, size(material_phaseMemberAt,2); do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+  do el = 1, size(material_phaseMemberAt,3); do ip = 1, size(material_phaseMemberAt,2)
+    do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
 
       ph = material_phaseAt(co,el)
       me = material_phaseMemberAt(co,ip,el)
@@ -965,8 +965,8 @@ subroutine crystallite_init
       constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
       constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
 
-    enddo; enddo
-  enddo
+    enddo
+  enddo; enddo
   !$OMP END PARALLEL DO
 
   crystallite_partitionedF0  = crystallite_F0
@@ -990,9 +990,6 @@ subroutine crystallite_init
 end subroutine crystallite_init
 
 
-
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Backup data for homog cutback.
 !--------------------------------------------------------------------------------------------------
@@ -1003,7 +1000,7 @@ subroutine constitutive_initializeRestorationPoints(ip,el)
     el                                                                                               !< element number
   integer :: &
     co, &                                                                                            !< constituent number
-    s,ph, me
+    so,ph, me
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
     ph = material_phaseAt(co,el)
@@ -1014,9 +1011,9 @@ subroutine constitutive_initializeRestorationPoints(ip,el)
 
     call mech_initializeRestorationPoints(ph,me)
 
-    do s = 1, phase_Nsources(material_phaseAt(co,el))
-      sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phasememberAt(co,ip,el)) = &
-      sourceState(material_phaseAt(co,el))%p(s)%state0(           :,material_phasememberAt(co,ip,el))
+    do so = 1, phase_Nsources(material_phaseAt(co,el))
+      sourceState(material_phaseAt(co,el))%p(so)%partitionedState0(:,material_phasememberAt(co,ip,el)) = &
+      sourceState(material_phaseAt(co,el))%p(so)%state0(           :,material_phasememberAt(co,ip,el))
     enddo
   enddo
 
@@ -1033,7 +1030,7 @@ subroutine constitutive_windForward(ip,el)
     el                                                                                               !< element number
   integer :: &
     co, &                                                                                            !< constituent number
-    s, ph, me
+    so, ph, me
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
@@ -1042,8 +1039,8 @@ subroutine constitutive_windForward(ip,el)
     crystallite_partitionedS0 (1:3,1:3,co,ip,el) = crystallite_S         (1:3,1:3,co,ip,el)
 
     call constitutive_mech_windForward(ph,me)
-    do s = 1, phase_Nsources(material_phaseAt(co,el))
-      sourceState(ph)%p(s)%partitionedState0(:,me) = sourceState(ph)%p(s)%state(:,me)
+    do so = 1, phase_Nsources(material_phaseAt(co,el))
+      sourceState(ph)%p(so)%partitionedState0(:,me) = sourceState(ph)%p(so)%state(:,me)
     enddo
   enddo
 
