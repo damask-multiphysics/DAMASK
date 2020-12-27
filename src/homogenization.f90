@@ -255,10 +255,7 @@ subroutine materialpoint_stressAndItsTangent(dt)
             do co = 1, myNgrains
               converged = converged .and. crystallite_stress(dt*subStep,co,ip,el)
             enddo
-          endif
 
-
-          if (requested .and. .not. doneAndHappy(1)) then
             if (.not. converged) then
               doneAndHappy = [.true.,.false.]
             else
