@@ -1247,8 +1247,9 @@ end function crystallite_push33ToRef
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-function integrateSourceState(co,ip,el) result(broken)
+function integrateSourceState(dt,co,ip,el) result(broken)
 
+  real(pReal), intent(in) :: dt
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
@@ -1281,8 +1282,7 @@ function integrateSourceState(co,ip,el) result(broken)
   do so = 1, phase_Nsources(ph)
     size_so(so) = sourceState(ph)%p(so)%sizeDotState
     sourceState(ph)%p(so)%state(1:size_so(so),me) = sourceState(ph)%p(so)%subState0(1:size_so(so),me) &
-                                              + sourceState(ph)%p(so)%dotState (1:size_so(so),me) &
-                                              * crystallite_subdt(co,ip,el)
+                                                  + sourceState(ph)%p(so)%dotState (1:size_so(so),me) * dt
     source_dotState(1:size_so(so),2,so) = 0.0_pReal
   enddo
 
@@ -1304,8 +1304,8 @@ function integrateSourceState(co,ip,el) result(broken)
       sourceState(ph)%p(so)%dotState(:,me) = sourceState(ph)%p(so)%dotState(:,me) * zeta &
                                         + source_dotState(1:size_so(so),1,so)* (1.0_pReal - zeta)
       r(1:size_so(so)) = sourceState(ph)%p(so)%state    (1:size_so(so),me)  &
-                      - sourceState(ph)%p(so)%subState0(1:size_so(so),me)  &
-                      - sourceState(ph)%p(so)%dotState (1:size_so(so),me) * crystallite_subdt(co,ip,el)
+                       - sourceState(ph)%p(so)%subState0(1:size_so(so),me)  &
+                       - sourceState(ph)%p(so)%dotState (1:size_so(so),me) * dt
       sourceState(ph)%p(so)%state(1:size_so(so),me) = sourceState(ph)%p(so)%state(1:size_so(so),me) &
                                                 - r(1:size_so(so))
       converged_ = converged_  .and. converged(r(1:size_so(so)), &

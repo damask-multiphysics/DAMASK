@@ -1569,8 +1569,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
                                                                constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       crystallite_subdt(co,ip,el) = subStep * dt
       converged_ = .not. integrateState(subF0,crystallite_subF(1:3,1:3,co,ip,el),&
-                                        crystallite_subdt(co,ip,el),co,ip,el)
-      converged_ = converged_ .and. .not. integrateSourceState(co,ip,el)
+                                        subStep * dt,co,ip,el)
+      converged_ = converged_ .and. .not. integrateSourceState(subStep * dt,co,ip,el)
     endif
 
   enddo cutbackLooping
