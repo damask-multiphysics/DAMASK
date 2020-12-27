@@ -16,7 +16,6 @@ module constitutive
   use parallelization
   use HDF5_utilities
   use DAMASK_interface
-  use FEsolving
   use results
 
   implicit none
@@ -940,8 +939,8 @@ subroutine crystallite_init
   flush(IO_STDOUT)
 
  !$OMP PARALLEL DO PRIVATE(ph,me)
-  do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    do ip = FEsolving_execIP(1), FEsolving_execIP(2); do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+  do el = 1, size(material_phaseMemberAt,3)
+    do ip = 1, size(material_phaseMemberAt,2); do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
 
       ph = material_phaseAt(co,el)
       me = material_phaseMemberAt(co,ip,el)
@@ -967,14 +966,14 @@ subroutine crystallite_init
   crystallite_partitionedF0  = crystallite_F0
   crystallite_partitionedF   = crystallite_F0
 
-  call crystallite_orientations()
 
   !$OMP PARALLEL DO PRIVATE(ph,me)
-  do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+  do el = 1, size(material_phaseMemberAt,3)
+    do ip = 1, size(material_phaseMemberAt,2)
       do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
         ph = material_phaseAt(co,el)
         me = material_phaseMemberAt(co,ip,el)
+        call crystallite_orientations(co,ip,el)
         call constitutive_plastic_dependentState(crystallite_partitionedF0(1:3,1:3,co,ip,el),co,ip,el)  ! update dependent state variables to be consistent with basic states
      enddo
     enddo
@@ -1210,34 +1209,20 @@ end function crystallite_stressTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates orientations
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_orientations
+subroutine crystallite_orientations(co,ip,el)
 
-  integer &
+  integer, intent(in) :: &
     co, &                                                                                            !< counter in integration point component loop
     ip, &                                                                                            !< counter in integration point loop
     el                                                                                               !< counter in element loop
 
 
-  !$OMP PARALLEL DO
-  do el = FEsolving_execElem(1),FEsolving_execElem(2)
-    do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-      do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-        call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(crystallite_Fe(1:3,1:3,co,ip,el))))
-  enddo; enddo; enddo
-  !$OMP END PARALLEL DO
+  call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(crystallite_Fe(1:3,1:3,co,ip,el))))
 
-  nonlocalPresent: if (any(plasticState%nonlocal)) then
-    !$OMP PARALLEL DO
-    do el = FEsolving_execElem(1),FEsolving_execElem(2)
-      if (plasticState(material_phaseAt(1,el))%nonlocal) then
-        do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-          call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
-                                                    phase_plasticityInstance(material_phaseAt(1,el)),ip,el)
-        enddo
-      endif
-    enddo
-    !$OMP END PARALLEL DO
-  endif nonlocalPresent
+  if (plasticState(material_phaseAt(1,el))%nonlocal) &
+    call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
+                                              phase_plasticityInstance(material_phaseAt(1,el)),ip,el)
+
 
 end subroutine crystallite_orientations
 

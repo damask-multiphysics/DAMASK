@@ -18,7 +18,6 @@ module grid_mech_spectral_basic
   use math
   use rotations
   use spectral_utilities
-  use FEsolving
   use config
   use homogenization
   use discretization_grid

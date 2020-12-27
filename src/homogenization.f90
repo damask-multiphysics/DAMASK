@@ -11,7 +11,6 @@ module homogenization
   use math
   use material
   use constitutive
-  use FEsolving
   use discretization
   use thermal_isothermal
   use thermal_conduction
@@ -144,15 +143,16 @@ end subroutine homogenization_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  parallelized calculation of stress and corresponding tangent at material points
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_stressAndItsTangent(dt)
+subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execElem)
 
   real(pReal), intent(in) :: dt                                                                     !< time increment
+  integer, dimension(2), intent(in) :: FEsolving_execElem, FEsolving_execIP
   integer :: &
     NiterationHomog, &
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    myNgrains, co, ce
+    myNgrains, co, ce, ho
   real(pReal) :: &
     subFrac, &
     subStep
@@ -162,8 +162,10 @@ subroutine materialpoint_stressAndItsTangent(dt)
     doneAndHappy
 
 
-!$OMP PARALLEL DO PRIVATE(ce,myNgrains,NiterationMPstate,NiterationHomog,subFrac,converged,subStep,doneAndHappy)
+!$OMP PARALLEL DO PRIVATE(ce,ho,myNgrains,NiterationMPstate,NiterationHomog,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
+    ho = material_homogenizationAt(el)
+    myNgrains = homogenization_Nconstituents(ho)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
 
 !--------------------------------------------------------------------------------------------------
@@ -174,18 +176,19 @@ subroutine materialpoint_stressAndItsTangent(dt)
       converged = .false.                                                                           ! pretend failed step ...
       subStep = 1.0_pReal/num%subStepSizeHomog                                                      ! ... larger then the requested calculation
 
-      if (homogState(material_homogenizationAt(el))%sizeState > 0) &
-          homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-          homogState(material_homogenizationAt(el))%State0(   :,material_homogenizationMemberAt(ip,el))
+      if (homogState(ho)%sizeState > 0) &
+          homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+          homogState(ho)%State0(   :,material_homogenizationMemberAt(ip,el))
 
-      if (damageState(material_homogenizationAt(el))%sizeState > 0) &
-          damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-          damageState(material_homogenizationAt(el))%State0(   :,material_homogenizationMemberAt(ip,el))
+      if (damageState(ho)%sizeState > 0) &
+          damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+          damageState(ho)%State0(   :,material_homogenizationMemberAt(ip,el))
+
 
       NiterationHomog = 0
       cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
-        myNgrains = homogenization_Nconstituents(material_homogenizationAt(el))
+
 
         if (converged) then
           subFrac = subFrac + subStep
@@ -196,12 +199,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
             ! wind forward grain starting point
             call constitutive_windForward(ip,el)
 
-            if(homogState(material_homogenizationAt(el))%sizeState > 0) &
-                homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-                homogState(material_homogenizationAt(el))%State    (:,material_homogenizationMemberAt(ip,el))
-            if(damageState(material_homogenizationAt(el))%sizeState > 0) &
-                damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-                damageState(material_homogenizationAt(el))%State    (:,material_homogenizationMemberAt(ip,el))
+            if(homogState(ho)%sizeState > 0) &
+                homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+                homogState(ho)%State    (:,material_homogenizationMemberAt(ip,el))
+            if(damageState(ho)%sizeState > 0) &
+                damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
+                damageState(ho)%State    (:,material_homogenizationMemberAt(ip,el))
 
           endif steppingNeeded
 
@@ -219,12 +222,12 @@ subroutine materialpoint_stressAndItsTangent(dt)
             call crystallite_restore(ip,el,subStep < 1.0_pReal)
             call constitutive_restore(ip,el)
 
-            if(homogState(material_homogenizationAt(el))%sizeState > 0) &
-                homogState(material_homogenizationAt(el))%State(    :,material_homogenizationMemberAt(ip,el)) = &
-                homogState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el))
-            if(damageState(material_homogenizationAt(el))%sizeState > 0) &
-                damageState(material_homogenizationAt(el))%State(    :,material_homogenizationMemberAt(ip,el)) = &
-                damageState(material_homogenizationAt(el))%subState0(:,material_homogenizationMemberAt(ip,el))
+            if(homogState(ho)%sizeState > 0) &
+                homogState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
+                homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
+            if(damageState(ho)%sizeState > 0) &
+                damageState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
+                damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
           endif
         endif
 
@@ -275,10 +278,14 @@ subroutine materialpoint_stressAndItsTangent(dt)
   !$OMP END PARALLEL DO
 
   if (.not. terminallyIll ) then
-    call crystallite_orientations()                                                                 ! calculate crystal orientations
-    !$OMP PARALLEL DO
+    !$OMP PARALLEL DO PRIVATE(ho,myNgrains)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
+      ho = material_homogenizationAt(el)
+      myNgrains = homogenization_Nconstituents(ho)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+        do co = 1, myNgrains
+          call crystallite_orientations(co,ip,el)
+        enddo
         call mech_homogenize(ip,el)
       enddo IpLooping3
     enddo elementLooping3

@@ -810,9 +810,9 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   print'(/,a)', ' ... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
 
-  homogenization_F  = reshape(F,[3,3,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
+  homogenization_F  = reshape(F,[3,3,product(grid(1:2))*grid3])                                     ! set materialpoint target F to estimated field
 
-  call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
+  call materialpoint_stressAndItsTangent(timeinc,[1,1],[1,product(grid(1:2))*grid3])                ! calculate P field
 
   P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                   ! average of P
