@@ -1488,7 +1488,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   real(pReal), dimension(3,3) :: &
     subLp0, &                                                                                       !< plastic velocity grad at start of crystallite inc
     subLi0, &                                                                                          !< intermediate velocity grad at start of crystallite inc
-    subF0
+    subF0, &
+    subF
 
 
   ph = material_phaseAt(co,el)
@@ -1525,7 +1526,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       todo = subStep > 0.0_pReal                        ! still time left to integrate on?
 
       if (todo) then
-        subF0  = crystallite_subF(1:3,1:3,co,ip,el)
+        subF0  = subF
         subLp0 = crystallite_Lp  (1:3,1:3,co,ip,el)
         subLi0 = constitutive_mech_Li(ph)%data(1:3,1:3,me)
         crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
@@ -1561,15 +1562,12 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 !--------------------------------------------------------------------------------------------------
 !  prepare for integration
     if (todo) then
-      crystallite_subF(1:3,1:3,co,ip,el) = subF0 &
-                                         + subStep *( crystallite_partitionedF (1:3,1:3,co,ip,el) &
-                                                     -crystallite_partitionedF0(1:3,1:3,co,ip,el))
-      crystallite_Fe(1:3,1:3,co,ip,el) = matmul(crystallite_subF(1:3,1:3,co,ip,el), &
-                                             math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
-                                                               constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
+      subF = subF0 &
+           + subStep * (crystallite_partitionedF(1:3,1:3,co,ip,el) -crystallite_partitionedF0(1:3,1:3,co,ip,el))
+      crystallite_Fe(1:3,1:3,co,ip,el) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
+                                                                       constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       crystallite_subdt(co,ip,el) = subStep * dt
-      converged_ = .not. integrateState(subF0,crystallite_subF(1:3,1:3,co,ip,el),&
-                                        subStep * dt,co,ip,el)
+      converged_ = .not. integrateState(subF0,subF,subStep * dt,co,ip,el)
       converged_ = converged_ .and. .not. integrateSourceState(subStep * dt,co,ip,el)
     endif
 
