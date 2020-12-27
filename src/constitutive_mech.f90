@@ -1238,7 +1238,7 @@ subroutine integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
     plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
                                               + plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
 
-    broken = integrateStress(F_0 + (F - F_0) * Delta_t,Delta_t * C(stage),co,ip,el)
+    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),Delta_t * C(stage),co,ip,el)
     if(broken) exit
 
     broken = mech_collectDotState(Delta_t*C(stage),co,ip,el,ph,me)
