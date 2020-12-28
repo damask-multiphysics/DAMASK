@@ -151,7 +151,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    myNgrains, co, ce, ho
+    myNgrains, co, ce, ho, me
   real(pReal) :: &
     subFrac, &
     subStep
@@ -164,6 +164,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 !$OMP PARALLEL DO PRIVATE(ce,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
+    me = material_homogenizationMemberAt(ip,el)
     myNgrains = homogenization_Nconstituents(ho)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
 
@@ -176,12 +177,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       subStep = 1.0_pReal/num%subStepSizeHomog                                                      ! ... larger then the requested calculation
 
       if (homogState(ho)%sizeState > 0) &
-          homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-          homogState(ho)%State0(   :,material_homogenizationMemberAt(ip,el))
-
+        homogState(ho)%subState0(:,me) = homogState(ho)%State0(:,me)
       if (damageState(ho)%sizeState > 0) &
-          damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-          damageState(ho)%State0(   :,material_homogenizationMemberAt(ip,el))
+        damageState(ho)%subState0(:,me) = damageState(ho)%State0(:,me)
 
       cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
@@ -195,11 +193,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             call constitutive_windForward(ip,el)
 
             if(homogState(ho)%sizeState > 0) &
-                homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-                homogState(ho)%State    (:,material_homogenizationMemberAt(ip,el))
+              homogState(ho)%subState0(:,me) = homogState(ho)%State(:,me)
             if(damageState(ho)%sizeState > 0) &
-                damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el)) = &
-                damageState(ho)%State    (:,material_homogenizationMemberAt(ip,el))
+              damageState(ho)%subState0(:,me) = damageState(ho)%State(:,me)
 
           endif steppingNeeded
         elseif ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
@@ -214,11 +210,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           call constitutive_restore(ip,el,subStep < 1.0_pReal)
 
           if(homogState(ho)%sizeState > 0) &
-              homogState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
-              homogState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
+            homogState(ho)%State(:,me) = homogState(ho)%subState0(:,me)
           if(damageState(ho)%sizeState > 0) &
-              damageState(ho)%State(    :,material_homogenizationMemberAt(ip,el)) = &
-              damageState(ho)%subState0(:,material_homogenizationMemberAt(ip,el))
+            damageState(ho)%State(:,me) = damageState(ho)%subState0(:,me)
         endif
 
         if (subStep > num%subStepMinHomog) doneAndHappy = [.false.,.true.]
