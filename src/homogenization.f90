@@ -161,7 +161,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     doneAndHappy
 
 
-!$OMP PARALLEL DO PRIVATE(ce,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
+  !$OMP PARALLEL DO PRIVATE(ce,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
     me = material_homogenizationMemberAt(ip,el)
@@ -321,29 +321,30 @@ subroutine homogenization_results
   use material, only: &
     material_homogenization_type => homogenization_type
 
-  integer :: p
+  integer :: ph
   character(len=:), allocatable :: group_base,group
+
 
   call results_closeGroup(results_addGroup('current/homogenization/'))
 
-  do p=1,size(material_name_homogenization)
-    group_base = 'current/homogenization/'//trim(material_name_homogenization(p))
+  do ph=1,size(material_name_homogenization)
+    group_base = 'current/homogenization/'//trim(material_name_homogenization(ph))
     call results_closeGroup(results_addGroup(group_base))
 
-    call mech_results(group_base,p)
+    call mech_results(group_base,ph)
 
     group = trim(group_base)//'/damage'
     call results_closeGroup(results_addGroup(group))
-    select case(damage_type(p))
+    select case(damage_type(ph))
       case(DAMAGE_NONLOCAL_ID)
-        call damage_nonlocal_results(p,group)
+        call damage_nonlocal_results(ph,group)
     end select
 
     group = trim(group_base)//'/thermal'
     call results_closeGroup(results_addGroup(group))
-    select case(thermal_type(p))
+    select case(thermal_type(ph))
       case(THERMAL_CONDUCTION_ID)
-        call thermal_conduction_results(p,group)
+        call thermal_conduction_results(ph,group)
     end select
 
  enddo
@@ -358,6 +359,7 @@ end subroutine homogenization_results
 subroutine homogenization_forward
 
   integer :: ho
+
 
   do ho = 1, size(material_name_homogenization)
     homogState (ho)%state0 = homogState (ho)%state
