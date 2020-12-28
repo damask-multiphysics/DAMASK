@@ -213,7 +213,7 @@ class Rotation:
 
         """
         return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
-                                                      [self]+other if type(other) == list else [self,other]))))
+                                                      [self]+other if isinstance(other,list) else [self,other]))))
 
 
     def flatten(self,order = 'C'):
