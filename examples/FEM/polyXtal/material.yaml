@@ -5,8 +5,8 @@ homogenization:
 
 phase:
   Aluminum:
+    lattice: cF
     mechanics:
-      lattice: cF
       output: [F, P, F_e, F_p, L_p]
       elasticity: {C_11: 106.75e9, C_12: 60.41e9, C_44: 28.34e9, type: hooke}
       plasticity:
