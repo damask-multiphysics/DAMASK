@@ -63,7 +63,8 @@ module homogenization
         el                                                                                          !< element number
     end subroutine mech_partition
 
-    module subroutine mech_homogenize(ip,el)
+    module subroutine mech_homogenize(dt,ip,el)
+     real(pReal), intent(in) :: dt
      integer, intent(in) :: &
        ip, &                                                                                        !< integration point
        el                                                                                           !< element number
@@ -257,7 +258,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         do co = 1, myNgrains
           call crystallite_orientations(co,ip,el)
         enddo
-        call mech_homogenize(ip,el)
+        call mech_homogenize(dt,ip,el)
       enddo IpLooping3
     enddo elementLooping3
     !$OMP END PARALLEL DO

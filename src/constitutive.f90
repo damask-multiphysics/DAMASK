@@ -42,8 +42,7 @@ module constitutive
     KINEMATICS_SLIPPLANE_OPENING_ID, &
     KINEMATICS_THERMAL_EXPANSION_ID
   end enum
-  real(pReal),               dimension(:,:,:),        allocatable :: &
-    crystallite_subdt                                                                               !< substepped time increment of each grain
+
   type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation                                                                         !< current orientation
   real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
@@ -874,7 +873,6 @@ subroutine crystallite_init
            crystallite_Fe,crystallite_Lp, &
            source = crystallite_F)
 
-  allocate(crystallite_subdt(cMax,iMax,eMax),source=0.0_pReal)
   allocate(crystallite_orientation(cMax,iMax,eMax))
 
 
@@ -1103,11 +1101,11 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
     lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
     do o=1,3; do p=1,3
       lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
-                            + crystallite_subdt(co,ip,el)*matmul(invSubFi0,dLidFi(1:3,1:3,o,p))
+                            + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * dt
       lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
                             + invFi*invFi(p,o)
       rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
-                            - crystallite_subdt(co,ip,el)*matmul(invSubFi0,dLidS(1:3,1:3,o,p))
+                            - matmul(invSubFi0,dLidS(1:3,1:3,o,p)) * dt
     enddo; enddo
     call math_invert(temp_99,error,math_3333to99(lhs_3333))
     if (error) then
@@ -1136,7 +1134,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
     temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
                            + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
   enddo; enddo
-  lhs_3333 = crystallite_subdt(co,ip,el)*math_mul3333xx3333(dSdFe,temp_3333) &
+  lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * dt &
            + math_mul3333xx3333(dSdFi,dFidS)
 
   call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
@@ -1152,8 +1150,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 ! calculate dFpinvdF
   temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
   do o=1,3; do p=1,3
-    dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(co,ip,el) &
-                          * matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi))
+    dFpinvdF(1:3,1:3,p,o) = - matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi)) * dt
   enddo; enddo
 
 !--------------------------------------------------------------------------------------------------

@@ -1526,7 +1526,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   todo = .true.
   converged_ = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
 
-  crystallite_subdt(co,ip,el) = dt
   todo = .true.
   NiterationCrystallite = 0
   cutbackLooping: do while (todo)
