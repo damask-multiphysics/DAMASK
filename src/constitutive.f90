@@ -1049,13 +1049,14 @@ end subroutine constitutive_windForward
 !--------------------------------------------------------------------------------------------------
 !> @brief Calculate tangent (dPdF).
 !--------------------------------------------------------------------------------------------------
-function crystallite_stressTangent(co,ip,el) result(dPdF)
+function crystallite_stressTangent(dt,co,ip,el) result(dPdF)
 
-  real(pReal), dimension(3,3,3,3) :: dPdF
+  real(pReal), intent(in) :: dt
   integer, intent(in) :: &
     co, &                                                                                            !< counter in constituent loop
     ip, &                                                                                            !< counter in integration point loop
     el                                                                                               !< counter in element loop
+  real(pReal), dimension(3,3,3,3) :: dPdF
 
   integer :: &
     o, &

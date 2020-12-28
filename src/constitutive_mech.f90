@@ -1492,7 +1492,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   real(pReal) :: &
     formerSubStep
   integer :: &
-    NiterationCrystallite, &                                                                        ! number of iterations in crystallite loop
     so, ph, me, sizeDotState
   logical :: todo
   real(pReal) :: subFrac,subStep
@@ -1527,12 +1526,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   converged_ = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
 
   todo = .true.
-  NiterationCrystallite = 0
   cutbackLooping: do while (todo)
-    NiterationCrystallite = NiterationCrystallite + 1
 
-!--------------------------------------------------------------------------------------------------
-!  wind forward
     if (converged_) then
       formerSubStep = subStep
       subFrac = subFrac + subStep
@@ -1596,19 +1591,21 @@ module subroutine mech_restore(ip,el,includeL)
     el                                                                                               !< element number
   logical, intent(in) :: &
     includeL                                                                                        !< protect agains fake cutback
+
   integer :: &
-    co, p, m                                                                                            !< constituent number
+    co, ph, me
+
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-  p = material_phaseAt(co,el)
-  m = material_phaseMemberAt(co,ip,el)
+    ph = material_phaseAt(co,el)
+    me = material_phaseMemberAt(co,ip,el)
     if (includeL) then
       crystallite_Lp(1:3,1:3,co,ip,el) = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
-      constitutive_mech_Li(p)%data(1:3,1:3,m) = constitutive_mech_partitionedLi0(p)%data(1:3,1:3,m)
+      constitutive_mech_Li(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
     endif                                                                                           ! maybe protecting everything from overwriting makes more sense
 
-    constitutive_mech_Fp(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFp0(p)%data(1:3,1:3,m)
-    constitutive_mech_Fi(p)%data(1:3,1:3,m)   = constitutive_mech_partitionedFi0(p)%data(1:3,1:3,m)
+    constitutive_mech_Fp(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
+    constitutive_mech_Fi(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
     crystallite_S (1:3,1:3,co,ip,el)   = crystallite_partitionedS0 (1:3,1:3,co,ip,el)
 
     plasticState    (material_phaseAt(co,el))%state(          :,material_phasememberAt(co,ip,el)) = &
