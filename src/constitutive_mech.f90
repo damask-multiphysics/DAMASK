@@ -800,7 +800,7 @@ function integrateStress(F,Delta_t,co,ip,el) result(broken)
 
   broken = .true.
 
-  call constitutive_plastic_dependentState(crystallite_partitionedF(1:3,1:3,co,ip,el),co,ip,el)
+  call constitutive_plastic_dependentState(crystallite_F(1:3,1:3,co,ip,el),co,ip,el)
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
@@ -959,6 +959,9 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
+  logical :: &
+    broken
+
   integer :: &
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
@@ -970,8 +973,7 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
     r                                                                                               ! state residuum
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,2) :: &
     plastic_dotState
-  logical :: &
-    broken
+
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
@@ -1048,12 +1050,14 @@ function integrateStateEuler(F_0,F,Delta_t,co,ip,el) result(broken)
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
+  logical :: &
+    broken
+
   integer :: &
     ph, &
     me, &
     sizeDotState
-  logical :: &
-    broken
+
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
@@ -1085,13 +1089,13 @@ function integrateStateAdaptiveEuler(F_0,F,Delta_t,co,ip,el) result(broken)
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
+  logical :: &
+    broken
+
   integer :: &
     ph, &
     me, &
     sizeDotState
-  logical :: &
-    broken
-
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: residuum_plastic
 
 
@@ -1105,7 +1109,7 @@ function integrateStateAdaptiveEuler(F_0,F,Delta_t,co,ip,el) result(broken)
 
   residuum_plastic(1:sizeDotState) = - plasticState(ph)%dotstate(1:sizeDotState,me) * 0.5_pReal * Delta_t
   plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
-                                          + plasticState(ph)%dotstate(1:sizeDotState,me) * Delta_t
+                                            + plasticState(ph)%dotstate(1:sizeDotState,me) * Delta_t
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
                                    constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
@@ -1145,6 +1149,7 @@ function integrateStateRK4(F_0,F,Delta_t,co,ip,el) result(broken)
   real(pReal), dimension(4), parameter :: &
     B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]
 
+
   broken = integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C)
 
 end function integrateStateRK4
@@ -1177,6 +1182,7 @@ function integrateStateRKCK45(F_0,F,Delta_t,co,ip,el) result(broken)
     DB = B - &
       [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
       13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  1._pReal/4._pReal]
+
 
   broken = integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
 
@@ -1215,18 +1221,18 @@ function integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB) result(broken)
   broken = mech_collectDotState(Delta_t,co,ip,el,ph,me)
   if(broken) return
 
+  sizeDotState = plasticState(ph)%sizeDotState
+
   do stage = 1, size(A,1)
-    sizeDotState = plasticState(ph)%sizeDotState
+
     plastic_RKdotState(1:sizeDotState,stage) = plasticState(ph)%dotState(:,me)
     plasticState(ph)%dotState(:,me) = A(1,stage) * plastic_RKdotState(1:sizeDotState,1)
 
     do n = 2, stage
-      sizeDotState = plasticState(ph)%sizeDotState
       plasticState(ph)%dotState(:,me) = plasticState(ph)%dotState(:,me) &
-                                    + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
+                                      + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
     enddo
 
-    sizeDotState = plasticState(ph)%sizeDotState
     plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
                                               + plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
 
@@ -1239,7 +1245,6 @@ function integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB) result(broken)
   enddo
   if(broken) return
 
-  sizeDotState = plasticState(ph)%sizeDotState
 
   plastic_RKdotState(1:sizeDotState,size(B)) = plasticState (ph)%dotState(:,me)
   plasticState(ph)%dotState(:,me) = matmul(plastic_RKdotState(1:sizeDotState,1:size(B)),B)
@@ -1282,7 +1287,7 @@ subroutine crystallite_results(group,ph)
 
       select case (output_constituent(ph)%label(ou))
         case('F')
-          selected_tensors = select_tensors(crystallite_partitionedF,ph)
+          selected_tensors = select_tensors(crystallite_F,ph)
           call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
                                    'deformation gradient','1')
         case('F_e')
@@ -1482,7 +1487,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
     formerSubStep
   integer :: &
     NiterationCrystallite, &                                                                        ! number of iterations in crystallite loop
-    s, ph, me
+    so, ph, me
   logical :: todo
   real(pReal) :: subFrac,subStep
   real(pReal), dimension(3,3) :: &
@@ -1496,12 +1501,10 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   me = material_phaseMemberAt(co,ip,el)
   subLi0 = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
   subLp0 = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
-  plasticState    (material_phaseAt(co,el))%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
-  plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phaseMemberAt(co,ip,el))
 
-  do s = 1, phase_Nsources(material_phaseAt(co,el))
-    sourceState(material_phaseAt(co,el))%p(s)%subState0(      :,material_phaseMemberAt(co,ip,el)) = &
-    sourceState(material_phaseAt(co,el))%p(s)%partitionedState0(:,material_phaseMemberAt(co,ip,el))
+  plasticState(ph)%subState0(:,me) = plasticState(ph)%partitionedState0(:,me)
+  do so = 1, phase_Nsources(ph)
+    sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%partitionedState0(:,me)
   enddo
   crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
   crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
@@ -1531,11 +1534,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subLi0 = constitutive_mech_Li(ph)%data(1:3,1:3,me)
         crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
         crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
-        plasticState(    material_phaseAt(co,el))%subState0(:,material_phaseMemberAt(co,ip,el)) &
-          = plasticState(material_phaseAt(co,el))%state(    :,material_phaseMemberAt(co,ip,el))
-        do s = 1, phase_Nsources(material_phaseAt(co,el))
-          sourceState(    material_phaseAt(co,el))%p(s)%subState0(:,material_phaseMemberAt(co,ip,el)) &
-            = sourceState(material_phaseAt(co,el))%p(s)%state(    :,material_phaseMemberAt(co,ip,el))
+        plasticState(ph)%subState0(:,me) = plasticState(ph)%state(:,me)
+        do so = 1, phase_Nsources(ph)
+          sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%state(:,me)
         enddo
       endif
 !--------------------------------------------------------------------------------------------------
@@ -1549,11 +1550,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         crystallite_Lp (1:3,1:3,co,ip,el) =            subLp0
         constitutive_mech_Li(ph)%data(1:3,1:3,me) =            subLi0
       endif
-      plasticState    (material_phaseAt(co,el))%state(    :,material_phaseMemberAt(co,ip,el)) &
-        = plasticState(material_phaseAt(co,el))%subState0(:,material_phaseMemberAt(co,ip,el))
-      do s = 1, phase_Nsources(material_phaseAt(co,el))
-        sourceState(    material_phaseAt(co,el))%p(s)%state(    :,material_phaseMemberAt(co,ip,el)) &
-          = sourceState(material_phaseAt(co,el))%p(s)%subState0(:,material_phaseMemberAt(co,ip,el))
+      plasticState(ph)%state(:,me) = plasticState(ph)%subState0(:,me)
+      do so = 1, phase_Nsources(ph)
+        sourceState(ph)%p(so)%state(:,me) = sourceState(ph)%p(so)%subState0(:,me)
       enddo
 
       todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)
@@ -1563,7 +1562,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 !  prepare for integration
     if (todo) then
       subF = subF0 &
-           + subStep * (crystallite_partitionedF(1:3,1:3,co,ip,el) -crystallite_partitionedF0(1:3,1:3,co,ip,el))
+           + subStep * (crystallite_F(1:3,1:3,co,ip,el) - crystallite_partitionedF0(1:3,1:3,co,ip,el))
       crystallite_Fe(1:3,1:3,co,ip,el) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                        constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       crystallite_subdt(co,ip,el) = subStep * dt

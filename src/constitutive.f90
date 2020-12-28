@@ -59,9 +59,8 @@ module constitutive
     crystallite_P, &                                                                                !< 1st Piola-Kirchhoff stress per grain
     crystallite_Lp, &                                                                               !< current plastic velocitiy grad (end of converged time step)
     crystallite_S, &                                                                                !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
-    crystallite_partitionedF0                                                                       !< def grad at start of homog inc
-  real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
-    crystallite_partitionedF                                                                        !< def grad to be reached at end of homog inc
+    crystallite_partitionedF0, &                                                                    !< def grad at start of homog inc
+    crystallite_F                                                                                   !< def grad to be reached at end of homog inc
 
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
@@ -740,20 +739,21 @@ subroutine constitutive_allocateState(state, &
     sizeDotState, &
     sizeDeltaState
 
+
   state%sizeState        = sizeState
   state%sizeDotState     = sizeDotState
   state%sizeDeltaState   = sizeDeltaState
   state%offsetDeltaState = sizeState-sizeDeltaState                                                 ! deltaState occupies latter part of state by definition
 
-  allocate(state%atol           (sizeState),             source=0.0_pReal)
-  allocate(state%state0         (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%atol             (sizeState),               source=0.0_pReal)
+  allocate(state%state0           (sizeState,Nconstituents), source=0.0_pReal)
   allocate(state%partitionedState0(sizeState,Nconstituents), source=0.0_pReal)
-  allocate(state%subState0      (sizeState,Nconstituents), source=0.0_pReal)
-  allocate(state%state          (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%subState0        (sizeState,Nconstituents), source=0.0_pReal)
+  allocate(state%state            (sizeState,Nconstituents), source=0.0_pReal)
 
-  allocate(state%dotState    (sizeDotState,Nconstituents), source=0.0_pReal)
+  allocate(state%dotState      (sizeDotState,Nconstituents), source=0.0_pReal)
 
-  allocate(state%deltaState(sizeDeltaState,Nconstituents), source=0.0_pReal)
+  allocate(state%deltaState  (sizeDeltaState,Nconstituents), source=0.0_pReal)
 
 
 end subroutine constitutive_allocateState
@@ -794,7 +794,7 @@ subroutine constitutive_forward
 
   integer :: i, j
 
-  crystallite_F0  = crystallite_partitionedF
+  crystallite_F0  = crystallite_F
   crystallite_Lp0 = crystallite_Lp
   crystallite_S0  = crystallite_S
 
@@ -841,12 +841,13 @@ subroutine crystallite_init
     Nconstituents, &
     ph, &
     me, &
-    co, &                                                                                            !< counter in integration point component loop
-    ip, &                                                                                            !< counter in integration point loop
-    el, &                                                                                            !< counter in element loop
+    co, &                                                                                           !< counter in integration point component loop
+    ip, &                                                                                           !< counter in integration point loop
+    el, &                                                                                           !< counter in element loop
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
-    eMax                                                                                            !< maximum number of elements
+    eMax, &                                                                                         !< maximum number of elements
+    so
 
   class(tNode), pointer :: &
     num_crystallite, &
@@ -865,7 +866,7 @@ subroutine crystallite_init
   iMax = discretization_nIPs
   eMax = discretization_Nelems
 
-  allocate(crystallite_partitionedF(3,3,cMax,iMax,eMax),source=0.0_pReal)
+  allocate(crystallite_F(3,3,cMax,iMax,eMax),source=0.0_pReal)
 
   allocate(crystallite_S0, &
            crystallite_F0,crystallite_Lp0, &
@@ -875,7 +876,7 @@ subroutine crystallite_init
            crystallite_S,crystallite_P, &
            crystallite_Fe,crystallite_Lp, &
            crystallite_subFp0,crystallite_subFi0, &
-           source = crystallite_partitionedF)
+           source = crystallite_F)
 
   allocate(crystallite_subdt(cMax,iMax,eMax),source=0.0_pReal)
   allocate(crystallite_orientation(cMax,iMax,eMax))
@@ -968,7 +969,7 @@ subroutine crystallite_init
   !$OMP END PARALLEL DO
 
   crystallite_partitionedF0  = crystallite_F0
-  crystallite_partitionedF   = crystallite_F0
+  crystallite_F   = crystallite_F0
 
 
   !$OMP PARALLEL DO PRIVATE(ph,me)
@@ -1035,9 +1036,9 @@ subroutine constitutive_windForward(ip,el)
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
-    crystallite_partitionedF0 (1:3,1:3,co,ip,el) = crystallite_partitionedF(1:3,1:3,co,ip,el)
-    crystallite_partitionedLp0(1:3,1:3,co,ip,el) = crystallite_Lp        (1:3,1:3,co,ip,el)
-    crystallite_partitionedS0 (1:3,1:3,co,ip,el) = crystallite_S         (1:3,1:3,co,ip,el)
+    crystallite_partitionedF0 (1:3,1:3,co,ip,el) = crystallite_F (1:3,1:3,co,ip,el)
+    crystallite_partitionedLp0(1:3,1:3,co,ip,el) = crystallite_Lp(1:3,1:3,co,ip,el)
+    crystallite_partitionedS0 (1:3,1:3,co,ip,el) = crystallite_S (1:3,1:3,co,ip,el)
 
     call constitutive_mech_windForward(ph,me)
     do so = 1, phase_Nsources(material_phaseAt(co,el))
@@ -1128,8 +1129,8 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 !--------------------------------------------------------------------------------------------------
 ! calculate dSdF
   temp_33_1 = transpose(matmul(invFp,invFi))
-  temp_33_2 = matmul(crystallite_partitionedF(1:3,1:3,co,ip,el),invSubFp0)
-  temp_33_3 = matmul(matmul(crystallite_partitionedF(1:3,1:3,co,ip,el),invFp), invSubFi0)
+  temp_33_2 = matmul(crystallite_F(1:3,1:3,co,ip,el),invSubFp0)
+  temp_33_3 = matmul(matmul(crystallite_F(1:3,1:3,co,ip,el),invFp), invSubFi0)
 
   do o=1,3; do p=1,3
     rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
@@ -1160,7 +1161,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 ! assemble dPdF
   temp_33_1 = matmul(crystallite_S(1:3,1:3,co,ip,el),transpose(invFp))
   temp_33_2 = matmul(invFp,temp_33_1)
-  temp_33_3 = matmul(crystallite_partitionedF(1:3,1:3,co,ip,el),invFp)
+  temp_33_3 = matmul(crystallite_F(1:3,1:3,co,ip,el),invFp)
   temp_33_4 = matmul(temp_33_3,crystallite_S(1:3,1:3,co,ip,el))
 
   dPdF = 0.0_pReal
@@ -1169,7 +1170,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
   enddo
   do o=1,3; do p=1,3
     dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
-                      + matmul(matmul(crystallite_partitionedF(1:3,1:3,co,ip,el), &
+                      + matmul(matmul(crystallite_F(1:3,1:3,co,ip,el), &
                                dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
                       + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
                                transpose(invFp)) &
@@ -1216,7 +1217,7 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
 
 
   T = matmul(material_orientation0(co,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
-             transpose(math_inv33(crystallite_partitionedF(1:3,1:3,co,ip,el))))
+             transpose(math_inv33(crystallite_F(1:3,1:3,co,ip,el))))
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
@@ -1359,7 +1360,7 @@ subroutine crystallite_restartWrite
   write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName,'a')
 
-  call HDF5_write(fileHandle,crystallite_partitionedF,'F')
+  call HDF5_write(fileHandle,crystallite_F,'F')
   call HDF5_write(fileHandle,crystallite_Lp,        'L_p')
   call HDF5_write(fileHandle,crystallite_S,           'S')
 
