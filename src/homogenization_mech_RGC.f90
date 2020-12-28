@@ -546,7 +546,7 @@ module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHa
      Gmoduli = equivalentModuli(iGrain,ip,el)
      muGrain = Gmoduli(1)                                                                           ! collecting the equivalent shear modulus of grain
      bgGrain = Gmoduli(2)                                                                           ! and the lengthh of Burgers vector
-     iGrain3 = grain1to3(iGrain,prm%N_constituents)                                                 ! get the grain ID in local 3-dimensional index (doneAndHappy,y,z)-position
+     iGrain3 = grain1to3(iGrain,prm%N_constituents)                                                 ! get the grain ID in local 3-dimensional index (x,y,z)-position
 
      interfaceLoop: do iFace = 1,6
        intFace = getInterface(iFace,iGrain3)                                                        ! get the 4-dimensional index of the interface in local numbering system of the grain

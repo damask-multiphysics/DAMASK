@@ -154,13 +154,12 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     doneAndHappy
 
 
-  !$OMP PARALLEL DO PRIVATE(ce,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
+  !$OMP PARALLEL DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
-    me = material_homogenizationMemberAt(ip,el)
     myNgrains = homogenization_Nconstituents(ho)
     do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-
+      me = material_homogenizationMemberAt(ip,el)
 !--------------------------------------------------------------------------------------------------
 ! initialize restoration points
       call constitutive_initializeRestorationPoints(ip,el)
