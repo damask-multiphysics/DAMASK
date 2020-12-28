@@ -872,7 +872,7 @@ subroutine crystallite_init
            crystallite_F0,crystallite_Lp0, &
            crystallite_partitionedS0, &
            crystallite_partitionedF0,&
-                                   crystallite_partitionedLp0, &
+           crystallite_partitionedLp0, &
            crystallite_S,crystallite_P, &
            crystallite_Fe,crystallite_Lp, &
            crystallite_subFp0,crystallite_subFi0, &

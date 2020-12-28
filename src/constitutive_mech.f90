@@ -966,13 +966,13 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
     NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
     me, &
-    size_pl
+    sizeDotState
   real(pReal) :: &
     zeta
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState) :: &
     r                                                                                               ! state residuum
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,2) :: &
-    plastic_dotState
+    dotState
 
 
   ph = material_phaseAt(co,el)
@@ -981,15 +981,15 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
   broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
   if(broken) return
 
-  size_pl = plasticState(ph)%sizeDotState
-  plasticState(ph)%state(1:size_pl,me) = plasticState(ph)%subState0(1:size_pl,me) &
-                                       + plasticState(ph)%dotState (1:size_pl,me) * Delta_t
-  plastic_dotState(1:size_pl,2) = 0.0_pReal
+  sizeDotState = plasticState(ph)%sizeDotState
+  plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
+                                            + plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
+  dotState(1:sizeDotState,2) = 0.0_pReal
 
   iteration: do NiterationState = 1, num%nState
 
-    if(nIterationState > 1) plastic_dotState(1:size_pl,2) = plastic_dotState(1:size_pl,1)
-    plastic_dotState(1:size_pl,1) = plasticState(ph)%dotState(:,me)
+    if(nIterationState > 1) dotState(1:sizeDotState,2) = dotState(1:sizeDotState,1)
+    dotState(1:sizeDotState,1) = plasticState(ph)%dotState(:,me)
 
     broken = integrateStress(F,Delta_t,co,ip,el)
     if(broken) exit iteration
@@ -997,16 +997,16 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
     broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
     if(broken) exit iteration
 
-    zeta = damper(plasticState(ph)%dotState(:,me),plastic_dotState(1:size_pl,1),&
-                                                plastic_dotState(1:size_pl,2))
+    zeta = damper(plasticState(ph)%dotState(:,me),dotState(1:sizeDotState,1),&
+                                                  dotState(1:sizeDotState,2))
     plasticState(ph)%dotState(:,me) = plasticState(ph)%dotState(:,me) * zeta &
-                                  + plastic_dotState(1:size_pl,1) * (1.0_pReal - zeta)
-    r(1:size_pl) = plasticState(ph)%state    (1:size_pl,me) &
-                 - plasticState(ph)%subState0(1:size_pl,me) &
-                 - plasticState(ph)%dotState (1:size_pl,me) * Delta_t
-    plasticState(ph)%state(1:size_pl,me) = plasticState(ph)%state(1:size_pl,me) &
-                                         - r(1:size_pl)
-    if (converged(r(1:size_pl),plasticState(ph)%state(1:size_pl,me),plasticState(ph)%atol(1:size_pl))) then
+                                    + dotState(1:sizeDotState,1) * (1.0_pReal - zeta)
+    r(1:sizeDotState) = plasticState(ph)%state    (1:sizeDotState,me) &
+                      - plasticState(ph)%subState0(1:sizeDotState,me) &
+                      - plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
+    plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%state(1:sizeDotState,me) &
+                                              - r(1:sizeDotState)
+    if (converged(r(1:sizeDotState),plasticState(ph)%state(1:sizeDotState,me),plasticState(ph)%atol(1:sizeDotState))) then
       broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
                                        constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
       exit iteration
