@@ -1026,9 +1026,12 @@ subroutine constitutive_windForward(ip,el)
   integer, intent(in) :: &
     ip, &                                                                                            !< integration point number
     el                                                                                               !< element number
+
   integer :: &
     co, &                                                                                            !< constituent number
     so, ph, me
+
+
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
@@ -1055,10 +1058,10 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
     co, &                                                                                            !< counter in constituent loop
     ip, &                                                                                            !< counter in integration point loop
     el                                                                                               !< counter in element loop
+
   integer :: &
     o, &
     p, ph, me
-
   real(pReal), dimension(3,3)     ::   devNull, &
                                        invSubFp0,invSubFi0,invFp,invFi, &
                                        temp_33_1, temp_33_2, temp_33_3, temp_33_4
@@ -1076,6 +1079,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
                                        temp_3333
   real(pReal), dimension(9,9)::        temp_99
   logical :: error
+
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
@@ -1346,7 +1350,7 @@ end function converged
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_restartWrite
 
-  integer :: i
+  integer :: ph
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName, datasetName
 
@@ -1360,22 +1364,22 @@ subroutine crystallite_restartWrite
   call HDF5_write(fileHandle,crystallite_S,           'S')
 
   groupHandle = HDF5_addGroup(fileHandle,'phase')
-  do i = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') i,'_omega'
-    call HDF5_write(groupHandle,plasticState(i)%state,datasetName)
-    write(datasetName,'(i0,a)') i,'_F_i'
-    call HDF5_write(groupHandle,constitutive_mech_Fi(i)%data,datasetName)
-    write(datasetName,'(i0,a)') i,'_L_i'
-    call HDF5_write(groupHandle,constitutive_mech_Li(i)%data,datasetName)
-    write(datasetName,'(i0,a)') i,'_F_p'
-    call HDF5_write(groupHandle,constitutive_mech_Fp(i)%data,datasetName)
+  do ph = 1,size(material_name_phase)
+    write(datasetName,'(i0,a)') ph,'_omega'
+    call HDF5_write(groupHandle,plasticState(ph)%state,datasetName)
+    write(datasetName,'(i0,a)') ph,'_F_i'
+    call HDF5_write(groupHandle,constitutive_mech_Fi(ph)%data,datasetName)
+    write(datasetName,'(i0,a)') ph,'_L_i'
+    call HDF5_write(groupHandle,constitutive_mech_Li(ph)%data,datasetName)
+    write(datasetName,'(i0,a)') ph,'_F_p'
+    call HDF5_write(groupHandle,constitutive_mech_Fp(ph)%data,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
   groupHandle = HDF5_addGroup(fileHandle,'homogenization')
-  do i = 1, size(material_name_homogenization)
-    write(datasetName,'(i0,a)') i,'_omega'
-    call HDF5_write(groupHandle,homogState(i)%state,datasetName)
+  do ph = 1, size(material_name_homogenization)
+    write(datasetName,'(i0,a)') ph,'_omega'
+    call HDF5_write(groupHandle,homogState(ph)%state,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
@@ -1390,7 +1394,7 @@ end subroutine crystallite_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_restartRead
 
-  integer :: i
+  integer :: ph
   integer(HID_T) :: fileHandle, groupHandle
   character(len=pStringLen) :: fileName, datasetName
 
@@ -1404,22 +1408,22 @@ subroutine crystallite_restartRead
   call HDF5_read(fileHandle,crystallite_S0, 'S')
 
   groupHandle = HDF5_openGroup(fileHandle,'phase')
-  do i = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') i,'_omega'
-    call HDF5_read(groupHandle,plasticState(i)%state0,datasetName)
-    write(datasetName,'(i0,a)') i,'_F_i'
-    call HDF5_read(groupHandle,constitutive_mech_Fi0(i)%data,datasetName)
-    write(datasetName,'(i0,a)') i,'_L_i'
-    call HDF5_read(groupHandle,constitutive_mech_Li0(i)%data,datasetName)
-    write(datasetName,'(i0,a)') i,'_F_p'
-    call HDF5_read(groupHandle,constitutive_mech_Fp0(i)%data,datasetName)
+  do ph = 1,size(material_name_phase)
+    write(datasetName,'(i0,a)') ph,'_omega'
+    call HDF5_read(groupHandle,plasticState(ph)%state0,datasetName)
+    write(datasetName,'(i0,a)') ph,'_F_i'
+    call HDF5_read(groupHandle,constitutive_mech_Fi0(ph)%data,datasetName)
+    write(datasetName,'(i0,a)') ph,'_L_i'
+    call HDF5_read(groupHandle,constitutive_mech_Li0(ph)%data,datasetName)
+    write(datasetName,'(i0,a)') ph,'_F_p'
+    call HDF5_read(groupHandle,constitutive_mech_Fp0(ph)%data,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
   groupHandle = HDF5_openGroup(fileHandle,'homogenization')
-  do i = 1,size(material_name_homogenization)
-    write(datasetName,'(i0,a)') i,'_omega'
-    call HDF5_read(groupHandle,homogState(i)%state0,datasetName)
+  do ph = 1,size(material_name_homogenization)
+    write(datasetName,'(i0,a)') ph,'_omega'
+    call HDF5_read(groupHandle,homogState(ph)%state0,datasetName)
   enddo
   call HDF5_closeGroup(groupHandle)
 
