@@ -1065,7 +1065,7 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
     p, ph, me
   real(pReal), dimension(3,3)     ::   devNull, &
                                        invSubFp0,invSubFi0,invFp,invFi, &
-                                       temp_33_1, temp_33_2, temp_33_3, temp_33_4
+                                       temp_33_1, temp_33_2, temp_33_3
   real(pReal), dimension(3,3,3,3) ::   dSdFe, &
                                        dSdF, &
                                        dSdFi, &
@@ -1160,21 +1160,20 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 !--------------------------------------------------------------------------------------------------
 ! assemble dPdF
   temp_33_1 = matmul(crystallite_S(1:3,1:3,co,ip,el),transpose(invFp))
-  temp_33_2 = matmul(invFp,temp_33_1)
-  temp_33_3 = matmul(crystallite_F(1:3,1:3,co,ip,el),invFp)
-  temp_33_4 = matmul(temp_33_3,crystallite_S(1:3,1:3,co,ip,el))
+  temp_33_2 = matmul(crystallite_F(1:3,1:3,co,ip,el),invFp)
+  temp_33_3 = matmul(temp_33_2,crystallite_S(1:3,1:3,co,ip,el))
 
   dPdF = 0.0_pReal
   do p=1,3
-    dPdF(p,1:3,p,1:3) = transpose(temp_33_2)
+    dPdF(p,1:3,p,1:3) = transpose(matmul(invFp,temp_33_1))
   enddo
   do o=1,3; do p=1,3
     dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
                       + matmul(matmul(crystallite_F(1:3,1:3,co,ip,el), &
                                dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
-                      + matmul(matmul(temp_33_3,dSdF(1:3,1:3,p,o)), &
+                      + matmul(matmul(temp_33_2,dSdF(1:3,1:3,p,o)), &
                                transpose(invFp)) &
-                      + matmul(temp_33_4,transpose(dFpinvdF(1:3,1:3,p,o)))
+                      + matmul(temp_33_3,transpose(dFpinvdF(1:3,1:3,p,o)))
   enddo; enddo
 
 end function crystallite_stressTangent
