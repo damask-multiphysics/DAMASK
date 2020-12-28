@@ -49,8 +49,6 @@ module constitutive
   real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
     crystallite_F0, &                                                                               !< def grad at start of FE inc
     crystallite_Fe, &                                                                               !< current "elastic" def grad (end of converged time step)
-    crystallite_subFp0,&                                                                            !< plastic def grad at start of crystallite inc
-    crystallite_subFi0,&                                                                            !< intermediate def grad at start of crystallite inc
     crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
     crystallite_partitionedLp0, &                                                                   !< plastic velocity grad at start of homog inc
     crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
@@ -748,7 +746,6 @@ subroutine constitutive_allocateState(state, &
   allocate(state%atol             (sizeState),               source=0.0_pReal)
   allocate(state%state0           (sizeState,Nconstituents), source=0.0_pReal)
   allocate(state%partitionedState0(sizeState,Nconstituents), source=0.0_pReal)
-  allocate(state%subState0        (sizeState,Nconstituents), source=0.0_pReal)
   allocate(state%state            (sizeState,Nconstituents), source=0.0_pReal)
 
   allocate(state%dotState      (sizeDotState,Nconstituents), source=0.0_pReal)
@@ -875,7 +872,6 @@ subroutine crystallite_init
            crystallite_partitionedLp0, &
            crystallite_S,crystallite_P, &
            crystallite_Fe,crystallite_Lp, &
-           crystallite_subFp0,crystallite_subFi0, &
            source = crystallite_F)
 
   allocate(crystallite_subdt(cMax,iMax,eMax),source=0.0_pReal)
@@ -936,6 +932,9 @@ subroutine crystallite_init
     allocate(constitutive_mech_Li(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Li0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_partitionedLi0(ph)%data(3,3,Nconstituents))
+    do so = 1, phase_Nsources(ph)
+      allocate(sourceState(ph)%p(so)%subState0,source=sourceState(ph)%p(so)%state0)                 ! ToDo: hack
+    enddo
   enddo
 
   print'(a42,1x,i10)', '    # of elements:                       ', eMax
@@ -1095,8 +1094,8 @@ function crystallite_stressTangent(co,ip,el) result(dPdF)
 
   invFp = math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,me))
   invFi = math_inv33(constitutive_mech_Fi(ph)%data(1:3,1:3,me))
-  invSubFp0 = math_inv33(crystallite_subFp0(1:3,1:3,co,ip,el))
-  invSubFi0 = math_inv33(crystallite_subFi0(1:3,1:3,co,ip,el))
+  invSubFp0 = math_inv33(constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me))
+  invSubFi0 = math_inv33(constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me))
 
   if (sum(abs(dLidS)) < tol_math_check) then
     dFidS = 0.0_pReal

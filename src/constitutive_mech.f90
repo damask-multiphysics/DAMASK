@@ -737,9 +737,9 @@ end subroutine mech_results
 !> @brief calculation of stress (P) with time integration based on a residuum in Lp and
 !> intermediate acceleration of the Newton-Raphson correction
 !--------------------------------------------------------------------------------------------------
-function integrateStress(F,Delta_t,co,ip,el) result(broken)
+function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
 
-  real(pReal), dimension(3,3), intent(in) :: F
+  real(pReal), dimension(3,3), intent(in) :: F,subFp0,subFi0
   real(pReal),                 intent(in) :: Delta_t
   integer, intent(in)::         el, &                                                               ! element index
                                       ip, &                                                         ! integration point index
@@ -808,9 +808,9 @@ function integrateStress(F,Delta_t,co,ip,el) result(broken)
   Lpguess = crystallite_Lp(1:3,1:3,co,ip,el)                                                       ! take as first guess
   Liguess = constitutive_mech_Li(ph)%data(1:3,1:3,me)                                              ! take as first guess
 
-  call math_invert33(invFp_current,devNull,error,crystallite_subFp0(1:3,1:3,co,ip,el))
+  call math_invert33(invFp_current,devNull,error,subFp0)
   if (error) return ! error
-  call math_invert33(invFi_current,devNull,error,crystallite_subFi0(1:3,1:3,co,ip,el))
+  call math_invert33(invFi_current,devNull,error,subFi0)
   if (error) return ! error
 
   A = matmul(F,invFp_current)                                                                       ! intermediate tensor needed later to calculate dFe_dLp
@@ -951,9 +951,10 @@ end function integrateStress
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
+function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F
+  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
@@ -982,7 +983,7 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
   if(broken) return
 
   sizeDotState = plasticState(ph)%sizeDotState
-  plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
+  plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                             + plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
   dotState(1:sizeDotState,2) = 0.0_pReal
 
@@ -991,7 +992,7 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
     if(nIterationState > 1) dotState(1:sizeDotState,2) = dotState(1:sizeDotState,1)
     dotState(1:sizeDotState,1) = plasticState(ph)%dotState(:,me)
 
-    broken = integrateStress(F,Delta_t,co,ip,el)
+    broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
     if(broken) exit iteration
 
     broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
@@ -1002,7 +1003,7 @@ function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
     plasticState(ph)%dotState(:,me) = plasticState(ph)%dotState(:,me) * zeta &
                                     + dotState(1:sizeDotState,1) * (1.0_pReal - zeta)
     r(1:sizeDotState) = plasticState(ph)%state    (1:sizeDotState,me) &
-                      - plasticState(ph)%subState0(1:sizeDotState,me) &
+                      - subState0 &
                       - plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
     plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%state(1:sizeDotState,me) &
                                               - r(1:sizeDotState)
@@ -1042,9 +1043,10 @@ end function integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-function integrateStateEuler(F_0,F,Delta_t,co,ip,el) result(broken)
+function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F
+  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
@@ -1066,14 +1068,14 @@ function integrateStateEuler(F_0,F,Delta_t,co,ip,el) result(broken)
   if(broken) return
 
   sizeDotState = plasticState(ph)%sizeDotState
-  plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
-                                            + plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
+  plasticState(ph)%state(1:sizeDotState,me) = subState0 &
+                                            + plasticState(ph)%dotState(1:sizeDotState,me) * Delta_t
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
                                    constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
   if(broken) return
 
-  broken = integrateStress(F,Delta_t,co,ip,el)
+  broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
 
 end function integrateStateEuler
 
@@ -1081,9 +1083,10 @@ end function integrateStateEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-function integrateStateAdaptiveEuler(F_0,F,Delta_t,co,ip,el) result(broken)
+function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F
+  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
@@ -1108,14 +1111,14 @@ function integrateStateAdaptiveEuler(F_0,F,Delta_t,co,ip,el) result(broken)
   sizeDotState = plasticState(ph)%sizeDotState
 
   residuum_plastic(1:sizeDotState) = - plasticState(ph)%dotstate(1:sizeDotState,me) * 0.5_pReal * Delta_t
-  plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
+  plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                             + plasticState(ph)%dotstate(1:sizeDotState,me) * Delta_t
 
   broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
                                    constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
   if(broken) return
 
-  broken = integrateStress(F,Delta_t,co,ip,el)
+  broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
   if(broken) return
 
   broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
@@ -1131,9 +1134,10 @@ end function integrateStateAdaptiveEuler
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the classic Runge Kutta method
 !---------------------------------------------------------------------------------------------------
-function integrateStateRK4(F_0,F,Delta_t,co,ip,el) result(broken)
+function integrateStateRK4(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F
+  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: co,ip,el
   logical :: broken
@@ -1150,7 +1154,7 @@ function integrateStateRK4(F_0,F,Delta_t,co,ip,el) result(broken)
     B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]
 
 
-  broken = integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C)
+  broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C)
 
 end function integrateStateRK4
 
@@ -1158,9 +1162,10 @@ end function integrateStateRK4
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the Cash-Carp method
 !---------------------------------------------------------------------------------------------------
-function integrateStateRKCK45(F_0,F,Delta_t,co,ip,el) result(broken)
+function integrateStateRKCK45(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F
+  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: co,ip,el
   logical :: broken
@@ -1184,7 +1189,7 @@ function integrateStateRKCK45(F_0,F,Delta_t,co,ip,el) result(broken)
       13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  1._pReal/4._pReal]
 
 
-  broken = integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
+  broken = integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,DB)
 
 end function integrateStateRKCK45
 
@@ -1193,9 +1198,10 @@ end function integrateStateRKCK45
 !> @brief Integrate state (including stress integration) with an explicit Runge-Kutta method or an
 !! embedded explicit Runge-Kutta method
 !--------------------------------------------------------------------------------------------------
-function integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB) result(broken)
+function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,DB) result(broken)
 
-  real(pReal), intent(in),dimension(3,3) :: F_0,F
+  real(pReal), intent(in),dimension(3,3) :: F_0,F,subFp0,subFi0
+  real(pReal), intent(in),dimension(:)   :: subState0
   real(pReal), intent(in) :: Delta_t
   real(pReal), dimension(:,:), intent(in) :: A
   real(pReal), dimension(:),   intent(in) :: B, C
@@ -1233,10 +1239,10 @@ function integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB) result(broken)
                                       + A(n,stage) * plastic_RKdotState(1:sizeDotState,n)
     enddo
 
-    plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
+    plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                               + plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
 
-    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),Delta_t * C(stage),co,ip,el)
+    broken = integrateStress(F_0 + (F - F_0) * Delta_t * C(stage),subFp0,subFi0,Delta_t * C(stage),co,ip,el)
     if(broken) exit
 
     broken = mech_collectDotState(Delta_t*C(stage),co,ip,el,ph,me)
@@ -1248,7 +1254,7 @@ function integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB) result(broken)
 
   plastic_RKdotState(1:sizeDotState,size(B)) = plasticState (ph)%dotState(:,me)
   plasticState(ph)%dotState(:,me) = matmul(plastic_RKdotState(1:sizeDotState,1:size(B)),B)
-  plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%subState0(1:sizeDotState,me) &
+  plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                             + plasticState(ph)%dotState (1:sizeDotState,me) * Delta_t
 
   if(present(DB)) &
@@ -1262,7 +1268,7 @@ function integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB) result(broken)
                                    constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
   if(broken) return
 
-  broken = integrateStress(F,Delta_t,co,ip,el)
+  broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
 
 end function integrateStateRK
 
@@ -1487,33 +1493,40 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
     formerSubStep
   integer :: &
     NiterationCrystallite, &                                                                        ! number of iterations in crystallite loop
-    so, ph, me
+    so, ph, me, sizeDotState
   logical :: todo
   real(pReal) :: subFrac,subStep
   real(pReal), dimension(3,3) :: &
-    subLp0, &                                                                                       !< plastic velocity grad at start of crystallite inc
-    subLi0, &                                                                                          !< intermediate velocity grad at start of crystallite inc
+    subFp0, &
+    subFi0, &
+    subLp0, &
+    subLi0, &
     subF0, &
     subF
+  real(pReal), dimension(:), allocatable :: subState0
 
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
+  sizeDotState = plasticState(ph)%sizeDotState
+
   subLi0 = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
   subLp0 = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
+  subState0 = plasticState(ph)%partitionedState0(:,me)
 
-  plasticState(ph)%subState0(:,me) = plasticState(ph)%partitionedState0(:,me)
+
   do so = 1, phase_Nsources(ph)
     sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%partitionedState0(:,me)
   enddo
-  crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
-  crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
+  subFp0 = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
+  subFi0 = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
   subF0  = crystallite_partitionedF0(1:3,1:3,co,ip,el)
   subFrac = 0.0_pReal
   subStep = 1.0_pReal/num%subStepSizeCryst
   todo = .true.
   converged_ = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
 
+  crystallite_subdt(co,ip,el) = dt
   todo = .true.
   NiterationCrystallite = 0
   cutbackLooping: do while (todo)
@@ -1532,9 +1545,9 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subF0  = subF
         subLp0 = crystallite_Lp  (1:3,1:3,co,ip,el)
         subLi0 = constitutive_mech_Li(ph)%data(1:3,1:3,me)
-        crystallite_subFp0(1:3,1:3,co,ip,el) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
-        crystallite_subFi0(1:3,1:3,co,ip,el) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
-        plasticState(ph)%subState0(:,me) = plasticState(ph)%state(:,me)
+        subFp0 = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
+        subFi0 = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
+        subState0 = plasticState(ph)%state(:,me)
         do so = 1, phase_Nsources(ph)
           sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%state(:,me)
         enddo
@@ -1543,14 +1556,14 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 !  cut back (reduced time and restore)
     else
       subStep       = num%subStepSizeCryst * subStep
-      constitutive_mech_Fp(ph)%data(1:3,1:3,me) =            crystallite_subFp0(1:3,1:3,co,ip,el)
-      constitutive_mech_Fi(ph)%data(1:3,1:3,me) =            crystallite_subFi0(1:3,1:3,co,ip,el)
-      crystallite_S    (1:3,1:3,co,ip,el) =            crystallite_S0    (1:3,1:3,co,ip,el)
-      if (subStep < 1.0_pReal) then                                        ! actual (not initial) cutback
-        crystallite_Lp (1:3,1:3,co,ip,el) =            subLp0
-        constitutive_mech_Li(ph)%data(1:3,1:3,me) =            subLi0
+      constitutive_mech_Fp(ph)%data(1:3,1:3,me) = subFp0
+      constitutive_mech_Fi(ph)%data(1:3,1:3,me) = subFi0
+      crystallite_S    (1:3,1:3,co,ip,el) = crystallite_S0    (1:3,1:3,co,ip,el)
+      if (subStep < 1.0_pReal) then                                                                 ! actual (not initial) cutback
+        crystallite_Lp (1:3,1:3,co,ip,el) = subLp0
+        constitutive_mech_Li(ph)%data(1:3,1:3,me) = subLi0
       endif
-      plasticState(ph)%state(:,me) = plasticState(ph)%subState0(:,me)
+      plasticState(ph)%state(:,me) = subState0
       do so = 1, phase_Nsources(ph)
         sourceState(ph)%p(so)%state(:,me) = sourceState(ph)%p(so)%subState0(:,me)
       enddo
@@ -1565,8 +1578,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
            + subStep * (crystallite_F(1:3,1:3,co,ip,el) - crystallite_partitionedF0(1:3,1:3,co,ip,el))
       crystallite_Fe(1:3,1:3,co,ip,el) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                        constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
-      crystallite_subdt(co,ip,el) = subStep * dt
-      converged_ = .not. integrateState(subF0,subF,subStep * dt,co,ip,el)
+      converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
       converged_ = converged_ .and. .not. integrateSourceState(subStep * dt,co,ip,el)
     endif
 
