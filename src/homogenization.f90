@@ -289,18 +289,17 @@ function updateState(subdt,subF,ip,el)
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
-  integer :: c
   logical, dimension(2) :: updateState
+
+  integer :: co
   real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
 
-  updateState = .true.
-  chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
-    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      do c=1,homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
+
+  if (homogenization_type(material_homogenizationAt(el)) == HOMOGENIZATION_RGC_ID) then
+      do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+        dPdFs(:,:,:,:,co) = crystallite_stressTangent(co,ip,el)
       enddo
       updateState = &
-        updateState .and. &
           mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
                         crystallite_partitionedF(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
                         crystallite_partitionedF0(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el),&
@@ -309,7 +308,9 @@ function updateState(subdt,subF,ip,el)
                                dPdFs, &
                                ip, &
                                el)
-  end select chosenHomogenization
+  else
+    updateState = .true.
+  endif
 
 end function updateState
 
@@ -318,33 +319,31 @@ end function updateState
 !> @brief writes homogenization results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_results
-  use material, only: &
-    material_homogenization_type => homogenization_type
 
-  integer :: ph
+  integer :: ho
   character(len=:), allocatable :: group_base,group
 
 
   call results_closeGroup(results_addGroup('current/homogenization/'))
 
-  do ph=1,size(material_name_homogenization)
-    group_base = 'current/homogenization/'//trim(material_name_homogenization(ph))
+  do ho=1,size(material_name_homogenization)
+    group_base = 'current/homogenization/'//trim(material_name_homogenization(ho))
     call results_closeGroup(results_addGroup(group_base))
 
-    call mech_results(group_base,ph)
+    call mech_results(group_base,ho)
 
     group = trim(group_base)//'/damage'
     call results_closeGroup(results_addGroup(group))
-    select case(damage_type(ph))
+    select case(damage_type(ho))
       case(DAMAGE_NONLOCAL_ID)
-        call damage_nonlocal_results(ph,group)
+        call damage_nonlocal_results(ho,group)
     end select
 
     group = trim(group_base)//'/thermal'
     call results_closeGroup(results_addGroup(group))
-    select case(thermal_type(ph))
+    select case(thermal_type(ho))
       case(THERMAL_CONDUCTION_ID)
-        call thermal_conduction_results(ph,group)
+        call thermal_conduction_results(ho,group)
     end select
 
  enddo
