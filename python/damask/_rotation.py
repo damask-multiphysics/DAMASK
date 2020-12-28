@@ -204,8 +204,16 @@ class Rotation:
 
 
     def append(self,other):
-        """Extend rotation array along first dimension with other array."""
-        return self.copy(rotation=np.vstack((self.quaternion,other.quaternion)))
+        """
+        Extend rotation array along first dimension with other array(s).
+
+        Parameters
+        ----------
+            other : Rotation or list of Rotations.
+
+        """
+        return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
+                                                      [self]+other if isinstance(other,list) else [self,other]))))
 
 
     def flatten(self,order = 'C'):
@@ -263,7 +271,7 @@ class Rotation:
             """Intermediate representation supporting quaternion averaging."""
             return np.einsum('...i,...j',quat,quat)
 
-        if not weights:
+        if weights is None:
             weights = np.ones(self.shape,dtype=float)
 
         eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights[...,np.newaxis,np.newaxis],axis=-3) \
