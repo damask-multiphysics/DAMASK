@@ -242,7 +242,18 @@ end subroutine mech_RGC_partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-module procedure mech_RGC_updateState
+module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHappy)
+      logical, dimension(2) :: doneAndHappy
+      real(pReal), dimension(:,:,:),     intent(in)    :: &
+        P,&                                                                                         !< partitioned stresses
+        F,&                                                                                         !< partitioned deformation gradients
+        F0                                                                                          !< partitioned initial deformation gradients
+      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
+      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
+      real(pReal),                       intent(in) :: dt                                           !< time increment
+      integer,                           intent(in) :: &
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
 
   integer, dimension(4) :: intFaceN,intFaceP,faceID
   integer, dimension(3) :: nGDim,iGr3N,iGr3P
@@ -256,7 +267,7 @@ module procedure mech_RGC_updateState
   real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
 
   zeroTimeStep: if(dEq0(dt)) then
-    mech_RGC_updateState = .true.                                                                   ! pretend everything is fine and return
+    doneAndHappy = .true.                                                                   ! pretend everything is fine and return
     return
   endif zeroTimeStep
 
@@ -327,12 +338,12 @@ module procedure mech_RGC_updateState
   stresMax = maxval(abs(P))                                                                         ! get the maximum of first Piola-Kirchhoff (material) stress
   residMax = maxval(abs(tract))                                                                     ! get the maximum of the residual
 
-  mech_RGC_updateState = .false.
+  doneAndHappy = .false.
 
 !--------------------------------------------------------------------------------------------------
 !  If convergence reached => done and happy
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
-    mech_RGC_updateState = .true.
+    doneAndHappy = .true.
 
 !--------------------------------------------------------------------------------------------------
 ! compute/update the state for postResult, i.e., all energy densities computed by time-integration
@@ -354,7 +365,7 @@ module procedure mech_RGC_updateState
 !--------------------------------------------------------------------------------------------------
 ! if residual blows-up => done but unhappy
   elseif (residMax > num%relMax*stresMax .or. residMax > num%absMax) then                           ! try to restart when residual blows up exceeding maximum bound
-    mech_RGC_updateState = [.true.,.false.]                                                         ! with direct cut-back
+    doneAndHappy = [.true.,.false.]                                                         ! with direct cut-back
    return
   endif
 
@@ -484,7 +495,7 @@ module procedure mech_RGC_updateState
   enddo; enddo
   stt%relaxationVector(:,of) = relax + drelax                                                       ! Updateing the state variable for the next iteration
   if (any(abs(drelax) > num%maxdRelax)) then                                                        ! Forcing cutback when the incremental change of relaxation vector becomes too large
-    mech_RGC_updateState = [.true.,.false.]
+    doneAndHappy = [.true.,.false.]
     !$OMP CRITICAL (write2out)
     print'(a,i3,a,i3,a)',' RGC_updateState: ip ',ip,' | el ',el,' enforces cutback'
     print'(a,e15.8)',' due to large relaxation change = ',maxval(abs(drelax))
@@ -535,7 +546,7 @@ module procedure mech_RGC_updateState
      Gmoduli = equivalentModuli(iGrain,ip,el)
      muGrain = Gmoduli(1)                                                                           ! collecting the equivalent shear modulus of grain
      bgGrain = Gmoduli(2)                                                                           ! and the lengthh of Burgers vector
-     iGrain3 = grain1to3(iGrain,prm%N_constituents)                                                 ! get the grain ID in local 3-dimensional index (x,y,z)-position
+     iGrain3 = grain1to3(iGrain,prm%N_constituents)                                                 ! get the grain ID in local 3-dimensional index (doneAndHappy,y,z)-position
 
      interfaceLoop: do iFace = 1,6
        intFace = getInterface(iFace,iGrain3)                                                        ! get the 4-dimensional index of the interface in local numbering system of the grain
@@ -729,7 +740,7 @@ module procedure mech_RGC_updateState
 
   end subroutine grainDeformation
 
-end procedure mech_RGC_updateState
+end function mech_RGC_updateState
 
 
 !--------------------------------------------------------------------------------------------------

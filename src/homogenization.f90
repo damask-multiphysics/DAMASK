@@ -70,29 +70,22 @@ module homogenization
     end subroutine mech_homogenize
 
     module subroutine mech_results(group_base,h)
-
       character(len=*), intent(in) :: group_base
       integer, intent(in)          :: h
-
     end subroutine mech_results
 
-! -------- ToDo ---------------------------------------------------------
-    module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
-      logical, dimension(2) :: mech_RGC_updateState
-      real(pReal), dimension(:,:,:),     intent(in)    :: &
-        P,&                                                                                         !< partitioned stresses
-        F,&                                                                                         !< partitioned deformation gradients
-        F0                                                                                          !< partitioned initial deformation gradients
-      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
-      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
-      real(pReal),                       intent(in) :: dt                                           !< time increment
-      integer,                           intent(in) :: &
-        ip, &                                                                                       !< integration point number
-        el                                                                                          !< element number
-    end function mech_RGC_updateState
+    module function mech_updateState(subdt,subF,ip,el) result(doneAndHappy)
+      real(pReal), intent(in) :: &
+        subdt                                                                                           !< current time step
+      real(pReal), intent(in), dimension(3,3) :: &
+        subF
+      integer,     intent(in) :: &
+        ip, &                                                                                           !< integration point
+        el                                                                                              !< element number
+      logical, dimension(2) :: doneAndHappy
+    end function mech_updateState
 
   end interface
-! -----------------------------------------------------------------------
 
   public ::  &
     homogenization_init, &
@@ -241,11 +234,11 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
               doneAndHappy = [.true.,.false.]
             else
               ce = (el-1)*discretization_nIPs + ip
-              doneAndHappy = updateState(dt*subStep, &
-                                                  homogenization_F0(1:3,1:3,ce) &
-                                                  + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce)) &
+              doneAndHappy = mech_updateState(dt*subStep, &
+                                              homogenization_F0(1:3,1:3,ce) &
+                                              + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce)) &
                                                      *(subStep+subFrac), &
-                                                 ip,el)
+                                              ip,el)
               converged = all(doneAndHappy)
             endif
           endif
@@ -274,45 +267,6 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   endif
 
 end subroutine materialpoint_stressAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief update the internal state of the homogenization scheme and tell whether "done" and
-!> "happy" with result
-!--------------------------------------------------------------------------------------------------
-function updateState(subdt,subF,ip,el)
-
-  real(pReal), intent(in) :: &
-    subdt                                                                                           !< current time step
-  real(pReal), intent(in), dimension(3,3) :: &
-    subF
-  integer,     intent(in) :: &
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element number
-  logical, dimension(2) :: updateState
-
-  integer :: co
-  real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
-
-
-  if (homogenization_type(material_homogenizationAt(el)) == HOMOGENIZATION_RGC_ID) then
-      do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,co) = crystallite_stressTangent(co,ip,el)
-      enddo
-      updateState = &
-          mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
-                        crystallite_partitionedF(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
-                        crystallite_partitionedF0(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el),&
-                               subF,&
-                               subdt, &
-                               dPdFs, &
-                               ip, &
-                               el)
-  else
-    updateState = .true.
-  endif
-
-end function updateState
 
 
 !--------------------------------------------------------------------------------------------------
