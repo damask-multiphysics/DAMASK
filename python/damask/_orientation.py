@@ -226,9 +226,9 @@ class Orientation(Rotation):
 
         """
         return  super().__eq__(other) \
-            and self.family     == other.family \
-            and self.lattice    == other.lattice \
-            and self.parameters == other.parameters
+            and hasattr(other, 'family')     and self.family     == other.family \
+            and hasattr(other, 'lattice')    and self.lattice    == other.lattice \
+            and hasattr(other, 'parameters') and self.parameters == other.parameters
 
 
     def __matmul__(self,other):
