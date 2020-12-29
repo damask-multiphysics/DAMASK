@@ -52,12 +52,11 @@ submodule(homogenization) homogenization_mech
     end subroutine mech_RGC_averageStressAndItsTangent
 
 
-    module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHappy)
+    module function mech_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
       real(pReal), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
-        F,&                                                                                         !< partitioned deformation gradients
-        F0                                                                                          !< partitioned initial deformation gradients
+        F                                                                                           !< partitioned deformation gradients
       real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
       real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
       real(pReal),                       intent(in) :: dt                                           !< time increment
@@ -212,7 +211,6 @@ module function mech_updateState(subdt,subF,ip,el) result(doneAndHappy)
       doneAndHappy = &
           mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
                         crystallite_F(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
-                        crystallite_partitionedF0(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el),&
                                subF,&
                                subdt, &
                                dPdFs, &

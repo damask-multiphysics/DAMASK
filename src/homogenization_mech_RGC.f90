@@ -24,9 +24,6 @@ submodule(homogenization:homogenization_mech) homogenization_mech_RGC
   end type tParameters
 
   type :: tRGCstate
-    real(pReal), pointer,     dimension(:) :: &
-      work, &
-      penaltyEnergy
     real(pReal), pointer,     dimension(:,:) :: &
       relaxationVector
   end type tRGCstate
@@ -170,8 +167,7 @@ module subroutine mech_RGC_init(num_homogMech)
     nIntFaceTot = 3*(  (prm%N_constituents(1)-1)*prm%N_constituents(2)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*(prm%N_constituents(2)-1)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*prm%N_constituents(2)*(prm%N_constituents(3)-1))
-    sizeState = nIntFaceTot &
-              + size(['avg constitutive work ','average penalty energy'])
+    sizeState = nIntFaceTot
 
     homogState(h)%sizeState = sizeState
     allocate(homogState(h)%state0   (sizeState,Nmaterialpoints), source=0.0_pReal)
@@ -180,8 +176,6 @@ module subroutine mech_RGC_init(num_homogMech)
 
     stt%relaxationVector   => homogState(h)%state(1:nIntFaceTot,:)
     st0%relaxationVector   => homogState(h)%state0(1:nIntFaceTot,:)
-    stt%work               => homogState(h)%state(nIntFaceTot+1,:)
-    stt%penaltyEnergy      => homogState(h)%state(nIntFaceTot+2,:)
 
     allocate(dst%volumeDiscrepancy(   Nmaterialpoints), source=0.0_pReal)
     allocate(dst%relaxationRate_avg(  Nmaterialpoints), source=0.0_pReal)
@@ -243,12 +237,11 @@ end subroutine mech_RGC_partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHappy)
+module function mech_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAndHappy)
       logical, dimension(2) :: doneAndHappy
       real(pReal), dimension(:,:,:),     intent(in)    :: &
         P,&                                                                                         !< partitioned stresses
-        F,&                                                                                         !< partitioned deformation gradients
-        F0                                                                                          !< partitioned initial deformation gradients
+        F                                                                                           !< partitioned deformation gradients
       real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
       real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
       real(pReal),                       intent(in) :: dt                                           !< time increment
@@ -287,8 +280,8 @@ module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHa
 
 !--------------------------------------------------------------------------------------------------
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
-  allocate(resid(3*nIntFaceTot),   source=0.0_pReal)
-  allocate(tract(nIntFaceTot,3),        source=0.0_pReal)
+  allocate(resid(3*nIntFaceTot), source=0.0_pReal)
+  allocate(tract(nIntFaceTot,3), source=0.0_pReal)
   relax  = stt%relaxationVector(:,of)
   drelax = stt%relaxationVector(:,of) - st0%relaxationVector(:,of)
 
@@ -345,17 +338,6 @@ module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHa
 !  If convergence reached => done and happy
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
     doneAndHappy = .true.
-
-!--------------------------------------------------------------------------------------------------
-! compute/update the state for postResult, i.e., all energy densities computed by time-integration
-    do iGrain = 1,product(prm%N_constituents)
-      do i = 1,3;do j = 1,3
-        stt%work(of)          = stt%work(of) &
-                              + P(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
-        stt%penaltyEnergy(of) = stt%penaltyEnergy(of) &
-                              + R(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
-      enddo; enddo
-    enddo
 
     dst%mismatch(1:3,of)       = sum(NN,2)/real(nGrain,pReal)
     dst%relaxationRate_avg(of) = sum(abs(drelax))/dt/real(3*nIntFaceTot,pReal)
@@ -754,15 +736,9 @@ module subroutine mech_RGC_results(instance,group)
   associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('W')
-        call results_writeDataset(group,stt%work,trim(prm%output(o)), &
-                                  'work density','J/m³')
       case('M')
         call results_writeDataset(group,dst%mismatch,trim(prm%output(o)), &
                                   'average mismatch tensor','1')
-      case('R')
-        call results_writeDataset(group,stt%penaltyEnergy,trim(prm%output(o)), &
-                                  'mismatch penalty density','J/m³')
       case('Delta_V')
         call results_writeDataset(group,dst%volumeDiscrepancy,trim(prm%output(o)), &
                                   'volume discrepancy','m³')
