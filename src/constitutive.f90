@@ -936,9 +936,9 @@ subroutine crystallite_init
     allocate(constitutive_mech_partitionedLp0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Lp0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Lp(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_S(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_S0(ph)%data(3,3,Nconstituents))
-    allocate(constitutive_mech_partitionedS0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_S(ph)%data(3,3,Nconstituents),source=0.0_pReal)
+    allocate(constitutive_mech_S0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
+    allocate(constitutive_mech_partitionedS0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
     do so = 1, phase_Nsources(ph)
       allocate(sourceState(ph)%p(so)%subState0,source=sourceState(ph)%p(so)%state0)                 ! ToDo: hack
     enddo

@@ -941,7 +941,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   constitutive_mech_Li(ph)%data(1:3,1:3,me) = Liguess
   constitutive_mech_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)    ! regularize
   constitutive_mech_Fi(ph)%data(1:3,1:3,me) = Fi_new
-  constitutive_mech_Fe(ph)%data(1:3,1:3,me)= matmul(matmul(F,invFp_new),invFi_new)
+  constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(matmul(F,invFp_new),invFi_new)
   broken = .false.
 
 end function integrateStress
