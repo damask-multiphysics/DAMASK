@@ -1466,6 +1466,22 @@ function constitutive_mech_getF(co,ip,el) result(F)
 end function constitutive_mech_getF
 
 
+! getter for non-thermal (e.g. mech)
+function constitutive_thermal_T(co,ip,el) result(T)
+
+  integer, intent(in) :: co, ip, el
+  real(pReal) :: T
+ 
+  integer :: ho, tme
+
+  ho = material_homogenizationAt(el)
+  tme = material_homogenizationMemberAt(ip,el)
+
+  T = temperature(ho)%p(tme)
+
+end function constitutive_thermal_T
+
+
 ! setter for homogenization
 subroutine constitutive_mech_setF(F,co,ip,el)
 
