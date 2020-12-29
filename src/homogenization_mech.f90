@@ -112,25 +112,28 @@ module subroutine mech_partition(subF,ip,el)
   integer,     intent(in) :: &
     ip, &                                                                                           !< integration point
     el                                                                                              !< element number
+  
+  integer :: co
+  real(pReal) :: F(3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
+
 
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-      crystallite_F(1:3,1:3,1,ip,el) = subF
+      F(1:3,1:3,1) = subF
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-      call mech_isostrain_partitionDeformation(&
-                           crystallite_F(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
-                           subF)
+      call mech_isostrain_partitionDeformation(F,subF)
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      call mech_RGC_partitionDeformation(&
-                          crystallite_F(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
-                          subF,&
-                          ip, &
-                          el)
+      call mech_RGC_partitionDeformation(F,subF,ip,el)
 
   end select chosenHomogenization
+
+  do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
+    call constitutive_mech_setF(F(1:3,1:3,co),co,ip,el)
+  enddo
+
 
 end subroutine mech_partition
 

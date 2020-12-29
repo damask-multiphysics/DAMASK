@@ -392,6 +392,7 @@ module constitutive
     crystallite_push33ToRef, &
     crystallite_restartWrite, &
     integrateSourceState, &
+    constitutive_mech_setF, &
     constitutive_mech_getLp, &
     constitutive_mech_getS, &
     crystallite_restartRead, &
@@ -1442,9 +1443,11 @@ function constitutive_mech_getS(co,ip,el) result(S)
   integer, intent(in) :: co, ip, el
   real(pReal), dimension(3,3) :: S
 
+
   S = constitutive_mech_S(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
 
 end function constitutive_mech_getS
+
 
 ! getter for non-mech (e.g. thermal)
 function constitutive_mech_getLp(co,ip,el) result(Lp)
@@ -1452,8 +1455,22 @@ function constitutive_mech_getLp(co,ip,el) result(Lp)
   integer, intent(in) :: co, ip, el
   real(pReal), dimension(3,3) :: Lp
 
+
   Lp = constitutive_mech_Lp(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
 
 end function constitutive_mech_getLp
+
+
+! setter for homogenization
+subroutine constitutive_mech_setF(F,co,ip,el)
+
+  real(pReal), dimension(3,3), intent(in) :: F
+  integer, intent(in) :: co, ip, el
+
+
+  crystallite_F(1:3,1:3,co,ip,el) = F
+  !constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
+
+end subroutine constitutive_mech_setF
 
 end module constitutive

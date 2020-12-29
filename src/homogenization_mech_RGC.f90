@@ -523,7 +523,6 @@ module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHa
     integer, dimension (3)   :: iGrain3,iGNghb3,nGDim
     real(pReal),   dimension (3,3) :: gDef,nDef
     real(pReal),   dimension (3)   :: nVect,surfCorr
-    real(pReal),   dimension (2)   :: Gmoduli
     integer :: iGrain,iGNghb,iFace,i,j,k,l
     real(pReal) :: muGrain,muGNghb,nDefNorm
     real(pReal), parameter  :: &
