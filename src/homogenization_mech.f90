@@ -202,15 +202,17 @@ module function mech_updateState(subdt,subF,ip,el) result(doneAndHappy)
 
   integer :: co
   real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
+  real(pReal) :: Fs(3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
 
 
   if (homogenization_type(material_homogenizationAt(el)) == HOMOGENIZATION_RGC_ID) then
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
         dPdFs(:,:,:,:,co) = crystallite_stressTangent(subdt,co,ip,el)
+        Fs(:,:,co)        = constitutive_mech_getF(co,ip,el)
       enddo
       doneAndHappy = &
           mech_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
-                        crystallite_F(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
+                               Fs, &
                                subF,&
                                subdt, &
                                dPdFs, &

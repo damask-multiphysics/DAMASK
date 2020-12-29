@@ -184,12 +184,9 @@ submodule(constitutive) constitutive_mech
         of
     end subroutine plastic_disloTungsten_dotState
 
-    module subroutine plastic_nonlocal_dotState(Mp, F, Temperature,timestep, &
-                                                        instance,of,ip,el)
+    module subroutine plastic_nonlocal_dotState(Mp,Temperature,timestep,instance,of,ip,el)
       real(pReal), dimension(3,3), intent(in) :: &
         Mp                                                                                          !< MandelStress
-      real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
-        F                                                                                           !< deformation gradient
       real(pReal), intent(in) :: &
         Temperature, &                                                                              !< temperature
         timestep                                                                                    !< substepped crystallite time increment
@@ -215,9 +212,7 @@ submodule(constitutive) constitutive_mech
         of
     end subroutine plastic_dislotungsten_dependentState
 
-    module subroutine plastic_nonlocal_dependentState(F, instance, of, ip, el)
-      real(pReal), dimension(3,3), intent(in) :: &
-        F                                                                                           !< deformation gradient
+    module subroutine plastic_nonlocal_dependentState(instance, of, ip, el)
       integer, intent(in) :: &
         instance, &
         of, &
@@ -480,32 +475,35 @@ end subroutine constitutive_hooke_SandItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different plasticity constitutive models
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_plastic_dependentState(F, co, ip, el)
+module subroutine constitutive_plastic_dependentState(co, ip, el)
 
   integer, intent(in) :: &
     co, &                                                                                           !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
-  real(pReal),   intent(in), dimension(3,3) :: &
-    F                                                                                               !< deformation gradient
 
   integer :: &
     ho, &                                                                                           !< homogenization
     tme, &                                                                                          !< thermal member position
-    instance, of
+    instance, me
+
 
   ho  = material_homogenizationAt(el)
   tme = material_homogenizationMemberAt(ip,el)
-  of  = material_phasememberAt(co,ip,el)
+  me  = material_phasememberAt(co,ip,el)
   instance = phase_plasticityInstance(material_phaseAt(co,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
+    
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,of)
+      call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,me)
+    
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_dislotungsten_dependentState(instance,of)
+      call plastic_dislotungsten_dependentState(instance,me)
+    
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dependentState (F,instance,of,ip,el)
+      call plastic_nonlocal_dependentState(instance,me,ip,el)
+  
   end select plasticityType
 
 end subroutine constitutive_plastic_dependentState
@@ -539,13 +537,13 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
     ho, &                                                                                           !< homogenization
     tme                                                                                             !< thermal member position
   integer :: &
-    i, j, instance, of
+    i, j, instance, me
 
   ho = material_homogenizationAt(el)
   tme = material_homogenizationMemberAt(ip,el)
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)
-  of = material_phasememberAt(co,ip,el)
+  me = material_phasememberAt(co,ip,el)
   instance = phase_plasticityInstance(material_phaseAt(co,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
@@ -555,22 +553,22 @@ module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       dLp_dMp = 0.0_pReal
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+      call plastic_isotropic_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+      call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,of)
+      call plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, temperature(ho)%p(tme),instance,of,ip,el)
+      call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, temperature(ho)%p(tme),instance,me,ip,el)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,me)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,me)
 
   end select plasticityType
 
@@ -586,7 +584,7 @@ end subroutine constitutive_plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function mech_collectDotState(subdt, co, ip, el,ph,of) result(broken)
+function mech_collectDotState(subdt,co,ip,el,ph,of) result(broken)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID of integration point
@@ -601,9 +599,9 @@ function mech_collectDotState(subdt, co, ip, el,ph,of) result(broken)
   integer :: &
     ho, &                                                                                           !< homogenization
     tme, &                                                                                          !< thermal member position
-    i, &                                                                                            !< counter in source loop
     instance
   logical :: broken
+  
   ho = material_homogenizationAt(el)
   tme = material_homogenizationMemberAt(ip,el)
   instance = phase_plasticityInstance(ph)
@@ -629,8 +627,7 @@ function mech_collectDotState(subdt, co, ip, el,ph,of) result(broken)
       call plastic_disloTungsten_dotState(Mp,temperature(ho)%p(tme),instance,of)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dotState(Mp,crystallite_partitionedF0,temperature(ho)%p(tme),subdt, &
-                                          instance,of,ip,el)
+      call plastic_nonlocal_dotState(Mp,temperature(ho)%p(tme),subdt,instance,of,ip,el)
   end select plasticityType
   broken = any(IEEE_is_NaN(plasticState(ph)%dotState(:,of)))
 
@@ -798,12 +795,13 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
                                       jacoCounterLi                                                 ! counters to check for Jacobian update
   logical :: error,broken
 
-  broken = .true.
 
-  call constitutive_plastic_dependentState(crystallite_F(1:3,1:3,co,ip,el),co,ip,el)
+  broken = .true.
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
+  
+  call constitutive_plastic_dependentState(co,ip,el)
 
   Lpguess = constitutive_mech_Lp(ph)%data(1:3,1:3,me)                                              ! take as first guess
   Liguess = constitutive_mech_Li(ph)%data(1:3,1:3,me)                                              ! take as first guess
@@ -1289,8 +1287,7 @@ subroutine crystallite_results(group,ph)
 
       select case (output_constituent(ph)%label(ou))
         case('F')
-          selected_tensors = select_tensors(crystallite_F,ph)
-          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_F(ph)%data,output_constituent(ph)%label(ou),&
                                    'deformation gradient','1')
         case('F_e')
           call results_writeDataset(group//'/mechanics/',constitutive_mech_Fe(ph)%data,output_constituent(ph)%label(ou),&
@@ -1405,6 +1402,7 @@ module subroutine mech_initializeRestorationPoints(ph,me)
 
   constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)  = constitutive_mech_F0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)  = constitutive_mech_S0(ph)%data(1:3,1:3,me)
@@ -1424,6 +1422,7 @@ module subroutine constitutive_mech_windForward(ph,me)
 
   constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)  = constitutive_mech_F(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)  = constitutive_mech_S(ph)%data(1:3,1:3,me)
@@ -1445,6 +1444,7 @@ module subroutine constitutive_mech_forward()
   do ph = 1, size(plasticState)
     constitutive_mech_Fi0(ph) = constitutive_mech_Fi(ph)
     constitutive_mech_Fp0(ph) = constitutive_mech_Fp(ph)
+    constitutive_mech_F0(ph)  = constitutive_mech_F(ph)
     constitutive_mech_Li0(ph) = constitutive_mech_Li(ph)
     constitutive_mech_Lp0(ph) = constitutive_mech_Lp(ph)
     constitutive_mech_S0(ph)  = constitutive_mech_S(ph)
@@ -1519,7 +1519,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   enddo
   subFp0 = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
   subFi0 = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
-  subF0  = crystallite_partitionedF0(1:3,1:3,co,ip,el)
+  subF0  = constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me)
   subFrac = 0.0_pReal
   subStep = 1.0_pReal/num%subStepSizeCryst
   todo = .true.
@@ -1569,7 +1569,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 !  prepare for integration
     if (todo) then
       subF = subF0 &
-           + subStep * (crystallite_F(1:3,1:3,co,ip,el) - crystallite_partitionedF0(1:3,1:3,co,ip,el))
+           + subStep * (constitutive_mech_F(ph)%data(1:3,1:3,me) - constitutive_mech_partitionedF0(ph)%data(1:3,1:3,me))
       constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                                 constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
