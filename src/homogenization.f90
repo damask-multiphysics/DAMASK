@@ -16,6 +16,7 @@ module homogenization
   use thermal_conduction
   use damage_none
   use damage_nonlocal
+  use HDF5_utilities
   use results
 
   implicit none
@@ -92,7 +93,9 @@ module homogenization
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
     homogenization_forward, &
-    homogenization_results
+    homogenization_results, &
+    homogenization_restartRead, &
+    homogenization_restartWrite
 
 contains
 
@@ -314,5 +317,60 @@ subroutine homogenization_forward
   enddo
 
 end subroutine homogenization_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+subroutine homogenization_restartWrite(fileHandle)
+
+  integer(HID_T), intent(in) :: fileHandle
+
+  integer(HID_T), dimension(2) :: groupHandle
+  integer :: ho
+
+
+  groupHandle(1) = HDF5_addGroup(fileHandle,'homogenization')
+
+  do ho = 1, size(material_name_homogenization)
+
+    groupHandle(2) = HDF5_addGroup(groupHandle(1),material_name_homogenization(ho))
+
+    call HDF5_read(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+
+    call HDF5_closeGroup(groupHandle(2))
+
+  enddo
+
+  call HDF5_closeGroup(groupHandle(1))
+
+end subroutine homogenization_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+subroutine homogenization_restartRead(fileHandle)
+
+  integer(HID_T), intent(in) :: fileHandle
+
+  integer(HID_T), dimension(2) :: groupHandle
+  integer :: ho
+
+
+  groupHandle(1) = HDF5_openGroup(fileHandle,'homogenization')
+
+  do ho = 1, size(material_name_homogenization)
+
+    groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_homogenization(ho))
+
+    call HDF5_write(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+
+    call HDF5_closeGroup(groupHandle(2))
+
+  enddo
+
+  call HDF5_closeGroup(groupHandle(1))
+
+end subroutine homogenization_restartRead
+
 
 end module homogenization

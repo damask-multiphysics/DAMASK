@@ -364,7 +364,7 @@ module subroutine mech_init
     allocate(constitutive_mech_F(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_F0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_partitionedF0(ph)%data(3,3,Nconstituents))
-    
+
     phase   => phases%get(ph)
     mech    => phase%get('mechanics')
 #if defined(__GFORTRAN__)
@@ -403,13 +403,13 @@ module subroutine mech_init
 
       ph = material_phaseAt(co,el)
       me = material_phaseMemberAt(co,ip,el)
-      
+
       constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = material_orientation0(co,ip,el)%asMatrix()                      ! Fp reflects initial orientation (see 10.1016/j.actamat.2006.01.005)
       constitutive_mech_Fp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me) &
                                                  / math_det33(constitutive_mech_Fp0(ph)%data(1:3,1:3,me))**(1.0_pReal/3.0_pReal)
       constitutive_mech_Fi0(ph)%data(1:3,1:3,me) = math_I3
       constitutive_mech_F0(ph)%data(1:3,1:3,me)  = math_I3
-      
+
       constitutive_mech_Fe(ph)%data(1:3,1:3,me) = math_inv33(matmul(constitutive_mech_Fi0(ph)%data(1:3,1:3,me), &
                                                                     constitutive_mech_Fp0(ph)%data(1:3,1:3,me)))           ! assuming that euler angles are given in internal strain free configuration
       constitutive_mech_Fp(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
@@ -568,16 +568,16 @@ module subroutine constitutive_plastic_dependentState(co, ip, el)
   instance = phase_plasticityInstance(material_phaseAt(co,el))
 
   plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
-    
+
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
       call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,me)
-    
+
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
       call plastic_dislotungsten_dependentState(instance,me)
-    
+
     case (PLASTICITY_NONLOCAL_ID) plasticityType
       call plastic_nonlocal_dependentState(instance,me,ip,el)
-  
+
   end select plasticityType
 
 end subroutine constitutive_plastic_dependentState
@@ -675,7 +675,7 @@ function mech_collectDotState(subdt,co,ip,el,ph,of) result(broken)
     tme, &                                                                                          !< thermal member position
     instance
   logical :: broken
-  
+
   ho = material_homogenizationAt(el)
   tme = material_homogenizationMemberAt(ip,el)
   instance = phase_plasticityInstance(ph)
@@ -723,14 +723,14 @@ function constitutive_deltaState(co, ip, el, ph, of) result(broken)
     of
   logical :: &
     broken
-  
+
   real(pReal),               dimension(3,3) :: &
     Mp
   integer :: &
     instance, &
     myOffset, &
     mySize
-  
+
 
   Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,of)),&
                      constitutive_mech_Fi(ph)%data(1:3,1:3,of)),constitutive_mech_S(ph)%data(1:3,1:3,of))
@@ -798,10 +798,6 @@ module subroutine mech_results(group,ph)
   call crystallite_results(group,ph)
 
 end subroutine mech_results
-
-    module subroutine mech_restart_read(fileHandle)
-      integer(HID_T), intent(in) :: fileHandle
-    end subroutine mech_restart_read
 
 
 !--------------------------------------------------------------------------------------------------
@@ -874,7 +870,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
-  
+
   call constitutive_plastic_dependentState(co,ip,el)
 
   Lpguess = constitutive_mech_Lp(ph)%data(1:3,1:3,me)                                              ! take as first guess
@@ -1814,6 +1810,40 @@ module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
   enddo; enddo
 
 end function constitutive_mech_dPdF
+
+
+module subroutine mech_restartWrite(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  call HDF5_write(groupHandle,plasticState(ph)%state,'omega')
+  call HDF5_write(groupHandle,constitutive_mech_Fi(ph)%data,'F_i')
+  call HDF5_write(groupHandle,constitutive_mech_Li(ph)%data,'L_i')
+  call HDF5_write(groupHandle,constitutive_mech_Lp(ph)%data,'L_p')
+  call HDF5_write(groupHandle,constitutive_mech_Fp(ph)%data,'F_p')
+  call HDF5_write(groupHandle,constitutive_mech_S(ph)%data,'S')
+  call HDF5_write(groupHandle,constitutive_mech_F(ph)%data,'F')
+
+end subroutine mech_restartWrite
+
+
+module subroutine mech_restartRead(groupHandle,ph)
+
+  integer(HID_T), intent(in) :: groupHandle
+  integer, intent(in) :: ph
+
+
+  call HDF5_read(groupHandle,plasticState(ph)%state0,'omega')
+  call HDF5_read(groupHandle,constitutive_mech_Fi0(ph)%data,'F_i')
+  call HDF5_read(groupHandle,constitutive_mech_Li0(ph)%data,'L_i')
+  call HDF5_read(groupHandle,constitutive_mech_Lp0(ph)%data,'L_p')
+  call HDF5_read(groupHandle,constitutive_mech_Fp0(ph)%data,'F_p')
+  call HDF5_read(groupHandle,constitutive_mech_S0(ph)%data,'S')
+  call HDF5_read(groupHandle,constitutive_mech_F0(ph)%data,'F')
+
+end subroutine mech_restartRead
 
 end submodule constitutive_mech
 

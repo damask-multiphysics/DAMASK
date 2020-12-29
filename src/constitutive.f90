@@ -15,7 +15,6 @@ module constitutive
   use discretization
   use parallelization
   use HDF5_utilities
-  use DAMASK_interface
   use results
 
   implicit none
@@ -161,10 +160,6 @@ module constitutive
     end subroutine damage_results
 
 
-    module subroutine mech_restart_read(fileHandle)
-      integer(HID_T), intent(in) :: fileHandle
-    end subroutine mech_restart_read
-
     module subroutine mech_initializeRestorationPoints(ph,me)
       integer, intent(in) :: ph, me
     end subroutine mech_initializeRestorationPoints
@@ -192,6 +187,16 @@ module constitutive
         el                                                                                          !< counter in element loop
       real(pReal), dimension(3,3,3,3) :: dPdF
     end function constitutive_mech_dPdF
+
+    module subroutine mech_restartWrite(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine mech_restartWrite
+
+    module subroutine mech_restartRead(groupHandle,ph)
+      integer(HID_T), intent(in) :: groupHandle
+      integer, intent(in) :: ph
+    end subroutine mech_restartRead
 
 ! == cleaned:end ===================================================================================
 
@@ -798,7 +803,7 @@ subroutine constitutive_forward
 
   integer :: ph, so
 
-  
+
   call constitutive_mech_forward()
 
   do ph = 1, size(sourceState)
@@ -1017,7 +1022,7 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
     ip, &
     co
   real(pReal), dimension(3,3) :: crystallite_push33ToRef
-  
+
   real(pReal), dimension(3,3)             :: T
 
 
@@ -1152,82 +1157,58 @@ end function converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Write current  restart information (Field and constitutive data) to file.
-! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
+! ToDo: Merge data into one file for MPI
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_restartWrite(fileHandle)
 
   integer(HID_T), intent(in) :: fileHandle
+
+  integer(HID_T), dimension(2) :: groupHandle
   integer :: ph
-  integer(HID_T) :: groupHandle
-  character(len=pStringLen) :: datasetName
 
-  groupHandle = HDF5_addGroup(fileHandle,'phase')
-  do ph = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') ph,'_omega'
-    call HDF5_write(groupHandle,plasticState(ph)%state,datasetName)
-    write(datasetName,'(i0,a)') ph,'_F_i'
-    call HDF5_write(groupHandle,constitutive_mech_Fi(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_L_i'
-    call HDF5_write(groupHandle,constitutive_mech_Li(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_L_p'
-    call HDF5_write(groupHandle,constitutive_mech_Lp(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_F_p'
-    call HDF5_write(groupHandle,constitutive_mech_Fp(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_S'
-    call HDF5_write(groupHandle,constitutive_mech_S(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_F'
-    call HDF5_write(groupHandle,constitutive_mech_F(ph)%data,datasetName)
+
+  groupHandle(1) = HDF5_addGroup(fileHandle,'phase')
+
+  do ph = 1, size(material_name_phase)
+
+    groupHandle(2) = HDF5_addGroup(groupHandle(1),material_name_phase(ph))
+
+    call mech_restartWrite(groupHandle(2),ph)
+
+    call HDF5_closeGroup(groupHandle(2))
+
   enddo
-  call HDF5_closeGroup(groupHandle)
 
-  groupHandle = HDF5_addGroup(fileHandle,'homogenization')
-  do ph = 1, size(material_name_homogenization)
-    write(datasetName,'(i0,a)') ph,'_omega'
-    call HDF5_write(groupHandle,homogState(ph)%state,datasetName)
-  enddo
-  call HDF5_closeGroup(groupHandle)
-
+  call HDF5_closeGroup(groupHandle(1))
 
 end subroutine constitutive_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read data for restart
-! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
+! ToDo: Merge data into one file for MPI
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_restartRead(fileHandle)
 
   integer(HID_T), intent(in) :: fileHandle
+
+  integer(HID_T), dimension(2) :: groupHandle
   integer :: ph
-  integer(HID_T) :: groupHandle
-  character(len=pStringLen) ::datasetName
 
 
-  groupHandle = HDF5_openGroup(fileHandle,'phase')
-  do ph = 1,size(material_name_phase)
-    write(datasetName,'(i0,a)') ph,'_omega'
-    call HDF5_read(groupHandle,plasticState(ph)%state0,datasetName)
-    write(datasetName,'(i0,a)') ph,'_F_i'
-    call HDF5_read(groupHandle,constitutive_mech_Fi0(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_L_i'
-    call HDF5_read(groupHandle,constitutive_mech_Li0(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_L_p'
-    call HDF5_read(groupHandle,constitutive_mech_Lp0(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_F_p'
-    call HDF5_read(groupHandle,constitutive_mech_Fp0(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_S'
-    call HDF5_read(groupHandle,constitutive_mech_S0(ph)%data,datasetName)
-    write(datasetName,'(i0,a)') ph,'_F'
-    call HDF5_read(groupHandle,constitutive_mech_F0(ph)%data,datasetName)
+  groupHandle(1) = HDF5_openGroup(fileHandle,'phase')
+
+  do ph = 1, size(material_name_phase)
+
+    groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_phase(ph))
+
+    call mech_restartRead(groupHandle(2),ph)
+
+    call HDF5_closeGroup(groupHandle(2))
+
   enddo
-  call HDF5_closeGroup(groupHandle)
 
-  groupHandle = HDF5_openGroup(fileHandle,'homogenization')
-  do ph = 1,size(material_name_homogenization)
-    write(datasetName,'(i0,a)') ph,'_omega'
-    call HDF5_read(groupHandle,homogState(ph)%state0,datasetName)
-  enddo
-  call HDF5_closeGroup(groupHandle)
+  call HDF5_closeGroup(groupHandle(1))
 
 end subroutine constitutive_restartRead
 
@@ -1273,7 +1254,7 @@ function constitutive_thermal_T(co,ip,el) result(T)
 
   integer, intent(in) :: co, ip, el
   real(pReal) :: T
- 
+
   integer :: ho, tme
 
   ho = material_homogenizationAt(el)

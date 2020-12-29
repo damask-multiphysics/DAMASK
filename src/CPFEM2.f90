@@ -76,8 +76,8 @@ subroutine CPFEM_init
 
   integer(HID_T) :: fileHandle
   character(len=pStringLen) :: fileName
-  
-  
+
+
   print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
 
 
@@ -86,6 +86,7 @@ subroutine CPFEM_init
     write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
     fileHandle = HDF5_openFile(fileName)
 
+    call homogenization_restartRead(fileHandle)
     call constitutive_restartRead(fileHandle)
 
     call HDF5_closeFile(fileHandle)
@@ -98,16 +99,17 @@ end subroutine CPFEM_init
 !> @brief Write restart information.
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_restartWrite
-  
+
   integer(HID_T) :: fileHandle
   character(len=pStringLen) :: fileName
-  
+
 
   print*, ' writing field and constitutive data required for restart to file';flush(IO_STDOUT)
 
   write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
   fileHandle = HDF5_openFile(fileName,'a')
 
+  call homogenization_restartWrite(fileHandle)
   call constitutive_restartWrite(fileHandle)
 
   call HDF5_closeFile(fileHandle)
