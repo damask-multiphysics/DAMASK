@@ -48,13 +48,10 @@ module constitutive
   real(pReal),               dimension(:,:,:,:,:),    allocatable :: &
     crystallite_F0, &                                                                               !< def grad at start of FE inc
     crystallite_Fe, &                                                                               !< current "elastic" def grad (end of converged time step)
-    crystallite_Lp0, &                                                                              !< plastic velocitiy grad at start of FE inc
-    crystallite_partitionedLp0, &                                                                   !< plastic velocity grad at start of homog inc
     crystallite_S0, &                                                                               !< 2nd Piola-Kirchhoff stress vector at start of FE inc
     crystallite_partitionedS0                                                                       !< 2nd Piola-Kirchhoff stress vector at start of homog inc
   real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
     crystallite_P, &                                                                                !< 1st Piola-Kirchhoff stress per grain
-    crystallite_Lp, &                                                                               !< current plastic velocitiy grad (end of converged time step)
     crystallite_S, &                                                                                !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
     crystallite_partitionedF0, &                                                                    !< def grad at start of homog inc
     crystallite_F                                                                                   !< def grad to be reached at end of homog inc
@@ -65,14 +62,17 @@ module constitutive
 
   type(tTensorContainer), dimension(:), allocatable :: &
     constitutive_mech_Fi, &
-    constitutive_mech_Fi0, &
-    constitutive_mech_partitionedFi0, &
-    constitutive_mech_Li, &
-    constitutive_mech_Li0, &
-    constitutive_mech_partitionedLi0, &
     constitutive_mech_Fp, &
+    constitutive_mech_Li, &
+    constitutive_mech_Lp, &
+    constitutive_mech_Fi0, &
     constitutive_mech_Fp0, &
-    constitutive_mech_partitionedFp0
+    constitutive_mech_Li0, &
+    constitutive_mech_Lp0, &
+    constitutive_mech_partitionedFi0, &
+    constitutive_mech_partitionedFp0, &
+    constitutive_mech_partitionedLi0, &
+    constitutive_mech_partitionedLp0
 
 
   type :: tNumerics
@@ -790,7 +790,6 @@ subroutine constitutive_forward
   integer :: i, j
 
   crystallite_F0  = crystallite_F
-  crystallite_Lp0 = crystallite_Lp
   crystallite_S0  = crystallite_S
 
   call constitutive_mech_forward()
@@ -864,12 +863,11 @@ subroutine crystallite_init
   allocate(crystallite_F(3,3,cMax,iMax,eMax),source=0.0_pReal)
 
   allocate(crystallite_S0, &
-           crystallite_F0,crystallite_Lp0, &
+           crystallite_F0, &
            crystallite_partitionedS0, &
            crystallite_partitionedF0,&
-           crystallite_partitionedLp0, &
            crystallite_S,crystallite_P, &
-           crystallite_Fe,crystallite_Lp, &
+           crystallite_Fe, &
            source = crystallite_F)
 
   allocate(crystallite_orientation(cMax,iMax,eMax))
@@ -917,6 +915,9 @@ subroutine crystallite_init
   allocate(constitutive_mech_Li(phases%length))
   allocate(constitutive_mech_Li0(phases%length))
   allocate(constitutive_mech_partitionedLi0(phases%length))
+  allocate(constitutive_mech_partitionedLp0(phases%length))
+  allocate(constitutive_mech_Lp0(phases%length))
+  allocate(constitutive_mech_Lp(phases%length))
   do ph = 1, phases%length
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
@@ -929,6 +930,9 @@ subroutine crystallite_init
     allocate(constitutive_mech_Li(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Li0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_partitionedLi0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_partitionedLp0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Lp0(ph)%data(3,3,Nconstituents))
+    allocate(constitutive_mech_Lp(ph)%data(3,3,Nconstituents))
     do so = 1, phase_Nsources(ph)
       allocate(sourceState(ph)%p(so)%subState0,source=sourceState(ph)%p(so)%state0)                 ! ToDo: hack
     enddo
@@ -1000,7 +1004,6 @@ subroutine constitutive_initializeRestorationPoints(ip,el)
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
-    crystallite_partitionedLp0(1:3,1:3,co,ip,el) = crystallite_Lp0(1:3,1:3,co,ip,el)
     crystallite_partitionedF0(1:3,1:3,co,ip,el)  = crystallite_F0(1:3,1:3,co,ip,el)
     crystallite_partitionedS0(1:3,1:3,co,ip,el)  = crystallite_S0(1:3,1:3,co,ip,el)
 
@@ -1033,7 +1036,6 @@ subroutine constitutive_windForward(ip,el)
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
     crystallite_partitionedF0 (1:3,1:3,co,ip,el) = crystallite_F (1:3,1:3,co,ip,el)
-    crystallite_partitionedLp0(1:3,1:3,co,ip,el) = crystallite_Lp(1:3,1:3,co,ip,el)
     crystallite_partitionedS0 (1:3,1:3,co,ip,el) = crystallite_S (1:3,1:3,co,ip,el)
 
     call constitutive_mech_windForward(ph,me)
@@ -1354,7 +1356,6 @@ subroutine crystallite_restartWrite
   fileHandle = HDF5_openFile(fileName,'a')
 
   call HDF5_write(fileHandle,crystallite_F,'F')
-  call HDF5_write(fileHandle,crystallite_Lp,        'L_p')
   call HDF5_write(fileHandle,crystallite_S,           'S')
 
   groupHandle = HDF5_addGroup(fileHandle,'phase')
@@ -1365,6 +1366,8 @@ subroutine crystallite_restartWrite
     call HDF5_write(groupHandle,constitutive_mech_Fi(ph)%data,datasetName)
     write(datasetName,'(i0,a)') ph,'_L_i'
     call HDF5_write(groupHandle,constitutive_mech_Li(ph)%data,datasetName)
+    write(datasetName,'(i0,a)') ph,'_L_p'
+    call HDF5_write(groupHandle,constitutive_mech_Lp(ph)%data,datasetName)
     write(datasetName,'(i0,a)') ph,'_F_p'
     call HDF5_write(groupHandle,constitutive_mech_Fp(ph)%data,datasetName)
   enddo
@@ -1398,7 +1401,6 @@ subroutine crystallite_restartRead
   fileHandle = HDF5_openFile(fileName)
 
   call HDF5_read(fileHandle,crystallite_F0, 'F')
-  call HDF5_read(fileHandle,crystallite_Lp0,'L_p')
   call HDF5_read(fileHandle,crystallite_S0, 'S')
 
   groupHandle = HDF5_openGroup(fileHandle,'phase')
@@ -1409,6 +1411,8 @@ subroutine crystallite_restartRead
     call HDF5_read(groupHandle,constitutive_mech_Fi0(ph)%data,datasetName)
     write(datasetName,'(i0,a)') ph,'_L_i'
     call HDF5_read(groupHandle,constitutive_mech_Li0(ph)%data,datasetName)
+    write(datasetName,'(i0,a)') ph,'_L_p'
+    call HDF5_read(groupHandle,constitutive_mech_Lp0(ph)%data,datasetName)
     write(datasetName,'(i0,a)') ph,'_F_p'
     call HDF5_read(groupHandle,constitutive_mech_Fp0(ph)%data,datasetName)
   enddo
@@ -1442,7 +1446,7 @@ function constitutive_mech_getLp(co,ip,el) result(Lp)
   integer, intent(in) :: co, ip, el
   real(pReal), dimension(3,3) :: Lp
 
-  Lp = crystallite_S(1:3,1:3,co,ip,el)
+  Lp = constitutive_mech_Lp(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
 
 end function constitutive_mech_getLp
 

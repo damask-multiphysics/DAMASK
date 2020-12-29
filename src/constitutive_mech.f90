@@ -805,7 +805,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  Lpguess = crystallite_Lp(1:3,1:3,co,ip,el)                                                       ! take as first guess
+  Lpguess = constitutive_mech_Lp(ph)%data(1:3,1:3,me)                                              ! take as first guess
   Liguess = constitutive_mech_Li(ph)%data(1:3,1:3,me)                                              ! take as first guess
 
   call math_invert33(invFp_current,devNull,error,subFp0)
@@ -937,9 +937,9 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
 
   crystallite_P    (1:3,1:3,co,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
   crystallite_S    (1:3,1:3,co,ip,el) = S
-  crystallite_Lp   (1:3,1:3,co,ip,el) = Lpguess
+  constitutive_mech_Lp(ph)%data(1:3,1:3,me) = Lpguess
   constitutive_mech_Li(ph)%data(1:3,1:3,me) = Liguess
-  constitutive_mech_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)         ! regularize
+  constitutive_mech_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)    ! regularize
   constitutive_mech_Fi(ph)%data(1:3,1:3,me) = Fi_new
   crystallite_Fe   (1:3,1:3,co,ip,el) = matmul(matmul(F,invFp_new),invFi_new)
   broken = .false.
@@ -1307,8 +1307,7 @@ subroutine crystallite_results(group,ph)
           call results_writeDataset(group//'/mechanics/',constitutive_mech_Fi(ph)%data,output_constituent(ph)%label(ou),&
                                    'inelastic deformation gradient','1')
         case('L_p')
-          selected_tensors = select_tensors(crystallite_Lp,ph)
-          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Lp(ph)%data,output_constituent(ph)%label(ou),&
                                    'plastic velocity gradient','1/s')
         case('L_i')
           call results_writeDataset(group//'/mechanics/',constitutive_mech_Li(ph)%data,output_constituent(ph)%label(ou),&
@@ -1413,6 +1412,7 @@ module subroutine mech_initializeRestorationPoints(ph,me)
   constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state0(:,me)
 
 end subroutine mech_initializeRestorationPoints
@@ -1429,6 +1429,7 @@ module subroutine constitutive_mech_windForward(ph,me)
   constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
 
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state(:,me)
 
@@ -1449,6 +1450,7 @@ module subroutine constitutive_mech_forward()
     constitutive_mech_Fi0(ph) = constitutive_mech_Fi(ph)
     constitutive_mech_Fp0(ph) = constitutive_mech_Fp(ph)
     constitutive_mech_Li0(ph) = constitutive_mech_Li(ph)
+    constitutive_mech_Lp0(ph) = constitutive_mech_Lp(ph)
   enddo
 
 end subroutine constitutive_mech_forward
@@ -1510,7 +1512,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
   sizeDotState = plasticState(ph)%sizeDotState
 
   subLi0 = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
-  subLp0 = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
+  subLp0 = constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me)
   subState0 = plasticState(ph)%partitionedState0(:,me)
 
 
@@ -1537,7 +1539,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 
       if (todo) then
         subF0  = subF
-        subLp0 = crystallite_Lp  (1:3,1:3,co,ip,el)
+        subLp0 = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
         subLi0 = constitutive_mech_Li(ph)%data(1:3,1:3,me)
         subFp0 = constitutive_mech_Fp(ph)%data(1:3,1:3,me)
         subFi0 = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
@@ -1554,7 +1556,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       constitutive_mech_Fi(ph)%data(1:3,1:3,me) = subFi0
       crystallite_S    (1:3,1:3,co,ip,el) = crystallite_S0    (1:3,1:3,co,ip,el)
       if (subStep < 1.0_pReal) then                                                                 ! actual (not initial) cutback
-        crystallite_Lp (1:3,1:3,co,ip,el) = subLp0
+        constitutive_mech_Lp(ph)%data(1:3,1:3,me) = subLp0
         constitutive_mech_Li(ph)%data(1:3,1:3,me) = subLi0
       endif
       plasticState(ph)%state(:,me) = subState0
@@ -1600,7 +1602,7 @@ module subroutine mech_restore(ip,el,includeL)
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
     if (includeL) then
-      crystallite_Lp(1:3,1:3,co,ip,el) = crystallite_partitionedLp0(1:3,1:3,co,ip,el)
+      constitutive_mech_Lp(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me)
       constitutive_mech_Li(ph)%data(1:3,1:3,me) = constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me)
     endif                                                                                           ! maybe protecting everything from overwriting makes more sense
 
