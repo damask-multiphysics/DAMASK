@@ -609,7 +609,7 @@ function mech_collectDotState(subdt, co, ip, el,ph,of) result(broken)
   instance = phase_plasticityInstance(ph)
 
   Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,of)),&
-                     constitutive_mech_Fi(ph)%data(1:3,1:3,of)),crystallite_S(1:3,1:3,co,ip,el))
+                     constitutive_mech_Fi(ph)%data(1:3,1:3,of)),constitutive_mech_S(ph)%data(1:3,1:3,of))
 
   plasticityType: select case (phase_plasticity(ph))
 
@@ -642,7 +642,7 @@ end function mech_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_deltaState(S, Fi, co, ip, el, ph, of) result(broken)
+function constitutive_deltaState(co, ip, el, ph, of) result(broken)
 
   integer, intent(in) :: &
     co, &                                                                                          !< component-ID of integration point
@@ -650,19 +650,19 @@ function constitutive_deltaState(S, Fi, co, ip, el, ph, of) result(broken)
     el, &                                                                                           !< element
     ph, &
     of
-  real(pReal),   intent(in), dimension(3,3) :: &
-    S, &                                                                                            !< 2nd Piola Kirchhoff stress
-    Fi                                                                                              !< intermediate deformation gradient
+  logical :: &
+    broken
+  
   real(pReal),               dimension(3,3) :: &
     Mp
   integer :: &
     instance, &
     myOffset, &
     mySize
-  logical :: &
-    broken
+  
 
-  Mp  = matmul(matmul(transpose(Fi),Fi),S)
+  Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,of)),&
+                     constitutive_mech_Fi(ph)%data(1:3,1:3,of)),constitutive_mech_S(ph)%data(1:3,1:3,of))
   instance = phase_plasticityInstance(ph)
 
   plasticityType: select case (phase_plasticity(ph))
@@ -936,7 +936,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   if (error) return ! error
 
   crystallite_P    (1:3,1:3,co,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
-  crystallite_S    (1:3,1:3,co,ip,el) = S
+  constitutive_mech_S(ph)%data(1:3,1:3,me)  = S
   constitutive_mech_Lp(ph)%data(1:3,1:3,me) = Lpguess
   constitutive_mech_Li(ph)%data(1:3,1:3,me) = Liguess
   constitutive_mech_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)    ! regularize
@@ -1008,8 +1008,7 @@ function integrateStateFPI(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) resul
     plasticState(ph)%state(1:sizeDotState,me) = plasticState(ph)%state(1:sizeDotState,me) &
                                               - r(1:sizeDotState)
     if (converged(r(1:sizeDotState),plasticState(ph)%state(1:sizeDotState,me),plasticState(ph)%atol(1:sizeDotState))) then
-      broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
-                                       constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
+      broken = constitutive_deltaState(co,ip,el,ph,me)
       exit iteration
     endif
 
@@ -1071,8 +1070,7 @@ function integrateStateEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el) res
   plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                             + plasticState(ph)%dotState(1:sizeDotState,me) * Delta_t
 
-  broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
-                                   constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
+  broken = constitutive_deltaState(co,ip,el,ph,me)
   if(broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
@@ -1114,8 +1112,7 @@ function integrateStateAdaptiveEuler(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip
   plasticState(ph)%state(1:sizeDotState,me) = subState0 &
                                             + plasticState(ph)%dotstate(1:sizeDotState,me) * Delta_t
 
-  broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
-                                   constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
+  broken = constitutive_deltaState(co,ip,el,ph,me)
   if(broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
@@ -1264,8 +1261,7 @@ function integrateStateRK(F_0,F,subFp0,subFi0,subState0,Delta_t,co,ip,el,A,B,C,D
 
   if(broken) return
 
-  broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
-                                   constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
+  broken = constitutive_deltaState(co,ip,el,ph,me)
   if(broken) return
 
   broken = integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el)
@@ -1316,8 +1312,7 @@ subroutine crystallite_results(group,ph)
           call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
                                    'First Piola-Kirchhoff stress','Pa')
         case('S')
-          selected_tensors = select_tensors(crystallite_S,ph)
-          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_S(ph)%data,output_constituent(ph)%label(ou),&
                                    'Second Piola-Kirchhoff stress','Pa')
         case('O')
           select case(lattice_structure(ph))
@@ -1412,6 +1407,8 @@ module subroutine mech_initializeRestorationPoints(ph,me)
   constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me) = constitutive_mech_Fp0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li0(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp0(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)  = constitutive_mech_S0(ph)%data(1:3,1:3,me)
+
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state0(:,me)
 
 end subroutine mech_initializeRestorationPoints
@@ -1429,6 +1426,7 @@ module subroutine constitutive_mech_windForward(ph,me)
   constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me) = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLi0(ph)%data(1:3,1:3,me) = constitutive_mech_Li(ph)%data(1:3,1:3,me)
   constitutive_mech_partitionedLp0(ph)%data(1:3,1:3,me) = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
+  constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)  = constitutive_mech_S(ph)%data(1:3,1:3,me)
 
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state(:,me)
 
@@ -1445,11 +1443,12 @@ module subroutine constitutive_mech_forward()
 
 
   do ph = 1, size(plasticState)
-    plasticState(ph)%state0 = plasticState(ph)%state
     constitutive_mech_Fi0(ph) = constitutive_mech_Fi(ph)
     constitutive_mech_Fp0(ph) = constitutive_mech_Fp(ph)
     constitutive_mech_Li0(ph) = constitutive_mech_Li(ph)
     constitutive_mech_Lp0(ph) = constitutive_mech_Lp(ph)
+    constitutive_mech_S0(ph)  = constitutive_mech_S(ph)
+    plasticState(ph)%state0 = plasticState(ph)%state
   enddo
 
 end subroutine constitutive_mech_forward
@@ -1553,7 +1552,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       subStep       = num%subStepSizeCryst * subStep
       constitutive_mech_Fp(ph)%data(1:3,1:3,me) = subFp0
       constitutive_mech_Fi(ph)%data(1:3,1:3,me) = subFi0
-      crystallite_S    (1:3,1:3,co,ip,el) = crystallite_S0    (1:3,1:3,co,ip,el)
+      constitutive_mech_S(ph)%data(1:3,1:3,me) = constitutive_mech_S0(ph)%data(1:3,1:3,me)          ! why no subS0 ? is S0 of any use?
       if (subStep < 1.0_pReal) then                                                                 ! actual (not initial) cutback
         constitutive_mech_Lp(ph)%data(1:3,1:3,me) = subLp0
         constitutive_mech_Li(ph)%data(1:3,1:3,me) = subLi0
@@ -1607,7 +1606,7 @@ module subroutine mech_restore(ip,el,includeL)
 
     constitutive_mech_Fp(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
     constitutive_mech_Fi(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
-    crystallite_S (1:3,1:3,co,ip,el)   = crystallite_partitionedS0 (1:3,1:3,co,ip,el)
+    constitutive_mech_S(ph)%data(1:3,1:3,me)    = constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)
 
     plasticState    (material_phaseAt(co,el))%state(          :,material_phasememberAt(co,ip,el)) = &
     plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phasememberAt(co,ip,el))
