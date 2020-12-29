@@ -1084,8 +1084,8 @@ function crystallite_stressTangent(dt,co,ip,el) result(dPdF)
   me = material_phaseMemberAt(co,ip,el)
 
   call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
-                                   crystallite_Fe(1:3,1:3,co,ip,el), &
-                                   constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
+                                          crystallite_Fe(1:3,1:3,co,ip,el), &
+                                          constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
   call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
                                      crystallite_S (1:3,1:3,co,ip,el), &
                                      constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
@@ -1120,8 +1120,8 @@ function crystallite_stressTangent(dt,co,ip,el) result(dPdF)
   endif
 
   call constitutive_plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                     crystallite_S (1:3,1:3,co,ip,el), &
-                                     constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
+                                             crystallite_S (1:3,1:3,co,ip,el), &
+                                             constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
   dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
 
 !--------------------------------------------------------------------------------------------------
@@ -1166,10 +1166,8 @@ function crystallite_stressTangent(dt,co,ip,el) result(dPdF)
   enddo
   do o=1,3; do p=1,3
     dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
-                      + matmul(matmul(crystallite_F(1:3,1:3,co,ip,el), &
-                               dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
-                      + matmul(matmul(temp_33_2,dSdF(1:3,1:3,p,o)), &
-                               transpose(invFp)) &
+                      + matmul(matmul(crystallite_F(1:3,1:3,co,ip,el),dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
+                      + matmul(matmul(temp_33_2,dSdF(1:3,1:3,p,o)),transpose(invFp)) &
                       + matmul(temp_33_3,transpose(dFpinvdF(1:3,1:3,p,o)))
   enddo; enddo
 
