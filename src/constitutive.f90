@@ -235,15 +235,12 @@ module constitutive
         dPhiDot_dPhi
     end subroutine constitutive_damage_getRateAndItsTangents
 
-    module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, S, Lp, ip, el)
+    module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el)
       integer, intent(in) :: &
         ip, &                                                                                       !< integration point number
         el                                                                                          !< element number
       real(pReal), intent(in) :: &
         T
-      real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
-        S, &                                                                                        !< current 2nd Piola Kitchoff stress vector
-        Lp                                                                                          !< plastic velocity gradient
       real(pReal), intent(inout) :: &
         TDot, &
         dTDot_dT
@@ -392,6 +389,8 @@ module constitutive
     crystallite_push33ToRef, &
     crystallite_restartWrite, &
     integrateSourceState, &
+    constitutive_mech_getLp, &
+    constitutive_mech_getS, &
     crystallite_restartRead, &
     constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
@@ -1426,5 +1425,25 @@ subroutine crystallite_restartRead
 
 end subroutine crystallite_restartRead
 
+
+! getter for non-mech (e.g. thermal)
+function constitutive_mech_getS(co,ip,el) result(S)
+
+  integer, intent(in) :: co, ip, el
+  real(pReal), dimension(3,3) :: S
+
+  S = crystallite_S(1:3,1:3,co,ip,el)
+
+end function constitutive_mech_getS
+
+! getter for non-mech (e.g. thermal)
+function constitutive_mech_getLp(co,ip,el) result(Lp)
+
+  integer, intent(in) :: co, ip, el
+  real(pReal), dimension(3,3) :: Lp
+
+  Lp = crystallite_S(1:3,1:3,co,ip,el)
+
+end function constitutive_mech_getLp
 
 end module constitutive
