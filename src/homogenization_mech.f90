@@ -156,11 +156,11 @@ module subroutine mech_homogenize(dt,ip,el)
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
         homogenization_P(1:3,1:3,ce)            = crystallite_P(1:3,1:3,1,ip,el)
-        homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = crystallite_stressTangent(dt,1,ip,el)
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = constitutive_mech_dPdF(dt,1,ip,el)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,co) = crystallite_stressTangent(dt,co,ip,el)
+        dPdFs(:,:,:,:,co) = constitutive_mech_dPdF(dt,co,ip,el)
       enddo
       call mech_isostrain_averageStressAndItsTangent(&
         homogenization_P(1:3,1:3,ce), &
@@ -171,7 +171,7 @@ module subroutine mech_homogenize(dt,ip,el)
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,co) = crystallite_stressTangent(dt,co,ip,el)
+        dPdFs(:,:,:,:,co) = constitutive_mech_dPdF(dt,co,ip,el)
       enddo
       call mech_RGC_averageStressAndItsTangent(&
         homogenization_P(1:3,1:3,ce), &
@@ -207,7 +207,7 @@ module function mech_updateState(subdt,subF,ip,el) result(doneAndHappy)
 
   if (homogenization_type(material_homogenizationAt(el)) == HOMOGENIZATION_RGC_ID) then
       do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,co) = crystallite_stressTangent(subdt,co,ip,el)
+        dPdFs(:,:,:,:,co) = constitutive_mech_dPdF(subdt,co,ip,el)
         Fs(:,:,co)        = constitutive_mech_getF(co,ip,el)
       enddo
       doneAndHappy = &

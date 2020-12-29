@@ -184,6 +184,15 @@ module constitutive
         includeL
     end subroutine mech_restore
 
+    module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
+      real(pReal), intent(in) :: dt
+      integer, intent(in) :: &
+        co, &                                                                                       !< counter in constituent loop
+        ip, &                                                                                       !< counter in integration point loop
+        el                                                                                          !< counter in element loop
+      real(pReal), dimension(3,3,3,3) :: dPdF
+    end function constitutive_mech_dPdF
+
 ! == cleaned:end ===================================================================================
 
     module function crystallite_stress(dt,co,ip,el) result(converged_)
@@ -384,16 +393,16 @@ module constitutive
     converged, &
     crystallite_init, &
     crystallite_stress, &
-    crystallite_stressTangent, &
+    constitutive_mech_dPdF, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
-    crystallite_restartWrite, &
+    constitutive_restartWrite, &
+    constitutive_restartRead, &
     integrateSourceState, &
     constitutive_mech_setF, &
     constitutive_mech_getLp, &
     constitutive_mech_getF, &
     constitutive_mech_getS, &
-    crystallite_restartRead, &
     constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
     PLASTICITY_UNDEFINED_ID, &
@@ -976,134 +985,6 @@ end subroutine constitutive_windForward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculate tangent (dPdF).
-!--------------------------------------------------------------------------------------------------
-function crystallite_stressTangent(dt,co,ip,el) result(dPdF)
-
-  real(pReal), intent(in) :: dt
-  integer, intent(in) :: &
-    co, &                                                                                            !< counter in constituent loop
-    ip, &                                                                                            !< counter in integration point loop
-    el                                                                                               !< counter in element loop
-  real(pReal), dimension(3,3,3,3) :: dPdF
-
-  integer :: &
-    o, &
-    p, ph, me
-  real(pReal), dimension(3,3)     ::   devNull, &
-                                       invSubFp0,invSubFi0,invFp,invFi, &
-                                       temp_33_1, temp_33_2, temp_33_3
-  real(pReal), dimension(3,3,3,3) ::   dSdFe, &
-                                       dSdF, &
-                                       dSdFi, &
-                                       dLidS, &                                                     ! tangent in lattice configuration
-                                       dLidFi, &
-                                       dLpdS, &
-                                       dLpdFi, &
-                                       dFidS, &
-                                       dFpinvdF, &
-                                       rhs_3333, &
-                                       lhs_3333, &
-                                       temp_3333
-  real(pReal), dimension(9,9)::        temp_99
-  logical :: error
-
-
-  ph = material_phaseAt(co,el)
-  me = material_phaseMemberAt(co,ip,el)
-
-  call constitutive_hooke_SandItsTangents(devNull,dSdFe,dSdFi, &
-                                          constitutive_mech_Fe(ph)%data(1:3,1:3,me), &
-                                          constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
-  call constitutive_LiAndItsTangents(devNull,dLidS,dLidFi, &
-                                     constitutive_mech_S(ph)%data(1:3,1:3,me), &
-                                     constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
-                                     co,ip,el)
-
-  invFp = math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,me))
-  invFi = math_inv33(constitutive_mech_Fi(ph)%data(1:3,1:3,me))
-  invSubFp0 = math_inv33(constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me))
-  invSubFi0 = math_inv33(constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me))
-
-  if (sum(abs(dLidS)) < tol_math_check) then
-    dFidS = 0.0_pReal
-  else
-    lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
-    do o=1,3; do p=1,3
-      lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) &
-                            + matmul(invSubFi0,dLidFi(1:3,1:3,o,p)) * dt
-      lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) &
-                            + invFi*invFi(p,o)
-      rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) &
-                            - matmul(invSubFi0,dLidS(1:3,1:3,o,p)) * dt
-    enddo; enddo
-    call math_invert(temp_99,error,math_3333to99(lhs_3333))
-    if (error) then
-      call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
-                      ext_msg='inversion error in analytic tangent calculation')
-      dFidS = 0.0_pReal
-    else
-      dFidS = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
-    endif
-    dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
-  endif
-
-  call constitutive_plastic_LpAndItsTangents(devNull,dLpdS,dLpdFi, &
-                                             constitutive_mech_S(ph)%data(1:3,1:3,me), &
-                                             constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el)
-  dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
-
-!--------------------------------------------------------------------------------------------------
-! calculate dSdF
-  temp_33_1 = transpose(matmul(invFp,invFi))
-  temp_33_2 = matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),invSubFp0)
-  temp_33_3 = matmul(matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),invFp), invSubFi0)
-
-  do o=1,3; do p=1,3
-    rhs_3333(p,o,1:3,1:3)  = matmul(dSdFe(p,o,1:3,1:3),temp_33_1)
-    temp_3333(1:3,1:3,p,o) = matmul(matmul(temp_33_2,dLpdS(1:3,1:3,p,o)), invFi) &
-                           + matmul(temp_33_3,dLidS(1:3,1:3,p,o))
-  enddo; enddo
-  lhs_3333 = math_mul3333xx3333(dSdFe,temp_3333) * dt &
-           + math_mul3333xx3333(dSdFi,dFidS)
-
-  call math_invert(temp_99,error,math_eye(9)+math_3333to99(lhs_3333))
-  if (error) then
-    call IO_warning(warning_ID=600,el=el,ip=ip,g=co, &
-                    ext_msg='inversion error in analytic tangent calculation')
-    dSdF = rhs_3333
-  else
-    dSdF = math_mul3333xx3333(math_99to3333(temp_99),rhs_3333)
-  endif
-
-!--------------------------------------------------------------------------------------------------
-! calculate dFpinvdF
-  temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
-  do o=1,3; do p=1,3
-    dFpinvdF(1:3,1:3,p,o) = - matmul(invSubFp0, matmul(temp_3333(1:3,1:3,p,o),invFi)) * dt
-  enddo; enddo
-
-!--------------------------------------------------------------------------------------------------
-! assemble dPdF
-  temp_33_1 = matmul(constitutive_mech_S(ph)%data(1:3,1:3,me),transpose(invFp))
-  temp_33_2 = matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),invFp)
-  temp_33_3 = matmul(temp_33_2,constitutive_mech_S(ph)%data(1:3,1:3,me))
-
-  dPdF = 0.0_pReal
-  do p=1,3
-    dPdF(p,1:3,p,1:3) = transpose(matmul(invFp,temp_33_1))
-  enddo
-  do o=1,3; do p=1,3
-    dPdF(1:3,1:3,p,o) = dPdF(1:3,1:3,p,o) &
-                      + matmul(matmul(constitutive_mech_F(ph)%data(1:3,1:3,me),dFpinvdF(1:3,1:3,p,o)),temp_33_1) &
-                      + matmul(matmul(temp_33_2,dSdF(1:3,1:3,p,o)),transpose(invFp)) &
-                      + matmul(temp_33_3,transpose(dFpinvdF(1:3,1:3,p,o)))
-  enddo; enddo
-
-end function crystallite_stressTangent
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief calculates orientations
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_orientations(co,ip,el)
@@ -1273,16 +1154,12 @@ end function converged
 !> @brief Write current  restart information (Field and constitutive data) to file.
 ! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_restartWrite
+subroutine constitutive_restartWrite(fileHandle)
 
+  integer(HID_T), intent(in) :: fileHandle
   integer :: ph
-  integer(HID_T) :: fileHandle, groupHandle
-  character(len=pStringLen) :: fileName, datasetName
-
-  print*, ' writing field and constitutive data required for restart to file';flush(IO_STDOUT)
-
-  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
-  fileHandle = HDF5_openFile(fileName,'a')
+  integer(HID_T) :: groupHandle
+  character(len=pStringLen) :: datasetName
 
   groupHandle = HDF5_addGroup(fileHandle,'phase')
   do ph = 1,size(material_name_phase)
@@ -1310,25 +1187,21 @@ subroutine crystallite_restartWrite
   enddo
   call HDF5_closeGroup(groupHandle)
 
-  call HDF5_closeFile(fileHandle)
 
-end subroutine crystallite_restartWrite
+end subroutine constitutive_restartWrite
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Read data for restart
 ! ToDo: Merge data into one file for MPI, move state to constitutive and homogenization, respectively
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_restartRead
+subroutine constitutive_restartRead(fileHandle)
 
+  integer(HID_T), intent(in) :: fileHandle
   integer :: ph
-  integer(HID_T) :: fileHandle, groupHandle
-  character(len=pStringLen) :: fileName, datasetName
+  integer(HID_T) :: groupHandle
+  character(len=pStringLen) ::datasetName
 
-  print'(/,a,i0,a)', ' reading restart information of increment from file'
-
-  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
-  fileHandle = HDF5_openFile(fileName)
 
   groupHandle = HDF5_openGroup(fileHandle,'phase')
   do ph = 1,size(material_name_phase)
@@ -1356,9 +1229,7 @@ subroutine crystallite_restartRead
   enddo
   call HDF5_closeGroup(groupHandle)
 
-  call HDF5_closeFile(fileHandle)
-
-end subroutine crystallite_restartRead
+end subroutine constitutive_restartRead
 
 
 ! getter for non-mech (e.g. thermal)
