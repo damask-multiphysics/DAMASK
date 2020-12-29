@@ -941,7 +941,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   constitutive_mech_Li(ph)%data(1:3,1:3,me) = Liguess
   constitutive_mech_Fp(ph)%data(1:3,1:3,me) = Fp_new / math_det33(Fp_new)**(1.0_pReal/3.0_pReal)    ! regularize
   constitutive_mech_Fi(ph)%data(1:3,1:3,me) = Fi_new
-  crystallite_Fe   (1:3,1:3,co,ip,el) = matmul(matmul(F,invFp_new),invFi_new)
+  constitutive_mech_Fe(ph)%data(1:3,1:3,me)= matmul(matmul(F,invFp_new),invFi_new)
   broken = .false.
 
 end function integrateStress
@@ -1297,8 +1297,7 @@ subroutine crystallite_results(group,ph)
           call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
                                    'deformation gradient','1')
         case('F_e')
-          selected_tensors = select_tensors(crystallite_Fe,ph)
-          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fe(ph)%data,output_constituent(ph)%label(ou),&
                                    'elastic deformation gradient','1')
         case('F_p')
           call results_writeDataset(group//'/mechanics/',constitutive_mech_Fp(ph)%data,output_constituent(ph)%label(ou),&
@@ -1572,8 +1571,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
     if (todo) then
       subF = subF0 &
            + subStep * (crystallite_F(1:3,1:3,co,ip,el) - crystallite_partitionedF0(1:3,1:3,co,ip,el))
-      crystallite_Fe(1:3,1:3,co,ip,el) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
-                                                                       constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
+      constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
+                                                                                constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
       converged_ = converged_ .and. .not. integrateSourceState(subStep * dt,co,ip,el)
     endif
