@@ -51,31 +51,6 @@ module constitutive
     real(pReal), dimension(:,:,:), allocatable :: data
   end type
 
-  type(tTensorContainer), dimension(:), allocatable :: &
-    ! current value
-    constitutive_mech_Fe, &
-    constitutive_mech_Fi, &
-    constitutive_mech_Fp, &
-    constitutive_mech_F, &
-    constitutive_mech_Li, &
-    constitutive_mech_Lp, &
-    constitutive_mech_S, &
-    ! converged value at end of last solver increment
-    constitutive_mech_Fi0, &
-    constitutive_mech_Fp0, &
-    constitutive_mech_F0, &
-    constitutive_mech_Li0, &
-    constitutive_mech_Lp0, &
-    constitutive_mech_S0, &
-    ! converged value at end of last homogenization increment (RGC only)
-    constitutive_mech_partitionedFi0, &
-    constitutive_mech_partitionedFp0, &
-    constitutive_mech_partitionedF0, &
-    constitutive_mech_partitionedLi0, &
-    constitutive_mech_partitionedLp0, &
-    constitutive_mech_partitionedS0
-
-
   type :: tNumerics
     integer :: &
       iJacoLpresiduum, &                                                                            !< frequency of Jacobian update of residuum in Lp
@@ -197,6 +172,37 @@ module constitutive
       integer(HID_T), intent(in) :: groupHandle
       integer, intent(in) :: ph
     end subroutine mech_restartRead
+
+
+    module function constitutive_mech_getS(co,ip,el) result(S)
+      integer, intent(in) :: co, ip, el
+      real(pReal), dimension(3,3) :: S
+    end function constitutive_mech_getS
+
+    module function constitutive_mech_getLp(co,ip,el) result(Lp)
+      integer, intent(in) :: co, ip, el
+      real(pReal), dimension(3,3) :: Lp
+    end function constitutive_mech_getLp
+
+    module function constitutive_mech_getF(co,ip,el) result(F)
+      integer, intent(in) :: co, ip, el
+      real(pReal), dimension(3,3) :: F
+    end function constitutive_mech_getF
+
+    module function constitutive_mech_getF_e(co,ip,el) result(F_e)
+      integer, intent(in) :: co, ip, el
+      real(pReal), dimension(3,3) :: F_e
+    end function constitutive_mech_getF_e
+
+    module function constitutive_thermal_T(co,ip,el) result(T)
+      integer, intent(in) :: co, ip, el
+      real(pReal) :: T
+    end function constitutive_thermal_T
+
+    module subroutine constitutive_mech_setF(F,co,ip,el)
+      real(pReal), dimension(3,3), intent(in) :: F
+      integer, intent(in) :: co, ip, el
+    end subroutine constitutive_mech_setF
 
 ! == cleaned:end ===================================================================================
 
@@ -1001,7 +1007,7 @@ subroutine crystallite_orientations(co,ip,el)
 
 
   call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(&
-    constitutive_mech_Fe(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)))))
+    constitutive_mech_getF_e(co,ip,el))))
 
   if (plasticState(material_phaseAt(1,el))%nonlocal) &
     call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
@@ -1026,8 +1032,8 @@ function crystallite_push33ToRef(co,ip,el, tensor33)
   real(pReal), dimension(3,3)             :: T
 
 
-  T = matmul(material_orientation0(co,ip,el)%asMatrix(), &                                         ! ToDo: initial orientation correct?
-             transpose(math_inv33(constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)))))
+  T = matmul(material_orientation0(co,ip,el)%asMatrix(),transpose(math_inv33(constitutive_mech_getF(co,ip,el)))) ! ToDo: initial orientation correct?
+
   crystallite_push33ToRef = matmul(transpose(T),matmul(tensor33,T))
 
 end function crystallite_push33ToRef
@@ -1104,7 +1110,7 @@ function integrateSourceState(dt,co,ip,el) result(broken)
     enddo
 
     if(converged_) then
-      broken = constitutive_damage_deltaState(constitutive_mech_Fe(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
+      broken = constitutive_damage_deltaState(constitutive_mech_getF_e(co,ip,el),co,ip,el,ph,me)
       exit iteration
     endif
 
@@ -1212,68 +1218,5 @@ subroutine constitutive_restartRead(fileHandle)
 
 end subroutine constitutive_restartRead
 
-
-! getter for non-mech (e.g. thermal)
-function constitutive_mech_getS(co,ip,el) result(S)
-
-  integer, intent(in) :: co, ip, el
-  real(pReal), dimension(3,3) :: S
-
-
-  S = constitutive_mech_S(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
-
-end function constitutive_mech_getS
-
-
-! getter for non-mech (e.g. thermal)
-function constitutive_mech_getLp(co,ip,el) result(Lp)
-
-  integer, intent(in) :: co, ip, el
-  real(pReal), dimension(3,3) :: Lp
-
-
-  Lp = constitutive_mech_Lp(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
-
-end function constitutive_mech_getLp
-
-
-! getter for non-mech (e.g. thermal)
-function constitutive_mech_getF(co,ip,el) result(F)
-
-  integer, intent(in) :: co, ip, el
-  real(pReal), dimension(3,3) :: F
-
-
-  F = constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
-
-end function constitutive_mech_getF
-
-
-! getter for non-thermal (e.g. mech)
-function constitutive_thermal_T(co,ip,el) result(T)
-
-  integer, intent(in) :: co, ip, el
-  real(pReal) :: T
-
-  integer :: ho, tme
-
-  ho = material_homogenizationAt(el)
-  tme = material_homogenizationMemberAt(ip,el)
-
-  T = temperature(ho)%p(tme)
-
-end function constitutive_thermal_T
-
-
-! setter for homogenization
-subroutine constitutive_mech_setF(F,co,ip,el)
-
-  real(pReal), dimension(3,3), intent(in) :: F
-  integer, intent(in) :: co, ip, el
-
-
-  constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
-
-end subroutine constitutive_mech_setF
 
 end module constitutive

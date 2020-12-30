@@ -9,7 +9,7 @@ submodule(constitutive) constitutive_thermal
     integer, intent(in) :: source_length
     logical, dimension(:,:), allocatable :: mySources
   end function source_thermal_dissipation_init
- 
+
   module function source_thermal_externalheat_init(source_length) result(mySources)
     integer, intent(in) :: source_length
     logical, dimension(:,:), allocatable :: mySources
@@ -55,8 +55,8 @@ module subroutine thermal_init
   if(maxval(phase_Nsources) /= 0) then
     where(source_thermal_dissipation_init (maxval(phase_Nsources))) phase_source = SOURCE_thermal_dissipation_ID
     where(source_thermal_externalheat_init(maxval(phase_Nsources))) phase_source = SOURCE_thermal_externalheat_ID
-  endif 
- 
+  endif
+
 !--------------------------------------------------------------------------------------------------
 !initialize kinematic mechanisms
   if(maxval(phase_Nkinematics) /= 0) where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) &
@@ -119,6 +119,24 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
    enddo
 
 end subroutine constitutive_thermal_getRateAndItsTangents
+
+
+
+
+! getter for non-thermal (e.g. mech)
+module function constitutive_thermal_T(co,ip,el) result(T)
+
+  integer, intent(in) :: co, ip, el
+  real(pReal) :: T
+
+  integer :: ho, tme
+
+  ho = material_homogenizationAt(el)
+  tme = material_homogenizationMemberAt(ip,el)
+
+  T = temperature(ho)%p(tme)
+
+end function constitutive_thermal_T
 
 
 end submodule constitutive_thermal
