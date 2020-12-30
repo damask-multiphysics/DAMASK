@@ -24,6 +24,7 @@ submodule(constitutive) constitutive_mech
     constitutive_mech_Li, &
     constitutive_mech_Lp, &
     constitutive_mech_S, &
+    constitutive_mech_P, &
     ! converged value at end of last solver increment
     constitutive_mech_Fi0, &
     constitutive_mech_Fp0, &
@@ -363,6 +364,7 @@ module subroutine mech_init
   allocate(constitutive_mech_Lp0(phases%length))
   allocate(constitutive_mech_Lp(phases%length))
   allocate(constitutive_mech_S(phases%length))
+  allocate(constitutive_mech_P(phases%length))
   allocate(constitutive_mech_S0(phases%length))
   allocate(constitutive_mech_partitionedS0(phases%length))
 
@@ -383,6 +385,7 @@ module subroutine mech_init
     allocate(constitutive_mech_Lp0(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_Lp(ph)%data(3,3,Nconstituents))
     allocate(constitutive_mech_S(ph)%data(3,3,Nconstituents),source=0.0_pReal)
+    allocate(constitutive_mech_P(ph)%data(3,3,Nconstituents),source=0.0_pReal)
     allocate(constitutive_mech_S0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
     allocate(constitutive_mech_partitionedS0(ph)%data(3,3,Nconstituents),source=0.0_pReal)
     allocate(constitutive_mech_F(ph)%data(3,3,Nconstituents))
@@ -1027,7 +1030,7 @@ function integrateStress(F,subFp0,subFi0,Delta_t,co,ip,el) result(broken)
   call math_invert33(Fp_new,devNull,error,invFp_new)
   if (error) return ! error
 
-  crystallite_P    (1:3,1:3,co,ip,el) = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
+  constitutive_mech_P(ph)%data(1:3,1:3,me)  = matmul(matmul(F,invFp_new),matmul(S,transpose(invFp_new)))
   constitutive_mech_S(ph)%data(1:3,1:3,me)  = S
   constitutive_mech_Lp(ph)%data(1:3,1:3,me) = Lpguess
   constitutive_mech_Li(ph)%data(1:3,1:3,me) = Liguess
@@ -1381,29 +1384,28 @@ subroutine crystallite_results(group,ph)
 
       select case (output_constituent(ph)%label(ou))
         case('F')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_F(ph)%data,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_F(ph)%data,'F',&
                                    'deformation gradient','1')
         case('F_e')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fe(ph)%data,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fe(ph)%data,'F_e',&
                                    'elastic deformation gradient','1')
         case('F_p')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fp(ph)%data,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fp(ph)%data,'F_p', &
                                    'plastic deformation gradient','1')
         case('F_i')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fi(ph)%data,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Fi(ph)%data,'F_i', &
                                    'inelastic deformation gradient','1')
         case('L_p')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Lp(ph)%data,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Lp(ph)%data,'L_p', &
                                    'plastic velocity gradient','1/s')
         case('L_i')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_Li(ph)%data,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_Li(ph)%data,'L_i', &
                                    'inelastic velocity gradient','1/s')
         case('P')
-          selected_tensors = select_tensors(crystallite_P,ph)
-          call results_writeDataset(group//'/mechanics/',selected_tensors,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_P(ph)%data,'P', &
                                    'First Piola-Kirchhoff stress','Pa')
         case('S')
-          call results_writeDataset(group//'/mechanics/',constitutive_mech_S(ph)%data,output_constituent(ph)%label(ou),&
+          call results_writeDataset(group//'/mechanics/',constitutive_mech_S(ph)%data,'S', &
                                    'Second Piola-Kirchhoff stress','Pa')
         case('O')
           select case(lattice_structure(ph))
@@ -1429,33 +1431,6 @@ subroutine crystallite_results(group,ph)
 
 
   contains
-
-  !------------------------------------------------------------------------------------------------
-  !> @brief select tensors for output
-  !------------------------------------------------------------------------------------------------
-  function select_tensors(dataset,ph)
-
-    integer, intent(in) :: ph
-    real(pReal), dimension(:,:,:,:,:), intent(in) :: dataset
-    real(pReal), allocatable, dimension(:,:,:) :: select_tensors
-    integer :: el,ip,co,j
-
-    allocate(select_tensors(3,3,count(material_phaseAt==ph)*discretization_nIPs))
-
-    j=0
-    do el = 1, size(material_phaseAt,2)
-      do ip = 1, discretization_nIPs
-        do co = 1, size(material_phaseAt,1)                                                          !ToDo: this needs to be changed for varying Ngrains
-          if (material_phaseAt(co,el) == ph) then
-            j = j + 1
-            select_tensors(1:3,1:3,j) = dataset(1:3,1:3,co,ip,el)
-          endif
-        enddo
-      enddo
-    enddo
-
-  end function select_tensors
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief select rotations for output
@@ -1916,6 +1891,19 @@ module function constitutive_mech_getF_e(co,ip,el) result(F_e)
   F_e = constitutive_mech_Fe(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
 
 end function constitutive_mech_getF_e
+
+
+
+! getter for non-mech (e.g. thermal)
+module function constitutive_mech_getP(co,ip,el) result(P)
+
+  integer, intent(in) :: co, ip, el
+  real(pReal), dimension(3,3) :: P
+
+
+  P = constitutive_mech_P(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+
+end function constitutive_mech_getP
 
 
 ! setter for homogenization

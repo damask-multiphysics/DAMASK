@@ -44,8 +44,6 @@ module constitutive
 
   type(rotation),            dimension(:,:,:),        allocatable :: &
     crystallite_orientation                                                                         !< current orientation
-  real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
-    crystallite_P                                                                                   !< 1st Piola-Kirchhoff stress per grain
 
   type :: tTensorContainer
     real(pReal), dimension(:,:,:), allocatable :: data
@@ -193,6 +191,11 @@ module constitutive
       integer, intent(in) :: co, ip, el
       real(pReal), dimension(3,3) :: F_e
     end function constitutive_mech_getF_e
+
+    module function constitutive_mech_getP(co,ip,el) result(P)
+      integer, intent(in) :: co, ip, el
+      real(pReal), dimension(3,3) :: P
+    end function constitutive_mech_getP
 
     module function constitutive_thermal_T(co,ip,el) result(T)
       integer, intent(in) :: co, ip, el
@@ -411,6 +414,7 @@ module constitutive
     constitutive_restartRead, &
     integrateSourceState, &
     constitutive_mech_setF, &
+    constitutive_mech_getP, &
     constitutive_mech_getLp, &
     constitutive_mech_getF, &
     constitutive_mech_getS, &
@@ -877,7 +881,6 @@ subroutine crystallite_init
   iMax = discretization_nIPs
   eMax = discretization_Nelems
 
-  allocate(crystallite_P(3,3,cMax,iMax,eMax),source=0.0_pReal)
   allocate(crystallite_orientation(cMax,iMax,eMax))
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
