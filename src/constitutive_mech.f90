@@ -319,7 +319,10 @@ contains
 !> @brief Initialize mechanical field related constitutive models
 !> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_init
+module subroutine mech_init(phases)
+
+  class(tNode), pointer :: &
+    phases
 
   integer :: &
     el, &
@@ -331,7 +334,6 @@ module subroutine mech_init
     Nconstituents
   class(tNode), pointer :: &
     num_crystallite, &
-    phases, &
     phase, &
     mech, &
     elastic, &
@@ -341,7 +343,6 @@ module subroutine mech_init
 
 !-------------------------------------------------------------------------------------------------
 ! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
-  phases => config_material%get('phase')
   allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
   allocate(phase_elasticityInstance(phases%length), source = 0)
   allocate(phase_NstiffnessDegradations(phases%length),source=0)

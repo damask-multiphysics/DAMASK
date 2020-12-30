@@ -2,6 +2,12 @@
 !> @brief internal microstructure state for all thermal sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_thermal
+  
+  type :: tDataContainer
+    real(pReal), dimension(:), allocatable :: T
+  end type tDataContainer
+ 
+  type(tDataContainer), dimension(:), allocatable :: current
 
   interface
 
@@ -49,8 +55,29 @@ contains
 !----------------------------------------------------------------------------------------------
 !< @brief initializes thermal sources and kinematics mechanism
 !----------------------------------------------------------------------------------------------
-module subroutine thermal_init
+module subroutine thermal_init(phases)
+  
+  class(tNode), pointer :: &
+    phases
+  
+  integer :: &
+    ph, &
+    Nconstituents
 
+
+  print'(/,a)', ' <<<+-  constitutive_mech init  -+>>>'
+
+  allocate(current(phases%length))
+
+
+  do ph = 1, phases%length
+    
+    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
+
+    allocate(current(ph)%T(Nconstituents))
+
+  enddo
+ 
 ! initialize source mechanisms
   if(maxval(phase_Nsources) /= 0) then
     where(source_thermal_dissipation_init (maxval(phase_Nsources))) phase_source = SOURCE_thermal_dissipation_ID
@@ -122,21 +149,16 @@ end subroutine constitutive_thermal_getRateAndItsTangents
 
 
 
-
 ! getter for non-thermal (e.g. mech)
-module function constitutive_thermal_T(co,ip,el) result(T)
+module function thermal_T(ph,me) result(T)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: ph, me
   real(pReal) :: T
 
-  integer :: ho, tme
 
-  ho = material_homogenizationAt(el)
-  tme = material_homogenizationMemberAt(ip,el)
+  T = current(ph)%T(me)
 
-  T = temperature(ho)%p(tme)
-
-end function constitutive_thermal_T
+end function thermal_T
 
 
 ! setter for homogenization

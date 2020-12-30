@@ -112,13 +112,15 @@ module constitutive
   interface
 
 ! == cleaned:begin =================================================================================
-    module subroutine mech_init
+    module subroutine mech_init(phases)
+      class(tNode), pointer :: phases
     end subroutine mech_init
 
     module subroutine damage_init
     end subroutine damage_init
 
-    module subroutine thermal_init
+    module subroutine thermal_init(phases)
+      class(tNode), pointer :: phases
     end subroutine thermal_init
 
 
@@ -197,10 +199,10 @@ module constitutive
       real(pReal), dimension(3,3) :: P
     end function constitutive_mech_getP
 
-    module function constitutive_thermal_T(co,ip,el) result(T)
-      integer, intent(in) :: co, ip, el
+    module function thermal_T(ph,me) result(T)
+      integer, intent(in) :: ph,me
       real(pReal) :: T
-    end function constitutive_thermal_T
+    end function thermal_T
 
 
     module subroutine constitutive_mech_setF(F,co,ip,el)
@@ -463,6 +465,8 @@ subroutine constitutive_init
     phases
 
 
+  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
+
   debug_constitutive => config_debug%get('constitutive', defaultVal=emptyList)
   debugConstitutive%basic      =  debug_constitutive%contains('basic')
   debugConstitutive%extensive  =  debug_constitutive%contains('extensive')
@@ -471,15 +475,14 @@ subroutine constitutive_init
   debugConstitutive%ip         =  config_debug%get_asInt('integrationpoint',defaultVal = 1)
   debugConstitutive%grain      =  config_debug%get_asInt('grain',defaultVal = 1)
 
-!--------------------------------------------------------------------------------------------------
-! initialize constitutive laws
-  print'(/,a)', ' <<<+-  constitutive init  -+>>>'; flush(IO_STDOUT)
-  call mech_init
-  call damage_init
-  call thermal_init
-
 
   phases => config_material%get('phase')
+
+  call mech_init(phases)
+  call damage_init
+  call thermal_init(phases)
+
+
   constitutive_source_maxSizeDotState = 0
   PhaseLoop2:do ph = 1,phases%length
 !--------------------------------------------------------------------------------------------------
