@@ -174,25 +174,25 @@ module constitutive
     end subroutine mech_restartRead
 
 
-    module function constitutive_mech_getS(co,ip,el) result(S)
-      integer, intent(in) :: co, ip, el
+    module function mech_S(ph,me) result(S)
+      integer, intent(in) :: ph,me
       real(pReal), dimension(3,3) :: S
-    end function constitutive_mech_getS
+    end function mech_S
 
-    module function constitutive_mech_getLp(co,ip,el) result(Lp)
-      integer, intent(in) :: co, ip, el
-      real(pReal), dimension(3,3) :: Lp
-    end function constitutive_mech_getLp
+    module function mech_L_p(ph,me) result(L_p)
+      integer, intent(in) :: ph,me
+      real(pReal), dimension(3,3) :: L_p
+    end function mech_L_p
 
     module function constitutive_mech_getF(co,ip,el) result(F)
       integer, intent(in) :: co, ip, el
       real(pReal), dimension(3,3) :: F
     end function constitutive_mech_getF
 
-    module function constitutive_mech_getF_e(co,ip,el) result(F_e)
-      integer, intent(in) :: co, ip, el
+    module function mech_F_e(ph,me) result(F_e)
+      integer, intent(in) :: ph,me
       real(pReal), dimension(3,3) :: F_e
-    end function constitutive_mech_getF_e
+    end function mech_F_e
 
     module function constitutive_mech_getP(co,ip,el) result(P)
       integer, intent(in) :: co, ip, el
@@ -421,12 +421,10 @@ module constitutive
     constitutive_restartWrite, &
     constitutive_restartRead, &
     integrateSourceState, &
-    constitutive_mech_setF, &
     constitutive_thermal_setT, &
     constitutive_mech_getP, &
-    constitutive_mech_getLp, &
+    constitutive_mech_setF, &
     constitutive_mech_getF, &
-    constitutive_mech_getS, &
     constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
     PLASTICITY_UNDEFINED_ID, &
@@ -667,7 +665,8 @@ function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
     sourceType: select case (phase_source(so,ph))
 
       case (SOURCE_damage_anisoBrittle_ID) sourceType
-        call source_damage_anisoBrittle_dotState(constitutive_mech_getS(co,ip,el), co, ip, el) ! correct stress?
+        call source_damage_anisoBrittle_dotState(mech_S(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)),&
+                co, ip, el) ! correct stress?
 
       case (SOURCE_damage_isoDuctile_ID) sourceType
         call source_damage_isoDuctile_dotState(co, ip, el)
@@ -1020,7 +1019,7 @@ subroutine crystallite_orientations(co,ip,el)
 
 
   call crystallite_orientation(co,ip,el)%fromMatrix(transpose(math_rotationalPart(&
-    constitutive_mech_getF_e(co,ip,el))))
+    mech_F_e(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))))
 
   if (plasticState(material_phaseAt(1,el))%nonlocal) &
     call plastic_nonlocal_updateCompatibility(crystallite_orientation, &
@@ -1123,7 +1122,7 @@ function integrateSourceState(dt,co,ip,el) result(broken)
     enddo
 
     if(converged_) then
-      broken = constitutive_damage_deltaState(constitutive_mech_getF_e(co,ip,el),co,ip,el,ph,me)
+      broken = constitutive_damage_deltaState(mech_F_e(ph,me),co,ip,el,ph,me)
       exit iteration
     endif
 

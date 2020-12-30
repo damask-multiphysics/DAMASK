@@ -109,32 +109,29 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
   real(pReal) :: &
     my_Tdot, &
     my_dTdot_dT
-  real(pReal), dimension(3,3) :: Lp, S
   integer :: &
-    phase, &
+    ph, &
     homog, &
     instance, &
-    grain, &
-    source, &
-    constituent
+    me, &
+    so, &
+    co
 
    homog  = material_homogenizationAt(el)
    instance = thermal_typeInstance(homog)
 
-  do grain = 1, homogenization_Nconstituents(homog)
-     phase = material_phaseAt(grain,el)
-     constituent = material_phasememberAt(grain,ip,el)
-     do source = 1, phase_Nsources(phase)
-       select case(phase_source(source,phase))
+  do co = 1, homogenization_Nconstituents(homog)
+     ph = material_phaseAt(co,el)
+     me = material_phasememberAt(co,ip,el)
+     do so = 1, phase_Nsources(ph)
+       select case(phase_source(so,ph))
          case (SOURCE_thermal_dissipation_ID)
-          Lp = constitutive_mech_getLp(grain,ip,el)
-          S  = constitutive_mech_getS(grain,ip,el)
           call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                               S, Lp, phase)
+                                                               mech_S(ph,me),mech_L_p(ph,me), ph)
 
          case (SOURCE_thermal_externalheat_ID)
           call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                                phase, constituent)
+                                                                ph, me)
 
          case default
           my_Tdot = 0.0_pReal

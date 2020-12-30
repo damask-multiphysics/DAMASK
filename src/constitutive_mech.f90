@@ -1847,27 +1847,27 @@ end subroutine mech_restartRead
 
 
 ! getter for non-mech (e.g. thermal)
-module function constitutive_mech_getS(co,ip,el) result(S)
+module function mech_S(ph,me) result(S)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: ph,me
   real(pReal), dimension(3,3) :: S
 
 
-  S = constitutive_mech_S(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  S = constitutive_mech_S(ph)%data(1:3,1:3,me)
 
-end function constitutive_mech_getS
+end function mech_S
 
 
 ! getter for non-mech (e.g. thermal)
-module function constitutive_mech_getLp(co,ip,el) result(Lp)
+module function mech_L_p(ph,me) result(L_p)
 
-  integer, intent(in) :: co, ip, el
-  real(pReal), dimension(3,3) :: Lp
+  integer, intent(in) :: ph,me
+  real(pReal), dimension(3,3) :: L_p
 
 
-  Lp = constitutive_mech_Lp(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  L_p = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
 
-end function constitutive_mech_getLp
+end function mech_L_p
 
 
 ! getter for non-mech (e.g. thermal)
@@ -1883,15 +1883,15 @@ end function constitutive_mech_getF
 
 
 ! getter for non-mech (e.g. thermal)
-module function constitutive_mech_getF_e(co,ip,el) result(F_e)
+module function mech_F_e(ph,me) result(F_e)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: ph,me
   real(pReal), dimension(3,3) :: F_e
 
 
-  F_e = constitutive_mech_Fe(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  F_e = constitutive_mech_Fe(ph)%data(1:3,1:3,me)
 
-end function constitutive_mech_getF_e
+end function mech_F_e
 
 
 
