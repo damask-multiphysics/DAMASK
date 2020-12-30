@@ -27,6 +27,8 @@ module homogenization
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
+  real(pReal),   dimension(:),         allocatable, public :: &
+    homogenization_T
   real(pReal),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
@@ -55,6 +57,9 @@ module homogenization
       class(tNode), pointer, intent(in) :: &
         num_homog                                                                                   !< pointer to mechanical homogenization numerics data
     end subroutine mech_init
+
+    module subroutine thermal_init
+    end subroutine thermal_init
 
     module subroutine mech_partition(subF,ip,el)
       real(pReal), intent(in), dimension(3,3) :: &

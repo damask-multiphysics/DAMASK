@@ -202,10 +202,16 @@ module constitutive
       real(pReal) :: T
     end function constitutive_thermal_T
 
+
     module subroutine constitutive_mech_setF(F,co,ip,el)
       real(pReal), dimension(3,3), intent(in) :: F
       integer, intent(in) :: co, ip, el
     end subroutine constitutive_mech_setF
+
+    module subroutine constitutive_thermal_setT(T,co,ip,el)
+      real(pReal), intent(in) :: T
+      integer, intent(in) :: co, ip, el
+    end subroutine constitutive_thermal_setT
 
 ! == cleaned:end ===================================================================================
 
@@ -414,6 +420,7 @@ module constitutive
     constitutive_restartRead, &
     integrateSourceState, &
     constitutive_mech_setF, &
+    constitutive_thermal_setT, &
     constitutive_mech_getP, &
     constitutive_mech_getLp, &
     constitutive_mech_getF, &

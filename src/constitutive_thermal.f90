@@ -139,4 +139,11 @@ module function constitutive_thermal_T(co,ip,el) result(T)
 end function constitutive_thermal_T
 
 
+! setter for homogenization
+module subroutine constitutive_thermal_setT(T,co,ip,el)
+  real(pReal), intent(in) :: T
+  integer, intent(in) :: co, ip, el
+end subroutine constitutive_thermal_setT
+
+
 end submodule constitutive_thermal
