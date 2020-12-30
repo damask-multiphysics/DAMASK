@@ -530,7 +530,7 @@ end function plastic_active
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
+subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, co, ip, el)
 
   integer, intent(in) :: &
@@ -616,7 +616,7 @@ end subroutine constitutive_plastic_dependentState
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
+subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                      S, Fi, co, ip, el)
   integer, intent(in) :: &
     co, &                                                                                           !< component-ID of integration point
@@ -1846,7 +1846,9 @@ module subroutine mech_restartRead(groupHandle,ph)
 end subroutine mech_restartRead
 
 
-! getter for non-mech (e.g. thermal)
+!----------------------------------------------------------------------------------------------
+!< @brief Get first Piola-Kichhoff stress (for use by non-mech physics)
+!----------------------------------------------------------------------------------------------
 module function mech_S(ph,me) result(S)
 
   integer, intent(in) :: ph,me
@@ -1858,7 +1860,9 @@ module function mech_S(ph,me) result(S)
 end function mech_S
 
 
-! getter for non-mech (e.g. thermal)
+!----------------------------------------------------------------------------------------------
+!< @brief Get plastic velocity gradient (for use by non-mech physics)
+!----------------------------------------------------------------------------------------------
 module function mech_L_p(ph,me) result(L_p)
 
   integer, intent(in) :: ph,me
@@ -1870,7 +1874,9 @@ module function mech_L_p(ph,me) result(L_p)
 end function mech_L_p
 
 
-! getter for non-mech (e.g. thermal)
+!----------------------------------------------------------------------------------------------
+!< @brief Get deformation gradient (for use by homogenization)
+!----------------------------------------------------------------------------------------------
 module function constitutive_mech_getF(co,ip,el) result(F)
 
   integer, intent(in) :: co, ip, el
@@ -1882,7 +1888,9 @@ module function constitutive_mech_getF(co,ip,el) result(F)
 end function constitutive_mech_getF
 
 
-! getter for non-mech (e.g. thermal)
+!----------------------------------------------------------------------------------------------
+!< @brief Get elastic deformation gradient (for use by non-mech physics)
+!----------------------------------------------------------------------------------------------
 module function mech_F_e(ph,me) result(F_e)
 
   integer, intent(in) :: ph,me
@@ -1895,7 +1903,9 @@ end function mech_F_e
 
 
 
-! getter for non-mech (e.g. thermal)
+!----------------------------------------------------------------------------------------------
+!< @brief Get second Piola-Kichhoff stress (for use by homogenization)
+!----------------------------------------------------------------------------------------------
 module function constitutive_mech_getP(co,ip,el) result(P)
 
   integer, intent(in) :: co, ip, el

@@ -352,46 +352,12 @@ module constitutive
     end subroutine source_damage_isoBrittle_deltaState
 
 
-    module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
-                                         S, Fi, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        S, &                                                                                        !< 2nd Piola-Kirchhoff stress
-        Fi                                                                                          !< intermediate deformation gradient
-      real(pReal),   intent(out), dimension(3,3) :: &
-        Lp                                                                                          !< plastic velocity gradient
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dLp_dS, &
-        dLp_dFi                                                                                     !< derivative of Lp with respect to Fi
-    end subroutine constitutive_plastic_LpAndItsTangents
-
-
     module subroutine constitutive_plastic_dependentState(co,ip,el)
       integer, intent(in) :: &
         co, &                                                                                      !< component-ID of integration point
         ip, &                                                                                       !< integration point
         el                                                                                          !< element
     end subroutine constitutive_plastic_dependentState
-
-
-
-    module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, Fe, Fi, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-      real(pReal),   intent(in),  dimension(3,3) :: &
-        Fe, &                                                                                       !< elastic deformation gradient
-        Fi                                                                                          !< intermediate deformation gradient
-      real(pReal),   intent(out), dimension(3,3) :: &
-        S                                                                                           !< 2nd Piola-Kirchhoff stress tensor
-      real(pReal),   intent(out), dimension(3,3,3,3) :: &
-        dS_dFe, &                                                                                   !< derivative of 2nd P-K stress with respect to elastic deformation gradient
-        dS_dFi                                                                                      !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
-    end subroutine constitutive_hooke_SandItsTangents
 
   end interface
 

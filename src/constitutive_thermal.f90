@@ -2,11 +2,11 @@
 !> @brief internal microstructure state for all thermal sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_thermal
-  
+
   type :: tDataContainer
     real(pReal), dimension(:), allocatable :: T
   end type tDataContainer
- 
+
   type(tDataContainer), dimension(:), allocatable :: current
 
   interface
@@ -56,10 +56,10 @@ contains
 !< @brief initializes thermal sources and kinematics mechanism
 !----------------------------------------------------------------------------------------------
 module subroutine thermal_init(phases)
-  
+
   class(tNode), pointer :: &
     phases
-  
+
   integer :: &
     ph, &
     Nconstituents
@@ -71,13 +71,13 @@ module subroutine thermal_init(phases)
 
 
   do ph = 1, phases%length
-    
+
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
     allocate(current(ph)%T(Nconstituents))
 
   enddo
- 
+
 ! initialize source mechanisms
   if(maxval(phase_Nsources) /= 0) then
     where(source_thermal_dissipation_init (maxval(phase_Nsources))) phase_source = SOURCE_thermal_dissipation_ID
@@ -145,8 +145,9 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
 end subroutine constitutive_thermal_getRateAndItsTangents
 
 
-
-! getter for non-thermal (e.g. mech)
+!----------------------------------------------------------------------------------------------
+!< @brief Get temperature (for use by non-thermal physics)
+!----------------------------------------------------------------------------------------------
 module function thermal_T(ph,me) result(T)
 
   integer, intent(in) :: ph, me
@@ -158,10 +159,17 @@ module function thermal_T(ph,me) result(T)
 end function thermal_T
 
 
-! setter for homogenization
+!----------------------------------------------------------------------------------------------
+!< @brief Set temperature
+!----------------------------------------------------------------------------------------------
 module subroutine constitutive_thermal_setT(T,co,ip,el)
+
   real(pReal), intent(in) :: T
   integer, intent(in) :: co, ip, el
+
+
+  current(material_phaseAt(co,el))%T(material_phaseMemberAt(co,ip,el)) = T
+
 end subroutine constitutive_thermal_setT
 
 
