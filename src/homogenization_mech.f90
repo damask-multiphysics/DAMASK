@@ -113,24 +113,24 @@ module subroutine mech_partition(subF,ip,el)
     el                                                                                              !< element number
 
   integer :: co
-  real(pReal) :: F(3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
+  real(pReal), dimension (3,3,homogenization_Nconstituents(material_homogenizationAt(el))) :: Fs
 
 
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-      F(1:3,1:3,1) = subF
+      Fs(1:3,1:3,1) = subF
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-      call mech_isostrain_partitionDeformation(F,subF)
+      call mech_isostrain_partitionDeformation(Fs,subF)
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      call mech_RGC_partitionDeformation(F,subF,ip,el)
+      call mech_RGC_partitionDeformation(Fs,subF,ip,el)
 
   end select chosenHomogenization
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
-    call constitutive_mech_setF(F(1:3,1:3,co),co,ip,el)
+    call constitutive_mech_setF(Fs(1:3,1:3,co),co,ip,el)
   enddo
 
 
