@@ -4,7 +4,7 @@
 !> @brief material subroutine for thermal source due to plastic dissipation
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-submodule(constitutive:constitutive_thermal) source_thermal_dissipation
+submodule(constitutive:constitutive_thermal) source_dissipation
 
   integer,           dimension(:),   allocatable :: &
     source_thermal_dissipation_offset, &                                                            !< which source is my current thermal dissipation mechanism?
@@ -96,4 +96,4 @@ module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT
 
 end subroutine source_thermal_dissipation_getRateAndItsTangent
 
-end submodule source_thermal_dissipation
+end submodule source_dissipation
