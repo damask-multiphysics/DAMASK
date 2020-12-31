@@ -1485,7 +1485,7 @@ end subroutine mech_initializeRestorationPoints
 !--------------------------------------------------------------------------------------------------
 !> @brief Wind homog inc forward.
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_mech_windForward(ph,me)
+module subroutine mech_windForward(ph,me)
 
   integer, intent(in) :: ph, me
 
@@ -1499,14 +1499,14 @@ module subroutine constitutive_mech_windForward(ph,me)
 
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state(:,me)
 
-end subroutine constitutive_mech_windForward
+end subroutine mech_windForward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_mech_forward()
+module subroutine mech_forward()
 
   integer :: ph
 
@@ -1521,7 +1521,7 @@ module subroutine constitutive_mech_forward()
     plasticState(ph)%state0 = plasticState(ph)%state
   enddo
 
-end subroutine constitutive_mech_forward
+end subroutine mech_forward
 
 
 
@@ -1678,8 +1678,7 @@ module subroutine mech_restore(ip,el,includeL)
     constitutive_mech_Fi(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
     constitutive_mech_S(ph)%data(1:3,1:3,me)    = constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)
 
-    plasticState    (material_phaseAt(co,el))%state(          :,material_phasememberAt(co,ip,el)) = &
-    plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phasememberAt(co,ip,el))
+    plasticState(ph)%state(:,me) = plasticState(ph)%partitionedState0(:,me)
   enddo
 
 end subroutine mech_restore

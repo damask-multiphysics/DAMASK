@@ -102,7 +102,7 @@ module constitutive
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
   type(tSourceState),  allocatable, dimension(:), public :: &
-    sourceState
+    sourceState, thermalState
 
 
   integer, public, protected :: &
@@ -139,20 +139,36 @@ module constitutive
       integer, intent(in) :: ph, me
     end subroutine mech_initializeRestorationPoints
 
-    module subroutine constitutive_mech_windForward(ph,me)
+    module subroutine thermal_initializeRestorationPoints(ph,me)
       integer, intent(in) :: ph, me
-    end subroutine constitutive_mech_windForward
+    end subroutine thermal_initializeRestorationPoints
 
-    module subroutine constitutive_mech_forward
-    end subroutine constitutive_mech_forward
+
+    module subroutine mech_windForward(ph,me)
+      integer, intent(in) :: ph, me
+    end subroutine mech_windForward
+
+    module subroutine thermal_windForward(ph,me)
+      integer, intent(in) :: ph, me
+    end subroutine thermal_windForward
+
+
+    module subroutine mech_forward()
+    end subroutine mech_forward
+
+    module subroutine thermal_forward()
+    end subroutine thermal_forward
+
 
     module subroutine mech_restore(ip,el,includeL)
-      integer, intent(in) :: &
-        ip, &
-        el
-      logical, intent(in) :: &
-        includeL
+      integer, intent(in) :: ip, el
+      logical, intent(in) :: includeL
     end subroutine mech_restore
+
+    module subroutine thermal_restore(ip,el)
+      integer, intent(in) :: ip, el
+    end subroutine thermal_restore
+
 
     module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
       real(pReal), intent(in) :: dt
@@ -776,6 +792,7 @@ subroutine constitutive_restore(ip,el,includeL)
   enddo
 
   call mech_restore(ip,el,includeL)
+  call thermal_restore(ip,el)
 
 end subroutine constitutive_restore
 
@@ -784,12 +801,13 @@ end subroutine constitutive_restore
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_forward
+subroutine constitutive_forward()
 
   integer :: ph, so
 
 
-  call constitutive_mech_forward()
+  call mech_forward()
+  call thermal_forward()
 
   do ph = 1, size(sourceState)
     do so = 1,phase_Nsources(ph)
@@ -802,7 +820,7 @@ end subroutine constitutive_forward
 !--------------------------------------------------------------------------------------------------
 !> @brief writes constitutive results to HDF5 output file
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_results
+subroutine constitutive_results()
 
   integer :: ph
   character(len=:), allocatable :: group
@@ -826,7 +844,7 @@ end subroutine constitutive_results
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates and initialize per grain variables
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_init
+subroutine crystallite_init()
 
   integer :: &
     ph, &
@@ -937,10 +955,12 @@ subroutine constitutive_initializeRestorationPoints(ip,el)
     me = material_phaseMemberAt(co,ip,el)
 
     call mech_initializeRestorationPoints(ph,me)
+    call thermal_initializeRestorationPoints(ph,me)
 
-    do so = 1, phase_Nsources(material_phaseAt(co,el))
+    do so = 1, size(sourceState(ph)%p)
       sourceState(ph)%p(so)%partitionedState0(:,me) = sourceState(ph)%p(so)%state0(:,me)
     enddo
+
   enddo
 
 end subroutine constitutive_initializeRestorationPoints
@@ -964,10 +984,13 @@ subroutine constitutive_windForward(ip,el)
     ph = material_phaseAt(co,el)
     me = material_phaseMemberAt(co,ip,el)
 
-    call constitutive_mech_windForward(ph,me)
+    call mech_windForward(ph,me)
+    call thermal_windForward(ph,me)
+
     do so = 1, phase_Nsources(material_phaseAt(co,el))
       sourceState(ph)%p(so)%partitionedState0(:,me) = sourceState(ph)%p(so)%state(:,me)
     enddo
+
   enddo
 
 end subroutine constitutive_windForward
@@ -1049,8 +1072,7 @@ function integrateSourceState(dt,co,ip,el) result(broken)
   me = material_phaseMemberAt(co,ip,el)
 
   converged_ = .true.
-  broken = constitutive_thermal_collectDotState(ph,me)
-  broken = broken .or. constitutive_damage_collectDotState(co,ip,el,ph,me)
+  broken = constitutive_damage_collectDotState(co,ip,el,ph,me)
   if(broken) return
 
   do so = 1, phase_Nsources(ph)
@@ -1067,8 +1089,7 @@ function integrateSourceState(dt,co,ip,el) result(broken)
       source_dotState(1:size_so(so),1,so) = sourceState(ph)%p(so)%dotState(:,me)
     enddo
 
-    broken = constitutive_thermal_collectDotState(ph,me)
-    broken = broken .or. constitutive_damage_collectDotState(co,ip,el,ph,me)
+    broken = constitutive_damage_collectDotState(co,ip,el,ph,me)
     if(broken) exit iteration
 
     do so = 1, phase_Nsources(ph)
@@ -1120,6 +1141,111 @@ function integrateSourceState(dt,co,ip,el) result(broken)
   end function damper
 
 end function integrateSourceState
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief integrate stress, state with adaptive 1st order explicit Euler method
+!> using Fixed Point Iteration to adapt the stepsize
+!--------------------------------------------------------------------------------------------------
+function integrateThermalState(dt,co,ip,el) result(broken)
+
+  real(pReal), intent(in) :: dt
+  integer, intent(in) :: &
+    el, &                                                                                            !< element index in element loop
+    ip, &                                                                                            !< integration point index in ip loop
+    co                                                                                               !< grain index in grain loop
+
+  integer :: &
+    NiterationState, &                                                                              !< number of iterations in state loop
+    ph, &
+    me, &
+    so
+  integer, dimension(maxval(phase_Nsources)) :: &
+    size_so
+  real(pReal) :: &
+    zeta
+  real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
+    r                                                                                               ! state residuum
+  real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
+  logical :: &
+    broken, converged_
+
+
+  ph = material_phaseAt(co,el)
+  me = material_phaseMemberAt(co,ip,el)
+
+  converged_ = .true.
+  broken = constitutive_thermal_collectDotState(ph,me)
+  if(broken) return
+
+  do so = 1, phase_Nsources(ph)
+    size_so(so) = thermalState(ph)%p(so)%sizeDotState
+    thermalState(ph)%p(so)%state(1:size_so(so),me) = thermalState(ph)%p(so)%subState0(1:size_so(so),me) &
+                                                  + thermalState(ph)%p(so)%dotState (1:size_so(so),me) * dt
+    source_dotState(1:size_so(so),2,so) = 0.0_pReal
+  enddo
+
+  iteration: do NiterationState = 1, num%nState
+
+    do so = 1, phase_Nsources(ph)
+      if(nIterationState > 1) source_dotState(1:size_so(so),2,so) = source_dotState(1:size_so(so),1,so)
+      source_dotState(1:size_so(so),1,so) = thermalState(ph)%p(so)%dotState(:,me)
+    enddo
+
+    broken = constitutive_thermal_collectDotState(ph,me)
+    broken = broken .or. constitutive_damage_collectDotState(co,ip,el,ph,me)
+    if(broken) exit iteration
+
+    do so = 1, phase_Nsources(ph)
+      zeta = damper(thermalState(ph)%p(so)%dotState(:,me), &
+                    source_dotState(1:size_so(so),1,so),&
+                    source_dotState(1:size_so(so),2,so))
+      thermalState(ph)%p(so)%dotState(:,me) = thermalState(ph)%p(so)%dotState(:,me) * zeta &
+                                        + source_dotState(1:size_so(so),1,so)* (1.0_pReal - zeta)
+      r(1:size_so(so)) = thermalState(ph)%p(so)%state    (1:size_so(so),me)  &
+                       - thermalState(ph)%p(so)%subState0(1:size_so(so),me)  &
+                       - thermalState(ph)%p(so)%dotState (1:size_so(so),me) * dt
+      thermalState(ph)%p(so)%state(1:size_so(so),me) = thermalState(ph)%p(so)%state(1:size_so(so),me) &
+                                                - r(1:size_so(so))
+      converged_ = converged_  .and. converged(r(1:size_so(so)), &
+                                               thermalState(ph)%p(so)%state(1:size_so(so),me), &
+                                               thermalState(ph)%p(so)%atol(1:size_so(so)))
+    enddo
+
+    if(converged_) then
+      broken = constitutive_damage_deltaState(mech_F_e(ph,me),co,ip,el,ph,me)
+      exit iteration
+    endif
+
+  enddo iteration
+
+  broken = broken .or. .not. converged_
+
+
+  contains
+
+  !--------------------------------------------------------------------------------------------------
+  !> @brief calculate the damping for correction of state and dot state
+  !--------------------------------------------------------------------------------------------------
+  real(pReal) pure function damper(current,previous,previous2)
+
+  real(pReal), dimension(:), intent(in) ::&
+    current, previous, previous2
+
+  real(pReal) :: dot_prod12, dot_prod22
+
+  dot_prod12 = dot_product(current  - previous,  previous - previous2)
+  dot_prod22 = dot_product(previous - previous2, previous - previous2)
+  if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
+    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+  else
+    damper = 1.0_pReal
+  endif
+
+  end function damper
+
+end function integrateThermalState
 
 
 !--------------------------------------------------------------------------------------------------

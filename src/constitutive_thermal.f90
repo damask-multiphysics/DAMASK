@@ -145,6 +145,70 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
 end subroutine constitutive_thermal_getRateAndItsTangents
 
 
+
+module subroutine thermal_initializeRestorationPoints(ph,me)
+
+  integer, intent(in) :: ph, me
+
+  integer :: so
+
+
+  do so = 1, size(sourceState(ph)%p)
+    thermalState(ph)%p(so)%partitionedState0(:,me) = thermalState(ph)%p(so)%state0(:,me)
+  enddo
+
+end subroutine thermal_initializeRestorationPoints
+
+
+
+module subroutine thermal_windForward(ph,me)
+
+  integer, intent(in) :: ph, me
+
+  integer :: so
+
+
+  do so = 1, size(sourceState(ph)%p)
+    thermalState(ph)%p(so)%partitionedState0(:,me) = thermalState(ph)%p(so)%state(:,me)
+  enddo
+
+end subroutine thermal_windForward
+
+
+module subroutine thermal_forward()
+
+  integer :: ph, so
+
+
+  do ph = 1, size(thermalState)
+    do so = 1, size(sourceState(ph)%p)
+      thermalState(ph)%p(so)%state0 = thermalState(ph)%p(so)%state
+    enddo
+  enddo
+
+end subroutine thermal_forward
+
+
+module subroutine thermal_restore(ip,el)
+
+  integer, intent(in) :: ip, el
+
+  integer :: co, ph, me, so
+
+
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+    ph = material_phaseAt(co,el)
+    me = material_phaseMemberAt(co,ip,el)
+
+    do so = 1, size(sourceState(ph)%p)
+      thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%partitionedState0(:,me)
+    enddo
+
+  enddo
+
+end subroutine thermal_restore
+
+
 !----------------------------------------------------------------------------------------------
 !< @brief Get temperature (for use by non-thermal physics)
 !----------------------------------------------------------------------------------------------
