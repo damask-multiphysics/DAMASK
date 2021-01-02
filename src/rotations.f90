@@ -47,16 +47,16 @@
 !---------------------------------------------------------------------------------------------------
 
 module rotations
-  use prec
   use IO
   use math
-  use quaternions
 
   implicit none
   private
 
+  real(pReal), parameter :: P = -1.0_pReal                                                          !< parameter for orientation conversion.
+
   type, public :: rotation
-    type(quaternion) :: q
+    real(pReal), dimension(4) :: q
     contains
       procedure, public :: asQuaternion
       procedure, public :: asEulers
@@ -103,7 +103,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine rotations_init
 
-  call quaternions_init
   print'(/,a)', ' <<<+-  rotations init  -+>>>'; flush(IO_STDOUT)
 
   print*, 'Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015'
@@ -122,7 +121,7 @@ pure function asQuaternion(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asQuaternion
 
-  asQuaternion = self%q%asArray()
+  asQuaternion = self%q
 
 end function asQuaternion
 !---------------------------------------------------------------------------------------------------
@@ -131,7 +130,7 @@ pure function asEulers(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asEulers
 
-  asEulers = qu2eu(self%q%asArray())
+  asEulers = qu2eu(self%q)
 
 end function asEulers
 !---------------------------------------------------------------------------------------------------
@@ -140,7 +139,7 @@ pure function asAxisAngle(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asAxisAngle
 
-  asAxisAngle = qu2ax(self%q%asArray())
+  asAxisAngle = qu2ax(self%q)
 
 end function asAxisAngle
 !---------------------------------------------------------------------------------------------------
@@ -149,7 +148,7 @@ pure function asMatrix(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(3,3) :: asMatrix
 
-  asMatrix = qu2om(self%q%asArray())
+  asMatrix = qu2om(self%q)
 
 end function asMatrix
 !---------------------------------------------------------------------------------------------------
@@ -158,7 +157,7 @@ pure function asRodrigues(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(4)   :: asRodrigues
 
-  asRodrigues = qu2ro(self%q%asArray())
+  asRodrigues = qu2ro(self%q)
 
 end function asRodrigues
 !---------------------------------------------------------------------------------------------------
@@ -167,7 +166,7 @@ pure function asHomochoric(self)
   class(rotation), intent(in) :: self
   real(pReal), dimension(3)   :: asHomochoric
 
-  asHomochoric = qu2ho(self%q%asArray())
+  asHomochoric = qu2ho(self%q)
 
 end function asHomochoric
 
@@ -259,7 +258,7 @@ pure elemental function rotRot__(self,R) result(rRot)
   type(rotation)              :: rRot
   class(rotation), intent(in) :: self,R
 
-  rRot = rotation(self%q*R%q)
+  rRot = rotation(multiply_quaternion(self%q,R%q))
   call rRot%standardize()
 
 end function rotRot__
@@ -272,14 +271,14 @@ pure elemental subroutine standardize(self)
 
   class(rotation), intent(inout) :: self
 
-  if (real(self%q) < 0.0_pReal) self%q = self%q%homomorphed()
+  if (self%q(1) < 0.0_pReal) self%q = - self%q
 
 end subroutine standardize
 
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief rotate a vector passively (default) or actively
+!> @brief Rotate a vector passively (default) or actively.
 !---------------------------------------------------------------------------------------------------
 pure function rotVector(self,v,active) result(vRot)
 
@@ -288,9 +287,8 @@ pure function rotVector(self,v,active) result(vRot)
   real(pReal),     intent(in), dimension(3) :: v
   logical,         intent(in), optional     :: active
 
-  real(pReal),    dimension(3) :: v_normed
-  type(quaternion)             :: q
-  logical                      :: passive
+  real(pReal), dimension(4) :: v_normed, q
+  logical                   :: passive
 
   if (present(active)) then
     passive = .not. active
@@ -301,13 +299,13 @@ pure function rotVector(self,v,active) result(vRot)
   if (dEq0(norm2(v))) then
     vRot = v
   else
-    v_normed = v/norm2(v)
+    v_normed = [0.0_pReal,v]/norm2(v)
     if (passive) then
-      q = self%q * (quaternion([0.0_pReal, v_normed(1), v_normed(2), v_normed(3)]) * conjg(self%q) )
+      q = multiply_quaternion(self%q, multiply_quaternion(v_normed, conjugate_quaternion(self%q)))
     else
-      q = conjg(self%q) * (quaternion([0.0_pReal, v_normed(1), v_normed(2), v_normed(3)]) * self%q )
+      q = multiply_quaternion(conjugate_quaternion(self%q), multiply_quaternion(v_normed, self%q))
     endif
-    vRot = q%aimag()*norm2(v)
+    vRot = q(2:4)*norm2(v)
   endif
 
 end function rotVector
@@ -315,8 +313,8 @@ end function rotVector
 
 !---------------------------------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
-!> @brief rotate a rank-2 tensor passively (default) or actively
-!> @details: rotation is based on rotation matrix
+!> @brief Rotate a rank-2 tensor passively (default) or actively.
+!> @details: Rotation is based on rotation matrix
 !---------------------------------------------------------------------------------------------------
 pure function rotTensor2(self,T,active) result(tRot)
 
@@ -403,7 +401,7 @@ pure elemental function misorientation(self,other)
   type(rotation)              :: misorientation
   class(rotation), intent(in) :: self, other
 
-  misorientation%q = other%q * conjg(self%q)
+  misorientation%q = multiply_quaternion(other%q, [self%q(1),-self%q(2:4)])
 
 end function misorientation
 
@@ -1338,7 +1336,7 @@ end function cu2ho
 !--------------------------------------------------------------------------
 !> @author Marc De Graef, Carnegie Mellon University
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief determine to which pyramid a point in a cubic grid belongs
+!> @brief Determine to which pyramid a point in a cubic grid belongs.
 !--------------------------------------------------------------------------
 pure function GetPyramidOrder(xyz)
 
@@ -1362,7 +1360,39 @@ end function GetPyramidOrder
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief check correctness of some rotations functions
+!> @brief Multiply two quaternions.
+!--------------------------------------------------------------------------------------------------
+pure function multiply_quaternion(qu1,qu2)
+
+  real(pReal), dimension(4), intent(in) :: qu1, qu2
+  real(pReal), dimension(4) :: multiply_quaternion
+
+
+  multiply_quaternion(1) = qu1(1)*qu2(1) - qu1(2)*qu2(2) -      qu1(3)*qu2(3) - qu1(4)*qu2(4)
+  multiply_quaternion(2) = qu1(1)*qu2(2) + qu1(2)*qu2(1) + P * (qu1(3)*qu2(4) - qu1(4)*qu2(3))
+  multiply_quaternion(3) = qu1(1)*qu2(3) + qu1(3)*qu2(1) + P * (qu1(4)*qu2(2) - qu1(2)*qu2(4))
+  multiply_quaternion(4) = qu1(1)*qu2(4) + qu1(4)*qu2(1) + P * (qu1(2)*qu2(3) - qu1(3)*qu2(2))
+
+end function multiply_quaternion
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculate conjugate complex of a quaternion.
+!--------------------------------------------------------------------------------------------------
+pure function conjugate_quaternion(qu)
+
+  real(pReal), dimension(4), intent(in) :: qu
+  real(pReal), dimension(4) :: conjugate_quaternion
+
+
+  conjugate_quaternion = [qu(1), -qu(2), -qu(3), -qu(4)]
+
+
+end function conjugate_quaternion
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Check correctness of some rotations functions.
 !--------------------------------------------------------------------------------------------------
 subroutine selfTest
 
@@ -1374,7 +1404,8 @@ subroutine selfTest
   real    :: A,B
   integer :: i
 
-  do i=1,10
+
+  do i = 1, 10
 
 #if defined(__GFORTRAN__) && __GNUC__<9
     if(i<7) cycle
