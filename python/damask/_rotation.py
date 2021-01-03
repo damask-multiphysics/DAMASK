@@ -105,8 +105,10 @@ class Rotation:
             Rotation to check for equality.
 
         """
+        ambiguous = np.isclose(self.quaternion[...,0],0)
         return      np.prod(self.shape,dtype=int) == np.prod(other.shape,dtype=int) \
-                and np.allclose(self.quaternion,other.quaternion)
+                and (   np.allclose(self.quaternion,other.quaternion) \
+                     or np.allclose(self.quaternion[ambiguous],-1*other.quaternion[ambiguous]))
 
 
     @property

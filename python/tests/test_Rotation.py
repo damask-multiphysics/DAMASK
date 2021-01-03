@@ -786,6 +786,12 @@ class TestRotation:
     def test_equal(self):
         assert Rotation.from_random(rng_seed=1) == Rotation.from_random(rng_seed=1)
 
+    def test_equal_ambiguous(self):
+        qu = np.random.rand(10,4)
+        qu[:,0] = 0.
+        qu/=np.linalg.norm(qu,axis=1,keepdims=True)
+        assert Rotation(qu) == Rotation(-qu)
+
     def test_inversion(self):
         r = Rotation.from_random()
         assert r == ~~r
