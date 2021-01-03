@@ -225,10 +225,21 @@ class Orientation(Rotation):
             Orientation to check for equality.
 
         """
-        return  super().__eq__(other) \
-            and self.family     == other.family \
-            and self.lattice    == other.lattice \
-            and self.parameters == other.parameters
+        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
+                             for attr in ['family','lattice','parameters']])
+        return np.logical_and(super().__eq__(other),matching_type)
+
+    def __ne__(self,other):
+        """
+        Not equal to other.
+
+        Parameters
+        ----------
+        other : Orientation
+            Orientation to check for equality.
+
+        """
+        return np.logical_not(self==other)
 
 
     def __matmul__(self,other):

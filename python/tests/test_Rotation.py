@@ -783,14 +783,22 @@ class TestRotation:
         else:
             assert r.shape == shape
 
-    def test_equal(self):
-        assert Rotation.from_random(rng_seed=1) == Rotation.from_random(rng_seed=1)
+    @pytest.mark.parametrize('shape',[None,5,(4,6)])
+    def test_equal(self,shape):
+        R = Rotation.from_random(shape,rng_seed=1)
+        assert R == R if shape is None else (R == R).all()
+
+    @pytest.mark.parametrize('shape',[None,5,(4,6)])
+    def test_unequal(self,shape):
+        R = Rotation.from_random(shape,rng_seed=1)
+        assert not (R != R if shape is None else (R != R).any())
+
 
     def test_equal_ambiguous(self):
         qu = np.random.rand(10,4)
         qu[:,0] = 0.
         qu/=np.linalg.norm(qu,axis=1,keepdims=True)
-        assert Rotation(qu) == Rotation(-qu)
+        assert (Rotation(qu) == Rotation(-qu)).all()
 
     def test_inversion(self):
         r = Rotation.from_random()
@@ -807,7 +815,7 @@ class TestRotation:
         p = Rotation.from_random(shape=shape)
         s = r.append(p)
         print(f'append 2x {shape} --> {s.shape}')
-        assert s[0,...] == r[0,...] and s[-1,...] == p[-1,...]
+        assert np.logical_and(s[0,...] == r[0,...], s[-1,...] == p[-1,...]).all()
 
     @pytest.mark.parametrize('quat,standardized',[
                                                   ([-1,0,0,0],[1,0,0,0]),
@@ -829,7 +837,7 @@ class TestRotation:
     @pytest.mark.parametrize('order',['C','F'])
     def test_flatten_reshape(self,shape,order):
         r = Rotation.from_random(shape=shape)
-        assert r == r.flatten(order).reshape(shape,order)
+        assert (r == r.flatten(order).reshape(shape,order)).all()
 
     @pytest.mark.parametrize('function',[Rotation.from_quaternion,
                                          Rotation.from_Euler_angles,

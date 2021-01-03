@@ -66,7 +66,7 @@ class Rotation:
 
     def __repr__(self):
         """Represent rotation as unit quaternion, rotation matrix, and Bunge-Euler angles."""
-        if self == Rotation():
+        if self.shape == () and self == Rotation():
            return 'Rotation()'
         else:
             return f'Quaternions {self.shape}:\n'+str(self.quaternion) \
@@ -105,10 +105,27 @@ class Rotation:
             Rotation to check for equality.
 
         """
-        ambiguous = np.isclose(self.quaternion[...,0],0)
-        return      np.prod(self.shape,dtype=int) == np.prod(other.shape,dtype=int) \
-                and (   np.allclose(self.quaternion,other.quaternion) \
-                     or np.allclose(self.quaternion[ambiguous],-1*other.quaternion[ambiguous]))
+        s = self.quaternion
+        o = other.quaternion
+        if self.shape == () == other.shape:
+            return np.allclose(s,o) or (np.isclose(s[0],0.0) and np.allclose(s,-1.0*o))
+        else:
+            return np.all(np.isclose(s,o),-1) + np.all(np.isclose(s,-1.0*o),-1) * np.isclose(s[...,0],0.0)
+
+    def __ne__(self,other):
+        """
+        Not equal to other.
+
+        Equality is determined taking limited floating point precision into
+        account. See numpy.allclose for details.
+
+        Parameters
+        ----------
+        other : Rotation
+            Rotation to check for equality.
+
+        """
+        return np.logical_not(self==other)
 
 
     @property
