@@ -99,6 +99,30 @@ class Config(dict):
             fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
 
 
+    def add(self,d):
+        """
+        Add dictionary.
+
+        d : dict
+            Dictionary to append.
+        """
+        duplicate = self.copy()
+        duplicate.update(d)
+        return duplicate
+
+
+    def delete(self,key):
+        """
+        Delete item.
+
+        key : dict
+            Label of the key to remove.
+        """
+        duplicate = self.copy()
+        del duplicate[key]
+        return duplicate
+
+
     @property
     @abc.abstractmethod
     def is_complete(self):
