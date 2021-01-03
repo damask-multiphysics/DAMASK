@@ -1,3 +1,4 @@
+import copy
 from io import StringIO
 import abc
 
@@ -35,6 +36,14 @@ class Config(dict):
         output.seek(0)
         return ''.join(output.readlines())
 
+
+    def __copy__(self):
+        """Create deep copy."""
+        return copy.deepcopy(self)
+
+    copy = __copy__
+
+
     @classmethod
     def load(cls,fname):
         """
@@ -51,6 +60,7 @@ class Config(dict):
         except TypeError:
             fhandle = fname
         return cls(yaml.safe_load(fhandle))
+
 
     def save(self,fname,**kwargs):
         """
@@ -94,6 +104,7 @@ class Config(dict):
     def is_complete(self):
         """Check for completeness."""
         pass
+
 
     @property
     @abc.abstractmethod

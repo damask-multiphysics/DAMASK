@@ -199,7 +199,7 @@ class Orientation(Rotation):
 
 
     def __copy__(self,**kwargs):
-        """Copy."""
+        """Create deep copy."""
         return self.__class__(rotation=kwargs['rotation'] if 'rotation' in kwargs else self.quaternion,
                               lattice =kwargs['lattice']  if 'lattice'  in kwargs else self.lattice
                                                                                     if self.lattice is not None else self.family,

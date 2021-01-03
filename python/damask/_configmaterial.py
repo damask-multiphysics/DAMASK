@@ -204,7 +204,7 @@ class ConfigMaterial(Config):
             Limit renaming to selected constituents.
 
         """
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         for i,m in enumerate(dup['material']):
             if ID and i not in ID: continue
             for c in m['constituents']:
@@ -228,7 +228,7 @@ class ConfigMaterial(Config):
             Limit renaming to selected homogenization IDs.
 
         """
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         for i,m in enumerate(dup['material']):
             if ID and i not in ID: continue
             try:

@@ -78,9 +78,8 @@ class Rotation:
                     ])
 
 
-    # ToDo: Check difference __copy__ vs __deepcopy__
     def __copy__(self,**kwargs):
-        """Copy."""
+        """Create deep copy."""
         return self.__class__(rotation=kwargs['rotation'] if 'rotation' in kwargs else self.quaternion)
 
     copy = __copy__

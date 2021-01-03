@@ -57,13 +57,10 @@ class Grid:
 
 
     def __copy__(self):
-        """Copy grid."""
+        """Create deep copy."""
         return copy.deepcopy(self)
 
-
-    def copy(self):
-        """Copy grid."""
-        return self.__copy__()
+    copy = __copy__
 
 
     def diff(self,other):
