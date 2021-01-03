@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 
 from . import Config
@@ -289,7 +287,7 @@ class ConfigMaterial(Config):
         c = [{} for _ in range(length)] if constituents is None else \
             [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
 
-        if len(c) == 1: c = [copy.deepcopy(c[0]) for _ in range(length)]
+        if len(c) == 1: c = [c[0] for _ in range(length)]
 
         if length != 1 and length != len(c):
             raise ValueError('Cannot add entries of different length')
@@ -301,7 +299,7 @@ class ConfigMaterial(Config):
             else:
                 for i in range(len(c)):
                     c[i][k] = v
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         dup['material'] = dup['material'] + c if 'material' in dup else c
 
         return dup
