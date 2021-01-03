@@ -144,10 +144,91 @@ class Rotation:
         p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
         return self.copy(rotation=Rotation(np.block([np.cos(pwr*phi),np.sin(pwr*phi)*p]))._standardize())
 
+    def __ipow__(self,pwr):
+        """
+        Raise quaternion to power (in-place).
+
+        Equivalent to performing the rotation 'pwr' times.
+
+        Parameters
+        ----------
+        pwr : float
+            Power to raise quaternion to.
+
+        """
+        return self**pwr
+
 
     def __mul__(self,other):
-        """Standard multiplication is not implemented."""
-        raise NotImplementedError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+        """
+        Compose this rotation with other.
+
+        Parameters
+        ----------
+        other : damask.Rotation of shape(self.shape)
+            Rotation for comosition.
+
+        """
+        if isinstance(other,Rotation):
+            return self@other
+        else:
+           raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+
+    def __imul__(self,other):
+        """
+        Compose this rotation with other (in-place).
+
+        Parameters
+        ----------
+        other : damask.Rotation of shape(self.shape)
+            Rotation for comosition.
+
+        """
+        return self*other
+
+
+    def __truediv__(self,other):
+        """
+        Compose this rotation with inverse of other.
+
+        Parameters
+        ----------
+        other : damask.Rotation of shape (self.shape)
+            Rotation to inverse composition.
+
+        """
+        if isinstance(other,Rotation):
+            return self@~other
+        else:
+           raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+
+    def __itruediv__(self,other):
+        """
+        Compose this rotation with inverse of other (in-place).
+
+        Parameters
+        ----------
+        other : damask.Rotation of shape (self.shape)
+            Rotation to inverse composition.
+
+        """
+        return self/other
+
+
+    def apply(self,other):
+        """
+        Apply rotation to vector or second/forth order tensor field.
+
+        Parameters
+        ----------
+        other : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
+            Vector or tensor on which the rotation is apply
+
+        """
+        if isinstance(other,np.ndarray):
+            return self@other
+        else:
+            raise TypeError('Use "R1*R2" or "R1/R2", to compose rotations')
 
 
     def __matmul__(self,other):

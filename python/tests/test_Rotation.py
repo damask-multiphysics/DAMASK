@@ -974,6 +974,45 @@ class TestRotation:
         R_2 = Rotation.from_Euler_angles([360,0,0],degrees=True)
         assert np.allclose(R_1.misorientation(R_2).as_matrix(),np.eye(3))
 
+    def test_composition(self):
+        a,b = (Rotation.from_random(),Rotation.from_random())
+        c = a * b
+        a *= b
+        assert c == a
+
+    def test_composition_invalid(self):
+        with pytest.raises(TypeError):
+            Rotation()*np.ones(3)
+
+    def test_composition_inverse(self):
+        a,b = (Rotation.from_random(),Rotation.from_random())
+        c = a / b
+        a /= b
+        assert c == a
+
+    def test_composition_inverse_invalid(self):
+        with pytest.raises(TypeError):
+            Rotation()/np.ones(3)
+
+    def test_power(self):
+        a = Rotation.from_random()
+        r = (np.random.rand()-.5)*4
+        b = a**r
+        a **= r
+        assert a == b
+
+    def test_invariant(self):
+        R = Rotation.from_random()
+        assert R/R == R*R**(-1) == Rotation()
+
+    @pytest.mark.parametrize('vec',[np.ones(3),np.ones((3,3)), np.ones((3,3,3,3))])
+    def test_apply(self,vec):
+        assert (Rotation().from_random().apply(vec)).all()
+
+    def test_apply_invalid(self):
+        with pytest.raises(TypeError):
+            Rotation().apply(Rotation())
+
     @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
     def test_average(self,angle):
         R = Rotation.from_axis_angle([[0,0,1,10],[0,0,1,angle]],degrees=True)
