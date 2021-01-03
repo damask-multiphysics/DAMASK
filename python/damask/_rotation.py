@@ -1052,7 +1052,6 @@ class Rotation:
     @staticmethod
     def _om2ax(om):
         """Rotation matrix to axis angle pair."""
-        #return Rotation._qu2ax(Rotation._om2qu(om)) # HOTFIX
         diag_delta = -_P*np.block([om[...,1,2:3]-om[...,2,1:2],
                                    om[...,2,0:1]-om[...,0,2:3],
                                    om[...,0,1:2]-om[...,1,0:1]

@@ -526,7 +526,7 @@ class TestRotation:
             o = backward(forward(m))
             u = np.array([np.pi*2,np.pi,np.pi*2])
             ok = np.allclose(m,o,atol=atol)
-            ok = ok or np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
+            ok |= np.allclose(np.where(np.isclose(m,u),m-u,m),np.where(np.isclose(o,u),o-u,o),atol=atol)
             if np.isclose(m[1],0.0,atol=atol) or np.isclose(m[1],np.pi,atol=atol):
                 sum_phi = np.unwrap([m[0]+m[2],o[0]+o[2]])
                 ok |= np.isclose(sum_phi[0],sum_phi[1],atol=atol)
@@ -550,19 +550,22 @@ class TestRotation:
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) and o[3]<=np.pi+1.e-9, f'{m},{o},{rot.as_quaternion()}'
 
     @pytest.mark.parametrize('forward,backward',[(Rotation._ro2qu,Rotation._qu2ro),
-                                                 #(Rotation._ro2om,Rotation._om2ro),
-                                                 #(Rotation._ro2eu,Rotation._eu2ro),
+                                                 (Rotation._ro2om,Rotation._om2ro),
+                                                 (Rotation._ro2eu,Rotation._eu2ro),
                                                  (Rotation._ro2ax,Rotation._ax2ro),
                                                  (Rotation._ro2ho,Rotation._ho2ro),
                                                  (Rotation._ro2cu,Rotation._cu2ro)])
     def test_Rodrigues_internal(self,set_of_rotations,forward,backward):
         """Ensure invariance of conversion from Rodrigues-Frank vector and back."""
-        cutoff = np.tan(np.pi*.5*(1.-1e-4))
+        cutoff = np.tan(np.pi*.5*(1.-1e-5))
         for rot in set_of_rotations:
             m = rot.as_Rodrigues_vector()
             o = backward(forward(m))
             ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
-            ok = ok or np.isclose(m[3],0.0,atol=atol)
+            ok |= np.isclose(m[3],0.0,atol=atol)
+            if m[3] > cutoff:
+                ok |= np.allclose(m[:3],-1*o[:3])
+
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0), f'{m},{o},{rot.as_quaternion()}'
 
     @pytest.mark.parametrize('forward,backward',[(Rotation._ho2qu,Rotation._qu2ho),
@@ -592,7 +595,7 @@ class TestRotation:
             o = backward(forward(m))
             ok = np.allclose(m,o,atol=atol)
             if np.count_nonzero(np.isclose(np.abs(o),np.pi**(2./3.)*.5)):
-                ok = ok or np.allclose(m*-1.,o,atol=atol)
+                ok |= np.allclose(m*-1.,o,atol=atol)
             assert ok and np.max(np.abs(o)) < np.pi**(2./3.) * 0.5 + 1.e-9, f'{m},{o},{rot.as_quaternion()}'
 
     @pytest.mark.parametrize('vectorized, single',[(Rotation._qu2om,qu2om),
@@ -719,7 +722,7 @@ class TestRotation:
             o = Rotation.from_axis_angle(rot.as_axis_angle()).as_axis_angle()
             ok = np.allclose(m,o,atol=atol)
             if np.isclose(m[3],np.pi,atol=atol):
-                ok = ok or np.allclose(m*np.array([-1.,-1.,-1.,1.]),o,atol=atol)
+                ok |= np.allclose(m*np.array([-1.,-1.,-1.,1.]),o,atol=atol)
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0) \
                       and o[3]<=np.pi+1.e-9, f'{m},{o},{rot.as_quaternion()}'
 
@@ -740,7 +743,7 @@ class TestRotation:
             m = rot.as_Rodrigues_vector()
             o = Rotation.from_homochoric(rot.as_homochoric()*P*-1,P).as_Rodrigues_vector()
             ok = np.allclose(np.clip(m,None,cutoff),np.clip(o,None,cutoff),atol=atol)
-            ok = ok or np.isclose(m[3],0.0,atol=atol)
+            ok |= np.isclose(m[3],0.0,atol=atol)
             assert ok and np.isclose(np.linalg.norm(o[:3]),1.0), f'{m},{o},{rot.as_quaternion()}'
 
     @pytest.mark.parametrize('P',[1,-1])
