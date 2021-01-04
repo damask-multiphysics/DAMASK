@@ -54,12 +54,6 @@ subroutine DAMASK_interface_init
 ===================================================================================================
 --  WRONG PETSc VERSION --- WRONG PETSc VERSION --- WRONG PETSc VERSION ---  WRONG PETSc VERSION --
 ===================================================================================================
-============   THIS VERSION OF DAMASK REQUIRES A DIFFERENT PETSc VERSION   ========================
-===============   THIS VERSION OF DAMASK REQUIRES A DIFFERENT PETSc VERSION   =====================
-==================   THIS VERSION OF DAMASK REQUIRES A DIFFERENT PETSc VERSION   ==================
-===================================================================================================
---  WRONG PETSc VERSION --- WRONG PETSc VERSION --- WRONG PETSc VERSION ---  WRONG PETSc VERSION --
-===================================================================================================
 #endif
 
   character(len=pPathLen*3+pStringLen) :: &
