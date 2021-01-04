@@ -303,8 +303,16 @@ class Rotation:
 
 
     def append(self,other):
-        """Extend rotation array along first dimension with other array."""
-        return self.copy(rotation=np.vstack((self.quaternion,other.quaternion)))
+        """
+        Extend rotation array along first dimension with other array(s).
+
+        Parameters
+        ----------
+            other : Rotation or list of Rotations.
+
+        """
+        return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
+                                                      [self]+other if isinstance(other,list) else [self,other]))))
 
 
     def flatten(self,order = 'C'):
