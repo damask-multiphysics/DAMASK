@@ -128,35 +128,35 @@ module subroutine mech_homogenize(ip,el)
   integer, intent(in) :: &
        ip, &                                                                                        !< integration point
        el                                                                                           !< element number
-  integer :: c,m
+  integer :: co,ce
   real(pReal) :: dPdFs(3,3,3,3,homogenization_Nconstituents(material_homogenizationAt(el)))
 
 
-  m = (el-1)* discretization_nIPs + ip
+  ce = (el-1)* discretization_nIPs + ip
   chosenHomogenization: select case(homogenization_type(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_NONE_ID) chosenHomogenization
-        homogenization_P(1:3,1:3,m)            = crystallite_P(1:3,1:3,1,ip,el)
-        homogenization_dPdF(1:3,1:3,1:3,1:3,m) = crystallite_stressTangent(1,ip,el)
+        homogenization_P(1:3,1:3,ce)            = crystallite_P(1:3,1:3,1,ip,el)
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ce) = crystallite_stressTangent(1,ip,el)
 
     case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
-      do c = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
+      do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+        dPdFs(:,:,:,:,co) = crystallite_stressTangent(co,ip,el)
       enddo
       call mech_isostrain_averageStressAndItsTangent(&
-        homogenization_P(1:3,1:3,m), &
-        homogenization_dPdF(1:3,1:3,1:3,1:3,m),&
+        homogenization_P(1:3,1:3,ce), &
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
         dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))
 
     case (HOMOGENIZATION_RGC_ID) chosenHomogenization
-      do c = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-        dPdFs(:,:,:,:,c) = crystallite_stressTangent(c,ip,el)
+      do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+        dPdFs(:,:,:,:,co) = crystallite_stressTangent(co,ip,el)
       enddo
       call mech_RGC_averageStressAndItsTangent(&
-        homogenization_P(1:3,1:3,m), &
-        homogenization_dPdF(1:3,1:3,1:3,1:3,m),&
+        homogenization_P(1:3,1:3,ce), &
+        homogenization_dPdF(1:3,1:3,1:3,1:3,ce),&
         crystallite_P(1:3,1:3,1:homogenization_Nconstituents(material_homogenizationAt(el)),ip,el), &
         dPdFs, &
         homogenization_typeInstance(material_homogenizationAt(el)))
