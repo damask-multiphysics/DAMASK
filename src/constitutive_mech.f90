@@ -951,7 +951,7 @@ end function integrateStress
 !> @brief integrate stress, state with adaptive 1st order explicit Euler method
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateFPI(F_0,F,Delta_t,co,ip,el)
+function integrateStateFPI(F_0,F,Delta_t,co,ip,el) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F
   real(pReal), intent(in) :: Delta_t
@@ -1004,18 +1004,13 @@ subroutine integrateStateFPI(F_0,F,Delta_t,co,ip,el)
                  - plasticState(ph)%dotState (1:size_pl,me) * Delta_t
     plasticState(ph)%state(1:size_pl,me) = plasticState(ph)%state(1:size_pl,me) &
                                          - r(1:size_pl)
-    crystallite_converged(co,ip,el) = converged(r(1:size_pl), &
-                                             plasticState(ph)%state(1:size_pl,me), &
-                                             plasticState(ph)%atol(1:size_pl))
-
-    if(crystallite_converged(co,ip,el)) then
+    if (converged(r(1:size_pl),plasticState(ph)%state(1:size_pl,me),plasticState(ph)%atol(1:size_pl))) then
       broken = constitutive_deltaState(crystallite_S(1:3,1:3,co,ip,el), &
                                        constitutive_mech_Fi(ph)%data(1:3,1:3,me),co,ip,el,ph,me)
       exit iteration
     endif
 
   enddo iteration
-
 
   contains
 
@@ -1039,13 +1034,13 @@ subroutine integrateStateFPI(F_0,F,Delta_t,co,ip,el)
 
   end function damper
 
-end subroutine integrateStateFPI
+end function integrateStateFPI
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateEuler(F_0,F,Delta_t,co,ip,el)
+function integrateStateEuler(F_0,F,Delta_t,co,ip,el) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F
   real(pReal), intent(in) :: Delta_t
@@ -1075,15 +1070,14 @@ subroutine integrateStateEuler(F_0,F,Delta_t,co,ip,el)
   if(broken) return
 
   broken = integrateStress(F,Delta_t,co,ip,el)
-  crystallite_converged(co,ip,el) = .not. broken
 
-end subroutine integrateStateEuler
+end function integrateStateEuler
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateAdaptiveEuler(F_0,F,Delta_t,co,ip,el)
+function integrateStateAdaptiveEuler(F_0,F,Delta_t,co,ip,el) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F
   real(pReal), intent(in) :: Delta_t
@@ -1123,24 +1117,22 @@ subroutine integrateStateAdaptiveEuler(F_0,F,Delta_t,co,ip,el)
   broken = mech_collectDotState(Delta_t, co,ip,el,ph,me)
   if(broken) return
 
+  broken = .not. converged(residuum_plastic(1:sizeDotState) + 0.5_pReal * plasticState(ph)%dotState(:,me) * Delta_t, &
+                           plasticState(ph)%state(1:sizeDotState,me), &
+                           plasticState(ph)%atol(1:sizeDotState))
 
-  sizeDotState = plasticState(ph)%sizeDotState
-  crystallite_converged(co,ip,el) = converged(residuum_plastic(1:sizeDotState) &
-                                           + 0.5_pReal * plasticState(ph)%dotState(:,me) * Delta_t, &
-                                           plasticState(ph)%state(1:sizeDotState,me), &
-                                           plasticState(ph)%atol(1:sizeDotState))
-
-end subroutine integrateStateAdaptiveEuler
+end function integrateStateAdaptiveEuler
 
 
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the classic Runge Kutta method
 !---------------------------------------------------------------------------------------------------
-subroutine integrateStateRK4(F_0,F,Delta_t,co,ip,el)
+function integrateStateRK4(F_0,F,Delta_t,co,ip,el) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: co,ip,el
+  logical :: broken
 
   real(pReal), dimension(3,3), parameter :: &
     A = reshape([&
@@ -1153,19 +1145,20 @@ subroutine integrateStateRK4(F_0,F,Delta_t,co,ip,el)
   real(pReal), dimension(4), parameter :: &
     B = [1.0_pReal/6.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/3.0_pReal, 1.0_pReal/6.0_pReal]
 
-  call integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C)
+  broken = integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C)
 
-end subroutine integrateStateRK4
+end function integrateStateRK4
 
 
 !---------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with the Cash-Carp method
 !---------------------------------------------------------------------------------------------------
-subroutine integrateStateRKCK45(F_0,F,Delta_t,co,ip,el)
+function integrateStateRKCK45(F_0,F,Delta_t,co,ip,el) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: co,ip,el
+  logical :: broken
 
   real(pReal), dimension(5,5), parameter :: &
     A = reshape([&
@@ -1185,16 +1178,16 @@ subroutine integrateStateRKCK45(F_0,F,Delta_t,co,ip,el)
       [2825.0_pReal/27648.0_pReal,    .0_pReal,                18575.0_pReal/48384.0_pReal,&
       13525.0_pReal/55296.0_pReal, 277.0_pReal/14336.0_pReal,  1._pReal/4._pReal]
 
-  call integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
+  broken = integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
 
-end subroutine integrateStateRKCK45
+end function integrateStateRKCK45
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Integrate state (including stress integration) with an explicit Runge-Kutta method or an
 !! embedded explicit Runge-Kutta method
 !--------------------------------------------------------------------------------------------------
-subroutine integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
+function integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB) result(broken)
 
   real(pReal), intent(in),dimension(3,3) :: F_0,F
   real(pReal), intent(in) :: Delta_t
@@ -1205,15 +1198,14 @@ subroutine integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
+  logical :: broken
 
- integer :: &
+  integer :: &
     stage, &                                                                                        ! stage index in integration stage loop
     n, &
     ph, &
     me, &
     sizeDotState
-  logical :: &
-    broken
   real(pReal), dimension(constitutive_plasticity_maxSizeDotState,size(B)) :: plastic_RKdotState
 
 
@@ -1266,10 +1258,8 @@ subroutine integrateStateRK(F_0,F,Delta_t,co,ip,el,A,B,C,DB)
   if(broken) return
 
   broken = integrateStress(F,Delta_t,co,ip,el)
-  crystallite_converged(co,ip,el) = .not. broken
 
-
-end subroutine integrateStateRK
+end function integrateStateRK
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1479,15 +1469,14 @@ end function constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P)
 !--------------------------------------------------------------------------------------------------
-module function crystallite_stress(dt,co,ip,el)
+module function crystallite_stress(dt,co,ip,el) result(converged_)
 
   real(pReal), intent(in) :: dt
   integer, intent(in) :: &
     co, &
     ip, &
     el
-
-  logical :: crystallite_stress
+  logical :: converged_
 
   real(pReal) :: &
     formerSubStep
@@ -1519,7 +1508,7 @@ module function crystallite_stress(dt,co,ip,el)
   subFrac = 0.0_pReal
   subStep = 1.0_pReal/num%subStepSizeCryst
   todo = .true.
-  crystallite_converged(co,ip,el) = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
+  converged_ = .false.                                                      ! pretend failed step of 1/subStepSizeCryst
 
   todo = .true.
   NiterationCrystallite = 0
@@ -1528,7 +1517,7 @@ module function crystallite_stress(dt,co,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 !  wind forward
-    if (crystallite_converged(co,ip,el)) then
+    if (converged_) then
       formerSubStep = subStep
       subFrac = subFrac + subStep
       subStep = min(1.0_pReal - subFrac, num%stepIncreaseCryst * subStep)
@@ -1579,16 +1568,12 @@ module function crystallite_stress(dt,co,ip,el)
                                              math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       crystallite_subdt(co,ip,el) = subStep * dt
-      crystallite_converged(co,ip,el) = .false.
-      call integrateState(subF0,crystallite_subF(1:3,1:3,co,ip,el),&
-                          crystallite_subdt(co,ip,el),co,ip,el)
-      call integrateSourceState(co,ip,el)
+      converged_ = .not. integrateState(subF0,crystallite_subF(1:3,1:3,co,ip,el),&
+                                        crystallite_subdt(co,ip,el),co,ip,el)
+      converged_ = converged_ .and. .not. integrateSourceState(co,ip,el)
     endif
 
   enddo cutbackLooping
-
-! return whether converged or not
-  crystallite_stress = crystallite_converged(co,ip,el)
 
 end function crystallite_stress
 
