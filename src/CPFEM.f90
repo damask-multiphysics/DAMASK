@@ -260,7 +260,7 @@ end subroutine CPFEM_general
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_forward
 
-  call crystallite_forward
+  call homogenization_forward
   call constitutive_forward
 
 end subroutine CPFEM_forward
@@ -277,7 +277,6 @@ subroutine CPFEM_results(inc,time)
   call results_openJobFile
   call results_addIncrement(inc,time)
   call constitutive_results
-  call crystallite_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

@@ -552,11 +552,10 @@ end function plastic_nonlocal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates quantities characterizing the microstructure
 !--------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
+module subroutine plastic_nonlocal_dependentState(F, instance, of, ip, el)
 
   real(pReal), dimension(3,3), intent(in) :: &
-    F, &
-    Fp
+    F
   integer, intent(in) :: &
     instance, &
     of, &
@@ -564,6 +563,8 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
     el
 
   integer :: &
+    ph, &
+    me, &
     no, &                                                                                           !< neighbor offset
     neighbor_el, &                                                                                  ! element number of neighboring material point
     neighbor_ip, &                                                                                  ! integration point of neighboring material point
@@ -643,8 +644,10 @@ module subroutine plastic_nonlocal_dependentState(F, Fp, instance, of, ip, el)
 
   rho0 = getRho0(instance,of,ip,el)
   if (.not. phase_localPlasticity(material_phaseAt(1,el)) .and. prm%shortRangeStressCorrection) then
-    invFp = math_inv33(Fp)
-    invFe = matmul(Fp,math_inv33(F))
+    ph = material_phaseAt(1,el)
+    me = material_phaseMemberAt(1,ip,el)
+    invFp = math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,me))
+    invFe = matmul(constitutive_mech_Fp(ph)%data(1:3,1:3,me),math_inv33(F))
 
     rho_edg_delta = rho0(:,mob_edg_pos) - rho0(:,mob_edg_neg)
     rho_scr_delta = rho0(:,mob_scr_pos) - rho0(:,mob_scr_neg)
@@ -973,14 +976,13 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
+module subroutine plastic_nonlocal_dotState(Mp, F, Temperature,timestep, &
                                             instance,of,ip,el)
 
   real(pReal), dimension(3,3), intent(in) :: &
     Mp                                                                                              !< MandelStress
   real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
-    F, &                                                                                            !< elastic deformation gradient
-    Fp                                                                                              !< plastic deformation gradient
+    F                                                                                               !< Deformation gradient
   real(pReal), intent(in) :: &
     Temperature, &                                                                                  !< temperature
     timestep                                                                                        !< substepped crystallite time increment
@@ -1147,7 +1149,7 @@ module subroutine plastic_nonlocal_dotState(Mp, F, Fp, Temperature,timestep, &
                                          - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) &
                                                                   - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
-  rhoDot = rhoDotFlux(F,Fp,timestep,  instance,of,ip,el) &
+  rhoDot = rhoDotFlux(F,timestep,  instance,of,ip,el) &
          + rhoDotMultiplication &
          + rhoDotSingle2DipoleGlide &
          + rhoDotAthermalAnnihilation &
@@ -1176,11 +1178,10 @@ end subroutine plastic_nonlocal_dotState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
+function rhoDotFlux(F,timestep,  instance,of,ip,el)
 
   real(pReal), dimension(3,3,homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems), intent(in) :: &
-    F, &                                                                                            !< elastic deformation gradient
-    Fp                                                                                              !< plastic deformation gradient
+    F                                                                                               !< Deformation gradient
   real(pReal), intent(in) :: &
     timestep                                                                                        !< substepped crystallite time increment
   integer, intent(in) :: &
@@ -1293,7 +1294,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
     m(1:3,:,4) =  prm%slip_transverse
 
     my_F = F(1:3,1:3,1,ip,el)
-    my_Fe = matmul(my_F, math_inv33(Fp(1:3,1:3,1,ip,el)))
+    my_Fe = matmul(my_F, math_inv33(constitutive_mech_Fp(ph)%data(1:3,1:3,of)))
 
     neighbors: do n = 1,nIPneighbors
 
@@ -1311,7 +1312,7 @@ function rhoDotFlux(F,Fp,timestep,  instance,of,ip,el)
       if (neighbor_n > 0) then                                                                      ! if neighbor exists, average deformation gradient
         neighbor_instance = phase_plasticityInstance(material_phaseAt(1,neighbor_el))
         neighbor_F = F(1:3,1:3,1,neighbor_ip,neighbor_el)
-        neighbor_Fe = matmul(neighbor_F, math_inv33(Fp(1:3,1:3,1,neighbor_ip,neighbor_el)))
+        neighbor_Fe = matmul(neighbor_F, math_inv33(constitutive_mech_Fp(np)%data(1:3,1:3,no)))
         Favg = 0.5_pReal * (my_F + neighbor_F)
       else                                                                                          ! if no neighbor, take my value as average
         Favg = my_F

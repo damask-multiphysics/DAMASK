@@ -111,8 +111,6 @@ subroutine results_addIncrement(inc,time)
   call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
-  call results_closeGroup(results_addGroup('current/phase'))
-  call results_closeGroup(results_addGroup('current/homogenization'))
 
 end subroutine results_addIncrement
 

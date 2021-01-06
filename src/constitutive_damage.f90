@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------------------------------------
-!> @brief internal microstructure state for all damage sources and kinematics constitutive models  
+!> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_damage
 
@@ -8,7 +8,7 @@ submodule(constitutive) constitutive_damage
   module function source_damage_anisoBrittle_init(source_length) result(mySources)
     integer, intent(in) :: source_length
     logical, dimension(:,:), allocatable :: mySources
-  end function source_damage_anisoBrittle_init 
+  end function source_damage_anisoBrittle_init
 
   module function source_damage_anisoDuctile_init(source_length) result(mySources)
     integer, intent(in) :: source_length
@@ -23,7 +23,7 @@ submodule(constitutive) constitutive_damage
   module function source_damage_isoDuctile_init(source_length) result(mySources)
     integer, intent(in) :: source_length
     logical, dimension(:,:), allocatable :: mySources
-  end function source_damage_isoDuctile_init   
+  end function source_damage_isoDuctile_init
 
   module function kinematics_cleavage_opening_init(kinematics_length) result(myKinematics)
     integer, intent(in) :: kinematics_length
@@ -39,14 +39,14 @@ submodule(constitutive) constitutive_damage
   module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
       phase, &                                                                                      !< phase ID of element
-      constituent                                                                                   !< position of element within its phase instance 
+      constituent                                                                                   !< position of element within its phase instance
     real(pReal),  intent(in) :: &
-      phi                                                                                           !< damage parameter 
+      phi                                                                                           !< damage parameter
     real(pReal),  intent(out) :: &
       localphiDot, &
       dLocalphiDot_dPhi
   end subroutine source_damage_anisoBrittle_getRateAndItsTangent
- 
+
   module subroutine source_damage_anisoDuctile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
       phase, &                                                                                      !< phase ID of element
@@ -129,7 +129,7 @@ module subroutine damage_init
     allocate(sourceState(ph)%p(phase_Nsources(ph)))
   enddo
 
-  allocate(phase_source(maxval(phase_Nsources),phases%length), source = SOURCE_undefined_ID) 
+  allocate(phase_source(maxval(phase_Nsources),phases%length), source = SOURCE_undefined_ID)
 
 ! initialize source mechanisms
   if(maxval(phase_Nsources) /= 0) then
@@ -141,19 +141,19 @@ module subroutine damage_init
 
 !--------------------------------------------------------------------------------------------------
 ! initialize kinematic mechanisms
-  allocate(phase_Nkinematics(phases%length),source = 0)           
+  allocate(phase_Nkinematics(phases%length),source = 0)
   do ph = 1,phases%length
     phase => phases%get(ph)
     kinematics => phase%get('kinematics',defaultVal=emptyList)
     phase_Nkinematics(ph) = kinematics%length
   enddo
- 
-  allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID) 
+
+  allocate(phase_kinematics(maxval(phase_Nkinematics),phases%length), source = KINEMATICS_undefined_ID)
 
   if(maxval(phase_Nkinematics) /= 0) then
     where(kinematics_cleavage_opening_init(maxval(phase_Nkinematics)))  phase_kinematics = KINEMATICS_cleavage_opening_ID
     where(kinematics_slipplane_opening_init(maxval(phase_Nkinematics))) phase_kinematics = KINEMATICS_slipplane_opening_ID
-  endif 
+  endif
 
 end subroutine damage_init
 
@@ -167,7 +167,7 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal), intent(in) :: &
-    phi                                                                                             !< damage parameter      
+    phi                                                                                             !< damage parameter
   real(pReal), intent(inout) :: &
     phiDot, &
     dPhiDot_dPhi
@@ -183,7 +183,7 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
 
    phiDot = 0.0_pReal
    dPhiDot_dPhi = 0.0_pReal
- 
+
    do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
      phase = material_phaseAt(grain,el)
      constituent = material_phasememberAt(grain,ip,el)
@@ -217,32 +217,35 @@ end subroutine constitutive_damage_getRateAndItsTangents
 !----------------------------------------------------------------------------------------------
 !< @brief writes damage sources results to HDF5 output file
 !----------------------------------------------------------------------------------------------
-module subroutine damage_results
+module subroutine damage_results(group,ph)
 
-  integer :: p,i
-  character(len=pStringLen) :: group
+  character(len=*), intent(in) :: group
+  integer,          intent(in) :: ph
 
-  do p = 1, size(material_name_phase)
+  integer :: so
 
-    sourceLoop: do i = 1, phase_Nsources(p)
-    group = trim('current/phase')//'/'//trim(material_name_phase(p))
-    group = trim(group)//'/sources'
-    call results_closeGroup(results_addGroup(group))
+  sourceLoop: do so = 1, phase_Nsources(ph)
 
-      sourceType: select case (phase_source(i,p))
+  if (phase_source(so,ph) /= SOURCE_UNDEFINED_ID) &
+    call results_closeGroup(results_addGroup(group//'sources/')) ! should be 'damage'
 
-        case (SOURCE_damage_anisoBrittle_ID) sourceType
-          call source_damage_anisoBrittle_results(p,group)
-        case (SOURCE_damage_anisoDuctile_ID) sourceType
-          call source_damage_anisoDuctile_results(p,group)
-        case (SOURCE_damage_isoBrittle_ID) sourceType
-          call source_damage_isoBrittle_results(p,group)
-        case (SOURCE_damage_isoDuctile_ID) sourceType
-          call source_damage_isoDuctile_results(p,group)
-      end select sourceType
+    sourceType: select case (phase_source(so,ph))
 
-    enddo SourceLoop
-  enddo
+      case (SOURCE_damage_anisoBrittle_ID) sourceType
+        call source_damage_anisoBrittle_results(ph,group//'sources/')
+
+      case (SOURCE_damage_anisoDuctile_ID) sourceType
+        call source_damage_anisoDuctile_results(ph,group//'sources/')
+
+      case (SOURCE_damage_isoBrittle_ID) sourceType
+        call source_damage_isoBrittle_results(ph,group//'sources/')
+
+      case (SOURCE_damage_isoDuctile_ID) sourceType
+        call source_damage_isoDuctile_results(ph,group//'sources/')
+
+    end select sourceType
+
+  enddo SourceLoop
 
 end subroutine damage_results
 

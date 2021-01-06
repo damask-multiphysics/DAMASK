@@ -148,12 +148,12 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   integer :: &
-    ipc
+    co
 
   damage_nonlocal_getMobility = 0.0_pReal
 
-  do ipc = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(ipc,el))
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(co,el))
   enddo
 
   damage_nonlocal_getMobility = damage_nonlocal_getMobility/&

@@ -485,12 +485,12 @@ end function plastic_dislotwin_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Return the homogenized elasticity matrix.
 !--------------------------------------------------------------------------------------------------
-module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
+module function plastic_dislotwin_homogenizedC(co,ip,el) result(homogenizedC)
 
   real(pReal), dimension(6,6) :: &
     homogenizedC
   integer,     intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
 
@@ -498,9 +498,9 @@ module function plastic_dislotwin_homogenizedC(ipc,ip,el) result(homogenizedC)
              of
   real(pReal) :: f_unrotated
 
-  of = material_phasememberAt(ipc,ip,el)
-  associate(prm => param(phase_plasticityInstance(material_phaseAt(ipc,el))),&
-            stt => state(phase_plasticityInstance(material_phaseAT(ipc,el))))
+  of = material_phasememberAt(co,ip,el)
+  associate(prm => param(phase_plasticityInstance(material_phaseAt(co,el))),&
+            stt => state(phase_plasticityInstance(material_phaseAT(co,el))))
 
   f_unrotated = 1.0_pReal &
               - sum(stt%f_tw(1:prm%sum_N_tw,of)) &
