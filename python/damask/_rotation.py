@@ -234,18 +234,15 @@ class Rotation:
 
     def apply(self,other):
         """
-        Apply rotation to vector or second/forth order tensor field.
+        Apply rotation to vector, second or fourth order tensor, or rotation object.
 
         Parameters
         ----------
-        other : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
-            Vector or tensor on which the rotation is apply
+        other : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3) or Rotation
+            Vector, tensor, or rotation object on which to apply the rotation.
 
         """
-        if isinstance(other,np.ndarray):
-            return self@other
-        else:
-            raise TypeError('Use "R1*R2" or "R1/R2", to compose rotations')
+        return self@other
 
 
     def __matmul__(self,other):

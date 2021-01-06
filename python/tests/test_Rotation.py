@@ -1021,13 +1021,10 @@ class TestRotation:
         R = Rotation.from_random()
         assert R/R == R*R**(-1) == Rotation()
 
-    @pytest.mark.parametrize('vec',[np.ones(3),np.ones((3,3)), np.ones((3,3,3,3))])
-    def test_apply(self,vec):
-        assert (Rotation().from_random().apply(vec)).all()
-
-    def test_apply_invalid(self):
-        with pytest.raises(TypeError):
-            Rotation().apply(Rotation())
+    @pytest.mark.parametrize('item',[Rotation(),np.ones(3),np.ones((3,3)), np.ones((3,3,3,3))])
+    def test_apply(self,item):
+        r = Rotation.from_random()
+        assert r.apply(item) == r@item if isinstance(item,Rotation) else (r.apply(item) == r@item).all()
 
     @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
     def test_average(self,angle):

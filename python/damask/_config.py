@@ -115,7 +115,7 @@ class Config(dict):
         """
         Delete item.
 
-        key : dict
+        key : str or scalar
             Label of the key to remove.
         """
         duplicate = self.copy()
