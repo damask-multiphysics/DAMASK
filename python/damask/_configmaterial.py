@@ -9,6 +9,16 @@ from . import Orientation
 class ConfigMaterial(Config):
     """Material configuration."""
 
+    _defaults = {'material': [],
+                 'homogenization': {},
+                 'phase': {}}
+
+    def __init__(self,d={}):
+        """Initialize object with default dictionary keys."""
+        super().__init__(d)
+        for k,v in self._defaults.items():
+            if k not in self: self[k] = v
+
     def save(self,fname='material.yaml',**kwargs):
         """
         Save to yaml file.
@@ -75,6 +85,8 @@ class ConfigMaterial(Config):
                 fraction: 1.0
                 phase: Steel
             homogenization: SX
+        homogenization: {}
+        phase: {}
 
         """
         constituents_ = {k:table.get(v) for k,v in constituents.items()}
@@ -261,6 +273,8 @@ class ConfigMaterial(Config):
                 fraction: 1.0
                 phase: Aluminum
             homogenization: SX
+        homogenization: {}
+        phase: {}
 
         """
         length = -1
@@ -274,6 +288,7 @@ class ConfigMaterial(Config):
 
         c = [{} for _ in range(length)] if constituents is None else \
             [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
+
         if len(c) == 1: c = [copy.deepcopy(c[0]) for _ in range(length)]
 
         if length != 1 and length != len(c):
