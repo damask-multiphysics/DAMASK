@@ -846,8 +846,8 @@ subroutine crystallite_init
     el, &                                                                                           !< counter in element loop
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
-    eMax, &                                                                                         !< maximum number of elements
-    so
+    eMax                                                                                            !< maximum number of elements
+   
 
   class(tNode), pointer :: &
     num_crystallite, &
@@ -880,7 +880,6 @@ subroutine crystallite_init
 
   allocate(crystallite_subdt(cMax,iMax,eMax),source=0.0_pReal)
   allocate(crystallite_orientation(cMax,iMax,eMax))
-
 
   num_crystallite => config_numerics%get('crystallite',defaultVal=emptyDict)
 
