@@ -401,7 +401,7 @@ pure elemental function misorientation(self,other)
   type(rotation)              :: misorientation
   class(rotation), intent(in) :: self, other
 
-  misorientation%q = multiply_quaternion(other%q, [self%q(1),-self%q(2:4)])
+  misorientation%q = multiply_quaternion(other%q, conjugate_quaternion(self%q))
 
 end function misorientation
 
