@@ -5,7 +5,6 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM
   use prec
-  use FEsolving
   use math
   use rotations
   use YAML_types
@@ -197,11 +196,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      FEsolving_execElem = elCP
-      FEsolving_execIP   = ip
       if (debugCPFEM%extensive) &
         print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
-      call materialpoint_stressAndItsTangent(dt)
+      call materialpoint_stressAndItsTangent(dt,[ip,ip],[elCP,elCP])
 
       terminalIllness: if (terminallyIll) then
 

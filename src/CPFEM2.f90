@@ -6,7 +6,6 @@
 module CPFEM2
   use prec
   use config
-  use FEsolving
   use math
   use rotations
   use YAML_types
