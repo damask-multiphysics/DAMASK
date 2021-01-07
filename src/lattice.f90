@@ -421,6 +421,8 @@ module lattice
     lattice_BCT_ID, &
     lattice_HEX_ID, &
     lattice_ORT_ID, &
+    lattice_equivalent_nu, &
+    lattice_equivalent_mu, &
     lattice_applyLatticeSymmetry33, &
     lattice_SchmidMatrix_slip, &
     lattice_SchmidMatrix_twin, &
@@ -508,8 +510,8 @@ subroutine lattice_init
 
     lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),phase%get_asString('lattice'))
 
-    lattice_mu(p) = equivalent_mu(lattice_C66(1:6,1:6,p),'voigt')
-    lattice_nu(p) = equivalent_nu(lattice_C66(1:6,1:6,p),'voigt')
+    lattice_nu(p) = lattice_equivalent_nu(lattice_C66(1:6,1:6,p),'voigt')
+    lattice_mu(p) = lattice_equivalent_mu(lattice_C66(1:6,1:6,p),'voigt')
 
     lattice_C66(1:6,1:6,p) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,p)))           ! Literature data is in Voigt notation
     do i = 1, 6
@@ -2188,14 +2190,15 @@ end function getlabels
 !> @brief Equivalent Poisson's ratio (ν)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
-function equivalent_nu(C,assumption) result(nu)
+function lattice_equivalent_nu(C,assumption) result(nu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
-
   real(pReal)                 :: K, mu, nu
+
   logical                     :: error
   real(pReal), dimension(6,6) :: S
+
 
   if    (IO_lc(assumption) == 'voigt') then
     K = (C(1,1)+C(2,2)+C(3,3) +2.0_pReal*(C(1,2)+C(2,3)+C(1,3))) &
@@ -2210,24 +2213,25 @@ function equivalent_nu(C,assumption) result(nu)
     K = 0.0_pReal
   endif
 
-  mu = equivalent_mu(C,assumption)
+  mu = lattice_equivalent_mu(C,assumption)
   nu = (1.5_pReal*K -mu)/(3.0_pReal*K+mu)
 
-end function equivalent_nu
+end function lattice_equivalent_nu
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Equivalent shear modulus (μ)
 !> @details https://doi.org/10.1143/JPSJ.20.635
 !--------------------------------------------------------------------------------------------------
-function equivalent_mu(C,assumption) result(mu)
+function lattice_equivalent_mu(C,assumption) result(mu)
 
   real(pReal), dimension(6,6), intent(in) :: C                                                      !< Stiffness tensor (Voigt notation)
   character(len=*),            intent(in) :: assumption                                             !< Assumption ('Voigt' = isostrain, 'Reuss' = isostress)
-
   real(pReal)                 :: mu
+
   logical                     :: error
   real(pReal), dimension(6,6) :: S
+
 
   if    (IO_lc(assumption) == 'voigt') then
     mu = (1.0_pReal*(C(1,1)+C(2,2)+C(3,3)) -1.0_pReal*(C(1,2)+C(2,3)+C(1,3)) +3.0_pReal*(C(4,4)+C(5,5)+C(6,6))) &
@@ -2242,7 +2246,7 @@ function equivalent_mu(C,assumption) result(mu)
     mu = 0.0_pReal
   endif
 
-end function equivalent_mu
+end function lattice_equivalent_mu
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2266,14 +2270,14 @@ subroutine selfTest
   call random_number(C)
   C(1,1) = C(1,1) + 1.0_pReal
   C = applyLatticeSymmetryC66(C,'aP')
-  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
-  if(dNeq(C(6,6),equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
+  if(dNeq(C(6,6),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/voigt'
+  if(dNeq(C(6,6),lattice_equivalent_mu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_mu/reuss'
 
   lambda = C(1,2)
-  if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'voigt')),equivalent_nu(C,'voigt'),1.0e-12_pReal)) &
-    error stop 'equivalent_nu/voigt'
-  if(dNeq(lambda*0.5_pReal/(lambda+equivalent_mu(C,'reuss')),equivalent_nu(C,'reuss'),1.0e-12_pReal)) &
-    error stop 'equivalent_nu/reuss'
+  if(dNeq(lambda*0.5_pReal/(lambda+lattice_equivalent_mu(C,'voigt')), &
+          lattice_equivalent_nu(C,'voigt'),1.0e-12_pReal)) error stop 'equivalent_nu/voigt'
+  if(dNeq(lambda*0.5_pReal/(lambda+lattice_equivalent_mu(C,'reuss')), &
+          lattice_equivalent_nu(C,'reuss'),1.0e-12_pReal)) error stop 'equivalent_nu/reuss'
 
 end subroutine selfTest
 

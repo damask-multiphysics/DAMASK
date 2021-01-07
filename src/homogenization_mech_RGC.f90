@@ -8,6 +8,7 @@
 !--------------------------------------------------------------------------------------------------
 submodule(homogenization:homogenization_mech) homogenization_mech_RGC
   use rotations
+  use lattice
 
   type :: tParameters
     integer, dimension(:), allocatable :: &
@@ -242,7 +243,18 @@ end subroutine mech_RGC_partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-module procedure mech_RGC_updateState
+module function mech_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el) result(doneAndHappy)
+      logical, dimension(2) :: doneAndHappy
+      real(pReal), dimension(:,:,:),     intent(in)    :: &
+        P,&                                                                                         !< partitioned stresses
+        F,&                                                                                         !< partitioned deformation gradients
+        F0                                                                                          !< partitioned initial deformation gradients
+      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
+      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
+      real(pReal),                       intent(in) :: dt                                           !< time increment
+      integer,                           intent(in) :: &
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
 
   integer, dimension(4) :: intFaceN,intFaceP,faceID
   integer, dimension(3) :: nGDim,iGr3N,iGr3P
@@ -256,7 +268,7 @@ module procedure mech_RGC_updateState
   real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
 
   zeroTimeStep: if(dEq0(dt)) then
-    mech_RGC_updateState = .true.                                                                   ! pretend everything is fine and return
+    doneAndHappy = .true.                                                                   ! pretend everything is fine and return
     return
   endif zeroTimeStep
 
@@ -327,12 +339,12 @@ module procedure mech_RGC_updateState
   stresMax = maxval(abs(P))                                                                         ! get the maximum of first Piola-Kirchhoff (material) stress
   residMax = maxval(abs(tract))                                                                     ! get the maximum of the residual
 
-  mech_RGC_updateState = .false.
+  doneAndHappy = .false.
 
 !--------------------------------------------------------------------------------------------------
 !  If convergence reached => done and happy
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
-    mech_RGC_updateState = .true.
+    doneAndHappy = .true.
 
 !--------------------------------------------------------------------------------------------------
 ! compute/update the state for postResult, i.e., all energy densities computed by time-integration
@@ -354,7 +366,7 @@ module procedure mech_RGC_updateState
 !--------------------------------------------------------------------------------------------------
 ! if residual blows-up => done but unhappy
   elseif (residMax > num%relMax*stresMax .or. residMax > num%absMax) then                           ! try to restart when residual blows up exceeding maximum bound
-    mech_RGC_updateState = [.true.,.false.]                                                         ! with direct cut-back
+    doneAndHappy = [.true.,.false.]                                                         ! with direct cut-back
    return
   endif
 
@@ -484,7 +496,7 @@ module procedure mech_RGC_updateState
   enddo; enddo
   stt%relaxationVector(:,of) = relax + drelax                                                       ! Updateing the state variable for the next iteration
   if (any(abs(drelax) > num%maxdRelax)) then                                                        ! Forcing cutback when the incremental change of relaxation vector becomes too large
-    mech_RGC_updateState = [.true.,.false.]
+    doneAndHappy = [.true.,.false.]
     !$OMP CRITICAL (write2out)
     print'(a,i3,a,i3,a)',' RGC_updateState: ip ',ip,' | el ',el,' enforces cutback'
     print'(a,e15.8)',' due to large relaxation change = ',maxval(abs(drelax))
@@ -513,8 +525,10 @@ module procedure mech_RGC_updateState
     real(pReal),   dimension (3)   :: nVect,surfCorr
     real(pReal),   dimension (2)   :: Gmoduli
     integer :: iGrain,iGNghb,iFace,i,j,k,l
-    real(pReal)   :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
-    real(pReal), parameter  :: nDefToler = 1.0e-10_pReal
+    real(pReal) :: muGrain,muGNghb,nDefNorm
+    real(pReal), parameter  :: &
+      nDefToler = 1.0e-10_pReal, &
+      b = 2.5e-10_pReal                                                                             ! Length of Burgers vector
 
     nGDim = param(instance)%N_constituents
     rPen = 0.0_pReal
@@ -532,9 +546,7 @@ module procedure mech_RGC_updateState
    !-----------------------------------------------------------------------------------------------
    ! computing the mismatch and penalty stress tensor of all grains
    grainLoop: do iGrain = 1,product(prm%N_constituents)
-     Gmoduli = equivalentModuli(iGrain,ip,el)
-     muGrain = Gmoduli(1)                                                                           ! collecting the equivalent shear modulus of grain
-     bgGrain = Gmoduli(2)                                                                           ! and the lengthh of Burgers vector
+     muGrain = equivalentMu(iGrain,ip,el)
      iGrain3 = grain1to3(iGrain,prm%N_constituents)                                                 ! get the grain ID in local 3-dimensional index (x,y,z)-position
 
      interfaceLoop: do iFace = 1,6
@@ -546,9 +558,7 @@ module procedure mech_RGC_updateState
        where(iGNghb3 < 1)    iGNghb3 = nGDim
        where(iGNghb3 >nGDim) iGNghb3 = 1
        iGNghb  = grain3to1(iGNghb3,prm%N_constituents)                                              ! get the ID of the neighboring grain
-       Gmoduli = equivalentModuli(iGNghb,ip,el)                                                     ! collect the shear modulus and Burgers vector of the neighbor
-       muGNghb = Gmoduli(1)
-       bgGNghb = Gmoduli(2)
+       muGNghb = equivalentMu(iGNghb,ip,el)
        gDef = 0.5_pReal*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                               ! difference/jump in deformation gradeint across the neighbor
 
        !-------------------------------------------------------------------------------------------
@@ -568,7 +578,7 @@ module procedure mech_RGC_updateState
        !-------------------------------------------------------------------------------------------
        ! compute the stress penalty of all interfaces
        do i = 1,3; do j = 1,3; do k = 1,3; do l = 1,3
-         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xi_alpha &
+         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*b + muGNghb*b)*prm%xi_alpha &
                                                 *surfCorr(abs(intFace(1)))/prm%D_alpha(abs(intFace(1))) &
                                                 *cosh(prm%c_alpha*nDefNorm) &
                                                 *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_LeviCivita(k,l,j) &
@@ -655,44 +665,26 @@ module procedure mech_RGC_updateState
   end function surfaceCorrection
 
 
-  !--------------------------------------------------------------------------------------------------
+  !-------------------------------------------------------------------------------------------------
   !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
-  !--------------------------------------------------------------------------------------------------
-  function equivalentModuli(grainID,ip,el)
-
-    real(pReal), dimension(2)    :: equivalentModuli
+  !-------------------------------------------------------------------------------------------------
+  real(pReal) function equivalentMu(grainID,ip,el)
 
     integer, intent(in)    :: &
       grainID,&
       ip, &                                                                                         !< integration point number
       el                                                                                            !< element number
-    real(pReal), dimension(6,6) :: elasTens
-    real(pReal) :: &
-      cEquiv_11, &
-      cEquiv_12, &
-      cEquiv_44
-
-    elasTens = constitutive_homogenizedC(grainID,ip,el)
-
-    !----------------------------------------------------------------------------------------------
-    ! compute the equivalent shear modulus after Turterltaub and Suiker, JMPS (2005)
-    cEquiv_11 = (elasTens(1,1) + elasTens(2,2) + elasTens(3,3))/3.0_pReal
-    cEquiv_12 = (elasTens(1,2) + elasTens(2,3) + elasTens(3,1) + &
-                 elasTens(1,3) + elasTens(2,1) + elasTens(3,2))/6.0_pReal
-    cEquiv_44 = (elasTens(4,4) + elasTens(5,5) + elasTens(6,6))/3.0_pReal
-    equivalentModuli(1) = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
-
-    !----------------------------------------------------------------------------------------------
-    ! obtain the length of Burgers vector (could be model dependend)
-    equivalentModuli(2) = 2.5e-10_pReal
-
-  end function equivalentModuli
 
 
-  !--------------------------------------------------------------------------------------------------
+    equivalentMu = lattice_equivalent_mu(constitutive_homogenizedC(grainID,ip,el),'voigt')
+
+  end function equivalentMu
+
+
+  !-------------------------------------------------------------------------------------------------
   !> @brief calculating the grain deformation gradient (the same with
   ! homogenization_RGC_partitionDeformation, but used only for perturbation scheme)
-  !--------------------------------------------------------------------------------------------------
+  !-------------------------------------------------------------------------------------------------
   subroutine grainDeformation(F, avgF, instance, of)
 
     real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
@@ -707,7 +699,7 @@ module procedure mech_RGC_updateState
     integer,       dimension(3) :: iGrain3
     integer :: iGrain,iFace,i,j
 
-    !-------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! compute the deformation gradient of individual grains due to relaxations
 
     associate(prm => param(instance))
@@ -729,7 +721,7 @@ module procedure mech_RGC_updateState
 
   end subroutine grainDeformation
 
-end procedure mech_RGC_updateState
+end function mech_RGC_updateState
 
 
 !--------------------------------------------------------------------------------------------------
