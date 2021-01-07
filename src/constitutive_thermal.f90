@@ -204,105 +204,40 @@ function constitutive_thermal_collectDotState(ph,me) result(broken)
 end function constitutive_thermal_collectDotState
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief integrate stress, state with adaptive 1st order explicit Euler method
-!> using Fixed Point Iteration to adapt the stepsize
-!--------------------------------------------------------------------------------------------------
-module function integrateThermalState(dt,co,ip,el) result(broken)
 
-  real(pReal), intent(in) :: dt
+!--------------------------------------------------------------------------------------------------
+!> @brief integrate state with 1st order explicit Euler method
+!--------------------------------------------------------------------------------------------------
+function integrateThermalState(Delta_t,co,ip,el) result(broken)
+
+  real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
     el, &                                                                                            !< element index in element loop
     ip, &                                                                                            !< integration point index in ip loop
     co                                                                                               !< grain index in grain loop
+  logical :: &
+    broken
 
   integer :: &
-    NiterationState, &                                                                              !< number of iterations in state loop
     ph, &
     me, &
-    so
-  integer, dimension(maxval(thermal_Nsources)) :: &
-    size_so
-  real(pReal) :: &
-    zeta
-  real(pReal), dimension(thermal_source_maxSizeDotState) :: &
-    r                                                                                               ! state residuum
-  real(pReal), dimension(thermal_source_maxSizeDotState,2,maxval(thermal_Nsources)) :: source_dotState
-  logical :: &
-    broken, converged_
+    so, &
+    sizeDotState
 
 
   ph = material_phaseAt(co,el)
   me = material_phaseMemberAt(co,ip,el)
 
-  converged_ = .true.
   broken = constitutive_thermal_collectDotState(ph,me)
   if(broken) return
 
   do so = 1, thermal_Nsources(ph)
-    size_so(so) = thermalState(ph)%p(so)%sizeDotState
-    thermalState(ph)%p(so)%state(1:size_so(so),me) = thermalState(ph)%p(so)%subState0(1:size_so(so),me) &
-                                                   + thermalState(ph)%p(so)%dotState (1:size_so(so),me) * dt
-    source_dotState(1:size_so(so),2,so) = 0.0_pReal
+    sizeDotState = thermalState(ph)%p(so)%sizeDotState
+    thermalState(ph)%p(so)%state(1:sizeDotState,me) = thermalState(ph)%p(so)%subState0(1:sizeDotState,me) &
+                                                    + thermalState(ph)%p(so)%dotState(1:sizeDotState,me) * Delta_t
   enddo
 
-  iteration: do NiterationState = 1, num%nState
-
-    do so = 1, thermal_Nsources(ph)
-      if(nIterationState > 1) source_dotState(1:size_so(so),2,so) = source_dotState(1:size_so(so),1,so)
-      source_dotState(1:size_so(so),1,so) = thermalState(ph)%p(so)%dotState(:,me)
-    enddo
-
-    broken = constitutive_thermal_collectDotState(ph,me)
-    if(broken) exit iteration
-
-    do so = 1, thermal_Nsources(ph)
-      zeta = damper(thermalState(ph)%p(so)%dotState(:,me), &
-                    source_dotState(1:size_so(so),1,so),&
-                    source_dotState(1:size_so(so),2,so))
-      thermalState(ph)%p(so)%dotState(:,me) = thermalState(ph)%p(so)%dotState(:,me) * zeta &
-                                        + source_dotState(1:size_so(so),1,so)* (1.0_pReal - zeta)
-      r(1:size_so(so)) = thermalState(ph)%p(so)%state    (1:size_so(so),me)  &
-                       - thermalState(ph)%p(so)%subState0(1:size_so(so),me)  &
-                       - thermalState(ph)%p(so)%dotState (1:size_so(so),me) * dt
-      thermalState(ph)%p(so)%state(1:size_so(so),me) = thermalState(ph)%p(so)%state(1:size_so(so),me) &
-                                                - r(1:size_so(so))
-      converged_ = converged_  .and. converged(r(1:size_so(so)), &
-                                               thermalState(ph)%p(so)%state(1:size_so(so),me), &
-                                               thermalState(ph)%p(so)%atol(1:size_so(so)))
-    enddo
-
-    if(converged_) exit iteration
-
-  enddo iteration
-
-  broken = broken .or. .not. converged_
-
-
-  contains
-
-  !--------------------------------------------------------------------------------------------------
-  !> @brief calculate the damping for correction of state and dot state
-  !--------------------------------------------------------------------------------------------------
-  real(pReal) pure function damper(current,previous,previous2)
-
-  real(pReal), dimension(:), intent(in) ::&
-    current, previous, previous2
-
-  real(pReal) :: dot_prod12, dot_prod22
-
-  dot_prod12 = dot_product(current  - previous,  previous - previous2)
-  dot_prod22 = dot_product(previous - previous2, previous - previous2)
-  if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
-    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
-  else
-    damper = 1.0_pReal
-  endif
-
-  end function damper
-
 end function integrateThermalState
-
 
 
 module subroutine thermal_initializeRestorationPoints(ph,me)

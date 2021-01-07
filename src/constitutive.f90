@@ -214,8 +214,8 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
-    module function integrateThermalState(dt,co,ip,el) result(broken)
-      real(pReal), intent(in) :: dt
+    module function integrateThermalState(Delta_t,co,ip,el) result(broken)
+      real(pReal), intent(in) :: Delta_t
       integer, intent(in) :: &
         el, &                                                                                            !< element index in element loop
         ip, &                                                                                            !< integration point index in ip loop
