@@ -367,7 +367,7 @@ class Rotation:
             """Intermediate representation supporting quaternion averaging."""
             return np.einsum('...i,...j',quat,quat)
 
-        if not weights:
+        if weights is None:
             weights = np.ones(self.shape,dtype=float)
 
         eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights[...,np.newaxis,np.newaxis],axis=-3) \

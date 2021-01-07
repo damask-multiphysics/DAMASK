@@ -99,10 +99,10 @@ end function kinematics_cleavage_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< grain number
+    co, &                                                                                          !< grain number
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal),   intent(in),  dimension(3,3) :: &
@@ -124,7 +124,7 @@ module subroutine kinematics_cleavage_opening_LiAndItsTangent(Ld, dLd_dTstar, S,
 
   Ld = 0.0_pReal
   dLd_dTstar = 0.0_pReal
-  associate(prm => param(kinematics_cleavage_opening_instance(material_phaseAt(ipc,el))))
+  associate(prm => param(kinematics_cleavage_opening_instance(material_phaseAt(co,el))))
   do i = 1,prm%sum_N_cl
     traction_crit = prm%g_crit(i)* damage(homog)%p(damageOffset)**2.0_pReal
 

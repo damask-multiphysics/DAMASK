@@ -98,10 +98,10 @@ end function source_damage_isoDuctile_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
+module subroutine source_damage_isoDuctile_dotState(co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
 
@@ -112,8 +112,8 @@ module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
     damageOffset, &
     homog
 
-  phase = material_phaseAt(ipc,el)
-  constituent = material_phasememberAt(ipc,ip,el)
+  phase = material_phaseAt(co,el)
+  constituent = material_phasememberAt(co,ip,el)
   sourceOffset = source_damage_isoDuctile_offset(phase)
   homog = material_homogenizationAt(el)
   damageOffset = material_homogenizationMemberAt(ip,el)

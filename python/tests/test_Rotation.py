@@ -825,6 +825,14 @@ class TestRotation:
         print(f'append 3x {shape} --> {s.shape}')
         assert np.logical_and(s[0,...] == r[0,...], s[-1,...] == p[-1,...]).all()
 
+    @pytest.mark.parametrize('shape',[None,1,(1,),(4,2),(3,3,2)])
+    def test_append_list(self,shape):
+        r = Rotation.from_random(shape=shape)
+        p = Rotation.from_random(shape=shape)
+        s = r.append([r,p])
+        print(f'append 3x {shape} --> {s.shape}')
+        assert s[0,...] == r[0,...] and s[-1,...] == p[-1,...]
+
     @pytest.mark.parametrize('quat,standardized',[
                                                   ([-1,0,0,0],[1,0,0,0]),
                                                   ([-0.5,-0.5,-0.5,-0.5],[0.5,0.5,0.5,0.5]),
