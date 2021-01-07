@@ -68,7 +68,7 @@ subroutine discretization_mesh_init(restart)
   integer, allocatable, dimension(:) :: chunkPos
   integer :: dimPlex, &
     mesh_Nnodes, &                                                                                  !< total number of nodes in mesh
-    j, l, k, &
+    j, l, &
     debug_element, debug_ip
   PetscSF :: sf
   DM :: globalMesh
