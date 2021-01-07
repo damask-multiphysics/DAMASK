@@ -10,6 +10,7 @@ module thermal_conduction
   use results
   use constitutive
   use YAML_types
+  use discretization
 
   implicit none
   private
@@ -38,25 +39,28 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_conduction_init
+subroutine thermal_conduction_init(T)
 
-  integer :: Ninstances,Nmaterialpoints,h
+  real(pReal), dimension(:), intent(inout) ::  T
+
+  integer :: Ninstances,Nmaterialpoints,ho,ip,el,ce
   class(tNode), pointer :: &
     material_homogenization, &
     homog, &
     homogThermal
- 
+
+
   print'(/,a)', ' <<<+-  thermal_conduction init  -+>>>'; flush(6)
 
   Ninstances = count(thermal_type == THERMAL_conduction_ID)
   allocate(param(Ninstances))
 
   material_homogenization => config_material%get('homogenization')
-  do h = 1, size(material_name_homogenization)
-    if (thermal_type(h) /= THERMAL_conduction_ID) cycle
-    homog => material_homogenization%get(h)
+  do ho = 1, size(material_name_homogenization)
+    if (thermal_type(ho) /= THERMAL_conduction_ID) cycle
+    homog => material_homogenization%get(ho)
     homogThermal => homog%get('thermal')
-    associate(prm => param(thermal_typeInstance(h)))
+    associate(prm => param(thermal_typeInstance(ho)))
 
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(homogThermal)
@@ -64,12 +68,21 @@ subroutine thermal_conduction_init
     prm%output = homogThermal%get_asStrings('output',defaultVal=emptyStringArray)
 #endif
 
-    Nmaterialpoints=count(material_homogenizationAt==h)
+    Nmaterialpoints=count(material_homogenizationAt==ho)
 
-    allocate  (temperature    (h)%p(Nmaterialpoints), source=thermal_initialT(h))
-    allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
+    allocate  (temperature    (ho)%p(Nmaterialpoints), source=thermal_initialT(ho))
+    allocate  (temperatureRate(ho)%p(Nmaterialpoints), source=0.0_pReal)
 
     end associate
+  enddo
+
+  ce = 0
+  do el = 1, discretization_Nelems
+    do ip = 1, discretization_nIPs
+      ce = ce + 1
+      ho = material_homogenizationAt(el)
+      if (thermal_type(ho) == THERMAL_conduction_ID) T(ce) = thermal_initialT(ho)
+    enddo
   enddo
 
 end subroutine thermal_conduction_init
@@ -89,12 +102,12 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
     Tdot, dTdot_dT
   integer :: &
     homog
- 
+
   Tdot = 0.0_pReal
   dTdot_dT = 0.0_pReal
 
   homog  = material_homogenizationAt(el)
-  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el) 
+  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el)
 
   Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
   dTdot_dT = dTdot_dT/real(homogenization_Nconstituents(homog),pReal)
@@ -112,13 +125,13 @@ function thermal_conduction_getConductivity(ip,el)
     el                                                                                              !< element number
   real(pReal), dimension(3,3) :: &
     thermal_conduction_getConductivity
-  
+
   integer :: &
     co
 
 
   thermal_conduction_getConductivity = 0.0_pReal
-  
+
   do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
     thermal_conduction_getConductivity = thermal_conduction_getConductivity + &
      crystallite_push33ToRef(co,ip,el,lattice_K(:,:,material_phaseAt(co,el)))
@@ -168,7 +181,7 @@ function thermal_conduction_getMassDensity(ip,el)
     el                                                                                              !< element number
   real(pReal) :: &
     thermal_conduction_getMassDensity
-  
+
   integer :: &
     co
 

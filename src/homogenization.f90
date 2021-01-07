@@ -69,6 +69,13 @@ module homogenization
         el                                                                                          !< element number
     end subroutine mech_partition
 
+    module subroutine thermal_partition(T,ip,el)
+      real(pReal), intent(in) :: T
+      integer,     intent(in) :: &
+        ip, &                                                                                           !< integration point
+        el                                                                                              !< element number
+    end subroutine thermal_partition
+
     module subroutine mech_homogenize(dt,ip,el)
      real(pReal), intent(in) :: dt
      integer, intent(in) :: &
@@ -131,9 +138,10 @@ subroutine homogenization_init
 
 
   call mech_init(num_homog)
+  call thermal_init()
 
-  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
-  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init
+  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init(homogenization_T)
+  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init(homogenization_T)
 
   if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
