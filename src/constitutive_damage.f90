@@ -347,16 +347,16 @@ module subroutine damage_results(group,ph)
     sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_anisoBrittle_results(ph,group//'sources/')
-
-      case (DAMAGE_ISODUCTILE_ID) sourceType
-        call source_damage_anisoDuctile_results(ph,group//'sources/')
-
-      case (DAMAGE_ANISOBRITTLE_ID) sourceType
         call source_damage_isoBrittle_results(ph,group//'sources/')
 
-      case (DAMAGE_ANISODUCTILE_ID) sourceType
+      case (DAMAGE_ISODUCTILE_ID) sourceType
         call source_damage_isoDuctile_results(ph,group//'sources/')
+
+      case (DAMAGE_ANISOBRITTLE_ID) sourceType
+        call source_damage_anisoBrittle_results(ph,group//'sources/')
+
+      case (DAMAGE_ANISODUCTILE_ID) sourceType
+        call source_damage_anisoDuctile_results(ph,group//'sources/')
 
     end select sourceType
 
@@ -387,15 +387,15 @@ function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
 
     sourceType: select case (phase_source(so,ph))
 
-      case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_anisoBrittle_dotState(mech_S(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)),&
-                co, ip, el) ! correct stress?
-
       case (DAMAGE_ISODUCTILE_ID) sourceType
         call source_damage_isoDuctile_dotState(co, ip, el)
 
       case (DAMAGE_ANISODUCTILE_ID) sourceType
         call source_damage_anisoDuctile_dotState(co, ip, el)
+
+      case (DAMAGE_ANISOBRITTLE_ID) sourceType
+        call source_damage_anisoBrittle_dotState(mech_S(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)),&
+                co, ip, el) ! correct stress?
 
     end select sourceType
 

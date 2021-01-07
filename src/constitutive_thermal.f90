@@ -208,7 +208,7 @@ end function constitutive_thermal_collectDotState
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-function integrateThermalState(Delta_t,co,ip,el) result(broken)
+module function integrateThermalState(Delta_t,co,ip,el) result(broken)
 
   real(pReal), intent(in) :: Delta_t
   integer, intent(in) :: &
