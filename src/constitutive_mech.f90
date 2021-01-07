@@ -7,12 +7,20 @@ submodule(constitutive) constitutive_mech
     ELASTICITY_UNDEFINED_ID, &
     ELASTICITY_HOOKE_ID, &
     STIFFNESS_DEGRADATION_UNDEFINED_ID, &
-    STIFFNESS_DEGRADATION_DAMAGE_ID
+    STIFFNESS_DEGRADATION_DAMAGE_ID, &
+    PLASTICITY_UNDEFINED_ID, &
+    PLASTICITY_NONE_ID, &
+    PLASTICITY_ISOTROPIC_ID, &
+    PLASTICITY_PHENOPOWERLAW_ID, &
+    PLASTICITY_KINEHARDENING_ID, &
+    PLASTICITY_DISLOTWIN_ID, &
+    PLASTICITY_DISLOTUNGSTEN_ID, &
+    PLASTICITY_NONLOCAL_ID
   end enum
 
-  integer(kind(ELASTICITY_undefined_ID)), dimension(:),   allocatable :: &
+  integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
-  integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
+  integer(kind(STIFFNESS_DEGRADATION_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
     phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
 
   type(tTensorContainer), dimension(:), allocatable :: &
@@ -39,6 +47,12 @@ submodule(constitutive) constitutive_mech
     constitutive_mech_partitionedLi0, &
     constitutive_mech_partitionedLp0, &
     constitutive_mech_partitionedS0
+
+
+
+
+  integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
+    phase_plasticity                                                                                !< plasticity of each phase
 
 
   interface

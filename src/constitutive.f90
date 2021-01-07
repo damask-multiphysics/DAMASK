@@ -21,21 +21,6 @@ module constitutive
   private
 
   enum, bind(c); enumerator :: &
-    PLASTICITY_UNDEFINED_ID, &
-    PLASTICITY_NONE_ID, &
-    PLASTICITY_ISOTROPIC_ID, &
-    PLASTICITY_PHENOPOWERLAW_ID, &
-    PLASTICITY_KINEHARDENING_ID, &
-    PLASTICITY_DISLOTWIN_ID, &
-    PLASTICITY_DISLOTUNGSTEN_ID, &
-    PLASTICITY_NONLOCAL_ID, &
-    SOURCE_UNDEFINED_ID ,&
-    SOURCE_THERMAL_DISSIPATION_ID, &
-    SOURCE_THERMAL_EXTERNALHEAT_ID, &
-    SOURCE_DAMAGE_ISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ISODUCTILE_ID, &
-    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ANISODUCTILE_ID, &
     KINEMATICS_UNDEFINED_ID ,&
     KINEMATICS_CLEAVAGE_OPENING_ID, &
     KINEMATICS_SLIPPLANE_OPENING_ID, &
@@ -81,12 +66,7 @@ module constitutive
   type(tDebugOptions) :: debugCrystallite
 
 
-
-  integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable, public :: &
-    phase_plasticity                                                                                !< plasticity of each phase
-
-  integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
-    phase_source, &                                                                                 !< active sources mechanisms of each phase
+  integer(kind(KINEMATICS_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
     phase_kinematics                                                                                !< active kinematic mechanisms of each phase
 
   integer, dimension(:), allocatable, public :: &                                                   !< ToDo: should be protected (bug in Intel compiler)
@@ -428,21 +408,6 @@ module constitutive
     constitutive_mech_getF, &
     constitutive_initializeRestorationPoints, &
     constitutive_windForward, &
-    PLASTICITY_UNDEFINED_ID, &
-    PLASTICITY_NONE_ID, &
-    PLASTICITY_ISOTROPIC_ID, &
-    PLASTICITY_PHENOPOWERLAW_ID, &
-    PLASTICITY_KINEHARDENING_ID, &
-    PLASTICITY_DISLOTWIN_ID, &
-    PLASTICITY_DISLOTUNGSTEN_ID, &
-    PLASTICITY_NONLOCAL_ID, &
-    SOURCE_UNDEFINED_ID ,&
-    SOURCE_THERMAL_DISSIPATION_ID, &
-    SOURCE_THERMAL_EXTERNALHEAT_ID, &
-    SOURCE_DAMAGE_ISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ISODUCTILE_ID, &
-    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ANISODUCTILE_ID, &
     KINEMATICS_UNDEFINED_ID ,&
     KINEMATICS_CLEAVAGE_OPENING_ID, &
     KINEMATICS_SLIPPLANE_OPENING_ID, &

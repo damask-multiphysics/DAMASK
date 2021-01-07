@@ -3,10 +3,16 @@
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_thermal
 
+  enum, bind(c); enumerator :: &
+    THERMAL_UNDEFINED_ID ,&
+    THERMAL_DISSIPATION_ID, &
+    THERMAL_EXTERNALHEAT_ID
+  end enum
+
   type :: tDataContainer
     real(pReal), dimension(:), allocatable :: T
   end type tDataContainer
-  integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
+  integer(kind(THERMAL_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
     thermal_source
 
   type(tDataContainer), dimension(:), allocatable :: current
@@ -93,11 +99,11 @@ module subroutine thermal_init(phases)
     allocate(thermalstate(ph)%p(thermal_Nsources(ph)))
   enddo
 
-  allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = SOURCE_undefined_ID)
+  allocate(thermal_source(maxval(thermal_Nsources),phases%length), source = THERMAL_UNDEFINED_ID)
 
   if(maxval(thermal_Nsources) /= 0) then
-    where(source_thermal_dissipation_init (maxval(thermal_Nsources))) thermal_source = SOURCE_thermal_dissipation_ID
-    where(source_thermal_externalheat_init(maxval(thermal_Nsources))) thermal_source = SOURCE_thermal_externalheat_ID
+    where(source_thermal_dissipation_init (maxval(thermal_Nsources))) thermal_source = THERMAL_DISSIPATION_ID
+    where(source_thermal_externalheat_init(maxval(thermal_Nsources))) thermal_source = THERMAL_EXTERNALHEAT_ID
   endif
 
   thermal_source_maxSizeDotState = 0
@@ -153,11 +159,11 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
      me = material_phasememberAt(co,ip,el)
      do so = 1, thermal_Nsources(ph)
        select case(thermal_source(so,ph))
-         case (SOURCE_thermal_dissipation_ID)
+         case (THERMAL_DISSIPATION_ID)
           call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
                                                                mech_S(ph,me),mech_L_p(ph,me), ph)
 
-         case (SOURCE_thermal_externalheat_ID)
+         case (THERMAL_EXTERNALHEAT_ID)
           call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
                                                                 ph, me)
 
@@ -188,7 +194,7 @@ function constitutive_thermal_collectDotState(ph,me) result(broken)
 
   SourceLoop: do i = 1, thermal_Nsources(ph)
 
-    if (thermal_source(i,ph) == SOURCE_thermal_externalheat_ID) &
+    if (thermal_source(i,ph) == THERMAL_EXTERNALHEAT_ID) &
       call source_thermal_externalheat_dotState(ph,me)
 
     broken = broken .or. any(IEEE_is_NaN(thermalState(ph)%p(i)%dotState(:,me)))

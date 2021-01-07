@@ -2,6 +2,16 @@
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_damage
+  enum, bind(c); enumerator :: &
+    DAMAGE_UNDEFINED_ID, &
+    DAMAGE_ISOBRITTLE_ID, &
+    DAMAGE_ISODUCTILE_ID, &
+    DAMAGE_ANISOBRITTLE_ID, &
+    DAMAGE_ANISODUCTILE_ID
+  end enum
+
+  integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
+    phase_source                                                                                !< active sources mechanisms of each phase
 
   interface
 
@@ -129,14 +139,14 @@ module subroutine damage_init
     allocate(sourceState(ph)%p(phase_Nsources(ph)))
   enddo
 
-  allocate(phase_source(maxval(phase_Nsources),phases%length), source = SOURCE_undefined_ID)
+  allocate(phase_source(maxval(phase_Nsources),phases%length), source = DAMAGE_UNDEFINED_ID)
 
 ! initialize source mechanisms
   if(maxval(phase_Nsources) /= 0) then
-    where(source_damage_isoBrittle_init   (maxval(phase_Nsources))) phase_source = SOURCE_damage_isoBrittle_ID
-    where(source_damage_isoDuctile_init   (maxval(phase_Nsources))) phase_source = SOURCE_damage_isoDuctile_ID
-    where(source_damage_anisoBrittle_init (maxval(phase_Nsources))) phase_source = SOURCE_damage_anisoBrittle_ID
-    where(source_damage_anisoDuctile_init (maxval(phase_Nsources))) phase_source = SOURCE_damage_anisoDuctile_ID
+    where(source_damage_isoBrittle_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISOBRITTLE_ID
+    where(source_damage_isoDuctile_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISODUCTILE_ID
+    where(source_damage_anisoBrittle_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISOBRITTLE_ID
+    where(source_damage_anisoDuctile_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISODUCTILE_ID
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -189,16 +199,16 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
      constituent = material_phasememberAt(grain,ip,el)
      do source = 1, phase_Nsources(phase)
        select case(phase_source(source,phase))
-         case (SOURCE_damage_isoBrittle_ID)
+         case (DAMAGE_ISOBRITTLE_ID)
            call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
-         case (SOURCE_damage_isoDuctile_ID)
+         case (DAMAGE_ISODUCTILE_ID)
            call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
-         case (SOURCE_damage_anisoBrittle_ID)
+         case (DAMAGE_ANISOBRITTLE_ID)
            call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
-         case (SOURCE_damage_anisoDuctile_ID)
+         case (DAMAGE_ANISODUCTILE_ID)
            call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
          case default
@@ -331,21 +341,21 @@ module subroutine damage_results(group,ph)
 
   sourceLoop: do so = 1, phase_Nsources(ph)
 
-  if (phase_source(so,ph) /= SOURCE_UNDEFINED_ID) &
+  if (phase_source(so,ph) /= DAMAGE_UNDEFINED_ID) &
     call results_closeGroup(results_addGroup(group//'sources/')) ! should be 'damage'
 
     sourceType: select case (phase_source(so,ph))
 
-      case (SOURCE_damage_anisoBrittle_ID) sourceType
+      case (DAMAGE_ISOBRITTLE_ID) sourceType
         call source_damage_anisoBrittle_results(ph,group//'sources/')
 
-      case (SOURCE_damage_anisoDuctile_ID) sourceType
+      case (DAMAGE_ISODUCTILE_ID) sourceType
         call source_damage_anisoDuctile_results(ph,group//'sources/')
 
-      case (SOURCE_damage_isoBrittle_ID) sourceType
+      case (DAMAGE_ANISOBRITTLE_ID) sourceType
         call source_damage_isoBrittle_results(ph,group//'sources/')
 
-      case (SOURCE_damage_isoDuctile_ID) sourceType
+      case (DAMAGE_ANISODUCTILE_ID) sourceType
         call source_damage_isoDuctile_results(ph,group//'sources/')
 
     end select sourceType
@@ -377,14 +387,14 @@ function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
 
     sourceType: select case (phase_source(so,ph))
 
-      case (SOURCE_damage_anisoBrittle_ID) sourceType
+      case (DAMAGE_ISOBRITTLE_ID) sourceType
         call source_damage_anisoBrittle_dotState(mech_S(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)),&
                 co, ip, el) ! correct stress?
 
-      case (SOURCE_damage_isoDuctile_ID) sourceType
+      case (DAMAGE_ISODUCTILE_ID) sourceType
         call source_damage_isoDuctile_dotState(co, ip, el)
 
-      case (SOURCE_damage_anisoDuctile_ID) sourceType
+      case (DAMAGE_ANISODUCTILE_ID) sourceType
         call source_damage_anisoDuctile_dotState(co, ip, el)
 
     end select sourceType
@@ -425,7 +435,7 @@ function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
 
      sourceType: select case (phase_source(so,ph))
 
-      case (SOURCE_damage_isoBrittle_ID) sourceType
+      case (DAMAGE_ISOBRITTLE_ID) sourceType
         call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(co,ip,el), Fe, &
                                                    co, ip, el)
         broken = any(IEEE_is_NaN(sourceState(ph)%p(so)%deltaState(:,of)))
