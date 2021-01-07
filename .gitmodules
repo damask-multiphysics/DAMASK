@@ -2,3 +2,4 @@
 	path = PRIVATE
   url = ../PRIVATE.git
   branch = master
+	shallow = true

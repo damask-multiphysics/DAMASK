@@ -133,7 +133,7 @@ for i in range(3,np.max(microstructure)):
 
 header = [scriptID + ' ' + ' '.join(sys.argv[1:])]\
        + config_header
-geom = damask.Geom(microstructure.reshape(grid),
+geom = damask.Grid(microstructure.reshape(grid),
                    size,-size/2,
                    comments=header)
 damask.util.croak(geom)

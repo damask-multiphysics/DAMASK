@@ -120,10 +120,10 @@ end function source_damage_anisoBrittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
+module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
   real(pReal),  intent(in), dimension(3,3) :: &
@@ -139,11 +139,11 @@ module subroutine source_damage_anisoBrittle_dotState(S, ipc, ip, el)
   real(pReal) :: &
     traction_d, traction_t, traction_n, traction_crit
 
-  phase = material_phaseAt(ipc,el)
-  constituent = material_phasememberAt(ipc,ip,el)
+  phase = material_phaseAt(co,el)
+  constituent = material_phasememberAt(co,ip,el)
   sourceOffset = source_damage_anisoBrittle_offset(phase)
   homog = material_homogenizationAt(el)
-  damageOffset = damageMapping(homog)%p(ip,el)
+  damageOffset = material_homogenizationMemberAt(ip,el)
 
   associate(prm => param(source_damage_anisoBrittle_instance(phase)))
   sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = 0.0_pReal

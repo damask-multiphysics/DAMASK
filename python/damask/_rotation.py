@@ -144,6 +144,11 @@ class Rotation:
         return self.copy(rotation=Rotation(np.block([np.cos(pwr*phi),np.sin(pwr*phi)*p]))._standardize())
 
 
+    def __mul__(self,other):
+        """Standard multiplication is not implemented."""
+        raise NotImplementedError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+
+
     def __matmul__(self,other):
         """
         Rotation of vector, second or fourth order tensor, or rotation object.
@@ -199,8 +204,16 @@ class Rotation:
 
 
     def append(self,other):
-        """Extend rotation array along first dimension with other array."""
-        return self.copy(rotation=np.vstack((self.quaternion,other.quaternion)))
+        """
+        Extend rotation array along first dimension with other array(s).
+
+        Parameters
+        ----------
+            other : Rotation or list of Rotations.
+
+        """
+        return self.copy(rotation=np.vstack(tuple(map(lambda x:x.quaternion,
+                                                      [self]+other if isinstance(other,list) else [self,other]))))
 
 
     def flatten(self,order = 'C'):
@@ -258,7 +271,7 @@ class Rotation:
             """Intermediate representation supporting quaternion averaging."""
             return np.einsum('...i,...j',quat,quat)
 
-        if not weights:
+        if weights is None:
             weights = np.ones(self.shape,dtype=float)
 
         eig, vec = np.linalg.eig(np.sum(_M(self.quaternion) * weights[...,np.newaxis,np.newaxis],axis=-3) \
@@ -763,7 +776,7 @@ class Rotation:
         def _dg(eu,deg):
             """Return infinitesimal Euler space volume of bin(s)."""
             phi_sorted = eu[np.lexsort((eu[:,0],eu[:,1],eu[:,2]))]
-            steps,size,_ = grid_filters.cell_coord0_gridSizeOrigin(phi_sorted)
+            steps,size,_ = grid_filters.cellsSizeOrigin_coordinates0_point(phi_sorted)
             delta = np.radians(size/steps) if deg else size/steps
             return delta[0]*2.0*np.sin(delta[1]/2.0)*delta[2] / 8.0 / np.pi**2 * np.sin(np.radians(eu[:,1]) if deg else eu[:,1])
 

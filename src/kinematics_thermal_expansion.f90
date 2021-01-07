@@ -26,7 +26,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 module function kinematics_thermal_expansion_init(kinematics_length) result(myKinematics)
 
-  integer, intent(in)                  :: kinematics_length  
+  integer, intent(in)                  :: kinematics_length
   logical, dimension(:,:), allocatable :: myKinematics
 
   integer :: Ninstances,p,i,k
@@ -35,8 +35,8 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
     phases, &
     phase, &
     kinematics, &
-    kinematic_type 
- 
+    kinematic_type
+
   print'(/,a)', ' <<<+-  kinematics_thermal_expansion init  -+>>>'
 
   myKinematics = kinematics_active('thermal_expansion',kinematics_length)
@@ -50,13 +50,13 @@ module function kinematics_thermal_expansion_init(kinematics_length) result(myKi
 
   do p = 1, phases%length
     if(any(myKinematics(:,p))) kinematics_thermal_expansion_instance(p) = count(myKinematics(:,1:p))
-    phase => phases%get(p) 
+    phase => phases%get(p)
     if(count(myKinematics(:,p)) == 0) cycle
     kinematics => phase%get('kinematics')
     do k = 1, kinematics%length
       if(myKinematics(k,p)) then
         associate(prm  => param(kinematics_thermal_expansion_instance(p)))
-        kinematic_type => kinematics%get(k) 
+        kinematic_type => kinematics%get(k)
 
         prm%T_ref = kinematic_type%get_asFloat('T_ref', defaultVal=0.0_pReal)
 
@@ -82,35 +82,12 @@ end function kinematics_thermal_expansion_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  report initial thermal strain based on current temperature deviation from reference
-!--------------------------------------------------------------------------------------------------
-pure module function kinematics_thermal_expansion_initialStrain(homog,phase,offset) result(initialStrain)
-
- integer, intent(in) :: &
-   phase, &
-   homog, &
-   offset
-
- real(pReal), dimension(3,3) :: &
-   initialStrain                                                                                    !< initial thermal strain (should be small strain, though)
-
- associate(prm => param(kinematics_thermal_expansion_instance(phase)))
- initialStrain = &
-   (temperature(homog)%p(offset) - prm%T_ref)**1 / 1. * prm%A(1:3,1:3,1) + &                        ! constant  coefficient
-   (temperature(homog)%p(offset) - prm%T_ref)**2 / 2. * prm%A(1:3,1:3,2) + &                        ! linear    coefficient
-   (temperature(homog)%p(offset) - prm%T_ref)**3 / 3. * prm%A(1:3,1:3,3)                            ! quadratic coefficient
- end associate
-
-end function kinematics_thermal_expansion_initialStrain
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, ipc, ip, el)
+module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< grain number
+    co, &                                                                                          !< grain number
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal),   intent(out), dimension(3,3) :: &
@@ -124,10 +101,10 @@ module subroutine kinematics_thermal_expansion_LiAndItsTangent(Li, dLi_dTstar, i
   real(pReal) :: &
     T, TDot
 
-  phase = material_phaseAt(ipc,el)
+  phase = material_phaseAt(co,el)
   homog = material_homogenizationAt(el)
-  T = temperature(homog)%p(thermalMapping(homog)%p(ip,el))
-  TDot = temperatureRate(homog)%p(thermalMapping(homog)%p(ip,el))
+  T = temperature(homog)%p(material_homogenizationMemberAt(ip,el))
+  TDot = temperatureRate(homog)%p(material_homogenizationMemberAt(ip,el))
 
   associate(prm => param(kinematics_thermal_expansion_instance(phase)))
   Li = TDot * ( &

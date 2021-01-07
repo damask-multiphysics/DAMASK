@@ -6,7 +6,6 @@
 module CPFEM2
   use prec
   use config
-  use FEsolving
   use math
   use rotations
   use YAML_types
@@ -21,7 +20,6 @@ module CPFEM2
   use HDF5_utilities
   use homogenization
   use constitutive
-  use crystallite
 #if    defined(Mesh)
   use FEM_quadrature
   use discretization_mesh
@@ -63,8 +61,8 @@ subroutine CPFEM_initAll
 #endif
   call material_init(restart=interface_restartInc>0)
   call constitutive_init
-  call crystallite_init
   call homogenization_init
+  call crystallite_init
   call CPFEM_init
   call config_deallocate
 
@@ -98,7 +96,8 @@ end subroutine CPFEM_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_forward
 
-  call crystallite_forward
+  call homogenization_forward
+  call constitutive_forward
 
 end subroutine CPFEM_forward
 
@@ -114,7 +113,6 @@ subroutine CPFEM_results(inc,time)
   call results_openJobFile
   call results_addIncrement(inc,time)
   call constitutive_results
-  call crystallite_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

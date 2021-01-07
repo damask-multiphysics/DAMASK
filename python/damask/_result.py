@@ -46,13 +46,17 @@ class Result:
             self.version_major = f.attrs['DADF5_version_major']
             self.version_minor = f.attrs['DADF5_version_minor']
 
-            if self.version_major != 0 or not 7 <= self.version_minor <= 9:
+            if self.version_major != 0 or not 7 <= self.version_minor <= 11:
                 raise TypeError(f'Unsupported DADF5 version {self.version_major}.{self.version_minor}')
 
-            self.structured = 'grid' in f['geometry'].attrs.keys()
+            self.structured = 'grid' in f['geometry'].attrs.keys() or \
+                              'cells' in f['geometry'].attrs.keys()
 
             if self.structured:
-                self.grid   = f['geometry'].attrs['grid']
+                try:
+                    self.cells  = f['geometry'].attrs['cells']
+                except KeyError:
+                    self.cells  = f['geometry'].attrs['grid']
                 self.size   = f['geometry'].attrs['size']
                 self.origin = f['geometry'].attrs['origin']
 
@@ -558,19 +562,19 @@ class Result:
             return dataset
 
     @property
-    def cell_coordinates(self):
+    def coordinates0_point(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.cell_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
+            return grid_filters.coordinates0_point(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_c'][()]
 
     @property
-    def node_coordinates(self):
+    def coordinates0_node(self):
         """Return initial coordinates of the cell centers."""
         if self.structured:
-            return grid_filters.node_coord0(self.grid,self.size,self.origin).reshape(-1,3,order='F')
+            return grid_filters.coordinates0_node(self.cells,self.size,self.origin).reshape(-1,3,order='F')
         else:
             with h5py.File(self.fname,'r') as f:
                 return f['geometry/x_n'][()]
@@ -780,13 +784,16 @@ class Result:
 
 
     @staticmethod
-    def _add_IPF_color(q,l):
+    def _add_IPF_color(l,q):
         m = util.scale_to_coprime(np.array(l))
         try:
             lattice = {'fcc':'cF','bcc':'cI','hex':'hP'}[q['meta']['Lattice']]
         except KeyError:
             lattice =  q['meta']['Lattice']
-        o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
+        try:
+            o = Orientation(rotation = (rfn.structured_to_unstructured(q['data'])),lattice=lattice)
+        except ValueError:
+            o = Orientation(rotation = q['data'],lattice=lattice)
 
         return {
                 'data': np.uint8(o.IPF_color(l)*255),
@@ -798,16 +805,17 @@ class Result:
                           'Creator':     'add_IPF_color'
                          }
                }
-    def add_IPF_color(self,q,l):
+    def add_IPF_color(self,l,q='O'):
         """
         Add RGB color tuple of inverse pole figure (IPF) color.
 
         Parameters
         ----------
-        q : str
-            Label of the dataset containing the crystallographic orientation as quaternions.
         l : numpy.array of shape (3)
             Lab frame direction for inverse pole figure.
+        q : str
+            Label of the dataset containing the crystallographic orientation as quaternions.
+            Defaults to 'O'.
 
         """
         self._add_generic_pointwise(self._add_IPF_color,{'q':q},{'l':l})
@@ -1125,6 +1133,7 @@ class Result:
             Arguments parsed to func.
 
         """
+        chunk_size = 1024**2//8
         num_threads = damask.environment.options['DAMASK_NUM_THREADS']
         pool = mp.Pool(int(num_threads) if num_threads is not None else None)
         lock = mp.Manager().Lock()
@@ -1148,7 +1157,15 @@ class Result:
                         dataset.attrs['Overwritten'] = 'Yes' if h5py3 else \
                                                        'Yes'.encode()
                     else:
-                        dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
+                        if result[1]['data'].size >= chunk_size*2:
+                            shape  = result[1]['data'].shape
+                            chunks = (chunk_size//np.prod(shape[1:]),)+shape[1:]
+                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'],
+                                                                  maxshape=shape, chunks=chunks,
+                                                                  compression='gzip', compression_opts=6,
+                                                                  shuffle=True,fletcher32=True)
+                        else:
+                            dataset = f[result[0]].create_dataset(result[1]['label'],data=result[1]['data'])
 
                     now = datetime.datetime.now().astimezone()
                     dataset.attrs['Created'] = now.strftime('%Y-%m-%d %H:%M:%S%z') if h5py3 else \
@@ -1218,7 +1235,7 @@ class Result:
 
             topology=ET.SubElement(grid, 'Topology')
             topology.attrib={'TopologyType': '3DCoRectMesh',
-                             'Dimensions':   '{} {} {}'.format(*self.grid+1)}
+                             'Dimensions':   '{} {} {}'.format(*self.cells+1)}
 
             geometry=ET.SubElement(grid, 'Geometry')
             geometry.attrib={'GeometryType':'Origin_DxDyDz'}
@@ -1233,7 +1250,7 @@ class Result:
             delta.attrib={'Format':     'XML',
                           'NumberType': 'Float',
                           'Dimensions': '3'}
-            delta.text="{} {} {}".format(*(self.size/self.grid))
+            delta.text="{} {} {}".format(*(self.size/self.cells))
 
 
             with h5py.File(self.fname,'r') as f:
@@ -1244,7 +1261,7 @@ class Result:
                 data_items.append(ET.SubElement(attributes[-1], 'DataItem'))
                 data_items[-1].attrib={'Format':     'HDF',
                                        'Precision':  '8',
-                                       'Dimensions': '{} {} {} 3'.format(*(self.grid+1))}
+                                       'Dimensions': '{} {} {} 3'.format(*(self.cells+1))}
                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:/{inc}/geometry/u_n'
 
                 for o,p in zip(['phases','homogenizations'],['out_type_ph','out_type_ho']):
@@ -1267,8 +1284,8 @@ class Result:
                                 data_items[-1].attrib={'Format':     'HDF',
                                                        'NumberType': number_type_map(dtype),
                                                        'Precision':  f'{dtype.itemsize}',
-                                                       'Dimensions': '{} {} {} {}'.format(*self.grid,1 if shape == () else
-                                                                                                     np.prod(shape))}
+                                                       'Dimensions': '{} {} {} {}'.format(*self.cells,1 if shape == () else
+                                                                                                      np.prod(shape))}
                                 data_items[-1].text=f'{os.path.split(self.fname)[1]}:{name}'
 
         with open(self.fname.with_suffix('.xdmf').name,'w') as f:
@@ -1291,7 +1308,7 @@ class Result:
         if mode.lower()=='cell':
 
             if self.structured:
-                v = VTK.from_rectilinear_grid(self.grid,self.size,self.origin)
+                v = VTK.from_rectilinear_grid(self.cells,self.size,self.origin)
             else:
                 with h5py.File(self.fname,'r') as f:
                     v = VTK.from_unstructured_grid(f['/geometry/x_n'][()],
@@ -1299,7 +1316,7 @@ class Result:
                                                    f['/geometry/T_c'].attrs['VTK_TYPE'] if h5py3 else \
                                                    f['/geometry/T_c'].attrs['VTK_TYPE'].decode())
         elif mode.lower()=='point':
-            v = VTK.from_poly_data(self.cell_coordinates)
+            v = VTK.from_poly_data(self.coordinates0_point)
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 

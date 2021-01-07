@@ -4,7 +4,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Isostrain (full constraint Taylor assuption) homogenization scheme
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_mech_isostrain
+submodule(homogenization:homogenization_mech) homogenization_mech_isostrain
 
   enum, bind(c); enumerator :: &
     parallel_ID, &

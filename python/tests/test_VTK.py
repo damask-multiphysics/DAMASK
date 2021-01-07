@@ -16,9 +16,9 @@ def ref_path(ref_path_base):
 @pytest.fixture
 def default():
     """Simple VTK."""
-    grid = np.array([5,6,7],int)
-    size = np.array([.6,1.,.5])
-    return VTK.from_rectilinear_grid(grid,size)
+    cells = np.array([5,6,7],int)
+    size  = np.array([.6,1.,.5])
+    return VTK.from_rectilinear_grid(cells,size)
 
 class TestVTK:
 
@@ -27,10 +27,10 @@ class TestVTK:
         print('patched damask.util.execution_stamp')
 
     def test_rectilinearGrid(self,tmp_path):
-        grid   = np.random.randint(5,10,3)*2
+        cells  = np.random.randint(5,10,3)*2
         size   = np.random.random(3) + 1.0
         origin = np.random.random(3)
-        v = VTK.from_rectilinear_grid(grid,size,origin)
+        v = VTK.from_rectilinear_grid(cells,size,origin)
         string = v.__repr__()
         v.save(tmp_path/'rectilinearGrid',False)
         vtr = VTK.load(tmp_path/'rectilinearGrid.vtr')
@@ -152,11 +152,11 @@ class TestVTK:
                     np.allclose(polyData.get('coordinates'),points)
 
     def test_compare_reference_rectilinearGrid(self,update,ref_path,tmp_path):
-        grid = np.array([5,6,7],int)
-        size = np.array([.6,1.,.5])
-        rectilinearGrid = VTK.from_rectilinear_grid(grid,size)
-        c = grid_filters.cell_coord0(grid,size).reshape(-1,3,order='F')
-        n = grid_filters.node_coord0(grid,size).reshape(-1,3,order='F')
+        cells = np.array([5,6,7],int)
+        size  = np.array([.6,1.,.5])
+        rectilinearGrid = VTK.from_rectilinear_grid(cells,size)
+        c = grid_filters.coordinates0_point(cells,size).reshape(-1,3,order='F')
+        n = grid_filters.coordinates0_node(cells,size).reshape(-1,3,order='F')
         rectilinearGrid.add(c,'cell')
         rectilinearGrid.add(n,'node')
         if update:

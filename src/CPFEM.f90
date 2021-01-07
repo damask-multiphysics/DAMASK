@@ -5,7 +5,6 @@
 !--------------------------------------------------------------------------------------------------
 module CPFEM
   use prec
-  use FEsolving
   use math
   use rotations
   use YAML_types
@@ -13,7 +12,6 @@ module CPFEM
   use discretization_marc
   use material
   use config
-  use crystallite
   use homogenization
   use IO
   use discretization
@@ -89,8 +87,8 @@ subroutine CPFEM_initAll
   call lattice_init
   call material_init(.false.)
   call constitutive_init
-  call crystallite_init
   call homogenization_init
+  call crystallite_init
   call CPFEM_init
   call config_deallocate
 
@@ -153,13 +151,15 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
                                                       H
 
   integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
-                                                      i, j, k, l, m, n, ph, homog, mySource
+                                                      i, j, k, l, m, n, ph, homog, mySource,ma
 
   real(pReal), parameter ::                          ODD_STRESS    = 1e15_pReal, &                  !< return value for stress if terminallyIll
                                                      ODD_JACOBIAN  = 1e50_pReal                     !< return value for jacobian if terminallyIll
 
 
   elCP = mesh_FEM2DAMASK_elem(elFE)
+
+  ma = (elCP-1) * discretization_nIPs + ip
 
   if (debugCPFEM%basic .and. elCP == debugCPFEM%element .and. ip == debugCPFEM%ip) then
     print'(/,a)', '#############################################'
@@ -181,11 +181,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
 
     chosenThermal1: select case (thermal_type(material_homogenizationAt(elCP)))
       case (THERMAL_conduction_ID) chosenThermal1
-        temperature(material_homogenizationAt(elCP))%p(thermalMapping(material_homogenizationAt(elCP))%p(ip,elCP)) = &
+        temperature(material_homogenizationAt(elCP))%p(material_homogenizationMemberAt(ip,elCP)) = &
           temperature_inp
       end select chosenThermal1
-    homogenization_F0(1:3,1:3,ip,elCP) = ffn
-    homogenization_F(1:3,1:3,ip,elCP) = ffn1
+    homogenization_F0(1:3,1:3,ma) = ffn
+    homogenization_F(1:3,1:3,ma) = ffn1
 
   if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
 
@@ -196,11 +196,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       CPFEM_dcsde(1:6,1:6,ip,elCP) = ODD_JACOBIAN * math_eye(6)
 
     else validCalculation
-      FEsolving_execElem = elCP
-      FEsolving_execIP   = ip
       if (debugCPFEM%extensive) &
         print'(a,i8,1x,i2)', '<< CPFEM >> calculation for elFE ip ',elFE,ip
-      call materialpoint_stressAndItsTangent(dt)
+      call materialpoint_stressAndItsTangent(dt,[ip,ip],[elCP,elCP])
 
       terminalIllness: if (terminallyIll) then
 
@@ -212,17 +210,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature_inp, dt, elFE, ip, cauchyS
       else terminalIllness
 
         ! translate from P to sigma
-        Kirchhoff = matmul(homogenization_P(1:3,1:3,ip,elCP), transpose(homogenization_F(1:3,1:3,ip,elCP)))
-        J_inverse  = 1.0_pReal / math_det33(homogenization_F(1:3,1:3,ip,elCP))
+        Kirchhoff = matmul(homogenization_P(1:3,1:3,ma), transpose(homogenization_F(1:3,1:3,ma)))
+        J_inverse  = 1.0_pReal / math_det33(homogenization_F(1:3,1:3,ma))
         CPFEM_cs(1:6,ip,elCP) = math_sym33to6(J_inverse * Kirchhoff,weighted=.false.)
 
         !  translate from dP/dF to dCS/dE
         H = 0.0_pReal
         do i=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3; do n=1,3
           H(i,j,k,l) = H(i,j,k,l) &
-                     +  homogenization_F(j,m,ip,elCP) * homogenization_F(l,n,ip,elCP) &
-                                                     * homogenization_dPdF(i,m,k,n,ip,elCP) &
-                     -  math_delta(j,l) * homogenization_F(i,m,ip,elCP) * homogenization_P(k,m,ip,elCP) &
+                     +  homogenization_F(j,m,ma) * homogenization_F(l,n,ma) &
+                                                 * homogenization_dPdF(i,m,k,n,ma) &
+                     -  math_delta(j,l) * homogenization_F(i,m,ma) * homogenization_P(k,m,ma) &
                      +  0.5_pReal * (  Kirchhoff(j,l)*math_delta(i,k) + Kirchhoff(i,k)*math_delta(j,l) &
                                      + Kirchhoff(j,k)*math_delta(i,l) + Kirchhoff(i,l)*math_delta(j,k))
         enddo; enddo; enddo; enddo; enddo; enddo
@@ -259,7 +257,8 @@ end subroutine CPFEM_general
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_forward
 
-  call crystallite_forward
+  call homogenization_forward
+  call constitutive_forward
 
 end subroutine CPFEM_forward
 
@@ -275,7 +274,6 @@ subroutine CPFEM_results(inc,time)
   call results_openJobFile
   call results_addIncrement(inc,time)
   call constitutive_results
-  call crystallite_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

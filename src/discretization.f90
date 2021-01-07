@@ -86,7 +86,7 @@ subroutine discretization_results
   
   u = discretization_IPcoords &
     - discretization_IPcoords0
-  call results_writeDataset('current/geometry',u,'u_p','displacements of the materialpoints','m')
+  call results_writeDataset('current/geometry',u,'u_p','displacements of the materialpoints (cell centers)','m')
 
 end subroutine discretization_results
 

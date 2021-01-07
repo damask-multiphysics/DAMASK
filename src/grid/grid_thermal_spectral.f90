@@ -131,8 +131,7 @@ subroutine grid_thermal_spectral_init
   cell = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     cell = cell + 1
-    T_current(i,j,k) = temperature(material_homogenizationAt(cell))% &
-                                   p(thermalMapping(material_homogenizationAt(cell))%p(1,cell))
+    T_current(i,j,k) = temperature(material_homogenizationAt(cell))%p(material_homogenizationMemberAt(1,cell))
     T_lastInc(i,j,k) = T_current(i,j,k)
     T_stagInc(i,j,k) = T_current(i,j,k)
   enddo; enddo; enddo
@@ -197,8 +196,7 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
   call VecMax(solution_vec,devNull,T_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
     print'(/,a)', ' ... thermal conduction converged ..................................'
-  write(IO_STDOUT,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
-                                                        T_min, T_max, stagNorm
+  print'(/,a,f8.4,2x,f8.4,2x,f8.4)', ' Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
   print'(/,a)', ' ==========================================================================='
   flush(IO_STDOUT) 
 

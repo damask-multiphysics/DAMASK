@@ -18,7 +18,6 @@ module discretization_mesh
   use config
   use discretization
   use results
-  use FEsolving
   use FEM_quadrature
   use YAML_types
   use prec
@@ -30,7 +29,7 @@ module discretization_mesh
     mesh_Nboundaries, &
     mesh_NcpElemsGlobal
 
-  integer :: &
+  integer, public, protected :: &
     mesh_NcpElems                                                                                   !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
@@ -156,9 +155,6 @@ subroutine discretization_mesh_init(restart)
 
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
   if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
-
-  FEsolving_execElem = [1,mesh_NcpElems]                                                            ! parallel loop bounds set to comprise all DAMASK elements
-  FEsolving_execIP   = [1,mesh_maxNips]
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 

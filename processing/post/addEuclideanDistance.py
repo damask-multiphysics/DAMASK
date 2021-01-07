@@ -143,7 +143,7 @@ for name in filenames:
     damask.util.report(scriptName,name)
 
     table = damask.Table.load(StringIO(''.join(sys.stdin.read())) if name is None else name)
-    grid,size,origin = damask.grid_filters.cell_coord0_gridSizeOrigin(table.get(options.pos))
+    grid,size,origin = damask.grid_filters.cellsSizeOrigin_coordinates0_point(table.get(options.pos))
 
     neighborhood = neighborhoods[options.neighborhood]
     diffToNeighbor = np.empty(list(grid+2)+[len(neighborhood)],'i')

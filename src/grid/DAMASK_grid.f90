@@ -42,8 +42,8 @@ program DAMASK_grid
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
-  real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                         !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
-  logical,     dimension(9) :: temp_maskVector  = .false.                                           !< temporarily from loadcase file when reading in tensors
+  real(pReal), dimension(9) :: temp_valueVector                                                     !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
+  logical,     dimension(9) :: temp_maskVector                                                      !< temporarily from loadcase file when reading in tensors
 
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
@@ -143,8 +143,6 @@ program DAMASK_grid
       mech_restartWrite => grid_mech_spectral_basic_restartWrite
 
     case ('Polarisation')
-     if(debug_grid%contains('basic')) &
-        call IO_warning(42, ext_msg='debug Divergence')
       mech_init         => grid_mech_spectral_polarisation_init
       mech_forward      => grid_mech_spectral_polarisation_forward
       mech_solution     => grid_mech_spectral_polarisation_solution
@@ -152,8 +150,6 @@ program DAMASK_grid
       mech_restartWrite => grid_mech_spectral_polarisation_restartWrite
 
     case ('FEM')
-     if(debug_grid%contains('basic')) &
-        call IO_warning(42, ext_msg='debug Divergence')
       mech_init         => grid_mech_FEM_init
       mech_forward      => grid_mech_FEM_forward
       mech_solution     => grid_mech_FEM_solution
@@ -178,11 +174,11 @@ program DAMASK_grid
     allocate(loadCases(l)%ID(nActiveFields))
     field = 1
     loadCases(l)%ID(field) = FIELD_MECH_ID                                                          ! mechanical active by default
-    thermalActive: if (any(thermal_type  == THERMAL_conduction_ID)) then
+    thermalActive: if (any(thermal_type == THERMAL_conduction_ID)) then
       field = field + 1
       loadCases(l)%ID(field) = FIELD_THERMAL_ID
     endif thermalActive
-    damageActive: if (any(damage_type   == DAMAGE_nonlocal_ID)) then
+    damageActive: if (any(damage_type == DAMAGE_nonlocal_ID)) then
       field = field + 1
       loadCases(l)%ID(field) = FIELD_DAMAGE_ID
     endif damageActive
@@ -190,33 +186,35 @@ program DAMASK_grid
     load_step => load_steps%get(l)
 
     step_mech => load_step%get('mechanics')
-    loadCases(l)%stress%myType='P'
+    loadCases(l)%stress%myType=''
     readMech: do m = 1, step_mech%length
       select case (step_mech%getKey(m))
-        case('dot_F','L','F')                                                                       ! assign values for the deformation BC matrix
+        case ('L','dot_F','F')                                                                      ! assign values for the deformation BC matrix
           loadCases(l)%deformation%myType = step_mech%getKey(m)
-          temp_valueVector = 0.0_pReal
-
           step_deformation => step_mech%get(m)
-          do j = 1, 9
-            temp_maskVector(j) = step_deformation%get_asString(j) /= 'x'                            ! true if not a 'x'
-            if (temp_maskVector(j)) temp_valueVector(j) = step_deformation%get_asFloat(j)           ! read value where applicable
-          enddo
-          loadCases(l)%deformation%mask   = transpose(reshape(temp_maskVector,[ 3,3]))              ! mask in 3x3 notation
-          loadCases(l)%deformation%values = math_9to33(temp_valueVector)                            ! values in 3x3 notation
-        case('P')
+
           temp_valueVector = 0.0_pReal
-          step_stress => step_mech%get(m)
           do j = 1, 9
-            temp_maskVector(j) = step_stress%get_asString(j) /= 'x'                                 ! true if not a 'x'
-            if (temp_maskVector(j)) temp_valueVector(j) = step_stress%get_asFloat(j)                ! read value where applicable
+            temp_maskVector(j) = step_deformation%get_asString(j) /= 'x'
+            if (temp_maskVector(j)) temp_valueVector(j) = step_deformation%get_asFloat(j)
           enddo
-          loadCases(l)%stress%mask   = transpose(reshape(temp_maskVector,[ 3,3]))
+          loadCases(l)%deformation%mask   = transpose(reshape(temp_maskVector,[3,3]))
+          loadCases(l)%deformation%values = math_9to33(temp_valueVector)
+        case ('dot_P','P')
+          loadCases(l)%stress%myType = step_mech%getKey(m)
+          step_stress => step_mech%get(m)
+
+          temp_valueVector = 0.0_pReal
+          do j = 1, 9
+            temp_maskVector(j) = step_stress%get_asString(j) /= 'x'
+            if (temp_maskVector(j)) temp_valueVector(j) = step_stress%get_asFloat(j)
+          enddo
+          loadCases(l)%stress%mask   = transpose(reshape(temp_maskVector,[3,3]))
           loadCases(l)%stress%values = math_9to33(temp_valueVector)
       end select
       call loadCases(l)%rot%fromAxisAngle(step_mech%get_asFloats('R',defaultVal = real([0.0,0.0,1.0,0.0],pReal)),degrees=.true.)
     enddo readMech
-    if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/F/dot_F missing')
+    if (.not. allocated(loadCases(l)%deformation%myType)) call IO_error(error_ID=837,ext_msg = 'L/dot_F/F missing')
 
     step_discretization => load_step%get('discretization')
     if(.not. step_discretization%contains('t')) call IO_error(error_ID=837,ext_msg = 't missing')
@@ -239,50 +237,60 @@ program DAMASK_grid
           if (any(loadCases(l)%deformation%mask(j,1:3) .eqv. .true.) .and. &
               any(loadCases(l)%deformation%mask(j,1:3) .eqv. .false.)) errorID = 832                ! each row should be either fully or not at all defined
         enddo
-        print*, ' L:'
-      else if (loadCases(l)%deformation%myType == 'F') then
+      endif
+      if (loadCases(l)%deformation%myType == 'F') then
         print*, ' F:'
-      else if (loadCases(l)%deformation%myType == 'dot_F') then
-        print*, ' dot_F:'
+      else
+        print*, ' '//loadCases(l)%deformation%myType//' / 1/s:'
       endif
       do i = 1, 3; do j = 1, 3
-        if(loadCases(l)%deformation%mask(i,j)) then
+        if (loadCases(l)%deformation%mask(i,j)) then
           write(IO_STDOUT,'(2x,f12.7)',advance='no') loadCases(l)%deformation%values(i,j)
-        else
-          write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
-          endif
-        enddo; write(IO_STDOUT,'(/)',advance='no')
-      enddo
-      if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831          ! exclusive or masking only
-      if (any(loadCases(l)%stress%mask .and. transpose(loadCases(l)%stress%mask) .and. (math_I3<1))) &
-        errorID = 838                                                                               ! no rotation is allowed by stress BC
-      print*, ' P / MPa:'
-      do i = 1, 3; do j = 1, 3
-        if(loadCases(l)%stress%mask(i,j)) then
-          write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pReal
         else
           write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
         endif
         enddo; write(IO_STDOUT,'(/)',advance='no')
       enddo
+      if (any(loadCases(l)%stress%mask .eqv. loadCases(l)%deformation%mask)) errorID = 831
+      if (any(loadCases(l)%stress%mask .and. transpose(loadCases(l)%stress%mask) .and. (math_I3<1))) &
+        errorID = 838                                                                               ! no rotation is allowed by stress BC
+
+      if (loadCases(l)%stress%myType == 'P')     print*, ' P / MPa:'
+      if (loadCases(l)%stress%myType == 'dot_P') print*, ' dot_P / MPa/s:'
+
+      if (loadCases(l)%stress%myType /= '') then
+        do i = 1, 3; do j = 1, 3
+          if (loadCases(l)%stress%mask(i,j)) then
+            write(IO_STDOUT,'(2x,f12.4)',advance='no') loadCases(l)%stress%values(i,j)*1e-6_pReal
+          else
+            write(IO_STDOUT,'(2x,12a)',advance='no') '     x      '
+          endif
+          enddo; write(IO_STDOUT,'(/)',advance='no')
+        enddo
+      endif
       if (any(dNeq(loadCases(l)%rot%asMatrix(), math_I3))) &
         write(IO_STDOUT,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'R:',&
                  transpose(loadCases(l)%rot%asMatrix())
 
-      if (loadCases(l)%t < 0.0_pReal) errorID = 834
-      print'(a,f0.3)', '  t: ', loadCases(l)%t
-      if (loadCases(l)%N < 1)    errorID = 835
-      print'(a,i0)',   '  N: ', loadCases(l)%N
-      if (loadCases(l)%f_out < 1)  errorID = 836
-      print'(a,i0)',   '  f_out: ', loadCases(l)%f_out
-      if (loadCases(l)%r <= 0.0)  errorID = 833
-      print'(a,f0.3)', '  r: ', loadCases(l)%r
-
+      if (loadCases(l)%r <= 0.0)       errorID = 833
+      if (loadCases(l)%t < 0.0_pReal)  errorID = 834
+      if (loadCases(l)%N < 1)          errorID = 835
+      if (loadCases(l)%f_out < 1)      errorID = 836
       if (loadCases(l)%f_restart < 1)  errorID = 839
+
+      if (dEq(loadCases(l)%r,1.0_pReal,1.e-9_pReal)) then
+        print'(a)', '  r: 1 (constant step widths)'
+      else
+        print'(a,f0.3)', '  r: ', loadCases(l)%r
+      endif
+      print'(a,f0.3)', '  t: ', loadCases(l)%t
+      print'(a,i0)',   '  N: ', loadCases(l)%N
+      print'(a,i0)',   '  f_out: ', loadCases(l)%f_out
       if (loadCases(l)%f_restart < huge(0)) &
         print'(a,i0)', '  f_restart: ', loadCases(l)%f_restart
 
       if (errorID > 0) call IO_error(error_ID = errorID, ext_msg = loadcase_string)                 ! exit with error message
+
     endif reportAndCheck
   enddo
 
@@ -309,8 +317,6 @@ program DAMASK_grid
     writeHeader: if (interface_restartInc < 1) then
       open(newunit=statUnit,file=trim(getSolverJobName())//'.sta',form='FORMATTED',status='REPLACE')
       write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                ! statistics file
-      if (debug_grid%contains('basic')) print'(/,a)', ' header of statistics file written out'
-      flush(IO_STDOUT)
     else writeHeader
       open(newunit=statUnit,file=trim(getSolverJobName())//&
                                   '.sta',form='FORMATTED', position='APPEND', status='OLD')
@@ -319,6 +325,7 @@ program DAMASK_grid
 
   writeUndeformed: if (interface_restartInc < 1) then
     print'(/,a)', ' ... writing initial configuration to file ........................'
+    flush(IO_STDOUT)
     call CPFEM_results(0,0.0_pReal)
   endif writeUndeformed
 

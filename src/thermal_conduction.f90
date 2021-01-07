@@ -8,7 +8,6 @@ module thermal_conduction
   use config
   use lattice
   use results
-  use crystallite
   use constitutive
   use YAML_types
 
@@ -66,15 +65,8 @@ subroutine thermal_conduction_init
 #endif
 
     Nmaterialpoints=count(material_homogenizationAt==h)
-    thermalState(h)%sizeState = 0
-    allocate(thermalState(h)%state0   (0,Nmaterialpoints))
-    allocate(thermalState(h)%subState0(0,Nmaterialpoints))
-    allocate(thermalState(h)%state    (0,Nmaterialpoints))
 
-    thermalMapping(h)%p => material_homogenizationMemberAt
-    deallocate(temperature    (h)%p)
     allocate  (temperature    (h)%p(Nmaterialpoints), source=thermal_initialT(h))
-    deallocate(temperatureRate(h)%p)
     allocate  (temperatureRate(h)%p(Nmaterialpoints), source=0.0_pReal)
 
     end associate
@@ -205,7 +197,7 @@ subroutine thermal_conduction_putTemperatureAndItsRate(T,Tdot,ip,el)
     offset
 
   homog  = material_homogenizationAt(el)
-  offset = thermalMapping(homog)%p(ip,el)
+  offset = material_homogenizationMemberAt(ip,el)
   temperature    (homog)%p(offset) = T
   temperatureRate(homog)%p(offset) = Tdot
 

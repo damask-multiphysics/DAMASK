@@ -169,7 +169,7 @@ class TestResult:
 
     @pytest.mark.parametrize('d',[[1,0,0],[0,1,0],[0,0,1]])
     def test_add_IPF_color(self,default,d):
-        default.add_IPF_color('O',np.array(d))
+        default.add_IPF_color(d,'O')
         loc = {'O':     default.get_dataset_location('O'),
                'color': default.get_dataset_location('IPFcolor_[{} {} {}]'.format(*d))}
         qu = default.read_dataset(loc['O']).view(np.double).squeeze()
@@ -356,11 +356,11 @@ class TestResult:
     @pytest.mark.parametrize('mode',['cell','node'])
     def test_coordinates(self,default,mode):
          if   mode == 'cell':
-             a = grid_filters.cell_coord0(default.grid,default.size,default.origin)
-             b = default.cell_coordinates.reshape(tuple(default.grid)+(3,),order='F')
+             a = grid_filters.coordinates0_point(default.cells,default.size,default.origin)
+             b = default.coordinates0_point.reshape(tuple(default.cells)+(3,),order='F')
          elif mode == 'node':
-             a = grid_filters.node_coord0(default.grid,default.size,default.origin)
-             b = default.node_coordinates.reshape(tuple(default.grid+1)+(3,),order='F')
+             a = grid_filters.coordinates0_node(default.cells,default.size,default.origin)
+             b = default.coordinates0_node.reshape(tuple(default.cells+1)+(3,),order='F')
          assert np.allclose(a,b)
 
     @pytest.mark.parametrize('output',['F',[],['F','P']])

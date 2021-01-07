@@ -33,6 +33,10 @@ class Table:
         """Brief overview."""
         return '\n'.join(['# '+c for c in self.comments])+'\n'+self.data.__repr__()
 
+    def __getitem__(self,item):
+        """Return slice according to item."""
+        return self.__class__(data=self.data[item],shapes=self.shapes,comments=self.comments)
+
     def __len__(self):
         """Number of rows."""
         return len(self.data)
@@ -73,7 +77,7 @@ class Table:
     @staticmethod
     def load(fname):
         """
-        Load ASCII table file.
+        Load from ASCII table file.
 
         In legacy style, the first line indicates the number of
         subsequent header lines as "N header", with the last header line being
@@ -131,7 +135,7 @@ class Table:
     @staticmethod
     def load_ang(fname):
         """
-        Load ang file.
+        Load from ang file.
 
         A valid TSL ang file needs to contains the following columns:
         * Euler angles (Bunge notation) in radians, 3 floats, label 'eu'.

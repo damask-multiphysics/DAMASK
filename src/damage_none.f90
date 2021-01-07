@@ -3,6 +3,7 @@
 !> @brief material subroutine for constant damage field
 !--------------------------------------------------------------------------------------------------
 module damage_none
+  use prec
   use config
   use material
 
@@ -29,8 +30,7 @@ subroutine damage_none_init
     allocate(damageState(h)%subState0(0,Nmaterialpoints))
     allocate(damageState(h)%state    (0,Nmaterialpoints))
 
-    deallocate(damage(h)%p)
-    allocate  (damage(h)%p(1), source=damage_initialPhi(h))
+    allocate  (damage(h)%p(Nmaterialpoints), source=1.0_pReal)
 
   enddo
 
