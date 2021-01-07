@@ -279,9 +279,12 @@ real(pReal) pure function math_LeviCivita(i,j,k)
 
   integer, intent(in) :: i,j,k
 
-  if     (all([i,j,k] == [1,2,3]) .or. all([i,j,k] == [2,3,1]) .or. all([i,j,k] == [3,1,2])) then
+  integer :: o
+
+
+  if     (any([(all(cshift([i,j,k],o) == [1,2,3]),o=0,2)])) then
     math_LeviCivita = +1.0_pReal
-  elseif (all([i,j,k] == [3,2,1]) .or. all([i,j,k] == [2,1,3]) .or. all([i,j,k] == [1,3,2])) then
+  elseif (any([(all(cshift([i,j,k],o) == [3,2,1]),o=0,2)])) then
     math_LeviCivita = -1.0_pReal
   else
     math_LeviCivita =  0.0_pReal
