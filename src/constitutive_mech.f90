@@ -1653,7 +1653,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                                 constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
-      converged_ = converged_ .and. .not. integrateSourceState(subStep * dt,co,ip,el)
+      converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,ip,el)
       converged_ = converged_ .and. .not. integrateThermalState(subStep * dt,co,ip,el)
     endif
 
@@ -1937,6 +1937,86 @@ module subroutine constitutive_mech_setF(F,co,ip,el)
   constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
 
 end subroutine constitutive_mech_setF
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the velocity gradient
+! ToDo: MD: S is Mi?
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
+                                         S, Fi, co, ip, el)
+
+  integer, intent(in) :: &
+    co, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+  real(pReal),   intent(in),  dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola-Kirchhoff stress
+  real(pReal),   intent(in),  dimension(3,3) :: &
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),   intent(out), dimension(3,3) :: &
+    Li                                                                                              !< intermediate velocity gradient
+  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+    dLi_dS, &                                                                                       !< derivative of Li with respect to S
+    dLi_dFi
+
+  real(pReal), dimension(3,3) :: &
+    my_Li, &                                                                                        !< intermediate velocity gradient
+    FiInv, &
+    temp_33
+  real(pReal), dimension(3,3,3,3) :: &
+    my_dLi_dS
+  real(pReal) :: &
+    detFi
+  integer :: &
+    k, i, j, &
+    instance, of
+
+  Li = 0.0_pReal
+  dLi_dS  = 0.0_pReal
+  dLi_dFi = 0.0_pReal
+
+  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
+    case (PLASTICITY_isotropic_ID) plasticityType
+      of = material_phasememberAt(co,ip,el)
+      instance = phase_plasticityInstance(material_phaseAt(co,el))
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
+    case default plasticityType
+      my_Li = 0.0_pReal
+      my_dLi_dS = 0.0_pReal
+  end select plasticityType
+
+  Li = Li + my_Li
+  dLi_dS = dLi_dS + my_dLi_dS
+
+  KinematicsLoop: do k = 1, phase_Nkinematics(material_phaseAt(co,el))
+    kinematicsType: select case (phase_kinematics(k,material_phaseAt(co,el)))
+      case (KINEMATICS_cleavage_opening_ID) kinematicsType
+        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
+      case (KINEMATICS_slipplane_opening_ID) kinematicsType
+        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
+      case (KINEMATICS_thermal_expansion_ID) kinematicsType
+        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, co, ip, el)
+      case default kinematicsType
+        my_Li = 0.0_pReal
+        my_dLi_dS = 0.0_pReal
+    end select kinematicsType
+    Li = Li + my_Li
+    dLi_dS = dLi_dS + my_dLi_dS
+  enddo KinematicsLoop
+
+  FiInv = math_inv33(Fi)
+  detFi = math_det33(Fi)
+  Li = matmul(matmul(Fi,Li),FiInv)*detFi                                                            !< push forward to intermediate configuration
+  temp_33 = matmul(FiInv,Li)
+
+  do i = 1,3; do j = 1,3
+    dLi_dS(1:3,1:3,i,j)  = matmul(matmul(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
+    dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
+    dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
+  enddo; enddo
+
+end subroutine constitutive_LiAndItsTangents
 
 end submodule constitutive_mech
 
