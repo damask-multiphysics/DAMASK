@@ -852,10 +852,11 @@ subroutine crystallite_init()
     co, &                                                                                           !< counter in integration point component loop
     ip, &                                                                                           !< counter in integration point loop
     el, &                                                                                           !< counter in element loop
+    so, &
     cMax, &                                                                                         !< maximum number of  integration point components
     iMax, &                                                                                         !< maximum number of integration points
-    eMax, &                                                                                         !< maximum number of elements
-    so
+    eMax                                                                                            !< maximum number of elements
+   
 
   class(tNode), pointer :: &
     num_crystallite, &
