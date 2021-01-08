@@ -103,10 +103,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   integer :: &
     homog
 
-  Tdot = 0.0_pReal
-  dTdot_dT = 0.0_pReal
-
-  homog  = material_homogenizationAt(el)
+  homog = material_homogenizationAt(el)
   call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el)
 
   Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)

@@ -305,6 +305,7 @@ module constitutive
         orientation                                                                                 !< crystal orientation
     end subroutine plastic_nonlocal_updateCompatibility
 
+
     module subroutine plastic_isotropic_LiAndItsTangent(Li,dLi_dMi,Mi,instance,of)
       real(pReal), dimension(3,3),     intent(out) :: &
         Li                                                                                          !< inleastic velocity gradient
@@ -463,8 +464,6 @@ subroutine constitutive_init
   constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
 end subroutine constitutive_init
-
-
 
 
 

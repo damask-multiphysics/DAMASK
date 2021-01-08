@@ -136,7 +136,7 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
     el                                                                                              !< element number
   real(pReal), intent(in) :: &
     T                                                                                             !< plastic velocity gradient
-  real(pReal), intent(inout) :: &
+  real(pReal), intent(out) :: &
     TDot, &
     dTDot_dT
 
