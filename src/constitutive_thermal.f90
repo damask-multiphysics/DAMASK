@@ -9,7 +9,7 @@ submodule(constitutive) constitutive_thermal
     integer, intent(in) :: source_length
     logical, dimension(:,:), allocatable :: mySources
   end function source_thermal_dissipation_init
- 
+
   module function source_thermal_externalheat_init(source_length) result(mySources)
     integer, intent(in) :: source_length
     logical, dimension(:,:), allocatable :: mySources
@@ -55,8 +55,8 @@ module subroutine thermal_init
   if(maxval(phase_Nsources) /= 0) then
     where(source_thermal_dissipation_init (maxval(phase_Nsources))) phase_source = SOURCE_thermal_dissipation_ID
     where(source_thermal_externalheat_init(maxval(phase_Nsources))) phase_source = SOURCE_thermal_externalheat_ID
-  endif 
- 
+  endif
+
 !--------------------------------------------------------------------------------------------------
 !initialize kinematic mechanisms
   if(maxval(phase_Nkinematics) /= 0) where(kinematics_thermal_expansion_init(maxval(phase_Nkinematics))) &
@@ -68,15 +68,13 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, S, Lp, ip, el)
+module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el)
+
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal), intent(in) :: &
-    T
-  real(pReal),  intent(in), dimension(:,:,:,:,:) :: &
-    S, &                                                                                            !< current 2nd Piola Kirchhoff stress
-    Lp                                                                                              !< plastic velocity gradient
+    T                                                                                             !< plastic velocity gradient
   real(pReal), intent(inout) :: &
     TDot, &
     dTDot_dT
@@ -84,6 +82,7 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
   real(pReal) :: &
     my_Tdot, &
     my_dTdot_dT
+  real(pReal), dimension(3,3) :: Lp, S
   integer :: &
     phase, &
     homog, &
@@ -101,10 +100,10 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
      do source = 1, phase_Nsources(phase)
        select case(phase_source(source,phase))
          case (SOURCE_thermal_dissipation_ID)
+          Lp = constitutive_mech_getLp(grain,ip,el)
+          S  = constitutive_mech_getS(grain,ip,el)
           call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
-                                                               S(1:3,1:3,grain,ip,el), &
-                                                                Lp(1:3,1:3,grain,ip,el), &
-                                                                    phase)
+                                                               S, Lp, phase)
 
          case (SOURCE_thermal_externalheat_ID)
           call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, my_dTdot_dT, &
@@ -120,6 +119,24 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, 
    enddo
 
 end subroutine constitutive_thermal_getRateAndItsTangents
+
+
+
+
+! getter for non-thermal (e.g. mech)
+module function constitutive_thermal_T(co,ip,el) result(T)
+
+  integer, intent(in) :: co, ip, el
+  real(pReal) :: T
+
+  integer :: ho, tme
+
+  ho = material_homogenizationAt(el)
+  tme = material_homogenizationMemberAt(ip,el)
+
+  T = temperature(ho)%p(tme)
+
+end function constitutive_thermal_T
 
 
 end submodule constitutive_thermal

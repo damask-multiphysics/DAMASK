@@ -94,7 +94,7 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   dTdot_dT = 0.0_pReal
 
   homog  = material_homogenizationAt(el)
-  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, crystallite_S,crystallite_Lp ,ip, el) 
+  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el) 
 
   Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
   dTdot_dT = dTdot_dT/real(homogenization_Nconstituents(homog),pReal)
@@ -112,14 +112,16 @@ function thermal_conduction_getConductivity(ip,el)
     el                                                                                              !< element number
   real(pReal), dimension(3,3) :: &
     thermal_conduction_getConductivity
+  
   integer :: &
-    grain
+    co
 
 
   thermal_conduction_getConductivity = 0.0_pReal
-  do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+  
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
     thermal_conduction_getConductivity = thermal_conduction_getConductivity + &
-     crystallite_push33ToRef(grain,ip,el,lattice_K(:,:,material_phaseAt(grain,el)))
+     crystallite_push33ToRef(co,ip,el,lattice_K(:,:,material_phaseAt(co,el)))
   enddo
 
   thermal_conduction_getConductivity = thermal_conduction_getConductivity &
@@ -138,14 +140,16 @@ function thermal_conduction_getSpecificHeat(ip,el)
     el                                                                                              !< element number
   real(pReal) :: &
     thermal_conduction_getSpecificHeat
+
   integer :: &
-    grain
+    co
+
 
   thermal_conduction_getSpecificHeat = 0.0_pReal
 
-  do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
     thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
-                                       + lattice_c_p(material_phaseAt(grain,el))
+                                       + lattice_c_p(material_phaseAt(co,el))
   enddo
 
   thermal_conduction_getSpecificHeat = thermal_conduction_getSpecificHeat &
@@ -164,15 +168,16 @@ function thermal_conduction_getMassDensity(ip,el)
     el                                                                                              !< element number
   real(pReal) :: &
     thermal_conduction_getMassDensity
+  
   integer :: &
-    grain
+    co
+
 
   thermal_conduction_getMassDensity = 0.0_pReal
 
-
-  do grain = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
     thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
-                                      + lattice_rho(material_phaseAt(grain,el))
+                                      + lattice_rho(material_phaseAt(co,el))
   enddo
 
   thermal_conduction_getMassDensity = thermal_conduction_getMassDensity &
