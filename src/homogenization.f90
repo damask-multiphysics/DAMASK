@@ -186,7 +186,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       subStep = 1.0_pReal/num%subStepSizeHomog                                                      ! ... larger then the requested calculation
 
       if (homogState(ho)%sizeState > 0)   homogState(ho)%subState0(:,me)  = homogState(ho)%State0(:,me)
-      if (damageState(ho)%sizeState > 0)  damageState(ho)%subState0(:,me) = damageState(ho)%State0(:,me)
+      if (damageState_h(ho)%sizeState > 0)  damageState_h(ho)%subState0(:,me) = damageState_h(ho)%State0(:,me)
 
       cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
@@ -200,7 +200,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             call constitutive_windForward(ip,el)
 
             if(homogState(ho)%sizeState > 0)  homogState(ho)%subState0(:,me) = homogState(ho)%State(:,me)
-            if(damageState(ho)%sizeState > 0) damageState(ho)%subState0(:,me) = damageState(ho)%State(:,me)
+            if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%subState0(:,me) = damageState_h(ho)%State(:,me)
 
           endif steppingNeeded
         elseif ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
@@ -215,7 +215,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
           call constitutive_restore(ip,el,subStep < 1.0_pReal)
 
           if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%subState0(:,me)
-          if(damageState(ho)%sizeState > 0) damageState(ho)%State(:,me) = damageState(ho)%subState0(:,me)
+          if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%subState0(:,me)
         endif
 
         if (subStep > num%subStepMinHomog) doneAndHappy = [.false.,.true.]
@@ -326,7 +326,7 @@ subroutine homogenization_forward
 
   do ho = 1, size(material_name_homogenization)
     homogState (ho)%state0 = homogState (ho)%state
-    damageState(ho)%state0 = damageState(ho)%state
+    damageState_h(ho)%state0 = damageState_h(ho)%state
   enddo
 
 end subroutine homogenization_forward

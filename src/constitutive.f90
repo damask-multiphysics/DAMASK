@@ -83,7 +83,7 @@ module constitutive
   type(tPlasticState), allocatable, dimension(:), public :: &
     plasticState
   type(tSourceState),  allocatable, dimension(:), public :: &
-    sourceState, thermalState
+    damageState, thermalState
 
 
   integer, public, protected :: &
@@ -454,12 +454,12 @@ subroutine constitutive_init
     plasticState(ph)%partitionedState0 = plasticState(ph)%state0
     plasticState(ph)%state             = plasticState(ph)%partitionedState0
     forall(so = 1:phase_Nsources(ph))
-      sourceState(ph)%p(so)%partitionedState0 = sourceState(ph)%p(so)%state0
-      sourceState(ph)%p(so)%state             = sourceState(ph)%p(so)%partitionedState0
+      damageState(ph)%p(so)%partitionedState0 = damageState(ph)%p(so)%state0
+      damageState(ph)%p(so)%state             = damageState(ph)%p(so)%partitionedState0
     end forall
 
     constitutive_source_maxSizeDotState   = max(constitutive_source_maxSizeDotState, &
-                                                maxval(sourceState(ph)%p%sizeDotState))
+                                                maxval(damageState(ph)%p%sizeDotState))
   enddo PhaseLoop2
   constitutive_plasticity_maxSizeDotState = maxval(plasticState%sizeDotState)
 
@@ -578,8 +578,8 @@ subroutine constitutive_restore(ip,el,includeL)
 
   do co = 1,homogenization_Nconstituents(material_homogenizationAt(el))
     do so = 1, phase_Nsources(material_phaseAt(co,el))
-      sourceState(material_phaseAt(co,el))%p(so)%state(          :,material_phasememberAt(co,ip,el)) = &
-      sourceState(material_phaseAt(co,el))%p(so)%partitionedState0(:,material_phasememberAt(co,ip,el))
+      damageState(material_phaseAt(co,el))%p(so)%state(          :,material_phasememberAt(co,ip,el)) = &
+      damageState(material_phaseAt(co,el))%p(so)%partitionedState0(:,material_phasememberAt(co,ip,el))
     enddo
   enddo
 
@@ -601,9 +601,9 @@ subroutine constitutive_forward()
   call mech_forward()
   call thermal_forward()
 
-  do ph = 1, size(sourceState)
+  do ph = 1, size(damageState)
     do so = 1,phase_Nsources(ph)
-      sourceState(ph)%p(so)%state0 = sourceState(ph)%p(so)%state
+      damageState(ph)%p(so)%state0 = damageState(ph)%p(so)%state
   enddo; enddo
 
 end subroutine constitutive_forward
@@ -704,7 +704,7 @@ subroutine crystallite_init()
 
   do ph = 1, phases%length
     do so = 1, phase_Nsources(ph)
-      allocate(sourceState(ph)%p(so)%subState0,source=sourceState(ph)%p(so)%state0)                 ! ToDo: hack
+      allocate(damageState(ph)%p(so)%subState0,source=damageState(ph)%p(so)%state0)                 ! ToDo: hack
     enddo
     do so = 1, thermal_Nsources(ph)
       allocate(thermalState(ph)%p(so)%subState0,source=thermalState(ph)%p(so)%state0)               ! ToDo: hack
@@ -753,8 +753,8 @@ subroutine constitutive_initializeRestorationPoints(ip,el)
     call mech_initializeRestorationPoints(ph,me)
     call thermal_initializeRestorationPoints(ph,me)
 
-    do so = 1, size(sourceState(ph)%p)
-      sourceState(ph)%p(so)%partitionedState0(:,me) = sourceState(ph)%p(so)%state0(:,me)
+    do so = 1, size(damageState(ph)%p)
+      damageState(ph)%p(so)%partitionedState0(:,me) = damageState(ph)%p(so)%state0(:,me)
     enddo
 
   enddo
@@ -784,7 +784,7 @@ subroutine constitutive_windForward(ip,el)
     call thermal_windForward(ph,me)
 
     do so = 1, phase_Nsources(material_phaseAt(co,el))
-      sourceState(ph)%p(so)%partitionedState0(:,me) = sourceState(ph)%p(so)%state(:,me)
+      damageState(ph)%p(so)%partitionedState0(:,me) = damageState(ph)%p(so)%state(:,me)
     enddo
 
   enddo

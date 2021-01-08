@@ -129,14 +129,14 @@ module subroutine damage_init
 
   phases => config_material%get('phase')
 
-  allocate(sourceState (phases%length))
+  allocate(damageState (phases%length))
   allocate(phase_Nsources(phases%length),source = 0)           ! same for kinematics
 
   do ph = 1,phases%length
     phase => phases%get(ph)
     sources => phase%get('source',defaultVal=emptyList)
     phase_Nsources(ph) = sources%length
-    allocate(sourceState(ph)%p(phase_Nsources(ph)))
+    allocate(damageState(ph)%p(phase_Nsources(ph)))
   enddo
 
   allocate(phase_source(maxval(phase_Nsources),phases%length), source = DAMAGE_UNDEFINED_ID)
@@ -262,9 +262,9 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
   if(broken) return
 
   do so = 1, phase_Nsources(ph)
-    size_so(so) = sourceState(ph)%p(so)%sizeDotState
-    sourceState(ph)%p(so)%state(1:size_so(so),me) = sourceState(ph)%p(so)%subState0(1:size_so(so),me) &
-                                                  + sourceState(ph)%p(so)%dotState (1:size_so(so),me) * dt
+    size_so(so) = damageState(ph)%p(so)%sizeDotState
+    damageState(ph)%p(so)%state(1:size_so(so),me) = damageState(ph)%p(so)%subState0(1:size_so(so),me) &
+                                                  + damageState(ph)%p(so)%dotState (1:size_so(so),me) * dt
     source_dotState(1:size_so(so),2,so) = 0.0_pReal
   enddo
 
@@ -272,26 +272,26 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
 
     do so = 1, phase_Nsources(ph)
       if(nIterationState > 1) source_dotState(1:size_so(so),2,so) = source_dotState(1:size_so(so),1,so)
-      source_dotState(1:size_so(so),1,so) = sourceState(ph)%p(so)%dotState(:,me)
+      source_dotState(1:size_so(so),1,so) = damageState(ph)%p(so)%dotState(:,me)
     enddo
 
     broken = constitutive_damage_collectDotState(co,ip,el,ph,me)
     if(broken) exit iteration
 
     do so = 1, phase_Nsources(ph)
-      zeta = damper(sourceState(ph)%p(so)%dotState(:,me), &
+      zeta = damper(damageState(ph)%p(so)%dotState(:,me), &
                     source_dotState(1:size_so(so),1,so),&
                     source_dotState(1:size_so(so),2,so))
-      sourceState(ph)%p(so)%dotState(:,me) = sourceState(ph)%p(so)%dotState(:,me) * zeta &
+      damageState(ph)%p(so)%dotState(:,me) = damageState(ph)%p(so)%dotState(:,me) * zeta &
                                         + source_dotState(1:size_so(so),1,so)* (1.0_pReal - zeta)
-      r(1:size_so(so)) = sourceState(ph)%p(so)%state    (1:size_so(so),me)  &
-                       - sourceState(ph)%p(so)%subState0(1:size_so(so),me)  &
-                       - sourceState(ph)%p(so)%dotState (1:size_so(so),me) * dt
-      sourceState(ph)%p(so)%state(1:size_so(so),me) = sourceState(ph)%p(so)%state(1:size_so(so),me) &
+      r(1:size_so(so)) = damageState(ph)%p(so)%state    (1:size_so(so),me)  &
+                       - damageState(ph)%p(so)%subState0(1:size_so(so),me)  &
+                       - damageState(ph)%p(so)%dotState (1:size_so(so),me) * dt
+      damageState(ph)%p(so)%state(1:size_so(so),me) = damageState(ph)%p(so)%state(1:size_so(so),me) &
                                                 - r(1:size_so(so))
       converged_ = converged_  .and. converged(r(1:size_so(so)), &
-                                               sourceState(ph)%p(so)%state(1:size_so(so),me), &
-                                               sourceState(ph)%p(so)%atol(1:size_so(so)))
+                                               damageState(ph)%p(so)%state(1:size_so(so),me), &
+                                               damageState(ph)%p(so)%atol(1:size_so(so)))
     enddo
 
     if(converged_) then
@@ -399,7 +399,7 @@ function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
 
     end select sourceType
 
-    broken = broken .or. any(IEEE_is_NaN(sourceState(ph)%p(so)%dotState(:,of)))
+    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%p(so)%dotState(:,of)))
 
   enddo SourceLoop
 
@@ -438,12 +438,12 @@ function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
       case (DAMAGE_ISOBRITTLE_ID) sourceType
         call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(co,ip,el), Fe, &
                                                    co, ip, el)
-        broken = any(IEEE_is_NaN(sourceState(ph)%p(so)%deltaState(:,of)))
+        broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,of)))
         if(.not. broken) then
-          myOffset = sourceState(ph)%p(so)%offsetDeltaState
-          mySize   = sourceState(ph)%p(so)%sizeDeltaState
-          sourceState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) = &
-          sourceState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) + sourceState(ph)%p(so)%deltaState(1:mySize,of)
+          myOffset = damageState(ph)%p(so)%offsetDeltaState
+          mySize   = damageState(ph)%p(so)%sizeDeltaState
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) = &
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) + damageState(ph)%p(so)%deltaState(1:mySize,of)
         endif
 
     end select sourceType

@@ -1600,7 +1600,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 
 
   do so = 1, phase_Nsources(ph)
-    sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%partitionedState0(:,me)
+    damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%partitionedState0(:,me)
   enddo
   do so = 1, thermal_Nsources(ph)
     thermalState(ph)%p(so)%subState0(:,me) = thermalState(ph)%p(so)%partitionedState0(:,me)
@@ -1631,7 +1631,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subFi0 = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
         subState0 = plasticState(ph)%state(:,me)
         do so = 1, phase_Nsources(ph)
-          sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%state(:,me)
+          damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state(:,me)
         enddo
         do so = 1, thermal_Nsources(ph)
           thermalState(ph)%p(so)%subState0(:,me) = thermalState(ph)%p(so)%state(:,me)
@@ -1650,7 +1650,7 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       endif
       plasticState(ph)%state(:,me) = subState0
       do so = 1, phase_Nsources(ph)
-        sourceState(ph)%p(so)%state(:,me) = sourceState(ph)%p(so)%subState0(:,me)
+        damageState(ph)%p(so)%state(:,me) = damageState(ph)%p(so)%subState0(:,me)
       enddo
       do so = 1, thermal_Nsources(ph)
         thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%subState0(:,me)
