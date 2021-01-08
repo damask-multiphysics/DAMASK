@@ -78,7 +78,7 @@ end function source_thermal_dissipation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Ninstancess dissipation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT, Tstar, Lp, phase)
+module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, Tstar, Lp, phase)
 
   integer, intent(in) :: &
     phase
@@ -88,12 +88,10 @@ module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, dTDot_dT
     Lp
 
   real(pReal),  intent(out) :: &
-    TDot, &
-    dTDot_dT
+    TDot
 
   associate(prm => param(source_thermal_dissipation_instance(phase)))
   TDot = prm%kappa*sum(abs(Tstar*Lp))
-  dTDot_dT = 0.0_pReal
   end associate
 
 end subroutine source_thermal_dissipation_getRateAndItsTangent

@@ -104,14 +104,13 @@ end subroutine source_thermal_externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_dT, phase, of)
+module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, phase, of)
 
   integer, intent(in) :: &
     phase, &
     of
   real(pReal),  intent(out) :: &
-    TDot, &
-    dTDot_dT
+    TDot
 
   integer :: &
     sourceOffset, interval
@@ -131,7 +130,6 @@ module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, dTDot_d
              prm%f_T(interval+1) * frac_time                                                        ! interpolate heat rate between segment boundaries...
                                                                                                     ! ...or extrapolate if outside of bounds
   enddo
-  dTDot_dT = 0.0
   end associate
 
 end subroutine source_thermal_externalheat_getRateAndItsTangent

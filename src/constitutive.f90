@@ -283,15 +283,14 @@ module constitutive
         dPhiDot_dPhi
     end subroutine constitutive_damage_getRateAndItsTangents
 
-    module subroutine constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el)
+    module subroutine constitutive_thermal_getRateAndItsTangents(TDot, T,ip,el)
       integer, intent(in) :: &
         ip, &                                                                                       !< integration point number
         el                                                                                          !< element number
       real(pReal), intent(in) :: &
         T
-      real(pReal), intent(inout) :: &
-        TDot, &
-        dTDot_dT
+      real(pReal), intent(out) :: &
+        TDot
     end subroutine constitutive_thermal_getRateAndItsTangents
 
 

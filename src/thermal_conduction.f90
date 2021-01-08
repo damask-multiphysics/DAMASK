@@ -91,7 +91,7 @@ end subroutine thermal_conduction_init
 !--------------------------------------------------------------------------------------------------
 !> @brief return heat generation rate
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
+subroutine thermal_conduction_getSourceAndItsTangent(Tdot, T,ip,el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -99,15 +99,15 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T, ip, el)
   real(pReal), intent(in) :: &
     T
   real(pReal), intent(out) :: &
-    Tdot, dTdot_dT
-  integer :: &
+    Tdot
+
+ integer :: &
     homog
 
   homog = material_homogenizationAt(el)
-  call constitutive_thermal_getRateAndItsTangents(TDot, dTDot_dT, T, ip, el)
+  call constitutive_thermal_getRateAndItsTangents(TDot, T,ip,el)
 
   Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
-  dTdot_dT = dTdot_dT/real(homogenization_Nconstituents(homog),pReal)
 
 end subroutine thermal_conduction_getSourceAndItsTangent
 
