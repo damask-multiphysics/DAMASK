@@ -453,4 +453,35 @@ function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
 end function constitutive_damage_deltaState
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief checks if a source mechanism is active or not
+!--------------------------------------------------------------------------------------------------
+function source_active(source_label,src_length)  result(active_source)
+
+  character(len=*), intent(in)         :: source_label                                              !< name of source mechanism
+  integer,          intent(in)         :: src_length                                                !< max. number of sources in system
+  logical, dimension(:,:), allocatable :: active_source
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    sources, &
+    src
+  integer :: p,s
+
+  phases => config_material%get('phase')
+  allocate(active_source(src_length,phases%length), source = .false. )
+  do p = 1, phases%length
+    phase => phases%get(p)
+    sources => phase%get('source',defaultVal=emptyList)
+    do s = 1, sources%length
+      src => sources%get(s)
+      if(src%get_asString('type') == source_label) active_source(s,p) = .true.
+    enddo
+  enddo
+
+
+end function source_active
+
+
 end submodule constitutive_damage

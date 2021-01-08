@@ -41,7 +41,7 @@ module function source_thermal_externalheat_init(source_length) result(mySources
     src
   integer :: Ninstances,sourceOffset,Nconstituents,p
 
-  print'(/,a)', ' <<<+-  source_thermal_externalHeat init  -+>>>'
+  print'(/,a)', ' <<<+-  thermal_externalheat init  -+>>>'
 
   mySources = thermal_active('externalheat',source_length)
 
@@ -74,7 +74,6 @@ module function source_thermal_externalheat_init(source_length) result(mySources
         Nconstituents = count(material_phaseAt==p) * discretization_nIPs
         call constitutive_allocateState(thermalState(p)%p(sourceOffset),Nconstituents,1,1,0)
         end associate
-
       endif
     enddo
   enddo
