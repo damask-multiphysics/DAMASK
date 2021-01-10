@@ -43,7 +43,7 @@ void gethostname_c(char hostname[], int *stat){
 
 
 void getusername_c(char username[], int *stat){
-  struct passwd *pw = getpwuid(geteuid());
+  struct passwd *pw = getpwuid(getuid());
   if(pw && strlen(pw->pw_name) <= STRLEN){
     strncpy(username,pw->pw_name,STRLEN+1);
     *stat = 0;
