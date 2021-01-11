@@ -105,7 +105,7 @@ class ConfigMaterial(Config):
 
     @staticmethod
     def load_from_Dream3D(fname,base_group,grain_data,phase_name,phase_id):
-        """
+        r"""
         Load material data from DREAM3D file.
 
         The parts of homogenization and phase need to be added by the user. 
@@ -130,25 +130,8 @@ class ConfigMaterial(Config):
         --------
         >>> import damask
         >>> import damask.ConfigMaterial as cm
-        >>> t = damask.Table.load('small.txt')
-        >>> t
-            pos  pos  pos   qu   qu    qu    qu   phase    homog
-        0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
-        1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
-        >>> cm.from_table(t,{'O':'qu','phase':'phase'},homogenization='homog')
-        material:
-          - constituents:
-              - O: [0.19, 0.8, 0.24, -0.51]
-                fraction: 1.0
-                phase: Aluminum
-            homogenization: SX
-          - constituents:
-              - O: [0.8, 0.19, 0.24, -0.51]
-                fraction: 1.0
-                phase: Steel
-            homogenization: SX
-        homogenization: {}
-        phase: {}
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer/Grain Data',\
+                                  'EulerAngles',['Ferrite'],'Phases') 
 
         """
         root_dir = 'DataContainers'
