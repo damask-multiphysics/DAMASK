@@ -104,7 +104,7 @@ end subroutine source_thermal_externalheat_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local heat generation rate
 !--------------------------------------------------------------------------------------------------
-module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, phase, of)
+module subroutine thermal_externalheat_getRate(TDot, phase, of)
 
   integer, intent(in) :: &
     phase, &
@@ -132,6 +132,6 @@ module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, phase, 
   enddo
   end associate
 
-end subroutine source_thermal_externalheat_getRateAndItsTangent
+end subroutine thermal_externalheat_getRate
 
 end submodule source_externalheat

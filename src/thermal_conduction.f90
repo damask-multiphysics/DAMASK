@@ -25,7 +25,7 @@ module thermal_conduction
 
   public :: &
     thermal_conduction_init, &
-    thermal_conduction_getSourceAndItsTangent, &
+    thermal_conduction_getSource, &
     thermal_conduction_getConductivity, &
     thermal_conduction_getSpecificHeat, &
     thermal_conduction_getMassDensity, &
@@ -91,7 +91,7 @@ end subroutine thermal_conduction_init
 !--------------------------------------------------------------------------------------------------
 !> @brief return heat generation rate
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_conduction_getSourceAndItsTangent(Tdot, T,ip,el)
+subroutine thermal_conduction_getSource(Tdot, T,ip,el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -105,11 +105,11 @@ subroutine thermal_conduction_getSourceAndItsTangent(Tdot, T,ip,el)
     homog
 
   homog = material_homogenizationAt(el)
-  call constitutive_thermal_getRateAndItsTangents(TDot, T,ip,el)
+  call constitutive_thermal_getRate(TDot, T,ip,el)
 
   Tdot = Tdot/real(homogenization_Nconstituents(homog),pReal)
 
-end subroutine thermal_conduction_getSourceAndItsTangent
+end subroutine thermal_conduction_getSource
 
 
 !--------------------------------------------------------------------------------------------------

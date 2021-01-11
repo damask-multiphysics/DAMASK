@@ -36,7 +36,7 @@ submodule(constitutive) constitutive_thermal
   end function kinematics_thermal_expansion_init
 
 
-  module subroutine source_thermal_dissipation_getRateAndItsTangent(TDot, Tstar,Lp,phase)
+  module subroutine thermal_dissipation_getRate(TDot, Tstar,Lp,phase)
     integer, intent(in) :: &
       phase                                                                                         !< phase ID of element
     real(pReal),  intent(in), dimension(3,3) :: &
@@ -45,15 +45,15 @@ submodule(constitutive) constitutive_thermal
       Lp                                                                                            !< plastic velocuty gradient for a given element
     real(pReal),  intent(out) :: &
       TDot
-  end subroutine source_thermal_dissipation_getRateAndItsTangent
+  end subroutine thermal_dissipation_getRate
 
-  module subroutine source_thermal_externalheat_getRateAndItsTangent(TDot, phase,of)
+  module subroutine thermal_externalheat_getRate(TDot, phase,of)
     integer, intent(in) :: &
       phase, &
       of
     real(pReal),  intent(out) :: &
       TDot
-  end subroutine source_thermal_externalheat_getRateAndItsTangent
+  end subroutine thermal_externalheat_getRate
 
  end interface
 
@@ -127,7 +127,7 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_getRateAndItsTangents(TDot, T, ip, el)
+module subroutine constitutive_thermal_getRate(TDot, T, ip, el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
@@ -157,10 +157,10 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, T, ip, el)
      do so = 1, thermal_Nsources(ph)
        select case(thermal_source(so,ph))
          case (THERMAL_DISSIPATION_ID)
-          call source_thermal_dissipation_getRateAndItsTangent(my_Tdot, mech_S(ph,me),mech_L_p(ph,me),ph)
+          call thermal_dissipation_getRate(my_Tdot, mech_S(ph,me),mech_L_p(ph,me),ph)
 
          case (THERMAL_EXTERNALHEAT_ID)
-          call source_thermal_externalheat_getRateAndItsTangent(my_Tdot, ph,me)
+          call thermal_externalheat_getRate(my_Tdot, ph,me)
 
          case default
           my_Tdot = 0.0_pReal
@@ -169,7 +169,7 @@ module subroutine constitutive_thermal_getRateAndItsTangents(TDot, T, ip, el)
      enddo
    enddo
 
-end subroutine constitutive_thermal_getRateAndItsTangents
+end subroutine constitutive_thermal_getRate
 
 
 !--------------------------------------------------------------------------------------------------
