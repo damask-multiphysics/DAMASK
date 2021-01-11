@@ -1,6 +1,8 @@
 import copy
+from os import path
 
 import numpy as np
+import h5py
 
 from . import Config
 from . import Rotation
@@ -101,6 +103,59 @@ class ConfigMaterial(Config):
         return ConfigMaterial().material_add(constituents_,**kwargs_)
 
 
+    @staticmethod
+    def load_from_Dream3D(fname,base_group,grain_data,phase_name):
+        """
+        Load material data from DREAM3D file.
+        The parts of homogenization and phase need to be added by the user. 
+
+        Parameters
+        ----------
+        fname : str 
+            path to the DREAM3D file.
+        base_group : str
+            Name of the group (folder) below 'DataContainers',
+            for example 'SyntheticVolumeDataContainer/Grain Data'.
+        grain_data : str
+            Name of the dataset having grain based data for conversion,
+            for example 'EulerAngles'.
+        phase_name : list 
+            List with name of the phases.
+
+        Examples
+        --------
+        >>> import damask
+        >>> import damask.ConfigMaterial as cm
+        >>> t = damask.Table.load('small.txt')
+        >>> t
+            pos  pos  pos   qu   qu    qu    qu   phase    homog
+        0    0    0    0  0.19  0.8   0.24 -0.51  Aluminum SX
+        1    1    0    0  0.8   0.19  0.24 -0.51  Steel    SX
+        >>> cm.from_table(t,{'O':'qu','phase':'phase'},homogenization='homog')
+        material:
+          - constituents:
+              - O: [0.19, 0.8, 0.24, -0.51]
+                fraction: 1.0
+                phase: Aluminum
+            homogenization: SX
+          - constituents:
+              - O: [0.8, 0.19, 0.24, -0.51]
+                fraction: 1.0
+                phase: Steel
+            homogenization: SX
+        homogenization: {}
+        phase: {}
+
+        """
+        root_dir = 'DataContainers'
+        hdf = h5py.File(fname,'r')
+        config_info = ConfigMaterial()   # empty yaml dictionary
+        orientation_path = path.join(root_dir,base_group,grain_data)
+        grain_orientations = np.array(hdf[orientation_path])
+        grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion() 
+        material_dict = config_info.material_add(constituents={'phase':phase_name[0],'O':grain_quats},homogenization='SX')
+        material_dict.save()
+        
     @property
     def is_complete(self):
         """Check for completeness."""
