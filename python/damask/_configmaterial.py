@@ -151,7 +151,7 @@ class ConfigMaterial(Config):
         hdf = h5py.File(fname,'r')
         config_info = ConfigMaterial()   # empty yaml dictionary
         orientation_path = path.join(root_dir,base_group,grain_data)
-        grain_orientations = np.array(hdf[orientation_path])
+        grain_orientations = np.array(hdf[orientation_path])[1:]
         grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion() 
         material_dict = config_info.material_add(constituents={'phase':phase_name[0],'O':grain_quats},homogenization='SX')
         material_dict.save()
