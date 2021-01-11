@@ -104,9 +104,10 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_from_Dream3D(fname,base_group,grain_data,phase_namei,phase_id):
+    def load_from_Dream3D(fname,base_group,grain_data,phase_name,phase_id):
         """
         Load material data from DREAM3D file.
+
         The parts of homogenization and phase need to be added by the user. 
 
         Parameters
