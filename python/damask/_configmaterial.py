@@ -104,7 +104,7 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_from_Dream3D(fname,base_group,grain_data,phase_name):
+    def load_from_Dream3D(fname,base_group,grain_data,phase_namei,phase_id):
         """
         Load material data from DREAM3D file.
         The parts of homogenization and phase need to be added by the user. 
@@ -121,6 +121,9 @@ class ConfigMaterial(Config):
             for example 'EulerAngles'.
         phase_name : list 
             List with name of the phases.
+        phase_id : str
+            Name of the dataset containing phase IDs for each grain,
+            for example 'Phases'.
 
         Examples
         --------
@@ -149,11 +152,19 @@ class ConfigMaterial(Config):
         """
         root_dir = 'DataContainers'
         hdf = h5py.File(fname,'r')
+
         config_info = ConfigMaterial()   # empty yaml dictionary
+
         orientation_path = path.join(root_dir,base_group,grain_data)
         grain_orientations = np.array(hdf[orientation_path])[1:]
         grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion() 
-        material_dict = config_info.material_add(constituents={'phase':phase_name[0],'O':grain_quats},homogenization='SX')
+
+        phase_path  = path.join(root_dir,base_group,phase_id)
+        grain_phase = np.array(hdf[phase_path])[1:]
+        grain_phase = grain_phase.reshape(len(grain_phase),)
+        phase_name_list = [phase_name[i - 1] for i in grain_phase]
+
+        material_dict = config_info.material_add(constituents={'phase':phase_name_list,'O':grain_quats},homogenization='SX')
         material_dict.save()
         
     @property
