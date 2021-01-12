@@ -61,7 +61,7 @@ module material
 
   type(tState),        allocatable, dimension(:), public :: &
     homogState, &
-    damageState
+    damageState_h
 
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
@@ -101,7 +101,7 @@ subroutine material_init(restart)
 
 
   allocate(homogState      (size(material_name_homogenization)))
-  allocate(damageState     (size(material_name_homogenization)))
+  allocate(damageState_h     (size(material_name_homogenization)))
 
   allocate(temperature     (size(material_name_homogenization)))
   allocate(damage          (size(material_name_homogenization)))

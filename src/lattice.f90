@@ -453,12 +453,13 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
 
-  integer :: Nphases, p,i
+  integer :: Nphases, ph,i
   class(tNode), pointer :: &
     phases, &
     phase, &
     mech, &
-    elasticity
+    elasticity, &
+    thermal
 
   print'(/,a)', ' <<<+-  lattice init  -+>>>'; flush(IO_STDOUT)
 
@@ -476,67 +477,71 @@ subroutine lattice_init
            lattice_mu, lattice_nu,&
            source=[(0.0_pReal,i=1,Nphases)])
 
-  do p = 1, phases%length
-    phase => phases%get(p)
+  do ph = 1, phases%length
+    phase => phases%get(ph)
     mech  => phase%get('mechanics')
     elasticity => mech%get('elasticity')
-    lattice_C66(1,1,p) = elasticity%get_asFloat('C_11')
-    lattice_C66(1,2,p) = elasticity%get_asFloat('C_12')
+    lattice_C66(1,1,ph) = elasticity%get_asFloat('C_11')
+    lattice_C66(1,2,ph) = elasticity%get_asFloat('C_12')
 
-    lattice_C66(1,3,p) = elasticity%get_asFloat('C_13',defaultVal=0.0_pReal)
-    lattice_C66(2,2,p) = elasticity%get_asFloat('C_22',defaultVal=0.0_pReal)
-    lattice_C66(2,3,p) = elasticity%get_asFloat('C_23',defaultVal=0.0_pReal)
-    lattice_C66(3,3,p) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
-    lattice_C66(4,4,p) = elasticity%get_asFloat('C_44',defaultVal=0.0_pReal)
-    lattice_C66(5,5,p) = elasticity%get_asFloat('C_55',defaultVal=0.0_pReal)
-    lattice_C66(6,6,p) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
+    lattice_C66(1,3,ph) = elasticity%get_asFloat('C_13',defaultVal=0.0_pReal)
+    lattice_C66(2,2,ph) = elasticity%get_asFloat('C_22',defaultVal=0.0_pReal)
+    lattice_C66(2,3,ph) = elasticity%get_asFloat('C_23',defaultVal=0.0_pReal)
+    lattice_C66(3,3,ph) = elasticity%get_asFloat('C_33',defaultVal=0.0_pReal)
+    lattice_C66(4,4,ph) = elasticity%get_asFloat('C_44',defaultVal=0.0_pReal)
+    lattice_C66(5,5,ph) = elasticity%get_asFloat('C_55',defaultVal=0.0_pReal)
+    lattice_C66(6,6,ph) = elasticity%get_asFloat('C_66',defaultVal=0.0_pReal)
 
     select case(phase%get_asString('lattice'))
       case('cF')
-        lattice_structure(p) = lattice_FCC_ID
+        lattice_structure(ph) = lattice_FCC_ID
       case('cI')
-        lattice_structure(p) = lattice_BCC_ID
+        lattice_structure(ph) = lattice_BCC_ID
       case('hP')
-        lattice_structure(p) = lattice_HEX_ID
+        lattice_structure(ph) = lattice_HEX_ID
       case('tI')
-        lattice_structure(p) = lattice_BCT_ID
+        lattice_structure(ph) = lattice_BCT_ID
       case('oP')
-        lattice_structure(p) = lattice_ORT_ID
+        lattice_structure(ph) = lattice_ORT_ID
       case('aP')
-        lattice_structure(p) = lattice_ISO_ID
+        lattice_structure(ph) = lattice_ISO_ID
       case default
         call IO_error(130,ext_msg='lattice_init: '//phase%get_asString('lattice'))
     end select
 
-    lattice_C66(1:6,1:6,p) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,p),phase%get_asString('lattice'))
+    lattice_C66(1:6,1:6,ph) = applyLatticeSymmetryC66(lattice_C66(1:6,1:6,ph),phase%get_asString('lattice'))
 
-    lattice_nu(p) = lattice_equivalent_nu(lattice_C66(1:6,1:6,p),'voigt')
-    lattice_mu(p) = lattice_equivalent_mu(lattice_C66(1:6,1:6,p),'voigt')
+    lattice_nu(ph) = lattice_equivalent_nu(lattice_C66(1:6,1:6,ph),'voigt')
+    lattice_mu(ph) = lattice_equivalent_mu(lattice_C66(1:6,1:6,ph),'voigt')
 
-    lattice_C66(1:6,1:6,p) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,p)))           ! Literature data is in Voigt notation
+    lattice_C66(1:6,1:6,ph) = math_sym3333to66(math_Voigt66to3333(lattice_C66(1:6,1:6,ph)))           ! Literature data is in Voigt notation
     do i = 1, 6
-      if (abs(lattice_C66(i,i,p))<tol_math_check) &
-        call IO_error(135,el=i,ip=p,ext_msg='matrix diagonal "el"ement of phase "ip"')
+      if (abs(lattice_C66(i,i,ph))<tol_math_check) &
+        call IO_error(135,el=i,ip=ph,ext_msg='matrix diagonal "el"ement of phase "ip"')
     enddo
 
+    lattice_rho(ph) = phase%get_asFloat('rho', defaultVal=0.0_pReal)
 
     ! SHOULD NOT BE PART OF LATTICE BEGIN
-    lattice_K(1,1,p) = phase%get_asFloat('K_11',defaultVal=0.0_pReal)
-    lattice_K(2,2,p) = phase%get_asFloat('K_22',defaultVal=0.0_pReal)
-    lattice_K(3,3,p) = phase%get_asFloat('K_33',defaultVal=0.0_pReal)
-    lattice_K(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_K(1:3,1:3,p), &
+
+    if (phase%contains('thermal')) then
+      thermal  => phase%get('thermal')
+      lattice_K(1,1,ph) = thermal%get_asFloat('K_11',defaultVal=0.0_pReal)
+      lattice_K(2,2,ph) = thermal%get_asFloat('K_22',defaultVal=0.0_pReal)
+      lattice_K(3,3,ph) = thermal%get_asFloat('K_33',defaultVal=0.0_pReal)
+      lattice_K(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_K(1:3,1:3,ph), &
+                                                             phase%get_asString('lattice'))
+      lattice_c_p(ph) = thermal%get_asFloat('c_p', defaultVal=0.0_pReal)
+    endif
+
+
+    lattice_D(1,1,ph) = phase%get_asFloat('D_11',defaultVal=0.0_pReal)
+    lattice_D(2,2,ph) = phase%get_asFloat('D_22',defaultVal=0.0_pReal)
+    lattice_D(3,3,ph) = phase%get_asFloat('D_33',defaultVal=0.0_pReal)
+    lattice_D(1:3,1:3,ph) = lattice_applyLatticeSymmetry33(lattice_D(1:3,1:3,ph), &
                                                           phase%get_asString('lattice'))
 
-    lattice_c_p(p) = phase%get_asFloat('c_p', defaultVal=0.0_pReal)
-    lattice_rho(p) = phase%get_asFloat('rho', defaultVal=0.0_pReal)
-
-    lattice_D(1,1,p) = phase%get_asFloat('D_11',defaultVal=0.0_pReal)
-    lattice_D(2,2,p) = phase%get_asFloat('D_22',defaultVal=0.0_pReal)
-    lattice_D(3,3,p) = phase%get_asFloat('D_33',defaultVal=0.0_pReal)
-    lattice_D(1:3,1:3,p) = lattice_applyLatticeSymmetry33(lattice_D(1:3,1:3,p), &
-                                                          phase%get_asString('lattice'))
-
-    lattice_M(p) = phase%get_asFloat('M',defaultVal=0.0_pReal)
+    lattice_M(ph) = phase%get_asFloat('M',defaultVal=0.0_pReal)
     ! SHOULD NOT BE PART OF LATTICE END
 
     call selfTest

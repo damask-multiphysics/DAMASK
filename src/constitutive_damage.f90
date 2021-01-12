@@ -2,6 +2,16 @@
 !> @brief internal microstructure state for all damage sources and kinematics constitutive models
 !----------------------------------------------------------------------------------------------------
 submodule(constitutive) constitutive_damage
+  enum, bind(c); enumerator :: &
+    DAMAGE_UNDEFINED_ID, &
+    DAMAGE_ISOBRITTLE_ID, &
+    DAMAGE_ISODUCTILE_ID, &
+    DAMAGE_ANISOBRITTLE_ID, &
+    DAMAGE_ANISODUCTILE_ID
+  end enum
+
+  integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
+    phase_source                                                                                !< active sources mechanisms of each phase
 
   interface
 
@@ -119,24 +129,24 @@ module subroutine damage_init
 
   phases => config_material%get('phase')
 
-  allocate(sourceState (phases%length))
+  allocate(damageState (phases%length))
   allocate(phase_Nsources(phases%length),source = 0)           ! same for kinematics
 
   do ph = 1,phases%length
     phase => phases%get(ph)
     sources => phase%get('source',defaultVal=emptyList)
     phase_Nsources(ph) = sources%length
-    allocate(sourceState(ph)%p(phase_Nsources(ph)))
+    allocate(damageState(ph)%p(phase_Nsources(ph)))
   enddo
 
-  allocate(phase_source(maxval(phase_Nsources),phases%length), source = SOURCE_undefined_ID)
+  allocate(phase_source(maxval(phase_Nsources),phases%length), source = DAMAGE_UNDEFINED_ID)
 
 ! initialize source mechanisms
   if(maxval(phase_Nsources) /= 0) then
-    where(source_damage_isoBrittle_init   (maxval(phase_Nsources))) phase_source = SOURCE_damage_isoBrittle_ID
-    where(source_damage_isoDuctile_init   (maxval(phase_Nsources))) phase_source = SOURCE_damage_isoDuctile_ID
-    where(source_damage_anisoBrittle_init (maxval(phase_Nsources))) phase_source = SOURCE_damage_anisoBrittle_ID
-    where(source_damage_anisoDuctile_init (maxval(phase_Nsources))) phase_source = SOURCE_damage_anisoDuctile_ID
+    where(source_damage_isoBrittle_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISOBRITTLE_ID
+    where(source_damage_isoDuctile_init   (maxval(phase_Nsources))) phase_source = DAMAGE_ISODUCTILE_ID
+    where(source_damage_anisoBrittle_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISOBRITTLE_ID
+    where(source_damage_anisoDuctile_init (maxval(phase_Nsources))) phase_source = DAMAGE_ANISODUCTILE_ID
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -189,16 +199,16 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
      constituent = material_phasememberAt(grain,ip,el)
      do source = 1, phase_Nsources(phase)
        select case(phase_source(source,phase))
-         case (SOURCE_damage_isoBrittle_ID)
+         case (DAMAGE_ISOBRITTLE_ID)
            call source_damage_isobrittle_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
-         case (SOURCE_damage_isoDuctile_ID)
+         case (DAMAGE_ISODUCTILE_ID)
            call source_damage_isoductile_getRateAndItsTangent  (localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
-         case (SOURCE_damage_anisoBrittle_ID)
+         case (DAMAGE_ANISOBRITTLE_ID)
            call source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
-         case (SOURCE_damage_anisoDuctile_ID)
+         case (DAMAGE_ANISODUCTILE_ID)
            call source_damage_anisoductile_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
 
          case default
@@ -214,6 +224,111 @@ module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi
 end subroutine constitutive_damage_getRateAndItsTangents
 
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief integrate stress, state with adaptive 1st order explicit Euler method
+!> using Fixed Point Iteration to adapt the stepsize
+!--------------------------------------------------------------------------------------------------
+module function integrateDamageState(dt,co,ip,el) result(broken)
+
+  real(pReal), intent(in) :: dt
+  integer, intent(in) :: &
+    el, &                                                                                            !< element index in element loop
+    ip, &                                                                                            !< integration point index in ip loop
+    co                                                                                               !< grain index in grain loop
+  logical :: broken
+
+  integer :: &
+    NiterationState, &                                                                              !< number of iterations in state loop
+    ph, &
+    me, &
+    so
+  integer, dimension(maxval(phase_Nsources)) :: &
+    size_so
+  real(pReal) :: &
+    zeta
+  real(pReal), dimension(constitutive_source_maxSizeDotState) :: &
+    r                                                                                               ! state residuum
+  real(pReal), dimension(constitutive_source_maxSizeDotState,2,maxval(phase_Nsources)) :: source_dotState
+  logical :: &
+    converged_
+
+
+  ph = material_phaseAt(co,el)
+  me = material_phaseMemberAt(co,ip,el)
+
+  converged_ = .true.
+  broken = constitutive_damage_collectDotState(co,ip,el,ph,me)
+  if(broken) return
+
+  do so = 1, phase_Nsources(ph)
+    size_so(so) = damageState(ph)%p(so)%sizeDotState
+    damageState(ph)%p(so)%state(1:size_so(so),me) = damageState(ph)%p(so)%subState0(1:size_so(so),me) &
+                                                  + damageState(ph)%p(so)%dotState (1:size_so(so),me) * dt
+    source_dotState(1:size_so(so),2,so) = 0.0_pReal
+  enddo
+
+  iteration: do NiterationState = 1, num%nState
+
+    do so = 1, phase_Nsources(ph)
+      if(nIterationState > 1) source_dotState(1:size_so(so),2,so) = source_dotState(1:size_so(so),1,so)
+      source_dotState(1:size_so(so),1,so) = damageState(ph)%p(so)%dotState(:,me)
+    enddo
+
+    broken = constitutive_damage_collectDotState(co,ip,el,ph,me)
+    if(broken) exit iteration
+
+    do so = 1, phase_Nsources(ph)
+      zeta = damper(damageState(ph)%p(so)%dotState(:,me), &
+                    source_dotState(1:size_so(so),1,so),&
+                    source_dotState(1:size_so(so),2,so))
+      damageState(ph)%p(so)%dotState(:,me) = damageState(ph)%p(so)%dotState(:,me) * zeta &
+                                        + source_dotState(1:size_so(so),1,so)* (1.0_pReal - zeta)
+      r(1:size_so(so)) = damageState(ph)%p(so)%state    (1:size_so(so),me)  &
+                       - damageState(ph)%p(so)%subState0(1:size_so(so),me)  &
+                       - damageState(ph)%p(so)%dotState (1:size_so(so),me) * dt
+      damageState(ph)%p(so)%state(1:size_so(so),me) = damageState(ph)%p(so)%state(1:size_so(so),me) &
+                                                - r(1:size_so(so))
+      converged_ = converged_  .and. converged(r(1:size_so(so)), &
+                                               damageState(ph)%p(so)%state(1:size_so(so),me), &
+                                               damageState(ph)%p(so)%atol(1:size_so(so)))
+    enddo
+
+    if(converged_) then
+      broken = constitutive_damage_deltaState(mech_F_e(ph,me),co,ip,el,ph,me)
+      exit iteration
+    endif
+
+  enddo iteration
+
+  broken = broken .or. .not. converged_
+
+
+  contains
+
+  !--------------------------------------------------------------------------------------------------
+  !> @brief calculate the damping for correction of state and dot state
+  !--------------------------------------------------------------------------------------------------
+  real(pReal) pure function damper(current,previous,previous2)
+
+  real(pReal), dimension(:), intent(in) ::&
+    current, previous, previous2
+
+  real(pReal) :: dot_prod12, dot_prod22
+
+  dot_prod12 = dot_product(current  - previous,  previous - previous2)
+  dot_prod22 = dot_product(previous - previous2, previous - previous2)
+  if ((dot_product(current,previous) < 0.0_pReal .or. dot_prod12 < 0.0_pReal) .and. dot_prod22 > 0.0_pReal) then
+    damper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+  else
+    damper = 1.0_pReal
+  endif
+
+  end function damper
+
+end function integrateDamageState
+
+
 !----------------------------------------------------------------------------------------------
 !< @brief writes damage sources results to HDF5 output file
 !----------------------------------------------------------------------------------------------
@@ -226,28 +341,147 @@ module subroutine damage_results(group,ph)
 
   sourceLoop: do so = 1, phase_Nsources(ph)
 
-  if (phase_source(so,ph) /= SOURCE_UNDEFINED_ID) &
+  if (phase_source(so,ph) /= DAMAGE_UNDEFINED_ID) &
     call results_closeGroup(results_addGroup(group//'sources/')) ! should be 'damage'
 
     sourceType: select case (phase_source(so,ph))
 
-      case (SOURCE_damage_anisoBrittle_ID) sourceType
-        call source_damage_anisoBrittle_results(ph,group//'sources/')
-
-      case (SOURCE_damage_anisoDuctile_ID) sourceType
-        call source_damage_anisoDuctile_results(ph,group//'sources/')
-
-      case (SOURCE_damage_isoBrittle_ID) sourceType
+      case (DAMAGE_ISOBRITTLE_ID) sourceType
         call source_damage_isoBrittle_results(ph,group//'sources/')
 
-      case (SOURCE_damage_isoDuctile_ID) sourceType
+      case (DAMAGE_ISODUCTILE_ID) sourceType
         call source_damage_isoDuctile_results(ph,group//'sources/')
+
+      case (DAMAGE_ANISOBRITTLE_ID) sourceType
+        call source_damage_anisoBrittle_results(ph,group//'sources/')
+
+      case (DAMAGE_ANISODUCTILE_ID) sourceType
+        call source_damage_anisoDuctile_results(ph,group//'sources/')
 
     end select sourceType
 
   enddo SourceLoop
 
 end subroutine damage_results
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief contains the constitutive equation for calculating the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
+
+  integer, intent(in) :: &
+    co, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    ph, &
+    of
+  integer :: &
+    so                                                                                               !< counter in source loop
+  logical :: broken
+
+
+  broken = .false.
+
+  SourceLoop: do so = 1, phase_Nsources(ph)
+
+    sourceType: select case (phase_source(so,ph))
+
+      case (DAMAGE_ISODUCTILE_ID) sourceType
+        call source_damage_isoDuctile_dotState(co, ip, el)
+
+      case (DAMAGE_ANISODUCTILE_ID) sourceType
+        call source_damage_anisoDuctile_dotState(co, ip, el)
+
+      case (DAMAGE_ANISOBRITTLE_ID) sourceType
+        call source_damage_anisoBrittle_dotState(mech_S(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)),&
+                co, ip, el) ! correct stress?
+
+    end select sourceType
+
+    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%p(so)%dotState(:,of)))
+
+  enddo SourceLoop
+
+end function constitutive_damage_collectDotState
+
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief for constitutive models having an instantaneous change of state
+!> will return false if delta state is not needed/supported by the constitutive model
+!--------------------------------------------------------------------------------------------------
+function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
+
+  integer, intent(in) :: &
+    co, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el, &                                                                                           !< element
+    ph, &
+    of
+  real(pReal),   intent(in), dimension(3,3) :: &
+    Fe                                                                                              !< elastic deformation gradient
+  integer :: &
+    so, &
+    myOffset, &
+    mySize
+  logical :: &
+    broken
+
+
+  broken = .false.
+
+  sourceLoop: do so = 1, phase_Nsources(ph)
+
+     sourceType: select case (phase_source(so,ph))
+
+      case (DAMAGE_ISOBRITTLE_ID) sourceType
+        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(co,ip,el), Fe, &
+                                                   co, ip, el)
+        broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,of)))
+        if(.not. broken) then
+          myOffset = damageState(ph)%p(so)%offsetDeltaState
+          mySize   = damageState(ph)%p(so)%sizeDeltaState
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) = &
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) + damageState(ph)%p(so)%deltaState(1:mySize,of)
+        endif
+
+    end select sourceType
+
+  enddo SourceLoop
+
+end function constitutive_damage_deltaState
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief checks if a source mechanism is active or not
+!--------------------------------------------------------------------------------------------------
+function source_active(source_label,src_length)  result(active_source)
+
+  character(len=*), intent(in)         :: source_label                                              !< name of source mechanism
+  integer,          intent(in)         :: src_length                                                !< max. number of sources in system
+  logical, dimension(:,:), allocatable :: active_source
+
+  class(tNode), pointer :: &
+    phases, &
+    phase, &
+    sources, &
+    src
+  integer :: p,s
+
+  phases => config_material%get('phase')
+  allocate(active_source(src_length,phases%length), source = .false. )
+  do p = 1, phases%length
+    phase => phases%get(p)
+    sources => phase%get('source',defaultVal=emptyList)
+    do s = 1, sources%length
+      src => sources%get(s)
+      if(src%get_asString('type') == source_label) active_source(s,p) = .true.
+    enddo
+  enddo
+
+
+end function source_active
 
 
 end submodule constitutive_damage
