@@ -242,24 +242,25 @@ class Orientation(Rotation):
         return np.logical_not(self==other)
 
 
-    def __matmul__(self,other):
+    def __mul__(self,other):
         """
-        Rotation of vector, second or fourth order tensor, or rotation object.
+        Compose this orientation with other.
 
         Parameters
         ----------
-        other : numpy.ndarray, Rotation, or Orientation
-            Vector, second or fourth order tensor, or rotation object that is rotated.
+        other : Rotation or Orientation
+            Object for composition.
 
         Returns
         -------
-        other_rot : numpy.ndarray or Rotation
-            Rotated vector, second or fourth order tensor, or rotation object.
+        composition : Orientation
+            Compound rotation self*other, i.e. first other then self rotation.
 
         """
-        return self.copy(rotation=Rotation.__matmul__(self,Rotation(other.quaternion))) \
-               if isinstance(other,self.__class__) else \
-               Rotation.__matmul__(self,other)
+        if isinstance(other,Orientation) or isinstance(other,Rotation):
+            return self.copy(rotation=Rotation.__mul__(self,Rotation(other.quaternion)))
+        else:
+            raise TypeError('Use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
 
     @classmethod
@@ -440,7 +441,7 @@ class Orientation(Rotation):
             raise ValueError('Missing crystal symmetry')
 
         o = self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+self.shape,mode='right')
-        return self.copy(rotation=o@Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
+        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
 
 
     @property
@@ -619,7 +620,7 @@ class Orientation(Rotation):
         o,lattice = self.relation_operations(model,return_lattice=True)
         target = Orientation(lattice=lattice)
         o = o.broadcast_to(o.shape+self.shape,mode='right')
-        return self.copy(rotation=o@Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
+        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
                          lattice=lattice,
                          b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
                          c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],

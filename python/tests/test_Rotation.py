@@ -956,7 +956,7 @@ class TestRotation:
 
     def test_rotate_inverse(self):
         R = Rotation.from_random()
-        assert np.allclose(np.eye(3),(~R@R).as_matrix())
+        assert np.allclose(np.eye(3),(~R*R).as_matrix())
 
     @pytest.mark.parametrize('data',[np.random.rand(3),
                                      np.random.rand(3,3),
@@ -1024,7 +1024,7 @@ class TestRotation:
     @pytest.mark.parametrize('item',[Rotation(),np.ones(3),np.ones((3,3)), np.ones((3,3,3,3))])
     def test_apply(self,item):
         r = Rotation.from_random()
-        assert r.apply(item) == r@item if isinstance(item,Rotation) else (r.apply(item) == r@item).all()
+        assert r.apply(item) == r*item if isinstance(item,Rotation) else (r.apply(item) == r@item).all()
 
     @pytest.mark.parametrize('angle',[10,20,30,40,50,60,70,80,90,100,120])
     def test_average(self,angle):

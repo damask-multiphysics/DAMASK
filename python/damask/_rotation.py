@@ -35,6 +35,11 @@ class Rotation:
     - b = Q @ a
     - b = np.dot(Q.as_matrix(),a)
 
+    Compound rotations R1 (first) and R2 (second):
+
+    - R = R2 * R1
+    - R = Rotation.from_matrix(np.dot(R2.as_matrix(),R1.as_matrix())
+
     References
     ----------
     D. Rowenhorst et al., Modelling and Simulation in Materials Science and Engineering 23:083501, 2015
@@ -96,8 +101,8 @@ class Rotation:
         """
         Equal to other.
 
-        Equality is determined taking limited floating point precision into
-        account. See numpy.allclose for details.
+        Equality is determined taking limited floating point precision into account.
+        See numpy.allclose for details.
 
         Parameters
         ----------
@@ -182,14 +187,25 @@ class Rotation:
 
         Parameters
         ----------
-        other : damask.Rotation of shape(self.shape)
-            Rotation for comosition.
+        other : Rotation of shape(self.shape)
+            Rotation for composition.
+
+        Returns
+        -------
+        composition : Rotation
+            Compound rotation self*other, i.e. first other then self rotation.
 
         """
         if isinstance(other,Rotation):
-            return self@other
+            q_m = self.quaternion[...,0:1]
+            p_m = self.quaternion[...,1:]
+            q_o = other.quaternion[...,0:1]
+            p_o = other.quaternion[...,1:]
+            q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
+            p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
+            return Rotation(np.block([q,p]))._standardize()
         else:
-           raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+            raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
     def __imul__(self,other):
         """
@@ -197,8 +213,8 @@ class Rotation:
 
         Parameters
         ----------
-        other : damask.Rotation of shape(self.shape)
-            Rotation for comosition.
+        other : Rotation of shape(self.shape)
+            Rotation for composition.
 
         """
         return self*other
@@ -213,11 +229,16 @@ class Rotation:
         other : damask.Rotation of shape (self.shape)
             Rotation to inverse composition.
 
+        Returns
+        -------
+        composition : Rotation
+            Compound rotation self*(~other), i.e. first inverse of other then self rotation.
+
         """
         if isinstance(other,Rotation):
-            return self@~other
+            return self*~other
         else:
-           raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
+            raise TypeError('Use "R@b", i.e. matmul, to apply rotation "R" to object "b"')
 
     def __itruediv__(self,other):
         """
@@ -225,7 +246,7 @@ class Rotation:
 
         Parameters
         ----------
-        other : damask.Rotation of shape (self.shape)
+        other : Rotation of shape (self.shape)
             Rotation to inverse composition.
 
         """
@@ -234,41 +255,39 @@ class Rotation:
 
     def apply(self,other):
         """
-        Apply rotation to vector, second or fourth order tensor, or rotation object.
+        Apply rotation to Rotation, vector, second order tensor, or fourth order tensor.
 
         Parameters
         ----------
-        other : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3) or Rotation
-            Vector, tensor, or rotation object on which to apply the rotation.
+        other : Rotation or numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
+            Rotation, vector, or tensor on which to apply the rotation.
+
+        Returns
+        -------
+        rotated : Rotation or numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
+            Composed rotation or rotated vector/tensor, i.e. transformed to frame defined by rotation.
 
         """
-        return self@other
+        return self*other if isinstance(other,Rotation) else self@other
 
 
     def __matmul__(self,other):
         """
-        Rotation of vector, second or fourth order tensor, or rotation object.
+        Rotation of vector, second order tensor, or fourth order tensor.
 
         Parameters
         ----------
-        other : numpy.ndarray or Rotation
-            Vector, second or fourth order tensor, or rotation object that is rotated.
+        other : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
+            Vector or tensor on which to apply the rotation.
 
         Returns
         -------
-        other_rot : numpy.ndarray or Rotation
-            Rotated vector, second or fourth order tensor, or rotation object.
+        rotated : numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
+            Rotated vector or tensor, i.e. transformed to frame defined by rotation.
 
         """
         if isinstance(other,Rotation):
-            q_m = self.quaternion[...,0:1]
-            p_m = self.quaternion[...,1:]
-            q_o = other.quaternion[...,0:1]
-            p_o = other.quaternion[...,1:]
-            q = (q_m*q_o - np.einsum('...i,...i',p_m,p_o).reshape(self.shape+(1,)))
-            p = q_m*p_o + q_o*p_m + _P * np.cross(p_m,p_o)
-            return Rotation(np.block([q,p]))._standardize()
-
+            raise TypeError('Use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
         elif isinstance(other,np.ndarray):
             if self.shape + (3,) == other.shape:
                 q_m = self.quaternion[...,0]
@@ -392,7 +411,7 @@ class Rotation:
             Rotation to which the misorientation is computed.
 
         """
-        return other@~self
+        return other*~self
 
 
     ################################################################################################
@@ -915,7 +934,7 @@ class Rotation:
                              np.sqrt(1-u**2)*np.sin(Theta),
                              u, omega])
 
-        return  Rotation.from_axis_angle(p) @ center
+        return  Rotation.from_axis_angle(p) * center
 
 
     @staticmethod
@@ -966,8 +985,8 @@ class Rotation:
         f[::2,:3] *= -1                                                                             # flip half the rotation axes to negative sense
 
         return R_align.broadcast_to(N) \
-             @ Rotation.from_axis_angle(p,normalize=True) \
-             @ Rotation.from_axis_angle(f)
+             * Rotation.from_axis_angle(p,normalize=True) \
+             * Rotation.from_axis_angle(f)
 
 
 ####################################################################################################
