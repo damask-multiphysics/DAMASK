@@ -7,12 +7,20 @@ submodule(constitutive) constitutive_mech
     ELASTICITY_UNDEFINED_ID, &
     ELASTICITY_HOOKE_ID, &
     STIFFNESS_DEGRADATION_UNDEFINED_ID, &
-    STIFFNESS_DEGRADATION_DAMAGE_ID
+    STIFFNESS_DEGRADATION_DAMAGE_ID, &
+    PLASTICITY_UNDEFINED_ID, &
+    PLASTICITY_NONE_ID, &
+    PLASTICITY_ISOTROPIC_ID, &
+    PLASTICITY_PHENOPOWERLAW_ID, &
+    PLASTICITY_KINEHARDENING_ID, &
+    PLASTICITY_DISLOTWIN_ID, &
+    PLASTICITY_DISLOTUNGSTEN_ID, &
+    PLASTICITY_NONLOCAL_ID
   end enum
 
-  integer(kind(ELASTICITY_undefined_ID)), dimension(:),   allocatable :: &
+  integer(kind(ELASTICITY_UNDEFINED_ID)), dimension(:),   allocatable :: &
     phase_elasticity                                                                                !< elasticity of each phase
-  integer(kind(SOURCE_undefined_ID)),     dimension(:,:), allocatable :: &
+  integer(kind(STIFFNESS_DEGRADATION_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
     phase_stiffnessDegradation                                                                      !< active stiffness degradation mechanisms of each phase
 
   type(tTensorContainer), dimension(:), allocatable :: &
@@ -39,6 +47,12 @@ submodule(constitutive) constitutive_mech
     constitutive_mech_partitionedLi0, &
     constitutive_mech_partitionedLp0, &
     constitutive_mech_partitionedS0
+
+
+
+
+  integer(kind(PLASTICITY_undefined_ID)), dimension(:),   allocatable :: &
+    phase_plasticity                                                                                !< plasticity of each phase
 
 
   interface
@@ -319,7 +333,10 @@ contains
 !> @brief Initialize mechanical field related constitutive models
 !> @details Initialize elasticity, plasticity and stiffness degradation models.
 !--------------------------------------------------------------------------------------------------
-module subroutine mech_init
+module subroutine mech_init(phases)
+
+  class(tNode), pointer :: &
+    phases
 
   integer :: &
     el, &
@@ -331,7 +348,6 @@ module subroutine mech_init
     Nconstituents
   class(tNode), pointer :: &
     num_crystallite, &
-    phases, &
     phase, &
     mech, &
     elastic, &
@@ -341,7 +357,6 @@ module subroutine mech_init
 
 !-------------------------------------------------------------------------------------------------
 ! initialize elasticity (hooke)                         !ToDO: Maybe move to elastic submodule along with function homogenizedC?
-  phases => config_material%get('phase')
   allocate(phase_elasticity(phases%length), source = ELASTICITY_undefined_ID)
   allocate(phase_elasticityInstance(phases%length), source = 0)
   allocate(phase_NstiffnessDegradations(phases%length),source=0)
@@ -529,7 +544,7 @@ end function plastic_active
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to
 !> the elastic and intermediate deformation gradients using Hooke's law
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
+subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
                                               Fe, Fi, co, ip, el)
 
   integer, intent(in) :: &
@@ -615,7 +630,7 @@ end subroutine constitutive_plastic_dependentState
 ! ToDo: Discuss whether it makes sense if crystallite handles the configuration conversion, i.e.
 ! Mp in, dLp_dMp out
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
+subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
                                      S, Fi, co, ip, el)
   integer, intent(in) :: &
     co, &                                                                                           !< component-ID of integration point
@@ -1485,7 +1500,7 @@ end subroutine mech_initializeRestorationPoints
 !--------------------------------------------------------------------------------------------------
 !> @brief Wind homog inc forward.
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_mech_windForward(ph,me)
+module subroutine mech_windForward(ph,me)
 
   integer, intent(in) :: ph, me
 
@@ -1499,14 +1514,14 @@ module subroutine constitutive_mech_windForward(ph,me)
 
   plasticState(ph)%partitionedState0(:,me) = plasticState(ph)%state(:,me)
 
-end subroutine constitutive_mech_windForward
+end subroutine mech_windForward
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Forward data after successful increment.
 ! ToDo: Any guessing for the current states possible?
 !--------------------------------------------------------------------------------------------------
-module subroutine constitutive_mech_forward()
+module subroutine mech_forward()
 
   integer :: ph
 
@@ -1521,7 +1536,7 @@ module subroutine constitutive_mech_forward()
     plasticState(ph)%state0 = plasticState(ph)%state
   enddo
 
-end subroutine constitutive_mech_forward
+end subroutine mech_forward
 
 
 
@@ -1585,7 +1600,10 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
 
 
   do so = 1, phase_Nsources(ph)
-    sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%partitionedState0(:,me)
+    damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%partitionedState0(:,me)
+  enddo
+  do so = 1, thermal_Nsources(ph)
+    thermalState(ph)%p(so)%subState0(:,me) = thermalState(ph)%p(so)%partitionedState0(:,me)
   enddo
   subFp0 = constitutive_mech_partitionedFp0(ph)%data(1:3,1:3,me)
   subFi0 = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
@@ -1613,7 +1631,10 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         subFi0 = constitutive_mech_Fi(ph)%data(1:3,1:3,me)
         subState0 = plasticState(ph)%state(:,me)
         do so = 1, phase_Nsources(ph)
-          sourceState(ph)%p(so)%subState0(:,me) = sourceState(ph)%p(so)%state(:,me)
+          damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state(:,me)
+        enddo
+        do so = 1, thermal_Nsources(ph)
+          thermalState(ph)%p(so)%subState0(:,me) = thermalState(ph)%p(so)%state(:,me)
         enddo
       endif
 !--------------------------------------------------------------------------------------------------
@@ -1629,7 +1650,10 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       endif
       plasticState(ph)%state(:,me) = subState0
       do so = 1, phase_Nsources(ph)
-        sourceState(ph)%p(so)%state(:,me) = sourceState(ph)%p(so)%subState0(:,me)
+        damageState(ph)%p(so)%state(:,me) = damageState(ph)%p(so)%subState0(:,me)
+      enddo
+      do so = 1, thermal_Nsources(ph)
+        thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%subState0(:,me)
       enddo
 
       todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)
@@ -1643,7 +1667,8 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       constitutive_mech_Fe(ph)%data(1:3,1:3,me) = matmul(subF,math_inv33(matmul(constitutive_mech_Fi(ph)%data(1:3,1:3,me), &
                                                                                 constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
-      converged_ = converged_ .and. .not. integrateSourceState(subStep * dt,co,ip,el)
+      converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,ip,el)
+      converged_ = converged_ .and. .not. integrateThermalState(subStep * dt,co,ip,el)
     endif
 
   enddo cutbackLooping
@@ -1678,8 +1703,7 @@ module subroutine mech_restore(ip,el,includeL)
     constitutive_mech_Fi(ph)%data(1:3,1:3,me)   = constitutive_mech_partitionedFi0(ph)%data(1:3,1:3,me)
     constitutive_mech_S(ph)%data(1:3,1:3,me)    = constitutive_mech_partitionedS0(ph)%data(1:3,1:3,me)
 
-    plasticState    (material_phaseAt(co,el))%state(          :,material_phasememberAt(co,ip,el)) = &
-    plasticState    (material_phaseAt(co,el))%partitionedState0(:,material_phasememberAt(co,ip,el))
+    plasticState(ph)%state(:,me) = plasticState(ph)%partitionedState0(:,me)
   enddo
 
 end subroutine mech_restore
@@ -1846,31 +1870,37 @@ module subroutine mech_restartRead(groupHandle,ph)
 end subroutine mech_restartRead
 
 
-! getter for non-mech (e.g. thermal)
-module function constitutive_mech_getS(co,ip,el) result(S)
+!----------------------------------------------------------------------------------------------
+!< @brief Get first Piola-Kichhoff stress (for use by non-mech physics)
+!----------------------------------------------------------------------------------------------
+module function mech_S(ph,me) result(S)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: ph,me
   real(pReal), dimension(3,3) :: S
 
 
-  S = constitutive_mech_S(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  S = constitutive_mech_S(ph)%data(1:3,1:3,me)
 
-end function constitutive_mech_getS
-
-
-! getter for non-mech (e.g. thermal)
-module function constitutive_mech_getLp(co,ip,el) result(Lp)
-
-  integer, intent(in) :: co, ip, el
-  real(pReal), dimension(3,3) :: Lp
+end function mech_S
 
 
-  Lp = constitutive_mech_Lp(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+!----------------------------------------------------------------------------------------------
+!< @brief Get plastic velocity gradient (for use by non-mech physics)
+!----------------------------------------------------------------------------------------------
+module function mech_L_p(ph,me) result(L_p)
 
-end function constitutive_mech_getLp
+  integer, intent(in) :: ph,me
+  real(pReal), dimension(3,3) :: L_p
 
 
-! getter for non-mech (e.g. thermal)
+  L_p = constitutive_mech_Lp(ph)%data(1:3,1:3,me)
+
+end function mech_L_p
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief Get deformation gradient (for use by homogenization)
+!----------------------------------------------------------------------------------------------
 module function constitutive_mech_getF(co,ip,el) result(F)
 
   integer, intent(in) :: co, ip, el
@@ -1882,20 +1912,24 @@ module function constitutive_mech_getF(co,ip,el) result(F)
 end function constitutive_mech_getF
 
 
-! getter for non-mech (e.g. thermal)
-module function constitutive_mech_getF_e(co,ip,el) result(F_e)
+!----------------------------------------------------------------------------------------------
+!< @brief Get elastic deformation gradient (for use by non-mech physics)
+!----------------------------------------------------------------------------------------------
+module function mech_F_e(ph,me) result(F_e)
 
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: ph,me
   real(pReal), dimension(3,3) :: F_e
 
 
-  F_e = constitutive_mech_Fe(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el))
+  F_e = constitutive_mech_Fe(ph)%data(1:3,1:3,me)
 
-end function constitutive_mech_getF_e
+end function mech_F_e
 
 
 
-! getter for non-mech (e.g. thermal)
+!----------------------------------------------------------------------------------------------
+!< @brief Get second Piola-Kichhoff stress (for use by homogenization)
+!----------------------------------------------------------------------------------------------
 module function constitutive_mech_getP(co,ip,el) result(P)
 
   integer, intent(in) :: co, ip, el
@@ -1917,6 +1951,86 @@ module subroutine constitutive_mech_setF(F,co,ip,el)
   constitutive_mech_F(material_phaseAt(co,el))%data(1:3,1:3,material_phaseMemberAt(co,ip,el)) = F
 
 end subroutine constitutive_mech_setF
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the velocity gradient
+! ToDo: MD: S is Mi?
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_LiAndItsTangents(Li, dLi_dS, dLi_dFi, &
+                                         S, Fi, co, ip, el)
+
+  integer, intent(in) :: &
+    co, &                                                                                          !< component-ID of integration point
+    ip, &                                                                                           !< integration point
+    el                                                                                              !< element
+  real(pReal),   intent(in),  dimension(3,3) :: &
+    S                                                                                               !< 2nd Piola-Kirchhoff stress
+  real(pReal),   intent(in),  dimension(3,3) :: &
+    Fi                                                                                              !< intermediate deformation gradient
+  real(pReal),   intent(out), dimension(3,3) :: &
+    Li                                                                                              !< intermediate velocity gradient
+  real(pReal),   intent(out), dimension(3,3,3,3) :: &
+    dLi_dS, &                                                                                       !< derivative of Li with respect to S
+    dLi_dFi
+
+  real(pReal), dimension(3,3) :: &
+    my_Li, &                                                                                        !< intermediate velocity gradient
+    FiInv, &
+    temp_33
+  real(pReal), dimension(3,3,3,3) :: &
+    my_dLi_dS
+  real(pReal) :: &
+    detFi
+  integer :: &
+    k, i, j, &
+    instance, of
+
+  Li = 0.0_pReal
+  dLi_dS  = 0.0_pReal
+  dLi_dFi = 0.0_pReal
+
+  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
+    case (PLASTICITY_isotropic_ID) plasticityType
+      of = material_phasememberAt(co,ip,el)
+      instance = phase_plasticityInstance(material_phaseAt(co,el))
+      call plastic_isotropic_LiAndItsTangent(my_Li, my_dLi_dS, S ,instance,of)
+    case default plasticityType
+      my_Li = 0.0_pReal
+      my_dLi_dS = 0.0_pReal
+  end select plasticityType
+
+  Li = Li + my_Li
+  dLi_dS = dLi_dS + my_dLi_dS
+
+  KinematicsLoop: do k = 1, phase_Nkinematics(material_phaseAt(co,el))
+    kinematicsType: select case (phase_kinematics(k,material_phaseAt(co,el)))
+      case (KINEMATICS_cleavage_opening_ID) kinematicsType
+        call kinematics_cleavage_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
+      case (KINEMATICS_slipplane_opening_ID) kinematicsType
+        call kinematics_slipplane_opening_LiAndItsTangent(my_Li, my_dLi_dS, S, co, ip, el)
+      case (KINEMATICS_thermal_expansion_ID) kinematicsType
+        call kinematics_thermal_expansion_LiAndItsTangent(my_Li, my_dLi_dS, co, ip, el)
+      case default kinematicsType
+        my_Li = 0.0_pReal
+        my_dLi_dS = 0.0_pReal
+    end select kinematicsType
+    Li = Li + my_Li
+    dLi_dS = dLi_dS + my_dLi_dS
+  enddo KinematicsLoop
+
+  FiInv = math_inv33(Fi)
+  detFi = math_det33(Fi)
+  Li = matmul(matmul(Fi,Li),FiInv)*detFi                                                            !< push forward to intermediate configuration
+  temp_33 = matmul(FiInv,Li)
+
+  do i = 1,3; do j = 1,3
+    dLi_dS(1:3,1:3,i,j)  = matmul(matmul(Fi,dLi_dS(1:3,1:3,i,j)),FiInv)*detFi
+    dLi_dFi(1:3,1:3,i,j) = dLi_dFi(1:3,1:3,i,j) + Li*FiInv(j,i)
+    dLi_dFi(1:3,i,1:3,j) = dLi_dFi(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
+  enddo; enddo
+
+end subroutine constitutive_LiAndItsTangents
 
 end submodule constitutive_mech
 
