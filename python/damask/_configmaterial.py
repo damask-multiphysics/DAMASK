@@ -104,7 +104,7 @@ class ConfigMaterial(Config):
 
 
     @staticmethod
-    def load_from_Dream3D(fname,base_group,grain_data,phase_name,phase_id):
+    def load_from_Dream3D(fname,base_group,data_group,ori_data,phase_id,phase_name):
         r"""
         Load material data from DREAM3D file.
 
@@ -116,35 +116,66 @@ class ConfigMaterial(Config):
             path to the DREAM3D file.
         base_group : str
             Name of the group (folder) below 'DataContainers',
-            for example 'SyntheticVolumeDataContainer/Grain Data'.
-        grain_data : str
-            Name of the dataset having grain based data for conversion,
-            for example 'EulerAngles'.
-        phase_name : list 
-            List with name of the phases.
+            for example 'SyntheticVolumeDataContainer'.
+        data_group : str
+            Name of the group (folder) having relevant data for conversion,
+            for example 'Grain Data' or 'CellData'.
+        ori_data : str
+            Name of the dataset having orientation data (working with Euler Angles in dream3D file),
+            For example 'EulerAngles'.
         phase_id : str
             Name of the dataset containing phase IDs for each grain,
             for example 'Phases'.
+        phase_name : list 
+            List with name of the phases.
 
         Examples
         --------
+        for grain based data with single phase
         >>> import damask
         >>> import damask.ConfigMaterial as cm
-        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer/Grain Data',\
-                                  'EulerAngles',['Ferrite'],'Phases') 
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data'\
+                                  'EulerAngles','Phases',['Ferrite']) 
+
+        for point based data with single phase
+        >>> import damask
+        >>> import damask.ConfigMaterial as cm
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData'\
+                                  'EulerAngles','Phases',['Ferrite']) 
+
+        for grain based data with dual phase
+        >>> import damask
+        >>> import damask.ConfigMaterial as cm
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'Grain Data'\
+                                  'EulerAngles','Phases',['Ferrite','Martensite']) 
+
+        for point based data with dual phase
+        >>> import damask
+        >>> import damask.ConfigMaterial as cm
+        >>> cm.load_from_Dream3D('20grains16x16x16.dream3D','SyntheticVolumeDataContainer', 'CellData'\
+                                  'EulerAngles','Phases',['Ferrite','Martensite']) 
 
         """
         root_dir = 'DataContainers'
         hdf = h5py.File(fname,'r')
+        cells  = hdf[path.join(root_dir,base_group,'_SIMPL_GEOMETRY/DIMENSIONS')][()]
 
         config_info = ConfigMaterial()   # empty yaml dictionary
 
-        orientation_path = path.join(root_dir,base_group,grain_data)
-        grain_orientations = np.array(hdf[orientation_path])[1:]
+        orientation_path = path.join(root_dir,base_group,data_group,ori_data) 
+        if hdf[orientation_path].attrs['TupleDimensions'].shape == (3,):
+           grain_orientations = np.array(hdf[orientation_path]).reshape(cells.prod(),3,order='F')
+        else:
+           grain_orientations = np.array(hdf[orientation_path])[1:]
+           
         grain_quats = Rotation.from_Euler_angles(grain_orientations).as_quaternion() 
 
-        phase_path  = path.join(root_dir,base_group,phase_id)
-        grain_phase = np.array(hdf[phase_path])[1:]
+        phase_path  = path.join(root_dir,base_group,data_group,phase_id)
+        if hdf[phase_path].attrs['TupleDimensions'].shape == (3,):
+           grain_phase = np.array(hdf[phase_path]).reshape(cells.prod(),order='F')
+        else:
+           grain_phase = np.array(hdf[phase_path])[1:]
+
         grain_phase = grain_phase.reshape(len(grain_phase),)
         phase_name_list = [phase_name[i - 1] for i in grain_phase]
 
