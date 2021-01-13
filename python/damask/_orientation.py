@@ -199,7 +199,7 @@ class Orientation(Rotation):
 
 
     def __copy__(self,**kwargs):
-        """Copy."""
+        """Create deep copy."""
         return self.__class__(rotation=kwargs['rotation'] if 'rotation' in kwargs else self.quaternion,
                               lattice =kwargs['lattice']  if 'lattice'  in kwargs else self.lattice
                                                                                     if self.lattice is not None else self.family,
@@ -225,30 +225,42 @@ class Orientation(Rotation):
             Orientation to check for equality.
 
         """
-        return  super().__eq__(other) \
-            and hasattr(other, 'family')     and self.family     == other.family \
-            and hasattr(other, 'lattice')    and self.lattice    == other.lattice \
-            and hasattr(other, 'parameters') and self.parameters == other.parameters
+        matching_type = all([hasattr(other,attr) and getattr(self,attr) == getattr(other,attr)
+                             for attr in ['family','lattice','parameters']])
+        return np.logical_and(super().__eq__(other),matching_type)
 
-
-    def __matmul__(self,other):
+    def __ne__(self,other):
         """
-        Rotation of vector, second or fourth order tensor, or rotation object.
+        Not equal to other.
 
         Parameters
         ----------
-        other : numpy.ndarray, Rotation, or Orientation
-            Vector, second or fourth order tensor, or rotation object that is rotated.
+        other : Orientation
+            Orientation to check for equality.
+
+        """
+        return np.logical_not(self==other)
+
+
+    def __mul__(self,other):
+        """
+        Compose this orientation with other.
+
+        Parameters
+        ----------
+        other : Rotation or Orientation
+            Object for composition.
 
         Returns
         -------
-        other_rot : numpy.ndarray or Rotation
-            Rotated vector, second or fourth order tensor, or rotation object.
+        composition : Orientation
+            Compound rotation self*other, i.e. first other then self rotation.
 
         """
-        return self.copy(rotation=Rotation.__matmul__(self,Rotation(other.quaternion))) \
-               if isinstance(other,self.__class__) else \
-               Rotation.__matmul__(self,other)
+        if isinstance(other,Orientation) or isinstance(other,Rotation):
+            return self.copy(rotation=Rotation.__mul__(self,Rotation(other.quaternion)))
+        else:
+            raise TypeError('Use "O@b", i.e. matmul, to apply Orientation "O" to object "b"')
 
 
     @classmethod
@@ -429,7 +441,7 @@ class Orientation(Rotation):
             raise ValueError('Missing crystal symmetry')
 
         o = self.symmetry_operations.broadcast_to(self.symmetry_operations.shape+self.shape,mode='right')
-        return self.copy(rotation=o@Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
+        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'))
 
 
     @property
@@ -608,7 +620,7 @@ class Orientation(Rotation):
         o,lattice = self.relation_operations(model,return_lattice=True)
         target = Orientation(lattice=lattice)
         o = o.broadcast_to(o.shape+self.shape,mode='right')
-        return self.copy(rotation=o@Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
+        return self.copy(rotation=o*Rotation(self.quaternion).broadcast_to(o.shape,mode='left'),
                          lattice=lattice,
                          b = self.b if target.ratio['b'] is None else self.a*target.ratio['b'],
                          c = self.c if target.ratio['c'] is None else self.a*target.ratio['c'],
