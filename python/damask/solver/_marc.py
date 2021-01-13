@@ -54,7 +54,7 @@ class Marc:
                    optimization = '',
                   ):
 
-        usersub = environment.root_dir/'src/DAMASK_marc'
+        usersub = environment.options['DAMASK_ROOT']/'src/DAMASK_marc'
         usersub = usersub.parent/(usersub.name + ('.f90' if compile else '.marc'))
         if not usersub.is_file():
             raise FileNotFoundError(f'subroutine ({"source" if compile else "binary"}) "{usersub}" not found')

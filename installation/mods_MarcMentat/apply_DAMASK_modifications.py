@@ -11,7 +11,7 @@ msc_version = float(damask.environment.options['MSC_VERSION'])
 if int(msc_version) == msc_version:
     msc_version = int(msc_version)
 msc_root     = Path(damask.environment.options['MSC_ROOT'])
-damask_root  = damask.environment.root_dir
+damask_root  = damask.environment.options['DAMASK_ROOT']
 
 parser = argparse.ArgumentParser(
      description='Apply DAMASK modification to MSC.Marc/Mentat',

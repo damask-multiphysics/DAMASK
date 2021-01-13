@@ -180,7 +180,7 @@ class Test:
 
   def fileInRoot(self,dir,file):
     """Path to a file in the root directory of DAMASK."""
-    return str(damask.environment.root_dir/dir/file)
+    return str(damask.environment.options['DAMASK_ROOT']/dir/file)
 
 
   def fileInReference(self,file):

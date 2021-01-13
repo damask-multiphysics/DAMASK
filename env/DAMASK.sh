@@ -87,10 +87,12 @@ if [ ! -z "$PS1" ]; then
 fi
 
 export OMP_NUM_THREADS
+export MSC_ROOT
+export MSC_VERSION
+export DAMASK_ROOT
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 
 for var in BASE STAT SOLVER BRANCH; do
   unset "${var}"
 done
 unset "ENV_ROOT"
-unset "DAMASK_ROOT"
