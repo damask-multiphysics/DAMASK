@@ -763,24 +763,19 @@ class Grid:
         if fill is None: fill = np.nanmax(self.material) + 1
         dtype = float if np.isnan(fill) or int(fill) != fill or self.material.dtype==np.float else int
 
-        Eulers = R.as_Euler_angles(degrees=True)
-        material_in = self.material.copy()
-
+        material = self.material
         # These rotations are always applied in the reference coordinate system, i.e. (z,x,z) not (z,x',z'')
         # see https://www.cs.utexas.edu/~theshark/courses/cs354/lectures/cs354-14.pdf
-        for angle,axes in zip(Eulers[::-1], [(0,1),(1,2),(0,1)]):
-            material_out = ndimage.rotate(material_in,angle,axes,order=0,
-                                                prefilter=False,output=dtype,cval=fill)
-            if np.prod(material_in.shape) == np.prod(material_out.shape):
-                # avoid scipy interpolation errors for rotations close to multiples of 90°
-                material_in = np.rot90(material_in,k=np.rint(angle/90.).astype(int),axes=axes)
-            else:
-                material_in = material_out
+        for angle,axes in zip(R.as_Euler_angles(degrees=True)[::-1], [(0,1),(1,2),(0,1)]):
+            material_temp = ndimage.rotate(material,angle,axes,order=0,prefilter=False,output=dtype,cval=fill)
+            # avoid scipy interpolation errors for rotations close to multiples of 90°
+            material = material_temp if np.prod(material_temp.shape) != np.prod(material.shape) else \
+                       np.rot90(material,k=np.rint(angle/90.).astype(int),axes=axes)
 
-        origin = self.origin-(np.asarray(material_in.shape)-self.cells)*.5 * self.size/self.cells
+        origin = self.origin-(np.asarray(material.shape)-self.cells)*.5 * self.size/self.cells
 
-        return Grid(material = material_in,
-                    size     = self.size/self.cells*np.asarray(material_in.shape),
+        return Grid(material = material,
+                    size     = self.size/self.cells*np.asarray(material.shape),
                     origin   = origin,
                     comments = self.comments+[util.execution_stamp('Grid','rotate')],
                    )
