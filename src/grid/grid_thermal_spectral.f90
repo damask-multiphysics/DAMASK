@@ -256,7 +256,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscObject :: dummy
   PetscErrorCode :: ierr
   integer :: i, j, k, cell
-  real(pReal)   :: Tdot, dTdot_dT
+  real(pReal)   :: Tdot
 
   T_current = x_scal 
 !--------------------------------------------------------------------------------------------------
@@ -278,7 +278,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    call thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T_current(i,j,k), 1, cell)
+    call thermal_conduction_getSource(Tdot, T_current(i,j,k), 1, cell)
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + Tdot) &
                             + thermal_conduction_getMassDensity (1,cell)* &
                               thermal_conduction_getSpecificHeat(1,cell)*(T_lastInc(i,j,k)  - &

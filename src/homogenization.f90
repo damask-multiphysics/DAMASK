@@ -16,6 +16,7 @@ module homogenization
   use thermal_conduction
   use damage_none
   use damage_nonlocal
+  use HDF5_utilities
   use results
 
   implicit none
@@ -26,6 +27,8 @@ module homogenization
 
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
+  real(pReal),   dimension(:),         allocatable, public :: &
+    homogenization_T
   real(pReal),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
@@ -55,6 +58,9 @@ module homogenization
         num_homog                                                                                   !< pointer to mechanical homogenization numerics data
     end subroutine mech_init
 
+    module subroutine thermal_init
+    end subroutine thermal_init
+
     module subroutine mech_partition(subF,ip,el)
       real(pReal), intent(in), dimension(3,3) :: &
         subF
@@ -63,7 +69,15 @@ module homogenization
         el                                                                                          !< element number
     end subroutine mech_partition
 
-    module subroutine mech_homogenize(ip,el)
+    module subroutine thermal_partition(T,ip,el)
+      real(pReal), intent(in) :: T
+      integer,     intent(in) :: &
+        ip, &                                                                                           !< integration point
+        el                                                                                              !< element number
+    end subroutine thermal_partition
+
+    module subroutine mech_homogenize(dt,ip,el)
+     real(pReal), intent(in) :: dt
      integer, intent(in) :: &
        ip, &                                                                                        !< integration point
        el                                                                                           !< element number
@@ -91,7 +105,9 @@ module homogenization
     homogenization_init, &
     materialpoint_stressAndItsTangent, &
     homogenization_forward, &
-    homogenization_results
+    homogenization_results, &
+    homogenization_restartRead, &
+    homogenization_restartWrite
 
 contains
 
@@ -122,9 +138,10 @@ subroutine homogenization_init
 
 
   call mech_init(num_homog)
+  call thermal_init()
 
-  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init
-  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init
+  if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init(homogenization_T)
+  if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init(homogenization_T)
 
   if (any(damage_type == DAMAGE_none_ID))      call damage_none_init
   if (any(damage_type == DAMAGE_nonlocal_ID))  call damage_nonlocal_init
@@ -168,10 +185,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       converged = .false.                                                                           ! pretend failed step ...
       subStep = 1.0_pReal/num%subStepSizeHomog                                                      ! ... larger then the requested calculation
 
-      if (homogState(ho)%sizeState > 0) &
-        homogState(ho)%subState0(:,me) = homogState(ho)%State0(:,me)
-      if (damageState(ho)%sizeState > 0) &
-        damageState(ho)%subState0(:,me) = damageState(ho)%State0(:,me)
+      if (homogState(ho)%sizeState > 0)   homogState(ho)%subState0(:,me)  = homogState(ho)%State0(:,me)
+      if (damageState_h(ho)%sizeState > 0)  damageState_h(ho)%subState0(:,me) = damageState_h(ho)%State0(:,me)
 
       cutBackLooping: do while (.not. terminallyIll .and. subStep  > num%subStepMinHomog)
 
@@ -184,10 +199,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
             ! wind forward grain starting point
             call constitutive_windForward(ip,el)
 
-            if(homogState(ho)%sizeState > 0) &
-              homogState(ho)%subState0(:,me) = homogState(ho)%State(:,me)
-            if(damageState(ho)%sizeState > 0) &
-              damageState(ho)%subState0(:,me) = damageState(ho)%State(:,me)
+            if(homogState(ho)%sizeState > 0)  homogState(ho)%subState0(:,me) = homogState(ho)%State(:,me)
+            if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%subState0(:,me) = damageState_h(ho)%State(:,me)
 
           endif steppingNeeded
         elseif ( (myNgrains == 1 .and. subStep <= 1.0 ) .or. &                                   ! single grain already tried internal subStepping in crystallite
@@ -201,10 +214,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
           call constitutive_restore(ip,el,subStep < 1.0_pReal)
 
-          if(homogState(ho)%sizeState > 0) &
-            homogState(ho)%State(:,me) = homogState(ho)%subState0(:,me)
-          if(damageState(ho)%sizeState > 0) &
-            damageState(ho)%State(:,me) = damageState(ho)%subState0(:,me)
+          if(homogState(ho)%sizeState > 0)  homogState(ho)%State(:,me) = homogState(ho)%subState0(:,me)
+          if(damageState_h(ho)%sizeState > 0) damageState_h(ho)%State(:,me) = damageState_h(ho)%subState0(:,me)
         endif
 
         if (subStep > num%subStepMinHomog) doneAndHappy = [.false.,.true.]
@@ -257,7 +268,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         do co = 1, myNgrains
           call crystallite_orientations(co,ip,el)
         enddo
-        call mech_homogenize(ip,el)
+        call mech_homogenize(dt,ip,el)
       enddo IpLooping3
     enddo elementLooping3
     !$OMP END PARALLEL DO
@@ -315,9 +326,64 @@ subroutine homogenization_forward
 
   do ho = 1, size(material_name_homogenization)
     homogState (ho)%state0 = homogState (ho)%state
-    damageState(ho)%state0 = damageState(ho)%state
+    damageState_h(ho)%state0 = damageState_h(ho)%state
   enddo
 
 end subroutine homogenization_forward
+
+
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+subroutine homogenization_restartWrite(fileHandle)
+
+  integer(HID_T), intent(in) :: fileHandle
+
+  integer(HID_T), dimension(2) :: groupHandle
+  integer :: ho
+
+
+  groupHandle(1) = HDF5_addGroup(fileHandle,'homogenization')
+
+  do ho = 1, size(material_name_homogenization)
+
+    groupHandle(2) = HDF5_addGroup(groupHandle(1),material_name_homogenization(ho))
+
+    call HDF5_read(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+
+    call HDF5_closeGroup(groupHandle(2))
+
+  enddo
+
+  call HDF5_closeGroup(groupHandle(1))
+
+end subroutine homogenization_restartWrite
+
+
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+subroutine homogenization_restartRead(fileHandle)
+
+  integer(HID_T), intent(in) :: fileHandle
+
+  integer(HID_T), dimension(2) :: groupHandle
+  integer :: ho
+
+
+  groupHandle(1) = HDF5_openGroup(fileHandle,'homogenization')
+
+  do ho = 1, size(material_name_homogenization)
+
+    groupHandle(2) = HDF5_openGroup(groupHandle(1),material_name_homogenization(ho))
+
+    call HDF5_write(groupHandle(2),homogState(ho)%state,'omega') ! ToDo: should be done by mech
+
+    call HDF5_closeGroup(groupHandle(2))
+
+  enddo
+
+  call HDF5_closeGroup(groupHandle(1))
+
+end subroutine homogenization_restartRead
+
 
 end module homogenization
