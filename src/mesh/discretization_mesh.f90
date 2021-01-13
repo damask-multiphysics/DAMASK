@@ -82,7 +82,7 @@ subroutine discretization_mesh_init(restart)
   class(tNode), pointer :: &
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
-  
+
 
   print'(/,a)',   ' <<<+-  discretization_mesh init  -+>>>'
 
@@ -114,11 +114,10 @@ subroutine discretization_mesh_init(restart)
 
   if (worldrank == 0) then
     call DMClone(globalMesh,geomMesh,ierr)
-    CHKERRQ(ierr)
   else
     call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
-    CHKERRQ(ierr)
   endif
+  CHKERRQ(ierr)
 
   allocate(mesh_boundaries(mesh_Nboundaries), source = 0)
   call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,ierr)
@@ -151,7 +150,7 @@ subroutine discretization_mesh_init(restart)
     call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),ierr)
     CHKERRQ(ierr)
   end do
-  materialAt(:) = materialAt(:) + 1
+  materialAt = materialAt + 1
 
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
   if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')

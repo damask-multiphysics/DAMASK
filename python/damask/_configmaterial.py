@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 
 from . import Config
@@ -13,11 +11,10 @@ class ConfigMaterial(Config):
                  'homogenization': {},
                  'phase': {}}
 
-    def __init__(self,d={}):
+    def __init__(self,d=_defaults):
         """Initialize object with default dictionary keys."""
         super().__init__(d)
-        for k,v in self._defaults.items():
-            if k not in self: self[k] = v
+
 
     def save(self,fname='material.yaml',**kwargs):
         """
@@ -204,7 +201,7 @@ class ConfigMaterial(Config):
             Limit renaming to selected constituents.
 
         """
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         for i,m in enumerate(dup['material']):
             if ID and i not in ID: continue
             for c in m['constituents']:
@@ -228,7 +225,7 @@ class ConfigMaterial(Config):
             Limit renaming to selected homogenization IDs.
 
         """
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         for i,m in enumerate(dup['material']):
             if ID and i not in ID: continue
             try:
@@ -289,7 +286,7 @@ class ConfigMaterial(Config):
         c = [{} for _ in range(length)] if constituents is None else \
             [{'constituents':u} for u in ConfigMaterial._constituents(**constituents)]
 
-        if len(c) == 1: c = [copy.deepcopy(c[0]) for _ in range(length)]
+        if len(c) == 1: c = [c[0] for _ in range(length)]
 
         if length != 1 and length != len(c):
             raise ValueError('Cannot add entries of different length')
@@ -301,7 +298,7 @@ class ConfigMaterial(Config):
             else:
                 for i in range(len(c)):
                     c[i][k] = v
-        dup = copy.deepcopy(self)
+        dup = self.copy()
         dup['material'] = dup['material'] + c if 'material' in dup else c
 
         return dup

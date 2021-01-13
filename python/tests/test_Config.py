@@ -22,6 +22,10 @@ class TestConfig:
         with open(tmp_path/'config.yaml') as f:
             assert Config.load(f) == config
 
+    def test_add_remove(self):
+        config = Config()
+        assert config.add({'hello':'world'}).delete('hello') == config
+
     def test_repr(self,tmp_path):
         config = Config()
         config['A'] = 1
