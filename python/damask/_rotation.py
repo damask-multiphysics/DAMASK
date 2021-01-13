@@ -253,24 +253,6 @@ class Rotation:
         return self/other
 
 
-    def apply(self,other):
-        """
-        Apply rotation to Rotation, vector, second order tensor, or fourth order tensor.
-
-        Parameters
-        ----------
-        other : Rotation or numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
-            Rotation, vector, or tensor on which to apply the rotation.
-
-        Returns
-        -------
-        rotated : Rotation or numpy.ndarray of shape (...,3), (...,3,3), or (...,3,3,3,3)
-            Composed rotation or rotated vector/tensor, i.e. transformed to frame defined by rotation.
-
-        """
-        return self*other if isinstance(other,Rotation) else self@other
-
-
     def __matmul__(self,other):
         """
         Rotation of vector, second order tensor, or fourth order tensor.
@@ -286,9 +268,7 @@ class Rotation:
             Rotated vector or tensor, i.e. transformed to frame defined by rotation.
 
         """
-        if isinstance(other,Rotation):
-            raise TypeError('Use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
-        elif isinstance(other,np.ndarray):
+        if isinstance(other,np.ndarray):
             if self.shape + (3,) == other.shape:
                 q_m = self.quaternion[...,0]
                 p_m = self.quaternion[...,1:]
@@ -308,8 +288,12 @@ class Rotation:
                 return np.einsum('...im,...jn,...ko,...lp,...mnop',R,R,R,R,other)
             else:
                 raise ValueError('Can only rotate vectors, 2nd order tensors, and 4th order tensors')
+        elif isinstance(other,Rotation):
+            raise TypeError('Use "R1*R2", i.e. multiplication, to compose rotations "R1" and "R2"')
         else:
             raise TypeError(f'Cannot rotate {type(other)}')
+
+    apply = __matmul__
 
 
     def _standardize(self):
