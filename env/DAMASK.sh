@@ -38,7 +38,7 @@ PATH=${DAMASK_ROOT}/bin:$PATH
 SOLVER=$(type -p DAMASK_grid || true 2>/dev/null)
 [ "x$SOLVER" == "x" ] && SOLVER=$(blink 'Not found!')
 
-[ "x$DAMASK_NUM_THREADS" == "x" ] && DAMASK_NUM_THREADS=1
+[ "x$OMP_NUM_THREADS" == "x" ] && OMP_NUM_THREADS=1
 
 # currently, there is no information that unlimited stack size causes problems
 # still, http://software.intel.com/en-us/forums/topic/501500 suggest to fix it
@@ -66,7 +66,7 @@ if [ ! -z "$PS1" ]; then
   echo -n "MSC.Marc/Mentat    "
   [ -d $MSC_ROOT ] && echo $MSC_ROOT || blink $MSC_ROOT
   echo
-  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
+  echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
   echo -n "heap  size         "
    [[ "$(ulimit -d)" == "unlimited" ]] \
    && echo "unlimited" \
@@ -86,7 +86,7 @@ if [ ! -z "$PS1" ]; then
   echo
 fi
 
-export DAMASK_NUM_THREADS
+export OMP_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/python:$PYTHONPATH
 
 for var in BASE STAT SOLVER BRANCH; do

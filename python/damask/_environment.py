@@ -26,10 +26,7 @@ class Environment:
     @property
     def options(self):
         options = {}
-        for item in ['DAMASK_NUM_THREADS',
-                     'MSC_ROOT',
-                     'MSC_VERSION',
-                     ]:
+        for item in ['MSC_ROOT', 'MSC_VERSION']:
             options[item] = os.environ[item] if item in os.environ else None
 
         return options

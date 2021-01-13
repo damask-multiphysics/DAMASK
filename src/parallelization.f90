@@ -32,7 +32,7 @@ contains
 subroutine parallelization_init
 
   integer :: err, typeSize
-!$ integer :: got_env, DAMASK_NUM_THREADS, threadLevel
+!$ integer :: got_env, OMP_NUM_THREADS, threadLevel
 !$ character(len=6) NumThreadsString
 #ifdef PETSc
   PetscErrorCode :: petsc_err
@@ -87,19 +87,19 @@ call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,err)
     open(OUTPUT_UNIT,file='/dev/null',status='replace')                                             ! close() alone will leave some temp files in cwd
   endif
 
-!$ call get_environment_variable(name='DAMASK_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
+!$ call get_environment_variable(name='OMP_NUM_THREADS',value=NumThreadsString,STATUS=got_env)
 !$ if(got_env /= 0) then
-!$   print*, 'Could not determine value of $DAMASK_NUM_THREADS'
-!$   DAMASK_NUM_THREADS = 1_pI32
+!$   print*, 'Could not determine value of $OMP_NUM_THREADS'
+!$   OMP_NUM_THREADS = 1_pI32
 !$ else
-!$   read(NumThreadsString,'(i6)') DAMASK_NUM_THREADS
-!$   if (DAMASK_NUM_THREADS < 1_pI32) then
-!$     print*, 'Invalid DAMASK_NUM_THREADS: '//trim(NumThreadsString)
-!$     DAMASK_NUM_THREADS = 1_pI32
+!$   read(NumThreadsString,'(i6)') OMP_NUM_THREADS
+!$   if (OMP_NUM_THREADS < 1_pI32) then
+!$     print*, 'Invalid OMP_NUM_THREADS: '//trim(NumThreadsString)
+!$     OMP_NUM_THREADS = 1_pI32
 !$   endif
 !$ endif
-!$ print'(a,i2)',   ' DAMASK_NUM_THREADS: ',DAMASK_NUM_THREADS
-!$ call omp_set_num_threads(DAMASK_NUM_THREADS)
+!$ print'(a,i2)',   ' OMP_NUM_THREADS: ',OMP_NUM_THREADS
+!$ call omp_set_num_threads(OMP_NUM_THREADS)
 
 end subroutine parallelization_init
 

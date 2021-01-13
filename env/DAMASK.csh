@@ -10,8 +10,8 @@ source $ENV_ROOT/CONFIG
 set path = ($DAMASK_ROOT/bin $path)
 
 set SOLVER=`which DAMASK_grid`
-if ( "x$DAMASK_NUM_THREADS" == "x" ) then
-  set DAMASK_NUM_THREADS=1
+if ( "x$OMP_NUM_THREADS" == "x" ) then
+  set OMP_NUM_THREADS=1
 endif
 
 # currently, there is no information that unlimited stack size causes problems
@@ -38,13 +38,13 @@ if ( $?prompt ) then
     echo "MSC.Marc/Mentat    $MSC_ROOT"
   endif
   echo
-  echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
+  echo "Multithreading     OMP_NUM_THREADS=$OMP_NUM_THREADS"
   echo `limit datasize`
   echo `limit stacksize`
   echo
 endif
 
-setenv DAMASK_NUM_THREADS $DAMASK_NUM_THREADS
+setenv OMP_NUM_THREADS $OMP_NUM_THREADS
 if ( ! $?PYTHONPATH ) then
   setenv PYTHONPATH $DAMASK_ROOT/python
 else

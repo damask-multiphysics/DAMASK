@@ -1134,8 +1134,7 @@ class Result:
 
         """
         chunk_size = 1024**2//8
-        num_threads = damask.environment.options['DAMASK_NUM_THREADS']
-        pool = mp.Pool(int(num_threads) if num_threads is not None else None)
+        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',1)))
         lock = mp.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
