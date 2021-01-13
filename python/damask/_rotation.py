@@ -70,17 +70,9 @@ class Rotation:
 
 
     def __repr__(self):
-        """Represent rotation as unit quaternion, rotation matrix, and Bunge-Euler angles."""
-        if self.shape == () and self == Rotation():
-           return 'Rotation()'
-        else:
-            return f'Quaternions {self.shape}:\n'+str(self.quaternion) \
-                   if self.quaternion.shape != (4,) else \
-                   '\n'.join([
-                   'Quaternion: (real={:.3f}, imag=<{:+.3f}, {:+.3f}, {:+.3f}>)'.format(*(self.quaternion)),
-                   'Matrix:\n{}'.format(np.round(self.as_matrix(),8)),
-                   'Bunge Eulers / deg: ({:3.2f}, {:3.2f}, {:3.2f})'.format(*self.as_Euler_angles(degrees=True)),
-                    ])
+        """Represent rotation as unit quaternion(s)."""
+        return f'Quaternion{" " if self.quaternion.shape == (4,) else "s of shape "+str(self.quaternion.shape)+chr(10)}'\
+               + str(self.quaternion)
 
 
     def __copy__(self,**kwargs):
@@ -150,35 +142,31 @@ class Rotation:
         return dup
 
 
-    def __pow__(self,pwr):
+    def __pow__(self,exp):
         """
-        Raise quaternion to power.
-
-        Equivalent to performing the rotation 'pwr' times.
+        Perform the rotation 'exp' times.
 
         Parameters
         ----------
-        pwr : float
-            Power to raise quaternion to.
+        exp : float
+            Exponent.
 
         """
         phi = np.arccos(self.quaternion[...,0:1])
         p = self.quaternion[...,1:]/np.linalg.norm(self.quaternion[...,1:],axis=-1,keepdims=True)
-        return self.copy(rotation=Rotation(np.block([np.cos(pwr*phi),np.sin(pwr*phi)*p]))._standardize())
+        return self.copy(rotation=Rotation(np.block([np.cos(exp*phi),np.sin(exp*phi)*p]))._standardize())
 
-    def __ipow__(self,pwr):
+    def __ipow__(self,exp):
         """
-        Raise quaternion to power (in-place).
-
-        Equivalent to performing the rotation 'pwr' times.
+        Perform the rotation 'exp' times (in-place).
 
         Parameters
         ----------
-        pwr : float
-            Power to raise quaternion to.
+        exp : float
+            Exponent.
 
         """
-        return self**pwr
+        return self**exp
 
 
     def __mul__(self,other):
