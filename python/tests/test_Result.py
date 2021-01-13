@@ -21,7 +21,7 @@ def default(tmp_path,ref_path):
     fname = '12grains6x7x8_tensionY.hdf5'
     shutil.copy(ref_path/fname,tmp_path)
     f = Result(tmp_path/fname)
-    f.pick('times',20.0)
+    f.view('times',20.0)
     return f
 
 @pytest.fixture
@@ -43,56 +43,56 @@ class TestResult:
         print(default)
 
 
-    def test_pick_all(self,default):
-        default.pick('increments',True)
+    def test_view_all(self,default):
+        default.view('increments',True)
         a = default.get_dataset_location('F')
-        default.pick('increments','*')
+        default.view('increments','*')
         b = default.get_dataset_location('F')
-        default.pick('increments',default.incs_in_range(0,np.iinfo(int).max))
+        default.view('increments',default.incs_in_range(0,np.iinfo(int).max))
         c = default.get_dataset_location('F')
 
-        default.pick('times',True)
+        default.view('times',True)
         d = default.get_dataset_location('F')
-        default.pick('times','*')
+        default.view('times','*')
         e = default.get_dataset_location('F')
-        default.pick('times',default.times_in_range(0.0,np.inf))
+        default.view('times',default.times_in_range(0.0,np.inf))
         f = default.get_dataset_location('F')
         assert a == b == c == d == e ==f
 
     @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
-    def test_pick_none(self,default,what):
-        default.pick(what,False)
+    def test_view_none(self,default,what):
+        default.view(what,False)
         a = default.get_dataset_location('F')
-        default.pick(what,[])
+        default.view(what,[])
         b = default.get_dataset_location('F')
 
         assert a == b == []
 
     @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
-    def test_pick_more(self,default,what):
-        default.pick(what,False)
-        default.pick_more(what,'*')
+    def test_view_more(self,default,what):
+        default.view(what,False)
+        default.view_more(what,'*')
         a = default.get_dataset_location('F')
 
-        default.pick(what,True)
+        default.view(what,True)
         b = default.get_dataset_location('F')
 
         assert a == b
 
     @pytest.mark.parametrize('what',['increments','times','phases'])                                # ToDo: discuss homogenizations
-    def test_pick_less(self,default,what):
-        default.pick(what,True)
-        default.pick_less(what,'*')
+    def test_view_less(self,default,what):
+        default.view(what,True)
+        default.view_less(what,'*')
         a = default.get_dataset_location('F')
 
-        default.pick(what,False)
+        default.view(what,False)
         b = default.get_dataset_location('F')
 
         assert a == b == []
 
-    def test_pick_invalid(self,default):
+    def test_view_invalid(self,default):
         with pytest.raises(AttributeError):
-            default.pick('invalid',True)
+            default.view('invalid',True)
 
     def test_add_absolute(self,default):
         default.add_absolute('F_e')
@@ -307,7 +307,7 @@ class TestResult:
 
     @pytest.mark.parametrize('overwrite',['off','on'])
     def test_add_overwrite(self,default,overwrite):
-        default.pick('times',default.times_in_range(0,np.inf)[-1])
+        default.view('times',default.times_in_range(0,np.inf)[-1])
 
         default.add_stress_Cauchy()
         loc = default.get_dataset_location('sigma')
