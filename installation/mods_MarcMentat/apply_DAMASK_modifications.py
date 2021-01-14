@@ -5,13 +5,9 @@ import glob
 import argparse
 from pathlib import Path
 
-import damask
-
-msc_version = float(damask.environment.options['MSC_VERSION'])
-if int(msc_version) == msc_version:
-    msc_version = int(msc_version)
-msc_root     = Path(damask.environment.options['MSC_ROOT'])
-damask_root  = damask.environment.options['DAMASK_ROOT']
+msc_version = os.environ['MSC_VERSION']
+msc_root    = Path(os.environ['MSC_ROOT'])
+damask_root = Path(os.environ['DAMASK_ROOT'])
 
 parser = argparse.ArgumentParser(
      description='Apply DAMASK modification to MSC.Marc/Mentat',
@@ -24,7 +20,7 @@ def copy_and_replace(in_file,dst):
     with open(in_file) as f:
         content = f.read()
     content = content.replace('%INSTALLDIR%',str(msc_root))
-    content = content.replace('%VERSION%',str(msc_version))
+    content = content.replace('%VERSION%', msc_version)
     content = content.replace('%EDITOR%', parser.parse_args().editor)
     with open(dst/Path(in_file).name,'w') as f:
         f.write(content)
@@ -53,8 +49,8 @@ for in_file in glob.glob(str(src/'job_run.ms')):
 
 print('compiling Mentat menu binaries...')
 
-executable = str(msc_root/f'mentat{msc_version}/bin/mentat')
-menu_file  = str(msc_root/f'mentat{msc_version}/menus/linux64/main.msb')
+executable = msc_root/f'mentat{msc_version}/bin/mentat'
+menu_file  = msc_root/f'mentat{msc_version}/menus/linux64/main.msb'
 os.system(f'xvfb-run {executable} -compile {menu_file}')
 
 

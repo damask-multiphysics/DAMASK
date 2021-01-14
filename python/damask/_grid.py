@@ -10,7 +10,6 @@ import h5py
 from scipy import ndimage, spatial
 from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
-from . import environment
 from . import VTK
 from . import util
 from . import grid_filters

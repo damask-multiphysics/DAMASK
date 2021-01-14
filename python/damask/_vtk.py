@@ -10,7 +10,6 @@ from vtk.util.numpy_support import numpy_to_vtkIdTypeArray as np_to_vtkIdTypeArr
 from vtk.util.numpy_support import vtk_to_numpy            as vtk_to_np
 
 from . import util
-from . import environment
 from . import Table
 
 
@@ -348,6 +347,23 @@ class VTK:
 
         See http://compilatrix.com/article/vtk-1 for further ideas.
         """
+        def screen_size():
+            try:
+                import wx
+                _ = wx.App(False)                                                                       # noqa
+                width, height = wx.GetDisplaySize()
+            except ImportError:
+                try:
+                    import tkinter
+                    tk = tkinter.Tk()
+                    width  = tk.winfo_screenwidth()
+                    height = tk.winfo_screenheight()
+                    tk.destroy()
+                except Exception as e:
+                    width  = 1024
+                    height =  768
+
+            return (width,height)
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(self.vtk_data)
         actor = vtk.vtkActor()
@@ -361,7 +377,7 @@ class VTK:
         ren.AddActor(actor)
         ren.SetBackground(0.2,0.2,0.2)
 
-        window.SetSize(environment.screen_size[0],environment.screen_size[1])
+        window.SetSize(screen_size[0],screen_size[1])
 
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(window)

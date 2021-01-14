@@ -5,6 +5,7 @@ import logging
 import logging.config
 from collections.abc import Iterable
 from optparse import OptionParser
+from pathlib import Path
 
 import numpy as np
 
@@ -180,7 +181,7 @@ class Test:
 
   def fileInRoot(self,dir,file):
     """Path to a file in the root directory of DAMASK."""
-    return str(damask.environment.options['DAMASK_ROOT']/dir/file)
+    return str(Path(os.environ['DAMASK_ROOT'])/dir/file)
 
 
   def fileInReference(self,file):
