@@ -170,8 +170,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   logical, dimension(2) :: &
     doneAndHappy
 
-
-  !$OMP PARALLEL DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
+  !$OMP PARALLEL
+  !$OMP DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
     myNgrains = homogenization_Nconstituents(ho)
@@ -255,10 +255,10 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       enddo cutBackLooping
     enddo
   enddo
-  !$OMP END PARALLEL DO
+  !$OMP END DO
 
   if (.not. terminallyIll ) then
-    !$OMP PARALLEL DO PRIVATE(ho,ph,ce)
+    !$OMP DO PRIVATE(ho,ph,ce)
     do el = FEsolving_execElem(1),FEsolving_execElem(2)
       if (terminallyIll) continue
       ho = material_homogenizationAt(el)
@@ -276,9 +276,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         enddo
       enddo
     enddo
-    !$OMP END PARALLEL DO
+    !$OMP END DO
 
-    !$OMP PARALLEL DO PRIVATE(ho)
+    !$OMP DO PRIVATE(ho)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
       ho = material_homogenizationAt(el)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
@@ -288,10 +288,11 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         call mech_homogenize(dt,ip,el)
       enddo IpLooping3
     enddo elementLooping3
-    !$OMP END PARALLEL DO
+    !$OMP END DO
   else
     print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
   endif
+  !$OMP END PARALLEL
 
 end subroutine materialpoint_stressAndItsTangent
 
