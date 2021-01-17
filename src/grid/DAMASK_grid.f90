@@ -453,19 +453,19 @@ program DAMASK_grid
 
         call MPI_Allreduce(interface_SIGUSR1,signal,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
-        call interface_setSIGUSR1(.false.)
         if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
           print'(1/,a)', ' ... writing results to file ......................................'
           flush(IO_STDOUT)
           call CPFEM_results(totalIncsCounter,time)
         endif
+        if(signal) call interface_setSIGUSR1(.false.)
         call MPI_Allreduce(interface_SIGUSR2,signal,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
-        call interface_setSIGUSR2(.false.)
         if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
           call mech_restartWrite
           call CPFEM_restartWrite
         endif
+        if(signal) call interface_setSIGUSR2(.false.)
         call MPI_Allreduce(interface_SIGTERM,signal,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
         if (ierr /= 0) error stop 'MPI error'
         if (signal) exit loadCaseLooping
