@@ -127,13 +127,11 @@ end subroutine thermal_init
 !----------------------------------------------------------------------------------------------
 !< @brief calculates thermal dissipation rate
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_getRate(TDot, T, ip, el)
+module subroutine constitutive_thermal_getRate(TDot, ip, el)
 
   integer, intent(in) :: &
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
-  real(pReal), intent(in) :: &
-    T                                                                                             !< plastic velocity gradient
   real(pReal), intent(out) :: &
     TDot
 

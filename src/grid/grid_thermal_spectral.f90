@@ -278,7 +278,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   ce = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     ce = ce + 1
-    call thermal_conduction_getSource(Tdot, T_current(i,j,k), 1, ce)
+    call thermal_conduction_getSource(Tdot, 1,ce)
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + Tdot) &
                             + thermal_conduction_getMassDensity (1,ce)* &
                               thermal_conduction_getSpecificHeat(1,ce)*(T_lastInc(i,j,k)  - &
