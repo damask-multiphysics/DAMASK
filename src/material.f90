@@ -51,11 +51,15 @@ module material
     thermal_initialT                                                                                !< initial temperature per each homogenization
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
-    material_homogenizationAt                                                                       !< homogenization ID of each element
+    material_homogenizationAt, &                                                                    !< homogenization ID of each element
+    material_homogenizationAt2, &                                                                   !< per cell
+    material_homogenizationMemberAt2                                                                !< cell
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (ip,elem)
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
-    material_phaseAt                                                                                !< phase ID of each element
+    material_phaseAt, &                                                                             !< phase ID of each element
+    material_phaseAt2, &                                                                            !< per constituent,cell
+    material_phaseMemberAt2                                                                         !< per constituent, cell
   integer, dimension(:,:,:), allocatable, public, protected :: &                                    ! (constituent,IP,elem)
     material_phaseMemberAt                                                                          !< position of the element within its phase instance
 
@@ -215,8 +219,8 @@ subroutine material_parseMaterial
   real(pReal) :: &
     frac
   integer :: &
-    e, i, c, &
-    h
+    el, ip, co, &
+    h, ce
 
   materials       => config_material%get('material')
   phases          => config_material%get('phase')
@@ -241,29 +245,41 @@ subroutine material_parseMaterial
   allocate(material_phaseAt(homogenization_maxNconstituents,discretization_Nelems),source=0)
   allocate(material_phaseMemberAt(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems),source=0)
 
+
+  allocate(material_homogenizationAt2(discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_homogenizationMemberAt2(discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_phaseAt2(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
+  allocate(material_phaseMemberAt2(homogenization_maxNconstituents,discretization_nIPs*discretization_Nelems),source=0)
+
   allocate(material_orientation0(homogenization_maxNconstituents,discretization_nIPs,discretization_Nelems))
 
-  do e = 1, discretization_Nelems
-    material     => materials%get(discretization_materialAt(e))
+  do el = 1, discretization_Nelems
+    material     => materials%get(discretization_materialAt(el))
     constituents => material%get('constituents')
 
-    material_homogenizationAt(e) = homogenizations%getIndex(material%get_asString('homogenization'))
-    do i = 1, discretization_nIPs
-      counterHomogenization(material_homogenizationAt(e)) = counterHomogenization(material_homogenizationAt(e)) + 1
-      material_homogenizationMemberAt(i,e)                = counterHomogenization(material_homogenizationAt(e))
+    material_homogenizationAt(el) = homogenizations%getIndex(material%get_asString('homogenization'))
+    do ip = 1, discretization_nIPs
+      ce = (el-1)*discretization_nIPs + ip
+      counterHomogenization(material_homogenizationAt(el)) = counterHomogenization(material_homogenizationAt(el)) + 1
+      material_homogenizationMemberAt(ip,el)                = counterHomogenization(material_homogenizationAt(el))
+      material_homogenizationAt2(ce)       = material_homogenizationAt(el)
+      material_homogenizationMemberAt2(ce) = material_homogenizationMemberAt(ip,el)
     enddo
 
     frac = 0.0_pReal
-    do c = 1, constituents%length
-      constituent => constituents%get(c)
+    do co = 1, constituents%length
+      constituent => constituents%get(co)
       frac = frac + constituent%get_asFloat('fraction')
 
-      material_phaseAt(c,e) = phases%getIndex(constituent%get_asString('phase'))
-      do i = 1, discretization_nIPs
-        counterPhase(material_phaseAt(c,e)) = counterPhase(material_phaseAt(c,e)) + 1
-        material_phaseMemberAt(c,i,e)       = counterPhase(material_phaseAt(c,e))
+      material_phaseAt(co,el) = phases%getIndex(constituent%get_asString('phase'))
+      do ip = 1, discretization_nIPs
+        ce = (el-1)*discretization_nIPs + ip
+        counterPhase(material_phaseAt(co,el)) = counterPhase(material_phaseAt(co,el)) + 1
+        material_phaseMemberAt(co,ip,el)       = counterPhase(material_phaseAt(co,el))
 
-        call material_orientation0(c,i,e)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4)) ! should be done in crystallite
+        material_phaseAt2(co,ce)       = material_phaseAt(co,el)
+        material_phaseMemberAt2(co,ce) = material_phaseMemberAt(co,ip,el)
+        call material_orientation0(co,ip,el)%fromQuaternion(constituent%get_asFloats('O',requiredSize=4)) ! should be done in crystallite
       enddo
 
     enddo
