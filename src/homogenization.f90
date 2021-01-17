@@ -75,6 +75,10 @@ module homogenization
       integer,     intent(in) :: ce
     end subroutine thermal_partition
 
+    module subroutine thermal_homogenize(ip,el)
+      integer, intent(in) :: ip,el
+    end subroutine thermal_homogenize
+
     module subroutine mech_homogenize(dt,ip,el)
      real(pReal), intent(in) :: dt
      integer, intent(in) :: &
@@ -272,6 +276,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
               print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
             terminallyIll = .true.                                                                  ! ...and kills all others
          endif
+         call thermal_homogenize(ip,el)
         enddo
       enddo
     enddo

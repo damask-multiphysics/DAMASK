@@ -21,7 +21,7 @@ end subroutine thermal_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Partition T onto the individual constituents.
+!> @brief Partition temperature onto the individual constituents.
 !--------------------------------------------------------------------------------------------------
 module subroutine thermal_partition(T,ce)
 
@@ -35,6 +35,18 @@ module subroutine thermal_partition(T,ce)
   enddo
 
 end subroutine thermal_partition
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Homogenize temperature rates
+!--------------------------------------------------------------------------------------------------
+module subroutine thermal_homogenize(ip,el)
+
+  integer, intent(in) :: ip,el
+
+  call constitutive_thermal_getRate(homogenization_dot_T((el-1)*discretization_nIPs+ip), ip,el)
+
+end subroutine thermal_homogenize
 
 
 end submodule homogenization_thermal
