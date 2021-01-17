@@ -15,7 +15,7 @@ module subroutine thermal_init()
   print'(/,a)',   ' <<<+-  homogenization_thermal init  -+>>>'
 
   allocate(homogenization_T(discretization_nIPs*discretization_Nelems))
-
+  allocate(homogenization_dot_T(discretization_nIPs*discretization_Nelems))
 
 end subroutine thermal_init
 
