@@ -258,11 +258,13 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   !$OMP END PARALLEL DO
 
   if (.not. terminallyIll ) then
-    !$OMP PARALLEL DO PRIVATE(ho,ph)
+    !$OMP PARALLEL DO PRIVATE(ho,ph,ce)
     do el = FEsolving_execElem(1),FEsolving_execElem(2)
       if (terminallyIll) continue
       ho = material_homogenizationAt(el)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+        ce = (el-1)*discretization_nIPs + ip
+        call thermal_partition(homogenization_T(ce),ip,el)
         do co = 1, homogenization_Nconstituents(ho)
           ph = material_phaseAt(co,el)
           call constitutive_thermal_initializeRestorationPoints(ph,material_phaseMemberAt(co,ip,el))

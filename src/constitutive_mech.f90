@@ -599,20 +599,18 @@ module subroutine constitutive_plastic_dependentState(co, ip, el)
     el                                                                                              !< element
 
   integer :: &
-    ho, &                                                                                           !< homogenization
-    tme, &                                                                                          !< thermal member position
+    ph, &
     instance, me
 
 
-  ho  = material_homogenizationAt(el)
-  tme = material_homogenizationMemberAt(ip,el)
-  me  = material_phasememberAt(co,ip,el)
-  instance = phase_plasticityInstance(material_phaseAt(co,el))
+  ph = material_phaseAt(co,el)
+  me = material_phasememberAt(co,ip,el)
+  instance = phase_plasticityInstance(ph)
 
   plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_dependentState(temperature(ho)%p(tme),instance,me)
+      call plastic_dislotwin_dependentState(thermal_T(ph,me),instance,me)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
       call plastic_dislotungsten_dependentState(instance,me)
@@ -650,17 +648,13 @@ subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
   real(pReal), dimension(3,3) :: &
     Mp                                                                                              !< Mandel stress work conjugate with Lp
   integer :: &
-    ho, &                                                                                           !< homogenization
-    tme                                                                                             !< thermal member position
-  integer :: &
-    i, j, instance, me
+    i, j, instance, me, ph
 
-  ho = material_homogenizationAt(el)
-  tme = material_homogenizationMemberAt(ip,el)
 
   Mp = matmul(matmul(transpose(Fi),Fi),S)
   me = material_phasememberAt(co,ip,el)
-  instance = phase_plasticityInstance(material_phaseAt(co,el))
+  ph = material_phaseAt(co,el)
+  instance = phase_plasticityInstance(ph)
 
   plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
 
@@ -678,13 +672,13 @@ subroutine constitutive_plastic_LpAndItsTangents(Lp, dLp_dS, dLp_dFi, &
       call plastic_kinehardening_LpAndItsTangent(Lp,dLp_dMp,Mp,instance,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, temperature(ho)%p(tme),instance,me,ip,el)
+      call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me,ip,el)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,me)
+      call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp,temperature(ho)%p(tme),instance,me)
+      call plastic_dislotungsten_LpAndItsTangent(Lp,dLp_dMp,Mp, thermal_T(ph,me),instance,me)
 
   end select plasticityType
 
@@ -700,52 +694,49 @@ end subroutine constitutive_plastic_LpAndItsTangents
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function mech_collectDotState(subdt,co,ip,el,ph,of) result(broken)
+function mech_collectDotState(subdt,co,ip,el,ph,me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
+    co, &                                                                                           !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
     ph, &
-    of
+    me
   real(pReal),  intent(in) :: &
     subdt                                                                                           !< timestep
   real(pReal),              dimension(3,3) :: &
     Mp
   integer :: &
-    ho, &                                                                                           !< homogenization
-    tme, &                                                                                          !< thermal member position
     instance
   logical :: broken
 
-  ho = material_homogenizationAt(el)
-  tme = material_homogenizationMemberAt(ip,el)
+
   instance = phase_plasticityInstance(ph)
 
-  Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,of)),&
-                     constitutive_mech_Fi(ph)%data(1:3,1:3,of)),constitutive_mech_S(ph)%data(1:3,1:3,of))
+  Mp = matmul(matmul(transpose(constitutive_mech_Fi(ph)%data(1:3,1:3,me)),&
+                     constitutive_mech_Fi(ph)%data(1:3,1:3,me)),constitutive_mech_S(ph)%data(1:3,1:3,me))
 
   plasticityType: select case (phase_plasticity(ph))
 
     case (PLASTICITY_ISOTROPIC_ID) plasticityType
-      call plastic_isotropic_dotState(Mp,instance,of)
+      call plastic_isotropic_dotState(Mp,instance,me)
 
     case (PLASTICITY_PHENOPOWERLAW_ID) plasticityType
-      call plastic_phenopowerlaw_dotState(Mp,instance,of)
+      call plastic_phenopowerlaw_dotState(Mp,instance,me)
 
     case (PLASTICITY_KINEHARDENING_ID) plasticityType
-      call plastic_kinehardening_dotState(Mp,instance,of)
+      call plastic_kinehardening_dotState(Mp,instance,me)
 
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-      call plastic_dislotwin_dotState(Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_dislotwin_dotState(Mp,thermal_T(ph,me),instance,me)
 
     case (PLASTICITY_DISLOTUNGSTEN_ID) plasticityType
-      call plastic_disloTungsten_dotState(Mp,temperature(ho)%p(tme),instance,of)
+      call plastic_disloTungsten_dotState(Mp,thermal_T(ph,me),instance,me)
 
     case (PLASTICITY_NONLOCAL_ID) plasticityType
-      call plastic_nonlocal_dotState(Mp,temperature(ho)%p(tme),subdt,instance,of,ip,el)
+      call plastic_nonlocal_dotState(Mp,thermal_T(ph,me),subdt,instance,me,ip,el)
   end select plasticityType
-  broken = any(IEEE_is_NaN(plasticState(ph)%dotState(:,of)))
+  broken = any(IEEE_is_NaN(plasticState(ph)%dotState(:,me)))
 
 
 end function mech_collectDotState
