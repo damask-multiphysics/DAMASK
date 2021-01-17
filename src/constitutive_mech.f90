@@ -1633,9 +1633,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
         do so = 1, phase_Nsources(ph)
           damageState(ph)%p(so)%subState0(:,me) = damageState(ph)%p(so)%state(:,me)
         enddo
-        do so = 1, thermal_Nsources(ph)
-          thermalState(ph)%p(so)%subState0(:,me) = thermalState(ph)%p(so)%state(:,me)
-        enddo
       endif
 !--------------------------------------------------------------------------------------------------
 !  cut back (reduced time and restore)
@@ -1652,9 +1649,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
       do so = 1, phase_Nsources(ph)
         damageState(ph)%p(so)%state(:,me) = damageState(ph)%p(so)%subState0(:,me)
       enddo
-      do so = 1, thermal_Nsources(ph)
-        thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%subState0(:,me)
-      enddo
 
       todo = subStep > num%subStepMinCryst                          ! still on track or already done (beyond repair)
     endif
@@ -1668,7 +1662,6 @@ module function crystallite_stress(dt,co,ip,el) result(converged_)
                                                                                 constitutive_mech_Fp(ph)%data(1:3,1:3,me))))
       converged_ = .not. integrateState(subF0,subF,subFp0,subFi0,subState0(1:sizeDotState),subStep * dt,co,ip,el)
       converged_ = converged_ .and. .not. integrateDamageState(subStep * dt,co,ip,el)
-      converged_ = converged_ .and. .not. integrateThermalState(subStep * dt,co,ip,el)
     endif
 
   enddo cutbackLooping

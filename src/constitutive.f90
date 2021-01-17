@@ -120,18 +120,14 @@ module constitutive
       integer, intent(in) :: ph, me
     end subroutine mech_initializeRestorationPoints
 
-    module subroutine thermal_initializeRestorationPoints(ph,me)
+    module subroutine constitutive_thermal_initializeRestorationPoints(ph,me)
       integer, intent(in) :: ph, me
-    end subroutine thermal_initializeRestorationPoints
+    end subroutine constitutive_thermal_initializeRestorationPoints
 
 
     module subroutine mech_windForward(ph,me)
       integer, intent(in) :: ph, me
     end subroutine mech_windForward
-
-    module subroutine thermal_windForward(ph,me)
-      integer, intent(in) :: ph, me
-    end subroutine thermal_windForward
 
 
     module subroutine mech_forward()
@@ -145,10 +141,6 @@ module constitutive
       integer, intent(in) :: ip, el
       logical, intent(in) :: includeL
     end subroutine mech_restore
-
-    module subroutine thermal_restore(ip,el)
-      integer, intent(in) :: ip, el
-    end subroutine thermal_restore
 
 
     module function constitutive_mech_dPdF(dt,co,ip,el) result(dPdF)
@@ -214,14 +206,13 @@ module constitutive
 
 ! == cleaned:end ===================================================================================
 
-    module function integrateThermalState(Delta_t,co,ip,el) result(broken)
+    module function thermal_stress(Delta_t,ph,me) result(converged_)
+
       real(pReal), intent(in) :: Delta_t
-      integer, intent(in) :: &
-        el, &                                                                                            !< element index in element loop
-        ip, &                                                                                            !< integration point index in ip loop
-        co                                                                                               !< grain index in grain loop
-      logical :: broken
-    end function integrateThermalState
+      integer, intent(in) :: ph, me
+      logical :: converged_
+
+    end function thermal_stress
 
     module function integrateDamageState(dt,co,ip,el) result(broken)
       real(pReal), intent(in) :: dt
@@ -394,18 +385,19 @@ module constitutive
     converged, &
     crystallite_init, &
     crystallite_stress, &
+    thermal_stress, &
     constitutive_mech_dPdF, &
     crystallite_orientations, &
     crystallite_push33ToRef, &
     constitutive_restartWrite, &
     constitutive_restartRead, &
-    integrateThermalState, &
     integrateDamageState, &
     constitutive_thermal_setT, &
     constitutive_mech_getP, &
     constitutive_mech_setF, &
     constitutive_mech_getF, &
     constitutive_initializeRestorationPoints, &
+    constitutive_thermal_initializeRestorationPoints, &
     constitutive_windForward, &
     KINEMATICS_UNDEFINED_ID ,&
     KINEMATICS_CLEAVAGE_OPENING_ID, &
@@ -553,7 +545,6 @@ subroutine constitutive_restore(ip,el,includeL)
   enddo
 
   call mech_restore(ip,el,includeL)
-  call thermal_restore(ip,el)
 
 end subroutine constitutive_restore
 
@@ -720,7 +711,6 @@ subroutine constitutive_initializeRestorationPoints(ip,el)
     me = material_phaseMemberAt(co,ip,el)
 
     call mech_initializeRestorationPoints(ph,me)
-    call thermal_initializeRestorationPoints(ph,me)
 
     do so = 1, size(damageState(ph)%p)
       damageState(ph)%p(so)%partitionedState0(:,me) = damageState(ph)%p(so)%state0(:,me)
@@ -750,7 +740,6 @@ subroutine constitutive_windForward(ip,el)
     me = material_phaseMemberAt(co,ip,el)
 
     call mech_windForward(ph,me)
-    call thermal_windForward(ph,me)
 
     do so = 1, phase_Nsources(material_phaseAt(co,el))
       damageState(ph)%p(so)%partitionedState0(:,me) = damageState(ph)%p(so)%state(:,me)

@@ -86,7 +86,7 @@ module subroutine thermal_init(phases)
 
     Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
 
-    allocate(current(ph)%T(Nconstituents))
+    allocate(current(ph)%T(Nconstituents),source=300.0_pReal)
     phase => phases%get(ph)
     if(phase%contains('thermal')) then
       thermal => phase%get('thermal')
@@ -197,29 +197,36 @@ function constitutive_thermal_collectDotState(ph,me) result(broken)
 end function constitutive_thermal_collectDotState
 
 
+module function thermal_stress(Delta_t,ph,me) result(converged_)
+
+  real(pReal), intent(in) :: Delta_t
+  integer, intent(in) :: ph, me
+  logical :: converged_
+
+  integer :: so
+
+
+  do so = 1, thermal_Nsources(ph)
+    thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%subState0(:,me)
+  enddo
+  converged_ = .not. integrateThermalState(Delta_t,ph,me)
+
+end function thermal_stress
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-module function integrateThermalState(Delta_t,co,ip,el) result(broken)
+function integrateThermalState(Delta_t, ph,me) result(broken)
 
   real(pReal), intent(in) :: Delta_t
-  integer, intent(in) :: &
-    el, &                                                                                            !< element index in element loop
-    ip, &                                                                                            !< integration point index in ip loop
-    co                                                                                               !< grain index in grain loop
+  integer, intent(in) :: ph, me
   logical :: &
     broken
 
   integer :: &
-    ph, &
-    me, &
     so, &
     sizeDotState
-
-
-  ph = material_phaseAt(co,el)
-  me = material_phaseMemberAt(co,ip,el)
 
   broken = constitutive_thermal_collectDotState(ph,me)
   if(broken) return
@@ -233,7 +240,7 @@ module function integrateThermalState(Delta_t,co,ip,el) result(broken)
 end function integrateThermalState
 
 
-module subroutine thermal_initializeRestorationPoints(ph,me)
+module subroutine constitutive_thermal_initializeRestorationPoints(ph,me)
 
   integer, intent(in) :: ph, me
 
@@ -244,22 +251,8 @@ module subroutine thermal_initializeRestorationPoints(ph,me)
     thermalState(ph)%p(so)%partitionedState0(:,me) = thermalState(ph)%p(so)%state0(:,me)
   enddo
 
-end subroutine thermal_initializeRestorationPoints
+end subroutine constitutive_thermal_initializeRestorationPoints
 
-
-
-module subroutine thermal_windForward(ph,me)
-
-  integer, intent(in) :: ph, me
-
-  integer :: so
-
-
-  do so = 1, size(thermalState(ph)%p)
-    thermalState(ph)%p(so)%partitionedState0(:,me) = thermalState(ph)%p(so)%state(:,me)
-  enddo
-
-end subroutine thermal_windForward
 
 
 module subroutine thermal_forward()
@@ -274,26 +267,6 @@ module subroutine thermal_forward()
   enddo
 
 end subroutine thermal_forward
-
-
-module subroutine thermal_restore(ip,el)
-
-  integer, intent(in) :: ip, el
-
-  integer :: co, ph, me, so
-
-
-  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    ph = material_phaseAt(co,el)
-    me = material_phaseMemberAt(co,ip,el)
-
-    do so = 1, size(thermalState(ph)%p)
-      thermalState(ph)%p(so)%state(:,me) = thermalState(ph)%p(so)%partitionedState0(:,me)
-    enddo
-
-  enddo
-
-end subroutine thermal_restore
 
 
 !----------------------------------------------------------------------------------------------
