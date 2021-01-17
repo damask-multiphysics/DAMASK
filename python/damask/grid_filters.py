@@ -234,7 +234,7 @@ def cellsSizeOrigin_coordinates0_point(coordinates0,ordered=True):
     origin[_np.where(cells==1)] = 0.0
 
     if cells.prod() != len(coordinates0):
-        raise ValueError('Data count {len(coordinates0)} does not match cells {cells}.')
+        raise ValueError(f'Data count {len(coordinates0)} does not match cells {cells}.')
 
     start = origin + delta*.5
     end   = origin - delta*.5 + size
@@ -387,7 +387,7 @@ def cellsSizeOrigin_coordinates0_node(coordinates0,ordered=True):
     origin    = mincorner
 
     if (cells+1).prod() != len(coordinates0):
-        raise ValueError('Data count {len(coordinates0)} does not match cells {cells}.')
+        raise ValueError(f'Data count {len(coordinates0)} does not match cells {cells}.')
 
     atol = _np.max(size)*5e-2
     if not (_np.allclose(coords[0],_np.linspace(mincorner[0],maxcorner[0],cells[0]+1),atol=atol) and \

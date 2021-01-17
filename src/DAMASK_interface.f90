@@ -10,7 +10,7 @@
 !>           and working directory.
 !--------------------------------------------------------------------------------------------------
 #define PETSC_MAJOR 3
-#define PETSC_MINOR_MIN 10
+#define PETSC_MINOR_MIN 12
 #define PETSC_MINOR_MAX 14
 
 module DAMASK_interface
@@ -51,12 +51,6 @@ subroutine DAMASK_interface_init
 #include <petsc/finclude/petscsys.h>
 
 #if PETSC_VERSION_MAJOR!=3 || PETSC_VERSION_MINOR<PETSC_MINOR_MIN || PETSC_VERSION_MINOR>PETSC_MINOR_MAX
-===================================================================================================
---  WRONG PETSc VERSION --- WRONG PETSc VERSION --- WRONG PETSc VERSION ---  WRONG PETSc VERSION --
-===================================================================================================
-============   THIS VERSION OF DAMASK REQUIRES A DIFFERENT PETSc VERSION   ========================
-===============   THIS VERSION OF DAMASK REQUIRES A DIFFERENT PETSc VERSION   =====================
-==================   THIS VERSION OF DAMASK REQUIRES A DIFFERENT PETSc VERSION   ==================
 ===================================================================================================
 --  WRONG PETSc VERSION --- WRONG PETSc VERSION --- WRONG PETSc VERSION ---  WRONG PETSc VERSION --
 ===================================================================================================
@@ -392,7 +386,7 @@ end function makeRelativePath
 subroutine catchSIGTERM(signal) bind(C)
 
   integer(C_INT), value :: signal
-  interface_SIGTERM = .true.
+  call interface_setSIGTERM(.true.)
 
   print'(a,i0,a)', ' received signal ',signal, ', set SIGTERM=TRUE'
 
@@ -417,7 +411,7 @@ end subroutine interface_setSIGTERM
 subroutine catchSIGUSR1(signal) bind(C)
 
   integer(C_INT), value :: signal
-  interface_SIGUSR1 = .true.
+  call interface_setSIGUSR1(.true.)
 
   print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR1=TRUE'
 
@@ -442,7 +436,7 @@ end subroutine interface_setSIGUSR1
 subroutine catchSIGUSR2(signal) bind(C)
 
   integer(C_INT), value :: signal
-  interface_SIGUSR2 = .true.
+  call interface_setSIGUSR2(.true.)
 
   print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR2=TRUE'
 

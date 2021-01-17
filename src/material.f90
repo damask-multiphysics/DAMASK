@@ -17,34 +17,9 @@ module material
   private
 
   enum, bind(c); enumerator :: &
-    ELASTICITY_UNDEFINED_ID, &
-    ELASTICITY_HOOKE_ID, &
-    PLASTICITY_UNDEFINED_ID, &
-    PLASTICITY_NONE_ID, &
-    PLASTICITY_ISOTROPIC_ID, &
-    PLASTICITY_PHENOPOWERLAW_ID, &
-    PLASTICITY_KINEHARDENING_ID, &
-    PLASTICITY_DISLOTWIN_ID, &
-    PLASTICITY_DISLOTUNGSTEN_ID, &
-    PLASTICITY_NONLOCAL_ID, &
-    SOURCE_UNDEFINED_ID ,&
-    SOURCE_THERMAL_DISSIPATION_ID, &
-    SOURCE_THERMAL_EXTERNALHEAT_ID, &
-    SOURCE_DAMAGE_ISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ISODUCTILE_ID, &
-    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ANISODUCTILE_ID, &
-    KINEMATICS_UNDEFINED_ID ,&
-    KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID, &
-    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
-    STIFFNESS_DEGRADATION_DAMAGE_ID, &
     THERMAL_ISOTHERMAL_ID, &
-    THERMAL_ADIABATIC_ID, &
     THERMAL_CONDUCTION_ID, &
     DAMAGE_NONE_ID, &
-    DAMAGE_LOCAL_ID, &
     DAMAGE_NONLOCAL_ID, &
     HOMOGENIZATION_UNDEFINED_ID, &
     HOMOGENIZATION_NONE_ID, &
@@ -64,21 +39,20 @@ module material
     homogenization_type                                                                             !< type of each homogenization
 
   integer, public, protected :: &
-    homogenization_maxNconstituents                                                                  !< max number of grains in any USED homogenization
+    homogenization_maxNconstituents                                                                 !< max number of grains in any USED homogenization
 
   integer, dimension(:), allocatable, public, protected :: &
-    homogenization_Nconstituents, &                                                                  !< number of grains in each homogenization
+    homogenization_Nconstituents, &                                                                 !< number of grains in each homogenization
     homogenization_typeInstance, &                                                                  !< instance of particular type of each homogenization
     thermal_typeInstance, &                                                                         !< instance of particular type of each thermal transport
     damage_typeInstance                                                                             !< instance of particular type of each nonlocal damage
 
   real(pReal), dimension(:), allocatable, public, protected :: &
-    thermal_initialT, &                                                                             !< initial temperature per each homogenization
-    damage_initialPhi                                                                               !< initial damage per each homogenization
+    thermal_initialT                                                                                !< initial temperature per each homogenization
 
   integer, dimension(:),     allocatable, public, protected :: &                                    ! (elem)
     material_homogenizationAt                                                                       !< homogenization ID of each element
-  integer, dimension(:,:),   allocatable, public, target :: &                                       ! (ip,elem) ToDo: ugly target for mapping hack
+  integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (ip,elem)
     material_homogenizationMemberAt                                                                 !< position of the element within its homogenization instance
   integer, dimension(:,:),   allocatable, public, protected :: &                                    ! (constituent,elem)
     material_phaseAt                                                                                !< phase ID of each element
@@ -87,19 +61,10 @@ module material
 
   type(tState),        allocatable, dimension(:), public :: &
     homogState, &
-    thermalState, &
-    damageState
+    damageState_h
 
   type(Rotation), dimension(:,:,:), allocatable, public, protected :: &
     material_orientation0                                                                           !< initial orientation of each grain,IP,element
-
-! BEGIN DEPRECATED
-  integer, dimension(:,:),   allocatable, private, target :: mappingHomogenizationConst             !< mapping from material points to offset in constant state/field
-! END DEPRECATED
-
-  type(tHomogMapping), allocatable, dimension(:), public :: &
-    thermalMapping, &                                                                               !< mapping for thermal state/fields
-    damageMapping                                                                                   !< mapping for damage state/fields
 
   type(group_float),  allocatable, dimension(:), public :: &
     temperature, &                                                                                  !< temperature field
@@ -108,34 +73,9 @@ module material
 
   public :: &
     material_init, &
-    ELASTICITY_UNDEFINED_ID, &
-    ELASTICITY_HOOKE_ID, &
-    PLASTICITY_UNDEFINED_ID, &
-    PLASTICITY_NONE_ID, &
-    PLASTICITY_ISOTROPIC_ID, &
-    PLASTICITY_PHENOPOWERLAW_ID, &
-    PLASTICITY_KINEHARDENING_ID, &
-    PLASTICITY_DISLOTWIN_ID, &
-    PLASTICITY_DISLOTUNGSTEN_ID, &
-    PLASTICITY_NONLOCAL_ID, &
-    SOURCE_UNDEFINED_ID ,&
-    SOURCE_THERMAL_DISSIPATION_ID, &
-    SOURCE_THERMAL_EXTERNALHEAT_ID, &
-    SOURCE_DAMAGE_ISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ISODUCTILE_ID, &
-    SOURCE_DAMAGE_ANISOBRITTLE_ID, &
-    SOURCE_DAMAGE_ANISODUCTILE_ID, &
-    KINEMATICS_UNDEFINED_ID ,&
-    KINEMATICS_CLEAVAGE_OPENING_ID, &
-    KINEMATICS_SLIPPLANE_OPENING_ID, &
-    KINEMATICS_THERMAL_EXPANSION_ID, &
-    STIFFNESS_DEGRADATION_UNDEFINED_ID, &
-    STIFFNESS_DEGRADATION_DAMAGE_ID, &
     THERMAL_ISOTHERMAL_ID, &
-    THERMAL_ADIABATIC_ID, &
     THERMAL_CONDUCTION_ID, &
     DAMAGE_NONE_ID, &
-    DAMAGE_LOCAL_ID, &
     DAMAGE_NONLOCAL_ID, &
     HOMOGENIZATION_NONE_ID, &
     HOMOGENIZATION_ISOSTRAIN_ID, &
@@ -149,7 +89,6 @@ contains
 subroutine material_init(restart)
 
   logical, intent(in) :: restart
-  integer             :: myHomog
 
   print'(/,a)', ' <<<+-  material init  -+>>>'; flush(IO_STDOUT)
 
@@ -162,38 +101,19 @@ subroutine material_init(restart)
 
 
   allocate(homogState      (size(material_name_homogenization)))
-  allocate(thermalState    (size(material_name_homogenization)))
-  allocate(damageState     (size(material_name_homogenization)))
-
-  allocate(thermalMapping  (size(material_name_homogenization)))
-  allocate(damageMapping   (size(material_name_homogenization)))
+  allocate(damageState_h     (size(material_name_homogenization)))
 
   allocate(temperature     (size(material_name_homogenization)))
   allocate(damage          (size(material_name_homogenization)))
-
   allocate(temperatureRate (size(material_name_homogenization)))
 
 
   if (.not. restart) then
     call results_openJobFile
-    call results_mapping_constituent(material_phaseAt,material_phaseMemberAt,material_name_phase)
+    call results_mapping_phase(material_phaseAt,material_phaseMemberAt,material_name_phase)
     call results_mapping_homogenization(material_homogenizationAt,material_homogenizationMemberAt,material_name_homogenization)
     call results_closeJobFile
   endif
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! BEGIN DEPRECATED
-  allocate(mappingHomogenizationConst(  discretization_nIPs,discretization_Nelems),source=1)
-
-! hack needed to initialize field values used during constitutive initialization
-  do myHomog = 1, size(material_name_homogenization)
-    thermalMapping     (myHomog)%p => mappingHomogenizationConst
-    damageMapping      (myHomog)%p => mappingHomogenizationConst
-    allocate(temperature     (myHomog)%p(1), source=thermal_initialT(myHomog))
-    allocate(damage          (myHomog)%p(1), source=damage_initialPhi(myHomog))
-    allocate(temperatureRate (myHomog)%p(1), source=0.0_pReal)
-  enddo
-! END DEPRECATED
 
 end subroutine material_init
 
@@ -222,7 +142,6 @@ subroutine material_parseHomogenization
   allocate(thermal_typeInstance(size(material_name_homogenization)),          source=0)
   allocate(damage_typeInstance(size(material_name_homogenization)),           source=0)
   allocate(thermal_initialT(size(material_name_homogenization)),              source=300.0_pReal)
-  allocate(damage_initialPhi(size(material_name_homogenization)),             source=1.0_pReal)
 
   do h=1, size(material_name_homogenization)
     homog => material_homogenization%get(h)
@@ -247,8 +166,6 @@ subroutine material_parseHomogenization
         select case (homogThermal%get_asString('type'))
           case('isothermal')
             thermal_type(h) = THERMAL_isothermal_ID
-          case('adiabatic')
-            thermal_type(h) = THERMAL_adiabatic_ID
           case('conduction')
             thermal_type(h) = THERMAL_conduction_ID
           case default
@@ -258,12 +175,9 @@ subroutine material_parseHomogenization
 
     if(homog%contains('damage')) then
       homogDamage => homog%get('damage')
-        damage_initialPhi(h) =  homogDamage%get_asFloat('phi_0',defaultVal=1.0_pReal)
         select case (homogDamage%get_asString('type'))
           case('none')
             damage_type(h) = DAMAGE_none_ID
-          case('local')
-            damage_type(h) = DAMAGE_local_ID
           case('nonlocal')
             damage_type(h) = DAMAGE_nonlocal_ID
           case default

@@ -19,7 +19,6 @@ module discretization_grid
   use results
   use discretization
   use geometry_plastic_nonlocal
-  use FEsolving
 
   implicit none
   private
@@ -116,9 +115,6 @@ subroutine discretization_grid_init(restart)
                            merge((grid(1)+1) * (grid(2)+1) * (grid3+1),&                            ! write top layer...
                                  (grid(1)+1) * (grid(2)+1) *  grid3,&                               ! ...unless not last process
                                  worldrank+1==worldsize))
-
-  FEsolving_execElem = [1,product(myGrid)]                                                          ! parallel loop bounds set to comprise all elements
-  FEsolving_execIP   = [1,1]                                                                        ! parallel loop bounds set to comprise the only IP
 
 !--------------------------------------------------------------------------------------------------
 ! store geometry information for post processing

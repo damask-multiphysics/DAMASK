@@ -6,8 +6,9 @@
 !> @brief Relaxed grain cluster (RGC) homogenization scheme
 !> N_constituents is defined as p x q x r (cluster)
 !--------------------------------------------------------------------------------------------------
-submodule(homogenization) homogenization_mech_RGC
+submodule(homogenization:homogenization_mech) homogenization_mech_RGC
   use rotations
+  use lattice
 
   type :: tParameters
     integer, dimension(:), allocatable :: &
@@ -18,16 +19,11 @@ submodule(homogenization) homogenization_mech_RGC
     real(pReal), dimension(:), allocatable :: &
       D_alpha, &
       a_g
-    integer :: &
-      of_debug = 0
     character(len=pStringLen), allocatable, dimension(:) :: &
       output
   end type tParameters
 
   type :: tRGCstate
-    real(pReal), pointer,     dimension(:) :: &
-      work, &
-      penaltyEnergy
     real(pReal), pointer,     dimension(:,:) :: &
       relaxationVector
   end type tRGCstate
@@ -151,12 +147,6 @@ module subroutine mech_RGC_init(num_homogMech)
               st0 => state0(homogenization_typeInstance(h)), &
               dst => dependentState(homogenization_typeInstance(h)))
 
-#ifdef DEBUG
-    if  (h==material_homogenizationAt(debugHomog%element)) then
-      prm%of_debug = material_homogenizationMemberAt(debugHomog%ip,debugHomog%element)
-    endif
-#endif
-
 #if defined (__GFORTRAN__)
     prm%output = output_asStrings(homogMech)
 #else
@@ -177,8 +167,7 @@ module subroutine mech_RGC_init(num_homogMech)
     nIntFaceTot = 3*(  (prm%N_constituents(1)-1)*prm%N_constituents(2)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*(prm%N_constituents(2)-1)*prm%N_constituents(3) &
                       + prm%N_constituents(1)*prm%N_constituents(2)*(prm%N_constituents(3)-1))
-    sizeState = nIntFaceTot &
-              + size(['avg constitutive work ','average penalty energy'])
+    sizeState = nIntFaceTot
 
     homogState(h)%sizeState = sizeState
     allocate(homogState(h)%state0   (sizeState,Nmaterialpoints), source=0.0_pReal)
@@ -187,8 +176,6 @@ module subroutine mech_RGC_init(num_homogMech)
 
     stt%relaxationVector   => homogState(h)%state(1:nIntFaceTot,:)
     st0%relaxationVector   => homogState(h)%state0(1:nIntFaceTot,:)
-    stt%work               => homogState(h)%state(nIntFaceTot+1,:)
-    stt%penaltyEnergy      => homogState(h)%state(nIntFaceTot+2,:)
 
     allocate(dst%volumeDiscrepancy(   Nmaterialpoints), source=0.0_pReal)
     allocate(dst%relaxationRate_avg(  Nmaterialpoints), source=0.0_pReal)
@@ -239,17 +226,6 @@ module subroutine mech_RGC_partitionDeformation(F,avgF,instance,of)
         F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)                                           ! calculating deformation relaxations due to interface relaxation
     enddo
     F(1:3,1:3,iGrain) = F(1:3,1:3,iGrain) + avgF                                                    ! resulting relaxed deformation gradient
-
-#ifdef DEBUG
-    if (debugHomog%extensive) then
-      print'(a,i3)',' Deformation gradient of grain: ',iGrain
-      do i = 1,3
-        print'(1x,3(e15.8,1x))',(F(i,j,iGrain), j = 1,3)
-      enddo
-      print*,' '
-      flush(IO_STDOUT)
-    endif
-#endif
   enddo
 
   end associate
@@ -261,7 +237,17 @@ end subroutine mech_RGC_partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and
 ! "happy" with result
 !--------------------------------------------------------------------------------------------------
-module procedure mech_RGC_updateState
+module function mech_RGC_updateState(P,F,avgF,dt,dPdF,ip,el) result(doneAndHappy)
+      logical, dimension(2) :: doneAndHappy
+      real(pReal), dimension(:,:,:),     intent(in)    :: &
+        P,&                                                                                         !< partitioned stresses
+        F                                                                                           !< partitioned deformation gradients
+      real(pReal), dimension(:,:,:,:,:), intent(in) :: dPdF                                         !< partitioned stiffnesses
+      real(pReal), dimension(3,3),       intent(in) :: avgF                                         !< average F
+      real(pReal),                       intent(in) :: dt                                           !< time increment
+      integer,                           intent(in) :: &
+        ip, &                                                                                       !< integration point number
+        el                                                                                          !< element number
 
   integer, dimension(4) :: intFaceN,intFaceP,faceID
   integer, dimension(3) :: nGDim,iGr3N,iGr3P
@@ -273,13 +259,9 @@ module procedure mech_RGC_updateState
   logical :: error
   real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
   real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
-#ifdef DEBUG
-  integer, dimension(3) :: stresLoc
-  integer, dimension(2) :: residLoc
-#endif
 
   zeroTimeStep: if(dEq0(dt)) then
-    mech_RGC_updateState = .true.                                                                   ! pretend everything is fine and return
+    doneAndHappy = .true.                                                                   ! pretend everything is fine and return
     return
   endif zeroTimeStep
 
@@ -298,20 +280,10 @@ module procedure mech_RGC_updateState
 
 !--------------------------------------------------------------------------------------------------
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
-  allocate(resid(3*nIntFaceTot),   source=0.0_pReal)
-  allocate(tract(nIntFaceTot,3),        source=0.0_pReal)
+  allocate(resid(3*nIntFaceTot), source=0.0_pReal)
+  allocate(tract(nIntFaceTot,3), source=0.0_pReal)
   relax  = stt%relaxationVector(:,of)
   drelax = stt%relaxationVector(:,of) - st0%relaxationVector(:,of)
-
-#ifdef DEBUG
-  if (debugHomog%extensive) then
-    print*, 'Obtained state: '
-    do i = 1,size(stt%relaxationVector(:,of))
-      print'(1x,2(e15.8,1x))', stt%relaxationVector(i,of)
-    enddo
-    print*,' '
-  endif
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! computing interface mismatch and stress penalty tensor for all interfaces of all grains
@@ -353,13 +325,6 @@ module procedure mech_RGC_updateState
       enddo
     enddo
 
-#ifdef DEBUG
-    if (debugHomog%extensive) then
-      print'(a,i3)',' Traction at interface: ',iNum
-      print'(1x,3(e15.8,1x))',(tract(iNum,j), j = 1,3)
-      print*,' '
-    endif
-#endif
   enddo
 
 !--------------------------------------------------------------------------------------------------
@@ -367,80 +332,25 @@ module procedure mech_RGC_updateState
   stresMax = maxval(abs(P))                                                                         ! get the maximum of first Piola-Kirchhoff (material) stress
   residMax = maxval(abs(tract))                                                                     ! get the maximum of the residual
 
-#ifdef DEBUG
-  if (debugHomog%extensive .and. prm%of_debug == of) then
-    stresLoc = maxloc(abs(P))
-    residLoc = maxloc(abs(tract))
-    print'(a,i2,1x,i4)',' RGC residual check ... ',ip,el
-    print'(a,e15.8,a,i3,a,i2,i2)', ' Max stress: ',stresMax, &
-               '@ grain ',stresLoc(3),' in component ',stresLoc(1),stresLoc(2)
-    print'(a,e15.8,a,i3,a,i2)',' Max residual: ',residMax, &
-               ' @ iface ',residLoc(1),' in direction ',residLoc(2)
-    flush(IO_STDOUT)
-  endif
-#endif
-
-  mech_RGC_updateState = .false.
+  doneAndHappy = .false.
 
 !--------------------------------------------------------------------------------------------------
 !  If convergence reached => done and happy
   if (residMax < num%rtol*stresMax .or. residMax < num%atol) then
-    mech_RGC_updateState = .true.
-#ifdef DEBUG
-    if (debugHomog%extensive .and. prm%of_debug == of) &
-      print*, '... done and happy'; flush(IO_STDOUT)
-#endif
-
-!--------------------------------------------------------------------------------------------------
-! compute/update the state for postResult, i.e., all energy densities computed by time-integration
-    do iGrain = 1,product(prm%N_constituents)
-      do i = 1,3;do j = 1,3
-        stt%work(of)          = stt%work(of) &
-                              + P(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
-        stt%penaltyEnergy(of) = stt%penaltyEnergy(of) &
-                              + R(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/real(nGrain,pReal)
-      enddo; enddo
-    enddo
+    doneAndHappy = .true.
 
     dst%mismatch(1:3,of)       = sum(NN,2)/real(nGrain,pReal)
     dst%relaxationRate_avg(of) = sum(abs(drelax))/dt/real(3*nIntFaceTot,pReal)
     dst%relaxationRate_max(of) = maxval(abs(drelax))/dt
-
-#ifdef DEBUG
-    if (debugHomog%extensive .and. prm%of_debug == of) then
-      print'(a,e15.8)',       ' Constitutive work: ',stt%work(of)
-      print'(a,3(1x,e15.8))', ' Magnitude mismatch: ',dst%mismatch(1,of), &
-                                                      dst%mismatch(2,of), &
-                                                      dst%mismatch(3,of)
-      print'(a,e15.8)',   ' Penalty energy: ',          stt%penaltyEnergy(of)
-      print'(a,e15.8,/)', ' Volume discrepancy: ',      dst%volumeDiscrepancy(of)
-      print'(a,e15.8)',   ' Maximum relaxation rate: ', dst%relaxationRate_max(of)
-      print'(a,e15.8,/)', ' Average relaxation rate: ', dst%relaxationRate_avg(of)
-      flush(IO_STDOUT)
-    endif
-#endif
 
     return
 
 !--------------------------------------------------------------------------------------------------
 ! if residual blows-up => done but unhappy
   elseif (residMax > num%relMax*stresMax .or. residMax > num%absMax) then                           ! try to restart when residual blows up exceeding maximum bound
-    mech_RGC_updateState = [.true.,.false.]                                                         ! with direct cut-back
-
-#ifdef DEBUG
-    if (debugHomog%extensive .and. prm%of_debug == of) &
-      print'(a,/)', ' ... broken'; flush(IO_STDOUT)
-#endif
-
+    doneAndHappy = [.true.,.false.]                                                         ! with direct cut-back
    return
-
- else                                                                                               ! proceed with computing the Jacobian and state update
-#ifdef DEBUG
-   if (debugHomog%extensive .and. prm%of_debug == of) &
-     print'(a,/)', ' ... not yet done'; flush(IO_STDOUT)
-#endif
-
- endif
+  endif
 
 !---------------------------------------------------------------------------------------------------
 ! construct the global Jacobian matrix for updating the global relaxation vector array when
@@ -492,17 +402,6 @@ module procedure mech_RGC_updateState
     enddo
   enddo
 
-#ifdef DEBUG
-  if (debugHomog%extensive) then
-    print*, 'Jacobian matrix of stress'
-    do i = 1,3*nIntFaceTot
-      print'(1x,100(e11.4,1x))',(smatrix(i,j), j = 1,3*nIntFaceTot)
-    enddo
-    print*,' '
-    flush(IO_STDOUT)
-  endif
-#endif
-
 !--------------------------------------------------------------------------------------------------
 ! ... of the stress penalty tangent (mismatch penalty and volume penalty, computed using numerical
 ! perturbation method) "pmatrix"
@@ -552,16 +451,6 @@ module procedure mech_RGC_updateState
     pmatrix(:,ipert) = p_resid/num%pPert
   enddo
 
-#ifdef DEBUG
-  if (debugHomog%extensive) then
-    print*, 'Jacobian matrix of penalty'
-    do i = 1,3*nIntFaceTot
-      print'(1x,100(e11.4,1x))',(pmatrix(i,j), j = 1,3*nIntFaceTot)
-    enddo
-    print*,' '
-    flush(IO_STDOUT)
-  endif
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! ... of the numerical viscosity traction "rmatrix"
@@ -571,47 +460,15 @@ module procedure mech_RGC_updateState
                    (abs(drelax(i))/(num%refRelaxRate*dt))**(num%viscPower - 1.0_pReal)              ! only in the main diagonal term
   enddo
 
-#ifdef DEBUG
-  if (debugHomog%extensive) then
-    print*, 'Jacobian matrix of penalty'
-    do i = 1,3*nIntFaceTot
-      print'(1x,100(e11.4,1x))',(rmatrix(i,j), j = 1,3*nIntFaceTot)
-    enddo
-    print*,' '
-    flush(IO_STDOUT)
-  endif
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! The overall Jacobian matrix summarizing contributions of smatrix, pmatrix, rmatrix
   allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix + rmatrix
 
-#ifdef DEBUG
-  if (debugHomog%extensive) then
-    print*, 'Jacobian matrix (total)'
-    do i = 1,3*nIntFaceTot
-      print'(1x,100(e11.4,1x))',(jmatrix(i,j), j = 1,3*nIntFaceTot)
-    enddo
-    print*,' '
-    flush(IO_STDOUT)
-  endif
-#endif
-
 !--------------------------------------------------------------------------------------------------
 ! computing the update of the state variable (relaxation vectors) using the Jacobian matrix
   allocate(jnverse(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pReal)
   call math_invert(jnverse,error,jmatrix)
-
-#ifdef DEBUG
-  if (debugHomog%extensive) then
-    print*, 'Jacobian inverse'
-    do i = 1,3*nIntFaceTot
-      print'(1x,100(e11.4,1x))',(jnverse(i,j), j = 1,3*nIntFaceTot)
-    enddo
-    print*,' '
-    flush(IO_STDOUT)
-  endif
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the state update (global relaxation vectors) for the next Newton-Raphson iteration
@@ -621,24 +478,13 @@ module procedure mech_RGC_updateState
   enddo; enddo
   stt%relaxationVector(:,of) = relax + drelax                                                       ! Updateing the state variable for the next iteration
   if (any(abs(drelax) > num%maxdRelax)) then                                                        ! Forcing cutback when the incremental change of relaxation vector becomes too large
-    mech_RGC_updateState = [.true.,.false.]
+    doneAndHappy = [.true.,.false.]
     !$OMP CRITICAL (write2out)
     print'(a,i3,a,i3,a)',' RGC_updateState: ip ',ip,' | el ',el,' enforces cutback'
     print'(a,e15.8)',' due to large relaxation change = ',maxval(abs(drelax))
     flush(IO_STDOUT)
     !$OMP END CRITICAL (write2out)
   endif
-
-#ifdef DEBUG
-  if (debugHomog%extensive) then
-    print*, 'Returned state: '
-    do i = 1,size(stt%relaxationVector(:,of))
-      print'(1x,2(e15.8,1x))', stt%relaxationVector(i,of)
-    enddo
-    print*,' '
-    flush(IO_STDOUT)
-  endif
-#endif
 
   end associate
 
@@ -659,10 +505,11 @@ module procedure mech_RGC_updateState
     integer, dimension (3)   :: iGrain3,iGNghb3,nGDim
     real(pReal),   dimension (3,3) :: gDef,nDef
     real(pReal),   dimension (3)   :: nVect,surfCorr
-    real(pReal),   dimension (2)   :: Gmoduli
     integer :: iGrain,iGNghb,iFace,i,j,k,l
-    real(pReal)   :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
-    real(pReal), parameter  :: nDefToler = 1.0e-10_pReal
+    real(pReal) :: muGrain,muGNghb,nDefNorm
+    real(pReal), parameter  :: &
+      nDefToler = 1.0e-10_pReal, &
+      b = 2.5e-10_pReal                                                                             ! Length of Burgers vector
 
     nGDim = param(instance)%N_constituents
     rPen = 0.0_pReal
@@ -676,19 +523,11 @@ module procedure mech_RGC_updateState
 
     associate(prm => param(instance))
 
-#ifdef DEBUG
-    if (debugHomog%extensive .and. prm%of_debug == of) then
-      print'(a,2(1x,i3))', ' Correction factor: ',ip,el
-      print*, surfCorr
-    endif
-#endif
 
    !-----------------------------------------------------------------------------------------------
    ! computing the mismatch and penalty stress tensor of all grains
    grainLoop: do iGrain = 1,product(prm%N_constituents)
-     Gmoduli = equivalentModuli(iGrain,ip,el)
-     muGrain = Gmoduli(1)                                                                           ! collecting the equivalent shear modulus of grain
-     bgGrain = Gmoduli(2)                                                                           ! and the lengthh of Burgers vector
+     muGrain = equivalentMu(iGrain,ip,el)
      iGrain3 = grain1to3(iGrain,prm%N_constituents)                                                 ! get the grain ID in local 3-dimensional index (x,y,z)-position
 
      interfaceLoop: do iFace = 1,6
@@ -700,9 +539,7 @@ module procedure mech_RGC_updateState
        where(iGNghb3 < 1)    iGNghb3 = nGDim
        where(iGNghb3 >nGDim) iGNghb3 = 1
        iGNghb  = grain3to1(iGNghb3,prm%N_constituents)                                              ! get the ID of the neighboring grain
-       Gmoduli = equivalentModuli(iGNghb,ip,el)                                                     ! collect the shear modulus and Burgers vector of the neighbor
-       muGNghb = Gmoduli(1)
-       bgGNghb = Gmoduli(2)
+       muGNghb = equivalentMu(iGNghb,ip,el)
        gDef = 0.5_pReal*(fDef(1:3,1:3,iGNghb) - fDef(1:3,1:3,iGrain))                               ! difference/jump in deformation gradeint across the neighbor
 
        !-------------------------------------------------------------------------------------------
@@ -717,30 +554,19 @@ module procedure mech_RGC_updateState
        enddo; enddo
        nDefNorm = max(nDefToler,sqrt(nDefNorm))                                                     ! approximation to zero mismatch if mismatch is zero (singularity)
        nMis(abs(intFace(1)),iGrain) = nMis(abs(intFace(1)),iGrain) + nDefNorm                       ! total amount of mismatch experienced by the grain (at all six interfaces)
-#ifdef DEBUG
-       if (debugHomog%extensive .and. prm%of_debug == of) then
-         print'(a,i2,a,i3)',' Mismatch to face: ',intFace(1),' neighbor grain: ',iGNghb
-         print*, transpose(nDef)
-         print'(a,e11.4)', ' with magnitude: ',nDefNorm
-       endif
-#endif
+
 
        !-------------------------------------------------------------------------------------------
        ! compute the stress penalty of all interfaces
        do i = 1,3; do j = 1,3; do k = 1,3; do l = 1,3
-         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*prm%xi_alpha &
+         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*b + muGNghb*b)*prm%xi_alpha &
                                                 *surfCorr(abs(intFace(1)))/prm%D_alpha(abs(intFace(1))) &
                                                 *cosh(prm%c_alpha*nDefNorm) &
                                                 *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_LeviCivita(k,l,j) &
                                                 *tanh(nDefNorm/num%xSmoo)
        enddo; enddo;enddo; enddo
      enddo interfaceLoop
-#ifdef DEBUG
-     if (debugHomog%extensive .and. prm%of_debug == of) then
-       print'(a,i2)', ' Penalty of grain: ',iGrain
-       print*, transpose(rPen(1:3,1:3,iGrain))
-     endif
-#endif
+
 
    enddo grainLoop
 
@@ -783,13 +609,6 @@ module procedure mech_RGC_updateState
       vPen(:,:,i) = -1.0_pReal/real(nGrain,pReal)*num%volDiscrMod*num%volDiscrPow/num%maxVolDiscr* &
                          sign((abs(vDiscrep)/num%maxVolDiscr)**(num%volDiscrPow - 1.0),vDiscrep)* &
                          gVol(i)*transpose(math_inv33(fDef(:,:,i)))
-
-#ifdef DEBUG
-      if (debugHomog%extensive .and. param(instance)%of_debug == of) then
-        print'(a,i2)',' Volume penalty of grain: ',i
-        print*, transpose(vPen(:,:,i))
-      endif
-#endif
     enddo
 
   end subroutine volumePenalty
@@ -827,44 +646,26 @@ module procedure mech_RGC_updateState
   end function surfaceCorrection
 
 
-  !--------------------------------------------------------------------------------------------------
+  !-------------------------------------------------------------------------------------------------
   !> @brief compute the equivalent shear and bulk moduli from the elasticity tensor
-  !--------------------------------------------------------------------------------------------------
-  function equivalentModuli(grainID,ip,el)
-
-    real(pReal), dimension(2)    :: equivalentModuli
+  !-------------------------------------------------------------------------------------------------
+  real(pReal) function equivalentMu(grainID,ip,el)
 
     integer, intent(in)    :: &
       grainID,&
       ip, &                                                                                         !< integration point number
       el                                                                                            !< element number
-    real(pReal), dimension(6,6) :: elasTens
-    real(pReal) :: &
-      cEquiv_11, &
-      cEquiv_12, &
-      cEquiv_44
-
-    elasTens = constitutive_homogenizedC(grainID,ip,el)
-
-    !----------------------------------------------------------------------------------------------
-    ! compute the equivalent shear modulus after Turterltaub and Suiker, JMPS (2005)
-    cEquiv_11 = (elasTens(1,1) + elasTens(2,2) + elasTens(3,3))/3.0_pReal
-    cEquiv_12 = (elasTens(1,2) + elasTens(2,3) + elasTens(3,1) + &
-                 elasTens(1,3) + elasTens(2,1) + elasTens(3,2))/6.0_pReal
-    cEquiv_44 = (elasTens(4,4) + elasTens(5,5) + elasTens(6,6))/3.0_pReal
-    equivalentModuli(1) = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
-
-    !----------------------------------------------------------------------------------------------
-    ! obtain the length of Burgers vector (could be model dependend)
-    equivalentModuli(2) = 2.5e-10_pReal
-
-  end function equivalentModuli
 
 
-  !--------------------------------------------------------------------------------------------------
+    equivalentMu = lattice_equivalent_mu(constitutive_homogenizedC(grainID,ip,el),'voigt')
+
+  end function equivalentMu
+
+
+  !-------------------------------------------------------------------------------------------------
   !> @brief calculating the grain deformation gradient (the same with
   ! homogenization_RGC_partitionDeformation, but used only for perturbation scheme)
-  !--------------------------------------------------------------------------------------------------
+  !-------------------------------------------------------------------------------------------------
   subroutine grainDeformation(F, avgF, instance, of)
 
     real(pReal),   dimension(:,:,:), intent(out) :: F                                               !< partitioned F  per grain
@@ -879,7 +680,7 @@ module procedure mech_RGC_updateState
     integer,       dimension(3) :: iGrain3
     integer :: iGrain,iFace,i,j
 
-    !-------------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     ! compute the deformation gradient of individual grains due to relaxations
 
     associate(prm => param(instance))
@@ -901,7 +702,7 @@ module procedure mech_RGC_updateState
 
   end subroutine grainDeformation
 
-end procedure mech_RGC_updateState
+end function mech_RGC_updateState
 
 
 !--------------------------------------------------------------------------------------------------
@@ -935,15 +736,9 @@ module subroutine mech_RGC_results(instance,group)
   associate(stt => state(instance), dst => dependentState(instance), prm => param(instance))
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
-      case('W')
-        call results_writeDataset(group,stt%work,trim(prm%output(o)), &
-                                  'work density','J/m³')
       case('M')
         call results_writeDataset(group,dst%mismatch,trim(prm%output(o)), &
                                   'average mismatch tensor','1')
-      case('R')
-        call results_writeDataset(group,stt%penaltyEnergy,trim(prm%output(o)), &
-                                  'mismatch penalty density','J/m³')
       case('Delta_V')
         call results_writeDataset(group,dst%volumeDiscrepancy,trim(prm%output(o)), &
                                   'volume discrepancy','m³')

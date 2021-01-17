@@ -6,7 +6,6 @@
 module CPFEM2
   use prec
   use config
-  use FEsolving
   use math
   use rotations
   use YAML_types
@@ -21,7 +20,6 @@ module CPFEM2
   use HDF5_utilities
   use homogenization
   use constitutive
-  use crystallite
 #if    defined(Mesh)
   use FEM_quadrature
   use discretization_mesh
@@ -63,8 +61,8 @@ subroutine CPFEM_initAll
 #endif
   call material_init(restart=interface_restartInc>0)
   call constitutive_init
-  call crystallite_init
   call homogenization_init
+  call crystallite_init
   call CPFEM_init
   call config_deallocate
 
@@ -76,9 +74,23 @@ end subroutine CPFEM_initAll
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
 
+  integer(HID_T) :: fileHandle
+  character(len=pStringLen) :: fileName
+
+
   print'(/,a)', ' <<<+-  CPFEM init  -+>>>'; flush(IO_STDOUT)
 
-  if (interface_restartInc > 0) call crystallite_restartRead
+
+  if (interface_restartInc > 0) then
+    print'(/,a,i0,a)', ' reading restart information of increment from file'; flush(IO_STDOUT)
+    write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
+    fileHandle = HDF5_openFile(fileName)
+
+    call homogenization_restartRead(fileHandle)
+    call constitutive_restartRead(fileHandle)
+
+    call HDF5_closeFile(fileHandle)
+  endif
 
 end subroutine CPFEM_init
 
@@ -88,7 +100,19 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_restartWrite
 
-  call crystallite_restartWrite
+  integer(HID_T) :: fileHandle
+  character(len=pStringLen) :: fileName
+
+
+  print*, ' writing field and constitutive data required for restart to file';flush(IO_STDOUT)
+
+  write(fileName,'(a,i0,a)') trim(getSolverJobName())//'_',worldrank,'.hdf5'
+  fileHandle = HDF5_openFile(fileName,'a')
+
+  call homogenization_restartWrite(fileHandle)
+  call constitutive_restartWrite(fileHandle)
+
+  call HDF5_closeFile(fileHandle)
 
 end subroutine CPFEM_restartWrite
 
@@ -98,7 +122,8 @@ end subroutine CPFEM_restartWrite
 !--------------------------------------------------------------------------------------------------
 subroutine CPFEM_forward
 
-  call crystallite_forward
+  call homogenization_forward
+  call constitutive_forward
 
 end subroutine CPFEM_forward
 
@@ -114,7 +139,6 @@ subroutine CPFEM_results(inc,time)
   call results_openJobFile
   call results_addIncrement(inc,time)
   call constitutive_results
-  call crystallite_results
   call homogenization_results
   call discretization_results
   call results_finalizeIncrement

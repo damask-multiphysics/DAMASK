@@ -18,7 +18,6 @@ module discretization_mesh
   use config
   use discretization
   use results
-  use FEsolving
   use FEM_quadrature
   use YAML_types
   use prec
@@ -30,7 +29,7 @@ module discretization_mesh
     mesh_Nboundaries, &
     mesh_NcpElemsGlobal
 
-  integer :: &
+  integer, public, protected :: &
     mesh_NcpElems                                                                                   !< total number of CP elements in mesh
 
 !!!! BEGIN DEPRECATED !!!!!
@@ -84,6 +83,7 @@ subroutine discretization_mesh_init(restart)
     num_mesh
   integer :: integrationOrder                                                                       !< order of quadrature rule required
 
+
   print'(/,a)',   ' <<<+-  discretization_mesh init  -+>>>'
 
 !--------------------------------------------------------------------------------
@@ -96,19 +96,28 @@ subroutine discretization_mesh_init(restart)
   debug_element = config_debug%get_asInt('element',defaultVal=1)
   debug_ip      = config_debug%get_asInt('integrationpoint',defaultVal=1)
 
-
   call DMPlexCreateFromFile(PETSC_COMM_WORLD,interface_geomFile,PETSC_TRUE,globalMesh,ierr)
   CHKERRQ(ierr)
   call DMGetDimension(globalMesh,dimPlex,ierr)
   CHKERRQ(ierr)
   call DMGetStratumSize(globalMesh,'depth',dimPlex,mesh_NcpElemsGlobal,ierr)
   CHKERRQ(ierr)
+  call DMView(globalMesh, PETSC_VIEWER_STDOUT_WORLD,ierr)
+  CHKERRQ(ierr)
+
   ! get number of IDs in face sets (for boundary conditions?)
   call DMGetLabelSize(globalMesh,'Face Sets',mesh_Nboundaries,ierr)
   CHKERRQ(ierr)
   call MPI_Bcast(mesh_Nboundaries,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
   call MPI_Bcast(mesh_NcpElemsGlobal,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
   call MPI_Bcast(dimPlex,1,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+
+  if (worldrank == 0) then
+    call DMClone(globalMesh,geomMesh,ierr)
+  else
+    call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
+  endif
+  CHKERRQ(ierr)
 
   allocate(mesh_boundaries(mesh_Nboundaries), source = 0)
   call DMGetLabelSize(globalMesh,'Face Sets',nFaceSets,ierr)
@@ -124,35 +133,6 @@ subroutine discretization_mesh_init(restart)
   endif
   call MPI_Bcast(mesh_boundaries,mesh_Nboundaries,MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 
-  if (worldrank == 0) then
-    fileContent = IO_readlines(interface_geomFile)
-    l = 0
-    do
-      l = l + 1
-      if (IO_isBlank(fileContent(l))) cycle         ! need also to ignore C and C++ style comments?
-      if (trim(fileContent(l)) == '$Elements') then
-        j = 0
-        l = l + 1
-        do
-          l = l + 1
-          if (trim(fileContent(l)) == '$EndElements') exit
-          chunkPos = IO_stringPos(fileContent(l))
-          if (chunkPos(1) == 3+IO_intValue(fileContent(l),chunkPos,3)+dimPlex+1) then
-            call DMSetLabelValue(globalMesh,'material',j,IO_intValue(fileContent(l),chunkPos,4),ierr)
-            CHKERRQ(ierr)
-            j = j + 1
-          endif
-        enddo
-        exit
-      endif
-    enddo
-    call DMClone(globalMesh,geomMesh,ierr)
-    CHKERRQ(ierr)
-  else
-    call DMPlexDistribute(globalMesh,0,sf,geomMesh,ierr)
-    CHKERRQ(ierr)
-  endif
-
   call DMDestroy(globalMesh,ierr); CHKERRQ(ierr)
 
   call DMGetStratumSize(geomMesh,'depth',dimPlex,mesh_NcpElems,ierr)
@@ -167,15 +147,13 @@ subroutine discretization_mesh_init(restart)
 
   allocate(materialAt(mesh_NcpElems))
   do j = 1, mesh_NcpElems
-    call DMGetLabelValue(geomMesh,'material',j-1,materialAt(j),ierr)
+    call DMGetLabelValue(geomMesh,'Cell Sets',j-1,materialAt(j),ierr)
     CHKERRQ(ierr)
   end do
+  materialAt = materialAt + 1
 
   if (debug_element < 1 .or. debug_element > mesh_NcpElems) call IO_error(602,ext_msg='element')
   if (debug_ip < 1 .or. debug_ip > mesh_maxNips)            call IO_error(602,ext_msg='IP')
-
-  FEsolving_execElem = [1,mesh_NcpElems]                                                            ! parallel loop bounds set to comprise all DAMASK elements
-  FEsolving_execIP   = [1,mesh_maxNips]
 
   allocate(mesh_node0(3,mesh_Nnodes),source=0.0_pReal)
 

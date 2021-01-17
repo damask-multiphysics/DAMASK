@@ -131,8 +131,7 @@ subroutine grid_thermal_spectral_init
   cell = 0
   do k = 1, grid3; do j = 1, grid(2); do i = 1,grid(1)
     cell = cell + 1
-    T_current(i,j,k) = temperature(material_homogenizationAt(cell))% &
-                                   p(thermalMapping(material_homogenizationAt(cell))%p(1,cell))
+    T_current(i,j,k) = temperature(material_homogenizationAt(cell))%p(material_homogenizationMemberAt(1,cell))
     T_lastInc(i,j,k) = T_current(i,j,k)
     T_stagInc(i,j,k) = T_current(i,j,k)
   enddo; enddo; enddo
@@ -197,8 +196,7 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
   call VecMax(solution_vec,devNull,T_max,ierr); CHKERRQ(ierr)
   if (solution%converged) &
     print'(/,a)', ' ... thermal conduction converged ..................................'
-  write(IO_STDOUT,'(/,a,f8.4,2x,f8.4,2x,f8.4,/)',advance='no') ' Minimum|Maximum|Delta Temperature / K = ',&
-                                                        T_min, T_max, stagNorm
+  print'(/,a,f8.4,2x,f8.4,2x,f8.4)', ' Minimum|Maximum|Delta Temperature / K = ', T_min, T_max, stagNorm
   print'(/,a)', ' ==========================================================================='
   flush(IO_STDOUT) 
 
@@ -258,7 +256,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   PetscObject :: dummy
   PetscErrorCode :: ierr
   integer :: i, j, k, cell
-  real(pReal)   :: Tdot, dTdot_dT
+  real(pReal)   :: Tdot
 
   T_current = x_scal 
 !--------------------------------------------------------------------------------------------------
@@ -280,7 +278,7 @@ subroutine formResidual(in,x_scal,f_scal,dummy,ierr)
   cell = 0
   do k = 1, grid3;  do j = 1, grid(2);  do i = 1,grid(1)
     cell = cell + 1
-    call thermal_conduction_getSourceAndItsTangent(Tdot, dTdot_dT, T_current(i,j,k), 1, cell)
+    call thermal_conduction_getSource(Tdot, T_current(i,j,k), 1, cell)
     scalarField_real(i,j,k) = params%timeinc*(scalarField_real(i,j,k) + Tdot) &
                             + thermal_conduction_getMassDensity (1,cell)* &
                               thermal_conduction_getSpecificHeat(1,cell)*(T_lastInc(i,j,k)  - &

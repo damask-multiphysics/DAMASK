@@ -25,13 +25,16 @@ class TestOrientation:
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_equal(self,lattice,shape):
         R = Rotation.from_random(shape)
-        assert Orientation(R,lattice) == Orientation(R,lattice)
+        assert Orientation(R,lattice) == Orientation(R,lattice) if shape is None else \
+              (Orientation(R,lattice) == Orientation(R,lattice)).all()
+
 
     @pytest.mark.parametrize('lattice',Orientation.crystal_families)
     @pytest.mark.parametrize('shape',[None,5,(4,6)])
     def test_unequal(self,lattice,shape):
         R = Rotation.from_random(shape)
-        assert not(Orientation(R,lattice) != Orientation(R,lattice))
+        assert not ( Orientation(R,lattice) != Orientation(R,lattice) if shape is None else \
+                    (Orientation(R,lattice) != Orientation(R,lattice)).any())
 
     @pytest.mark.parametrize('a,b',[
                                     (dict(rotation=[1,0,0,0]),
@@ -403,7 +406,7 @@ class TestOrientation:
     def test_relationship_vectorize(self,set_of_quaternions,lattice,model):
         r = Orientation(rotation=set_of_quaternions[:200].reshape((50,4,4)),lattice=lattice).related(model)
         for i in range(200):
-            assert r.reshape((-1,200))[:,i] == Orientation(set_of_quaternions[i],lattice).related(model)
+            assert (r.reshape((-1,200))[:,i] == Orientation(set_of_quaternions[i],lattice).related(model)).all()
 
     @pytest.mark.parametrize('model',['Bain','KS','GT','GT_prime','NW','Pitsch'])
     @pytest.mark.parametrize('lattice',['cF','cI'])

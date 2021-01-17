@@ -42,12 +42,10 @@ class Table:
         return len(self.data)
 
     def __copy__(self):
-        """Copy Table."""
+        """Create deep copy."""
         return copy.deepcopy(self)
 
-    def copy(self):
-        """Copy Table."""
-        return self.__copy__()
+    copy = __copy__
 
 
     def _label_discrete(self):

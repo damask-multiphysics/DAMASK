@@ -1,3 +1,4 @@
+import copy
 from io import StringIO
 import abc
 
@@ -21,6 +22,9 @@ class NiceDumper(yaml.SafeDumper):
         return self.represent_data(dict(data)) if isinstance(data, dict) and type(data) != dict else \
                super().represent_data(data)
 
+    def ignore_aliases(self, data):
+        """No references."""
+        return True
 
 class Config(dict):
     """YAML-based configuration."""
@@ -31,6 +35,14 @@ class Config(dict):
         self.save(output)
         output.seek(0)
         return ''.join(output.readlines())
+
+
+    def __copy__(self):
+        """Create deep copy."""
+        return copy.deepcopy(self)
+
+    copy = __copy__
+
 
     @classmethod
     def load(cls,fname):
@@ -48,6 +60,7 @@ class Config(dict):
         except TypeError:
             fhandle = fname
         return cls(yaml.safe_load(fhandle))
+
 
     def save(self,fname,**kwargs):
         """
@@ -86,11 +99,36 @@ class Config(dict):
             fhandle.write(yaml.dump(self,Dumper=NiceDumper,**kwargs))
 
 
+    def add(self,d):
+        """
+        Add dictionary.
+
+        d : dict
+            Dictionary to append.
+        """
+        duplicate = self.copy()
+        duplicate.update(d)
+        return duplicate
+
+
+    def delete(self,key):
+        """
+        Delete item.
+
+        key : str or scalar
+            Label of the key to remove.
+        """
+        duplicate = self.copy()
+        del duplicate[key]
+        return duplicate
+
+
     @property
     @abc.abstractmethod
     def is_complete(self):
         """Check for completeness."""
         pass
+
 
     @property
     @abc.abstractmethod

@@ -18,7 +18,6 @@ module grid_mech_spectral_basic
   use math
   use rotations
   use spectral_utilities
-  use FEsolving
   use config
   use homogenization
   use discretization_grid
@@ -94,8 +93,6 @@ contains
 subroutine grid_mech_spectral_basic_init
 
   real(pReal), dimension(3,3,grid(1),grid(2),grid3) :: P
-  real(pReal), dimension(3,3) :: &
-    temp33_Real = 0.0_pReal
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: &
     F                                                                                               ! pointer to solution data
@@ -118,20 +115,20 @@ subroutine grid_mech_spectral_basic_init
 
 !-------------------------------------------------------------------------------------------------
 ! debugging options
-  debug_grid => config_debug%get('grid', defaultVal=emptyList)
+  debug_grid => config_debug%get('grid',defaultVal=emptyList)
   debugRotation = debug_grid%contains('rotation')
-  
+
 !-------------------------------------------------------------------------------------------------
 ! read numerical parameters and do sanity checks
   num_grid => config_numerics%get('grid',defaultVal=emptyDict)
 
-  num%update_gamma    = num_grid%get_asBool  ('update_gamma',   defaultVal=.false.)
-  num%eps_div_atol    = num_grid%get_asFloat ('eps_div_atol',   defaultVal=1.0e-4_pReal)
-  num%eps_div_rtol    = num_grid%get_asFloat ('eps_div_rtol',   defaultVal=5.0e-4_pReal)
-  num%eps_stress_atol = num_grid%get_asFloat ('eps_stress_atol',defaultVal=1.0e3_pReal)
-  num%eps_stress_rtol = num_grid%get_asFloat ('eps_stress_rtol',defaultVal=1.0e-3_pReal)
-  num%itmin           = num_grid%get_asInt   ('itmin',defaultVal=1)
-  num%itmax           = num_grid%get_asInt   ('itmax',defaultVal=250)
+  num%update_gamma    = num_grid%get_asBool ('update_gamma',   defaultVal=.false.)
+  num%eps_div_atol    = num_grid%get_asFloat('eps_div_atol',   defaultVal=1.0e-4_pReal)
+  num%eps_div_rtol    = num_grid%get_asFloat('eps_div_rtol',   defaultVal=5.0e-4_pReal)
+  num%eps_stress_atol = num_grid%get_asFloat('eps_stress_atol',defaultVal=1.0e3_pReal)
+  num%eps_stress_rtol = num_grid%get_asFloat('eps_stress_rtol',defaultVal=1.0e-3_pReal)
+  num%itmin           = num_grid%get_asInt  ('itmin',defaultVal=1)
+  num%itmax           = num_grid%get_asInt  ('itmax',defaultVal=250)
 
   if (num%eps_div_atol <= 0.0_pReal)             call IO_error(301,ext_msg='eps_div_atol')
   if (num%eps_div_rtol < 0.0_pReal)              call IO_error(301,ext_msg='eps_div_rtol')
@@ -139,7 +136,7 @@ subroutine grid_mech_spectral_basic_init
   if (num%eps_stress_rtol < 0.0_pReal)           call IO_error(301,ext_msg='eps_stress_rtol')
   if (num%itmax <= 1)                            call IO_error(301,ext_msg='itmax')
   if (num%itmin > num%itmax .or. num%itmin < 1)  call IO_error(301,ext_msg='itmin')
-   
+
 !--------------------------------------------------------------------------------------------------
 ! set default and user defined options for PETSc
   call PetscOptionsInsertString(PETSC_NULL_OPTIONS,'-mech_snes_type ngmres',ierr)
@@ -149,14 +146,14 @@ subroutine grid_mech_spectral_basic_init
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
-  allocate (F_lastInc(3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
-  allocate (Fdot     (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+  allocate(F_lastInc(3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
+  allocate(Fdot     (3,3,grid(1),grid(2),grid3),source = 0.0_pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
   call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
   call SNESSetOptionsPrefix(snes,'mech_',ierr);CHKERRQ(ierr)
-  localK              = 0
+  localK            = 0
   localK(worldrank) = grid3
   call MPI_Allreduce(MPI_IN_PLACE,localK,worldsize,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   call DMDACreate3d(PETSC_COMM_WORLD, &
@@ -189,6 +186,7 @@ subroutine grid_mech_spectral_basic_init
     fileHandle  = HDF5_openFile(fileName)
     groupHandle = HDF5_openGroup(fileHandle,'solver')
 
+    call HDF5_read(groupHandle,P_aim,        'P_aim')
     call HDF5_read(groupHandle,F_aim,        'F_aim')
     call HDF5_read(groupHandle,F_aim_lastInc,'F_aim_lastInc')
     call HDF5_read(groupHandle,F_aimDot,     'F_aimDot')
@@ -200,9 +198,9 @@ subroutine grid_mech_spectral_basic_init
     F = reshape(F_lastInc,[9,grid(1),grid(2),grid3])
   endif restartRead
 
-  homogenization_F0 = reshape(F_lastInc, [3,3,1,product(grid(1:2))*grid3])                           ! set starting condition for materialpoint_stressAndItsTangent
+  homogenization_F0 = reshape(F_lastInc, [3,3,product(grid(1:2))*grid3])                            ! set starting condition for materialpoint_stressAndItsTangent
   call utilities_updateCoords(reshape(F,shape(F_lastInc)))
-  call utilities_constitutiveResponse(P,temp33_Real,C_volAvg,C_minMaxAvg, &                         ! stress field, stress avg, global average of stiffness and (min+max)/2
+  call utilities_constitutiveResponse(P,P_av,C_volAvg,C_minMaxAvg, &                                ! stress field, stress avg, global average of stiffness and (min+max)/2
                                       reshape(F,shape(F_lastInc)), &                                ! target F
                                       0.0_pReal)                                                    ! time increment
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                ! deassociate pointer
@@ -262,6 +260,7 @@ function grid_mech_spectral_basic_solution(incInfoIn) result(solution)
   solution%iterationsNeeded = totalIter
   solution%termIll = terminallyIll
   terminallyIll = .false.
+  P_aim = merge(P_aim,P_av,params%stress_mask)
 
 end function grid_mech_spectral_basic_solution
 
@@ -269,32 +268,25 @@ end function grid_mech_spectral_basic_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !> @details find new boundary conditions and best F estimate for end of current timestep
-!> possibly writing restart information, triggering of state increment in DAMASK, and updating of IPcoordinates
 !--------------------------------------------------------------------------------------------------
-subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,loadCaseTime,&
+subroutine grid_mech_spectral_basic_forward(cutBack,guess,Delta_t,Delta_t_old,t_remaining,&
                                             deformation_BC,stress_BC,rotation_BC)
 
-  logical,                     intent(in) :: &
+  logical,                  intent(in) :: &
     cutBack, &
     guess
-  real(pReal),                 intent(in) :: &
-    timeinc_old, &
-    timeinc, &
-    loadCaseTime                                                                                     !< remaining time of current load case
-  type(tBoundaryCondition),    intent(in) :: &
+  real(pReal),              intent(in) :: &
+    Delta_t_old, &
+    Delta_t, &
+    t_remaining                                                                                     !< remaining time of current load case
+  type(tBoundaryCondition), intent(in) :: &
     stress_BC, &
     deformation_BC
-  type(rotation),              intent(in) :: &
+  type(rotation),           intent(in) :: &
     rotation_BC
   PetscErrorCode :: ierr
   PetscScalar, pointer, dimension(:,:,:,:) :: F
 
-!--------------------------------------------------------------------------------------------------
-! set module wide available data
-  params%stress_mask = stress_BC%mask
-  params%rotation_BC = rotation_BC
-  params%timeinc     = timeinc
-  params%timeincOld  = timeinc_old
 
   call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
 
@@ -305,7 +297,7 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
     C_volAvgLastInc    = C_volAvg
     C_minMaxAvgLastInc = C_minMaxAvg
 
-    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/timeinc_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)
+    F_aimDot = merge(merge((F_aim-F_aim_lastInc)/Delta_t_old,0.0_pReal,stress_BC%mask), 0.0_pReal, guess)  ! estimate deformation rate for prescribed stress components
     F_aim_lastInc = F_aim
 
     !-----------------------------------------------------------------------------------------------
@@ -313,40 +305,45 @@ subroutine grid_mech_spectral_basic_forward(cutBack,guess,timeinc,timeinc_old,lo
     if     (deformation_BC%myType=='L') then                                                        ! calculate F_aimDot from given L and current F
       F_aimDot = F_aimDot &
                + merge(matmul(deformation_BC%values, F_aim_lastInc),.0_pReal,deformation_BC%mask)
-    elseif(deformation_BC%myType=='dot_F') then                                                     ! F_aimDot is prescribed
-      F_aimDot = F_aimDot & 
+    elseif (deformation_BC%myType=='dot_F') then                                                    ! F_aimDot is prescribed
+      F_aimDot = F_aimDot &
                + merge(deformation_BC%values,.0_pReal,deformation_BC%mask)
     elseif (deformation_BC%myType=='F') then                                                        ! aim at end of load case is prescribed
       F_aimDot = F_aimDot &
-               + merge((deformation_BC%values - F_aim_lastInc)/loadCaseTime,.0_pReal,deformation_BC%mask)
+               + merge((deformation_BC%values - F_aim_lastInc)/t_remaining,.0_pReal,deformation_BC%mask)
     endif
 
     Fdot = utilities_calculateRate(guess, &
-                                   F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),timeinc_old, &
+                                   F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid3]),Delta_t_old, &
                                    rotation_BC%rotate(F_aimDot,active=.true.))
     F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid3])
 
-    homogenization_F0 = reshape(F, [3,3,1,product(grid(1:2))*grid3])
+    homogenization_F0 = reshape(F,[3,3,product(grid(1:2))*grid3])
   endif
 
 !--------------------------------------------------------------------------------------------------
 ! update average and local deformation gradients
-  F_aim = F_aim_lastInc + F_aimDot * timeinc
-  if     (stress_BC%myType=='P') then
-    P_aim = P_aim + merge((stress_BC%values - P_aim)/loadCaseTime*timeinc,.0_pReal,stress_BC%mask)
-  elseif (stress_BC%myType=='dot_P') then !UNTESTED
-    P_aim = P_aim + merge(stress_BC%values*timeinc,.0_pReal,stress_BC%mask)
-  endif
- 
-  F = reshape(utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! estimate of F at end of time+timeinc that matches rotated F_aim on average
+  F_aim = F_aim_lastInc + F_aimDot * Delta_t
+  if (stress_BC%myType=='P')     P_aim = P_aim &
+                                       + merge((stress_BC%values - P_aim)/t_remaining,0.0_pReal,stress_BC%mask)*Delta_t
+  if (stress_BC%myType=='dot_P') P_aim = P_aim &
+                                       + merge(stress_BC%values,0.0_pReal,stress_BC%mask)*Delta_t
+
+  F = reshape(utilities_forwardField(Delta_t,F_lastInc,Fdot, &                                      ! estimate of F at end of time+Delta_t that matches rotated F_aim on average
               rotation_BC%rotate(F_aim,active=.true.)),[9,grid(1),grid(2),grid3])
   call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+
+!--------------------------------------------------------------------------------------------------
+! set module wide available data
+  params%stress_mask = stress_BC%mask
+  params%rotation_BC = rotation_BC
+  params%timeinc     = Delta_t
 
 end subroutine grid_mech_spectral_basic_forward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Age
+!> @brief Update coordinates
 !--------------------------------------------------------------------------------------------------
 subroutine grid_mech_spectral_basic_updateCoords
 
@@ -378,6 +375,7 @@ subroutine grid_mech_spectral_basic_restartWrite
   fileHandle  = HDF5_openFile(fileName,'w')
   groupHandle = HDF5_addGroup(fileHandle,'solver')
 
+  call HDF5_write(groupHandle,P_aim,        'P_aim')
   call HDF5_write(groupHandle,F_aim,        'F_aim')
   call HDF5_write(groupHandle,F_aim_lastInc,'F_aim_lastInc')
   call HDF5_write(groupHandle,F_aimDot,     'F_aimDot')
@@ -463,7 +461,7 @@ subroutine formResidual(in, F, &
   PetscErrorCode :: ierr
 
   call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
-  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
+  call SNESGetIterationNumber(snes,PETScIter,ierr);  CHKERRQ(ierr)
 
   if (nfuncs == 0 .and. PETScIter == 0) totalIter = -1                                              ! new increment
 
@@ -472,11 +470,10 @@ subroutine formResidual(in, F, &
   newIteration: if (totalIter <= PETScIter) then
     totalIter = totalIter + 1
     print'(1x,a,3(a,i0))', trim(incInfo), ' @ Iteration ', num%itmin, '≤',totalIter, '≤', num%itmax
-    if (debugRotation) &
-      write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
-    write(IO_STDOUT,'(/,a,/,3(3(f12.7,1x)/))',advance='no') &
-              ' deformation gradient aim       =', transpose(F_aim)
+    if (debugRotation) print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      ' deformation gradient aim (lab) =', transpose(params%rotation_BC%rotate(F_aim,active=.true.))
+    print'(/,a,/,2(3(f12.7,1x)/),3(f12.7,1x))', &
+      ' deformation gradient aim       =', transpose(F_aim)
     flush(IO_STDOUT)
   endif newIteration
 

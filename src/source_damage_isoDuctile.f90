@@ -78,9 +78,9 @@ module function source_damage_isoDuctile_init(source_length) result(mySources)
         if (prm%gamma_crit <= 0.0_pReal) extmsg = trim(extmsg)//' gamma_crit'
 
         Nconstituents=count(material_phaseAt==p) * discretization_nIPs
-        call constitutive_allocateState(sourceState(p)%p(sourceOffset),Nconstituents,1,1,0)
-        sourceState(p)%p(sourceOffset)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
-        if(any(sourceState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
+        call constitutive_allocateState(damageState(p)%p(sourceOffset),Nconstituents,1,1,0)
+        damageState(p)%p(sourceOffset)%atol = src%get_asFloat('isoDuctile_atol',defaultVal=1.0e-3_pReal)
+        if(any(damageState(p)%p(sourceOffset)%atol < 0.0_pReal)) extmsg = trim(extmsg)//' isoductile_atol'
 
         end associate
 
@@ -98,10 +98,10 @@ end function source_damage_isoDuctile_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
+module subroutine source_damage_isoDuctile_dotState(co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID of integration point
     ip, &                                                                                           !< integration point
     el                                                                                              !< element
 
@@ -112,14 +112,14 @@ module subroutine source_damage_isoDuctile_dotState(ipc, ip, el)
     damageOffset, &
     homog
 
-  phase = material_phaseAt(ipc,el)
-  constituent = material_phasememberAt(ipc,ip,el)
+  phase = material_phaseAt(co,el)
+  constituent = material_phasememberAt(co,ip,el)
   sourceOffset = source_damage_isoDuctile_offset(phase)
   homog = material_homogenizationAt(el)
-  damageOffset = damageMapping(homog)%p(ip,el)
+  damageOffset = material_homogenizationMemberAt(ip,el)
 
   associate(prm => param(source_damage_isoDuctile_instance(phase)))
-  sourceState(phase)%p(sourceOffset)%dotState(1,constituent) = &
+  damageState(phase)%p(sourceOffset)%dotState(1,constituent) = &
     sum(plasticState(phase)%slipRate(:,constituent))/(damage(homog)%p(damageOffset)**prm%q)/prm%gamma_crit
   end associate
 
@@ -145,7 +145,7 @@ module subroutine source_damage_isoDuctile_getRateAndItsTangent(localphiDot, dLo
 
   sourceOffset = source_damage_isoDuctile_offset(phase)
 
-  dLocalphiDot_dPhi = -sourceState(phase)%p(sourceOffset)%state(1,constituent)
+  dLocalphiDot_dPhi = -damageState(phase)%p(sourceOffset)%state(1,constituent)
 
   localphiDot = 1.0_pReal &
               + dLocalphiDot_dPhi*phi
@@ -164,7 +164,7 @@ module subroutine source_damage_isoDuctile_results(phase,group)
   integer :: o
 
   associate(prm => param(source_damage_isoDuctile_instance(phase)), &
-            stt => sourceState(phase)%p(source_damage_isoDuctile_offset(phase))%state)
+            stt => damageState(phase)%p(source_damage_isoDuctile_offset(phase))%state)
   outputsLoop: do o = 1,size(prm%output)
     select case(trim(prm%output(o)))
       case ('f_phi')

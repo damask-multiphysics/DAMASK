@@ -32,7 +32,6 @@ module mesh_mech_FEM
   type tSolutionParams
     type(tFieldBC)  :: fieldBC
     real(pReal)     :: timeinc
-    real(pReal)     :: timeincOld
   end type tSolutionParams
 
   type(tSolutionParams)  :: params
@@ -147,14 +146,9 @@ subroutine FEM_mech_init(fieldBC)
   call PetscFESetQuadrature(mechFE,mechQuad,ierr); CHKERRQ(ierr)
   call PetscFEGetDimension(mechFE,nBasis,ierr); CHKERRQ(ierr)
   nBasis = nBasis/nc
-#if (PETSC_VERSION_MINOR > 10)
   call DMAddField(mech_mesh,PETSC_NULL_DMLABEL,mechFE,ierr); CHKERRQ(ierr)
   call DMCreateDS(mech_mesh,ierr); CHKERRQ(ierr)
-#endif
   call DMGetDS(mech_mesh,mechDS,ierr); CHKERRQ(ierr)
-#if (PETSC_VERSION_MINOR < 11)
-  call PetscDSAddDiscretization(mechDS,mechFE,ierr); CHKERRQ(ierr)
-#endif
   call PetscDSGetTotalDimension(mechDS,cellDof,ierr); CHKERRQ(ierr)
   call PetscFEDestroy(mechFE,ierr); CHKERRQ(ierr)
   call PetscQuadratureDestroy(mechQuad,ierr); CHKERRQ(ierr)
@@ -163,11 +157,7 @@ subroutine FEM_mech_init(fieldBC)
 ! Setup FEM mech boundary conditions
   call DMGetLabel(mech_mesh,'Face Sets',BCLabel,ierr); CHKERRQ(ierr)
   call DMPlexLabelComplete(mech_mesh,BCLabel,ierr); CHKERRQ(ierr)
-#if (PETSC_VERSION_MINOR < 12)
-  call DMGetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
-#else
   call DMGetLocalSection(mech_mesh,section,ierr); CHKERRQ(ierr)
-#endif
   allocate(pnumComp(1), source=dimPlex)
   allocate(pnumDof(0:dimPlex), source = 0)
   do topologDim = 0, dimPlex
@@ -205,14 +195,8 @@ subroutine FEM_mech_init(fieldBC)
       endif
     endif
   enddo; enddo
-#if (PETSC_VERSION_MINOR < 11)
-  call DMPlexCreateSection(mech_mesh,dimPlex,1,pNumComp,pNumDof, &
-                           numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
-#else
   call DMPlexCreateSection(mech_mesh,nolabel,pNumComp,pNumDof, &
                            numBC,pBcField,pBcComps,pBcPoints,PETSC_NULL_IS,section,ierr)
-
-#endif
   CHKERRQ(ierr)
   call DMSetSection(mech_mesh,section,ierr); CHKERRQ(ierr)
   do faceSet = 1, numBC
@@ -267,11 +251,7 @@ subroutine FEM_mech_init(fieldBC)
       x_scal(basis+1:basis+dimPlex) = pV0 + matmul(transpose(cellJMat),nodalPointsP + 1.0_pReal)
     enddo
     px_scal => x_scal
-#if (PETSC_VERSION_MINOR < 11)
-    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,INSERT_ALL_VALUES,ierr)
-#else
-    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,5,ierr)                  ! PETSc: cbee0a90b60958e5c50c89b1e41f4451dfa6008c
-#endif
+    call DMPlexVecSetClosure(mech_mesh,section,solution_local,cell,px_scal,5,ierr)
     CHKERRQ(ierr)
   enddo
 
@@ -302,7 +282,6 @@ type(tSolutionState) function FEM_mech_solution( &
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data
   params%timeinc = timeinc
-  params%timeincOld = timeinc_old
   params%fieldBC = fieldBC
 
   call SNESSolve(mech_snes,PETSC_NULL_VEC,solution,ierr); CHKERRQ(ierr)                             ! solve mech_snes based on solution guess (result in solution)
@@ -337,16 +316,16 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   Vec                                :: x_local, f_local, xx_local
   PetscSection                       :: section
   PetscScalar, dimension(:), pointer :: x_scal, pf_scal
-  PetscScalar,                target :: f_scal(cellDof)
-  PetscReal                          :: detJ, IcellJMat(dimPlex,dimPlex)
-  PetscReal,  pointer,dimension(:)   :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
+  PetscScalar, dimension(cellDof), target :: f_scal
+  PetscReal                          ::  IcellJMat(dimPlex,dimPlex)
+  PetscReal,    dimension(:),pointer :: pV0, pCellJ, pInvcellJ, basisField, basisFieldDer
   PetscInt                           :: cellStart, cellEnd, cell, field, face, &
                                         qPt, basis, comp, cidx, &
-                                        numFields
-  PetscReal                          :: detFAvg
-  PetscReal                          :: BMat(dimPlex*dimPlex,cellDof)
+                                        numFields, &
+                                        bcSize,m
+  PetscReal                          :: detFAvg, detJ
+  PetscReal, dimension(dimPlex*dimPlex,cellDof) :: BMat
 
-  PetscInt                           :: bcSize
   IS                                 :: bcPoints
 
 
@@ -355,11 +334,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
   allocate(pinvcellJ(dimPlex**2))
   allocate(x_scal(cellDof))
 
-#if (PETSC_VERSION_MINOR < 12)
-  call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
-#else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
-#endif
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
   CHKERRQ(ierr)
@@ -391,6 +366,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
     CHKERRQ(ierr)
     IcellJMat = reshape(pInvcellJ,shape=[dimPlex,dimPlex])
     do qPt = 0, nQuadrature-1
+      m = cell*nQuadrature + qPt+1
       BMat = 0.0
       do basis = 0, nBasis-1
         do comp = 0, dimPlex-1
@@ -400,15 +376,14 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1) = &
-        reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
+      homogenization_F(1:dimPlex,1:dimPlex,m) = reshape(matmul(BMat,x_scal),shape=[dimPlex,dimPlex], order=[2,1])
     enddo
     if (num%BBarStabilisation) then
-      detFAvg = math_det33(sum(homogenization_F(1:3,1:3,1:nQuadrature,cell+1),dim=3)/real(nQuadrature))
-      do qPt = 1, nQuadrature
-        homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1) = &
-          homogenization_F(1:dimPlex,1:dimPlex,qPt,cell+1)* &
-          (detFAvg/math_det33(homogenization_F(1:3,1:3,qPt,cell+1)))**(1.0/real(dimPlex))
+      detFAvg = math_det33(sum(homogenization_F(1:3,1:3,cell*nQuadrature+1:(cell+1)*nQuadrature),dim=3)/real(nQuadrature))
+      do qPt = 0, nQuadrature-1
+        m = cell*nQuadrature + qPt+1
+        homogenization_F(1:dimPlex,1:dimPlex,m) = homogenization_F(1:dimPlex,1:dimPlex,m) &
+                                                * (detFAvg/math_det33(homogenization_F(1:3,1:3,m)))**(1.0/real(dimPlex))
 
       enddo
     endif
@@ -432,6 +407,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
     IcellJMat = reshape(pInvcellJ,shape=[dimPlex,dimPlex])
     f_scal = 0.0
     do qPt = 0, nQuadrature-1
+      m = cell*nQuadrature + qPt+1
       BMat = 0.0
       do basis = 0, nBasis-1
         do comp = 0, dimPlex-1
@@ -443,7 +419,7 @@ subroutine FEM_mech_formResidual(dm_local,xx_local,f_local,dummy,ierr)
       enddo
       f_scal = f_scal + &
                matmul(transpose(BMat), &
-                      reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,qPt+1,cell+1)), &
+                      reshape(transpose(homogenization_P(1:dimPlex,1:dimPlex,m)), &
                               shape=[dimPlex*dimPlex]))*qWeights(qPt+1)
     enddo
     f_scal = f_scal*abs(detJ)
@@ -488,7 +464,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
                                           K_eB
 
   PetscInt                             :: cellStart, cellEnd, cell, field, face, &
-                                          qPt, basis, comp, cidx,bcSize
+                                          qPt, basis, comp, cidx,bcSize, m
 
   IS                                   :: bcPoints
 
@@ -502,11 +478,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
   call MatZeroEntries(Jac,ierr); CHKERRQ(ierr)
   call DMGetDS(dm_local,prob,ierr); CHKERRQ(ierr)
   call PetscDSGetTabulation(prob,0,basisField,basisFieldDer,ierr)
-#if (PETSC_VERSION_MINOR < 12)
-  call DMGetSection(dm_local,section,ierr); CHKERRQ(ierr)
-#else
   call DMGetLocalSection(dm_local,section,ierr); CHKERRQ(ierr)
-#endif
   call DMGetGlobalSection(dm_local,gSection,ierr); CHKERRQ(ierr)
 
   call DMGetLocalVector(dm_local,x_local,ierr); CHKERRQ(ierr)
@@ -535,6 +507,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
     FAvg = 0.0
     BMatAvg = 0.0
     do qPt = 0, nQuadrature-1
+      m = cell*nQuadrature + qPt + 1
       BMat = 0.0
       do basis = 0, nBasis-1
         do comp = 0, dimPlex-1
@@ -545,7 +518,7 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
                                            (((qPt*nBasis + basis)*dimPlex + comp)*dimPlex+comp+1)*dimPlex))
         enddo
       enddo
-      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,qPt+1,cell+1), &
+      MatA = matmul(reshape(reshape(homogenization_dPdF(1:dimPlex,1:dimPlex,1:dimPlex,1:dimPlex,m), &
                                     shape=[dimPlex,dimPlex,dimPlex,dimPlex], order=[2,1,4,3]), &
                             shape=[dimPlex*dimPlex,dimPlex*dimPlex]),BMat)*qWeights(qPt+1)
       if (num%BBarStabilisation) then
@@ -553,12 +526,11 @@ subroutine FEM_mech_formJacobian(dm_local,xx_local,Jac_pre,Jac,dummy,ierr)
         FInv = math_inv33(F)
         K_eA = K_eA + matmul(transpose(BMat),MatA)*math_det33(FInv)**(1.0/real(dimPlex))
         K_eB = K_eB - &
-               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1), &
-                                               shape=[dimPlex*dimPlex,1]), &
+               matmul(transpose(matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[dimPlex*dimPlex,1]), &
                                        matmul(reshape(FInv(1:dimPlex,1:dimPlex), &
                                                       shape=[1,dimPlex*dimPlex],order=[2,1]),BMat))),MatA)
-        MatB = MatB + &
-               matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,qPt+1,cell+1),shape=[1,dimPlex*dimPlex]),MatA)
+        MatB = MatB &
+             + matmul(reshape(homogenization_F(1:dimPlex,1:dimPlex,m),shape=[1,dimPlex*dimPlex]),MatA)
         FAvg = FAvg + F
         BMatAvg = BMatAvg + BMat
       else
@@ -686,8 +658,8 @@ subroutine FEM_mech_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dumm
   print'(/,1x,a,a,i0,a,i0,f0.3)', trim(incInfo), &
                   ' @ Iteration ',PETScIter,' mechanical residual norm = ', &
                                                   int(fnorm/divTol),fnorm/divTol-int(fnorm/divTol)
-  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
-                                                        transpose(P_av)*1.e-6_pReal
+  print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    ' Piola--Kirchhoff stress / MPa =',transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
 
 end subroutine FEM_mech_converged

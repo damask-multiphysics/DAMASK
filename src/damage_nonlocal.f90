@@ -7,7 +7,6 @@ module damage_nonlocal
   use material
   use config
   use YAML_types
-  use crystallite
   use lattice
   use constitutive
   use results
@@ -77,15 +76,12 @@ subroutine damage_nonlocal_init
 #endif
 
     Nmaterialpoints = count(material_homogenizationAt == h)
-    damageState(h)%sizeState = 1
-    allocate(damageState(h)%state0   (1,Nmaterialpoints), source=damage_initialPhi(h))
-    allocate(damageState(h)%subState0(1,Nmaterialpoints), source=damage_initialPhi(h))
-    allocate(damageState(h)%state    (1,Nmaterialpoints), source=damage_initialPhi(h))
+    damageState_h(h)%sizeState = 1
+    allocate(damageState_h(h)%state0   (1,Nmaterialpoints), source=1.0_pReal)
+    allocate(damageState_h(h)%subState0(1,Nmaterialpoints), source=1.0_pReal)
+    allocate(damageState_h(h)%state    (1,Nmaterialpoints), source=1.0_pReal)
 
-    nullify(damageMapping(h)%p)
-    damageMapping(h)%p => material_homogenizationMemberAt
-    deallocate(damage(h)%p)
-    damage(h)%p => damageState(h)%state(1,:)
+    damage(h)%p => damageState_h(h)%state(1,:)
 
     end associate
   enddo
@@ -152,12 +148,12 @@ real(pReal) function damage_nonlocal_getMobility(ip,el)
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   integer :: &
-    ipc
+    co
 
   damage_nonlocal_getMobility = 0.0_pReal
 
-  do ipc = 1, homogenization_Nconstituents(material_homogenizationAt(el))
-    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(ipc,el))
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt(el))
+    damage_nonlocal_getMobility = damage_nonlocal_getMobility + lattice_M(material_phaseAt(co,el))
   enddo
 
   damage_nonlocal_getMobility = damage_nonlocal_getMobility/&
@@ -181,7 +177,7 @@ subroutine damage_nonlocal_putNonLocalDamage(phi,ip,el)
     offset
 
   homog  = material_homogenizationAt(el)
-  offset = damageMapping(homog)%p(ip,el)
+  offset = material_homogenizationMemberAt(ip,el)
   damage(homog)%p(offset) = phi
 
 end subroutine damage_nonlocal_putNonLocalDamage

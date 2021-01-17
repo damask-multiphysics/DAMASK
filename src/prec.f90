@@ -54,16 +54,12 @@ module prec
   type, extends(tState) :: tPlasticState
     logical :: &
       nonlocal = .false.
-    real(pReal), pointer,     dimension(:,:) :: &
+    real(pReal), pointer, dimension(:,:) :: &
       slipRate                                                                                      !< slip rate
   end type
 
   type :: tSourceState
     type(tState), dimension(:), allocatable :: p                                                    !< tState for each active source mechanism in a phase
-  end type
-
-  type :: tHomogMapping
-    integer, pointer, dimension(:,:) :: p
   end type
 
   real(pReal), private, parameter :: PREAL_EPSILON = epsilon(0.0_pReal)                             !< minimum positive number such that 1.0 + EPSILON /= 1.0.
@@ -112,7 +108,9 @@ logical elemental pure function dEq(a,b,tol)
 
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
+
   real(pReal)                       :: eps
+
 
   if (present(tol)) then
     eps = tol
@@ -136,11 +134,8 @@ logical elemental pure function dNeq(a,b,tol)
   real(pReal), intent(in)           :: a,b
   real(pReal), intent(in), optional :: tol
 
-  if (present(tol)) then
-    dNeq = .not. dEq(a,b,tol)
-  else
-    dNeq = .not. dEq(a,b)
-  endif
+
+  dNeq = .not. dEq(a,b,tol)
 
 end function dNeq
 
@@ -155,7 +150,9 @@ logical elemental pure function dEq0(a,tol)
 
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
+
   real(pReal)                       :: eps
+
 
   if (present(tol)) then
     eps = tol
@@ -179,11 +176,8 @@ logical elemental pure function dNeq0(a,tol)
   real(pReal), intent(in)           :: a
   real(pReal), intent(in), optional :: tol
 
-  if (present(tol)) then
-    dNeq0 = .not. dEq0(a,tol)
-  else
-    dNeq0 = .not. dEq0(a)
-  endif
+
+  dNeq0 = .not. dEq0(a,tol)
 
 end function dNeq0
 
@@ -199,7 +193,9 @@ logical elemental pure function cEq(a,b,tol)
 
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
+
   real(pReal)                          :: eps
+
 
   if (present(tol)) then
     eps = tol
@@ -224,11 +220,8 @@ logical elemental pure function cNeq(a,b,tol)
   complex(pReal), intent(in)           :: a,b
   real(pReal),    intent(in), optional :: tol
 
-  if (present(tol)) then
-    cNeq = .not. cEq(a,b,tol)
-  else
-    cNeq = .not. cEq(a,b)
-  endif
+
+  cNeq = .not. cEq(a,b,tol)
 
 end function cNeq
 
@@ -241,6 +234,7 @@ pure function prec_bytesToC_FLOAT(bytes)
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_FLOAT array
   real(C_FLOAT), dimension(size(bytes,kind=pI64)/(storage_size(0._C_FLOAT,pI64)/8_pI64)) :: &
     prec_bytesToC_FLOAT
+
 
   prec_bytesToC_FLOAT = transfer(bytes,prec_bytesToC_FLOAT,size(prec_bytesToC_FLOAT))
 
@@ -256,6 +250,7 @@ pure function prec_bytesToC_DOUBLE(bytes)
   real(C_DOUBLE), dimension(size(bytes,kind=pI64)/(storage_size(0._C_DOUBLE,pI64)/8_pI64)) :: &
     prec_bytesToC_DOUBLE
 
+
   prec_bytesToC_DOUBLE = transfer(bytes,prec_bytesToC_DOUBLE,size(prec_bytesToC_DOUBLE))
 
 end function prec_bytesToC_DOUBLE
@@ -269,6 +264,7 @@ pure function prec_bytesToC_INT32_T(bytes)
   integer(C_SIGNED_CHAR), dimension(:), intent(in) :: bytes                                         !< byte-wise representation of a C_INT32_T array
   integer(C_INT32_T), dimension(size(bytes,kind=pI64)/(storage_size(0_C_INT32_T,pI64)/8_pI64)) :: &
     prec_bytesToC_INT32_T
+
 
   prec_bytesToC_INT32_T = transfer(bytes,prec_bytesToC_INT32_T,size(prec_bytesToC_INT32_T))
 
@@ -284,6 +280,7 @@ pure function prec_bytesToC_INT64_T(bytes)
   integer(C_INT64_T), dimension(size(bytes,kind=pI64)/(storage_size(0_C_INT64_T,pI64)/8_pI64)) :: &
      prec_bytesToC_INT64_T
 
+
   prec_bytesToC_INT64_T = transfer(bytes,prec_bytesToC_INT64_T,size(prec_bytesToC_INT64_T))
 
 end function prec_bytesToC_INT64_T
@@ -298,6 +295,7 @@ subroutine selfTest
   real(pReal),   dimension(1) :: f
   integer(pInt), dimension(1) :: i
   real(pReal),   dimension(2) :: r
+
 
   realloc_lhs_test = [1,2]
   if (any(realloc_lhs_test/=[1,2]))        error stop 'LHS allocation'

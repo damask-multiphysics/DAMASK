@@ -93,7 +93,7 @@ module spectral_utilities
     real(pReal), dimension(3,3) :: stress_BC
     logical, dimension(3,3)     :: stress_mask
     type(rotation)              :: rotation_BC
-    real(pReal) :: timeinc, timeincOld
+    real(pReal) :: timeinc
   end type tSolutionParams
 
   type :: tNumerics
@@ -688,8 +688,8 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
     if(debugGeneral) then
       print'(/,a)', ' ... updating masked compliance ............................................'
-      write(IO_STDOUT,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
-                                                   transpose(temp99_Real)*1.0e-9_pReal
+      print'(/,a,/,8(9(2x,f12.7,1x)/),9(2x,f12.7,1x))', &
+        ' Stiffness C (load) / GPa =', transpose(temp99_Real)*1.0e-9_pReal
       flush(IO_STDOUT)
     endif
 
@@ -709,9 +709,8 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
     if (debugGeneral .or. errmatinv) then
       write(formatString, '(i2)') size_reduced
       formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-      write(IO_STDOUT,trim(formatString),advance='no') ' C * S (load) ', &
-                                                             transpose(matmul(c_reduced,s_reduced))
-      write(IO_STDOUT,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
+      print trim(formatString), ' C * S (load) ', transpose(matmul(c_reduced,s_reduced))
+      print trim(formatString), ' S (load) ', transpose(s_reduced)
       if(errmatinv) error stop 'matrix inversion error'
     endif
     temp99_real = reshape(unpack(reshape(s_reduced,[size_reduced**2]),reshape(mask,[81]),0.0_pReal),[9,9])
@@ -722,7 +721,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
   utilities_maskedCompliance = math_99to3333(temp99_Real)
 
   if(debugGeneral) then
-    write(IO_STDOUT,'(/,a,/,9(9(2x,f10.5,1x)/),/)',advance='no') &
+    print'(/,a,/,9(9(2x,f10.5,1x)/),9(2x,f10.5,1x))', &
       ' Masked Compliance (load) * GPa =', transpose(temp99_Real)*1.0e9_pReal
     flush(IO_STDOUT)
   endif
@@ -811,20 +810,18 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   print'(/,a)', ' ... evaluating constitutive response ......................................'
   flush(IO_STDOUT)
 
-  homogenization_F  = reshape(F,[3,3,1,product(grid(1:2))*grid3])                                    ! set materialpoint target F to estimated field
+  homogenization_F  = reshape(F,[3,3,product(grid(1:2))*grid3])                                     ! set materialpoint target F to estimated field
 
-  call materialpoint_stressAndItsTangent(timeinc)                                                   ! calculate P field
+  call materialpoint_stressAndItsTangent(timeinc,[1,1],[1,product(grid(1:2))*grid3])                ! calculate P field
 
   P = reshape(homogenization_P, [3,3,grid(1),grid(2),grid3])
   P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                   ! average of P
   call MPI_Allreduce(MPI_IN_PLACE,P_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  if (debugRotation) &
-  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
-                                                      transpose(P_av)*1.e-6_pReal
-  if(present(rotation_BC)) &
-    P_av = rotation_BC%rotate(P_av)
-  write(IO_STDOUT,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress       / MPa =',&
-                                                      transpose(P_av)*1.e-6_pReal
+  if (debugRotation) print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    ' Piola--Kirchhoff stress (lab) / MPa =', transpose(P_av)*1.e-6_pReal
+  if(present(rotation_BC)) P_av = rotation_BC%rotate(P_av)
+  print'(/,a,/,2(3(2x,f12.4,1x)/),3(2x,f12.4,1x))', &
+    ' Piola--Kirchhoff stress       / MPa =', transpose(P_av)*1.e-6_pReal
   flush(IO_STDOUT)
 
   dPdF_max = 0.0_pReal
@@ -832,13 +829,13 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
   dPdF_min = huge(1.0_pReal)
   dPdF_norm_min = huge(1.0_pReal)
   do i = 1, product(grid(1:2))*grid3
-    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_max < sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)) then
+      dPdF_max = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
+      dPdF_norm_max = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)
     endif
-    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)) then
-      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)
-      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,1,i)**2.0_pReal)
+    if (dPdF_norm_min > sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)) then
+      dPdF_min = homogenization_dPdF(1:3,1:3,1:3,1:3,i)
+      dPdF_norm_min = sum(homogenization_dPdF(1:3,1:3,1:3,1:3,i)**2.0_pReal)
     endif
   end do
 
@@ -856,7 +853,7 @@ subroutine utilities_constitutiveResponse(P,P_av,C_volAvg,C_minmaxAvg,&
 
   C_minmaxAvg = 0.5_pReal*(dPdF_max + dPdF_min)
 
-  C_volAvg = sum(sum(homogenization_dPdF,dim=6),dim=5)
+  C_volAvg = sum(homogenization_dPdF,dim=5)
   call MPI_Allreduce(MPI_IN_PLACE,C_volAvg,81,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
   if (ierr /= 0) error stop 'MPI error'
   C_volAvg = C_volAvg * wgt

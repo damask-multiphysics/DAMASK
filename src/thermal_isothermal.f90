@@ -3,8 +3,10 @@
 !> @brief material subroutine for isothermal temperature field
 !--------------------------------------------------------------------------------------------------
 module thermal_isothermal
+  use prec
   use config
   use material
+  use discretization
 
   implicit none
   public
@@ -14,26 +16,31 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_isothermal_init
+subroutine thermal_isothermal_init(T)
 
-  integer :: h,Nmaterialpoints
+  real(pReal), dimension(:), intent(inout) ::  T
+
+  integer :: Ninstances,Nmaterialpoints,ho,ip,el,ce
 
   print'(/,a)',   ' <<<+-  thermal_isothermal init  -+>>>'; flush(6)
 
-  do h = 1, size(material_name_homogenization)
-    if (thermal_type(h) /= THERMAL_isothermal_ID) cycle
+  do ho = 1, size(thermal_type)
+    if (thermal_type(ho) /= THERMAL_isothermal_ID) cycle
 
-    Nmaterialpoints = count(material_homogenizationAt == h)
-    thermalState(h)%sizeState = 0
-    allocate(thermalState(h)%state0   (0,Nmaterialpoints))
-    allocate(thermalState(h)%subState0(0,Nmaterialpoints))
-    allocate(thermalState(h)%state    (0,Nmaterialpoints))
+    Nmaterialpoints = count(material_homogenizationAt == ho)
 
-    deallocate(temperature    (h)%p)
-    allocate  (temperature    (h)%p(1), source=thermal_initialT(h))
-    deallocate(temperatureRate(h)%p)
-    allocate  (temperatureRate(h)%p(1))
+    allocate(temperature    (ho)%p(Nmaterialpoints),source=thermal_initialT(ho))
+    allocate(temperatureRate(ho)%p(Nmaterialpoints),source = 0.0_pReal)
 
+  enddo
+
+  ce = 0
+  do el = 1, discretization_Nelems
+    do ip = 1, discretization_nIPs
+      ce = ce + 1
+      ho = material_homogenizationAt(el)
+      if (thermal_type(ho) == THERMAL_isothermal_ID) T(ce) = thermal_initialT(ho)
+    enddo
   enddo
 
 end subroutine thermal_isothermal_init

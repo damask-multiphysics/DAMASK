@@ -49,7 +49,7 @@ module results
     results_setLink, &
     results_addAttribute, &
     results_removeLink, &
-    results_mapping_constituent, &
+    results_mapping_phase, &
     results_mapping_homogenization
 contains
 
@@ -111,8 +111,6 @@ subroutine results_addIncrement(inc,time)
   call results_closeGroup(results_addGroup(trim('inc'//trim(adjustl(incChar)))))
   call results_setLink(trim('inc'//trim(adjustl(incChar))),'current')
   call results_addAttribute('time/s',time,trim('inc'//trim(adjustl(incChar))))
-  call results_closeGroup(results_addGroup('current/phase'))
-  call results_closeGroup(results_addGroup('current/homogenization'))
 
 end subroutine results_addIncrement
 
@@ -461,7 +459,7 @@ end subroutine results_writeTensorDataset_int
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique mapping from spatial position and constituent ID to results
 !--------------------------------------------------------------------------------------------------
-subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
+subroutine results_mapping_phase(phaseAt,memberAtLocal,label)
 
   integer,          dimension(:,:),   intent(in) :: phaseAt                                         !< phase section at (constituent,element)
   integer,          dimension(:,:,:), intent(in) :: memberAtLocal                                   !< phase member at (constituent,IP,element)
@@ -490,6 +488,47 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
 
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: hdferr, ierr, i
+
+!--------------------------------------------------------------------------------------------------
+! prepare MPI communication (transparent for non-MPI runs)
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+  memberOffset = 0
+  do i=1, size(label)
+    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                           ! number of points/instance of this process
+  enddo
+  writeSize = 0
+  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                 ! total number of points by this process
+
+!--------------------------------------------------------------------------------------------------
+! MPI settings and communication
+#ifdef PETSc
+  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+
+  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
+  if(ierr /= 0) error stop 'MPI error'
+
+  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
+  if(ierr /= 0) error stop 'MPI error'
+#endif
+
+  myShape    = int([size(phaseAt,1),writeSize(worldrank)],  HSIZE_T)
+  myOffset   = int([0,sum(writeSize(0:worldrank-1))],       HSIZE_T)
+  totalShape = int([size(phaseAt,1),sum(writeSize)],        HSIZE_T)
+
+
+!---------------------------------------------------------------------------------------------------
+! expand phaseAt to consider IPs (is not stored per IP)
+  do i = 1, size(phaseAtMaterialpoint,2)
+    phaseAtMaterialpoint(:,i,:) = phaseAt
+  enddo
+
+!---------------------------------------------------------------------------------------------------
+! renumber member from my process to all processes
+  do i = 1, size(label)
+    where(phaseAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) -1     ! convert to 0-based
+  enddo
 
 !---------------------------------------------------------------------------------------------------
 ! compound type: name of phase section + position/index within results array
@@ -526,34 +565,6 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
-! prepare MPI communication (transparent for non-MPI runs)
-  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  memberOffset = 0
-  do i=1, size(label)
-    memberOffset(i,worldrank) = count(phaseAt == i)*size(memberAtLocal,2)                           ! number of points/instance of this process
-  enddo
-  writeSize = 0
-  writeSize(worldrank) = size(memberAtLocal(1,:,:))                                                 ! total number of points by this process
-
-!--------------------------------------------------------------------------------------------------
-! MPI settings and communication
-#ifdef PETSc
-  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-
-  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
-  if(ierr /= 0) error stop 'MPI error'
-
-  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
-  if(ierr /= 0) error stop 'MPI error'
-#endif
-
-  myShape    = int([size(phaseAt,1),writeSize(worldrank)],  HSIZE_T)
-  myOffset   = int([0,sum(writeSize(0:worldrank-1))],       HSIZE_T)
-  totalShape = int([size(phaseAt,1),sum(writeSize)],        HSIZE_T)
-
-!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
   call h5screate_simple_f(2,myShape,memspace_id,hdferr,myShape)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -563,18 +574,6 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
 
   call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-
-!---------------------------------------------------------------------------------------------------
-! expand phaseAt to consider IPs (is not stored per IP)
-  do i = 1, size(phaseAtMaterialpoint,2)
-    phaseAtMaterialpoint(:,i,:) = phaseAt
-  enddo
-
-!---------------------------------------------------------------------------------------------------
-! renumber member from my process to all processes
-  do i = 1, size(label)
-    where(phaseAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) -1     ! convert to 0-based
-  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually
@@ -609,7 +608,7 @@ subroutine results_mapping_constituent(phaseAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
   call h5tclose_f(position_id, hdferr)
 
-end subroutine results_mapping_constituent
+end subroutine results_mapping_phase
 
 
 !--------------------------------------------------------------------------------------------------
@@ -645,6 +644,48 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   integer(SIZE_T) :: type_size_string, type_size_int
   integer         :: hdferr, ierr, i
 
+
+!--------------------------------------------------------------------------------------------------
+! prepare MPI communication (transparent for non-MPI runs)
+  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+  memberOffset = 0
+  do i=1, size(label)
+    memberOffset(i,worldrank) = count(homogenizationAt == i)*size(memberAtLocal,1)                  ! number of points/instance of this process
+  enddo
+  writeSize = 0
+  writeSize(worldrank) = size(memberAtLocal)                                                        ! total number of points by this process
+
+!--------------------------------------------------------------------------------------------------
+! MPI settings and communication
+#ifdef PETSc
+  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
+  if(hdferr < 0) error stop 'HDF5 error'
+
+  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
+  if(ierr /= 0) error stop 'MPI error'
+
+  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
+  if(ierr /= 0) error stop 'MPI error'
+#endif
+
+  myShape    = int([writeSize(worldrank)],          HSIZE_T)
+  myOffset   = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
+  totalShape = int([sum(writeSize)],                HSIZE_T)
+
+
+!---------------------------------------------------------------------------------------------------
+! expand phaseAt to consider IPs (is not stored per IP)
+  do i = 1, size(homogenizationAtMaterialpoint,1)
+    homogenizationAtMaterialpoint(i,:) = homogenizationAt
+  enddo
+
+!---------------------------------------------------------------------------------------------------
+! renumber member from my process to all processes
+  do i = 1, size(label)
+    where(homogenizationAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) - 1  ! convert to 0-based
+  enddo
+
 !---------------------------------------------------------------------------------------------------
 ! compound type: name of phase section + position/index within results array
   call h5tcopy_f(H5T_NATIVE_CHARACTER, dt_id, hdferr)
@@ -680,34 +721,6 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
   if(hdferr < 0) error stop 'HDF5 error'
 
 !--------------------------------------------------------------------------------------------------
-! prepare MPI communication (transparent for non-MPI runs)
-  call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-  memberOffset = 0
-  do i=1, size(label)
-    memberOffset(i,worldrank) = count(homogenizationAt == i)*size(memberAtLocal,1)                  ! number of points/instance of this process
-  enddo
-  writeSize = 0
-  writeSize(worldrank) = size(memberAtLocal)                                                        ! total number of points by this process
-
-!--------------------------------------------------------------------------------------------------
-! MPI settings and communication
-#ifdef PETSc
-  call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdferr)
-  if(hdferr < 0) error stop 'HDF5 error'
-
-  call MPI_allreduce(MPI_IN_PLACE,writeSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)        ! get output at each process
-  if(ierr /= 0) error stop 'MPI error'
-
-  call MPI_allreduce(MPI_IN_PLACE,memberOffset,size(memberOffset),MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)! get offset at each process
-  if(ierr /= 0) error stop 'MPI error'
-#endif
-
-  myShape    = int([writeSize(worldrank)],          HSIZE_T)
-  myOffset   = int([sum(writeSize(0:worldrank-1))], HSIZE_T)
-  totalShape = int([sum(writeSize)],                HSIZE_T)
-
-!--------------------------------------------------------------------------------------------------
 ! create dataspace in memory (local shape = hyperslab) and in file (global shape)
   call h5screate_simple_f(1,myShape,memspace_id,hdferr,myShape)
   if(hdferr < 0) error stop 'HDF5 error'
@@ -717,18 +730,6 @@ subroutine results_mapping_homogenization(homogenizationAt,memberAtLocal,label)
 
   call h5sselect_hyperslab_f(filespace_id, H5S_SELECT_SET_F, myOffset, myShape, hdferr)
   if(hdferr < 0) error stop 'HDF5 error'
-
-!---------------------------------------------------------------------------------------------------
-! expand phaseAt to consider IPs (is not stored per IP)
-  do i = 1, size(homogenizationAtMaterialpoint,1)
-    homogenizationAtMaterialpoint(i,:) = homogenizationAt
-  enddo
-
-!---------------------------------------------------------------------------------------------------
-! renumber member from my process to all processes
-  do i = 1, size(label)
-    where(homogenizationAtMaterialpoint == i) memberAtGlobal = memberAtLocal + sum(memberOffset(i,0:worldrank-1)) - 1  ! convert to 0-based
-  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! write the components of the compound type individually

@@ -117,10 +117,10 @@ end function kinematics_slipplane_opening_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient
 !--------------------------------------------------------------------------------------------------
-module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, ipc, ip, el)
+module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S, co, ip, el)
 
   integer, intent(in) :: &
-    ipc, &                                                                                          !< grain number
+    co, &                                                                                          !< grain number
     ip, &                                                                                           !< integration point number
     el                                                                                              !< element number
   real(pReal),   intent(in),  dimension(3,3) :: &
@@ -138,10 +138,10 @@ module subroutine kinematics_slipplane_opening_LiAndItsTangent(Ld, dLd_dTstar, S
     traction_d, traction_t, traction_n, traction_crit, &
     udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
 
-  phase = material_phaseAt(ipc,el)
+  phase = material_phaseAt(co,el)
   instance = kinematics_slipplane_opening_instance(phase)
   homog = material_homogenizationAt(el)
-  damageOffset = damageMapping(homog)%p(ip,el)
+  damageOffset = material_homogenizationMemberAt(ip,el)
 
   associate(prm => param(instance))
   Ld = 0.0_pReal
