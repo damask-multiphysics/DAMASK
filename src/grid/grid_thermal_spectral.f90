@@ -16,6 +16,7 @@ module grid_thermal_spectral
   use spectral_utilities
   use discretization_grid
   use thermal_conduction
+  use homogenization
   use YAML_types
   use config
   use material
@@ -190,6 +191,7 @@ function grid_thermal_spectral_solution(timeinc) result(solution)
     call thermal_conduction_putTemperatureAndItsRate(T_current(i,j,k), &
                                                      (T_current(i,j,k)-T_lastInc(i,j,k))/params%timeinc, &
                                                      1,ce)
+    homogenization_T(ce) = T_current(i,j,k)
   enddo; enddo; enddo
 
   call VecMin(solution_vec,devNull,T_min,ierr); CHKERRQ(ierr)
@@ -231,6 +233,7 @@ subroutine grid_thermal_spectral_forward(cutBack)
                                                        (T_current(i,j,k) - &
                                                         T_lastInc(i,j,k))/params%timeinc, &
                                                        1,ce)
+      homogenization_T(ce) = T_current(i,j,k)
     enddo; enddo; enddo
   else
     T_lastInc = T_current

@@ -365,7 +365,7 @@ subroutine flux(f,ts,n,time)
     f
 
   f(2) = 0.0_pReal
-  call thermal_conduction_getSource(f(1), ts(3), n(3),mesh_FEM2DAMASK_elem(n(1)))
+  call thermal_conduction_getSource(f(1), n(3),mesh_FEM2DAMASK_elem(n(1)))
 
  end subroutine flux
 
