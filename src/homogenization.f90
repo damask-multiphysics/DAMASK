@@ -70,11 +70,9 @@ module homogenization
         el                                                                                          !< element number
     end subroutine mech_partition
 
-    module subroutine thermal_partition(T,ip,el)
+    module subroutine thermal_partition(T,ce)
       real(pReal), intent(in) :: T
-      integer,     intent(in) :: &
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element number
+      integer,     intent(in) :: ce
     end subroutine thermal_partition
 
     module subroutine mech_homogenize(dt,ip,el)
@@ -265,7 +263,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       ho = material_homogenizationAt(el)
       do ip = FEsolving_execIP(1),FEsolving_execIP(2)
         ce = (el-1)*discretization_nIPs + ip
-        call thermal_partition(homogenization_T(ce),ip,el)
+        call thermal_partition(homogenization_T(ce),ce)
         do co = 1, homogenization_Nconstituents(ho)
           ph = material_phaseAt(co,el)
           call constitutive_thermal_initializeRestorationPoints(ph,material_phaseMemberAt(co,ip,el))

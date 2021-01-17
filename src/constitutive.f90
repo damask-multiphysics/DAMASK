@@ -199,9 +199,9 @@ module constitutive
       integer, intent(in) :: co, ip, el
     end subroutine constitutive_mech_setF
 
-    module subroutine constitutive_thermal_setT(T,co,ip,el)
+    module subroutine constitutive_thermal_setT(T,co,ce)
       real(pReal), intent(in) :: T
-      integer, intent(in) :: co, ip, el
+      integer, intent(in) :: co, ce
     end subroutine constitutive_thermal_setT
 
 ! == cleaned:end ===================================================================================

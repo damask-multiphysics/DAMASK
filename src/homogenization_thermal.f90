@@ -23,15 +23,16 @@ end subroutine thermal_init
 !--------------------------------------------------------------------------------------------------
 !> @brief Partition T onto the individual constituents.
 !--------------------------------------------------------------------------------------------------
-module subroutine thermal_partition(T,ip,el)
+module subroutine thermal_partition(T,ce)
 
   real(pReal), intent(in) :: T
-  integer,     intent(in) :: &
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element number
+  integer,     intent(in) :: ce
 
+  integer :: co
 
-  call constitutive_thermal_setT(T,1,ip,el)
+  do co = 1, homogenization_Nconstituents(material_homogenizationAt2(ce))
+    call constitutive_thermal_setT(T,co,ce)
+  enddo
 
 end subroutine thermal_partition
 

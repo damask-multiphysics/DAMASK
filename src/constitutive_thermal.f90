@@ -284,13 +284,13 @@ end function thermal_T
 !----------------------------------------------------------------------------------------------
 !< @brief Set temperature
 !----------------------------------------------------------------------------------------------
-module subroutine constitutive_thermal_setT(T,co,ip,el)
+module subroutine constitutive_thermal_setT(T,co,ce)
 
   real(pReal), intent(in) :: T
-  integer, intent(in) :: co, ip, el
+  integer, intent(in) :: ce, co
 
 
-  current(material_phaseAt(co,el))%T(material_phaseMemberAt(co,ip,el)) = T
+  current(material_phaseAt2(co,ce))%T(material_phaseMemberAt2(co,ce)) = T
 
 end subroutine constitutive_thermal_setT
 
