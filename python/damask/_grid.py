@@ -1,7 +1,7 @@
 import copy
 import multiprocessing as mp
 from functools import partial
-from os import path
+import os
 import warnings
 
 import numpy as np
@@ -10,7 +10,6 @@ import h5py
 from scipy import ndimage, spatial
 from vtk.util.numpy_support import vtk_to_numpy as vtk_to_np
 
-from . import environment
 from . import VTK
 from . import util
 from . import grid_filters
@@ -278,14 +277,14 @@ class Grid:
         """
         root_dir ='DataContainers'
         f = h5py.File(fname, 'r')
-        g = path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
-        cells  = f[path.join(g,'DIMENSIONS')][()]
-        size   = f[path.join(g,'SPACING')][()] * cells
-        origin = f[path.join(g,'ORIGIN')][()]
+        g = os.path.join(root_dir,base_group,'_SIMPL_GEOMETRY')
+        cells  = f[os.path.join(g,'DIMENSIONS')][()]
+        size   = f[os.path.join(g,'SPACING')][()] * cells
+        origin = f[os.path.join(g,'ORIGIN')][()]
 
         ma = np.arange(cells.prod(),dtype=int) \
              if point_data is None else \
-             np.reshape(f[path.join(root_dir,base_group,point_data,material)],cells.prod())
+             np.reshape(f[os.path.join(root_dir,base_group,point_data,material)],cells.prod())
 
         return Grid(ma.reshape(cells,order='F'),size,origin,util.execution_stamp('Grid','load_DREAM3D'))
 
@@ -355,7 +354,7 @@ class Grid:
             seeds_p   = seeds
             coords    = grid_filters.coordinates0_point(cells,size).reshape(-1,3)
 
-        pool = mp.Pool(processes = int(environment.options['DAMASK_NUM_THREADS']))
+        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',1)))
         result = pool.map_async(partial(Grid._find_closest_seed,seeds_p,weights_p), [coord for coord in coords])
         pool.close()
         pool.join()

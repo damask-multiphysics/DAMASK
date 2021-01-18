@@ -16,8 +16,6 @@ with open(_Path(__file__).parent/_Path('VERSION')) as _f:
     __version__ = version
 
 # make classes directly accessible as damask.Class
-from ._environment import Environment as _ # noqa
-environment = _()
 from .                 import util             # noqa
 from .                 import seeds            # noqa
 from .                 import tensor           # noqa
@@ -38,7 +36,6 @@ from ._result          import Result           # noqa
 
 
 # deprecated
-Environment = _
 from ._asciitable  import ASCIItable       # noqa
 from ._test        import Test             # noqa
 from .util         import extendableOption # noqa
