@@ -80,12 +80,12 @@ class Result:
                 self.out_type_ho += f['/'.join([self.increments[0],'homogenization',m])].keys()
             self.out_type_ho = list(set(self.out_type_ho))                                          # make unique
 
-        self.selection = {'increments':      self.increments,
-                          'phases':          self.phases,
-                          'homogenizations': self.homogenizations,
-                          'out_type_ph':     self.out_type_ph,
-                          'out_type_ho':     self.out_type_ho
-                         }
+        self.visible = {'increments':      self.increments,
+                        'phases':          self.phases,
+                        'homogenizations': self.homogenizations,
+                        'out_type_ph':     self.out_type_ph,
+                        'out_type_ho':     self.out_type_ho
+                       }
 
         self.fname = Path(fname).absolute()
 
@@ -94,23 +94,23 @@ class Result:
 
     def __repr__(self):
         """Show summary of file content."""
-        all_selected_increments = self.selection['increments']
+        visible_increments = self.visible['increments']
 
-        self.pick('increments',all_selected_increments[0:1])
+        self.view('increments',visible_increments[0:1])
         first = self.list_data()
 
-        self.pick('increments',all_selected_increments[-1:])
-        last  = '' if len(all_selected_increments) < 2 else self.list_data()
+        self.view('increments',visible_increments[-1:])
+        last  = '' if len(visible_increments) < 2 else self.list_data()
 
-        self.pick('increments',all_selected_increments)
+        self.view('increments',visible_increments)
 
-        in_between = '' if len(all_selected_increments) < 3 else \
-                     ''.join([f'\n{inc}\n  ...\n' for inc in all_selected_increments[1:-2]])
+        in_between = '' if len(visible_increments) < 3 else \
+                     ''.join([f'\n{inc}\n  ...\n' for inc in visible_increments[1:-2]])
 
         return util.srepr(first + in_between + last)
 
 
-    def _manage_selection(self,action,what,datasets):
+    def _manage_view(self,action,what,datasets):
         """
         Manages the visibility of the groups.
 
@@ -119,7 +119,7 @@ class Result:
         action : str
             Select from 'set', 'add', and 'del'.
         what : str
-            Attribute to change (must be from self.selection).
+            Attribute to change (must be in self.visible).
         datasets : list of str or bool
             Name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
@@ -156,18 +156,18 @@ class Result:
                         choice.append(self.increments[idx+1])
 
         valid = [e for e_ in [glob.fnmatch.filter(getattr(self,what),s) for s in choice] for e in e_]
-        existing = set(self.selection[what])
+        existing = set(self.visible[what])
 
         if   action == 'set':
-            self.selection[what] = valid
+            self.visible[what] = valid
         elif action == 'add':
             add = existing.union(valid)
             add_sorted = sorted(add, key=natural_sort)
-            self.selection[what] = add_sorted
+            self.visible[what] = add_sorted
         elif action == 'del':
             diff = existing.difference(valid)
             diff_sorted = sorted(diff, key=natural_sort)
-            self.selection[what] = diff_sorted
+            self.visible[what] = diff_sorted
 
 
     def _get_attribute(self,path,attr):
@@ -245,72 +245,72 @@ class Result:
 
     def iterate(self,what):
         """
-        Iterate over selection items by setting each one selected.
+        Iterate over visible items and view them independently.
 
         Parameters
         ----------
         what : str
-            Attribute to change (must be from self.selection).
+            Attribute to change (must be from self.visible).
 
         """
-        datasets = self.selection[what]
-        last_selection = datasets.copy()
+        datasets = self.visible[what]
+        last_view = datasets.copy()
         for dataset in datasets:
-            if last_selection != self.selection[what]:
-                self._manage_selection('set',what,datasets)
+            if last_view != self.visible[what]:
+                self._manage_view('set',what,datasets)
                 raise Exception
-            self._manage_selection('set',what,dataset)
-            last_selection = self.selection[what]
+            self._manage_view('set',what,dataset)
+            last_view = self.visible[what]
             yield dataset
-        self._manage_selection('set',what,datasets)
+        self._manage_view('set',what,datasets)
 
 
-    def pick(self,what,datasets):
+    def view(self,what,datasets):
         """
-        Set selection.
+        Set view.
 
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.selection)
+            attribute to change (must be from self.visible)
         datasets : list of str or bool
             name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
         """
-        self._manage_selection('set',what,datasets)
+        self._manage_view('set',what,datasets)
 
 
-    def pick_more(self,what,datasets):
+    def view_more(self,what,datasets):
         """
-        Add to selection.
+        Add to view.
 
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.selection)
+            attribute to change (must be from self.visible)
         datasets : list of str or bool
             name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
         """
-        self._manage_selection('add',what,datasets)
+        self._manage_view('add',what,datasets)
 
 
-    def pick_less(self,what,datasets):
+    def view_less(self,what,datasets):
         """
-        Delete from selection.
+        Delete from view.
 
         Parameters
         ----------
         what : str
-            attribute to change (must be from self.selection)
+            attribute to change (must be from self.visible)
         datasets : list of str or bool
             name of datasets as list, supports ? and * wildcards.
             True is equivalent to [*], False is equivalent to []
 
         """
-        self._manage_selection('del',what,datasets)
+        self._manage_view('del',what,datasets)
 
 
     def rename(self,name_old,name_new):
@@ -1134,8 +1134,7 @@ class Result:
 
         """
         chunk_size = 1024**2//8
-        num_threads = damask.environment.options['DAMASK_NUM_THREADS']
-        pool = mp.Pool(int(num_threads) if num_threads is not None else None)
+        pool = mp.Pool(int(os.environ.get('OMP_NUM_THREADS',1)))
         lock = mp.Manager().Lock()
 
         groups = self.groups_with_datasets(datasets.values())
@@ -1190,8 +1189,8 @@ class Result:
         """
         Write XDMF file to directly visualize data in DADF5 file.
 
-        This works only for scalar, 3-vector and 3x3-tensor data.
-        Selection is not taken into account.
+        The view is not taken into account, i.e. the content of the
+        whole file will be included.
         """
         if self.N_constituents != 1 or len(self.phases) != 1 or not self.structured:
             raise TypeError('XDMF output requires homogeneous grid')
@@ -1320,10 +1319,10 @@ class Result:
 
         N_digits = int(np.floor(np.log10(max(1,int(self.increments[-1][3:])))))+1
 
-        for inc in util.show_progress(self.iterate('increments'),len(self.selection['increments'])):
+        for inc in util.show_progress(self.iterate('increments'),len(self.visible['increments'])):
 
-            picked_backup_ho = self.selection['homogenizations'].copy()
-            self.pick('homogenizations',False)
+            viewed_backup_ho = self.visible['homogenizations'].copy()
+            self.view('homogenizations',False)
             for label in (labels if isinstance(labels,list) else [labels]):
                 for o in self.iterate('out_type_ph'):
                     for c in range(self.N_constituents):
@@ -1343,10 +1342,10 @@ class Result:
                             ph_name = re.compile(r'(?<=(phase\/))(.*?)(?=(mechanics))')              # identify  phase name
                             dset_name = prefix+re.sub(ph_name,r'',paths[0].split('/',1)[1])          # remove phase name
                             v.add(array,dset_name+f' / {self._get_attribute(paths[0],"Unit")}')
-            self.pick('homogenizations',picked_backup_ho)
+            self.view('homogenizations',viewed_backup_ho)
 
-            picked_backup_ph = self.selection['phases'].copy()
-            self.pick('phases',False)
+            viewed_backup_ph = self.visible['phases'].copy()
+            self.view('phases',False)
             for label in (labels if isinstance(labels,list) else [labels]):
                 for _ in self.iterate('out_type_ho'):
                     paths = self.get_dataset_location(label)
@@ -1354,7 +1353,7 @@ class Result:
                         continue
                     array = self.read_dataset(paths)
                     v.add(array,paths[0].split('/',1)[1]+f' / {self._get_attribute(paths[0],"Unit")}')
-            self.pick('phases',picked_backup_ph)
+            self.view('phases',viewed_backup_ph)
 
             u = self.read_dataset(self.get_dataset_location('u_n' if mode.lower() == 'cell' else 'u_p'))
             v.add(u,'u')

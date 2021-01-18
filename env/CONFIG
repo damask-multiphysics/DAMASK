@@ -1,5 +1,5 @@
 # "set"-syntax needed only for tcsh (but works with bash and zsh)
-set DAMASK_NUM_THREADS  = 4
+set OMP_NUM_THREADS  = 4
 
-set MSC_ROOT            = /opt/msc
-set MSC_VERSION         = 2020
+set MSC_ROOT         = /opt/msc
+set MSC_VERSION      = 2020

@@ -3,11 +3,9 @@
 # Makes postprocessing routines accessible from everywhere.
 import sys
 from pathlib import Path
+import os
 
-import damask
-
-env = damask.Environment()
-bin_dir = env.root_dir/Path('bin')
+bin_dir = Path(os.environ['DAMASK_ROOT'])/'bin'
 
 if not bin_dir.exists():
     bin_dir.mkdir()
@@ -15,7 +13,7 @@ if not bin_dir.exists():
 
 sys.stdout.write('\nsymbolic linking...\n')
 for sub_dir in ['pre','post']:
-    the_dir = env.root_dir/Path('processing')/Path(sub_dir)
+    the_dir = Path(os.environ['DAMASK_ROOT'])/'processing'/sub_dir
 
     for the_file in the_dir.glob('*.py'):
         src = the_dir/the_file
