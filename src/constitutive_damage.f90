@@ -400,14 +400,14 @@ end subroutine damage_results
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
+function constitutive_damage_collectDotState(co,ip,el,ph,me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID me integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
     ph, &
-    of
+    me
   integer :: &
     so                                                                                               !< counter in source loop
   logical :: broken
@@ -426,12 +426,11 @@ function constitutive_damage_collectDotState(co,ip,el,ph,of) result(broken)
         call source_damage_anisoDuctile_dotState(co, ip, el)
 
       case (DAMAGE_ANISOBRITTLE_ID) sourceType
-        call source_damage_anisoBrittle_dotState(mech_S(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)),&
-                co, ip, el) ! correct stress?
+        call source_damage_anisoBrittle_dotState(mech_S(ph,me),co, ip, el) ! correct stress?
 
     end select sourceType
 
-    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%p(so)%dotState(:,of)))
+    broken = broken .or. any(IEEE_is_NaN(damageState(ph)%p(so)%dotState(:,me)))
 
   enddo SourceLoop
 
