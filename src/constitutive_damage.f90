@@ -411,14 +411,14 @@ end function constitutive_damage_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
+function constitutive_damage_deltaState(Fe, co, ip, el, ph, me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID of integration point
+    co, &                                                                                          !< component-ID me integration point
     ip, &                                                                                           !< integration point
     el, &                                                                                           !< element
     ph, &
-    of
+    me
   real(pReal),   intent(in), dimension(3,3) :: &
     Fe                                                                                              !< elastic deformation gradient
   integer :: &
@@ -436,15 +436,13 @@ function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
      sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(material_phaseAt(co,el), &
-                                                                             material_phaseMemberAt(co,ip,el)), Fe, &
-                                                   co, ip, el)
-        broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,of)))
+        call source_damage_isoBrittle_deltaState(constitutive_homogenizedC(ph,me), Fe, co, ip, el)
+        broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,me)))
         if(.not. broken) then
           myOffset = damageState(ph)%p(so)%offsetDeltaState
           mySize   = damageState(ph)%p(so)%sizeDeltaState
-          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) = &
-          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,of) + damageState(ph)%p(so)%deltaState(1:mySize,of)
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,me) = &
+          damageState(ph)%p(so)%state(myOffset + 1: myOffset + mySize,me) + damageState(ph)%p(so)%deltaState(1:mySize,me)
         endif
 
     end select sourceType
