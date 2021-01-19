@@ -54,6 +54,30 @@ submodule(constitutive) constitutive_damage
     end subroutine source_damage_isoBrittle_deltaState
 
 
+    module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
+      integer, intent(in) :: &
+        co, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+      real(pReal),  intent(in), dimension(3,3) :: &
+        S
+    end subroutine source_damage_anisoBrittle_dotState
+
+    module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
+      integer, intent(in) :: &
+        co, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+    end subroutine source_damage_anisoDuctile_dotState
+
+    module subroutine source_damage_isoDuctile_dotState(co, ip, el)
+      integer, intent(in) :: &
+        co, &                                                                                      !< component-ID of integration point
+        ip, &                                                                                       !< integration point
+        el                                                                                          !< element
+    end subroutine source_damage_isoDuctile_dotState
+
+
   module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
       phase, &                                                                                      !< phase ID of element

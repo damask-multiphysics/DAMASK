@@ -234,34 +234,9 @@ module constitutive
       real(pReal), dimension(6,6) :: C
     end function constitutive_homogenizedC
 
-    module subroutine source_damage_anisoBrittle_dotState(S, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-      real(pReal),  intent(in), dimension(3,3) :: &
-        S
-    end subroutine source_damage_anisoBrittle_dotState
 
-    module subroutine source_damage_anisoDuctile_dotState(co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-    end subroutine source_damage_anisoDuctile_dotState
 
-    module subroutine source_damage_isoDuctile_dotState(co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-    end subroutine source_damage_isoDuctile_dotState
 
-    module subroutine source_thermal_externalheat_dotState(phase, of)
-      integer, intent(in) :: &
-        phase, &
-        of
-    end subroutine source_thermal_externalheat_dotState
 
     module subroutine constitutive_damage_getRateAndItsTangents(phiDot, dPhiDot_dPhi, phi, ip, el)
       integer, intent(in) :: &
