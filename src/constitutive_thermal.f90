@@ -36,10 +36,10 @@ submodule(constitutive) constitutive_thermal
   end function kinematics_thermal_expansion_init
 
 
-    module subroutine source_thermal_externalheat_dotState(phase, of)
+    module subroutine source_thermal_externalheat_dotState(ph, me)
       integer, intent(in) :: &
-        phase, &
-        of
+        ph, &
+        me
     end subroutine source_thermal_externalheat_dotState
 
 
@@ -54,10 +54,10 @@ submodule(constitutive) constitutive_thermal
       TDot
   end subroutine thermal_dissipation_getRate
 
-  module subroutine thermal_externalheat_getRate(TDot, phase,of)
+  module subroutine thermal_externalheat_getRate(TDot, ph,me)
     integer, intent(in) :: &
-      phase, &
-      of
+      ph, &
+      me
     real(pReal),  intent(out) :: &
       TDot
   end subroutine thermal_externalheat_getRate
