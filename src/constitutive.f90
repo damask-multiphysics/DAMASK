@@ -343,19 +343,6 @@ module constitutive
         dLi_dTstar                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor defined to be zero)
     end subroutine kinematics_thermal_expansion_LiAndItsTangent
 
-
-    module subroutine source_damage_isoBrittle_deltaState(C, Fe, co, ip, el)
-      integer, intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
-      real(pReal),  intent(in), dimension(3,3) :: &
-        Fe
-      real(pReal),  intent(in), dimension(6,6) :: &
-        C
-    end subroutine source_damage_isoBrittle_deltaState
-
-
     module subroutine constitutive_plastic_dependentState(co,ip,el)
       integer, intent(in) :: &
         co, &                                                                                       !< component-ID of integration point

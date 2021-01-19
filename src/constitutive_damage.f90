@@ -45,6 +45,14 @@ submodule(constitutive) constitutive_damage
     logical, dimension(:,:), allocatable :: myKinematics
   end function kinematics_slipplane_opening_init
 
+    module subroutine source_damage_isoBrittle_deltaState(C, Fe, ph, me)
+      integer, intent(in) :: ph,me
+      real(pReal),  intent(in), dimension(3,3) :: &
+        Fe
+      real(pReal),  intent(in), dimension(6,6) :: &
+        C
+    end subroutine source_damage_isoBrittle_deltaState
+
 
   module subroutine source_damage_anisobrittle_getRateAndItsTangent(localphiDot, dLocalphiDot_dPhi, phi, phase, constituent)
     integer, intent(in) :: &
@@ -295,7 +303,7 @@ module function integrateDamageState(dt,co,ip,el) result(broken)
     enddo
 
     if(converged_) then
-      broken = constitutive_damage_deltaState(mech_F_e(ph,me),co,ip,el,ph,me)
+      broken = constitutive_damage_deltaState(mech_F_e(ph,me),ph,me)
       exit iteration
     endif
 
@@ -411,12 +419,9 @@ end function constitutive_damage_collectDotState
 !> @brief for constitutive models having an instantaneous change of state
 !> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_deltaState(Fe, co, ip, el, ph, me) result(broken)
+function constitutive_damage_deltaState(Fe, ph, me) result(broken)
 
   integer, intent(in) :: &
-    co, &                                                                                          !< component-ID me integration point
-    ip, &                                                                                           !< integration point
-    el, &                                                                                           !< element
     ph, &
     me
   real(pReal),   intent(in), dimension(3,3) :: &
@@ -436,7 +441,7 @@ function constitutive_damage_deltaState(Fe, co, ip, el, ph, me) result(broken)
      sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_isoBrittle_deltaState(constitutive_homogenizedC(ph,me), Fe, co, ip, el)
+        call source_damage_isoBrittle_deltaState(constitutive_homogenizedC(ph,me), Fe, ph,me)
         broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,me)))
         if(.not. broken) then
           myOffset = damageState(ph)%p(so)%offsetDeltaState
