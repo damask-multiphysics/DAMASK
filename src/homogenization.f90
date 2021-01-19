@@ -28,7 +28,8 @@ module homogenization
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
   real(pReal),   dimension(:),         allocatable, public :: &
-    homogenization_T
+    homogenization_T, &
+    homogenization_dot_T
   real(pReal),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
@@ -69,12 +70,14 @@ module homogenization
         el                                                                                          !< element number
     end subroutine mech_partition
 
-    module subroutine thermal_partition(T,ip,el)
+    module subroutine thermal_partition(T,ce)
       real(pReal), intent(in) :: T
-      integer,     intent(in) :: &
-        ip, &                                                                                           !< integration point
-        el                                                                                              !< element number
+      integer,     intent(in) :: ce
     end subroutine thermal_partition
+
+    module subroutine thermal_homogenize(ip,el)
+      integer, intent(in) :: ip,el
+    end subroutine thermal_homogenize
 
     module subroutine mech_homogenize(dt,ip,el)
      real(pReal), intent(in) :: dt
@@ -161,7 +164,7 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
     NiterationMPstate, &
     ip, &                                                                                            !< integration point number
     el, &                                                                                            !< element number
-    myNgrains, co, ce, ho, me
+    myNgrains, co, ce, ho, me, ph
   real(pReal) :: &
     subFrac, &
     subStep
@@ -170,8 +173,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
   logical, dimension(2) :: &
     doneAndHappy
 
-
-  !$OMP PARALLEL DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
+  !$OMP PARALLEL
+  !$OMP DO PRIVATE(ce,me,ho,myNgrains,NiterationMPstate,subFrac,converged,subStep,doneAndHappy)
   do el = FEsolving_execElem(1),FEsolving_execElem(2)
     ho = material_homogenizationAt(el)
     myNgrains = homogenization_Nconstituents(ho)
@@ -221,9 +224,8 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
         if (subStep > num%subStepMinHomog) doneAndHappy = [.false.,.true.]
 
         NiterationMPstate = 0
-        convergenceLooping: do while (.not. terminallyIll &
-                       .and. .not. doneAndHappy(1) &
-                       .and. NiterationMPstate < num%nMPstate)
+        convergenceLooping: do while (.not. (terminallyIll .or. doneAndHappy(1)) &
+                                      .and. NiterationMPstate < num%nMPstate)
           NiterationMPstate = NiterationMPstate + 1
 
 !--------------------------------------------------------------------------------------------------
@@ -231,10 +233,9 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
 
           if (.not. doneAndHappy(1)) then
             ce = (el-1)*discretization_nIPs + ip
-            call mech_partition(homogenization_F0(1:3,1:3,ce) &
-                                      + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))&
-                                         *(subStep+subFrac), &
-                                      ip,el)
+            call mech_partition(  homogenization_F0(1:3,1:3,ce) &
+                                + (homogenization_F(1:3,1:3,ce)-homogenization_F0(1:3,1:3,ce))*(subStep+subFrac), &
+                                ip,el)
             converged = .true.
             do co = 1, myNgrains
               converged = converged .and. crystallite_stress(dt*subStep,co,ip,el)
@@ -257,24 +258,45 @@ subroutine materialpoint_stressAndItsTangent(dt,FEsolving_execIP,FEsolving_execE
       enddo cutBackLooping
     enddo
   enddo
-  !$OMP END PARALLEL DO
+  !$OMP END DO
 
   if (.not. terminallyIll ) then
-    !$OMP PARALLEL DO PRIVATE(ho,myNgrains)
+    !$OMP DO PRIVATE(ho,ph,ce)
+    do el = FEsolving_execElem(1),FEsolving_execElem(2)
+      if (terminallyIll) continue
+      ho = material_homogenizationAt(el)
+      do ip = FEsolving_execIP(1),FEsolving_execIP(2)
+        ce = (el-1)*discretization_nIPs + ip
+        call thermal_partition(homogenization_T(ce),ce)
+        do co = 1, homogenization_Nconstituents(ho)
+          ph = material_phaseAt(co,el)
+          call constitutive_thermal_initializeRestorationPoints(ph,material_phaseMemberAt(co,ip,el))
+          if (.not. thermal_stress(dt,ph,material_phaseMemberAt(co,ip,el))) then
+            if (.not. terminallyIll) &                                                           ! so first signals terminally ill...
+              print*, ' Integration point ', ip,' at element ', el, ' terminally ill'
+            terminallyIll = .true.                                                                  ! ...and kills all others
+         endif
+         call thermal_homogenize(ip,el)
+        enddo
+      enddo
+    enddo
+    !$OMP END DO
+
+    !$OMP DO PRIVATE(ho)
     elementLooping3: do el = FEsolving_execElem(1),FEsolving_execElem(2)
       ho = material_homogenizationAt(el)
-      myNgrains = homogenization_Nconstituents(ho)
       IpLooping3: do ip = FEsolving_execIP(1),FEsolving_execIP(2)
-        do co = 1, myNgrains
+        do co = 1, homogenization_Nconstituents(ho)
           call crystallite_orientations(co,ip,el)
         enddo
         call mech_homogenize(dt,ip,el)
       enddo IpLooping3
     enddo elementLooping3
-    !$OMP END PARALLEL DO
+    !$OMP END DO
   else
     print'(/,a,/)', ' << HOMOG >> Material Point terminally ill'
   endif
+  !$OMP END PARALLEL
 
 end subroutine materialpoint_stressAndItsTangent
 
