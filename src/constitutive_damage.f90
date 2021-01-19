@@ -436,7 +436,8 @@ function constitutive_damage_deltaState(Fe, co, ip, el, ph, of) result(broken)
      sourceType: select case (phase_source(so,ph))
 
       case (DAMAGE_ISOBRITTLE_ID) sourceType
-        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(co,ip,el), Fe, &
+        call source_damage_isoBrittle_deltaState  (constitutive_homogenizedC(material_phaseAt(co,el), &
+                                                                             material_phaseMemberAt(co,ip,el)), Fe, &
                                                    co, ip, el)
         broken = any(IEEE_is_NaN(damageState(ph)%p(so)%deltaState(:,of)))
         if(.not. broken) then

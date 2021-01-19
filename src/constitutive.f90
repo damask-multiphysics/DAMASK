@@ -229,8 +229,8 @@ module constitutive
       logical :: converged_
     end function crystallite_stress
 
-    module function constitutive_homogenizedC(co,ip,el) result(C)
-      integer, intent(in) :: co, ip, el
+    module function constitutive_homogenizedC(ph,me) result(C)
+      integer, intent(in) :: ph, me
       real(pReal), dimension(6,6) :: C
     end function constitutive_homogenizedC
 

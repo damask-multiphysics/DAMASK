@@ -307,13 +307,9 @@ submodule(constitutive) constitutive_mech
       character(len=*), intent(in) :: group
     end subroutine plastic_nonlocal_results
 
-    module function plastic_dislotwin_homogenizedC(co,ip,el) result(homogenizedC)
-      real(pReal), dimension(6,6) :: &
-        homogenizedC
-      integer,     intent(in) :: &
-        co, &                                                                                      !< component-ID of integration point
-        ip, &                                                                                       !< integration point
-        el                                                                                          !< element
+    module function plastic_dislotwin_homogenizedC(ph,me) result(homogenizedC)
+      real(pReal), dimension(6,6) :: homogenizedC
+      integer,     intent(in) :: ph,me
     end function plastic_dislotwin_homogenizedC
 
 
@@ -559,16 +555,16 @@ subroutine constitutive_hooke_SandItsTangents(S, dS_dFe, dS_dFi, &
   real(pReal),   intent(out), dimension(3,3,3,3) :: &
     dS_dFe, &                                                                                       !< derivative of 2nd P-K stress with respect to elastic deformation gradient
     dS_dFi                                                                                          !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
+
   real(pReal), dimension(3,3) :: E
   real(pReal), dimension(3,3,3,3) :: C
   integer :: &
     ho, &                                                                                           !< homogenization
-    d                                                                                               !< counter in degradation loop
-  integer :: &
-    i, j
+    d, &                                                                                               !< counter in degradation loop
+    i, j, ph, me
 
   ho = material_homogenizationAt(el)
-  C = math_66toSym3333(constitutive_homogenizedC(co,ip,el))
+  C = math_66toSym3333(constitutive_homogenizedC(material_phaseAt(co,el),material_phaseMemberAt(co,ip,el)))
 
   DegradationLoop: do d = 1, phase_NstiffnessDegradations(material_phaseAt(co,el))
     degradationType: select case(phase_stiffnessDegradation(d,material_phaseAt(co,el)))
@@ -1535,19 +1531,16 @@ end subroutine mech_forward
 !> @brief returns the homogenize elasticity matrix
 !> ToDo: homogenizedC66 would be more consistent
 !--------------------------------------------------------------------------------------------------
-module function constitutive_homogenizedC(co,ip,el) result(C)
+module function constitutive_homogenizedC(ph,me) result(C)
 
   real(pReal), dimension(6,6) :: C
-  integer,      intent(in)     :: &
-    co, &                                                                                          !< component-ID of integration point
-    ip, &                                                                                           !< integration point
-    el                                                                                              !< element
+  integer,      intent(in)    :: ph, me
 
-  plasticityType: select case (phase_plasticity(material_phaseAt(co,el)))
+  plasticityType: select case (phase_plasticity(ph))
     case (PLASTICITY_DISLOTWIN_ID) plasticityType
-     C = plastic_dislotwin_homogenizedC(co,ip,el)
+     C = plastic_dislotwin_homogenizedC(ph,me)
     case default plasticityType
-     C = lattice_C66(1:6,1:6,material_phaseAt(co,el))
+     C = lattice_C66(1:6,1:6,ph)
   end select plasticityType
 
 end function constitutive_homogenizedC
