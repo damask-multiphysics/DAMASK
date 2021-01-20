@@ -64,6 +64,9 @@ module homogenization
     module subroutine thermal_init
     end subroutine thermal_init
 
+    module subroutine damage_init
+    end subroutine damage_init
+
     module subroutine mech_partition(subF,ip,el)
       real(pReal), intent(in), dimension(3,3) :: &
         subF
@@ -76,6 +79,11 @@ module homogenization
       real(pReal), intent(in) :: T
       integer,     intent(in) :: ce
     end subroutine thermal_partition
+
+    module subroutine damage_partition(phi,ce)
+      real(pReal), intent(in) :: phi
+      integer,     intent(in) :: ce
+    end subroutine damage_partition
 
     module subroutine thermal_homogenize(ip,el)
       integer, intent(in) :: ip,el
@@ -120,7 +128,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_init
+subroutine homogenization_init()
 
   class (tNode) , pointer :: &
     num_homog, &
@@ -144,6 +152,7 @@ subroutine homogenization_init
 
   call mech_init(num_homog)
   call thermal_init()
+  call damage_init()
 
   if (any(thermal_type == THERMAL_isothermal_ID)) call thermal_isothermal_init(homogenization_T)
   if (any(thermal_type == THERMAL_conduction_ID)) call thermal_conduction_init(homogenization_T)

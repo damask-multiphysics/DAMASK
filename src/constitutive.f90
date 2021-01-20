@@ -188,6 +188,11 @@ module constitutive
       real(pReal), dimension(3,3) :: P
     end function constitutive_mech_getP
 
+    module function constitutive_damage_get_phi(co,ip,el) result(phi)
+      integer, intent(in) :: co, ip, el
+      real(pReal) :: phi
+    end function constitutive_damage_get_phi
+
     module function thermal_T(ph,me) result(T)
       integer, intent(in) :: ph,me
       real(pReal) :: T
@@ -203,6 +208,11 @@ module constitutive
       real(pReal), intent(in) :: T
       integer, intent(in) :: co, ce
     end subroutine constitutive_thermal_setT
+    
+    module subroutine constitutive_damage_set_phi(phi,co,ce)
+      real(pReal), intent(in) :: phi
+      integer, intent(in) :: co, ce
+    end subroutine constitutive_damage_set_phi
 
 ! == cleaned:end ===================================================================================
 
@@ -353,6 +363,8 @@ module constitutive
     constitutive_restartRead, &
     integrateDamageState, &
     constitutive_thermal_setT, &
+    constitutive_damage_set_phi, &
+    constitutive_damage_get_phi, &
     constitutive_mech_getP, &
     constitutive_mech_setF, &
     constitutive_mech_getF, &

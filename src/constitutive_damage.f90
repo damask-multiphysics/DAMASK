@@ -10,8 +10,15 @@ submodule(constitutive) constitutive_damage
     DAMAGE_ANISODUCTILE_ID
   end enum
 
+
+  type :: tDataContainer
+    real(pReal), dimension(:), allocatable :: phi, d_phi_d_dot_phi
+  end type tDataContainer
+
   integer(kind(DAMAGE_UNDEFINED_ID)),     dimension(:,:), allocatable :: &
     phase_source                                                                                !< active sources mechanisms of each phase
+
+  type(tDataContainer), dimension(:), allocatable :: current
 
   interface
 
@@ -152,7 +159,8 @@ contains
 module subroutine damage_init
 
   integer :: &
-    ph                                                                                              !< counter in phase loop
+    ph, &                                                                                           !< counter in phase loop
+    Nconstituents
   class(tNode), pointer :: &
    phases, &
    phase, &
@@ -161,10 +169,18 @@ module subroutine damage_init
 
   phases => config_material%get('phase')
 
+  allocate(current(phases%length))
+
   allocate(damageState (phases%length))
   allocate(phase_Nsources(phases%length),source = 0)           ! same for kinematics
 
   do ph = 1,phases%length
+
+    Nconstituents = count(material_phaseAt == ph) * discretization_nIPs
+
+    allocate(current(ph)%phi(Nconstituents),source=1.0_pReal)
+    allocate(current(ph)%d_phi_d_dot_phi(Nconstituents),source=0.0_pReal)
+
     phase => phases%get(ph)
     sources => phase%get('source',defaultVal=emptyList)
     phase_Nsources(ph) = sources%length
@@ -509,6 +525,30 @@ function source_active(source_label,src_length)  result(active_source)
 
 
 end function source_active
+
+
+!----------------------------------------------------------------------------------------------
+!< @brief Set damage parameter
+!----------------------------------------------------------------------------------------------
+module subroutine constitutive_damage_set_phi(phi,co,ce)
+
+  real(pReal), intent(in) :: phi
+  integer, intent(in) :: ce, co
+
+
+  current(material_phaseAt2(co,ce))%phi(material_phaseMemberAt2(co,ce)) = phi
+
+end subroutine constitutive_damage_set_phi
+
+
+module function constitutive_damage_get_phi(co,ip,el) result(phi)
+  
+  integer, intent(in) :: co, ip, el
+  real(pReal) :: phi
+
+  phi = current(material_phaseAt(co,el))%phi(material_phaseMemberAt(co,ip,el))
+
+end function constitutive_damage_get_phi
 
 
 end submodule constitutive_damage
