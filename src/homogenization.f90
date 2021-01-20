@@ -29,7 +29,9 @@ module homogenization
 ! General variables for the homogenization at a  material point
   real(pReal),   dimension(:),         allocatable, public :: &
     homogenization_T, &
-    homogenization_dot_T
+    homogenization_dot_T, &
+    homogenization_phi, &
+    homogenization_dot_phi
   real(pReal),   dimension(:,:,:),     allocatable, public :: &
     homogenization_F0, &                                                                            !< def grad of IP at start of FE increment
     homogenization_F                                                                                !< def grad of IP to be reached at end of FE increment
