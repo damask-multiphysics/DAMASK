@@ -61,10 +61,12 @@ program DAMASK_grid
   logical :: &
     guess, &                                                                                        !< guess along former trajectory
     stagIterate, &
-    cutBack = .false.
+    cutBack = .false.,&
+    signal
   integer :: &
     i, j, m, field, &
     errorID = 0, &
+    ierr,&
     cutBackLevel = 0, &                                                                             !< cut back level \f$ t = \frac{t_{inc}}{2^l} \f$
     stepFraction = 0, &                                                                             !< fraction of current time interval
     l = 0, &                                                                                        !< current load case
@@ -449,18 +451,27 @@ program DAMASK_grid
           print'(/,a,i0,a)', ' increment ', totalIncsCounter, ' NOT converged'
         endif; flush(IO_STDOUT)
 
-        if (mod(inc,loadCases(l)%f_out) == 0) then
+        call MPI_Allreduce(interface_SIGUSR1,signal,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+        if (ierr /= 0) error stop 'MPI error'
+        if (mod(inc,loadCases(l)%f_out) == 0 .or. signal) then
           print'(1/,a)', ' ... writing results to file ......................................'
           flush(IO_STDOUT)
           call CPFEM_results(totalIncsCounter,time)
         endif
-        if (mod(inc,loadCases(l)%f_restart) == 0) then
+        if(signal) call interface_setSIGUSR1(.false.)
+        call MPI_Allreduce(interface_SIGUSR2,signal,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+        if (ierr /= 0) error stop 'MPI error'
+        if (mod(inc,loadCases(l)%f_restart) == 0 .or. signal) then
           call mech_restartWrite
           call CPFEM_restartWrite
         endif
+        if(signal) call interface_setSIGUSR2(.false.)
+        call MPI_Allreduce(interface_SIGTERM,signal,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
+        if (ierr /= 0) error stop 'MPI error'
+        if (signal) exit loadCaseLooping
       endif skipping
 
-     enddo incLooping
+    enddo incLooping
 
   enddo loadCaseLooping
 

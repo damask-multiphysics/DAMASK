@@ -199,7 +199,7 @@ subroutine DAMASK_interface_init
   if (interface_restartInc > 0) &
     print'(a,i6.6)', ' Restart from increment: ', interface_restartInc
 
-  !call signalterm_c(c_funloc(catchSIGTERM))
+  call signalterm_c(c_funloc(catchSIGTERM))
   call signalusr1_c(c_funloc(catchSIGUSR1))
   call signalusr2_c(c_funloc(catchSIGUSR2))
   call interface_setSIGTERM(.false.)
@@ -386,22 +386,12 @@ end function makeRelativePath
 subroutine catchSIGTERM(signal) bind(C)
 
   integer(C_INT), value :: signal
+
+
+  print'(a,i0)', ' received signal ',signal
   call interface_setSIGTERM(.true.)
 
-  print'(a,i0,a)', ' received signal ',signal, ', set SIGTERM=TRUE'
-
 end subroutine catchSIGTERM
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGTERM.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGTERM(state)
-
-  logical, intent(in) :: state
-  interface_SIGTERM = state
-
-end subroutine interface_setSIGTERM
 
 
 !--------------------------------------------------------------------------------------------------
@@ -411,22 +401,12 @@ end subroutine interface_setSIGTERM
 subroutine catchSIGUSR1(signal) bind(C)
 
   integer(C_INT), value :: signal
+
+
+  print'(a,i0)', ' received signal ',signal
   call interface_setSIGUSR1(.true.)
 
-  print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR1=TRUE'
-
 end subroutine catchSIGUSR1
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Set global variable interface_SIGUSR.
-!--------------------------------------------------------------------------------------------------
-subroutine interface_setSIGUSR1(state)
-
-  logical, intent(in) :: state
-  interface_SIGUSR1 = state
-
-end subroutine interface_setSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
@@ -436,11 +416,40 @@ end subroutine interface_setSIGUSR1
 subroutine catchSIGUSR2(signal) bind(C)
 
   integer(C_INT), value :: signal
+
+
+  print'(a,i0,a)', ' received signal ',signal
   call interface_setSIGUSR2(.true.)
 
-  print'(a,i0,a)', ' received signal ',signal, ', set SIGUSR2=TRUE'
-
 end subroutine catchSIGUSR2
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Set global variable interface_SIGTERM.
+!--------------------------------------------------------------------------------------------------
+subroutine interface_setSIGTERM(state)
+
+  logical, intent(in) :: state
+
+
+  interface_SIGTERM = state
+  print*, 'set SIGTERM to',state
+
+end subroutine interface_setSIGTERM
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Set global variable interface_SIGUSR.
+!--------------------------------------------------------------------------------------------------
+subroutine interface_setSIGUSR1(state)
+
+  logical, intent(in) :: state
+
+
+  interface_SIGUSR1 = state
+  print*, 'set SIGUSR1 to',state
+
+end subroutine interface_setSIGUSR1
 
 
 !--------------------------------------------------------------------------------------------------
@@ -449,7 +458,10 @@ end subroutine catchSIGUSR2
 subroutine interface_setSIGUSR2(state)
 
   logical, intent(in) :: state
+
+
   interface_SIGUSR2 = state
+  print*, 'set SIGUSR2 to',state
 
 end subroutine interface_setSIGUSR2
 
